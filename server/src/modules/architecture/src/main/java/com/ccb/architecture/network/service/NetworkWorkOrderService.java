@@ -19,6 +19,7 @@ import com.ccb.attachment.integration.AttachmentItem;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,22 +125,22 @@ public class NetworkWorkOrderService {
         this.clock = Objects.requireNonNull(clock, "时钟不能为空");
     }
 
-    public List<WorkOrder> list(AuthUser actor, AccessScope scope, Kind kind,
+    public List<WorkOrder> list(AuthUser actor, ProjectAccess project, AccessScope scope, Kind kind,
                                 WorkOrderStatus status, int limit, int offset) {
         requireActor(actor);
         Long applicantId = scope == AccessScope.MANAGE ? null : actor.id();
-        return store.listWorkOrders(actor.tenantId(), applicantId, kind, status, limit, offset);
+        return store.listWorkOrders(actor.tenantId(), project.id(), applicantId, kind, status, limit, offset);
     }
 
-    public WorkOrderDetail detail(AuthUser actor, AccessScope scope, long workOrderId) {
+    public WorkOrderDetail detail(AuthUser actor, ProjectAccess project, AccessScope scope, long workOrderId) {
         requireActor(actor);
-        WorkOrder workOrder = requireVisible(actor, scope, workOrderId);
-        return new WorkOrderDetail(workOrder, store.listHistory(actor.tenantId(), workOrderId));
+        WorkOrder workOrder = requireVisible(actor, project.id(), scope, workOrderId);
+        return new WorkOrderDetail(workOrder, store.listHistory(actor.tenantId(), project.id(), workOrderId));
     }
 
     /** 创建草稿；载荷按 kind 强类型校验并规范化，subject 由服务端投影。 */
     @Transactional
-    public WorkOrderDetail create(AuthUser actor, CreateCommand command) {
+    public WorkOrderDetail create(AuthUser actor, ProjectAccess project, CreateCommand command) {
         requireActor(actor);
         Objects.requireNonNull(command, "创建命令不能为空");
         Objects.requireNonNull(command.kind(), "工单类型不能为空");
@@ -156,23 +157,23 @@ public class NetworkWorkOrderService {
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
         WorkOrder workOrder = new WorkOrder(
-                id, actor.tenantId(), command.kind(), command.actionType(), normalized.subject(),
+                id, actor.tenantId(), project.id(), command.kind(), command.actionType(), normalized.subject(),
                 actor.id(), trimToNull(command.reason()), WorkOrderStatus.DRAFT, normalized.payloadJson(),
                 serializeIds(command.attachmentIds()), null, null, null, null, null,
                 0, null, null, null, null, false, 0, actor.id(), actor.id(), now, now);
         store.insertWorkOrder(workOrder);
         bindAttachments(actor, id, command.attachmentIds());
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), id, "CREATED", null,
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), id, "CREATED", null,
                 WorkOrderStatus.DRAFT, 0, "创建网络专项工单", snapshot(workOrder), null, actor.id(), now));
-        return new WorkOrderDetail(workOrder, store.listHistory(actor.tenantId(), id));
+        return new WorkOrderDetail(workOrder, store.listHistory(actor.tenantId(), project.id(), id));
     }
 
     /** 仅本人且 DRAFT/RETURNED 可更新；行版本防并发覆盖。 */
     @Transactional
-    public WorkOrderDetail update(AuthUser actor, long workOrderId, UpdateCommand command) {
+    public WorkOrderDetail update(AuthUser actor, ProjectAccess project, long workOrderId, UpdateCommand command) {
         requireActor(actor);
         Objects.requireNonNull(command, "更新命令不能为空");
-        WorkOrder current = requireVisible(actor, AccessScope.OWN, workOrderId);
+        WorkOrder current = requireVisible(actor, project.id(), AccessScope.OWN, workOrderId);
         requireOwner(current, actor);
         if (current.status() != WorkOrderStatus.DRAFT && current.status() != WorkOrderStatus.RETURNED) {
             throw conflict("当前状态不允许编辑草稿");
@@ -180,25 +181,25 @@ public class NetworkWorkOrderService {
         NormalizedPayload normalized = normalizePayload(current.kind(), current.actionType(), command.payload());
         validateAttachments(actor, current.kind(), command.attachmentIds());
         String attachmentIds = serializeIds(command.attachmentIds());
-        if (!store.updateDraft(actor.tenantId(), workOrderId, current.status(), command.rowVersion(),
+        if (!store.updateDraft(actor.tenantId(), project.id(), workOrderId, current.status(), command.rowVersion(),
                 trimToNull(command.reason()), normalized.payloadJson(), attachmentIds, actor.id())) {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
-        WorkOrder updated = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder updated = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
         bindNewAttachments(actor, workOrderId, parseIds(current.attachmentIds()), command.attachmentIds());
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), workOrderId, "UPDATED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), workOrderId, "UPDATED",
                 current.status(), updated.status(), current.currentBusinessRound(), "更新网络专项工单草稿",
                 snapshot(updated), diff(current, updated), actor.id(), LocalDateTime.now(clock)));
-        return new WorkOrderDetail(updated, store.listHistory(actor.tenantId(), workOrderId));
+        return new WorkOrderDetail(updated, store.listHistory(actor.tenantId(), project.id(), workOrderId));
     }
 
     /** 移除已绑定的申请材料附件：仅 DRAFT/RETURNED，删除授权由附件策略复审。 */
     @Transactional
-    public WorkOrderDetail removeAttachment(AuthUser actor, long workOrderId, long expectedRowVersion,
+    public WorkOrderDetail removeAttachment(AuthUser actor, ProjectAccess project, long workOrderId, long expectedRowVersion,
                                             long attachmentId) {
         requireActor(actor);
-        WorkOrder current = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder current = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
         if (current.status() != WorkOrderStatus.DRAFT && current.status() != WorkOrderStatus.RETURNED) {
             throw conflict("当前状态不允许移除附件");
@@ -214,17 +215,17 @@ public class NetworkWorkOrderService {
                 String.valueOf(workOrderId), actor);
         attachmentIds.remove(attachmentId);
         String nextIds = serializeIds(attachmentIds);
-        if (!store.updateDraft(actor.tenantId(), workOrderId, current.status(), current.rowVersion(),
+        if (!store.updateDraft(actor.tenantId(), project.id(), workOrderId, current.status(), current.rowVersion(),
                 current.reason(), current.payload(), nextIds, actor.id())) {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
-        WorkOrder updated = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder updated = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), workOrderId, "ATTACHMENT_REMOVED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), workOrderId, "ATTACHMENT_REMOVED",
                 current.status(), updated.status(), current.currentBusinessRound(),
                 "移除申请材料附件 " + attachmentId, snapshot(updated), null, actor.id(),
                 LocalDateTime.now(clock)));
-        return new WorkOrderDetail(updated, store.listHistory(actor.tenantId(), workOrderId));
+        return new WorkOrderDetail(updated, store.listHistory(actor.tenantId(), project.id(), workOrderId));
     }
 
     /**
@@ -232,11 +233,11 @@ public class NetworkWorkOrderService {
      * 任一平台结果校验或持久化失败都会让状态与摘要一起回滚。
      */
     @Transactional
-    public void coordinateSubmission(AuthUser actor, long workOrderId, long expectedRowVersion,
+    public void coordinateSubmission(AuthUser actor, ProjectAccess project, long workOrderId, long expectedRowVersion,
                                      Consumer<SubmissionPreparation> workflowStarter) {
         requireActor(actor);
         Objects.requireNonNull(workflowStarter, "工作流启动器不能为空");
-        WorkOrder current = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder current = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
         requireOwner(current, actor);
         if (current.status() != WorkOrderStatus.DRAFT && current.status() != WorkOrderStatus.RETURNED) {
@@ -246,11 +247,11 @@ public class NetworkWorkOrderService {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
         String digest = digest(current);
-        if (!store.compareAndSetStatus(actor.tenantId(), workOrderId, current.status(),
+        if (!store.compareAndSetStatus(actor.tenantId(), project.id(), workOrderId, current.status(),
                 current.rowVersion(), WorkOrderStatus.IN_REVIEW, actor.id())) {
             throw conflict("工单状态已被其他人修改，请刷新后重试");
         }
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), workOrderId, "SUBMITTED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), workOrderId, "SUBMITTED",
                 current.status(), WorkOrderStatus.IN_REVIEW, current.currentBusinessRound(),
                 "提交网络专项工单审批", snapshotAfter(workOrderId, current, WorkOrderStatus.IN_REVIEW, digest),
                 null, actor.id(), LocalDateTime.now(clock)));
@@ -259,9 +260,9 @@ public class NetworkWorkOrderService {
 
     /** 草稿/退回同步取消；审批中取消走 {@link #coordinateCancellation}。 */
     @Transactional
-    public WorkOrderDetail cancel(AuthUser actor, AccessScope scope, long workOrderId, long expectedRowVersion) {
+    public WorkOrderDetail cancel(AuthUser actor, ProjectAccess project, AccessScope scope, long workOrderId, long expectedRowVersion) {
         requireActor(actor);
-        WorkOrder current = requireVisible(actor, scope, workOrderId);
+        WorkOrder current = requireVisible(actor, project.id(), scope, workOrderId);
         requireOwner(current, actor);
         if (current.status() == WorkOrderStatus.IN_REVIEW) {
             throw conflict("审批中的工单必须通过终止流程取消");
@@ -272,23 +273,23 @@ public class NetworkWorkOrderService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
-        store.compareAndSetStatus(actor.tenantId(), workOrderId, current.status(), current.rowVersion(),
+        store.compareAndSetStatus(actor.tenantId(), project.id(), workOrderId, current.status(), current.rowVersion(),
                 WorkOrderStatus.CANCELLED, actor.id());
-        WorkOrder cancelled = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder cancelled = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), workOrderId, "CANCELLED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), workOrderId, "CANCELLED",
                 current.status(), WorkOrderStatus.CANCELLED, current.currentBusinessRound(),
                 "取消网络专项工单", snapshot(cancelled), null, actor.id(), LocalDateTime.now(clock)));
-        return new WorkOrderDetail(cancelled, store.listHistory(actor.tenantId(), workOrderId));
+        return new WorkOrderDetail(cancelled, store.listHistory(actor.tenantId(), project.id(), workOrderId));
     }
 
     /** 审批中取消：登记取消请求并调用工作流终止器，等待 TERMINATED 事件终态化。 */
     @Transactional
-    public void coordinateCancellation(AuthUser actor, long workOrderId, long expectedRowVersion,
+    public void coordinateCancellation(AuthUser actor, ProjectAccess project, long workOrderId, long expectedRowVersion,
                                        Consumer<CancellationPreparation> workflowTerminator) {
         requireActor(actor);
         Objects.requireNonNull(workflowTerminator, "工作流终止器不能为空");
-        WorkOrder current = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder current = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
         requireOwner(current, actor);
         if (current.status() != WorkOrderStatus.IN_REVIEW) {
@@ -300,11 +301,11 @@ public class NetworkWorkOrderService {
         if (current.currentWorkflowInstanceId() == null) {
             throw conflict("审批流程尚未启动，不能取消");
         }
-        if (!store.compareAndSetCancellationRequested(actor.tenantId(), workOrderId,
+        if (!store.compareAndSetCancellationRequested(actor.tenantId(), project.id(), workOrderId,
                 current.rowVersion(), true, actor.id())) {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), workOrderId, "CANCEL_REQUESTED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), workOrderId, "CANCEL_REQUESTED",
                 WorkOrderStatus.IN_REVIEW, WorkOrderStatus.IN_REVIEW, current.currentBusinessRound(),
                 "登记取消请求并终止审批流程", null, null, actor.id(), LocalDateTime.now(clock)));
         workflowTerminator.accept(new CancellationPreparation(workOrderId,
@@ -313,7 +314,7 @@ public class NetworkWorkOrderService {
 
     /** 办理结果登记：manage 权限，IN_REVIEW 或 COMPLETED；不改变工单状态。 */
     @Transactional
-    public WorkOrderDetail registerHandlingResult(AuthUser actor, long workOrderId, long expectedRowVersion,
+    public WorkOrderDetail registerHandlingResult(AuthUser actor, ProjectAccess project, long workOrderId, long expectedRowVersion,
                                                   HandlingResultCommand command) {
         requireActor(actor);
         Objects.requireNonNull(command, "办理结果不能为空");
@@ -322,7 +323,7 @@ public class NetworkWorkOrderService {
         if (command.resultAttachmentIds().stream().anyMatch(id -> id == null || id <= 0)) {
             throw badRequest("凭证附件编号必须为正整数");
         }
-        WorkOrder current = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder current = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
         validateAttachments(actor, current.kind(), command.resultAttachmentIds());
         if (current.status() != WorkOrderStatus.IN_REVIEW && current.status() != WorkOrderStatus.COMPLETED) {
@@ -332,30 +333,30 @@ public class NetworkWorkOrderService {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
         String resultAttachmentIds = serializeIds(command.resultAttachmentIds());
-        if (!store.updateHandlingResult(actor.tenantId(), workOrderId, expectedRowVersion,
+        if (!store.updateHandlingResult(actor.tenantId(), project.id(), workOrderId, expectedRowVersion,
                 resultStatus.name(), description, resultAttachmentIds, actor.id())) {
             throw conflict("工单已被其他人修改，请刷新后重试");
         }
         bindNewAttachments(actor, workOrderId, parseIds(current.resultAttachmentIds()),
                 command.resultAttachmentIds());
-        WorkOrder updated = store.lockWorkOrder(actor.tenantId(), workOrderId)
+        WorkOrder updated = store.lockWorkOrder(actor.tenantId(), project.id(), workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), workOrderId, "RESULT_REGISTERED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), workOrderId, "RESULT_REGISTERED",
                 current.status(), updated.status(), current.currentBusinessRound(),
                 "登记办理结果 " + resultStatus.name(), resultSnapshot(updated), null, actor.id(),
                 LocalDateTime.now(clock)));
-        return new WorkOrderDetail(updated, store.listHistory(actor.tenantId(), workOrderId));
+        return new WorkOrderDetail(updated, store.listHistory(actor.tenantId(), project.id(), workOrderId));
     }
 
     /** 工作流事件：退回/拒绝在同一事务落地。 */
     @Transactional
-    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long workOrderId,
+    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long projectId, long workOrderId,
                                                        long expectedRowVersion, long operatorId,
                                                        WorkOrderStatus outcome) {
         if (outcome != WorkOrderStatus.RETURNED && outcome != WorkOrderStatus.REJECTED) {
             throw new IllegalArgumentException("退回/拒绝之外的终态不允许通过评审路径落地");
         }
-        WorkOrder current = store.lockWorkOrder(tenantId, workOrderId)
+        WorkOrder current = store.lockWorkOrder(tenantId, projectId, workOrderId)
                 .orElseThrow(() -> conflict("工作流事件关联的网络专项工单不存在"));
         if (current.status() != WorkOrderStatus.IN_REVIEW || current.cancellationRequested()) {
             throw conflict("工作流事件对应的工单已变化或正在取消");
@@ -363,13 +364,13 @@ public class NetworkWorkOrderService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("工单行版本已变化，无法应用工作流结论");
         }
-        if (!store.compareAndSetStatus(tenantId, workOrderId, WorkOrderStatus.IN_REVIEW,
+        if (!store.compareAndSetStatus(tenantId, projectId, workOrderId, WorkOrderStatus.IN_REVIEW,
                 current.rowVersion(), outcome, operatorId)) {
             throw conflict("工单状态已被其他人修改");
         }
-        WorkOrder updated = store.lockWorkOrder(tenantId, workOrderId)
+        WorkOrder updated = store.lockWorkOrder(tenantId, projectId, workOrderId)
                 .orElseThrow(() -> conflict("网络专项工单不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), tenantId, workOrderId, outcome.name(),
+        store.insertHistory(new HistoryEvent(nextId(), tenantId, projectId, workOrderId, outcome.name(),
                 WorkOrderStatus.IN_REVIEW, outcome, current.currentBusinessRound(),
                 outcome == WorkOrderStatus.RETURNED ? "审批退回，等待修改后重提" : "审批拒绝",
                 snapshot(updated), null, operatorId, LocalDateTime.now(clock)));
@@ -377,9 +378,9 @@ public class NetworkWorkOrderService {
 
     /** 工作流事件：批准 = 外部配置已办理并登记，工单进入 COMPLETED。 */
     @Transactional
-    public void applyCompletionInCurrentTransaction(long tenantId, long workOrderId,
+    public void applyCompletionInCurrentTransaction(long tenantId, long projectId, long workOrderId,
                                                     long expectedRowVersion, long operatorId) {
-        WorkOrder current = store.lockWorkOrder(tenantId, workOrderId)
+        WorkOrder current = store.lockWorkOrder(tenantId, projectId, workOrderId)
                 .orElseThrow(() -> conflict("工作流事件关联的网络专项工单不存在"));
         if (current.status() != WorkOrderStatus.IN_REVIEW || current.cancellationRequested()) {
             throw conflict("工作流事件对应的工单已变化或正在取消");
@@ -387,13 +388,13 @@ public class NetworkWorkOrderService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("工单行版本已变化，无法应用工作流结论");
         }
-        if (!store.compareAndSetStatus(tenantId, workOrderId, WorkOrderStatus.IN_REVIEW,
+        if (!store.compareAndSetStatus(tenantId, projectId, workOrderId, WorkOrderStatus.IN_REVIEW,
                 current.rowVersion(), WorkOrderStatus.COMPLETED, operatorId)) {
             throw conflict("工单状态已被其他人修改");
         }
-        WorkOrder updated = store.lockWorkOrder(tenantId, workOrderId)
+        WorkOrder updated = store.lockWorkOrder(tenantId, projectId, workOrderId)
                 .orElseThrow(() -> conflict("网络专项工单不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), tenantId, workOrderId, "COMPLETED",
+        store.insertHistory(new HistoryEvent(nextId(), tenantId, projectId, workOrderId, "COMPLETED",
                 WorkOrderStatus.IN_REVIEW, WorkOrderStatus.COMPLETED, current.currentBusinessRound(),
                 "审批通过，外部配置已办理并登记", snapshot(updated), null, operatorId,
                 LocalDateTime.now(clock)));
@@ -401,9 +402,9 @@ public class NetworkWorkOrderService {
 
     /** 工作流事件：TERMINATED 仅在已登记取消请求时确认 CANCELLED。 */
     @Transactional
-    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long workOrderId,
+    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long projectId, long workOrderId,
                                                                   long expectedRowVersion, long operatorId) {
-        WorkOrder current = store.lockWorkOrder(tenantId, workOrderId)
+        WorkOrder current = store.lockWorkOrder(tenantId, projectId, workOrderId)
                 .orElseThrow(() -> conflict("工作流事件关联的网络专项工单不存在"));
         if (current.status() != WorkOrderStatus.IN_REVIEW || !current.cancellationRequested()) {
             throw conflict("工作流事件没有匹配的取消请求");
@@ -411,13 +412,13 @@ public class NetworkWorkOrderService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("工单行版本已变化，无法应用工作流结论");
         }
-        if (!store.compareAndSetStatus(tenantId, workOrderId, WorkOrderStatus.IN_REVIEW,
+        if (!store.compareAndSetStatus(tenantId, projectId, workOrderId, WorkOrderStatus.IN_REVIEW,
                 current.rowVersion(), WorkOrderStatus.CANCELLED, operatorId)) {
             throw conflict("工单状态已被其他人修改");
         }
-        WorkOrder updated = store.lockWorkOrder(tenantId, workOrderId)
+        WorkOrder updated = store.lockWorkOrder(tenantId, projectId, workOrderId)
                 .orElseThrow(() -> conflict("网络专项工单不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), tenantId, workOrderId, "CANCELLED",
+        store.insertHistory(new HistoryEvent(nextId(), tenantId, projectId, workOrderId, "CANCELLED",
                 WorkOrderStatus.IN_REVIEW, WorkOrderStatus.CANCELLED, current.currentBusinessRound(),
                 "审批流程已终止并取消工单", snapshot(updated), null, operatorId,
                 LocalDateTime.now(clock)));
@@ -439,8 +440,8 @@ public class NetworkWorkOrderService {
         }
     }
 
-    private WorkOrder requireVisible(AuthUser actor, AccessScope scope, long workOrderId) {
-        WorkOrder workOrder = store.findWorkOrder(actor.tenantId(), workOrderId)
+    private WorkOrder requireVisible(AuthUser actor, long projectId, AccessScope scope, long workOrderId) {
+        WorkOrder workOrder = store.findWorkOrder(actor.tenantId(), projectId, workOrderId)
                 .orElseThrow(() -> notFound("网络专项工单不存在"));
         if (scope == AccessScope.OWN && workOrder.applicantId() != actor.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能查看本人发起的网络专项工单");
@@ -576,7 +577,7 @@ public class NetworkWorkOrderService {
 
     private String snapshotAfter(long workOrderId, WorkOrder current, WorkOrderStatus nextStatus, String digest) {
         WorkOrder projected = new WorkOrder(
-                current.id(), current.tenantId(), current.kind(), current.actionType(), current.subject(),
+                current.id(), current.tenantId(), current.projectId(), current.kind(), current.actionType(), current.subject(),
                 current.applicantId(), current.reason(), nextStatus, current.payload(), current.attachmentIds(),
                 current.resultStatus(), current.resultDescription(), current.resultAttachmentIds(),
                 current.resultRegisteredBy(), current.resultRegisteredAt(), current.currentBusinessRound(),

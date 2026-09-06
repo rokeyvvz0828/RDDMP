@@ -12,6 +12,7 @@ import com.ccb.architecture.network.model.NetworkAccessModels.ValidityType;
 import com.ccb.architecture.network.persistence.NetworkAccessStore;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NetworkAccessLifecycleServiceTest {
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "applicant", "hash", "申请人", 11L, true);
+    private static final long PROJECT_ID = 70L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(PROJECT_ID, "PROJECT-A", "项目 A");
     private static final LocalDateTime START = LocalDateTime.of(2026, 9, 1, 0, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 12, 31, 23, 59);
 
@@ -55,7 +58,7 @@ class NetworkAccessLifecycleServiceTest {
 
     @Test
     void 直接关闭关系被拒绝() {
-        assertThatThrownBy(() -> service.closeRelation(ACTOR, 100L,
+        assertThatThrownBy(() -> service.closeRelation(ACTOR, PROJECT, 100L,
                 new NetworkAccessService.CloseRelationCommand("直接关闭", 0L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("必须通过关闭申请办理");
@@ -68,15 +71,15 @@ class NetworkAccessLifecycleServiceTest {
         NetworkAccessRelation target = relation(100L, RelationStatus.ACTIVE);
         ArgumentCaptor<NetworkAccessRelation> replacement = ArgumentCaptor.forClass(NetworkAccessRelation.class);
 
-        when(store.lockApplication(7L, 900L)).thenReturn(Optional.of(application));
-        when(store.updateApplicationStatus(7L, 900L, ApplicationStatus.IN_REVIEW, 3L,
+        when(store.lockApplication(7L, PROJECT_ID, 900L)).thenReturn(Optional.of(application));
+        when(store.updateApplicationStatus(7L, PROJECT_ID, 900L, ApplicationStatus.IN_REVIEW, 3L,
                 ApplicationStatus.APPROVED, ACTOR.id())).thenReturn(true);
-        when(store.lockRelation(7L, 100L)).thenReturn(Optional.of(target));
-        when(store.closeRelationByApplication(eq(7L), eq(100L), eq(900001L), eq(900L),
+        when(store.lockRelation(7L, PROJECT_ID, 100L)).thenReturn(Optional.of(target));
+        when(store.closeRelationByApplication(eq(7L), eq(PROJECT_ID), eq(100L), eq(900001L), eq(900L),
                 eq(RelationCloseType.SUPERSEDED), any(), eq(ACTOR.id()), any())).thenReturn(true);
-        when(store.findApplication(7L, 900L)).thenReturn(Optional.of(approved));
+        when(store.findApplication(7L, PROJECT_ID, 900L)).thenReturn(Optional.of(approved));
 
-        NetworkAccessApplication result = service.approveApplication(ACTOR, 900L, 3L);
+        NetworkAccessApplication result = service.approveApplication(ACTOR, PROJECT, 900L, 3L);
 
         assertThat(result.status()).isEqualTo(ApplicationStatus.APPROVED);
         verify(store).insertRelation(replacement.capture());
@@ -85,7 +88,7 @@ class NetworkAccessLifecycleServiceTest {
     }
 
     private NetworkAccessApplication application(NetworkAccessActionType actionType, ApplicationStatus status) {
-        return new NetworkAccessApplication(900L, 7L, "NAA900", ACTOR.id(), actionType, 100L,
+        return new NetworkAccessApplication(900L, 7L, PROJECT_ID, "NAA900", ACTOR.id(), actionType, 100L,
                 EndpointKind.MANAGED, null, null, null, null,
                 "[{\"id\":11,\"machineName\":\"src\",\"ipAddress\":\"10.1.1.10\",\"networkZoneId\":800}]",
                 EndpointKind.MANAGED, null, null, null, null,
@@ -96,12 +99,14 @@ class NetworkAccessLifecycleServiceTest {
     }
 
     private NetworkAccessRelation relation(long id, RelationStatus status) {
-        return new NetworkAccessRelation(id, 7L, "NAR" + id, 800L,
+        return new NetworkAccessRelation(id, 7L, PROJECT_ID, "NAR" + id, 800L,
+                null, null, null,
                 EndpointKind.MANAGED,
                 "[{\"id\":11,\"machineName\":\"src\",\"ipAddress\":\"10.1.1.10\",\"networkZoneId\":800}]",
                 EndpointKind.MANAGED,
                 "[{\"id\":21,\"machineName\":\"dst\",\"ipAddress\":\"10.2.1.20\",\"networkZoneId\":801}]",
-                AccessProtocol.TCP, "443", "历史关系", null, START, END, status,
-                null, null, null, 0L, ACTOR.id(), ACTOR.id(), START, START);
+                AccessProtocol.TCP, "443", "历史关系", null, START, END, ValidityType.LIMITED, status,
+                null, null, null, null, false, 0, List.of(),
+                0L, ACTOR.id(), ACTOR.id(), START, START);
     }
 }

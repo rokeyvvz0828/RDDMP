@@ -37,14 +37,14 @@ import java.util.Optional;
 @Repository
 public class EnvironmentResourceStore {
     private static final String ENVIRONMENT_COLUMNS = """
-            environment.id, environment.tenant_id, environment.code, environment.name,
+            environment.id, environment.tenant_id, environment.project_id, environment.code, environment.name,
             environment.type_code, environment.type_code AS type_name,
             environment.status, environment.description, environment.remark, environment.row_version,
             environment.created_by, environment.updated_by, environment.created_at, environment.updated_at
             """;
 
     private static final String INSTANCE_COLUMNS = """
-            instance.id, instance.tenant_id, instance.instance_no, instance.environment_id,
+            instance.id, instance.tenant_id, instance.project_id, instance.instance_no, instance.environment_id,
             environment.code AS environment_code, environment.name AS environment_name,
             environment.type_code AS environment_type_name,
             instance.deployment_unit_id, unit.code AS deployment_unit_code, unit.name AS deployment_unit_name,
@@ -68,7 +68,7 @@ public class EnvironmentResourceStore {
             """;
 
     private static final String DR_COLUMNS = """
-            dr.id, dr.tenant_id, dr.deployment_unit_id, unit.code AS deployment_unit_code,
+            dr.id, dr.tenant_id, dr.project_id, dr.deployment_unit_id, unit.code AS deployment_unit_code,
             unit.name AS deployment_unit_name, dr.primary_instance_id,
             p_inst.machine_name AS primary_machine_name, p_inst.ip_address AS primary_ip_address,
             p_env.code AS primary_environment_code, p_env.name AS primary_environment_name,
@@ -79,7 +79,7 @@ public class EnvironmentResourceStore {
             """;
 
     private static final String REQUEST_COLUMNS = """
-            request.id, request.tenant_id, request.request_no, request.physical_subsystem_id,
+            request.id, request.tenant_id, request.project_id, request.request_no, request.physical_subsystem_id,
             physical.code AS physical_subsystem_code,
             physical.short_name AS physical_subsystem_short_name,
             physical.name AS physical_subsystem_name,
@@ -97,7 +97,7 @@ public class EnvironmentResourceStore {
             """;
 
     private static final String ITEM_COLUMNS = """
-            item.id, item.tenant_id, item.request_id, item.item_seq, item.deployment_unit_id,
+            item.id, item.tenant_id, item.project_id, item.request_id, item.item_seq, item.deployment_unit_id,
             unit.code AS deployment_unit_code, unit.name AS deployment_unit_name,
             unit.kind AS deployment_unit_kind, item.deployment_unit_description,
             item.database_storage_gb, item.storage_gb AS file_storage_gb,
@@ -113,6 +113,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<Environment> ENVIRONMENT_MAPPER = (rs, rowNum) -> new Environment(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getString("code"),
             rs.getString("name"),
             rs.getString("type_code"),
@@ -129,6 +130,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<ResourceRequest> REQUEST_MAPPER = (rs, rowNum) -> new ResourceRequest(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getString("request_no"),
             rs.getLong("physical_subsystem_id"),
             rs.getString("physical_subsystem_code"),
@@ -162,6 +164,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<ResourceRequestItem> ITEM_MAPPER = (rs, rowNum) -> new ResourceRequestItem(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getLong("request_id"),
             rs.getInt("item_seq"),
             rs.getLong("deployment_unit_id"),
@@ -202,6 +205,7 @@ public class EnvironmentResourceStore {
         return new EnvironmentInstance(
                 rs.getLong("id"),
                 rs.getLong("tenant_id"),
+                rs.getLong("project_id"),
                 rs.getString("instance_no"),
                 rs.getLong("environment_id"),
                 rs.getString("environment_code"),
@@ -259,6 +263,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<InstanceDisasterRecovery> DR_MAPPER = (rs, rowNum) -> new InstanceDisasterRecovery(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getLong("deployment_unit_id"),
             rs.getString("deployment_unit_code"),
             rs.getString("deployment_unit_name"),
@@ -281,6 +286,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<HistoryEvent> HISTORY_MAPPER = (rs, rowNum) -> new HistoryEvent(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getLong("request_id"),
             rs.getString("event_type"),
             nullableRequestStatus(rs, "from_status"),
@@ -295,6 +301,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<WorkflowRound> WORKFLOW_ROUND_MAPPER = (rs, rowNum) -> new WorkflowRound(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getLong("request_id"),
             rs.getInt("round_no"),
             nullableLong(rs, "workflow_definition_id"),
@@ -310,6 +317,7 @@ public class EnvironmentResourceStore {
     private static final RowMapper<WorkflowReceipt> WORKFLOW_RECEIPT_MAPPER = (rs, rowNum) -> new WorkflowReceipt(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             rs.getString("event_id"),
             rs.getString("subscriber_key"),
             nullableLong(rs, "request_id"),
@@ -345,16 +353,15 @@ public class EnvironmentResourceStore {
         this.jdbc = Objects.requireNonNull(jdbc, "JdbcTemplate 不能为空");
     }
 
-    public List<Environment> listEnvironments(long tenantId, String typeCode, RecordStatus status,
+    public List<Environment> listEnvironments(long tenantId, long projectId, String typeCode, RecordStatus status,
                                               String keyword, int limit, int offset) {
         if (limit <= 0 || offset < 0) {
             throw new IllegalArgumentException("分页参数无效");
         }
         StringBuilder sql = new StringBuilder("SELECT ").append(ENVIRONMENT_COLUMNS)
                 .append(" FROM arch_environment environment")
-                .append(" WHERE environment.tenant_id = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
+                .append(" WHERE environment.tenant_id = ? AND environment.project_id = ?");
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
         if (typeCode != null && !typeCode.isBlank()) {
             sql.append(" AND environment.type_code = ?");
             args.add(typeCode.trim());
@@ -375,40 +382,40 @@ public class EnvironmentResourceStore {
         return jdbc.query(sql.toString(), ENVIRONMENT_MAPPER, args.toArray());
     }
 
-    public Optional<Environment> findEnvironment(long tenantId, long id) {
+    public Optional<Environment> findEnvironment(long tenantId, long projectId, long id) {
         return jdbc.query("SELECT " + ENVIRONMENT_COLUMNS + " FROM arch_environment environment "
-                        + "WHERE environment.tenant_id = ? AND environment.id = ?",
-                ENVIRONMENT_MAPPER, tenantId, id).stream().findFirst();
+                        + "WHERE environment.tenant_id = ? AND environment.project_id = ? AND environment.id = ?",
+                ENVIRONMENT_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<Environment> lockEnvironment(long tenantId, long id) {
+    public Optional<Environment> lockEnvironment(long tenantId, long projectId, long id) {
         requireTransaction();
         return jdbc.query("SELECT " + ENVIRONMENT_COLUMNS + " FROM arch_environment environment "
-                        + "WHERE environment.tenant_id = ? AND environment.id = ? FOR UPDATE",
-                ENVIRONMENT_MAPPER, tenantId, id).stream().findFirst();
+                        + "WHERE environment.tenant_id = ? AND environment.project_id = ? AND environment.id = ? FOR UPDATE",
+                ENVIRONMENT_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean environmentCodeExists(long tenantId, String code, Long excludeId) {
-        return exists("arch_environment", "code", tenantId, code, excludeId);
+    public boolean environmentCodeExists(long tenantId, long projectId, String code, Long excludeId) {
+        return exists("arch_environment", "code", tenantId, projectId, code, excludeId);
     }
 
-    public boolean environmentNameExists(long tenantId, String name, Long excludeId) {
-        return exists("arch_environment", "name", tenantId, name, excludeId);
+    public boolean environmentNameExists(long tenantId, long projectId, String name, Long excludeId) {
+        return exists("arch_environment", "name", tenantId, projectId, name, excludeId);
     }
 
     public void insertEnvironment(Environment environment) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_environment
-                    (id, tenant_id, code, name, type_code, status, description, remark,
+                    (id, tenant_id, project_id, code, name, type_code, status, description, remark,
                      row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, environment.id(), environment.tenantId(), environment.code(), environment.name(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, environment.id(), environment.tenantId(), environment.projectId(), environment.code(), environment.name(),
                 environment.typeCode(), environment.status().name(), environment.description(),
                 environment.remark(), environment.rowVersion(), environment.createdBy(), environment.updatedBy());
     }
 
-    public boolean updateEnvironment(long tenantId, long id, long expectedRowVersion, String code,
+    public boolean updateEnvironment(long tenantId, long projectId, long id, long expectedRowVersion, String code,
                                      String name, String typeCode, String description, String remark,
                                      long actorId) {
         requireTransaction();
@@ -416,34 +423,35 @@ public class EnvironmentResourceStore {
                 UPDATE arch_environment
                 SET code = ?, name = ?, type_code = ?, description = ?, remark = ?, updated_by = ?,
                     row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND row_version = ?
-                """, code, name, typeCode, description, remark, actorId, tenantId, id, expectedRowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ?
+                """, code, name, typeCode, description, remark, actorId, tenantId, projectId, id, expectedRowVersion) == 1;
     }
 
-    public boolean updateEnvironmentStatus(long tenantId, long id, long expectedRowVersion,
+    public boolean updateEnvironmentStatus(long tenantId, long projectId, long id, long expectedRowVersion,
                                            RecordStatus fromStatus, RecordStatus toStatus, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_environment
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                """, toStatus.name(), actorId, tenantId, id, fromStatus.name(), expectedRowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                """, toStatus.name(), actorId, tenantId, projectId, id, fromStatus.name(), expectedRowVersion) == 1;
     }
 
-    public boolean deleteEnvironment(long tenantId, long id, long expectedRowVersion) {
+    public boolean deleteEnvironment(long tenantId, long projectId, long id, long expectedRowVersion) {
         requireTransaction();
         return jdbc.update("""
                 DELETE FROM arch_environment
-                WHERE tenant_id = ? AND id = ? AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ?
                   AND NOT EXISTS (
                       SELECT 1 FROM arch_resource_request request
                       WHERE request.tenant_id = arch_environment.tenant_id
+                        AND request.project_id = arch_environment.project_id
                         AND request.environment_id = arch_environment.id
                   )
-                """, tenantId, id, expectedRowVersion) == 1;
+                """, tenantId, projectId, id, expectedRowVersion) == 1;
     }
 
-    public ResourceSummary resourceSummary(long tenantId, long environmentId) {
+    public ResourceSummary resourceSummary(long tenantId, long projectId, long environmentId) {
         ResourceSummary requested = jdbc.query("""
                 SELECT
                     COUNT(DISTINCT request.id) AS request_count,
@@ -461,8 +469,9 @@ public class EnvironmentResourceStore {
                         THEN item.planned_node_count ELSE 0 END), 0) AS node_sum
                 FROM arch_resource_request request
                 LEFT JOIN arch_resource_request_item item
-                  ON item.tenant_id = request.tenant_id AND item.request_id = request.id
-                WHERE request.tenant_id = ?
+                  ON item.tenant_id = request.tenant_id AND item.project_id = request.project_id
+                 AND item.request_id = request.id
+                WHERE request.tenant_id = ? AND request.project_id = ?
                   AND request.environment_id = ?
                   AND request.status NOT IN ('REJECTED', 'CANCELLED')
                 """, rs -> {
@@ -481,7 +490,7 @@ public class EnvironmentResourceStore {
                     BigDecimal.ZERO,
                     BigDecimal.ZERO,
                     0);
-        }, tenantId, environmentId);
+        }, tenantId, projectId, environmentId);
 
         ActualSummary actual = jdbc.query("""
                 SELECT
@@ -490,14 +499,14 @@ public class EnvironmentResourceStore {
                     COALESCE(SUM(database_storage_gb + file_storage_gb + extra_cbs_gb + local_disk_gb), 0) AS actual_storage_sum,
                     COUNT(id) AS actual_node_count
                 FROM arch_environment_instance
-                WHERE tenant_id = ? AND environment_id = ? AND status = 'ACTIVE'
+                WHERE tenant_id = ? AND project_id = ? AND environment_id = ? AND status = 'ACTIVE'
                 """, rs -> {
             if (!rs.next()) {
                 return new ActualSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0L);
             }
             return new ActualSummary(decimal(rs, "actual_cpu_sum"), decimal(rs, "actual_memory_sum"),
                     decimal(rs, "actual_storage_sum"), rs.getLong("actual_node_count"));
-        }, tenantId, environmentId);
+        }, tenantId, projectId, environmentId);
 
         if (requested == null) {
             requested = emptySummary(environmentId);
@@ -522,20 +531,20 @@ public class EnvironmentResourceStore {
     private record ActualSummary(BigDecimal cpu, BigDecimal memory, BigDecimal storage, long nodeCount) {
     }
 
-    public Optional<PhysicalSubsystemRef> findPhysical(long tenantId, long physicalSubsystemId) {
+    public Optional<PhysicalSubsystemRef> findPhysical(long tenantId, long projectId, long physicalSubsystemId) {
         return jdbc.query("""
                 SELECT id, code, short_name, name, business_group_name, deployment_platform, system_level_code,
                        disaster_recovery_mode, status, deleted
                 FROM arch_physical_subsystem
-                WHERE tenant_id = ? AND id = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ?
                 """, (rs, rowNum) -> new PhysicalSubsystemRef(rs.getLong("id"), rs.getString("code"),
                 rs.getString("short_name"), rs.getString("name"), rs.getString("business_group_name"),
                 rs.getString("deployment_platform"), rs.getString("system_level_code"),
                 rs.getString("disaster_recovery_mode"), rs.getString("status"), rs.getBoolean("deleted")),
-                tenantId, physicalSubsystemId).stream().findFirst();
+                tenantId, projectId, physicalSubsystemId).stream().findFirst();
     }
 
-    public Optional<DeploymentUnitRef> findDeploymentUnit(long tenantId, long deploymentUnitId) {
+    public Optional<DeploymentUnitRef> findDeploymentUnit(long tenantId, long projectId, long deploymentUnitId) {
         return jdbc.query("""
                 SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
                        unit.description,
@@ -544,18 +553,19 @@ public class EnvironmentResourceStore {
                 FROM arch_deployment_unit unit
                 LEFT JOIN arch_deployment_unit_version version
                   ON version.tenant_id = unit.tenant_id
+                 AND version.project_id = unit.project_id
                  AND version.unit_id = unit.id
                  AND version.version_no = unit.current_version
-                WHERE unit.tenant_id = ? AND unit.id = ?
+                WHERE unit.tenant_id = ? AND unit.project_id = ? AND unit.id = ?
                 """, (rs, rowNum) -> new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"),
                 rs.getString("name"), rs.getString("kind"), rs.getString("status"),
                 rs.getLong("physical_subsystem_id"), rs.getString("description"),
                 nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
                 nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
-                tenantId, deploymentUnitId).stream().findFirst();
+                tenantId, projectId, deploymentUnitId).stream().findFirst();
     }
 
-    public List<DeploymentUnitRef> listDeploymentUnits(long tenantId, long physicalSubsystemId, int limit) {
+    public List<DeploymentUnitRef> listDeploymentUnits(long tenantId, long projectId, long physicalSubsystemId, int limit) {
         return jdbc.query("""
                 SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id,
                        unit.description,
@@ -564,9 +574,10 @@ public class EnvironmentResourceStore {
                 FROM arch_deployment_unit unit
                 LEFT JOIN arch_deployment_unit_version version
                   ON version.tenant_id = unit.tenant_id
+                 AND version.project_id = unit.project_id
                  AND version.unit_id = unit.id
                  AND version.version_no = unit.current_version
-                WHERE unit.tenant_id = ? AND unit.physical_subsystem_id = ? AND unit.status = 'ACTIVE'
+                WHERE unit.tenant_id = ? AND unit.project_id = ? AND unit.physical_subsystem_id = ? AND unit.status = 'ACTIVE'
                 ORDER BY unit.code ASC, unit.id ASC
                 LIMIT ?
                 """, (rs, rowNum) -> new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"),
@@ -574,20 +585,20 @@ public class EnvironmentResourceStore {
                 rs.getLong("physical_subsystem_id"), rs.getString("description"),
                 nullableLong(rs, "default_network_zone_id"), rs.getString("default_network_zone_name"),
                 nullableLong(rs, "current_version_id"), rs.getInt("current_version")),
-                tenantId, physicalSubsystemId, limit);
+                tenantId, projectId, physicalSubsystemId, limit);
     }
 
     public void insertResourceRequest(ResourceRequest request) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_resource_request
-                    (id, tenant_id, request_no, physical_subsystem_id, environment_id, applicant_id,
+                    (id, tenant_id, project_id, request_no, physical_subsystem_id, environment_id, applicant_id,
                      contact_user_id, request_type, reason, status, current_business_round,
                      current_workflow_definition_id, current_workflow_version_id,
                      current_workflow_instance_id, current_payload_digest, cancellation_requested,
                      row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, request.id(), request.tenantId(), request.requestNo(), request.physicalSubsystemId(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, request.id(), request.tenantId(), request.projectId(), request.requestNo(), request.physicalSubsystemId(),
                 request.environmentId(), request.applicantId(), request.contactUserId(),
                 request.requestType().name(), request.reason(),
                 request.status().name(), request.currentBusinessRound(),
@@ -596,26 +607,25 @@ public class EnvironmentResourceStore {
                 request.cancellationRequested(), request.rowVersion(), request.createdBy(), request.updatedBy());
     }
 
-    public Optional<ResourceRequest> findRequest(long tenantId, long requestId) {
-        return jdbc.query(requestSelect("WHERE request.tenant_id = ? AND request.id = ?"),
-                REQUEST_MAPPER, tenantId, requestId).stream().findFirst();
+    public Optional<ResourceRequest> findRequest(long tenantId, long projectId, long requestId) {
+        return jdbc.query(requestSelect("WHERE request.tenant_id = ? AND request.project_id = ? AND request.id = ?"),
+                REQUEST_MAPPER, tenantId, projectId, requestId).stream().findFirst();
     }
 
-    public Optional<ResourceRequest> lockRequest(long tenantId, long requestId) {
+    public Optional<ResourceRequest> lockRequest(long tenantId, long projectId, long requestId) {
         requireTransaction();
-        return jdbc.query(requestSelect("WHERE request.tenant_id = ? AND request.id = ? FOR UPDATE"),
-                REQUEST_MAPPER, tenantId, requestId).stream().findFirst();
+        return jdbc.query(requestSelect("WHERE request.tenant_id = ? AND request.project_id = ? AND request.id = ? FOR UPDATE"),
+                REQUEST_MAPPER, tenantId, projectId, requestId).stream().findFirst();
     }
 
-    public List<ResourceRequest> listRequests(long tenantId, Long applicantId, RequestStatus status,
+    public List<ResourceRequest> listRequests(long tenantId, long projectId, Long applicantId, RequestStatus status,
                                               Long environmentId, Long physicalSubsystemId,
                                               int limit, int offset) {
         if (limit <= 0 || offset < 0) {
             throw new IllegalArgumentException("分页参数无效");
         }
-        StringBuilder filter = new StringBuilder("WHERE request.tenant_id = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
+        StringBuilder filter = new StringBuilder("WHERE request.tenant_id = ? AND request.project_id = ?");
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
         if (applicantId != null) {
             filter.append(" AND request.applicant_id = ?");
             args.add(applicantId);
@@ -638,31 +648,32 @@ public class EnvironmentResourceStore {
         return jdbc.query(requestSelect(filter.toString()), REQUEST_MAPPER, args.toArray());
     }
 
-    public List<ResourceRequestItem> listItems(long tenantId, long requestId) {
+    public List<ResourceRequestItem> listItems(long tenantId, long projectId, long requestId) {
         return jdbc.query("SELECT " + ITEM_COLUMNS + " FROM arch_resource_request_item item "
                         + "JOIN arch_deployment_unit unit "
-                        + "ON unit.tenant_id = item.tenant_id AND unit.id = item.deployment_unit_id "
-                        + "WHERE item.tenant_id = ? AND item.request_id = ? ORDER BY item.item_seq ASC",
-                ITEM_MAPPER, tenantId, requestId);
+                        + "ON unit.tenant_id = item.tenant_id AND unit.project_id = item.project_id "
+                        + "AND unit.id = item.deployment_unit_id "
+                        + "WHERE item.tenant_id = ? AND item.project_id = ? AND item.request_id = ? ORDER BY item.item_seq ASC",
+                ITEM_MAPPER, tenantId, projectId, requestId);
     }
 
-    public int countInstancesForEnvironmentUnit(long tenantId, long environmentId, long deploymentUnitId) {
+    public int countInstancesForEnvironmentUnit(long tenantId, long projectId, long environmentId, long deploymentUnitId) {
         Integer count = jdbc.queryForObject("""
                 SELECT COUNT(*)
                 FROM arch_environment_instance
-                WHERE tenant_id = ? AND environment_id = ? AND deployment_unit_id = ?
-                """, Integer.class, tenantId, environmentId, deploymentUnitId);
+                WHERE tenant_id = ? AND project_id = ? AND environment_id = ? AND deployment_unit_id = ?
+                """, Integer.class, tenantId, projectId, environmentId, deploymentUnitId);
         return count == null ? 0 : count;
     }
 
-    public void replaceItems(long tenantId, long requestId, List<ResourceRequestItem> items) {
+    public void replaceItems(long tenantId, long projectId, long requestId, List<ResourceRequestItem> items) {
         requireTransaction();
-        jdbc.update("DELETE FROM arch_resource_request_item WHERE tenant_id = ? AND request_id = ?",
-                tenantId, requestId);
+        jdbc.update("DELETE FROM arch_resource_request_item WHERE tenant_id = ? AND project_id = ? AND request_id = ?",
+                tenantId, projectId, requestId);
         for (ResourceRequestItem item : items) {
             jdbc.update("""
                     INSERT INTO arch_resource_request_item
-                        (id, tenant_id, request_id, item_seq, deployment_unit_id,
+                        (id, tenant_id, project_id, request_id, item_seq, deployment_unit_id,
                          deployment_unit_description, database_storage_gb,
                          storage_gb, network_zone_id, network_zone_name, network_zone,
                          server_type, cpu_cores, memory_gb,
@@ -670,8 +681,8 @@ public class EnvironmentResourceStore {
                          sidecar_memory_gb, has_sidecar, database_name, database_version,
                          jdk_version, middleware, operating_system, extra_cbs_gb, local_disk_gb,
                          needs_nft, needs_fserver, needs_jobexecutor, remark)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, item.id(), item.tenantId(), item.requestId(), item.itemSeq(),
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, item.id(), item.tenantId(), item.projectId(), item.requestId(), item.itemSeq(),
                     item.deploymentUnitId(), item.deploymentUnitDescription(),
                     item.databaseStorageGb(), item.fileStorageGb(),
                     item.networkZoneId(), item.networkZoneName(), item.networkZone(),
@@ -684,7 +695,7 @@ public class EnvironmentResourceStore {
         }
     }
 
-    public boolean updateDraft(long tenantId, long requestId, RequestStatus expectedStatus,
+    public boolean updateDraft(long tenantId, long projectId, long requestId, RequestStatus expectedStatus,
                                long expectedRowVersion, long physicalSubsystemId, long environmentId,
                                long contactUserId, RequestType requestType, String reason, long actorId) {
         requireTransaction();
@@ -692,24 +703,24 @@ public class EnvironmentResourceStore {
                 UPDATE arch_resource_request
                 SET physical_subsystem_id = ?, environment_id = ?, request_type = ?, reason = ?,
                     contact_user_id = ?, row_version = row_version + 1, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
                 """, physicalSubsystemId, environmentId, requestType.name(), reason, contactUserId,
-                actorId, tenantId, requestId, expectedStatus.name(), expectedRowVersion) == 1;
+                actorId, tenantId, projectId, requestId, expectedStatus.name(), expectedRowVersion) == 1;
     }
 
-    public boolean compareAndSetStatus(long tenantId, long requestId,
+    public boolean compareAndSetStatus(long tenantId, long projectId, long requestId,
                                        RequestStatus expectedStatus, long expectedRowVersion,
                                        RequestStatus nextStatus, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_resource_request
                 SET status = ?, row_version = row_version + 1, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                """, nextStatus.name(), actorId, tenantId, requestId,
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                """, nextStatus.name(), actorId, tenantId, projectId, requestId,
                 expectedStatus.name(), expectedRowVersion) == 1;
     }
 
-    public boolean compareAndSetWorkflowContext(long tenantId, long requestId,
+    public boolean compareAndSetWorkflowContext(long tenantId, long projectId, long requestId,
                                                 int expectedCurrentBusinessRound,
                                                 long expectedRowVersion, int nextBusinessRound,
                                                 long workflowDefinitionId, long workflowVersionId,
@@ -721,46 +732,46 @@ public class EnvironmentResourceStore {
                 SET current_business_round = ?, current_workflow_definition_id = ?,
                     current_workflow_version_id = ?, current_workflow_instance_id = ?,
                     current_payload_digest = ?, row_version = row_version + 1, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
                   AND status = 'IN_REVIEW'
                 """, nextBusinessRound, workflowDefinitionId, workflowVersionId, workflowInstanceId,
-                payloadDigest, actorId, tenantId, requestId, expectedCurrentBusinessRound,
+                payloadDigest, actorId, tenantId, projectId, requestId, expectedCurrentBusinessRound,
                 expectedRowVersion) == 1;
     }
 
-    public boolean compareAndSetCancellationRequested(long tenantId, long requestId,
+    public boolean compareAndSetCancellationRequested(long tenantId, long projectId, long requestId,
                                                       long expectedRowVersion, boolean requested,
                                                       long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_resource_request
                 SET cancellation_requested = ?, row_version = row_version + 1, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
-                """, requested, actorId, tenantId, requestId, expectedRowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
+                """, requested, actorId, tenantId, projectId, requestId, expectedRowVersion) == 1;
     }
 
     public void insertHistory(HistoryEvent event) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_resource_request_history
-                    (id, tenant_id, request_id, event_type, from_status, to_status, business_round,
+                    (id, tenant_id, project_id, request_id, event_type, from_status, to_status, business_round,
                      summary, snapshot_json, diff_json, operator_id, occurred_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, event.id(), event.tenantId(), event.requestId(), event.eventType(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, event.id(), event.tenantId(), event.projectId(), event.requestId(), event.eventType(),
                 event.fromStatus() == null ? null : event.fromStatus().name(),
                 event.toStatus() == null ? null : event.toStatus().name(),
                 event.businessRound(), event.summary(), event.snapshotJson(), event.diffJson(),
                 event.operatorId(), timestamp(event.occurredAt()));
     }
 
-    public List<HistoryEvent> listHistory(long tenantId, long requestId) {
+    public List<HistoryEvent> listHistory(long tenantId, long projectId, long requestId) {
         return jdbc.query("""
-                SELECT id, tenant_id, request_id, event_type, from_status, to_status, business_round,
+                SELECT id, tenant_id, project_id, request_id, event_type, from_status, to_status, business_round,
                        summary, snapshot_json, diff_json, operator_id, occurred_at
                 FROM arch_resource_request_history
-                WHERE tenant_id = ? AND request_id = ?
+                WHERE tenant_id = ? AND project_id = ? AND request_id = ?
                 ORDER BY occurred_at ASC, id ASC
-                """, HISTORY_MAPPER, tenantId, requestId);
+                """, HISTORY_MAPPER, tenantId, projectId, requestId);
     }
 
     public void insertPendingWorkflowRound(WorkflowRound round) {
@@ -773,33 +784,33 @@ public class EnvironmentResourceStore {
         }
         jdbc.update("""
                 INSERT INTO arch_resource_request_workflow_round
-                    (id, tenant_id, request_id, round_no, workflow_definition_id,
+                    (id, tenant_id, project_id, request_id, round_no, workflow_definition_id,
                      workflow_version_id, workflow_instance_id, payload_digest, status,
                      started_at, ended_at)
-                VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
-                """, round.id(), round.tenantId(), round.requestId(), round.roundNo());
+                VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
+                """, round.id(), round.tenantId(), round.projectId(), round.requestId(), round.roundNo());
     }
 
-    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long workflowInstanceId) {
+    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long projectId, long workflowInstanceId) {
         requireTransaction();
         return jdbc.query("""
-                SELECT id, tenant_id, request_id, round_no, workflow_definition_id,
+                SELECT id, tenant_id, project_id, request_id, round_no, workflow_definition_id,
                        workflow_version_id, workflow_instance_id, payload_digest, status,
                        started_at, ended_at, created_at, updated_at
                 FROM arch_resource_request_workflow_round
-                WHERE tenant_id = ? AND workflow_instance_id = ? FOR UPDATE
-                """, WORKFLOW_ROUND_MAPPER, tenantId, workflowInstanceId).stream().findFirst();
+                WHERE tenant_id = ? AND project_id = ? AND workflow_instance_id = ? FOR UPDATE
+                """, WORKFLOW_ROUND_MAPPER, tenantId, projectId, workflowInstanceId).stream().findFirst();
     }
 
-    public boolean isLatestWorkflowRound(long tenantId, long requestId, int roundNo) {
+    public boolean isLatestWorkflowRound(long tenantId, long projectId, long requestId, int roundNo) {
         Integer latest = jdbc.queryForObject("""
                 SELECT MAX(round_no) FROM arch_resource_request_workflow_round
-                WHERE tenant_id = ? AND request_id = ?
-                """, Integer.class, tenantId, requestId);
+                WHERE tenant_id = ? AND project_id = ? AND request_id = ?
+                """, Integer.class, tenantId, projectId, requestId);
         return latest != null && latest == roundNo;
     }
 
-    public boolean bindWorkflowRoundStarted(long tenantId, long requestId, int roundNo,
+    public boolean bindWorkflowRoundStarted(long tenantId, long projectId, long requestId, int roundNo,
                                             long workflowDefinitionId, long workflowVersionId,
                                             long workflowInstanceId, String payloadDigest,
                                             LocalDateTime startedAt) {
@@ -808,52 +819,52 @@ public class EnvironmentResourceStore {
                 UPDATE arch_resource_request_workflow_round
                 SET workflow_definition_id = ?, workflow_version_id = ?, workflow_instance_id = ?,
                     payload_digest = ?, status = 'STARTED', started_at = ?
-                WHERE tenant_id = ? AND request_id = ? AND round_no = ? AND status = 'PENDING'
+                WHERE tenant_id = ? AND project_id = ? AND request_id = ? AND round_no = ? AND status = 'PENDING'
                 """, workflowDefinitionId, workflowVersionId, workflowInstanceId, payloadDigest,
-                timestamp(startedAt), tenantId, requestId, roundNo) == 1;
+                timestamp(startedAt), tenantId, projectId, requestId, roundNo) == 1;
     }
 
-    public boolean completeStartedWorkflowRound(long tenantId, long requestId, int roundNo,
+    public boolean completeStartedWorkflowRound(long tenantId, long projectId, long requestId, int roundNo,
                                                 WorkflowRoundStatus nextStatus, LocalDateTime endedAt) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_resource_request_workflow_round
                 SET status = ?, ended_at = ?
-                WHERE tenant_id = ? AND request_id = ? AND round_no = ? AND status = 'STARTED'
-                """, nextStatus.name(), timestamp(endedAt), tenantId, requestId, roundNo) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND request_id = ? AND round_no = ? AND status = 'STARTED'
+                """, nextStatus.name(), timestamp(endedAt), tenantId, projectId, requestId, roundNo) == 1;
     }
 
     public boolean beginReceipt(WorkflowReceiptStart receipt) {
         requireTransaction();
         return jdbc.update("""
                 INSERT IGNORE INTO arch_resource_request_workflow_receipt
-                    (id, tenant_id, event_id, subscriber_key, request_id, round_no,
+                    (id, tenant_id, project_id, event_id, subscriber_key, request_id, round_no,
                      workflow_instance_id, event_type, processing_status, detail)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, receipt.id(), receipt.tenantId(), receipt.eventId(), receipt.subscriberKey(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, receipt.id(), receipt.tenantId(), receipt.projectId(), receipt.eventId(), receipt.subscriberKey(),
                 receipt.requestId(), receipt.roundNo(), receipt.workflowInstanceId(), receipt.eventType(),
                 WorkflowReceiptStatus.FAILED.name(), "事务内事件尚未完成") == 1;
     }
 
-    public boolean completeReceipt(long tenantId, String eventId, String subscriberKey,
+    public boolean completeReceipt(long tenantId, long projectId, String eventId, String subscriberKey,
                                    WorkflowReceiptStatus status, String detail) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_resource_request_workflow_receipt
                 SET processing_status = ?, detail = ?, processed_at = CURRENT_TIMESTAMP
-                WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
+                WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
                   AND processing_status = 'FAILED'
-                """, status.name(), detail, tenantId, eventId, subscriberKey) == 1;
+                """, status.name(), detail, tenantId, projectId, eventId, subscriberKey) == 1;
     }
 
-    public Optional<WorkflowReceipt> findReceipt(long tenantId, String eventId, String subscriberKey) {
+    public Optional<WorkflowReceipt> findReceipt(long tenantId, long projectId, String eventId, String subscriberKey) {
         return jdbc.query("""
-                SELECT id, tenant_id, event_id, subscriber_key, request_id, round_no,
+                SELECT id, tenant_id, project_id, event_id, subscriber_key, request_id, round_no,
                        workflow_instance_id, event_type, processing_status, detail,
                        received_at, processed_at
                 FROM arch_resource_request_workflow_receipt
-                WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
-                """, WORKFLOW_RECEIPT_MAPPER, tenantId, eventId, subscriberKey).stream().findFirst();
+                WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
+                """, WORKFLOW_RECEIPT_MAPPER, tenantId, projectId, eventId, subscriberKey).stream().findFirst();
     }
 
     // ===== 环境部署实例与灾备关系持久化 =====
@@ -862,7 +873,7 @@ public class EnvironmentResourceStore {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_environment_instance
-                    (id, tenant_id, instance_no, environment_id, deployment_unit_id,
+                    (id, tenant_id, project_id, instance_no, environment_id, deployment_unit_id,
                      deployment_unit_version_id, deployment_unit_version_no,
                      physical_subsystem_id, source_request_id, source_item_id,
                      machine_name, ip_address, server_type, deployment_platform,
@@ -873,8 +884,8 @@ public class EnvironmentResourceStore {
                      needs_nft, needs_fserver, needs_jobexecutor, fulfillment_mode,
                      difference_reason, remark, offlined_at, offlined_by, offline_reason,
                      row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, instance.id(), instance.tenantId(), instance.instanceNo(), instance.environmentId(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, instance.id(), instance.tenantId(), instance.projectId(), instance.instanceNo(), instance.environmentId(),
                 instance.deploymentUnitId(), instance.deploymentUnitVersionId(), instance.deploymentUnitVersionNo(),
                 instance.physicalSubsystemId(), instance.sourceRequestId(), instance.sourceItemId(),
                 instance.machineName(), instance.ipAddress(), instance.serverType(), instance.deploymentPlatform(),
@@ -889,24 +900,24 @@ public class EnvironmentResourceStore {
                 instance.createdBy(), instance.updatedBy());
     }
 
-    public Optional<EnvironmentInstance> findInstance(long tenantId, long id) {
-        return jdbc.query(instanceSelect("WHERE instance.tenant_id = ? AND instance.id = ?"),
-                INSTANCE_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<EnvironmentInstance> findInstance(long tenantId, long projectId, long id) {
+        return jdbc.query(instanceSelect("WHERE instance.tenant_id = ? AND instance.project_id = ? AND instance.id = ?"),
+                INSTANCE_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<EnvironmentInstance> lockInstance(long tenantId, long id) {
+    public Optional<EnvironmentInstance> lockInstance(long tenantId, long projectId, long id) {
         requireTransaction();
-        return jdbc.query(instanceSelect("WHERE instance.tenant_id = ? AND instance.id = ? FOR UPDATE"),
-                INSTANCE_MAPPER, tenantId, id).stream().findFirst();
+        return jdbc.query(instanceSelect("WHERE instance.tenant_id = ? AND instance.project_id = ? AND instance.id = ? FOR UPDATE"),
+                INSTANCE_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<EnvironmentInstance> findActiveInstanceByMachineOrIp(long tenantId, long environmentId,
+    public Optional<EnvironmentInstance> findActiveInstanceByMachineOrIp(long tenantId, long projectId, long environmentId,
                                                                          String machineName, String ipAddress,
                                                                          Long excludeInstanceId) {
         StringBuilder sql = new StringBuilder(instanceSelect(
-                "WHERE instance.tenant_id = ? AND instance.environment_id = ? AND instance.status = 'ACTIVE' "
+                "WHERE instance.tenant_id = ? AND instance.project_id = ? AND instance.environment_id = ? AND instance.status = 'ACTIVE' "
                         + "AND (instance.machine_name = ? OR instance.ip_address = ?)"));
-        List<Object> args = new ArrayList<>(List.of(tenantId, environmentId, machineName, ipAddress));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, environmentId, machineName, ipAddress));
         if (excludeInstanceId != null) {
             sql.append(" AND instance.id <> ?");
             args.add(excludeInstanceId);
@@ -914,15 +925,14 @@ public class EnvironmentResourceStore {
         return jdbc.query(sql.toString(), INSTANCE_MAPPER, args.toArray()).stream().findFirst();
     }
 
-    public List<EnvironmentInstance> listInstances(long tenantId, Long environmentId, Long physicalSubsystemId,
+    public List<EnvironmentInstance> listInstances(long tenantId, long projectId, Long environmentId, Long physicalSubsystemId,
                                                    Long deploymentUnitId, InstanceStatus status,
                                                    String keyword, int limit, int offset) {
         if (limit <= 0 || offset < 0) {
             throw new IllegalArgumentException("分页参数无效");
         }
-        StringBuilder filter = new StringBuilder("WHERE instance.tenant_id = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
+        StringBuilder filter = new StringBuilder("WHERE instance.tenant_id = ? AND instance.project_id = ?");
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
         if (environmentId != null) {
             filter.append(" AND instance.environment_id = ?");
             args.add(environmentId);
@@ -952,45 +962,44 @@ public class EnvironmentResourceStore {
         return jdbc.query(instanceSelect(filter.toString()), INSTANCE_MAPPER, args.toArray());
     }
 
-    public boolean offlineInstance(long tenantId, long id, long expectedRowVersion,
+    public boolean offlineInstance(long tenantId, long projectId, long id, long expectedRowVersion,
                                    String offlineReason, long actorId, LocalDateTime offlinedAt) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_environment_instance
                 SET status = 'OFFLINE', offline_reason = ?, offlined_by = ?, offlined_at = ?,
                     updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
                 """, offlineReason, actorId, Timestamp.valueOf(offlinedAt), actorId,
-                tenantId, id, expectedRowVersion) == 1;
+                tenantId, projectId, id, expectedRowVersion) == 1;
     }
 
     public void insertDisasterRecovery(InstanceDisasterRecovery dr) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_instance_disaster_recovery
-                    (id, tenant_id, deployment_unit_id, primary_instance_id, standby_instance_id,
+                    (id, tenant_id, project_id, deployment_unit_id, primary_instance_id, standby_instance_id,
                      dr_mode, description, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, dr.id(), dr.tenantId(), dr.deploymentUnitId(), dr.primaryInstanceId(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, dr.id(), dr.tenantId(), dr.projectId(), dr.deploymentUnitId(), dr.primaryInstanceId(),
                 dr.standbyInstanceId(), dr.drMode().name(), dr.description(), dr.createdBy());
     }
 
-    public Optional<InstanceDisasterRecovery> findDisasterRecovery(long tenantId, long id) {
-        return jdbc.query(drSelect("WHERE dr.tenant_id = ? AND dr.id = ?"),
-                DR_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<InstanceDisasterRecovery> findDisasterRecovery(long tenantId, long projectId, long id) {
+        return jdbc.query(drSelect("WHERE dr.tenant_id = ? AND dr.project_id = ? AND dr.id = ?"),
+                DR_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<InstanceDisasterRecovery> findDisasterRecoveryPair(long tenantId,
+    public Optional<InstanceDisasterRecovery> findDisasterRecoveryPair(long tenantId, long projectId,
                                                                        long primaryInstanceId,
                                                                        long standbyInstanceId) {
-        return jdbc.query(drSelect("WHERE dr.tenant_id = ? AND dr.primary_instance_id = ? AND dr.standby_instance_id = ?"),
-                DR_MAPPER, tenantId, primaryInstanceId, standbyInstanceId).stream().findFirst();
+        return jdbc.query(drSelect("WHERE dr.tenant_id = ? AND dr.project_id = ? AND dr.primary_instance_id = ? AND dr.standby_instance_id = ?"),
+                DR_MAPPER, tenantId, projectId, primaryInstanceId, standbyInstanceId).stream().findFirst();
     }
 
-    public List<InstanceDisasterRecovery> listDisasterRecoveries(long tenantId, Long deploymentUnitId, Long instanceId) {
-        StringBuilder filter = new StringBuilder("WHERE dr.tenant_id = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
+    public List<InstanceDisasterRecovery> listDisasterRecoveries(long tenantId, long projectId, Long deploymentUnitId, Long instanceId) {
+        StringBuilder filter = new StringBuilder("WHERE dr.tenant_id = ? AND dr.project_id = ?");
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
         if (deploymentUnitId != null) {
             filter.append(" AND dr.deployment_unit_id = ?");
             args.add(deploymentUnitId);
@@ -1004,16 +1013,16 @@ public class EnvironmentResourceStore {
         return jdbc.query(drSelect(filter.toString()), DR_MAPPER, args.toArray());
     }
 
-    public boolean deleteDisasterRecovery(long tenantId, long id) {
+    public boolean deleteDisasterRecovery(long tenantId, long projectId, long id) {
         requireTransaction();
-        return jdbc.update("DELETE FROM arch_instance_disaster_recovery WHERE tenant_id = ? AND id = ?",
-                tenantId, id) == 1;
+        return jdbc.update("DELETE FROM arch_instance_disaster_recovery WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                tenantId, projectId, id) == 1;
     }
 
-    public List<EnvironmentInstance> listAvailableStandbyInstances(long tenantId, long deploymentUnitId, Long excludeInstanceId) {
+    public List<EnvironmentInstance> listAvailableStandbyInstances(long tenantId, long projectId, long deploymentUnitId, Long excludeInstanceId) {
         StringBuilder filter = new StringBuilder(
-                "WHERE instance.tenant_id = ? AND instance.deployment_unit_id = ? AND instance.status = 'ACTIVE'");
-        List<Object> args = new ArrayList<>(List.of(tenantId, deploymentUnitId));
+                "WHERE instance.tenant_id = ? AND instance.project_id = ? AND instance.deployment_unit_id = ? AND instance.status = 'ACTIVE'");
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, deploymentUnitId));
         if (excludeInstanceId != null) {
             filter.append(" AND instance.id <> ?");
             args.add(excludeInstanceId);
@@ -1026,13 +1035,13 @@ public class EnvironmentResourceStore {
         return "SELECT " + INSTANCE_COLUMNS
                 + " FROM arch_environment_instance instance "
                 + "JOIN arch_environment environment "
-                + "  ON environment.tenant_id = instance.tenant_id AND environment.id = instance.environment_id "
+                + "  ON environment.tenant_id = instance.tenant_id AND environment.project_id = instance.project_id AND environment.id = instance.environment_id "
                 + "JOIN arch_deployment_unit unit "
-                + "  ON unit.tenant_id = instance.tenant_id AND unit.id = instance.deployment_unit_id "
+                + "  ON unit.tenant_id = instance.tenant_id AND unit.project_id = instance.project_id AND unit.id = instance.deployment_unit_id "
                 + "JOIN arch_physical_subsystem physical "
-                + "  ON physical.tenant_id = instance.tenant_id AND physical.id = instance.physical_subsystem_id "
+                + "  ON physical.tenant_id = instance.tenant_id AND physical.project_id = instance.project_id AND physical.id = instance.physical_subsystem_id "
                 + "JOIN arch_resource_request request "
-                + "  ON request.tenant_id = instance.tenant_id AND request.id = instance.source_request_id "
+                + "  ON request.tenant_id = instance.tenant_id AND request.project_id = instance.project_id AND request.id = instance.source_request_id "
                 + suffix;
     }
 
@@ -1040,15 +1049,15 @@ public class EnvironmentResourceStore {
         return "SELECT " + DR_COLUMNS
                 + " FROM arch_instance_disaster_recovery dr "
                 + "JOIN arch_deployment_unit unit "
-                + "  ON unit.tenant_id = dr.tenant_id AND unit.id = dr.deployment_unit_id "
+                + "  ON unit.tenant_id = dr.tenant_id AND unit.project_id = dr.project_id AND unit.id = dr.deployment_unit_id "
                 + "JOIN arch_environment_instance p_inst "
-                + "  ON p_inst.tenant_id = dr.tenant_id AND p_inst.id = dr.primary_instance_id "
+                + "  ON p_inst.tenant_id = dr.tenant_id AND p_inst.project_id = dr.project_id AND p_inst.id = dr.primary_instance_id "
                 + "JOIN arch_environment p_env "
-                + "  ON p_env.tenant_id = p_inst.tenant_id AND p_env.id = p_inst.environment_id "
+                + "  ON p_env.tenant_id = p_inst.tenant_id AND p_env.project_id = p_inst.project_id AND p_env.id = p_inst.environment_id "
                 + "JOIN arch_environment_instance s_inst "
-                + "  ON s_inst.tenant_id = dr.tenant_id AND s_inst.id = dr.standby_instance_id "
+                + "  ON s_inst.tenant_id = dr.tenant_id AND s_inst.project_id = dr.project_id AND s_inst.id = dr.standby_instance_id "
                 + "JOIN arch_environment s_env "
-                + "  ON s_env.tenant_id = s_inst.tenant_id AND s_env.id = s_inst.environment_id "
+                + "  ON s_env.tenant_id = s_inst.tenant_id AND s_env.project_id = s_inst.project_id AND s_env.id = s_inst.environment_id "
                 + suffix;
     }
 
@@ -1056,20 +1065,20 @@ public class EnvironmentResourceStore {
         return "SELECT " + REQUEST_COLUMNS
                 + " FROM arch_resource_request request "
                 + "JOIN arch_physical_subsystem physical "
-                + "  ON physical.tenant_id = request.tenant_id AND physical.id = request.physical_subsystem_id "
+                + "  ON physical.tenant_id = request.tenant_id AND physical.project_id = request.project_id AND physical.id = request.physical_subsystem_id "
                 + "JOIN arch_environment environment "
-                + "  ON environment.tenant_id = request.tenant_id AND environment.id = request.environment_id "
+                + "  ON environment.tenant_id = request.tenant_id AND environment.project_id = request.project_id AND environment.id = request.environment_id "
                 + suffix;
     }
 
-    private boolean exists(String tableName, String columnName, long tenantId, String value, Long excludeId) {
+    private boolean exists(String tableName, String columnName, long tenantId, long projectId, String value, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, value));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, value));
         if (excludeId != null) {
             args.add(excludeId);
         }
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM " + tableName
-                + " WHERE tenant_id = ? AND " + columnName + " = ?" + exclude,
+                + " WHERE tenant_id = ? AND project_id = ? AND " + columnName + " = ?" + exclude,
                 Long.class, args.toArray());
         return count != null && count > 0;
     }

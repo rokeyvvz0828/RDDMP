@@ -9,6 +9,7 @@ import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   createDeploymentUnit,
   deactivateDeploymentUnit,
@@ -34,6 +35,7 @@ import {
 import './architecture.css'
 
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const rows = ref<DeploymentUnit[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -183,6 +185,7 @@ async function searchRelatedOptions(keyword = '') {
 }
 
 async function loadPhysicals() {
+  if (!projectContext.currentRef) return
   try {
     physicalOptions.value = await loadPhysicalSubsystemOptions('', 100)
   } catch (error) {
@@ -199,7 +202,7 @@ async function loadNetworkZones() {
 }
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   const request = ++listRequest
   loading.value = true
   loadError.value = ''
@@ -406,8 +409,8 @@ async function refresh() {
 function changePage(value: number) { page.value = value; void load() }
 function changePageSize(value: number) { pageSize.value = value; page.value = 1; void load() }
 
-watch(canView, allowed => {
-  if (allowed) void Promise.all([load(), loadPhysicals(), loadNetworkZones()])
+watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
+  if (allowed && projectRef) void Promise.all([load(), loadPhysicals(), loadNetworkZones()])
 }, { immediate: true })
 
 </script>

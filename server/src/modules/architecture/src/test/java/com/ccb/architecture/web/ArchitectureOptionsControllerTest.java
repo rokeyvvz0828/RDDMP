@@ -9,6 +9,8 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemParameterReference;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.system.capability.SystemUserReference;
 import com.ccb.system.org.OrgTreeNode;
@@ -40,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,6 +53,8 @@ class ArchitectureOptionsControllerTest {
 
     private OrganizationService organizationService;
     private SystemReferenceQuery referenceQuery;
+    private ArchitectureSubsystemRepository repository;
+    private ProjectAccessService projectAccessService;
     private ArchitectureOptionsService service;
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -58,9 +63,12 @@ class ArchitectureOptionsControllerTest {
     void setUp() {
         organizationService = mock(OrganizationService.class);
         referenceQuery = mock(SystemReferenceQuery.class);
-        ArchitectureSubsystemRepository repository = mock(ArchitectureSubsystemRepository.class);
+        repository = mock(ArchitectureSubsystemRepository.class);
+        projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible("PROJECT-A", ACTOR))
+                .thenReturn(new ProjectAccess(70L, "PROJECT-A", "项目 A"));
         service = new ArchitectureOptionsService(organizationService, referenceQuery, repository);
-        mockMvc = MockMvcBuilders.standaloneSetup(new ArchitectureOptionsController(service))
+        mockMvc = MockMvcBuilders.standaloneSetup(new ArchitectureOptionsController(service, projectAccessService))
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver(ACTOR))
                 .build();
@@ -85,7 +93,7 @@ class ArchitectureOptionsControllerTest {
         });
 
         MvcResult result = mockMvc.perform(get("/api/architecture/options/physical-subsystem/organizations")
-                        .param("page", "1").param("size", "20"))
+                        .param("page", "1").param("size", "20").param("projectRef", "PROJECT-A"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(2))
                 .andReturn();
@@ -101,7 +109,7 @@ class ArchitectureOptionsControllerTest {
                         1, 1, 20));
 
         MvcResult result = mockMvc.perform(get("/api/architecture/options/physical-subsystem/users")
-                        .param("keyword", "张"))
+                        .param("keyword", "张").param("projectRef", "PROJECT-A"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records[0].displayName").value("张三"))
                 .andReturn();
@@ -118,14 +126,20 @@ class ArchitectureOptionsControllerTest {
         when(referenceQuery.activeParameters(ACTOR, "ARCH_BUSINESS_COMPONENT"))
                 .thenReturn(List.of(new SystemParameterReference("architecture.business-component.employee-portal", "员工门户")));
 
-        MvcResult runtime = mockMvc.perform(get(
+        mockMvc.perform(get(
                         "/api/architecture/options/physical-subsystem/parameters/ARCH_RUNTIME"))
+                .andExpect(status().isBadRequest());
+
+        MvcResult runtime = mockMvc.perform(get(
+                        "/api/architecture/options/physical-subsystem/parameters/ARCH_RUNTIME")
+                        .param("projectRef", "PROJECT-A"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].label").value("7x24"))
                 .andReturn();
         assertExactKeys(runtime, "/data/0", "code", "label");
 
-        mockMvc.perform(get("/api/architecture/options/physical-subsystem/business-components"))
+        mockMvc.perform(get("/api/architecture/options/physical-subsystem/business-components")
+                        .param("projectRef", "PROJECT-A"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].code").value("architecture.business-component.employee-portal"))
                 .andExpect(jsonPath("$.data[0].label").value("员工门户"));
@@ -147,22 +161,36 @@ class ArchitectureOptionsControllerTest {
     }
 
     @Test
+    void 部署单元物理子系统候选按可信项目隔离() throws Exception {
+        when(repository.pagePhysical(eq(7L), eq(70L), any(PageQuery.class), any()))
+                .thenReturn(new PageResult<>(List.of(), 0, 1, 20));
+
+        mockMvc.perform(get("/api/architecture/options/deployment-unit/physical-subsystems")
+                        .param("projectRef", "PROJECT-A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(0));
+
+        verify(projectAccessService).requireAccessible("PROJECT-A", ACTOR);
+        verify(repository).pagePhysical(eq(7L), eq(70L), any(PageQuery.class), any());
+    }
+
+    @Test
     void eachKnownContext兼容旧读取权限并纳入新三级权限() throws Exception {
         assertPermission("physicalOrganizations", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                long.class, long.class, String.class, AuthUser.class);
+                long.class, long.class, String.class, String.class, AuthUser.class);
         assertPermission("physicalUsers", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                long.class, long.class, String.class, AuthUser.class);
+                long.class, long.class, String.class, String.class, AuthUser.class);
         assertPermission("physicalParameters", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                String.class, AuthUser.class);
+                String.class, String.class, AuthUser.class);
         assertPermission("businessComponents", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                AuthUser.class);
+                String.class, AuthUser.class);
         assertPermission("deploymentUnitPhysicalSubsystems", "architecture:deployment-unit:view",
                 "hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                long.class, long.class, String.class, String.class, AuthUser.class);
+                long.class, long.class, String.class, String.class, String.class, AuthUser.class);
     }
 
     private void assertPermission(String methodName, String legacyAuthority, String expectedExpression,

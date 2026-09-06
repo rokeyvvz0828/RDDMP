@@ -33,6 +33,7 @@ import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
+import com.ccb.system.capability.ProjectAccessService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,13 +75,15 @@ public class PlanController {
     private final PlanEngine engine;
     private final com.ccb.architecture.service.ArchitectureOptionsService optionsService;
     private final SystemOperationAudit operationAudit;
+    private final ProjectAccessService projectAccessService;
 
     public PlanController(PlanGenerationService generationService, PlanExecutionService executionService,
                           PlanDependencyService dependencyService, PlanBlockService blockService,
                           PlanTimeService timeService, PlanWorkOrderService workOrderService,
                           PlanQueryService queryService, PlanEngine engine,
                           com.ccb.architecture.service.ArchitectureOptionsService optionsService,
-                          SystemOperationAudit operationAudit) {
+                          SystemOperationAudit operationAudit,
+                          ProjectAccessService projectAccessService) {
         this.generationService = generationService;
         this.executionService = executionService;
         this.dependencyService = dependencyService;
@@ -91,6 +94,7 @@ public class PlanController {
         this.engine = engine;
         this.optionsService = optionsService;
         this.operationAudit = operationAudit;
+        this.projectAccessService = projectAccessService;
     }
 
     // ---------- 计划查询 ----------
@@ -101,7 +105,9 @@ public class PlanController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "50") long size,
             @RequestParam(required = false) String keyword,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
+        projectId(projectRef, actor);
         return success(optionsService.users(actor, new com.ccb.common.api.PageQuery(page, size), keyword));
     }
 
@@ -119,8 +125,9 @@ public class PlanController {
             @RequestParam(required = false) Long targetId,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        PageResult<PlanQueryService.PlanRow> result = queryService.list(actor,
+        PageResult<PlanQueryService.PlanRow> result = queryService.list(actor, projectId(projectRef, actor),
                 new PlanQueryService.PlanFilter(environmentId, status, ownerUserId, blocked, overdue,
                         waived, keyword, targetType, targetId), page, size);
         return success(new PageResult<>(result.records().stream()
@@ -134,29 +141,33 @@ public class PlanController {
     @GetMapping("/plans/{id}")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PlanDetailView> planDetail(@PathVariable long id,
+                                                  @RequestParam String projectRef,
                                                   @AuthenticationPrincipal AuthUser actor) {
-        return success(toDetailView(queryService.detail(actor, id)));
+        return success(toDetailView(queryService.detail(actor, projectId(projectRef, actor), id)));
     }
 
     @GetMapping("/plans/{id}/dashboard")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PlanQueryService.DashboardView> dashboard(@PathVariable long id,
+                                                                 @RequestParam String projectRef,
                                                                  @AuthenticationPrincipal AuthUser actor) {
-        return success(queryService.dashboard(actor, id));
+        return success(queryService.dashboard(actor, projectId(projectRef, actor), id));
     }
 
     @GetMapping("/plans/{id}/timeline")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PlanQueryService.TimelineView> timeline(@PathVariable long id,
+                                                               @RequestParam String projectRef,
                                                                @AuthenticationPrincipal AuthUser actor) {
-        return success(queryService.timeline(actor, id));
+        return success(queryService.timeline(actor, projectId(projectRef, actor), id));
     }
 
     @GetMapping("/plans/{id}/report")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PlanQueryService.ReportView> report(@PathVariable long id,
+                                                           @RequestParam String projectRef,
                                                            @AuthenticationPrincipal AuthUser actor) {
-        return success(queryService.report(actor, id));
+        return success(queryService.report(actor, projectId(projectRef, actor), id));
     }
 
     // ---------- 创建与调整 ----------
@@ -164,9 +175,10 @@ public class PlanController {
     @PostMapping("/plans")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PlanView> createPlan(@RequestBody CreatePlanRequest request,
+                                            @RequestParam String projectRef,
                                             @AuthenticationPrincipal AuthUser actor) {
         Plan plan = audited(actor, "architecture.plan.create", "POST", "/api/architecture/plans",
-                () -> generationService.createPlan(actor, new CreatePlanCommand(
+                () -> generationService.createPlan(actor, projectId(projectRef, actor), new CreatePlanCommand(
                         request.environmentId(), request.templateId(), request.name(),
                         request.planOwnerUserId(), request.physicalSubsystemIds(),
                         request.deploymentUnitIds(), request.participantUserIds(),
@@ -178,11 +190,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PlanView> cancelPlan(@PathVariable long id,
                                             @RequestBody ReasonRequest request,
+                                            @RequestParam String projectRef,
                                             @AuthenticationPrincipal AuthUser actor,
                                             Authentication authentication) {
         Plan plan = audited(actor, "architecture.plan.cancel", "POST",
                 "/api/architecture/plans/" + id + "/cancel",
-                () -> executionService.cancelPlan(actor, id, request == null ? null : request.reason(),
+                () -> executionService.cancelPlan(actor, projectId(projectRef, actor), id, request == null ? null : request.reason(),
                         isAdmin(authentication)));
         return success(toPlanView(plan));
     }
@@ -191,11 +204,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PlanView> restorePlan(@PathVariable long id,
                                              @RequestBody ReasonRequest request,
+                                             @RequestParam String projectRef,
                                              @AuthenticationPrincipal AuthUser actor,
                                              Authentication authentication) {
         Plan plan = audited(actor, "architecture.plan.restore", "POST",
                 "/api/architecture/plans/" + id + "/restore",
-                () -> executionService.restorePlan(actor, id, request == null ? null : request.reason(),
+                () -> executionService.restorePlan(actor, projectId(projectRef, actor), id, request == null ? null : request.reason(),
                         isAdmin(authentication)));
         return success(toPlanView(plan));
     }
@@ -204,11 +218,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PlanView> addTargets(@PathVariable long id,
                                             @RequestBody AddTargetRequest request,
+                                            @RequestParam String projectRef,
                                             @AuthenticationPrincipal AuthUser actor,
                                             Authentication authentication) {
         Plan plan = audited(actor, "architecture.plan.target.add", "POST",
                 "/api/architecture/plans/" + id + "/targets",
-                () -> generationService.addTargets(actor, id, new AddTargetCommand(
+                () -> generationService.addTargets(actor, projectId(projectRef, actor), id, new AddTargetCommand(
                         request.physicalSubsystemIds(), request.deploymentUnitIds(),
                         request.reason()), isAdmin(authentication)));
         return success(toPlanView(plan));
@@ -218,11 +233,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PlanView> removeTarget(@PathVariable long id, @PathVariable long targetId,
                                               @RequestBody ReasonRequest request,
+                                              @RequestParam String projectRef,
                                               @AuthenticationPrincipal AuthUser actor,
                                               Authentication authentication) {
         Plan plan = audited(actor, "architecture.plan.target.remove", "POST",
                 "/api/architecture/plans/" + id + "/targets/" + targetId + "/remove",
-                () -> generationService.removeTarget(actor, id, targetId,
+                () -> generationService.removeTarget(actor, projectId(projectRef, actor), id, targetId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toPlanView(plan));
     }
@@ -230,11 +246,12 @@ public class PlanController {
     @PostMapping("/plans/{id}/stages")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<StageView> addStage(@PathVariable long id, @RequestBody AddStageRequest request,
+                                           @RequestParam String projectRef,
                                            @AuthenticationPrincipal AuthUser actor,
                                            Authentication authentication) {
         Stage stage = audited(actor, "architecture.plan.stage.add", "POST",
                 "/api/architecture/plans/" + id + "/stages",
-                () -> generationService.addStage(actor, id, new AddStageCommand(request.name(),
+                () -> generationService.addStage(actor, projectId(projectRef, actor), id, new AddStageCommand(request.name(),
                         request.ownerUserId(), request.plannedStart(), request.plannedEnd()),
                         isAdmin(authentication)));
         return success(toStageView(stage));
@@ -243,11 +260,12 @@ public class PlanController {
     @PostMapping("/plans/{id}/tasks")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<TaskView> addTask(@PathVariable long id, @RequestBody AddTaskRequest request,
+                                         @RequestParam String projectRef,
                                          @AuthenticationPrincipal AuthUser actor,
                                          Authentication authentication) {
         Task task = audited(actor, "architecture.plan.task.add", "POST",
                 "/api/architecture/plans/" + id + "/tasks",
-                () -> generationService.addTask(actor, id,
+                () -> generationService.addTask(actor, projectId(projectRef, actor), id,
                         new AddTaskCommand(request.stageId(), request.name(), request.targetId(),
                                 request.ownerUserId(), request.participantUserIds(),
                                 request.checkItemNames(), request.plannedStart(), request.plannedEnd()),
@@ -259,11 +277,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<CheckItemView> addCheckItem(@PathVariable long taskId,
                                                    @RequestBody CheckItemRequest request,
+                                                   @RequestParam String projectRef,
                                                    @AuthenticationPrincipal AuthUser actor,
                                                    Authentication authentication) {
         CheckItem item = audited(actor, "architecture.plan.check-item.add", "POST",
                 "/api/architecture/tasks/" + taskId + "/check-items",
-                () -> generationService.addCheckItem(actor, taskId,
+                () -> generationService.addCheckItem(actor, projectId(projectRef, actor), taskId,
                         new AddCheckItemCommand(request == null ? null : request.name(),
                                 request == null ? null : request.guide()),
                         isAdmin(authentication)));
@@ -273,11 +292,12 @@ public class PlanController {
     @DeleteMapping("/tasks/{taskId}")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<Void> deleteTask(@PathVariable long taskId, @RequestBody ReasonRequest request,
+                                        @RequestParam String projectRef,
                                         @AuthenticationPrincipal AuthUser actor,
                                         Authentication authentication) {
         audited(actor, "architecture.plan.task.delete", "DELETE", "/api/architecture/tasks/" + taskId,
                 () -> {
-                    generationService.deleteTask(actor, taskId,
+                    generationService.deleteTask(actor, projectId(projectRef, actor), taskId,
                             request == null ? null : request.reason(), isAdmin(authentication));
                     return null;
                 });
@@ -288,12 +308,13 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<Void> deleteCheckItem(@PathVariable long checkItemId,
                                              @RequestBody ReasonRequest request,
+                                             @RequestParam String projectRef,
                                              @AuthenticationPrincipal AuthUser actor,
                                              Authentication authentication) {
         audited(actor, "architecture.plan.check-item.delete", "DELETE",
                 "/api/architecture/check-items/" + checkItemId,
                 () -> {
-                    generationService.deleteCheckItem(actor, checkItemId,
+                    generationService.deleteCheckItem(actor, projectId(projectRef, actor), checkItemId,
                             request == null ? null : request.reason(), isAdmin(authentication));
                     return null;
                 });
@@ -305,11 +326,12 @@ public class PlanController {
     @PostMapping("/tasks/{taskId}/start")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<TaskView> startTask(@PathVariable long taskId,
+                                           @RequestParam String projectRef,
                                            @AuthenticationPrincipal AuthUser actor,
                                            Authentication authentication) {
         Task task = audited(actor, "architecture.plan.task.start", "POST",
                 "/api/architecture/tasks/" + taskId + "/start",
-                () -> executionService.startTask(actor, taskId, isAdmin(authentication)));
+                () -> executionService.startTask(actor, projectId(projectRef, actor), taskId, isAdmin(authentication)));
         return success(toTaskView(task));
     }
 
@@ -317,11 +339,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<CheckItemView> completeCheckItem(@PathVariable long checkItemId,
                                                         @RequestBody(required = false) CheckItemRequest request,
+                                                        @RequestParam String projectRef,
                                                         @AuthenticationPrincipal AuthUser actor,
                                                         Authentication authentication) {
         CheckItem item = audited(actor, "architecture.plan.check-item.complete", "POST",
                 "/api/architecture/check-items/" + checkItemId + "/complete",
-                () -> executionService.completeCheckItem(actor, checkItemId,
+                () -> executionService.completeCheckItem(actor, projectId(projectRef, actor), checkItemId,
                         request == null ? null : request.remark(), isAdmin(authentication)));
         return success(toCheckItemView(item));
     }
@@ -330,11 +353,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<CheckItemView> reopenCheckItem(@PathVariable long checkItemId,
                                                       @RequestBody ReasonRequest request,
+                                                      @RequestParam String projectRef,
                                                       @AuthenticationPrincipal AuthUser actor,
                                                       Authentication authentication) {
         CheckItem item = audited(actor, "architecture.plan.check-item.reopen", "POST",
                 "/api/architecture/check-items/" + checkItemId + "/reopen",
-                () -> executionService.reopenCheckItem(actor, checkItemId,
+                () -> executionService.reopenCheckItem(actor, projectId(projectRef, actor), checkItemId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toCheckItemView(item));
     }
@@ -343,11 +367,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<CheckItemView> cancelCheckItem(@PathVariable long checkItemId,
                                                       @RequestBody ReasonRequest request,
+                                                      @RequestParam String projectRef,
                                                       @AuthenticationPrincipal AuthUser actor,
                                                       Authentication authentication) {
         CheckItem item = audited(actor, "architecture.plan.check-item.cancel", "POST",
                 "/api/architecture/check-items/" + checkItemId + "/cancel",
-                () -> executionService.cancelCheckItem(actor, checkItemId,
+                () -> executionService.cancelCheckItem(actor, projectId(projectRef, actor), checkItemId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toCheckItemView(item));
     }
@@ -356,11 +381,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<CheckItemView> restoreCheckItem(@PathVariable long checkItemId,
                                                        @RequestBody ReasonRequest request,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor,
                                                        Authentication authentication) {
         CheckItem item = audited(actor, "architecture.plan.check-item.restore", "POST",
                 "/api/architecture/check-items/" + checkItemId + "/restore",
-                () -> executionService.restoreCheckItem(actor, checkItemId,
+                () -> executionService.restoreCheckItem(actor, projectId(projectRef, actor), checkItemId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toCheckItemView(item));
     }
@@ -369,10 +395,11 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<SuggestionView> suggestCancel(@PathVariable long checkItemId,
                                                      @RequestBody ReasonRequest request,
+                                                     @RequestParam String projectRef,
                                                      @AuthenticationPrincipal AuthUser actor) {
         CancelSuggestion suggestion = audited(actor, "architecture.plan.check-item.suggest-cancel",
                 "POST", "/api/architecture/check-items/" + checkItemId + "/suggest-cancel",
-                () -> executionService.suggestCancelCheckItem(actor, checkItemId,
+                () -> executionService.suggestCancelCheckItem(actor, projectId(projectRef, actor), checkItemId,
                         request == null ? null : request.reason()));
         return success(toSuggestionView(suggestion));
     }
@@ -381,11 +408,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<CheckItemView> acceptSuggestion(@PathVariable long suggestionId,
                                                        @RequestBody ReasonRequest request,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor,
                                                        Authentication authentication) {
         CheckItem item = audited(actor, "architecture.plan.suggestion.accept", "POST",
                 "/api/architecture/suggestions/" + suggestionId + "/accept",
-                () -> executionService.acceptSuggestion(actor, suggestionId,
+                () -> executionService.acceptSuggestion(actor, projectId(projectRef, actor), suggestionId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toCheckItemView(item));
     }
@@ -394,11 +422,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<SuggestionView> rejectSuggestion(@PathVariable long suggestionId,
                                                         @RequestBody ReasonRequest request,
+                                                        @RequestParam String projectRef,
                                                         @AuthenticationPrincipal AuthUser actor,
                                                         Authentication authentication) {
         CancelSuggestion suggestion = audited(actor, "architecture.plan.suggestion.reject", "POST",
                 "/api/architecture/suggestions/" + suggestionId + "/reject",
-                () -> executionService.rejectSuggestion(actor, suggestionId,
+                () -> executionService.rejectSuggestion(actor, projectId(projectRef, actor), suggestionId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toSuggestionView(suggestion));
     }
@@ -406,19 +435,21 @@ public class PlanController {
     @GetMapping("/plans/{id}/suggestions")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<SuggestionView>> suggestions(@PathVariable long id,
+                                                         @RequestParam String projectRef,
                                                          @AuthenticationPrincipal AuthUser actor) {
-        return success(queryService.pendingSuggestions(actor, id).stream()
+        return success(queryService.pendingSuggestions(actor, projectId(projectRef, actor), id).stream()
                 .map(PlanController::toSuggestionView).toList());
     }
 
     @PostMapping("/tasks/{taskId}/cancel")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<TaskView> cancelTask(@PathVariable long taskId, @RequestBody ReasonRequest request,
+                                            @RequestParam String projectRef,
                                             @AuthenticationPrincipal AuthUser actor,
                                             Authentication authentication) {
         Task task = audited(actor, "architecture.plan.task.cancel", "POST",
                 "/api/architecture/tasks/" + taskId + "/cancel",
-                () -> executionService.cancelTask(actor, taskId,
+                () -> executionService.cancelTask(actor, projectId(projectRef, actor), taskId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toTaskView(task));
     }
@@ -426,11 +457,12 @@ public class PlanController {
     @PostMapping("/tasks/{taskId}/restore")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<TaskView> restoreTask(@PathVariable long taskId, @RequestBody ReasonRequest request,
+                                             @RequestParam String projectRef,
                                              @AuthenticationPrincipal AuthUser actor,
                                              Authentication authentication) {
         Task task = audited(actor, "architecture.plan.task.restore", "POST",
                 "/api/architecture/tasks/" + taskId + "/restore",
-                () -> executionService.restoreTask(actor, taskId,
+                () -> executionService.restoreTask(actor, projectId(projectRef, actor), taskId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toTaskView(task));
     }
@@ -439,11 +471,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<StageView> cancelStage(@PathVariable long stageId,
                                               @RequestBody ReasonRequest request,
+                                              @RequestParam String projectRef,
                                               @AuthenticationPrincipal AuthUser actor,
                                               Authentication authentication) {
         Stage stage = audited(actor, "architecture.plan.stage.cancel", "POST",
                 "/api/architecture/stages/" + stageId + "/cancel",
-                () -> executionService.cancelStage(actor, stageId,
+                () -> executionService.cancelStage(actor, projectId(projectRef, actor), stageId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toStageView(stage));
     }
@@ -452,11 +485,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<StageView> restoreStage(@PathVariable long stageId,
                                                @RequestBody ReasonRequest request,
+                                               @RequestParam String projectRef,
                                                @AuthenticationPrincipal AuthUser actor,
                                                Authentication authentication) {
         Stage stage = audited(actor, "architecture.plan.stage.restore", "POST",
                 "/api/architecture/stages/" + stageId + "/restore",
-                () -> executionService.restoreStage(actor, stageId,
+                () -> executionService.restoreStage(actor, projectId(projectRef, actor), stageId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toStageView(stage));
     }
@@ -467,11 +501,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<List<DependencyView>> setDependencies(
             @PathVariable long taskId, @RequestBody DependencyRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor, Authentication authentication) {
         List<com.ccb.architecture.plan.model.PlanModels.Dependency> dependencies =
                 audited(actor, "architecture.plan.dependency.change", "POST",
                         "/api/architecture/tasks/" + taskId + "/dependencies",
-                        () -> dependencyService.setDependencies(actor, taskId,
+                        () -> dependencyService.setDependencies(actor, projectId(projectRef, actor), taskId,
                                 request == null ? null : request.predecessorTaskIds(),
                                 request == null ? null : request.reason(), isAdmin(authentication)));
         return success(dependencies.stream().map(dep -> new DependencyView(dep.id(), dep.taskId(),
@@ -482,12 +517,13 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<Void> removeDependency(@PathVariable long dependencyId,
                                               @RequestBody ReasonRequest request,
+                                              @RequestParam String projectRef,
                                               @AuthenticationPrincipal AuthUser actor,
                                               Authentication authentication) {
         audited(actor, "architecture.plan.dependency.remove", "DELETE",
                 "/api/architecture/dependencies/" + dependencyId,
                 () -> {
-                    dependencyService.removeDependency(actor, dependencyId,
+                    dependencyService.removeDependency(actor, projectId(projectRef, actor), dependencyId,
                             request == null ? null : request.reason(), isAdmin(authentication));
                     return null;
                 });
@@ -499,11 +535,12 @@ public class PlanController {
     @PostMapping("/tasks/{taskId}/blocks")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<BlockView> addBlock(@PathVariable long taskId, @RequestBody BlockRequest request,
+                                           @RequestParam String projectRef,
                                            @AuthenticationPrincipal AuthUser actor,
                                            Authentication authentication) {
         com.ccb.architecture.plan.model.PlanModels.Block block = audited(actor,
                 "architecture.plan.block.add", "POST", "/api/architecture/tasks/" + taskId + "/blocks",
-                () -> blockService.addBlock(actor, taskId, new BlockCommand(request.description(),
+                () -> blockService.addBlock(actor, projectId(projectRef, actor), taskId, new BlockCommand(request.description(),
                         request.impact(), request.ownerUserId(), request.expectedResolveAt()),
                         isAdmin(authentication)));
         return success(toBlockView(block));
@@ -512,11 +549,12 @@ public class PlanController {
     @PutMapping("/blocks/{blockId}")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<BlockView> updateBlock(@PathVariable long blockId, @RequestBody BlockRequest request,
+                                              @RequestParam String projectRef,
                                               @AuthenticationPrincipal AuthUser actor,
                                               Authentication authentication) {
         com.ccb.architecture.plan.model.PlanModels.Block block = audited(actor,
                 "architecture.plan.block.update", "PUT", "/api/architecture/blocks/" + blockId,
-                () -> blockService.updateBlock(actor, blockId, new BlockCommand(request.description(),
+                () -> blockService.updateBlock(actor, projectId(projectRef, actor), blockId, new BlockCommand(request.description(),
                         request.impact(), request.ownerUserId(), request.expectedResolveAt()),
                         isAdmin(authentication)));
         return success(toBlockView(block));
@@ -526,12 +564,13 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<BlockView> resolveBlock(@PathVariable long blockId,
                                                @RequestBody ReasonRequest request,
+                                               @RequestParam String projectRef,
                                                @AuthenticationPrincipal AuthUser actor,
                                                Authentication authentication) {
         com.ccb.architecture.plan.model.PlanModels.Block block = audited(actor,
                 "architecture.plan.block.resolve", "POST",
                 "/api/architecture/blocks/" + blockId + "/resolve",
-                () -> blockService.resolveBlock(actor, blockId,
+                () -> blockService.resolveBlock(actor, projectId(projectRef, actor), blockId,
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(toBlockView(block));
     }
@@ -542,11 +581,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PlanView> updatePlanSchedule(@PathVariable long id,
                                                     @RequestBody ScheduleRequest request,
+                                                    @RequestParam String projectRef,
                                                     @AuthenticationPrincipal AuthUser actor,
                                                     Authentication authentication) {
         Plan plan = audited(actor, "architecture.plan.schedule.update", "PUT",
                 "/api/architecture/plans/" + id + "/schedule",
-                () -> timeService.updatePlanSchedule(actor, id,
+                () -> timeService.updatePlanSchedule(actor, projectId(projectRef, actor), id,
                         new ScheduleCommand(request.plannedStart(), request.plannedEnd(),
                                 request.reason()), isAdmin(authentication)));
         return success(toPlanView(plan));
@@ -556,11 +596,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<StageView> updateStageSchedule(@PathVariable long stageId,
                                                       @RequestBody ScheduleRequest request,
+                                                      @RequestParam String projectRef,
                                                       @AuthenticationPrincipal AuthUser actor,
                                                       Authentication authentication) {
         Stage stage = audited(actor, "architecture.plan.stage.schedule.update", "PUT",
                 "/api/architecture/stages/" + stageId + "/schedule",
-                () -> timeService.updateStageSchedule(actor, stageId,
+                () -> timeService.updateStageSchedule(actor, projectId(projectRef, actor), stageId,
                         new ScheduleCommand(request.plannedStart(), request.plannedEnd(),
                                 request.reason()), isAdmin(authentication)));
         return success(toStageView(stage));
@@ -570,11 +611,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<TaskView> updateTaskSchedule(@PathVariable long taskId,
                                                     @RequestBody ScheduleRequest request,
+                                                    @RequestParam String projectRef,
                                                     @AuthenticationPrincipal AuthUser actor,
                                                     Authentication authentication) {
         Task task = audited(actor, "architecture.plan.task.schedule.update", "PUT",
                 "/api/architecture/tasks/" + taskId + "/schedule",
-                () -> timeService.updateTaskSchedule(actor, taskId,
+                () -> timeService.updateTaskSchedule(actor, projectId(projectRef, actor), taskId,
                         new ScheduleCommand(request.plannedStart(), request.plannedEnd(),
                                 request.reason()), isAdmin(authentication)));
         return success(toTaskView(task));
@@ -583,12 +625,13 @@ public class PlanController {
     @PostMapping("/events/{eventId}/correct")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<Void> correctEvent(@PathVariable long eventId, @RequestBody CorrectEventRequest request,
+                                          @RequestParam String projectRef,
                                           @AuthenticationPrincipal AuthUser actor,
                                           Authentication authentication) {
         audited(actor, "architecture.plan.event.correct", "POST",
                 "/api/architecture/events/" + eventId + "/correct",
                 () -> {
-                    timeService.correctEvent(actor, eventId, request.newOccurredAt(),
+                    timeService.correctEvent(actor, projectId(projectRef, actor), eventId, request.newOccurredAt(),
                             request.reason(), isAdmin(authentication));
                     return null;
                 });
@@ -598,8 +641,9 @@ public class PlanController {
     @GetMapping("/plans/{id}/events")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<EventView>> events(@PathVariable long id,
+                                               @RequestParam String projectRef,
                                                @AuthenticationPrincipal AuthUser actor) {
-        return success(timeService.listPlanEvents(actor, id).stream()
+        return success(timeService.listPlanEvents(actor, projectId(projectRef, actor), id).stream()
                 .map(event -> new EventView(event.id(), event.objectType(), event.objectId(),
                         event.eventType().name(), event.occurredAt(), event.operatorUserId(),
                         event.reason(), event.correctOfEventId()))
@@ -612,11 +656,12 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<List<WorkOrderLinkView>> attachWorkOrders(
             @PathVariable long taskId, @RequestBody WorkOrderRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor, Authentication authentication) {
         List<com.ccb.architecture.plan.model.PlanModels.TaskWorkOrder> links = audited(actor,
                 "architecture.plan.work-order.attach", "POST",
                 "/api/architecture/tasks/" + taskId + "/work-orders",
-                () -> workOrderService.attach(actor, taskId, new WorkOrderCommand(
+                () -> workOrderService.attach(actor, projectId(projectRef, actor), taskId, new WorkOrderCommand(
                         request.workOrderType(), request.workOrderIds(), null),
                         request == null ? null : request.reason(), isAdmin(authentication)));
         return success(links.stream().map(link -> new WorkOrderLinkView(link.id(), link.taskId(),
@@ -627,12 +672,13 @@ public class PlanController {
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<Void> detachWorkOrder(@PathVariable long workOrderRelationId,
                                              @RequestBody ReasonRequest request,
+                                             @RequestParam String projectRef,
                                              @AuthenticationPrincipal AuthUser actor,
                                              Authentication authentication) {
         audited(actor, "architecture.plan.work-order.detach", "DELETE",
                 "/api/architecture/work-orders/" + workOrderRelationId,
                 () -> {
-                    workOrderService.remove(actor, workOrderRelationId,
+                    workOrderService.remove(actor, projectId(projectRef, actor), workOrderRelationId,
                             request == null ? null : request.reason(), isAdmin(authentication));
                     return null;
                 });
@@ -642,8 +688,9 @@ public class PlanController {
     @GetMapping("/tasks/{taskId}/work-orders")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<WorkOrderLinkView>> workOrders(@PathVariable long taskId,
+                                                           @RequestParam String projectRef,
                                                            @AuthenticationPrincipal AuthUser actor) {
-        return success(workOrderService.list(actor, taskId).stream()
+        return success(workOrderService.list(actor, projectId(projectRef, actor), taskId).stream()
                 .map(link -> new WorkOrderLinkView(link.id(), link.taskId(), link.workOrderType(),
                         link.workOrderId(), link.source().name())).toList());
     }
@@ -725,6 +772,10 @@ public class PlanController {
         return new SuggestionView(suggestion.id(), suggestion.checkItemId(), suggestion.reason(),
                 suggestion.submitterUserId(), suggestion.status(), suggestion.handledByUserId(),
                 suggestion.handledAt(), suggestion.handlerNote());
+    }
+
+    private long projectId(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor).id();
     }
 
     private boolean isAdmin(Authentication authentication) {

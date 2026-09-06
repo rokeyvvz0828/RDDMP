@@ -15,6 +15,8 @@ import com.ccb.architecture.web.ArchitectureExceptionAdvice;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.system.capability.SystemOperationAudit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class NetworkWorkOrderControllerTest {
     private static final String BASE = "/api/architecture/network-work-orders";
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "applicant", "hash", "申请人", 11L, true);
+    private static final long PROJECT_ID = 70L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(PROJECT_ID, "PROJECT-A", "项目 A");
 
     private NetworkWorkOrderService service;
     private NetworkWorkOrderSubmissionService workflowService;
@@ -67,10 +71,12 @@ class NetworkWorkOrderControllerTest {
         service = mock(NetworkWorkOrderService.class);
         workflowService = mock(NetworkWorkOrderSubmissionService.class);
         operationAudit = mock(SystemOperationAudit.class);
+        ProjectAccessService projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible("PROJECT-A", ACTOR)).thenReturn(PROJECT);
         NetworkWorkOrderController controller =
                 new NetworkWorkOrderController(service, workflowService, operationAudit,
                         new com.fasterxml.jackson.databind.ObjectMapper(),
-                        mock(com.ccb.architecture.plan.service.PlanWorkOrderService.class));
+                        mock(com.ccb.architecture.plan.service.PlanWorkOrderService.class), projectAccessService);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver())
@@ -104,13 +110,13 @@ class NetworkWorkOrderControllerTest {
 
     @Test
     void 创建工单调用服务并写审计() throws Exception {
-        WorkOrder order = new WorkOrder(77001L, 7L, Kind.CLB, ActionType.OPEN, "渠道接入CLB",
+        WorkOrder order = new WorkOrder(77001L, 7L, PROJECT_ID, Kind.CLB, ActionType.OPEN, "渠道接入CLB",
                 9L, "原因", WorkOrderStatus.DRAFT, "{}", "[]", null, null, "[]", null, null,
                 0, null, null, null, null, false, 0, 9L, 9L, null, null);
-        when(service.create(eq(ACTOR), any(CreateCommand.class)))
+        when(service.create(eq(ACTOR), eq(PROJECT), any(CreateCommand.class)))
                 .thenReturn(new WorkOrderDetail(order, List.of()));
 
-        mvc.perform(post(BASE)
+        mvc.perform(post(BASE + "?projectRef=PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"kind":"CLB","actionType":"OPEN","reason":"新环境开通",
@@ -120,7 +126,7 @@ class NetworkWorkOrderControllerTest {
                 .andExpect(jsonPath("$.data.workOrder.subject").value("渠道接入CLB"));
 
         ArgumentCaptor<CreateCommand> commandCaptor = ArgumentCaptor.forClass(CreateCommand.class);
-        verify(service).create(eq(ACTOR), commandCaptor.capture());
+        verify(service).create(eq(ACTOR), eq(PROJECT), commandCaptor.capture());
         assertThat(commandCaptor.getValue().kind()).isEqualTo(Kind.CLB);
         assertThat(commandCaptor.getValue().actionType()).isEqualTo(ActionType.OPEN);
         verify(operationAudit).recordSuccess(any());
@@ -128,33 +134,33 @@ class NetworkWorkOrderControllerTest {
 
     @Test
     void 非法kind返回400且不写库() throws Exception {
-        mvc.perform(post(BASE)
+        mvc.perform(post(BASE + "?projectRef=PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"kind\":\"LOADBALANCER\",\"actionType\":\"OPEN\",\"payload\":{}}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST));
-        verify(service, org.mockito.Mockito.never()).create(any(), any());
+        verify(service, org.mockito.Mockito.never()).create(any(), any(), any());
     }
 
     @Test
     void 更新提交取消登记结果端点接线() throws Exception {
         WorkOrder order = order(77002L, Kind.DNS, ActionType.ADD);
         WorkOrderDetail detail = new WorkOrderDetail(order, List.of());
-        when(service.update(eq(ACTOR), eq(77002L), any(UpdateCommand.class))).thenReturn(detail);
-        when(workflowService.submit(ACTOR, 77002L, 1L)).thenReturn(detail);
-        when(workflowService.cancel(ACTOR, 77002L, 1L)).thenReturn(detail);
-        when(service.registerHandlingResult(eq(ACTOR), eq(77002L), eq(1L), any())).thenReturn(detail);
+        when(service.update(eq(ACTOR), eq(PROJECT), eq(77002L), any(UpdateCommand.class))).thenReturn(detail);
+        when(workflowService.submit(ACTOR, PROJECT, 77002L, 1L)).thenReturn(detail);
+        when(workflowService.cancel(ACTOR, PROJECT, 77002L, 1L)).thenReturn(detail);
+        when(service.registerHandlingResult(eq(ACTOR), eq(PROJECT), eq(77002L), eq(1L), any())).thenReturn(detail);
 
-        mvc.perform(put(BASE + "/77002").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put(BASE + "/77002?projectRef=PROJECT-A").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rowVersion\":1,\"reason\":\"调整\",\"payload\":{\"domainName\":\"a.test\",\"purpose\":\"x\"}}"))
                 .andExpect(status().isOk());
-        mvc.perform(post(BASE + "/77002/submit").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post(BASE + "/77002/submit?projectRef=PROJECT-A").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk());
-        mvc.perform(post(BASE + "/77002/cancel").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post(BASE + "/77002/cancel?projectRef=PROJECT-A").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk());
-        mvc.perform(post(BASE + "/77002/handling-result").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post(BASE + "/77002/handling-result?projectRef=PROJECT-A").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rowVersion\":1,\"resultStatus\":\"SUCCESS\",\"resultDescription\":\"完成\"}"))
                 .andExpect(status().isOk());
 
@@ -164,19 +170,19 @@ class NetworkWorkOrderControllerTest {
     @Test
     void 详情返回解析载荷附件与历史() throws Exception {
         WorkOrder order = order(77003L, Kind.CERT, ActionType.APPLY);
-        WorkOrder withResult = new WorkOrder(77003L, 7L, Kind.CERT, ActionType.APPLY, "demo.example.test",
+        WorkOrder withResult = new WorkOrder(77003L, 7L, PROJECT_ID, Kind.CERT, ActionType.APPLY, "demo.example.test",
                 9L, "原因", WorkOrderStatus.COMPLETED,
                 "{\"certType\":\"SSL\",\"subjectName\":\"demo.example.test\",\"purpose\":\"上线准备\",\"description\":null}",
                 "[55001]", com.ccb.architecture.network.model.NetworkWorkOrderModels.HandlingResultStatus.SUCCESS,
                 "外部已办理", "[55002]", 12L, LocalDateTime.of(2026, 8, 23, 12, 0), 1, null, null, null,
                 "f".repeat(64), false, 2, 9L, 12L, null, null);
-        when(service.detail(ACTOR, AccessScope.MANAGE, 77003L))
+        when(service.detail(ACTOR, PROJECT, AccessScope.MANAGE, 77003L))
                 .thenReturn(new WorkOrderDetail(withResult, List.of(
-                        new HistoryEvent(1L, 7L, 77003L, "COMPLETED", WorkOrderStatus.IN_REVIEW,
+                        new HistoryEvent(1L, 7L, PROJECT_ID, 77003L, "COMPLETED", WorkOrderStatus.IN_REVIEW,
                                 WorkOrderStatus.COMPLETED, 1, "审批通过", "{}", null, 12L,
                                 LocalDateTime.of(2026, 8, 23, 12, 1)))));
 
-        mvc.perform(get(BASE + "/77003").principal(authentication(MANAGE)))
+        mvc.perform(get(BASE + "/77003?projectRef=PROJECT-A").principal(authentication(MANAGE)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.workOrder.kind").value("CERT"))
                 .andExpect(jsonPath("$.data.payload.certType").value("SSL"))
@@ -187,18 +193,18 @@ class NetworkWorkOrderControllerTest {
 
     @Test
     void 不存在工单返回40400() throws Exception {
-        when(service.detail(ACTOR, AccessScope.MANAGE, 999999L))
+        when(service.detail(ACTOR, PROJECT, AccessScope.MANAGE, 999999L))
                 .thenThrow(new com.ccb.architecture.web.ArchitectureNotFoundException("网络专项工单不存在"));
-        mvc.perform(get(BASE + "/999999").principal(authentication(MANAGE)))
+        mvc.perform(get(BASE + "/999999?projectRef=PROJECT-A").principal(authentication(MANAGE)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(40400));
     }
 
     @Test
     void 业务冲突映射为409() throws Exception {
-        when(service.detail(ACTOR, AccessScope.MANAGE, 77005L))
+        when(service.detail(ACTOR, PROJECT, AccessScope.MANAGE, 77005L))
                 .thenThrow(new com.ccb.common.exception.BusinessException(ErrorCode.CONFLICT, "行版本冲突"));
-        mvc.perform(get(BASE + "/77005").principal(authentication(MANAGE)))
+        mvc.perform(get(BASE + "/77005?projectRef=PROJECT-A").principal(authentication(MANAGE)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT));
     }
@@ -220,25 +226,26 @@ class NetworkWorkOrderControllerTest {
     private Class<?>[] params(String methodName) {
         return switch (methodName) {
             case "list" -> new Class<?>[]{Kind.class, WorkOrderStatus.class, int.class, int.class,
-                    AuthUser.class, Authentication.class};
-            case "create" -> new Class<?>[]{NetworkWorkOrderController.CreateWorkOrderRequest.class, AuthUser.class};
-            case "update" -> new Class<?>[]{long.class, NetworkWorkOrderController.UpdateWorkOrderRequest.class,
+                    String.class, AuthUser.class, Authentication.class};
+            case "create" -> new Class<?>[]{NetworkWorkOrderController.CreateWorkOrderRequest.class, String.class,
                     AuthUser.class};
+            case "update" -> new Class<?>[]{long.class, NetworkWorkOrderController.UpdateWorkOrderRequest.class,
+                    String.class, AuthUser.class};
             case "submit" -> new Class<?>[]{long.class,
-                    NetworkWorkOrderController.SubmitWorkOrderRequest.class, AuthUser.class};
+                    NetworkWorkOrderController.SubmitWorkOrderRequest.class, String.class, AuthUser.class};
             case "cancel" -> new Class<?>[]{long.class,
-                    NetworkWorkOrderController.CancelWorkOrderRequest.class, AuthUser.class};
+                    NetworkWorkOrderController.CancelWorkOrderRequest.class, String.class, AuthUser.class};
             case "registerHandlingResult" -> new Class<?>[]{long.class,
-                    NetworkWorkOrderController.RegisterHandlingResultRequest.class, AuthUser.class};
+                    NetworkWorkOrderController.RegisterHandlingResultRequest.class, String.class, AuthUser.class};
             case "removeAttachment" -> new Class<?>[]{long.class, long.class,
-                    NetworkWorkOrderController.CancelWorkOrderRequest.class, AuthUser.class};
-            case "detail" -> new Class<?>[]{long.class, AuthUser.class, Authentication.class};
+                    NetworkWorkOrderController.CancelWorkOrderRequest.class, String.class, AuthUser.class};
+            case "detail" -> new Class<?>[]{long.class, String.class, AuthUser.class, Authentication.class};
             default -> throw new IllegalArgumentException(methodName);
         };
     }
 
     private WorkOrder order(long id, Kind kind, ActionType actionType) {
-        return new WorkOrder(id, 7L, kind, actionType, "subject-" + id, 9L, "原因",
+        return new WorkOrder(id, 7L, PROJECT_ID, kind, actionType, "subject-" + id, 9L, "原因",
                 WorkOrderStatus.DRAFT, "{}", "[]", null, null, "[]", null, null,
                 0, null, null, null, null, false, 0, 9L, 9L, null, null);
     }

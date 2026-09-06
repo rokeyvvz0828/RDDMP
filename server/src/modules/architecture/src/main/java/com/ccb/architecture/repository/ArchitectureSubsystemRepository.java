@@ -45,12 +45,15 @@ public class ArchitectureSubsystemRepository {
         this.jdbc = jdbc;
     }
 
-    public PageResult<PhysicalSubsystem> pagePhysical(long tenantId, PageQuery page, PhysicalSubsystemQuery query) {
+    public PageResult<PhysicalSubsystem> pagePhysical(long tenantId, long projectId, PageQuery page,
+                                                      PhysicalSubsystemQuery query) {
         PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
         PhysicalSubsystemQuery normalizedQuery = query == null ? PhysicalSubsystemQuery.empty() : query;
         StringBuilder filter = new StringBuilder();
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        String projectFilter = " AND project_id = ?";
+        args.add(projectId);
         addLike(filter, args, "code", normalizedQuery.code());
         addLike(filter, args, "short_name", normalizedQuery.shortName());
         addLike(filter, args, "name", normalizedQuery.name());
@@ -66,41 +69,43 @@ public class ArchitectureSubsystemRepository {
         }
         addStatus(filter, args, normalizedQuery.status());
         Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ? AND deleted = 0" + filter,
+                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ?" + projectFilter
+                        + " AND deleted = 0" + filter,
                 Long.class,
                 args.toArray());
         List<Object> listArgs = pageArgs(args, normalizedPage);
         List<PhysicalSubsystem> records = jdbc.query(
-                "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ? AND deleted = 0"
-                        + filter + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ?" + projectFilter
+                        + " AND deleted = 0" + filter + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 PHYSICAL_MAPPER,
                 listArgs.toArray());
         return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
     }
 
-    public Optional<PhysicalSubsystem> findPhysical(long tenantId, long id) {
-        return jdbc.query("SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                PHYSICAL_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<PhysicalSubsystem> findPhysical(long tenantId, long projectId, long id) {
+        return jdbc.query("SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0",
+                PHYSICAL_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean physicalCodeExists(long tenantId, String code, Long excludeId) {
-        return exists("arch_physical_subsystem", "code", tenantId, code, excludeId);
+    public boolean physicalCodeExists(long tenantId, long projectId, String code, Long excludeId) {
+        return exists("arch_physical_subsystem", "code", tenantId, projectId, code, excludeId);
     }
 
-    public boolean physicalNameExists(long tenantId, String name, Long excludeId) {
-        return exists("arch_physical_subsystem", "name", tenantId, name, excludeId);
+    public boolean physicalNameExists(long tenantId, long projectId, String name, Long excludeId) {
+        return exists("arch_physical_subsystem", "name", tenantId, projectId, name, excludeId);
     }
 
-    public void insertPhysical(long id, long tenantId, PhysicalSubsystemCommand command,
+    public void insertPhysical(long id, long tenantId, long projectId, PhysicalSubsystemCommand command,
                                String responsibleTeamNameSnapshot, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_physical_subsystem
-                    (id, tenant_id, code, short_name, name, logical_subsystem_name, business_component_code, business_group_name,
+                    (id, tenant_id, project_id, code, short_name, name, logical_subsystem_name, business_component_code, business_group_name,
                      deployment_platform, disaster_recovery_mode,
                      responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
                      development_framework_code, owner_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, projectId, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
                 command.businessComponentCode(),
                 command.businessGroupName(), command.deploymentPlatform(), command.disasterRecoveryMode(),
                 command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
@@ -108,7 +113,7 @@ public class ArchitectureSubsystemRepository {
                 command.ownerUserId(), command.description(), command.remark(), actorId, actorId);
     }
 
-    public int updatePhysical(long tenantId, long id, PhysicalSubsystemCommand command,
+    public int updatePhysical(long tenantId, long projectId, long id, PhysicalSubsystemCommand command,
                               String responsibleTeamNameSnapshot, long actorId) {
         return jdbc.update("""
                 UPDATE arch_physical_subsystem
@@ -117,29 +122,31 @@ public class ArchitectureSubsystemRepository {
                     responsible_team_org_id = ?, responsible_team_name_snapshot = ?,
                     runtime_code = ?, system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
                     description = ?, remark = ?, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND deleted = 0
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0
                 """, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
                 command.businessComponentCode(),
                 command.businessGroupName(), command.deploymentPlatform(), command.disasterRecoveryMode(),
                 command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(),
-                actorId, tenantId, id);
+                actorId, tenantId, projectId, id);
     }
 
-    public int softDeletePhysical(long tenantId, long id, long actorId) {
-        return jdbc.update("UPDATE arch_physical_subsystem SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                actorId, tenantId, id);
+    public int softDeletePhysical(long tenantId, long projectId, long id, long actorId) {
+        return jdbc.update("UPDATE arch_physical_subsystem SET deleted = 1, updated_by = ? "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0",
+                actorId, tenantId, projectId, id);
     }
 
-    private boolean exists(String table, String column, long tenantId, String value, Long excludeId) {
+    private boolean exists(String table, String column, long tenantId, long projectId, String value, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, value));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, value));
         if (excludeId != null) {
             args.add(excludeId);
         }
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND " + column + " = ?" + exclude,
+                "SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND project_id = ? AND "
+                        + column + " = ?" + exclude,
                 Long.class,
                 args.toArray());
         return count != null && count > 0;

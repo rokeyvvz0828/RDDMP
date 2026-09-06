@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SubsystemPublicationServiceTest {
     private static final long TENANT_ID = 7L;
+    private static final long PROJECT_ID = 70L;
     private static final long APPLICATION_ID = 100L;
     private static final AuthUser OPERATOR = new AuthUser(9L, TENANT_ID, "reviewer", "hash", "审批人", 11L, true);
     private static final LocalDateTime TIME = LocalDateTime.of(2026, 8, 24, 10, 0);
@@ -69,17 +70,18 @@ class SubsystemPublicationServiceTest {
     void approveCreatePublishesSelfFilledPhysicalCodeFromSubmittedSnapshot() {
         ChangeApplication application = application(ActionType.CREATE, null, TargetKind.PHYSICAL);
         PhysicalDraft draft = draft(application, "PHY_MALL", null, null, "submitted");
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
-        when(store.findPhysicalDrafts(TENANT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
-        when(store.compareAndSetApplicationStatus(TENANT_ID, APPLICATION_ID, ApplicationStatus.IN_REVIEW,
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.findPhysicalDrafts(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
+        when(store.compareAndSetApplicationStatus(TENANT_ID, PROJECT_ID, APPLICATION_ID, ApplicationStatus.IN_REVIEW,
                 4L, ApplicationStatus.APPROVED, OPERATOR.id())).thenReturn(true);
 
         SubsystemPublicationService.ApprovalResult result = service.approve(command(), OPERATOR);
 
         assertThat(result.applicationId()).isEqualTo(APPLICATION_ID);
         assertThat(result.physicalSubsystemIds()).containsExactly(2_000L);
-        verify(store).insertPhysicalPublished(2_000L, TENANT_ID, draft, PublishedStatus.ACTIVE, 0L, OPERATOR.id());
-        verify(store).deleteValueReservations(TENANT_ID, APPLICATION_ID);
+        verify(store).insertPhysicalPublished(2_000L, TENANT_ID, PROJECT_ID, draft,
+                PublishedStatus.ACTIVE, 0L, OPERATOR.id());
+        verify(store).deleteValueReservations(TENANT_ID, PROJECT_ID, APPLICATION_ID);
         verify(store).insertHistory(any(ChangeHistoryEvent.class));
     }
 
@@ -89,20 +91,20 @@ class SubsystemPublicationServiceTest {
         ChangeApplication application = application(ActionType.UPDATE, targetId, TargetKind.PHYSICAL);
         PhysicalDraft draft = draft(application, "PHY_MALL", targetId, 6L, "submitted");
         PhysicalPublishedState target = physicalState(targetId, "PHY_MALL", PublishedStatus.ACTIVE, 6L);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
-        when(store.findTargetLock(TENANT_ID, TargetKind.PHYSICAL, targetId)).thenReturn(Optional.of(targetLock(targetId)));
-        when(store.findPhysicalDrafts(TENANT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
-        when(store.lockPhysical(TENANT_ID, targetId)).thenReturn(Optional.of(target));
-        when(store.compareAndSetApplicationStatus(TENANT_ID, APPLICATION_ID, ApplicationStatus.IN_REVIEW,
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.findTargetLock(TENANT_ID, PROJECT_ID, TargetKind.PHYSICAL, targetId)).thenReturn(Optional.of(targetLock(targetId)));
+        when(store.findPhysicalDrafts(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
+        when(store.lockPhysical(TENANT_ID, PROJECT_ID, targetId)).thenReturn(Optional.of(target));
+        when(store.compareAndSetApplicationStatus(TENANT_ID, PROJECT_ID, APPLICATION_ID, ApplicationStatus.IN_REVIEW,
                 4L, ApplicationStatus.APPROVED, OPERATOR.id())).thenReturn(true);
-        when(store.updatePhysicalPublishedFields(TENANT_ID, targetId, draft, 6L, OPERATOR.id())).thenReturn(true);
+        when(store.updatePhysicalPublishedFields(TENANT_ID, PROJECT_ID, targetId, draft, 6L, OPERATOR.id())).thenReturn(true);
 
         SubsystemPublicationService.ApprovalResult result = service.approve(command(), OPERATOR);
 
         assertThat(result.physicalSubsystemIds()).containsExactly(targetId);
-        verify(store).updatePhysicalPublishedFields(TENANT_ID, targetId, draft, 6L, OPERATOR.id());
-        verify(store).deleteTargetLock(TENANT_ID, TargetKind.PHYSICAL, targetId, APPLICATION_ID);
-        verify(store, never()).insertPhysicalPublished(eq(targetId), anyLong(), any(), any(), anyLong(), anyLong());
+        verify(store).updatePhysicalPublishedFields(TENANT_ID, PROJECT_ID, targetId, draft, 6L, OPERATOR.id());
+        verify(store).deleteTargetLock(TENANT_ID, PROJECT_ID, TargetKind.PHYSICAL, targetId, APPLICATION_ID);
+        verify(store, never()).insertPhysicalPublished(eq(targetId), anyLong(), anyLong(), any(), any(), anyLong(), anyLong());
     }
 
     @Test
@@ -111,13 +113,13 @@ class SubsystemPublicationServiceTest {
         ChangeApplication application = application(ActionType.REPLACE, targetId, TargetKind.PHYSICAL);
         PhysicalDraft draft = draft(application, "PHY_MALL_V2", targetId, 6L, "submitted");
         PhysicalPublishedState target = physicalState(targetId, "PHY_MALL", PublishedStatus.ACTIVE, 6L);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
-        when(store.findTargetLock(TENANT_ID, TargetKind.PHYSICAL, targetId)).thenReturn(Optional.of(targetLock(targetId)));
-        when(store.findPhysicalDrafts(TENANT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
-        when(store.lockPhysical(TENANT_ID, targetId)).thenReturn(Optional.of(target));
-        when(store.compareAndSetApplicationStatus(TENANT_ID, APPLICATION_ID, ApplicationStatus.IN_REVIEW,
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.findTargetLock(TENANT_ID, PROJECT_ID, TargetKind.PHYSICAL, targetId)).thenReturn(Optional.of(targetLock(targetId)));
+        when(store.findPhysicalDrafts(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
+        when(store.lockPhysical(TENANT_ID, PROJECT_ID, targetId)).thenReturn(Optional.of(target));
+        when(store.compareAndSetApplicationStatus(TENANT_ID, PROJECT_ID, APPLICATION_ID, ApplicationStatus.IN_REVIEW,
                 4L, ApplicationStatus.APPROVED, OPERATOR.id())).thenReturn(true);
-        when(store.updatePhysicalPublishedStatus(TENANT_ID, targetId, PublishedStatus.OFFLINE, 6L, OPERATOR.id()))
+        when(store.updatePhysicalPublishedStatus(TENANT_ID, PROJECT_ID, targetId, PublishedStatus.OFFLINE, 6L, OPERATOR.id()))
                 .thenReturn(true);
 
         SubsystemPublicationService.ApprovalResult result = service.approve(command(), OPERATOR);
@@ -125,8 +127,8 @@ class SubsystemPublicationServiceTest {
         assertThat(result.physicalSubsystemIds()).containsExactly(2_000L);
         verify(referenceGuard).requireClear(new ReferenceCheckRequest(TENANT_ID,
                 ReferenceCheckRequest.SubsystemKind.PHYSICAL, targetId, ReferenceCheckRequest.Operation.OFFLINE));
-        verify(store).insertPhysicalPublished(2_000L, TENANT_ID, draft, PublishedStatus.ACTIVE, 0L, OPERATOR.id());
-        verify(store).updatePhysicalPublishedStatus(TENANT_ID, targetId, PublishedStatus.OFFLINE, 6L, OPERATOR.id());
+        verify(store).insertPhysicalPublished(2_000L, TENANT_ID, PROJECT_ID, draft, PublishedStatus.ACTIVE, 0L, OPERATOR.id());
+        verify(store).updatePhysicalPublishedStatus(TENANT_ID, PROJECT_ID, targetId, PublishedStatus.OFFLINE, 6L, OPERATOR.id());
         ArgumentCaptor<PhysicalReplacement> replacement = ArgumentCaptor.forClass(PhysicalReplacement.class);
         verify(store).insertPhysicalReplacement(replacement.capture());
         assertThat(replacement.getValue().oldPhysicalSubsystemId()).isEqualTo(targetId);
@@ -136,7 +138,7 @@ class SubsystemPublicationServiceTest {
     @Test
     void logicalApplicationCannotBeApprovedAfterLogicalSubsystemRetirement() {
         ChangeApplication application = application(ActionType.CREATE, null, TargetKind.LOGICAL);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertThatThrownBy(() -> service.approve(command(), OPERATOR))
                 .isInstanceOfSatisfying(BusinessException.class, exception -> {
@@ -144,23 +146,23 @@ class SubsystemPublicationServiceTest {
                     assertThat(exception.getMessage()).contains("逻辑子系统工单已退役");
                 });
 
-        verify(store, never()).findPhysicalDrafts(anyLong(), anyLong());
-        verify(store, never()).compareAndSetApplicationStatus(anyLong(), anyLong(), any(), anyLong(), any(), anyLong());
+        verify(store, never()).findPhysicalDrafts(anyLong(), anyLong(), anyLong());
+        verify(store, never()).compareAndSetApplicationStatus(anyLong(), anyLong(), anyLong(), any(), anyLong(), any(), anyLong());
     }
 
     private SubsystemPublicationService.ApprovalCommand command() {
-        return new SubsystemPublicationService.ApprovalCommand(APPLICATION_ID, 2, 4L, 77L, "digest");
+        return new SubsystemPublicationService.ApprovalCommand(APPLICATION_ID, PROJECT_ID, 2, 4L, 77L, "digest");
     }
 
     private ChangeApplication application(ActionType action, Long targetId, TargetKind targetKind) {
-        return new ChangeApplication(APPLICATION_ID, TENANT_ID, targetKind, action, targetId,
+        return new ChangeApplication(APPLICATION_ID, TENANT_ID, PROJECT_ID, targetKind, action, targetId,
                 OPERATOR.id(), "申请原因", ApplicationStatus.IN_REVIEW, 2,
                 31L, 32L, 77L, "digest", false, 4L, OPERATOR.id(), OPERATOR.id(), TIME, TIME);
     }
 
     private PhysicalDraft draft(ChangeApplication application, String code, Long sourceId,
                                 Long sourceRowVersion, String submittedSnapshot) {
-        return new PhysicalDraft(application.id(), 1, application.tenantId(), sourceId, code,
+        return new PhysicalDraft(application.id(), 1, application.tenantId(), application.projectId(), sourceId, code,
                 "商城物理", "商城物理系统", "商城逻辑域",
                 "architecture.business-component.employee-portal", "Mall Platform", "渠道",
                 "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",
@@ -170,12 +172,12 @@ class SubsystemPublicationServiceTest {
     }
 
     private PhysicalPublishedState physicalState(long id, String code, PublishedStatus status, long rowVersion) {
-        return new PhysicalPublishedState(id, TENANT_ID, code, "商城逻辑域",
+        return new PhysicalPublishedState(id, TENANT_ID, PROJECT_ID, code, "商城逻辑域",
                 "architecture.business-component.employee-portal", "Mall Platform",
                 status, rowVersion, false);
     }
 
     private TargetLock targetLock(long targetId) {
-        return new TargetLock(TENANT_ID, TargetKind.PHYSICAL, targetId, APPLICATION_ID, TIME);
+        return new TargetLock(TENANT_ID, PROJECT_ID, TargetKind.PHYSICAL, targetId, APPLICATION_ID, TIME);
     }
 }

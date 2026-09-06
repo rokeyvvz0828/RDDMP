@@ -7,6 +7,7 @@ import com.ccb.architecture.decision.service.ArchitectureDecisionService;
 import com.ccb.attachment.integration.AttachmentAccessPolicy;
 import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectWorkflowDirectoryService;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -20,9 +21,12 @@ import java.util.Optional;
 @Component
 public class DecisionAttachmentAccessPolicy implements AttachmentAccessPolicy {
     private final DecisionStore store;
+    private final ProjectWorkflowDirectoryService projectDirectory;
 
-    public DecisionAttachmentAccessPolicy(DecisionStore store) {
+    public DecisionAttachmentAccessPolicy(DecisionStore store,
+                                          ProjectWorkflowDirectoryService projectDirectory) {
         this.store = store;
+        this.projectDirectory = projectDirectory;
     }
 
     @Override
@@ -41,8 +45,13 @@ public class DecisionAttachmentAccessPolicy implements AttachmentAccessPolicy {
         } catch (NumberFormatException exception) {
             return false;
         }
-        Optional<DecisionMatter> matter = store.findMatter(user.tenantId(), matterId);
+        Optional<DecisionMatter> matter = store.findMatterForAttachment(user.tenantId(), matterId);
         if (matter.isEmpty()) {
+            return false;
+        }
+        try {
+            projectDirectory.requireAccessible(matter.get().projectId(), user);
+        } catch (RuntimeException exception) {
             return false;
         }
         if (operation == AttachmentOperation.DELETE) {

@@ -6,6 +6,7 @@ import com.ccb.architecture.service.DeploymentUnitImportService.ImportItemView;
 import com.ccb.architecture.persistence.DeploymentUnitStore;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +14,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +47,7 @@ import static org.mockito.Mockito.mock;
 class DeploymentUnitImportMySqlTest {
     private static final String DATABASE = "deployment_unit_import";
     private static final long TENANT_ID = 1L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(70L, "PROJECT-A", "项目 A");
     private static final long PHYSICAL_ID = 501L;
 
     @Container
@@ -66,14 +69,24 @@ class DeploymentUnitImportMySqlTest {
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        Flyway flyway = Flyway.configure()
+        Flyway v157 = Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .target(MigrationVersion.fromVersion("157"))
                 .cleanDisabled(false)
                 .load();
-        flyway.clean();
-        flyway.migrate();
+        v157.clean();
+        v157.migrate();
+        prepareDefaultProject();
+        Flyway.configure()
+                .dataSource(dataSource)
+                .locations("filesystem:" + migrationDirectory())
+                .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .target(MigrationVersion.fromVersion("158"))
+                .cleanDisabled(false)
+                .load()
+                .migrate();
 
         TransactionTemplate transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         DeploymentUnitStore store = new DeploymentUnitStore(jdbc);
@@ -82,6 +95,14 @@ class DeploymentUnitImportMySqlTest {
                 mock(SystemReferenceQuery.class), mock(SystemOperationAudit.class), transactions, idSupplier);
         importService = new DeploymentUnitImportService(store, unitService, mock(SystemReferenceQuery.class),
                 mock(SystemOperationAudit.class), transactions, new ObjectMapper());
+    }
+
+    private static void prepareDefaultProject() {
+        jdbc.update("DELETE FROM pm_project WHERE tenant_id = 1 AND "
+                + "(project_code = 'RDDMP-PLATFORM' OR id = 990001)");
+        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, status, owner_id, "
+                        + "created_by, deleted) VALUES (?, ?, 'RDDMP-PLATFORM', '部署单元导入测试项目', "
+                        + "'RUNNING', 1, 1, 0)", 990001L, 1L);
     }
 
     @BeforeEach
@@ -95,10 +116,10 @@ class DeploymentUnitImportMySqlTest {
         jdbc.update("DELETE FROM arch_deployment_unit_number_seq");
         jdbc.update("DELETE FROM arch_physical_subsystem WHERE tenant_id = ?", TENANT_ID);
         jdbc.update("INSERT INTO arch_physical_subsystem "
-                        + "(id, tenant_id, code, short_name, name, logical_subsystem_name, responsible_team_org_id,"
+                        + "(id, tenant_id, project_id, code, short_name, name, logical_subsystem_name, responsible_team_org_id,"
                         + " responsible_team_name_snapshot, status, row_version, created_by, updated_by) "
-                        + "VALUES (?, ?, 'W0001A', '渠道接入', '渠道接入系统', '渠道域逻辑子系统', 1, '渠道团队', 'ACTIVE', 0, 1, 1)",
-                PHYSICAL_ID, TENANT_ID);
+                        + "VALUES (?, ?, ?, 'W0001A', '渠道接入', '渠道接入系统', '渠道域逻辑子系统', 1, '渠道团队', 'ACTIVE', 0, 1, 1)",
+                PHYSICAL_ID, TENANT_ID, PROJECT.id());
     }
 
     @AfterAll
@@ -115,13 +136,13 @@ class DeploymentUnitImportMySqlTest {
                 row("W0001A", "ECIP_DB", "数据库", null, null),
                 row("W0001A", "ECIP_WB", "Web", null, null));
 
-        ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "trace");
         assertThat(preview.batch().status()).isEqualTo(ImportBatchStatus.PREVIEW.name());
         assertThat(preview.batch().totalRows()).isEqualTo(3);
         assertThat(preview.batch().validRows()).isEqualTo(3);
         assertThat(preview.items()).hasSize(3);
 
-        ImportBatchView confirmed = importService.confirm(actor, preview.batch().id(), "trace");
+        ImportBatchView confirmed = importService.confirm(actor, PROJECT, preview.batch().id(), "trace");
         assertThat(confirmed.batch().status()).isEqualTo(ImportBatchStatus.SUCCESS.name());
         assertThat(confirmed.batch().successRows()).isEqualTo(3);
 
@@ -149,13 +170,13 @@ class DeploymentUnitImportMySqlTest {
                 row("NO-SUCH", "MISSING_AP", "应用", null, null),
                 row("W0001A", "ECIP_AP", "应用", null, null));
 
-        ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "trace");
         assertThat(preview.batch().totalRows()).isEqualTo(4);
         assertThat(preview.batch().validRows()).isEqualTo(1);
         assertThat(preview.items().stream().filter(item -> item.rowStatus().equals("INVALID")).count())
                 .isEqualTo(3);
 
-        ImportBatchView confirmed = importService.confirm(actor, preview.batch().id(), "trace");
+        ImportBatchView confirmed = importService.confirm(actor, PROJECT, preview.batch().id(), "trace");
         assertThat(confirmed.batch().status()).isEqualTo(ImportBatchStatus.PARTIAL.name());
         assertThat(confirmed.batch().successRows()).isEqualTo(1);
         assertThat(confirmed.batch().failedRows()).isEqualTo(3);
@@ -169,15 +190,15 @@ class DeploymentUnitImportMySqlTest {
         byte[] file = workbook(
                 row("W0001A", "ECIP_AP", "应用", null, null));
 
-        ImportBatchView first = importService.confirm(actor, importService.upload(actor, multipart(file), "t1").batch().id(), "t1");
+        ImportBatchView first = importService.confirm(actor, PROJECT, importService.upload(actor, PROJECT, multipart(file), "t1").batch().id(), "t1");
         assertThat(first.batch().successRows()).isEqualTo(1);
 
-        ImportBatchView preview = importService.upload(actor, multipart(file), "t2");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "t2");
         ImportItemView item = preview.items().get(0);
         assertThat(item.rowStatus()).isEqualTo("VALID");
         assertThat(item.note()).contains("跳过");
 
-        ImportBatchView second = importService.confirm(actor, preview.batch().id(), "t2");
+        ImportBatchView second = importService.confirm(actor, PROJECT, preview.batch().id(), "t2");
         assertThat(second.batch().status()).isEqualTo(ImportBatchStatus.SUCCESS.name());
         assertThat(second.batch().successRows()).isEqualTo(1);
         assertThat(second.batch().skippedRows()).isEqualTo(1);
@@ -188,13 +209,13 @@ class DeploymentUnitImportMySqlTest {
 
     @Test
     void nameConflictWithVoidedUnitFailsRow() {
-        unitService.create(actor, new com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitCommand(
+        unitService.create(actor, PROJECT, new com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitCommand(
                 PHYSICAL_ID, "ECIP_AP", "APPLICATION", List.of(), null, null, null, null), "seed");
         jdbc.update("UPDATE arch_deployment_unit SET status = 'VOIDED' WHERE tenant_id = ? AND name = ?",
                 TENANT_ID, "ECIP_AP");
 
         byte[] file = workbook(row("W0001A", "ECIP_AP", "应用", null, null));
-        ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "trace");
         assertThat(preview.items().get(0).rowStatus()).isEqualTo("INVALID");
         assertThat(preview.items().get(0).errorMessage()).contains("停用或作废");
     }
@@ -202,10 +223,10 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void confirmRejectsFinishedBatch() {
         byte[] file = workbook(row("W0001A", "ECIP_AP", "应用", null, null));
-        ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
-        importService.confirm(actor, preview.batch().id(), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "trace");
+        importService.confirm(actor, PROJECT, preview.batch().id(), "trace");
 
-        assertThatThrownBy(() -> importService.confirm(actor, preview.batch().id(), "trace"))
+        assertThatThrownBy(() -> importService.confirm(actor, PROJECT, preview.batch().id(), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(error.getMessage()).contains("不能重复确认"));
     }
@@ -213,12 +234,12 @@ class DeploymentUnitImportMySqlTest {
     @Test
     void unexpectedRowFailureRollsBackWholeBatchAndMarksFailed() {
         byte[] file = workbook(row("W0001A", "ECIP_AP", "应用", null, null));
-        ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "trace");
 
         jdbc.update("UPDATE arch_deployment_unit_import_item SET raw_json = '[\"only-one\"]' "
                 + "WHERE tenant_id = ? AND batch_id = ?", TENANT_ID, preview.batch().id());
 
-        assertThatThrownBy(() -> importService.confirm(actor, preview.batch().id(), "trace"))
+        assertThatThrownBy(() -> importService.confirm(actor, PROJECT, preview.batch().id(), "trace"))
                 .isInstanceOf(BusinessException.class);
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ?",
                 Long.class, TENANT_ID);
@@ -234,9 +255,9 @@ class DeploymentUnitImportMySqlTest {
         byte[] file = workbook(
                 row("W0001A", "ECIP_AP", "应用", null, null),
                 row("W0001A", "BAD_AP", "中间件", null, null));
-        ImportBatchView preview = importService.upload(actor, multipart(file), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(file), "trace");
 
-        byte[] report = importService.errorReport(actor, preview.batch().id());
+        byte[] report = importService.errorReport(actor, PROJECT, preview.batch().id());
         String csv = new String(report, StandardCharsets.UTF_8);
         assertThat(csv).contains("物理子系统编号");
         assertThat(csv).contains("BAD_AP");
@@ -270,7 +291,7 @@ class DeploymentUnitImportMySqlTest {
             throw new AssertionError("模板不是有效 xlsx", exception);
         }
 
-        ImportBatchView preview = importService.upload(actor, multipart(template), "trace");
+        ImportBatchView preview = importService.upload(actor, PROJECT, multipart(template), "trace");
         assertThat(preview.batch().validRows()).isEqualTo(1);
         assertThat(preview.items()).singleElement()
                 .satisfies(item -> assertThat(item.rowStatus()).isEqualTo("VALID"));

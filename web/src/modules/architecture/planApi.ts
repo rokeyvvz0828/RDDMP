@@ -1,5 +1,7 @@
 import http from '../../api/http'
+import { useProjectContextStore } from '../../stores/project-context'
 import type { ApiResponse } from '../../types/auth'
+import type { AxiosRequestConfig } from 'axios'
 
 export type TemplateStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE'
 export type PlanDimension = 'NONE' | 'PHYSICAL_SUBSYSTEM' | 'DEPLOYMENT_UNIT'
@@ -306,6 +308,19 @@ function compact(value: Record<string, unknown>) {
   return result
 }
 
+function projectConfig(config: AxiosRequestConfig = {}): AxiosRequestConfig {
+  const projectRef = useProjectContextStore().currentRef
+  if (!projectRef) throw new Error('请先选择项目')
+  return { ...config, params: { ...config.params, projectRef } }
+}
+
+const projectHttp = {
+  get: <T>(url: string, config?: AxiosRequestConfig) => http.get<T>(url, projectConfig(config)),
+  post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) => http.post<T>(url, data, projectConfig(config)),
+  put: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) => http.put<T>(url, data, projectConfig(config)),
+  delete: <T>(url: string, config?: AxiosRequestConfig) => http.delete<T>(url, projectConfig(config))
+}
+
 // ---------- 搭建计划模板 ----------
 
 export async function listPlanTemplates(query: { keyword?: string; status?: TemplateStatus; page?: number; size?: number }) {
@@ -378,7 +393,7 @@ export interface PlanUserOption {
 }
 
 export async function loadPlanUserOptions(keyword = '', size = 50) {
-  return (await http.get<ApiResponse<PageResult<PlanUserOption>>>('/architecture/plan-options/users', {
+  return (await projectHttp.get<ApiResponse<PageResult<PlanUserOption>>>('/architecture/plan-options/users', {
     params: compact({ keyword: keyword || undefined, page: 1, size })
   })).data.data
 }
@@ -396,23 +411,23 @@ export async function listPlans(query: {
   page?: number
   size?: number
 }) {
-  return (await http.get<ApiResponse<PageResult<PlanRowView>>>('/architecture/plans', { params: compact(query) })).data.data
+  return (await projectHttp.get<ApiResponse<PageResult<PlanRowView>>>('/architecture/plans', { params: compact(query) })).data.data
 }
 
 export async function getPlan(id: number) {
-  return (await http.get<ApiResponse<PlanDetailView>>(`/architecture/plans/${id}`)).data.data
+  return (await projectHttp.get<ApiResponse<PlanDetailView>>(`/architecture/plans/${id}`)).data.data
 }
 
 export async function getPlanDashboard(id: number) {
-  return (await http.get<ApiResponse<DashboardView>>(`/architecture/plans/${id}/dashboard`)).data.data
+  return (await projectHttp.get<ApiResponse<DashboardView>>(`/architecture/plans/${id}/dashboard`)).data.data
 }
 
 export async function getPlanTimeline(id: number) {
-  return (await http.get<ApiResponse<TimelineView>>(`/architecture/plans/${id}/timeline`)).data.data
+  return (await projectHttp.get<ApiResponse<TimelineView>>(`/architecture/plans/${id}/timeline`)).data.data
 }
 
 export async function getPlanReport(id: number) {
-  return (await http.get<ApiResponse<ReportView>>(`/architecture/plans/${id}/report`)).data.data
+  return (await projectHttp.get<ApiResponse<ReportView>>(`/architecture/plans/${id}/report`)).data.data
 }
 
 export async function createPlan(payload: {
@@ -426,27 +441,27 @@ export async function createPlan(payload: {
   plannedStart?: string | null
   plannedEnd?: string | null
 }) {
-  return (await http.post<ApiResponse<PlanView>>('/architecture/plans', payload)).data.data
+  return (await projectHttp.post<ApiResponse<PlanView>>('/architecture/plans', payload)).data.data
 }
 
 export async function cancelPlan(id: number, reason: string) {
-  return (await http.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/cancel`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/cancel`, { reason })).data.data
 }
 
 export async function restorePlan(id: number, reason: string) {
-  return (await http.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/restore`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/restore`, { reason })).data.data
 }
 
 export async function addPlanTargets(id: number, payload: { physicalSubsystemIds?: number[]; deploymentUnitIds?: number[]; reason: string }) {
-  return (await http.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/targets`, payload)).data.data
+  return (await projectHttp.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/targets`, payload)).data.data
 }
 
 export async function removePlanTarget(id: number, targetId: number, reason: string) {
-  return (await http.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/targets/${targetId}/remove`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<PlanView>>(`/architecture/plans/${id}/targets/${targetId}/remove`, { reason })).data.data
 }
 
 export async function addPlanStage(id: number, payload: { name: string; ownerUserId: number; plannedStart?: string | null; plannedEnd?: string | null }) {
-  return (await http.post<ApiResponse<unknown>>(`/architecture/plans/${id}/stages`, payload)).data.data
+  return (await projectHttp.post<ApiResponse<unknown>>(`/architecture/plans/${id}/stages`, payload)).data.data
 }
 
 export async function addPlanTask(id: number, payload: {
@@ -459,109 +474,109 @@ export async function addPlanTask(id: number, payload: {
   plannedStart?: string | null
   plannedEnd?: string | null
 }) {
-  return (await http.post<ApiResponse<unknown>>(`/architecture/plans/${id}/tasks`, payload)).data.data
+  return (await projectHttp.post<ApiResponse<unknown>>(`/architecture/plans/${id}/tasks`, payload)).data.data
 }
 
 export async function addCheckItem(taskId: number, payload: { name: string }) {
-  return (await http.post<ApiResponse<CheckItemView>>(`/architecture/tasks/${taskId}/check-items`, payload)).data.data
+  return (await projectHttp.post<ApiResponse<CheckItemView>>(`/architecture/tasks/${taskId}/check-items`, payload)).data.data
 }
 
 export async function deleteTask(taskId: number, reason: string) {
-  return (await http.delete<ApiResponse<void>>(`/architecture/tasks/${taskId}`, { data: { reason } })).data
+  return (await projectHttp.delete<ApiResponse<void>>(`/architecture/tasks/${taskId}`, { data: { reason } })).data
 }
 
 export async function deleteCheckItem(checkItemId: number, reason: string) {
-  return (await http.delete<ApiResponse<void>>(`/architecture/check-items/${checkItemId}`, { data: { reason } })).data
+  return (await projectHttp.delete<ApiResponse<void>>(`/architecture/check-items/${checkItemId}`, { data: { reason } })).data
 }
 
 export async function startTask(taskId: number) {
-  return (await http.post<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/start`)).data.data
+  return (await projectHttp.post<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/start`)).data.data
 }
 
 export async function completeCheckItem(checkItemId: number, remark?: string | null) {
-  return (await http.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/complete`, { remark })).data.data
+  return (await projectHttp.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/complete`, { remark })).data.data
 }
 
 export async function reopenCheckItem(checkItemId: number, reason: string) {
-  return (await http.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/reopen`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/reopen`, { reason })).data.data
 }
 
 export async function cancelCheckItem(checkItemId: number, reason: string) {
-  return (await http.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/cancel`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/cancel`, { reason })).data.data
 }
 
 export async function restoreCheckItem(checkItemId: number, reason: string) {
-  return (await http.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/restore`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<CheckItemView>>(`/architecture/check-items/${checkItemId}/restore`, { reason })).data.data
 }
 
 export async function suggestCancelCheckItem(checkItemId: number, reason: string) {
-  return (await http.post<ApiResponse<SuggestionView>>(`/architecture/check-items/${checkItemId}/suggest-cancel`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<SuggestionView>>(`/architecture/check-items/${checkItemId}/suggest-cancel`, { reason })).data.data
 }
 
 export async function acceptSuggestion(suggestionId: number, note?: string | null) {
-  return (await http.post<ApiResponse<CheckItemView>>(`/architecture/suggestions/${suggestionId}/accept`, { reason: note })).data.data
+  return (await projectHttp.post<ApiResponse<CheckItemView>>(`/architecture/suggestions/${suggestionId}/accept`, { reason: note })).data.data
 }
 
 export async function rejectSuggestion(suggestionId: number, note?: string | null) {
-  return (await http.post<ApiResponse<SuggestionView>>(`/architecture/suggestions/${suggestionId}/reject`, { reason: note })).data.data
+  return (await projectHttp.post<ApiResponse<SuggestionView>>(`/architecture/suggestions/${suggestionId}/reject`, { reason: note })).data.data
 }
 
 export async function listPlanSuggestions(id: number) {
-  return (await http.get<ApiResponse<SuggestionView[]>>(`/architecture/plans/${id}/suggestions`)).data.data
+  return (await projectHttp.get<ApiResponse<SuggestionView[]>>(`/architecture/plans/${id}/suggestions`)).data.data
 }
 
 export async function cancelTask(taskId: number, reason: string) {
-  return (await http.post<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/cancel`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/cancel`, { reason })).data.data
 }
 
 export async function restoreTask(taskId: number, reason: string) {
-  return (await http.post<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/restore`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/restore`, { reason })).data.data
 }
 
 export async function cancelStage(stageId: number, reason: string) {
-  return (await http.post<ApiResponse<unknown>>(`/architecture/stages/${stageId}/cancel`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<unknown>>(`/architecture/stages/${stageId}/cancel`, { reason })).data.data
 }
 
 export async function restoreStage(stageId: number, reason: string) {
-  return (await http.post<ApiResponse<unknown>>(`/architecture/stages/${stageId}/restore`, { reason })).data.data
+  return (await projectHttp.post<ApiResponse<unknown>>(`/architecture/stages/${stageId}/restore`, { reason })).data.data
 }
 
 export async function setTaskDependencies(taskId: number, predecessorTaskIds: number[], reason?: string | null) {
-  return (await http.post<ApiResponse<DependencyView[]>>(`/architecture/tasks/${taskId}/dependencies`, { predecessorTaskIds, reason })).data.data
+  return (await projectHttp.post<ApiResponse<DependencyView[]>>(`/architecture/tasks/${taskId}/dependencies`, { predecessorTaskIds, reason })).data.data
 }
 
 export async function removeDependency(dependencyId: number, reason: string) {
-  return (await http.delete<ApiResponse<void>>(`/architecture/dependencies/${dependencyId}`, { data: { reason } })).data
+  return (await projectHttp.delete<ApiResponse<void>>(`/architecture/dependencies/${dependencyId}`, { data: { reason } })).data
 }
 
 export async function addTaskBlock(taskId: number, payload: { description: string; impact?: string | null; ownerUserId: number; expectedResolveAt?: string | null }) {
-  return (await http.post<ApiResponse<BlockView>>(`/architecture/tasks/${taskId}/blocks`, payload)).data.data
+  return (await projectHttp.post<ApiResponse<BlockView>>(`/architecture/tasks/${taskId}/blocks`, payload)).data.data
 }
 
 export async function resolveTaskBlock(blockId: number, note?: string | null) {
-  return (await http.post<ApiResponse<BlockView>>(`/architecture/blocks/${blockId}/resolve`, { reason: note })).data.data
+  return (await projectHttp.post<ApiResponse<BlockView>>(`/architecture/blocks/${blockId}/resolve`, { reason: note })).data.data
 }
 
 export async function updatePlanSchedule(id: number, payload: { plannedStart?: string | null; plannedEnd?: string | null; reason?: string | null }) {
-  return (await http.put<ApiResponse<PlanView>>(`/architecture/plans/${id}/schedule`, payload)).data.data
+  return (await projectHttp.put<ApiResponse<PlanView>>(`/architecture/plans/${id}/schedule`, payload)).data.data
 }
 
 export async function updateTaskSchedule(taskId: number, payload: { plannedStart?: string | null; plannedEnd?: string | null; reason?: string | null }) {
-  return (await http.put<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/schedule`, payload)).data.data
+  return (await projectHttp.put<ApiResponse<TaskDetailView>>(`/architecture/tasks/${taskId}/schedule`, payload)).data.data
 }
 
 export async function correctEvent(eventId: number, payload: { newOccurredAt: string; reason: string }) {
-  return (await http.post<ApiResponse<void>>(`/architecture/events/${eventId}/correct`, payload)).data
+  return (await projectHttp.post<ApiResponse<void>>(`/architecture/events/${eventId}/correct`, payload)).data
 }
 
 export async function listPlanEvents(id: number) {
-  return (await http.get<ApiResponse<EventView[]>>(`/architecture/plans/${id}/events`)).data.data
+  return (await projectHttp.get<ApiResponse<EventView[]>>(`/architecture/plans/${id}/events`)).data.data
 }
 
 export async function attachTaskWorkOrders(taskId: number, payload: { workOrderType: WorkOrderType; workOrderIds: number[]; reason?: string | null }) {
-  return (await http.post<ApiResponse<WorkOrderLinkView[]>>(`/architecture/tasks/${taskId}/work-orders`, payload)).data.data
+  return (await projectHttp.post<ApiResponse<WorkOrderLinkView[]>>(`/architecture/tasks/${taskId}/work-orders`, payload)).data.data
 }
 
 export async function detachWorkOrder(workOrderRelationId: number, reason: string) {
-  return (await http.delete<ApiResponse<void>>(`/architecture/work-orders/${workOrderRelationId}`, { data: { reason } })).data
+  return (await projectHttp.delete<ApiResponse<void>>(`/architecture/work-orders/${workOrderRelationId}`, { data: { reason } })).data
 }

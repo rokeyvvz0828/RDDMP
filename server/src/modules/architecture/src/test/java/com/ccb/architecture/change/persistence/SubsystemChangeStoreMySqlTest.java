@@ -45,6 +45,9 @@ class SubsystemChangeStoreMySqlTest {
     private static final String DATABASE = "architecture_change_store";
     private static final long TENANT_1 = 91L;
     private static final long TENANT_2 = 92L;
+    private static final long PROJECT_1 = 9101L;
+    private static final long PROJECT_1_OTHER = 9102L;
+    private static final long PROJECT_2 = 9201L;
     private static final String SUBSCRIBER = "architecture.subsystem.change.lifecycle.v1";
 
     @Container
@@ -68,7 +71,7 @@ class SubsystemChangeStoreMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("147"))
+                .target(MigrationVersion.fromVersion("156"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
@@ -98,82 +101,102 @@ class SubsystemChangeStoreMySqlTest {
     }
 
     @Test
-    void tenantIsolationAndPhysicalDraftReplacementKeepStableLineOrder() {
+    void projectIsolationAndPhysicalDraftReplacementKeepStableLineOrder() {
         inTransaction(() -> {
-            store.insertApplication(application(1001, TENANT_1, ActionType.CREATE, null));
-            store.insertApplication(application(2001, TENANT_2, ActionType.CREATE, null));
-            store.replacePhysicalDrafts(TENANT_1, 1001, List.of(
-                    physicalDraft(1001, 20, TENANT_1, "PHY_TWENTY", "物理二十"),
-                    physicalDraft(1001, 10, TENANT_1, "PHY_TEN", "物理十")));
+            store.insertApplication(application(1001, TENANT_1, PROJECT_1, ActionType.CREATE, null));
+            store.insertApplication(application(1002, TENANT_1, PROJECT_1_OTHER, ActionType.CREATE, null));
+            store.insertApplication(application(2001, TENANT_2, PROJECT_2, ActionType.CREATE, null));
+            store.replacePhysicalDrafts(TENANT_1, PROJECT_1, 1001, List.of(
+                    physicalDraft(1001, 20, TENANT_1, PROJECT_1, "PHY_TWENTY", "物理二十"),
+                    physicalDraft(1001, 10, TENANT_1, PROJECT_1, "PHY_TEN", "物理十")));
         });
 
-        assertThat(store.findApplication(TENANT_2, 1001)).isEmpty();
-        assertThat(store.listApplications(TENANT_1, null, null, 20, 0))
+        assertThat(store.findApplication(TENANT_1, PROJECT_1_OTHER, 1001)).isEmpty();
+        assertThat(store.findApplication(TENANT_2, PROJECT_2, 1001)).isEmpty();
+        assertThat(store.listApplications(TENANT_1, PROJECT_1, null, null, 20, 0))
                 .extracting(ChangeApplication::id)
                 .containsExactly(1001L);
-        assertThat(store.findPhysicalDrafts(TENANT_1, 1001))
+        assertThat(store.findPhysicalDrafts(TENANT_1, PROJECT_1, 1001))
                 .extracting(PhysicalDraft::lineNo)
                 .containsExactly(10, 20);
-        assertThat(store.findPhysicalDrafts(TENANT_2, 1001)).isEmpty();
+        assertThat(store.findPhysicalDrafts(TENANT_1, PROJECT_1_OTHER, 1001)).isEmpty();
+        assertThat(store.findPhysicalDrafts(TENANT_2, PROJECT_2, 1001)).isEmpty();
     }
 
     @Test
-    void targetAndValueUniqueConstraintsAndApplicationCasAreTenantScoped() {
+    void targetAndValueUniqueConstraintsAndApplicationCasAreProjectScoped() {
         inTransaction(() -> {
-            store.insertApplication(application(3001, TENANT_1, ActionType.UPDATE, 900L));
-            store.insertApplication(application(3002, TENANT_1, ActionType.UPDATE, 901L));
-            store.insertTargetLock(new TargetLock(TENANT_1, TargetKind.PHYSICAL, 900, 3001, null));
-            store.insertValueReservation(new ValueReservation(TENANT_1, "PHYSICAL_CODE", "PHY_A", 3001, 1, null));
+            store.insertApplication(application(3001, TENANT_1, PROJECT_1, ActionType.UPDATE, 900L));
+            store.insertApplication(application(3002, TENANT_1, PROJECT_1, ActionType.UPDATE, 901L));
+            store.insertApplication(application(3003, TENANT_1, PROJECT_1_OTHER, ActionType.UPDATE, 900L));
+            store.insertTargetLock(new TargetLock(TENANT_1, PROJECT_1, TargetKind.PHYSICAL, 900, 3001, null));
+            store.insertValueReservation(new ValueReservation(
+                    TENANT_1, PROJECT_1, "PHYSICAL_CODE", "PHY_A", 3001, 1, null));
+            store.insertTargetLock(new TargetLock(
+                    TENANT_1, PROJECT_1_OTHER, TargetKind.PHYSICAL, 900, 3003, null));
+            store.insertValueReservation(new ValueReservation(
+                    TENANT_1, PROJECT_1_OTHER, "PHYSICAL_CODE", "PHY_A", 3003, 1, null));
         });
 
         assertThatThrownBy(() -> inTransaction(() ->
-                store.insertTargetLock(new TargetLock(TENANT_1, TargetKind.PHYSICAL, 900, 3002, null))))
+                store.insertTargetLock(new TargetLock(
+                        TENANT_1, PROJECT_1, TargetKind.PHYSICAL, 900, 3002, null))))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> inTransaction(() ->
-                store.insertValueReservation(new ValueReservation(TENANT_1, "PHYSICAL_CODE", "PHY_A", 3002, 1, null))))
+                store.insertValueReservation(new ValueReservation(
+                        TENANT_1, PROJECT_1, "PHYSICAL_CODE", "PHY_A", 3002, 1, null))))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         assertThat(inTransaction(() -> store.compareAndSetApplicationStatus(
-                TENANT_1, 3001, ApplicationStatus.DRAFT, 0, ApplicationStatus.IN_REVIEW, 71))).isTrue();
+                TENANT_1, PROJECT_1, 3001, ApplicationStatus.DRAFT, 0, ApplicationStatus.IN_REVIEW, 71))).isTrue();
         assertThat(inTransaction(() -> store.compareAndSetApplicationStatus(
-                TENANT_1, 3001, ApplicationStatus.DRAFT, 0, ApplicationStatus.RETURNED, 71))).isFalse();
+                TENANT_1, PROJECT_1, 3001, ApplicationStatus.DRAFT, 0, ApplicationStatus.RETURNED, 71))).isFalse();
         assertThat(inTransaction(() -> store.compareAndSetApplicationReason(
-                TENANT_1, 3002, ApplicationStatus.DRAFT, 0, "更新后的申请原因", 72))).isTrue();
+                TENANT_1, PROJECT_1, 3002, ApplicationStatus.DRAFT, 0, "更新后的申请原因", 72))).isTrue();
         assertThat(inTransaction(() -> store.compareAndSetApplicationReason(
-                TENANT_2, 3002, ApplicationStatus.DRAFT, 1, "跨租户覆盖", 73))).isFalse();
+                TENANT_1, PROJECT_1_OTHER, 3002, ApplicationStatus.DRAFT, 1, "跨项目覆盖", 73))).isFalse();
 
-        ChangeApplication changed = store.findApplication(TENANT_1, 3001).orElseThrow();
+        ChangeApplication changed = store.findApplication(TENANT_1, PROJECT_1, 3001).orElseThrow();
         assertThat(changed.status()).isEqualTo(ApplicationStatus.IN_REVIEW);
         assertThat(changed.rowVersion()).isEqualTo(1);
-        assertThat(store.findTargetLock(TENANT_2, TargetKind.PHYSICAL, 900)).isEmpty();
-        assertThat(store.findValueReservation(TENANT_2, "PHYSICAL_CODE", "PHY_A")).isEmpty();
-        assertThat(store.findApplication(TENANT_1, 3002).orElseThrow().reason()).isEqualTo("更新后的申请原因");
+        assertThat(store.findTargetLock(TENANT_1, PROJECT_1_OTHER, TargetKind.PHYSICAL, 900)).isPresent();
+        assertThat(store.findValueReservation(TENANT_1, PROJECT_1_OTHER, "PHYSICAL_CODE", "PHY_A")).isPresent();
+        assertThat(store.findTargetLock(TENANT_2, PROJECT_2, TargetKind.PHYSICAL, 900)).isEmpty();
+        assertThat(store.findValueReservation(TENANT_2, PROJECT_2, "PHYSICAL_CODE", "PHY_A")).isEmpty();
+        assertThat(store.findApplication(TENANT_1, PROJECT_1, 3002).orElseThrow().reason())
+                .isEqualTo("更新后的申请原因");
     }
 
     @Test
     void physicalPublishedCrudPersistsNewFieldsAndReplacement() {
         inTransaction(() -> {
-            store.insertApplication(application(4001, TENANT_1, ActionType.REPLACE, 7001L));
-            store.insertPhysicalPublished(7001, TENANT_1,
-                    physicalDraft(4001, 1, TENANT_1, "PHY_OLD", "旧物理"), PublishedStatus.ACTIVE, 0, 81);
-            store.insertPhysicalPublished(7002, TENANT_1,
-                    physicalDraft(4001, 2, TENANT_1, "PHY_NEW", "新物理"), PublishedStatus.ACTIVE, 0, 81);
+            store.insertApplication(application(4001, TENANT_1, PROJECT_1, ActionType.REPLACE, 7001L));
+            store.insertPhysicalPublished(7001, TENANT_1, PROJECT_1,
+                    physicalDraft(4001, 1, TENANT_1, PROJECT_1, "PHY_OLD", "旧物理"),
+                    PublishedStatus.ACTIVE, 0, 81);
+            store.insertPhysicalPublished(7002, TENANT_1, PROJECT_1,
+                    physicalDraft(4001, 2, TENANT_1, PROJECT_1, "PHY_NEW", "新物理"),
+                    PublishedStatus.ACTIVE, 0, 81);
 
-            PhysicalDraft updated = physicalDraft(4001, 1, TENANT_1, "PHY_OLD", "更新物理");
-            assertThat(store.updatePhysicalPublishedFields(TENANT_1, 7001, updated, 0, 82)).isTrue();
-            assertThat(store.updatePhysicalPublishedStatus(TENANT_1, 7001, PublishedStatus.OFFLINE, 1, 82)).isTrue();
-            store.insertPhysicalReplacement(new PhysicalReplacement(4200, TENANT_1, 7001, 7002, 4001, null));
+            PhysicalDraft updated = physicalDraft(
+                    4001, 1, TENANT_1, PROJECT_1, "PHY_OLD", "更新物理");
+            assertThat(store.updatePhysicalPublishedFields(TENANT_1, PROJECT_1, 7001, updated, 0, 82)).isTrue();
+            assertThat(store.updatePhysicalPublishedStatus(
+                    TENANT_1, PROJECT_1, 7001, PublishedStatus.OFFLINE, 1, 82)).isTrue();
+            store.insertPhysicalReplacement(new PhysicalReplacement(
+                    4200, TENANT_1, PROJECT_1, 7001, 7002, 4001, null));
         });
 
-        PhysicalPublishedState physical = store.findPhysical(TENANT_1, 7001).orElseThrow();
+        PhysicalPublishedState physical = store.findPhysical(TENANT_1, PROJECT_1, 7001).orElseThrow();
         assertThat(physical)
                 .extracting(PhysicalPublishedState::code, PhysicalPublishedState::logicalSubsystemName,
                         PhysicalPublishedState::businessComponentCode, PhysicalPublishedState::status,
                         PhysicalPublishedState::rowVersion)
                 .containsExactly("PHY_OLD", "物理逻辑域", "architecture.business-component.employee-portal",
                         PublishedStatus.OFFLINE, 2L);
-        assertThat(store.findPhysical(TENANT_2, 7001)).isEmpty();
-        assertThat(store.findPhysicalReplacementByApplication(TENANT_1, 4001)).isPresent();
+        assertThat(store.findPhysical(TENANT_1, PROJECT_1_OTHER, 7001)).isEmpty();
+        assertThat(store.findPhysical(TENANT_2, PROJECT_2, 7001)).isEmpty();
+        assertThat(store.findPhysicalReplacementByApplication(TENANT_1, PROJECT_1, 4001)).isPresent();
         assertThat(count("SELECT COUNT(*) FROM arch_subsystem_replacement WHERE tenant_id = " + TENANT_2)).isZero();
     }
 
@@ -181,27 +204,29 @@ class SubsystemChangeStoreMySqlTest {
     void rollbackLeavesNoPartialRowsAndHistoryOrderIsStableAtSameTimestamp() {
         LocalDateTime sameTime = LocalDateTime.of(2026, 8, 23, 1, 0);
         inTransaction(() -> {
-            store.insertApplication(application(5001, TENANT_1, ActionType.CREATE, null));
-            store.insertHistory(history(5002, 5001, "后写事件", sameTime));
-            store.insertHistory(history(5001, 5001, "先排序事件", sameTime));
+            store.insertApplication(application(5001, TENANT_1, PROJECT_1, ActionType.CREATE, null));
+            store.insertHistory(history(5002, TENANT_1, PROJECT_1, 5001, "后写事件", sameTime));
+            store.insertHistory(history(5001, TENANT_1, PROJECT_1, 5001, "先排序事件", sameTime));
         });
-        assertThat(store.listHistory(TENANT_1, 5001))
+        assertThat(store.listHistory(TENANT_1, PROJECT_1, 5001))
                 .extracting(ChangeHistoryEvent::id)
                 .containsExactly(5001L, 5002L);
 
         transactions.executeWithoutResult(status -> {
-            store.insertApplication(application(5101, TENANT_1, ActionType.CREATE, null));
-            store.replacePhysicalDrafts(TENANT_1, 5101,
-                    List.of(physicalDraft(5101, 1, TENANT_1, "PHY_ROLLBACK", "待回滚物理")));
-            store.insertTargetLock(new TargetLock(TENANT_1, TargetKind.PHYSICAL, 777, 5101, null));
-            store.insertHistory(history(5103, 5101, "待回滚事件", sameTime));
+            store.insertApplication(application(5101, TENANT_1, PROJECT_1, ActionType.CREATE, null));
+            store.replacePhysicalDrafts(TENANT_1, PROJECT_1, 5101,
+                    List.of(physicalDraft(
+                            5101, 1, TENANT_1, PROJECT_1, "PHY_ROLLBACK", "待回滚物理")));
+            store.insertTargetLock(new TargetLock(
+                    TENANT_1, PROJECT_1, TargetKind.PHYSICAL, 777, 5101, null));
+            store.insertHistory(history(5103, TENANT_1, PROJECT_1, 5101, "待回滚事件", sameTime));
             status.setRollbackOnly();
         });
 
-        assertThat(store.findApplication(TENANT_1, 5101)).isEmpty();
-        assertThat(store.findPhysicalDrafts(TENANT_1, 5101)).isEmpty();
-        assertThat(store.findTargetLock(TENANT_1, TargetKind.PHYSICAL, 777)).isEmpty();
-        assertThat(store.listHistory(TENANT_1, 5101)).isEmpty();
+        assertThat(store.findApplication(TENANT_1, PROJECT_1, 5101)).isEmpty();
+        assertThat(store.findPhysicalDrafts(TENANT_1, PROJECT_1, 5101)).isEmpty();
+        assertThat(store.findTargetLock(TENANT_1, PROJECT_1, TargetKind.PHYSICAL, 777)).isEmpty();
+        assertThat(store.listHistory(TENANT_1, PROJECT_1, 5101)).isEmpty();
     }
 
     @Test
@@ -211,18 +236,18 @@ class SubsystemChangeStoreMySqlTest {
         String digest = "a".repeat(64);
 
         inTransaction(() -> {
-            store.insertApplication(application(7001, TENANT_1, ActionType.CREATE, null));
-            assertThat(store.compareAndSetApplicationStatus(TENANT_1, 7001, ApplicationStatus.DRAFT, 0,
+            store.insertApplication(application(7001, TENANT_1, PROJECT_1, ActionType.CREATE, null));
+            assertThat(store.compareAndSetApplicationStatus(TENANT_1, PROJECT_1, 7001, ApplicationStatus.DRAFT, 0,
                     ApplicationStatus.IN_REVIEW, 71)).isTrue();
-            store.insertPendingWorkflowRound(pendingRound(7101, TENANT_1, 7001, 1));
-            assertThat(store.lockWorkflowRound(TENANT_1, 7001, 1)).isPresent();
-            assertThat(store.bindWorkflowRoundStarted(TENANT_1, 7001, 1, 900000000000030L,
+            store.insertPendingWorkflowRound(pendingRound(7101, TENANT_1, PROJECT_1, 7001, 1));
+            assertThat(store.lockWorkflowRound(TENANT_1, PROJECT_1, 7001, 1)).isPresent();
+            assertThat(store.bindWorkflowRoundStarted(TENANT_1, PROJECT_1, 7001, 1, 900000000000030L,
                     900000000000031L, 7003, digest, startedAt)).isTrue();
-            assertThat(store.compareAndSetApplicationWorkflowContext(TENANT_1, 7001, 0, 1, 1,
+            assertThat(store.compareAndSetApplicationWorkflowContext(TENANT_1, PROJECT_1, 7001, 0, 1, 1,
                     900000000000030L, 900000000000031L, 7003, digest, 72)).isTrue();
         });
 
-        ChangeApplication application = store.findApplication(TENANT_1, 7001).orElseThrow();
+        ChangeApplication application = store.findApplication(TENANT_1, PROJECT_1, 7001).orElseThrow();
         assertThat(application)
                 .extracting(ChangeApplication::status, ChangeApplication::currentBusinessRound,
                         ChangeApplication::currentWorkflowDefinitionId, ChangeApplication::currentWorkflowVersionId,
@@ -230,31 +255,35 @@ class SubsystemChangeStoreMySqlTest {
                         ChangeApplication::rowVersion)
                 .containsExactly(ApplicationStatus.IN_REVIEW, 1, 900000000000030L, 900000000000031L,
                         7003L, digest, 2L);
-        assertThat(store.findWorkflowRound(TENANT_1, 7001, 1)).isPresent()
+        assertThat(store.findWorkflowRound(TENANT_1, PROJECT_1, 7001, 1)).isPresent()
                 .get().extracting(WorkflowRound::status, WorkflowRound::startedAt, WorkflowRound::payloadDigest)
                 .containsExactly(WorkflowRoundStatus.STARTED, startedAt, digest);
-        assertThat(store.findWorkflowRound(TENANT_2, 7001, 1)).isEmpty();
-        assertThat(inTransaction(() -> store.lockWorkflowRoundByInstance(TENANT_1, 7003))).isPresent();
-        assertThat(inTransaction(() -> store.lockWorkflowRoundByInstance(TENANT_2, 7003))).isEmpty();
-        assertThat(store.isLatestWorkflowRound(TENANT_1, 7001, 1)).isTrue();
+        assertThat(store.findWorkflowRound(TENANT_1, PROJECT_1_OTHER, 7001, 1)).isEmpty();
+        assertThat(store.findWorkflowRound(TENANT_2, PROJECT_2, 7001, 1)).isEmpty();
+        assertThat(inTransaction(() -> store.lockWorkflowRoundByInstance(TENANT_1, PROJECT_1, 7003))).isPresent();
+        assertThat(inTransaction(() -> store.lockWorkflowRoundByInstance(
+                TENANT_1, PROJECT_1_OTHER, 7003))).isEmpty();
+        assertThat(store.isLatestWorkflowRound(TENANT_1, PROJECT_1, 7001, 1)).isTrue();
 
-        inTransaction(() -> store.insertPendingWorkflowRound(pendingRound(7102, TENANT_1, 7001, 2)));
-        assertThat(store.isLatestWorkflowRound(TENANT_1, 7001, 1)).isFalse();
-        assertThat(store.isLatestWorkflowRound(TENANT_1, 7001, 2)).isTrue();
-        assertThat(store.isLatestWorkflowRound(TENANT_1, 7001, 3)).isFalse();
+        inTransaction(() -> store.insertPendingWorkflowRound(pendingRound(7102, TENANT_1, PROJECT_1, 7001, 2)));
+        assertThat(store.isLatestWorkflowRound(TENANT_1, PROJECT_1, 7001, 1)).isFalse();
+        assertThat(store.isLatestWorkflowRound(TENANT_1, PROJECT_1, 7001, 2)).isTrue();
+        assertThat(store.isLatestWorkflowRound(TENANT_1, PROJECT_1, 7001, 3)).isFalse();
 
-        assertThat(inTransaction(() -> store.compareAndSetCancellationRequested(TENANT_1, 7001, 2, 7003, 75))).isTrue();
-        assertThat(inTransaction(() -> store.compareAndSetCancellationRequested(TENANT_1, 7001, 2, 7003, 76))).isFalse();
-        assertThat(store.findApplication(TENANT_1, 7001).orElseThrow())
+        assertThat(inTransaction(() -> store.compareAndSetCancellationRequested(
+                TENANT_1, PROJECT_1, 7001, 2, 7003, 75))).isTrue();
+        assertThat(inTransaction(() -> store.compareAndSetCancellationRequested(
+                TENANT_1, PROJECT_1, 7001, 2, 7003, 76))).isFalse();
+        assertThat(store.findApplication(TENANT_1, PROJECT_1, 7001).orElseThrow())
                 .extracting(ChangeApplication::cancellationRequested, ChangeApplication::rowVersion,
                         ChangeApplication::updatedBy)
                 .containsExactly(true, 3L, 75L);
 
-        assertThat(inTransaction(() -> store.completeStartedWorkflowRound(TENANT_1, 7001, 1,
+        assertThat(inTransaction(() -> store.completeStartedWorkflowRound(TENANT_1, PROJECT_1, 7001, 1,
                 WorkflowRoundStatus.RETURNED, endedAt))).isTrue();
-        assertThat(inTransaction(() -> store.completeStartedWorkflowRound(TENANT_1, 7001, 1,
+        assertThat(inTransaction(() -> store.completeStartedWorkflowRound(TENANT_1, PROJECT_1, 7001, 1,
                 WorkflowRoundStatus.RETURNED, endedAt))).isFalse();
-        assertThat(store.findWorkflowRound(TENANT_1, 7001, 1).orElseThrow())
+        assertThat(store.findWorkflowRound(TENANT_1, PROJECT_1, 7001, 1).orElseThrow())
                 .extracting(WorkflowRound::status, WorkflowRound::endedAt)
                 .containsExactly(WorkflowRoundStatus.RETURNED, endedAt);
     }
@@ -270,33 +299,37 @@ class SubsystemChangeStoreMySqlTest {
             for (int index = 0; index < outcomes.size(); index++) {
                 long applicationId = 7201L + index;
                 int roundNo = index + 1;
-                store.insertApplication(application(applicationId, TENANT_1, ActionType.CREATE, null));
-                store.insertPendingWorkflowRound(pendingRound(7301L + index, TENANT_1, applicationId, roundNo));
-                assertThat(store.bindWorkflowRoundStarted(TENANT_1, applicationId, roundNo,
+                store.insertApplication(application(applicationId, TENANT_1, PROJECT_1, ActionType.CREATE, null));
+                store.insertPendingWorkflowRound(pendingRound(
+                        7301L + index, TENANT_1, PROJECT_1, applicationId, roundNo));
+                assertThat(store.bindWorkflowRoundStarted(TENANT_1, PROJECT_1, applicationId, roundNo,
                         900000000000030L, 900000000000031L, 7401L + index,
                         ("b" + index).repeat(32), startedAt)).isTrue();
-                assertThat(store.completeStartedWorkflowRound(TENANT_1, applicationId, roundNo,
+                assertThat(store.completeStartedWorkflowRound(TENANT_1, PROJECT_1, applicationId, roundNo,
                         outcomes.get(index), endedAt)).isTrue();
             }
         });
 
         for (int index = 0; index < outcomes.size(); index++) {
-            assertThat(store.findWorkflowRound(TENANT_1, 7201L + index, index + 1).orElseThrow().status())
+            assertThat(store.findWorkflowRound(
+                    TENANT_1, PROJECT_1, 7201L + index, index + 1).orElseThrow().status())
                     .isEqualTo(outcomes.get(index));
         }
     }
 
     @Test
     void receiptsAreTenantScopedIdempotentAndRollbackWithTheirTransaction() {
-        WorkflowReceiptStart processed = receipt(7501, TENANT_1, "event-processed", 7001L, 1, 7003L, "APPROVED");
+        WorkflowReceiptStart processed = receipt(
+                7501, TENANT_1, PROJECT_1, "event-processed", 7001L, 1, 7003L, "APPROVED");
         inTransaction(() -> {
-            store.insertApplication(application(7001, TENANT_1, ActionType.CREATE, null));
+            store.insertApplication(application(7001, TENANT_1, PROJECT_1, ActionType.CREATE, null));
             assertThat(store.beginReceipt(processed)).isTrue();
-            assertThat(store.completeReceipt(TENANT_1, "event-processed", SUBSCRIBER,
+            assertThat(store.completeReceipt(TENANT_1, PROJECT_1, "event-processed", SUBSCRIBER,
                     WorkflowReceiptStatus.PROCESSED, "已发布")).isTrue();
         });
 
-        WorkflowReceipt receipt = store.findReceipt(TENANT_1, "event-processed", SUBSCRIBER).orElseThrow();
+        WorkflowReceipt receipt = store.findReceipt(
+                TENANT_1, PROJECT_1, "event-processed", SUBSCRIBER).orElseThrow();
         assertThat(receipt)
                 .extracting(WorkflowReceipt::processingStatus, WorkflowReceipt::applicationId,
                         WorkflowReceipt::roundNo, WorkflowReceipt::workflowInstanceId, WorkflowReceipt::detail)
@@ -304,91 +337,107 @@ class SubsystemChangeStoreMySqlTest {
         assertThat(inTransaction(() -> store.beginReceipt(processed))).isFalse();
 
         inTransaction(() -> {
-            store.insertApplication(application(7002, TENANT_2, ActionType.CREATE, null));
-            WorkflowReceiptStart ignored = receipt(7502, TENANT_2, "event-processed", 7002L, 1, 7003L, "RETURNED");
+            store.insertApplication(application(7002, TENANT_1, PROJECT_1_OTHER, ActionType.CREATE, null));
+            WorkflowReceiptStart ignored = receipt(
+                    7502, TENANT_1, PROJECT_1_OTHER, "event-processed", 7002L, 1, 7003L, "RETURNED");
             assertThat(store.beginReceipt(ignored)).isTrue();
-            assertThat(store.completeReceipt(TENANT_2, "event-processed", SUBSCRIBER,
-                    WorkflowReceiptStatus.IGNORED, "租户二事件")).isTrue();
-            WorkflowReceiptStart failed = receipt(7503, TENANT_2, "event-failed", 7002L, 1, 7003L, "APPROVED");
+            assertThat(store.completeReceipt(TENANT_1, PROJECT_1_OTHER, "event-processed", SUBSCRIBER,
+                    WorkflowReceiptStatus.IGNORED, "项目二事件")).isTrue();
+            WorkflowReceiptStart failed = receipt(
+                    7503, TENANT_1, PROJECT_1_OTHER, "event-failed", 7002L, 1, 7003L, "APPROVED");
             assertThat(store.beginReceipt(failed)).isTrue();
-            assertThat(store.completeReceipt(TENANT_2, "event-failed", SUBSCRIBER,
+            assertThat(store.completeReceipt(TENANT_1, PROJECT_1_OTHER, "event-failed", SUBSCRIBER,
                     WorkflowReceiptStatus.FAILED, "等待平台重试")).isTrue();
         });
-        assertThat(store.findReceipt(TENANT_2, "event-processed", SUBSCRIBER)).isPresent();
-        assertThat(store.findReceipt(TENANT_2, "event-failed", SUBSCRIBER).orElseThrow())
+        assertThat(store.findReceipt(TENANT_1, PROJECT_1_OTHER, "event-processed", SUBSCRIBER)).isPresent();
+        assertThat(store.findReceipt(TENANT_1, PROJECT_1_OTHER, "event-failed", SUBSCRIBER).orElseThrow())
                 .extracting(WorkflowReceipt::processingStatus, WorkflowReceipt::detail)
                 .containsExactly(WorkflowReceiptStatus.FAILED, "等待平台重试");
 
         transactions.executeWithoutResult(status -> {
-            WorkflowReceiptStart rollback = receipt(7504, TENANT_1, "event-rollback", 7001L, 1, 7003L, "REJECTED");
+            WorkflowReceiptStart rollback = receipt(
+                    7504, TENANT_1, PROJECT_1, "event-rollback", 7001L, 1, 7003L, "REJECTED");
             assertThat(store.beginReceipt(rollback)).isTrue();
-            assertThat(store.completeReceipt(TENANT_1, "event-rollback", SUBSCRIBER,
+            assertThat(store.completeReceipt(TENANT_1, PROJECT_1, "event-rollback", SUBSCRIBER,
                     WorkflowReceiptStatus.PROCESSED, "将回滚")).isTrue();
             status.setRollbackOnly();
         });
-        assertThat(store.findReceipt(TENANT_1, "event-rollback", SUBSCRIBER)).isEmpty();
+        assertThat(store.findReceipt(TENANT_1, PROJECT_1, "event-rollback", SUBSCRIBER)).isEmpty();
     }
 
     @Test
     void writeLockAndCasEntrypointsRequireActualTransaction() {
-        assertTransactionRequired(() -> store.insertApplication(application(6001, TENANT_1, ActionType.CREATE, null)));
-        assertTransactionRequired(() -> store.lockApplication(TENANT_1, 6001));
+        assertTransactionRequired(() -> store.insertApplication(
+                application(6001, TENANT_1, PROJECT_1, ActionType.CREATE, null)));
+        assertTransactionRequired(() -> store.lockApplication(TENANT_1, PROJECT_1, 6001));
         assertTransactionRequired(() -> store.compareAndSetApplicationStatus(
-                TENANT_1, 6001, ApplicationStatus.DRAFT, 0, ApplicationStatus.IN_REVIEW, 1));
+                TENANT_1, PROJECT_1, 6001, ApplicationStatus.DRAFT, 0, ApplicationStatus.IN_REVIEW, 1));
         assertTransactionRequired(() -> store.compareAndSetApplicationReason(
-                TENANT_1, 6001, ApplicationStatus.DRAFT, 0, "无事务原因", 1));
+                TENANT_1, PROJECT_1, 6001, ApplicationStatus.DRAFT, 0, "无事务原因", 1));
         assertTransactionRequired(() -> store.compareAndSetApplicationWorkflowContext(
-                TENANT_1, 6001, 0, 0, 1, 900000000000030L, 900000000000031L, 6003,
+                TENANT_1, PROJECT_1, 6001, 0, 0, 1, 900000000000030L, 900000000000031L, 6003,
                 "a".repeat(64), 1));
-        assertTransactionRequired(() -> store.compareAndSetCancellationRequested(TENANT_1, 6001, 0, 6003, 1));
-        assertTransactionRequired(() -> store.replacePhysicalDrafts(TENANT_1, 6001, List.of()));
-        assertTransactionRequired(() -> store.insertHistory(history(6002, 6001, "无事务历史", LocalDateTime.now())));
-        assertTransactionRequired(() -> store.insertPendingWorkflowRound(pendingRound(6005, TENANT_1, 6001, 1)));
-        assertTransactionRequired(() -> store.lockWorkflowRound(TENANT_1, 6001, 1));
-        assertTransactionRequired(() -> store.lockWorkflowRoundByInstance(TENANT_1, 6003));
-        assertTransactionRequired(() -> store.bindWorkflowRoundStarted(TENANT_1, 6001, 1,
+        assertTransactionRequired(() -> store.compareAndSetCancellationRequested(
+                TENANT_1, PROJECT_1, 6001, 0, 6003, 1));
+        assertTransactionRequired(() -> store.replacePhysicalDrafts(TENANT_1, PROJECT_1, 6001, List.of()));
+        assertTransactionRequired(() -> store.insertHistory(
+                history(6002, TENANT_1, PROJECT_1, 6001, "无事务历史", LocalDateTime.now())));
+        assertTransactionRequired(() -> store.insertPendingWorkflowRound(
+                pendingRound(6005, TENANT_1, PROJECT_1, 6001, 1)));
+        assertTransactionRequired(() -> store.lockWorkflowRound(TENANT_1, PROJECT_1, 6001, 1));
+        assertTransactionRequired(() -> store.lockWorkflowRoundByInstance(TENANT_1, PROJECT_1, 6003));
+        assertTransactionRequired(() -> store.bindWorkflowRoundStarted(TENANT_1, PROJECT_1, 6001, 1,
                 900000000000030L, 900000000000031L, 6003, "a".repeat(64), LocalDateTime.now()));
-        assertTransactionRequired(() -> store.completeStartedWorkflowRound(TENANT_1, 6001, 1,
+        assertTransactionRequired(() -> store.completeStartedWorkflowRound(TENANT_1, PROJECT_1, 6001, 1,
                 WorkflowRoundStatus.APPROVED, LocalDateTime.now()));
-        assertTransactionRequired(() -> store.beginReceipt(receipt(6006, TENANT_1, "event-no-tx", 6001L, 1, 6003L,
-                "APPROVED")));
-        assertTransactionRequired(() -> store.completeReceipt(TENANT_1, "event-no-tx", SUBSCRIBER,
+        assertTransactionRequired(() -> store.beginReceipt(receipt(
+                6006, TENANT_1, PROJECT_1, "event-no-tx", 6001L, 1, 6003L, "APPROVED")));
+        assertTransactionRequired(() -> store.completeReceipt(TENANT_1, PROJECT_1, "event-no-tx", SUBSCRIBER,
                 WorkflowReceiptStatus.PROCESSED, "无事务"));
-        assertTransactionRequired(() -> store.insertTargetLock(new TargetLock(TENANT_1, TargetKind.PHYSICAL, 6003, 6001, null)));
-        assertTransactionRequired(() -> store.insertValueReservation(new ValueReservation(TENANT_1, "PHYSICAL_CODE", "PHY_TX", 6001, 0, null)));
-        assertTransactionRequired(() -> store.insertPhysicalReplacement(new PhysicalReplacement(6004, TENANT_1, 1, 2, 6001, null)));
-        assertTransactionRequired(() -> store.lockPhysical(TENANT_1, 1));
-        assertTransactionRequired(() -> store.insertPhysicalPublished(2, TENANT_1,
-                physicalDraft(6001, 1, TENANT_1, "PHY_NO_TX", "无事务物理"), PublishedStatus.ACTIVE, 0, 1));
+        assertTransactionRequired(() -> store.insertTargetLock(new TargetLock(
+                TENANT_1, PROJECT_1, TargetKind.PHYSICAL, 6003, 6001, null)));
+        assertTransactionRequired(() -> store.insertValueReservation(new ValueReservation(
+                TENANT_1, PROJECT_1, "PHYSICAL_CODE", "PHY_TX", 6001, 0, null)));
+        assertTransactionRequired(() -> store.insertPhysicalReplacement(new PhysicalReplacement(
+                6004, TENANT_1, PROJECT_1, 1, 2, 6001, null)));
+        assertTransactionRequired(() -> store.lockPhysical(TENANT_1, PROJECT_1, 1));
+        assertTransactionRequired(() -> store.insertPhysicalPublished(2, TENANT_1, PROJECT_1,
+                physicalDraft(6001, 1, TENANT_1, PROJECT_1, "PHY_NO_TX", "无事务物理"),
+                PublishedStatus.ACTIVE, 0, 1));
     }
 
-    private static ChangeApplication application(long id, long tenantId, ActionType actionType, Long targetId) {
-        return new ChangeApplication(id, tenantId, TargetKind.PHYSICAL, actionType, targetId,
+    private static ChangeApplication application(long id, long tenantId, long projectId,
+                                                 ActionType actionType, Long targetId) {
+        return new ChangeApplication(id, tenantId, projectId, TargetKind.PHYSICAL, actionType, targetId,
                 61, "测试申请", ApplicationStatus.DRAFT, 0, null, null, null, null,
                 false, 0, 61, 61, null, null);
     }
 
-    private static PhysicalDraft physicalDraft(long applicationId, int lineNo, long tenantId, String code, String name) {
-        return new PhysicalDraft(applicationId, lineNo, tenantId, null, code, name + "简称", name,
+    private static PhysicalDraft physicalDraft(long applicationId, int lineNo, long tenantId, long projectId,
+                                               String code, String name) {
+        return new PhysicalDraft(applicationId, lineNo, tenantId, projectId, null, code, name + "简称", name,
                 "物理逻辑域", "architecture.business-component.employee-portal",
                 "service-" + code.toLowerCase(), "架构组", 21,
                 "架构团队", "RUNTIME", "L1", "FRAMEWORK", 22L,
                 "描述", "备注", null, 0, "{\"source\":\"test\"}", null, null);
     }
 
-    private static WorkflowRound pendingRound(long id, long tenantId, long applicationId, int roundNo) {
-        return new WorkflowRound(id, tenantId, applicationId, roundNo, null, null, null, null,
+    private static WorkflowRound pendingRound(long id, long tenantId, long projectId,
+                                              long applicationId, int roundNo) {
+        return new WorkflowRound(id, tenantId, projectId, applicationId, roundNo, null, null, null, null,
                 WorkflowRoundStatus.PENDING, null, null, null, null);
     }
 
-    private static WorkflowReceiptStart receipt(long id, long tenantId, String eventId, Long applicationId,
+    private static WorkflowReceiptStart receipt(long id, long tenantId, long projectId, String eventId,
+                                                Long applicationId,
                                                 Integer roundNo, Long workflowInstanceId, String eventType) {
-        return new WorkflowReceiptStart(id, tenantId, eventId, SUBSCRIBER, applicationId, roundNo, workflowInstanceId,
-                eventType);
+        return new WorkflowReceiptStart(id, tenantId, projectId, eventId, SUBSCRIBER, applicationId, roundNo,
+                workflowInstanceId, eventType);
     }
 
-    private static ChangeHistoryEvent history(long id, long applicationId, String type, LocalDateTime occurredAt) {
-        return new ChangeHistoryEvent(id, TENANT_1, applicationId, type, ApplicationStatus.DRAFT,
+    private static ChangeHistoryEvent history(long id, long tenantId, long projectId, long applicationId,
+                                              String type, LocalDateTime occurredAt) {
+        return new ChangeHistoryEvent(id, tenantId, projectId, applicationId, type, ApplicationStatus.DRAFT,
                 ApplicationStatus.IN_REVIEW, 1, type, "{\"before\":true}", "{\"after\":true}", 61, occurredAt);
     }
 

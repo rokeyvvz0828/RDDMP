@@ -13,6 +13,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemReferenceQuery;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.org.OrgTreeNode;
 import com.ccb.system.org.OrganizationService;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -101,12 +103,14 @@ public class ArchitectureOptionsService {
                 .toList();
     }
 
-    /** 部署单元级联选项：仅返回当前租户可用的 ACTIVE 物理子系统。 */
-    public PageResult<PhysicalSubsystemOption> physicalSubsystems(AuthUser actor, PageQuery page,
+    /** 部署单元级联选项：仅返回当前项目可用的 ACTIVE 物理子系统。 */
+    public PageResult<PhysicalSubsystemOption> physicalSubsystems(AuthUser actor, ProjectAccess project,
+                                                                  PageQuery page,
                                                                   String code, String name) {
         requireActor(actor);
+        Objects.requireNonNull(project, "项目访问上下文不能为空");
         PageResult<com.ccb.architecture.model.PhysicalSubsystem> result = repository.pagePhysical(
-                actor.tenantId(), page, new PhysicalSubsystemQuery(normalizeOptional(code), null,
+                actor.tenantId(), project.id(), page, new PhysicalSubsystemQuery(normalizeOptional(code), null,
                         normalizeOptional(name), null, null, null, null, "ACTIVE"));
         List<PhysicalSubsystemOption> records = result.records().stream()
                 .map(item -> new PhysicalSubsystemOption(item.id(), item.code(), item.shortName(),

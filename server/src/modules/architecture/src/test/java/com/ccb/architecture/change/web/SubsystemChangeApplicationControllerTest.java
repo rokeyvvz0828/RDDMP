@@ -20,6 +20,8 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,11 +66,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SubsystemChangeApplicationControllerTest {
     private static final String BASE = "/api/architecture/subsystem-change-applications";
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "architect", "hash", "架构师", 11L, true);
+    private static final ProjectAccess PROJECT = new ProjectAccess(70L, "PROJECT-A", "项目 A");
 
     private SubsystemChangeService service;
     private ArchitectureSubsystemSubmissionService workflowService;
     private SubsystemSuggestionProvider suggestionProvider;
     private SystemOperationAudit operationAudit;
+    private ProjectAccessService projectAccessService;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -77,8 +81,12 @@ class SubsystemChangeApplicationControllerTest {
         workflowService = mock(ArchitectureSubsystemSubmissionService.class);
         suggestionProvider = mock(SubsystemSuggestionProvider.class);
         operationAudit = mock(SystemOperationAudit.class);
+        projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible(PROJECT.projectRef(), ACTOR)).thenReturn(PROJECT);
         mockMvc = MockMvcBuilders.standaloneSetup(
-                        new SubsystemChangeApplicationController(service, workflowService, suggestionProvider, operationAudit))
+                        new SubsystemChangeApplicationController(service, workflowService, suggestionProvider,
+                                operationAudit, projectAccessService))
+                .defaultRequest(get("/").param("projectRef", PROJECT.projectRef()))
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver(ACTOR))
                 .build();
@@ -96,22 +104,22 @@ class SubsystemChangeApplicationControllerTest {
         assertThat(root.value()).containsExactly(BASE);
 
         assertPermission("list", "hasAnyAuthority('architecture:view','architecture:apply','architecture:manage')",
-                ApplicationStatus.class, int.class, int.class, AuthUser.class, Authentication.class);
+                ApplicationStatus.class, int.class, int.class, String.class, AuthUser.class, Authentication.class);
         assertPermission("detail", "hasAnyAuthority('architecture:view','architecture:apply','architecture:manage')",
-                long.class, AuthUser.class, Authentication.class);
+                long.class, String.class, AuthUser.class, Authentication.class);
         assertPermission("create", "hasAnyAuthority('architecture:apply','architecture:manage')",
-                SubsystemChangeApplicationController.CreateApplicationRequest.class, AuthUser.class);
+                SubsystemChangeApplicationController.CreateApplicationRequest.class, String.class, AuthUser.class);
         assertPermission("update", "hasAnyAuthority('architecture:apply','architecture:manage')",
                 long.class, SubsystemChangeApplicationController.UpdateApplicationRequest.class,
-                AuthUser.class);
+                String.class, AuthUser.class);
         assertPermission("cancel", "hasAnyAuthority('architecture:apply','architecture:manage')",
                 long.class, SubsystemChangeApplicationController.CancelApplicationRequest.class,
-                AuthUser.class);
+                String.class, AuthUser.class);
         assertPermission("submit", "hasAnyAuthority('architecture:apply','architecture:manage')",
                 long.class, SubsystemChangeApplicationController.SubmitApplicationRequest.class,
-                AuthUser.class);
+                String.class, AuthUser.class);
         assertPermission("suggestions", "hasAnyAuthority('architecture:apply','architecture:manage')",
-                SubsystemChangeApplicationController.SuggestionPayload.class, AuthUser.class);
+                SubsystemChangeApplicationController.SuggestionPayload.class, String.class, AuthUser.class);
 
         assertMapping("list", GetMapping.class, "");
         assertMapping("detail", GetMapping.class, "/{id}");
@@ -129,9 +137,9 @@ class SubsystemChangeApplicationControllerTest {
 
     @Test
     void 读取范围只从认证权限派生并忽略查询伪造范围() throws Exception {
-        when(service.list(ACTOR, AccessScope.OWN, ApplicationStatus.DRAFT, 10, 3))
+        when(service.list(ACTOR, PROJECT, AccessScope.OWN, ApplicationStatus.DRAFT, 10, 3))
                 .thenReturn(List.of(application(101L, 9L)));
-        when(service.list(ACTOR, AccessScope.MANAGE, ApplicationStatus.DRAFT, 10, 3))
+        when(service.list(ACTOR, PROJECT, AccessScope.MANAGE, ApplicationStatus.DRAFT, 10, 3))
                 .thenReturn(List.of(application(102L, 99L)));
 
         mockMvc.perform(get(BASE).principal(authentication("architecture:view"))
@@ -147,13 +155,13 @@ class SubsystemChangeApplicationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(102));
 
-        verify(service).list(ACTOR, AccessScope.OWN, ApplicationStatus.DRAFT, 10, 3);
-        verify(service).list(ACTOR, AccessScope.MANAGE, ApplicationStatus.DRAFT, 10, 3);
+        verify(service).list(ACTOR, PROJECT, AccessScope.OWN, ApplicationStatus.DRAFT, 10, 3);
+        verify(service).list(ACTOR, PROJECT, AccessScope.MANAGE, ApplicationStatus.DRAFT, 10, 3);
     }
 
     @Test
     void 创建只接受物理目标且伪造身份和逻辑草稿字段不会生效() throws Exception {
-        when(service.createPhysical(eq(ACTOR), any(PhysicalApplicationCommand.class))).thenReturn(physicalDetail());
+        when(service.createPhysical(eq(ACTOR), eq(PROJECT), any(PhysicalApplicationCommand.class))).thenReturn(physicalDetail());
         ArgumentCaptor<PhysicalApplicationCommand> command = ArgumentCaptor.forClass(PhysicalApplicationCommand.class);
 
         mockMvc.perform(post(BASE).principal(authentication("architecture:apply"))
@@ -177,7 +185,7 @@ class SubsystemChangeApplicationControllerTest {
                 .andExpect(jsonPath("$.data.physicalDrafts[0].logicalSubsystemName").value("商城逻辑域"))
                 .andExpect(jsonPath("$.data.physicalDrafts[0].businessComponentCode").value("architecture.business-component.employee-portal"));
 
-        verify(service).createPhysical(eq(ACTOR), command.capture());
+        verify(service).createPhysical(eq(ACTOR), eq(PROJECT), command.capture());
         assertThat(command.getValue().actionType()).isEqualTo(ActionType.CREATE);
         assertThat(command.getValue().targetId()).isNull();
         assertThat(command.getValue().physicalDraft().code()).isEqualTo("PHY_MALL");
@@ -200,10 +208,10 @@ class SubsystemChangeApplicationControllerTest {
 
     @Test
     void 管理者维护本人申请仍使用本人范围且提交取消走工作流协调器() throws Exception {
-        when(service.update(eq(ACTOR), eq(AccessScope.OWN), eq(101L), eq(7L), any(DraftUpdateCommand.class)))
+        when(service.update(eq(ACTOR), eq(PROJECT), eq(AccessScope.OWN), eq(101L), eq(7L), any(DraftUpdateCommand.class)))
                 .thenReturn(physicalDetail());
-        when(workflowService.cancel(ACTOR, 101L, 8L)).thenReturn(cancelledDetail());
-        when(workflowService.submit(ACTOR, 101L, 7L)).thenReturn(physicalDetail());
+        when(workflowService.cancel(ACTOR, PROJECT, 101L, 8L)).thenReturn(cancelledDetail());
+        when(workflowService.submit(ACTOR, PROJECT, 101L, 7L)).thenReturn(physicalDetail());
         ArgumentCaptor<DraftUpdateCommand> updateCommand = ArgumentCaptor.forClass(DraftUpdateCommand.class);
 
         mockMvc.perform(put(BASE + "/101").principal(authentication("architecture:manage"))
@@ -229,9 +237,9 @@ class SubsystemChangeApplicationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.application.id").value(102));
 
-        verify(service).update(eq(ACTOR), eq(AccessScope.OWN), eq(101L), eq(7L), updateCommand.capture());
-        verify(workflowService).cancel(ACTOR, 101L, 8L);
-        verify(workflowService).submit(ACTOR, 101L, 7L);
+        verify(service).update(eq(ACTOR), eq(PROJECT), eq(AccessScope.OWN), eq(101L), eq(7L), updateCommand.capture());
+        verify(workflowService).cancel(ACTOR, PROJECT, 101L, 8L);
+        verify(workflowService).submit(ACTOR, PROJECT, 101L, 7L);
         assertThat(updateCommand.getValue().reason()).isEqualTo("更新说明");
         assertThat(updateCommand.getValue().physicalDrafts()).singleElement()
                 .satisfies(draft -> assertThat(draft.code()).isEqualTo("PHY_MALL"));
@@ -299,7 +307,7 @@ class SubsystemChangeApplicationControllerTest {
     }
 
     private ChangeApplication application(long id, long applicantId) {
-        return new ChangeApplication(id, ACTOR.tenantId(), TargetKind.PHYSICAL, ActionType.CREATE, null,
+        return new ChangeApplication(id, ACTOR.tenantId(), PROJECT.id(), TargetKind.PHYSICAL, ActionType.CREATE, null,
                 applicantId, "申请原因", ApplicationStatus.DRAFT, 1, null, null, null, null,
                 false, 1, applicantId, applicantId, time(), time());
     }
@@ -311,7 +319,7 @@ class SubsystemChangeApplicationControllerTest {
     }
 
     private ApplicationDetail cancelledDetail() {
-        ChangeApplication application = new ChangeApplication(101L, ACTOR.tenantId(), TargetKind.PHYSICAL,
+        ChangeApplication application = new ChangeApplication(101L, ACTOR.tenantId(), PROJECT.id(), TargetKind.PHYSICAL,
                 ActionType.CREATE, null, ACTOR.id(), "申请原因", ApplicationStatus.CANCELLED, 1,
                 null, null, null, null, false, 2, ACTOR.id(), ACTOR.id(), time(), time());
         return new ApplicationDetail(application, List.of(physicalDraft(application.id(), "PHY_MALL")),
@@ -319,7 +327,7 @@ class SubsystemChangeApplicationControllerTest {
     }
 
     private PhysicalDraft physicalDraft(long applicationId, String code) {
-        return new PhysicalDraft(applicationId, 1, ACTOR.tenantId(), null, code,
+        return new PhysicalDraft(applicationId, 1, ACTOR.tenantId(), PROJECT.id(), null, code,
                 "商城物理", "商城物理系统", "商城逻辑域",
                 "architecture.business-component.employee-portal", "Mall Platform", "渠道",
                 12L, "平台研发团队", "RUNTIME", "A", "Spring", 30L,
@@ -327,7 +335,7 @@ class SubsystemChangeApplicationControllerTest {
     }
 
     private ChangeHistoryEvent history(long applicationId, ApplicationStatus status) {
-        return new ChangeHistoryEvent(1L, ACTOR.tenantId(), applicationId, "DRAFT_SAVED",
+        return new ChangeHistoryEvent(1L, ACTOR.tenantId(), PROJECT.id(), applicationId, "DRAFT_SAVED",
                 null, status, 1, "保存草稿", null, null, ACTOR.id(), time());
     }
 

@@ -10,6 +10,7 @@ import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   getPhysicalSubsystem,
   listPhysicalSubsystems,
@@ -38,6 +39,7 @@ import {
 import './architecture.css'
 
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const router = useRouter()
 const rows = ref<PhysicalSubsystem[]>([])
 const total = ref(0)
@@ -99,6 +101,7 @@ const detailItems = computed<DetailItem[]>(() => detail.value ? [
 ] : [])
 
 async function loadReferences() {
+  if (!projectContext.currentRef) return
   const results = await Promise.allSettled([
     loadOrganizationOptions('physical-subsystem', '', 100),
     loadBusinessComponentOptions(),
@@ -118,7 +121,7 @@ async function loadReferences() {
 }
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   const request = ++listRequest
   loading.value = true
   loadError.value = ''
@@ -180,8 +183,8 @@ async function refresh() {
 function changePage(value: number) { page.value = value; void load() }
 function changePageSize(value: number) { pageSize.value = value; page.value = 1; void load() }
 
-watch(canView, allowed => {
-  if (allowed) void Promise.all([load(), loadReferences()])
+watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
+  if (allowed && projectRef) void Promise.all([load(), loadReferences()])
 }, { immediate: true })
 </script>
 

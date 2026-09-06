@@ -31,7 +31,7 @@ import java.util.Objects;
 
 /**
  * 计划计算引擎（REQ-20260830-056）：任务/环节/计划状态计算、实际时间聚合、实体授权与通用业务校验。
- * 所有状态变更动作完成后调用 {@link #recompute(long, long)} 向上传播。
+ * 所有状态变更动作完成后调用 {@link #recompute(long, long, long, LocalDateTime)} 向上传播。
  */
 @Service
 public class PlanEngine {
@@ -44,23 +44,23 @@ public class PlanEngine {
 
     /** 重新计算任务、环节、计划的状态并聚合实际时间（按需调用，动作后传播）。 */
     @Transactional
-    public void recompute(long tenantId, long planId, LocalDateTime now) {
-        Plan plan = store.lockPlan(tenantId, planId)
+    public void recompute(long tenantId, long projectId, long planId, LocalDateTime now) {
+        Plan plan = store.lockPlan(tenantId, projectId, planId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("搭建计划不存在"));
         if (plan.cancelled()) {
             return;
         }
-        List<Stage> stages = store.findStages(tenantId, planId);
-        List<Task> tasks = store.findTasks(tenantId, planId, null);
+        List<Stage> stages = store.findStages(tenantId, projectId, planId);
+        List<Task> tasks = store.findTasks(tenantId, projectId, planId, null);
         Map<Long, List<CheckItem>> itemsByTask = new HashMap<>();
         Map<Long, List<Block>> blocksByTask = new HashMap<>();
         Map<Long, List<Dependency>> depsByTask = new HashMap<>();
         Map<Long, List<TaskWorkOrder>> workOrdersByTask = new HashMap<>();
         for (Task task : tasks) {
-            itemsByTask.put(task.id(), store.findCheckItems(tenantId, task.id()));
-            blocksByTask.put(task.id(), store.findBlocks(tenantId, task.id()));
-            depsByTask.put(task.id(), store.findDependencies(tenantId, task.id(), false));
-            workOrdersByTask.put(task.id(), store.findWorkOrders(tenantId, task.id()));
+            itemsByTask.put(task.id(), store.findCheckItems(tenantId, projectId, task.id()));
+            blocksByTask.put(task.id(), store.findBlocks(tenantId, projectId, task.id()));
+            depsByTask.put(task.id(), store.findDependencies(tenantId, projectId, task.id(), false));
+            workOrdersByTask.put(task.id(), store.findWorkOrders(tenantId, projectId, task.id()));
         }
         Map<Long, Task> taskById = new HashMap<>();
         for (Task task : tasks) {
@@ -68,7 +68,7 @@ public class PlanEngine {
         }
         // 环节级前置依赖：stageId -> 前置 stageId 列表
         Map<Long, List<Long>> stageDeps = new HashMap<>();
-        for (Long[] pair : store.findStageDependencies(tenantId, planId)) {
+        for (Long[] pair : store.findStageDependencies(tenantId, projectId, planId)) {
             stageDeps.computeIfAbsent(pair[0], k -> new ArrayList<>()).add(pair[1]);
         }
         Map<Long, List<Task>> tasksByStageId = new HashMap<>();
@@ -77,7 +77,7 @@ public class PlanEngine {
         }
         // 1) 任务状态重算
         for (Task task : tasks) {
-            recomputeTask(tenantId, task, itemsByTask.get(task.id()), blocksByTask.get(task.id()),
+            recomputeTask(tenantId, projectId, task, itemsByTask.get(task.id()), blocksByTask.get(task.id()),
                     depsByTask.get(task.id()), workOrdersByTask.get(task.id()), taskById,
                     stageDeps, tasksByStageId, now);
         }
@@ -87,8 +87,8 @@ public class PlanEngine {
         boolean hasNonCancelledStage = false;
         for (Stage stage : stages) {
             List<Task> stageTasks = tasks.stream().filter(t -> t.stageId() == stage.id()).toList();
-            stageResults(tenantId, stage, stageTasks);
-            Stage current = store.findStage(tenantId, stage.id()).orElse(stage);
+            stageResults(tenantId, projectId, stage, stageTasks);
+            Stage current = store.findStage(tenantId, projectId, stage.id()).orElse(stage);
             if (!current.cancelled()) {
                 hasNonCancelledStage = true;
                 if (current.status() != PlanStatus.COMPLETED) {
@@ -99,13 +99,13 @@ public class PlanEngine {
                 }
             }
         }
-        boolean anyWaived = store.findTasks(tenantId, planId, null).stream()
+        boolean anyWaived = store.findTasks(tenantId, projectId, planId, null).stream()
                 .anyMatch(t -> !t.cancelled() && t.waivedAll());
         // 3) 计划状态与实际时间
         if (!hasNonCancelledStage) {
             allNonCancelledStagesCompleted = false;
         }
-        List<Stage> freshStages = store.findStages(tenantId, planId);
+        List<Stage> freshStages = store.findStages(tenantId, projectId, planId);
         LocalDateTime planActualStart = aggregateActualStart(freshStages.stream()
                 .map(Stage::actualStart).toList());
         LocalDateTime planActualEnd = aggregateActualEnd(freshStages.stream()
@@ -120,11 +120,12 @@ public class PlanEngine {
         } else {
             planStatus = PlanStatus.NOT_STARTED;
         }
-        store.updatePlanStatus(tenantId, planId, planStatus, false, null, null, null);
-        store.updatePlanActual(tenantId, planId, planActualStart, planActualEnd);
+        store.updatePlanStatus(tenantId, projectId, planId, planStatus, false, null, null, null);
+        store.updatePlanActual(tenantId, projectId, planId, planActualStart, planActualEnd);
     }
 
-    private void recomputeTask(long tenantId, Task task, List<CheckItem> checkItems, List<Block> blocks,
+    private void recomputeTask(long tenantId, long projectId, Task task, List<CheckItem> checkItems,
+                               List<Block> blocks,
                                List<Dependency> dependencies, List<TaskWorkOrder> workOrders,
                                Map<Long, Task> taskById, Map<Long, List<Long>> stageDeps,
                                Map<Long, List<Task>> tasksByStageId, LocalDateTime now) {
@@ -138,18 +139,18 @@ public class PlanEngine {
         boolean completionMet = total > 0 && cancelled + completed == total;
         boolean allCancelled = total > 0 && cancelled == total;
         boolean hasOpenBlock = blocks.stream().anyMatch(b -> !b.resolved());
-        boolean hasOpenWorkOrder = !storeOpenWorkOrders(tenantId, workOrders).isEmpty();
+        boolean hasOpenWorkOrder = !storeOpenWorkOrders(tenantId, projectId, workOrders).isEmpty();
         boolean missingPreceding = dependencies.stream().anyMatch(dep -> {
             Task predecessor = taskById.get(dep.predecessorId());
             return predecessor != null && predecessor.status() != TaskStatus.COMPLETED;
-        }) || missingStagePreceding(tenantId, task, stageDeps, tasksByStageId);
-        TaskActual actual = aggregateActualTimes(tenantId, task.planId(), "TASK", task.id());
+        }) || missingStagePreceding(tenantId, projectId, task, stageDeps, tasksByStageId);
+        TaskActual actual = aggregateActualTimes(tenantId, projectId, task.planId(), "TASK", task.id());
         boolean started = actual.start() != null;
         PlanStatusCalculator.TaskComputed computed = PlanStatusCalculator.computeTask(
                 new PlanStatusCalculator.TaskFact(task.cancelled(), completionMet, hasOpenBlock,
                         hasOpenWorkOrder, missingPreceding, started, total > 0, allCancelled,
                         task.plannedEnd()), now);
-        store.updateTaskExecution(tenantId, task.id(), computed.status(), actual.start(), actual.end(),
+        store.updateTaskExecution(tenantId, projectId, task.id(), computed.status(), actual.start(), actual.end(),
                 computed.waivedAll(), task.ownerUserId());
     }
 
@@ -157,22 +158,22 @@ public class PlanEngine {
      * 任务是否仍存在未完成前置（任务级依赖 + 环节级前置，目标对齐语义）。
      * 供动作校验（开始任务/完成检查项）与状态重算复用，保持同一判断口径。
      */
-    public boolean hasMissingPreceding(long tenantId, Task task) {
-        for (Dependency dep : store.findDependencies(tenantId, task.id(), false)) {
-            Task predecessor = store.findTask(tenantId, dep.predecessorId()).orElse(null);
+    public boolean hasMissingPreceding(long tenantId, long projectId, Task task) {
+        for (Dependency dep : store.findDependencies(tenantId, projectId, task.id(), false)) {
+            Task predecessor = store.findTask(tenantId, projectId, dep.predecessorId()).orElse(null);
             if (predecessor == null || predecessor.status() != TaskStatus.COMPLETED) {
                 return true;
             }
         }
         Map<Long, List<Long>> stageDeps = new HashMap<>();
-        for (Long[] pair : store.findStageDependencies(tenantId, task.planId())) {
+        for (Long[] pair : store.findStageDependencies(tenantId, projectId, task.planId())) {
             stageDeps.computeIfAbsent(pair[0], k -> new ArrayList<>()).add(pair[1]);
         }
         Map<Long, List<Task>> tasksByStageId = new HashMap<>();
-        for (Task candidate : store.findTasks(tenantId, task.planId(), null)) {
+        for (Task candidate : store.findTasks(tenantId, projectId, task.planId(), null)) {
             tasksByStageId.computeIfAbsent(candidate.stageId(), k -> new ArrayList<>()).add(candidate);
         }
-        return missingStagePreceding(tenantId, task, stageDeps, tasksByStageId);
+        return missingStagePreceding(tenantId, projectId, task, stageDeps, tasksByStageId);
     }
 
     /**
@@ -180,7 +181,8 @@ public class PlanEngine {
      * 视为豁免不参与）；当前任务为计划级（无目标）时要求前置环节全部有效任务完成；前置环节没有
      * 相匹配任务时按全部任务完成处理。
      */
-    private boolean missingStagePreceding(long tenantId, Task task, Map<Long, List<Long>> stageDeps,
+    private boolean missingStagePreceding(long tenantId, long projectId, Task task,
+                                          Map<Long, List<Long>> stageDeps,
                                           Map<Long, List<Task>> tasksByStageId) {
         List<Long> predecessors = stageDeps.getOrDefault(task.stageId(), List.of());
         if (predecessors.isEmpty()) {
@@ -199,7 +201,7 @@ public class PlanEngine {
                 if (pre.cancelled()) {
                     return true;
                 }
-                return store.findTask(tenantId, pre.id())
+                return store.findTask(tenantId, projectId, pre.id())
                         .map(fresh -> fresh.status() == TaskStatus.COMPLETED)
                         .orElse(false);
             });
@@ -210,11 +212,11 @@ public class PlanEngine {
         return false;
     }
 
-    private void stageResults(long tenantId, Stage stage, List<Task> stageTasks) {
+    private void stageResults(long tenantId, long projectId, Stage stage, List<Task> stageTasks) {
         if (stage.cancelled()) {
             return;
         }
-        List<Task> freshTasks = store.findTasks(tenantId, stage.planId(), stage.id());
+        List<Task> freshTasks = store.findTasks(tenantId, projectId, stage.planId(), stage.id());
         boolean hasTasks = !freshTasks.isEmpty();
         boolean allTasksCancelled = hasTasks && freshTasks.stream().allMatch(Task::cancelled);
         boolean allEffectiveCompleted = !hasTasks || freshTasks.stream()
@@ -236,13 +238,14 @@ public class PlanEngine {
         } else {
             status = PlanStatus.NOT_STARTED;
         }
-        store.updateStageStatus(tenantId, stage.id(), status, false, null, null, null);
-        store.updateStageActual(tenantId, stage.id(), actualStart, actualEnd);
+        store.updateStageStatus(tenantId, projectId, stage.id(), status, false, null, null, null);
+        store.updateStageActual(tenantId, projectId, stage.id(), actualStart, actualEnd);
     }
 
     /** 从执行事件聚合任务实际开始与完成时间（更正事件替换原事件，重开后实际完成置空）。 */
-    public TaskActual aggregateActualTimes(long tenantId, long planId, String objectType, long objectId) {
-        List<PlanEvent> events = store.findEvents(tenantId, planId, objectType, objectId);
+    public TaskActual aggregateActualTimes(long tenantId, long projectId, long planId, String objectType,
+                                           long objectId) {
+        List<PlanEvent> events = store.findEvents(tenantId, projectId, planId, objectType, objectId);
         Map<Long, PlanEvent> byId = new HashMap<>();
         for (PlanEvent event : events) {
             byId.put(event.id(), event);
@@ -282,7 +285,7 @@ public class PlanEngine {
         return -1;
     }
 
-    private List<Long> storeOpenWorkOrders(long tenantId, List<TaskWorkOrder> workOrders) {
+    private List<Long> storeOpenWorkOrders(long tenantId, long projectId, List<TaskWorkOrder> workOrders) {
         if (workOrders.isEmpty()) {
             return List.of();
         }
@@ -295,13 +298,14 @@ public class PlanEngine {
                 resourceIds.add(workOrder.workOrderId());
             }
         }
-        List<Long> open = new ArrayList<>(store.openResourceRequestIds(tenantId, resourceIds));
-        open.addAll(store.openNetworkWorkOrderIds(tenantId, networkIds));
+        List<Long> open = new ArrayList<>(store.openResourceRequestIds(tenantId, projectId, resourceIds));
+        open.addAll(store.openNetworkWorkOrderIds(tenantId, projectId, networkIds));
         return open;
     }
 
-    public List<TaskWorkOrder> openWorkOrderRefs(long tenantId, List<TaskWorkOrder> workOrders) {
-        List<Long> openIds = storeOpenWorkOrders(tenantId, workOrders);
+    public List<TaskWorkOrder> openWorkOrderRefs(long tenantId, long projectId,
+                                                 List<TaskWorkOrder> workOrders) {
+        List<Long> openIds = storeOpenWorkOrders(tenantId, projectId, workOrders);
         return workOrders.stream().filter(w -> openIds.contains(w.workOrderId())).toList();
     }
 
@@ -330,36 +334,36 @@ public class PlanEngine {
         }
     }
 
-    public void requireTaskExecutor(AuthUser actor, Task task, boolean isAdmin) {
+    public void requireTaskExecutor(AuthUser actor, long projectId, Task task, boolean isAdmin) {
         if (isAdmin || actor.id() == task.ownerUserId()
-                || store.findParticipantUserIds(actor.tenantId(), task.id()).contains(actor.id())) {
+                || store.findParticipantUserIds(actor.tenantId(), projectId, task.id()).contains(actor.id())) {
             return;
         }
         throw new BusinessException(ErrorCode.FORBIDDEN, "仅任务责任人、参与人或管理员可以执行该操作");
     }
 
-    public Plan requirePlan(AuthUser actor, long planId) {
-        return store.findPlan(actor.tenantId(), planId)
+    public Plan requirePlan(AuthUser actor, long projectId, long planId) {
+        return store.findPlan(actor.tenantId(), projectId, planId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("搭建计划不存在"));
     }
 
-    public Task requireTask(AuthUser actor, long taskId) {
-        return store.findTask(actor.tenantId(), taskId)
+    public Task requireTask(AuthUser actor, long projectId, long taskId) {
+        return store.findTask(actor.tenantId(), projectId, taskId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("任务不存在"));
     }
 
-    public Stage requireStage(AuthUser actor, long stageId) {
-        return store.findStage(actor.tenantId(), stageId)
+    public Stage requireStage(AuthUser actor, long projectId, long stageId) {
+        return store.findStage(actor.tenantId(), projectId, stageId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("环节不存在"));
     }
 
-    public CheckItem requireCheckItem(AuthUser actor, long checkItemId) {
-        return store.findCheckItem(actor.tenantId(), checkItemId)
+    public CheckItem requireCheckItem(AuthUser actor, long projectId, long checkItemId) {
+        return store.findCheckItem(actor.tenantId(), projectId, checkItemId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("检查项不存在"));
     }
 
-    public List<PlanTarget> findActiveTargets(long tenantId, long planId) {
-        return store.findActiveTargets(tenantId, planId);
+    public List<PlanTarget> findActiveTargets(long tenantId, long projectId, long planId) {
+        return store.findActiveTargets(tenantId, projectId, planId);
     }
 
     public PlanStore store() {

@@ -61,7 +61,7 @@ public final class PlanModels {
     }
 
     /** 计划当前值。 */
-    public record Plan(long id, String planNo, String name, long environmentId,
+    public record Plan(long id, long projectId, String planNo, String name, long environmentId,
                        PlanStatus status, long templateId, int templateVersionNo,
                        long planOwnerUserId, LocalDateTime plannedStart, LocalDateTime plannedEnd,
                        LocalDateTime actualStart, LocalDateTime actualEnd, boolean cancelled,

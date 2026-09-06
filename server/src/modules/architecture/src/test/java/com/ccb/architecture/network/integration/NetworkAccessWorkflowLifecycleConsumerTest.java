@@ -13,6 +13,9 @@ import com.ccb.architecture.network.service.NetworkAccessApplicationSubmissionSe
 import com.ccb.architecture.network.service.NetworkAccessService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
@@ -33,12 +36,16 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NetworkAccessWorkflowLifecycleConsumerTest {
     private static final long TENANT_ID = 7L;
+    private static final long PROJECT_ID = 100L;
+    private static final ProjectAccess PROJECT =
+            new ProjectAccess(PROJECT_ID, "RDDMP-PLATFORM", "RDDMP 平台");
     private static final long APPLICATION_ID = 910041L;
     private static final long ROUND_ID = 910042L;
     private static final long INSTANCE_ID = 890041L;
@@ -52,13 +59,18 @@ class NetworkAccessWorkflowLifecycleConsumerTest {
     private NetworkAccessStore store;
     @Mock
     private NetworkAccessService access;
+    @Mock
+    private ProjectAccessService projectAccessService;
 
     private final AtomicLong ids = new AtomicLong(910050L);
     private NetworkAccessWorkflowLifecycleConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new NetworkAccessWorkflowLifecycleConsumer(store, access, ids::incrementAndGet);
+        lenient().when(projectAccessService.requireAccessible(eq(PROJECT.projectRef()), any(AuthUser.class)))
+                .thenReturn(PROJECT);
+        consumer = new NetworkAccessWorkflowLifecycleConsumer(
+                store, access, projectAccessService, ids::incrementAndGet);
     }
 
     @Test
@@ -71,88 +83,88 @@ class NetworkAccessWorkflowLifecycleConsumerTest {
     @Test
     void 批准事件推进申请批准并完成轮次与回执() {
         NetworkAccessApplication application = reviewApplication(false);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
-        when(store.isLatestWorkflowRound(TENANT_ID, APPLICATION_ID, 1)).thenReturn(true);
-        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(APPLICATION_ID), eq(1),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
+        when(store.isLatestWorkflowRound(TENANT_ID, PROJECT_ID, APPLICATION_ID, 1)).thenReturn(true);
+        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(APPLICATION_ID), eq(1),
                 eq(WorkflowRoundStatus.APPROVED), eq(OCCURRED_AT))).thenReturn(true);
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-approved"), eq(SUBSCRIBER_KEY),
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-approved"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStatus.PROCESSED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.APPROVED));
 
-        verify(access).applyApprovalInCurrentTransaction(TENANT_ID, APPLICATION_ID, 3L, 101L);
-        verify(store).completeStartedWorkflowRound(eq(TENANT_ID), eq(APPLICATION_ID), eq(1),
+        verify(access).applyApprovalInCurrentTransaction(TENANT_ID, PROJECT_ID, APPLICATION_ID, 3L, 101L);
+        verify(store).completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(APPLICATION_ID), eq(1),
                 eq(WorkflowRoundStatus.APPROVED), eq(OCCURRED_AT));
     }
 
     @Test
     void 退回事件应用退回结论() {
         NetworkAccessApplication application = reviewApplication(false);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
-        when(store.isLatestWorkflowRound(TENANT_ID, APPLICATION_ID, 1)).thenReturn(true);
-        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(APPLICATION_ID), eq(1),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
+        when(store.isLatestWorkflowRound(TENANT_ID, PROJECT_ID, APPLICATION_ID, 1)).thenReturn(true);
+        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(APPLICATION_ID), eq(1),
                 eq(WorkflowRoundStatus.RETURNED), eq(OCCURRED_AT))).thenReturn(true);
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-returned"), eq(SUBSCRIBER_KEY),
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-returned"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStatus.PROCESSED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.RETURNED));
 
-        verify(access).applyReviewOutcomeInCurrentTransaction(TENANT_ID, APPLICATION_ID, 3L, 101L,
+        verify(access).applyReviewOutcomeInCurrentTransaction(TENANT_ID, PROJECT_ID, APPLICATION_ID, 3L, 101L,
                 ApplicationStatus.RETURNED);
     }
 
     @Test
     void 终止事件确认取消申请() {
         NetworkAccessApplication application = reviewApplication(true);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
-        when(store.isLatestWorkflowRound(TENANT_ID, APPLICATION_ID, 1)).thenReturn(true);
-        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(APPLICATION_ID), eq(1),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
+        when(store.isLatestWorkflowRound(TENANT_ID, PROJECT_ID, APPLICATION_ID, 1)).thenReturn(true);
+        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(APPLICATION_ID), eq(1),
                 eq(WorkflowRoundStatus.TERMINATED), eq(OCCURRED_AT))).thenReturn(true);
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-terminated"), eq(SUBSCRIBER_KEY),
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-terminated"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStatus.PROCESSED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.TERMINATED));
 
-        verify(access).applyCancellationConfirmationInCurrentTransaction(TENANT_ID, APPLICATION_ID, 3L, 101L);
+        verify(access).applyCancellationConfirmationInCurrentTransaction(TENANT_ID, PROJECT_ID, APPLICATION_ID, 3L, 101L);
     }
 
     @Test
     void 重复事件幂等跳过() {
         NetworkAccessApplication application = reviewApplication(false);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
         when(store.beginReceipt(any())).thenReturn(false);
 
         consumer.consume(event(WorkflowLifecycleEventType.APPROVED));
 
-        verify(store, never()).lockWorkflowRoundByInstance(anyLong(), anyLong());
-        verify(access, never()).applyApprovalInCurrentTransaction(anyLong(), anyLong(), anyLong(), anyLong());
+        verify(store, never()).lockWorkflowRoundByInstance(anyLong(), anyLong(), anyLong());
+        verify(access, never()).applyApprovalInCurrentTransaction(anyLong(), anyLong(), anyLong(), anyLong(), anyLong());
     }
 
     @Test
     void 事件不匹配当前轮次时忽略() {
         NetworkAccessApplication application = reviewApplication(false);
-        WorkflowRound staleRound = new WorkflowRound(ROUND_ID, TENANT_ID, APPLICATION_ID, 2,
+        WorkflowRound staleRound = new WorkflowRound(ROUND_ID, TENANT_ID, PROJECT_ID, APPLICATION_ID, 2,
                 DEFINITION_ID, VERSION_ID, INSTANCE_ID, "e".repeat(64), WorkflowRoundStatus.STARTED,
                 OCCURRED_AT, null, OCCURRED_AT, OCCURRED_AT);
-        when(store.lockApplication(TENANT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(staleRound));
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(staleRound));
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStatus.IGNORED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.STARTED));
 
-        verify(store).completeReceipt(eq(TENANT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
+        verify(store).completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkAccessModels.WorkflowReceiptStatus.IGNORED),
                 anyString());
     }
@@ -163,7 +175,7 @@ class NetworkAccessWorkflowLifecycleConsumerTest {
                 "", TENANT_ID, INSTANCE_ID, WorkflowLifecycleEventType.APPROVED,
                 new WorkflowBusinessContext("architecture", "架构管理",
                         NetworkAccessApplicationSubmissionService.BUSINESS_TYPE, String.valueOf(APPLICATION_ID),
-                        "网络访问申请 " + APPLICATION_ID, 1, null, null,
+                        "网络访问申请 " + APPLICATION_ID, 1, PROJECT.projectRef(), PROJECT.projectName(),
                         "/architecture/network-access?applicationId=" + APPLICATION_ID, "short"),
                 101L,
                 OCCURRED_AT);
@@ -175,7 +187,7 @@ class NetworkAccessWorkflowLifecycleConsumerTest {
 
     private NetworkAccessApplication reviewApplication(boolean cancellationRequested) {
         return new NetworkAccessApplication(
-                APPLICATION_ID, TENANT_ID, "NAA" + APPLICATION_ID, 9L, NetworkAccessActionType.OPEN, null,
+                APPLICATION_ID, TENANT_ID, PROJECT_ID, "NAA" + APPLICATION_ID, 9L, NetworkAccessActionType.OPEN, null,
                 EndpointKind.MANAGED, 1L, 2L, 3L, null, "[]",
                 EndpointKind.EXTERNAL, null, null, null, 4L, "[]",
                 AccessProtocol.TCP, "443", "访问用途", null,
@@ -185,7 +197,7 @@ class NetworkAccessWorkflowLifecycleConsumerTest {
     }
 
     private WorkflowRound startedRound() {
-        return new WorkflowRound(ROUND_ID, TENANT_ID, APPLICATION_ID, 1,
+        return new WorkflowRound(ROUND_ID, TENANT_ID, PROJECT_ID, APPLICATION_ID, 1,
                 DEFINITION_ID, VERSION_ID, INSTANCE_ID, DIGEST, WorkflowRoundStatus.STARTED,
                 OCCURRED_AT, null, OCCURRED_AT, OCCURRED_AT);
     }
@@ -198,7 +210,7 @@ class NetworkAccessWorkflowLifecycleConsumerTest {
                 type,
                 new WorkflowBusinessContext("architecture", "架构管理",
                         NetworkAccessApplicationSubmissionService.BUSINESS_TYPE, String.valueOf(APPLICATION_ID),
-                        "网络访问申请 " + APPLICATION_ID, 1, null, null,
+                        "网络访问申请 " + APPLICATION_ID, 1, PROJECT.projectRef(), PROJECT.projectName(),
                         "/architecture/network-access?applicationId=" + APPLICATION_ID, DIGEST),
                 101L,
                 OCCURRED_AT);

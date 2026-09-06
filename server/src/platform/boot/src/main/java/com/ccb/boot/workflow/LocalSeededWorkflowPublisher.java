@@ -1,7 +1,7 @@
 package com.ccb.boot.workflow;
 
 import com.ccb.security.model.AuthUser;
-import com.ccb.workflow.service.WorkflowService;
+import com.ccb.workflow.service.FlowableWorkflowService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -22,7 +22,7 @@ import java.util.Map;
 public class LocalSeededWorkflowPublisher implements ApplicationRunner {
     private static final String DEFINITION_SQL = """
             SELECT id, code, status FROM wf_definition
-            WHERE tenant_id = ? AND deleted = 0 AND code IN (%s)
+            WHERE tenant_id = ? AND scope_type = 'PLATFORM' AND deleted = 0 AND code IN (%s)
             """;
     private static final String OPERATOR_SQL = """
             SELECT id, username, display_name, org_id FROM sys_user
@@ -30,15 +30,15 @@ public class LocalSeededWorkflowPublisher implements ApplicationRunner {
             """;
 
     private final JdbcTemplate jdbc;
-    private final WorkflowService workflows;
+    private final FlowableWorkflowService workflows;
     private final long tenantId;
     private final long operatorUserId;
     private final List<String> definitionCodes;
 
-    public LocalSeededWorkflowPublisher(JdbcTemplate jdbc, WorkflowService workflows,
+    public LocalSeededWorkflowPublisher(JdbcTemplate jdbc, FlowableWorkflowService workflows,
             @Value("${ccb.workflow.seeded-definition-publisher.tenant-id:1}") long tenantId,
             @Value("${ccb.workflow.seeded-definition-publisher.operator-user-id:1}") long operatorUserId,
-            @Value("${ccb.workflow.seeded-definition-publisher.definition-codes:architecture.subsystem.change,architecture.resource-request}") String definitionCodes) {
+            @Value("${ccb.workflow.seeded-definition-publisher.definition-codes:architecture.subsystem.change,architecture.resource-request,architecture.network.work-order,architecture.network-access-application,architecture.decision.review}") String definitionCodes) {
         this.jdbc = jdbc;
         this.workflows = workflows;
         this.tenantId = tenantId;

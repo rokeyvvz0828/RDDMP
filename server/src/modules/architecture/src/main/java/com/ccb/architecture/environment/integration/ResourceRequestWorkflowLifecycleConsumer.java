@@ -11,6 +11,9 @@ import com.ccb.architecture.environment.service.EnvironmentResourceService;
 import com.ccb.architecture.environment.service.ResourceRequestSubmissionService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
@@ -34,20 +37,24 @@ public class ResourceRequestWorkflowLifecycleConsumer implements WorkflowLifecyc
 
     private final EnvironmentResourceStore store;
     private final EnvironmentResourceService changes;
+    private final ProjectAccessService projectAccessService;
     private final LongSupplier idSupplier;
 
     @Autowired
     public ResourceRequestWorkflowLifecycleConsumer(EnvironmentResourceStore store,
-                                                   EnvironmentResourceService changes) {
-        this(store, changes,
+                                                   EnvironmentResourceService changes,
+                                                   ProjectAccessService projectAccessService) {
+        this(store, changes, projectAccessService,
                 () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
     }
 
     ResourceRequestWorkflowLifecycleConsumer(EnvironmentResourceStore store,
                                              EnvironmentResourceService changes,
+                                             ProjectAccessService projectAccessService,
                                              LongSupplier idSupplier) {
         this.store = Objects.requireNonNull(store, "环境资源存储不能为空");
         this.changes = Objects.requireNonNull(changes, "环境资源服务不能为空");
+        this.projectAccessService = Objects.requireNonNull(projectAccessService, "项目访问服务不能为空");
         this.idSupplier = Objects.requireNonNull(idSupplier, "标识生成器不能为空");
     }
 
@@ -65,76 +72,82 @@ public class ResourceRequestWorkflowLifecycleConsumer implements WorkflowLifecyc
     @Transactional
     public void consume(WorkflowLifecycleEvent event) {
         long requestId = validateAndRequestId(event);
-        ResourceRequest request = store.lockRequest(event.tenantId(), requestId)
+        ProjectAccess project = projectAccessService.requireAccessible(event.context().projectRef(), workflowOperator(event));
+        if (!Objects.equals(project.projectName(), event.context().projectName())) {
+            throw conflict("工作流事件项目上下文与可信项目不一致");
+        }
+        ResourceRequest request = store.lockRequest(event.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> conflict("工作流事件关联的资源申请不存在"));
-        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), event.eventId(),
+        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), project.id(), event.eventId(),
                 SUBSCRIBER_KEY, requestId, event.context().businessRound(), event.instanceId(),
                 event.eventType().name()))) {
             return;
         }
 
-        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), event.instanceId())
+        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), project.id(), event.instanceId())
                 .orElseThrow(() -> conflict("工作流事件关联的审批轮次不存在"));
         if (!matches(request, round, event)
-                || !store.isLatestWorkflowRound(event.tenantId(), request.id(), round.roundNo())) {
-            ignored(event, "事件不匹配当前实例、轮次或摘要");
+                || !store.isLatestWorkflowRound(event.tenantId(), project.id(), request.id(), round.roundNo())) {
+            ignored(event, project.id(), "事件不匹配当前实例、轮次或摘要");
             return;
         }
 
         switch (event.eventType()) {
-            case STARTED -> consumeStarted(event, request, round);
-            case APPROVED -> consumeApproved(event, request, round);
-            case RETURNED -> consumeReviewOutcome(event, request, round,
+            case STARTED -> consumeStarted(event, project.id(), request, round);
+            case APPROVED -> consumeApproved(event, project.id(), request, round);
+            case RETURNED -> consumeReviewOutcome(event, project.id(), request, round,
                     RequestStatus.RETURNED, WorkflowRoundStatus.RETURNED);
-            case REJECTED -> consumeReviewOutcome(event, request, round,
+            case REJECTED -> consumeReviewOutcome(event, project.id(), request, round,
                     RequestStatus.REJECTED, WorkflowRoundStatus.REJECTED);
-            case TERMINATED -> consumeTerminated(event, request, round);
+            case TERMINATED -> consumeTerminated(event, project.id(), request, round);
         }
     }
 
-    private void consumeStarted(WorkflowLifecycleEvent event, ResourceRequest request, WorkflowRound round) {
+    private void consumeStarted(WorkflowLifecycleEvent event, long projectId,
+                                ResourceRequest request, WorkflowRound round) {
         if (!isActiveReview(request, round)) {
-            ignored(event, "STARTED 事件对应的资源申请或轮次已完成");
+            ignored(event, projectId, "STARTED 事件对应的资源申请或轮次已完成");
             return;
         }
-        processed(event, "已确认当前审批轮次启动");
+        processed(event, projectId, "已确认当前审批轮次启动");
     }
 
-    private void consumeApproved(WorkflowLifecycleEvent event, ResourceRequest request, WorkflowRound round) {
+    private void consumeApproved(WorkflowLifecycleEvent event, long projectId,
+                                 ResourceRequest request, WorkflowRound round) {
         if (!isActiveReview(request, round) || request.cancellationRequested()) {
-            ignored(event, "APPROVED 事件对应的资源申请已变化或正在取消");
+            ignored(event, projectId, "APPROVED 事件对应的资源申请已变化或正在取消");
             return;
         }
-        changes.applyApprovalInCurrentTransaction(event.tenantId(), request.id(),
+        changes.applyApprovalInCurrentTransaction(event.tenantId(), request.projectId(), request.id(),
                 request.rowVersion(), event.operatorId());
         completeRound(event, request, round, WorkflowRoundStatus.APPROVED);
-        processed(event, "已批准资源申请，实际资源分配待后续搭建任务接入");
+        processed(event, projectId, "已批准资源申请，实际资源分配待后续搭建任务接入");
     }
 
-    private void consumeReviewOutcome(WorkflowLifecycleEvent event, ResourceRequest request,
+    private void consumeReviewOutcome(WorkflowLifecycleEvent event, long projectId, ResourceRequest request,
                                       WorkflowRound round, RequestStatus outcome,
                                       WorkflowRoundStatus roundStatus) {
         if (!isActiveReview(request, round) || request.cancellationRequested()) {
-            ignored(event, event.eventType() + " 事件对应的资源申请已变化或正在取消");
+            ignored(event, projectId, event.eventType() + " 事件对应的资源申请已变化或正在取消");
             return;
         }
-        changes.applyReviewOutcomeInCurrentTransaction(event.tenantId(), request.id(),
+        changes.applyReviewOutcomeInCurrentTransaction(event.tenantId(), request.projectId(), request.id(),
                 request.rowVersion(), event.operatorId(), outcome);
         completeRound(event, request, round, roundStatus);
-        processed(event, outcome == RequestStatus.RETURNED
+        processed(event, projectId, outcome == RequestStatus.RETURNED
                 ? "已退回申请人修改" : "已拒绝并结束资源申请");
     }
 
-    private void consumeTerminated(WorkflowLifecycleEvent event, ResourceRequest request,
+    private void consumeTerminated(WorkflowLifecycleEvent event, long projectId, ResourceRequest request,
                                    WorkflowRound round) {
         if (!isActiveReview(request, round) || !request.cancellationRequested()) {
-            ignored(event, "TERMINATED 事件没有匹配的取消请求");
+            ignored(event, projectId, "TERMINATED 事件没有匹配的取消请求");
             return;
         }
-        changes.applyCancellationConfirmationInCurrentTransaction(event.tenantId(), request.id(),
+        changes.applyCancellationConfirmationInCurrentTransaction(event.tenantId(), request.projectId(), request.id(),
                 request.rowVersion(), event.operatorId());
         completeRound(event, request, round, WorkflowRoundStatus.TERMINATED);
-        processed(event, "已确认工作流终止并取消资源申请");
+        processed(event, projectId, "已确认工作流终止并取消资源申请");
     }
 
     private boolean isActiveReview(ResourceRequest request, WorkflowRound round) {
@@ -144,7 +157,7 @@ public class ResourceRequestWorkflowLifecycleConsumer implements WorkflowLifecyc
 
     private void completeRound(WorkflowLifecycleEvent event, ResourceRequest request,
                                WorkflowRound round, WorkflowRoundStatus nextStatus) {
-        if (!store.completeStartedWorkflowRound(event.tenantId(), request.id(), round.roundNo(),
+        if (!store.completeStartedWorkflowRound(event.tenantId(), request.projectId(), request.id(), round.roundNo(),
                 nextStatus, event.occurredAt())) {
             throw conflict("审批轮次状态已变化");
         }
@@ -191,15 +204,15 @@ public class ResourceRequestWorkflowLifecycleConsumer implements WorkflowLifecyc
         return left != null && right != null && left.equalsIgnoreCase(right);
     }
 
-    private void processed(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+    private void processed(WorkflowLifecycleEvent event, long projectId, String detail) {
+        if (!store.completeReceipt(event.tenantId(), projectId, event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.PROCESSED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
     }
 
-    private void ignored(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+    private void ignored(WorkflowLifecycleEvent event, long projectId, String detail) {
+        if (!store.completeReceipt(event.tenantId(), projectId, event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.IGNORED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
@@ -211,6 +224,10 @@ public class ResourceRequestWorkflowLifecycleConsumer implements WorkflowLifecyc
             throw new IllegalStateException("工作流回执标识生成器返回无效值");
         }
         return value;
+    }
+
+    private AuthUser workflowOperator(WorkflowLifecycleEvent event) {
+        return new AuthUser(event.operatorId(), event.tenantId(), "workflow", "", "工作流审批", 0L, true);
     }
 
     private BusinessException conflict(String message) {

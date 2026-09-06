@@ -108,6 +108,7 @@ public final class NetworkWorkOrderModels {
     public record WorkOrder(
             long id,
             long tenantId,
+            long projectId,
             Kind kind,
             ActionType actionType,
             String subject,
@@ -137,6 +138,7 @@ public final class NetworkWorkOrderModels {
     public record WorkOrderSummary(
             long id,
             long tenantId,
+            long projectId,
             Kind kind,
             ActionType actionType,
             String subject,
@@ -157,6 +159,7 @@ public final class NetworkWorkOrderModels {
     public record HistoryEvent(
             long id,
             long tenantId,
+            long projectId,
             long workOrderId,
             String eventType,
             WorkOrderStatus fromStatus,
@@ -172,6 +175,7 @@ public final class NetworkWorkOrderModels {
     public record WorkflowRound(
             long id,
             long tenantId,
+            long projectId,
             long workOrderId,
             int roundNo,
             Long workflowDefinitionId,
@@ -188,6 +192,7 @@ public final class NetworkWorkOrderModels {
     public record WorkflowReceiptStart(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             long workOrderId,
@@ -199,6 +204,7 @@ public final class NetworkWorkOrderModels {
     public record WorkflowReceipt(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             Long workOrderId,

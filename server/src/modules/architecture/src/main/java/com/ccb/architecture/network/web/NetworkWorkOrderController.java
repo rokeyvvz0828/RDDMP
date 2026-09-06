@@ -21,6 +21,8 @@ import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,17 +63,20 @@ public class NetworkWorkOrderController {
     private final SystemOperationAudit operationAudit;
     private final ObjectMapper objectMapper;
     private final com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService;
+    private final ProjectAccessService projectAccessService;
 
     public NetworkWorkOrderController(NetworkWorkOrderService service,
                                       NetworkWorkOrderSubmissionService workflowService,
                                       SystemOperationAudit operationAudit,
                                       ObjectMapper objectMapper,
-                                      com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService) {
+                                      com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService,
+                                      ProjectAccessService projectAccessService) {
         this.service = service;
         this.workflowService = workflowService;
         this.operationAudit = operationAudit;
         this.objectMapper = objectMapper;
         this.planWorkOrderService = planWorkOrderService;
+        this.projectAccessService = projectAccessService;
     }
 
     /** 关键写操作统一审计：成功记录成功，业务失败记录失败；审计失败不阻断业务结果。 */
@@ -118,9 +123,10 @@ public class NetworkWorkOrderController {
             @RequestParam(required = false) WorkOrderStatus status,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor,
             Authentication authentication) {
-        List<WorkOrderSummaryResponse> workOrders = service.list(actor, accessScope(authentication),
+        List<WorkOrderSummaryResponse> workOrders = service.list(actor, project(projectRef, actor), accessScope(authentication),
                         kind, status, limit, offset)
                 .stream()
                 .map(this::toSummary)
@@ -132,27 +138,30 @@ public class NetworkWorkOrderController {
     @PreAuthorize("hasAnyAuthority('architecture:network-work-order:view',"
             + "'architecture:network-work-order:apply','architecture:network-work-order:manage')")
     public ApiResponse<WorkOrderDetailResponse> detail(@PathVariable long id,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor,
                                                        Authentication authentication) {
-        return success(toDetail(service.detail(actor, accessScope(authentication), id)));
+        return success(toDetail(service.detail(actor, project(projectRef, actor), accessScope(authentication), id)));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('architecture:network-work-order:apply',"
             + "'architecture:network-work-order:manage')")
     public ApiResponse<WorkOrderDetailResponse> create(@RequestBody CreateWorkOrderRequest request,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor) {
         Kind kind = requiredKind(request == null ? null : request.kind());
         ActionType actionType = requiredAction(request == null ? null : request.actionType());
+        ProjectAccess project = project(projectRef, actor);
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.create", "POST",
-                "/api/architecture/network-work-orders", () -> service.create(actor,
+                "/api/architecture/network-work-orders", () -> service.create(actor, project,
                         new CreateCommand(kind, actionType, request.payload(), request.reason(),
                                 request.attachmentIds())));
-        registerCreatedFromTask(actor, request, detail.workOrder().id());
+        registerCreatedFromTask(actor, project.id(), request, detail.workOrder().id());
         return success(toDetail(detail));
     }
 
-    private void registerCreatedFromTask(AuthUser actor, CreateWorkOrderRequest request, long workOrderId) {
+    private void registerCreatedFromTask(AuthUser actor, long projectId, CreateWorkOrderRequest request, long workOrderId) {
         if (request == null || request.planTaskId() == null) {
             return;
         }
@@ -162,7 +171,7 @@ public class NetworkWorkOrderController {
             case DNS -> WorkOrderType.NETWORK_DNS;
             case CERT -> WorkOrderType.NETWORK_CERT;
         };
-        planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), request.planTaskId(),
+        planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), projectId, request.planTaskId(),
                 workOrderType, workOrderId);
     }
 
@@ -171,10 +180,11 @@ public class NetworkWorkOrderController {
             + "'architecture:network-work-order:manage')")
     public ApiResponse<WorkOrderDetailResponse> update(@PathVariable long id,
                                                        @RequestBody UpdateWorkOrderRequest request,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.update", "PUT",
-                "/api/architecture/network-work-orders/" + id, () -> service.update(actor, id,
+                "/api/architecture/network-work-orders/" + id, () -> service.update(actor, project(projectRef, actor), id,
                         new UpdateCommand(rowVersion, request == null ? null : request.reason(),
                                 request == null ? null : request.payload(),
                                 request == null ? List.of() : request.attachmentIds())));
@@ -186,11 +196,12 @@ public class NetworkWorkOrderController {
             + "'architecture:network-work-order:manage')")
     public ApiResponse<WorkOrderDetailResponse> submit(@PathVariable long id,
                                                        @RequestBody SubmitWorkOrderRequest request,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.submit", "POST",
                 "/api/architecture/network-work-orders/" + id + "/submit", () ->
-                workflowService.submit(actor, id, rowVersion));
+                workflowService.submit(actor, project(projectRef, actor), id, rowVersion));
         return success(toDetail(detail));
     }
 
@@ -199,11 +210,12 @@ public class NetworkWorkOrderController {
             + "'architecture:network-work-order:manage')")
     public ApiResponse<WorkOrderDetailResponse> cancel(@PathVariable long id,
                                                        @RequestBody CancelWorkOrderRequest request,
+                                                       @RequestParam String projectRef,
                                                        @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.cancel", "POST",
                 "/api/architecture/network-work-orders/" + id + "/cancel", () ->
-                workflowService.cancel(actor, id, rowVersion));
+                workflowService.cancel(actor, project(projectRef, actor), id, rowVersion));
         return success(toDetail(detail));
     }
 
@@ -213,6 +225,7 @@ public class NetworkWorkOrderController {
     public ApiResponse<WorkOrderDetailResponse> registerHandlingResult(
             @PathVariable long id,
             @RequestBody RegisterHandlingResultRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         HandlingResultCommand command = new HandlingResultCommand(
@@ -221,7 +234,7 @@ public class NetworkWorkOrderController {
                 request == null ? List.of() : request.resultAttachmentIds());
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.result", "POST",
                 "/api/architecture/network-work-orders/" + id + "/handling-result", () ->
-                service.registerHandlingResult(actor, id, rowVersion, command));
+                service.registerHandlingResult(actor, project(projectRef, actor), id, rowVersion, command));
         return success(toDetail(detail));
     }
 
@@ -233,11 +246,12 @@ public class NetworkWorkOrderController {
             @PathVariable long id,
             @PathVariable long attachmentId,
             @RequestBody CancelWorkOrderRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.attachment-remove", "POST",
                 "/api/architecture/network-work-orders/" + id + "/attachments/" + attachmentId + "/remove",
-                () -> service.removeAttachment(actor, id, rowVersion, attachmentId));
+                () -> service.removeAttachment(actor, project(projectRef, actor), id, rowVersion, attachmentId));
         return success(toDetail(detail));
     }
 
@@ -248,6 +262,10 @@ public class NetworkWorkOrderController {
             return AccessScope.MANAGE;
         }
         return AccessScope.OWN;
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 
     private Kind requiredKind(String kind) {

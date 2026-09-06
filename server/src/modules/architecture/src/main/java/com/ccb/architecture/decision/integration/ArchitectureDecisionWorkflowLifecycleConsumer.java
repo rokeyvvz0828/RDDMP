@@ -16,6 +16,8 @@ import com.ccb.architecture.decision.service.ArchitectureDecisionService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
@@ -41,15 +43,21 @@ public class ArchitectureDecisionWorkflowLifecycleConsumer implements WorkflowLi
     public static final String SUBSCRIBER_KEY = ArchitectureDecisionService.SUBSCRIBER_KEY;
 
     private final DecisionStore store;
+    private final ProjectAccessService projectAccessService;
     private final LongSupplier idSupplier;
 
     @Autowired
-    public ArchitectureDecisionWorkflowLifecycleConsumer(DecisionStore store) {
-        this(store, () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
+    public ArchitectureDecisionWorkflowLifecycleConsumer(DecisionStore store,
+                                                         ProjectAccessService projectAccessService) {
+        this(store, projectAccessService,
+                () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
     }
 
-    ArchitectureDecisionWorkflowLifecycleConsumer(DecisionStore store, LongSupplier idSupplier) {
+    ArchitectureDecisionWorkflowLifecycleConsumer(DecisionStore store,
+                                                  ProjectAccessService projectAccessService,
+                                                  LongSupplier idSupplier) {
         this.store = Objects.requireNonNull(store, "决策存储不能为空");
+        this.projectAccessService = Objects.requireNonNull(projectAccessService, "项目访问服务不能为空");
         this.idSupplier = Objects.requireNonNull(idSupplier, "标识生成器不能为空");
     }
 
@@ -67,73 +75,80 @@ public class ArchitectureDecisionWorkflowLifecycleConsumer implements WorkflowLi
     @Transactional
     public void consume(WorkflowLifecycleEvent event) {
         long matterId = validateAndMatterId(event);
-        DecisionMatter matter = store.lockMatter(event.tenantId(), matterId)
+        ProjectAccess project = projectAccessService.requireAccessible(
+                event.context().projectRef(), workflowOperator(event));
+        if (!Objects.equals(project.projectName(), event.context().projectName())) {
+            throw conflict("工作流事件项目上下文与可信项目不一致");
+        }
+        DecisionMatter matter = store.lockMatter(event.tenantId(), project.id(), matterId)
                 .orElseThrow(() -> conflict("工作流事件关联的架构决策事项不存在"));
-        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), event.eventId(),
+        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), project.id(), event.eventId(),
                 SUBSCRIBER_KEY, matterId, event.context().businessRound(), event.instanceId(),
                 event.eventType().name()))) {
             return;
         }
 
-        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), event.instanceId())
+        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), project.id(), event.instanceId())
                 .orElseThrow(() -> conflict("工作流事件关联的发布轮次不存在"));
         if (!matches(matter, round, event)
-                || !store.isLatestWorkflowRound(event.tenantId(), matter.id(), round.roundNo())) {
-            ignored(event, "事件不匹配当前实例、轮次或摘要");
+                || !store.isLatestWorkflowRound(event.tenantId(), project.id(), matter.id(), round.roundNo())) {
+            ignored(event, project.id(), "事件不匹配当前实例、轮次或摘要");
             return;
         }
 
         switch (event.eventType()) {
-            case STARTED -> consumeStarted(event, matter, round);
-            case APPROVED -> consumeApproved(event, matter, round);
-            case RETURNED -> consumePublicationRefused(event, matter, round, WorkflowRoundStatus.RETURNED);
-            case REJECTED -> consumePublicationRefused(event, matter, round, WorkflowRoundStatus.REJECTED);
-            case TERMINATED -> consumeTerminated(event, matter, round);
+            case STARTED -> consumeStarted(event, project.id(), matter, round);
+            case APPROVED -> consumeApproved(event, project.id(), matter, round);
+            case RETURNED -> consumePublicationRefused(event, project.id(), matter, round, WorkflowRoundStatus.RETURNED);
+            case REJECTED -> consumePublicationRefused(event, project.id(), matter, round, WorkflowRoundStatus.REJECTED);
+            case TERMINATED -> consumeTerminated(event, project.id(), matter, round);
         }
     }
 
-    private void consumeStarted(WorkflowLifecycleEvent event, DecisionMatter matter, WorkflowRound round) {
+    private void consumeStarted(WorkflowLifecycleEvent event, long projectId, DecisionMatter matter, WorkflowRound round) {
         if (!isActivePublication(matter, round)) {
-            ignored(event, "STARTED 事件对应的事项或轮次已变化");
+            ignored(event, projectId, "STARTED 事件对应的事项或轮次已变化");
             return;
         }
-        processed(event, "已确认结论发布轮次启动");
+        processed(event, projectId, "已确认结论发布轮次启动");
     }
 
-    private void consumeApproved(WorkflowLifecycleEvent event, DecisionMatter matter, WorkflowRound round) {
+    private void consumeApproved(WorkflowLifecycleEvent event, long projectId, DecisionMatter matter, WorkflowRound round) {
         if (!isActivePublication(matter, round)) {
-            ignored(event, "APPROVED 事件对应的事项或轮次已变化");
+            ignored(event, projectId, "APPROVED 事件对应的事项或轮次已变化");
             return;
         }
-        publishConclusion(event, matter, round);
-        processed(event, "已发布正式决策结论并完成事项");
+        publishConclusion(event, projectId, matter, round);
+        processed(event, projectId, "已发布正式决策结论并完成事项");
     }
 
-    private void consumePublicationRefused(WorkflowLifecycleEvent event, DecisionMatter matter,
+    private void consumePublicationRefused(WorkflowLifecycleEvent event, long projectId, DecisionMatter matter,
                                            WorkflowRound round, WorkflowRoundStatus roundStatus) {
         if (!isActivePublication(matter, round)) {
-            ignored(event, event.eventType() + " 事件对应的事项或轮次已变化");
+            ignored(event, projectId, event.eventType() + " 事件对应的事项或轮次已变化");
             return;
         }
-        store.completeStartedWorkflowRound(event.tenantId(), matter.id(), round.roundNo(),
+        store.completeStartedWorkflowRound(event.tenantId(), projectId, matter.id(), round.roundNo(),
                 roundStatus, event.occurredAt());
-        processed(event, "结论发布被退回或拒绝，事项保持评审中，发布准备保留可调整");
+        processed(event, projectId, "结论发布被退回或拒绝，事项保持评审中，发布准备保留可调整");
     }
 
-    private void consumeTerminated(WorkflowLifecycleEvent event, DecisionMatter matter, WorkflowRound round) {
+    private void consumeTerminated(WorkflowLifecycleEvent event, long projectId,
+                                   DecisionMatter matter, WorkflowRound round) {
         if (!isActivePublication(matter, round)) {
-            ignored(event, "TERMINATED 事件对应的事项或轮次已变化");
+            ignored(event, projectId, "TERMINATED 事件对应的事项或轮次已变化");
             return;
         }
-        store.completeStartedWorkflowRound(event.tenantId(), matter.id(), round.roundNo(),
+        store.completeStartedWorkflowRound(event.tenantId(), projectId, matter.id(), round.roundNo(),
                 WorkflowRoundStatus.TERMINATED, event.occurredAt());
-        processed(event, "结论发布流程被终止，事项保持评审中");
+        processed(event, projectId, "结论发布流程被终止，事项保持评审中");
     }
 
-    private void publishConclusion(WorkflowLifecycleEvent event, DecisionMatter matter, WorkflowRound round) {
-        PublicationIntent intent = store.findPublicationIntent(event.tenantId(), matter.id())
+    private void publishConclusion(WorkflowLifecycleEvent event, long projectId,
+                                   DecisionMatter matter, WorkflowRound round) {
+        PublicationIntent intent = store.findPublicationIntent(event.tenantId(), projectId, matter.id())
                 .orElseThrow(() -> conflict("发布准备意图不存在，不能发布结论"));
-        ReviewRecord review = store.findReview(event.tenantId(), matter.id(), intent.reviewId())
+        ReviewRecord review = store.findReview(event.tenantId(), projectId, matter.id(), intent.reviewId())
                 .orElseThrow(() -> conflict("结论来源评审记录不存在"));
         if (review.conclusionContent() == null || review.conclusionContent().isBlank()) {
             throw conflict("评审记录缺少正式结论，不能发布");
@@ -141,24 +156,24 @@ public class ArchitectureDecisionWorkflowLifecycleConsumer implements WorkflowLi
         if (matter.typeCode() == null || matter.typeCode().isBlank()) {
             throw conflict("事项类型未确定，不能发布结论");
         }
-        if (store.findConclusion(event.tenantId(), matter.id()).isPresent()) {
+        if (store.findConclusion(event.tenantId(), projectId, matter.id()).isPresent()) {
             throw conflict("事项已存在已发布结论");
         }
         for (SupersessionTarget target : intent.targets()) {
-            store.findConclusionById(event.tenantId(), target.conclusionId())
+            store.findConclusionById(event.tenantId(), projectId, target.conclusionId())
                     .orElseThrow(() -> conflict("替代目标结论不存在：" + target.conclusionId()));
         }
         long conclusionId = nextId();
-        store.insertConclusion(new Conclusion(conclusionId, event.tenantId(), matter.id(), review.id(),
+        store.insertConclusion(new Conclusion(conclusionId, event.tenantId(), projectId, matter.id(), review.id(),
                 review.conclusionContent(), review.conclusionRationale(), event.occurredAt(),
                 event.operatorId(), operatorName(event), event.occurredAt()));
         long supersessionId = conclusionId * 10;
         for (SupersessionTarget target : intent.targets()) {
-            store.insertSupersession(new Supersession(supersessionId++, event.tenantId(), conclusionId,
+            store.insertSupersession(new Supersession(supersessionId++, event.tenantId(), projectId, conclusionId,
                     target.conclusionId(), target.kind(), event.occurredAt()));
         }
-        store.markMatterPublished(event.tenantId(), matter.id(), matter.rowVersion());
-        store.completeStartedWorkflowRound(event.tenantId(), matter.id(), round.roundNo(),
+        store.markMatterPublished(event.tenantId(), projectId, matter.id(), matter.rowVersion());
+        store.completeStartedWorkflowRound(event.tenantId(), projectId, matter.id(), round.roundNo(),
                 WorkflowRoundStatus.APPROVED, event.occurredAt());
     }
 
@@ -171,6 +186,7 @@ public class ArchitectureDecisionWorkflowLifecycleConsumer implements WorkflowLi
         WorkflowBusinessContext context = event.context();
         return matter.id() == round.matterId()
                 && matter.tenantId() == event.tenantId()
+                && matter.projectId() == round.projectId()
                 && matter.currentBusinessRound() == context.businessRound()
                 && Objects.equals(matter.currentWorkflowDefinitionId(), round.workflowDefinitionId())
                 && Objects.equals(matter.currentWorkflowVersionId(), round.workflowVersionId())
@@ -213,15 +229,15 @@ public class ArchitectureDecisionWorkflowLifecycleConsumer implements WorkflowLi
         return "工作流操作者 " + event.operatorId();
     }
 
-    private void processed(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+    private void processed(WorkflowLifecycleEvent event, long projectId, String detail) {
+        if (!store.completeReceipt(event.tenantId(), projectId, event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.PROCESSED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
     }
 
-    private void ignored(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+    private void ignored(WorkflowLifecycleEvent event, long projectId, String detail) {
+        if (!store.completeReceipt(event.tenantId(), projectId, event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.IGNORED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
@@ -233,6 +249,10 @@ public class ArchitectureDecisionWorkflowLifecycleConsumer implements WorkflowLi
             throw new IllegalStateException("决策回执标识生成器返回无效值");
         }
         return value;
+    }
+
+    private AuthUser workflowOperator(WorkflowLifecycleEvent event) {
+        return new AuthUser(event.operatorId(), event.tenantId(), "workflow", "", "工作流审批", 0L, true);
     }
 
     private BusinessException conflict(String message) {

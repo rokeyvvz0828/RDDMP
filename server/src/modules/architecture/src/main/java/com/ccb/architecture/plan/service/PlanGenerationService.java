@@ -73,9 +73,9 @@ public class PlanGenerationService {
 
     /** 从已发布模板创建计划：固化模板版本、目标快照与结构快照，按维度生成任务与检查项。 */
     @Transactional
-    public Plan createPlan(AuthUser actor, CreatePlanCommand cmd) {
+    public Plan createPlan(AuthUser actor, long projectId, CreatePlanCommand cmd) {
         String name = requireText(cmd == null ? null : cmd.name(), "计划名称", 300);
-        EnvironmentRef environment = store.envReference(actor.tenantId(), cmd.environmentId())
+        EnvironmentRef environment = store.envReference(actor.tenantId(), projectId, cmd.environmentId())
                 .orElseThrow(() -> new ArchitectureNotFoundException("具体环境不存在"));
         if (!"ACTIVE".equals(environment.status())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "具体环境已停用，不能创建搭建计划");
@@ -86,8 +86,8 @@ public class PlanGenerationService {
         if (physicalIds.isEmpty() && deploymentUnitIds.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "至少选择一个目标（物理子系统或部署单元）");
         }
-        List<TargetRef> physicals = store.listPhysicalSubsystemRefs(actor.tenantId(), physicalIds);
-        List<TargetRef> units = store.listDeploymentUnitRefs(actor.tenantId(), deploymentUnitIds);
+        List<TargetRef> physicals = store.listPhysicalSubsystemRefs(actor.tenantId(), projectId, physicalIds);
+        List<TargetRef> units = store.listDeploymentUnitRefs(actor.tenantId(), projectId, deploymentUnitIds);
         if (physicals.size() != physicalIds.size() || units.size() != deploymentUnitIds.size()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "存在无效的物理子系统或部署单元目标");
         }
@@ -103,7 +103,7 @@ public class PlanGenerationService {
             requireUser(actor, participant, "任务参与人");
         }
         long planId = nextId();
-        Plan plan = new Plan(planId, "SP" + planId, name, cmd.environmentId(), PlanStatus.NOT_STARTED,
+        Plan plan = new Plan(planId, projectId, "SP" + planId, name, cmd.environmentId(), PlanStatus.NOT_STARTED,
                 cmd.templateId(), template.template().latestVersionNo(), cmd.planOwnerUserId(),
                 cmd.plannedStart(), cmd.plannedEnd(), null, null, false, null, null, null, 0);
         store.insertPlan(actor.tenantId(), plan);
@@ -113,7 +113,7 @@ public class PlanGenerationService {
         targetsByType.put(TargetType.DEPLOYMENT_UNIT, units);
         for (Map.Entry<TargetType, List<TargetRef>> entry : targetsByType.entrySet()) {
             for (TargetRef ref : entry.getValue()) {
-                store.insertTarget(actor.tenantId(), new PlanTarget(nextId(), planId, entry.getKey(),
+                store.insertTarget(actor.tenantId(), projectId, new PlanTarget(nextId(), planId, entry.getKey(),
                         ref.id(), ref.code(), ref.name(), false, null), null);
             }
         }
@@ -121,14 +121,14 @@ public class PlanGenerationService {
         generateFromSnapshot(actor, plan, template, physicals, units, participants, cmd.plannedStart(),
                 cmd.plannedEnd());
         // 生成后立即重算：按依赖/阻塞/检查项推导任务与环节状态（如前置未完成 → WAITING_PRECEDING）
-        engine.recompute(actor.tenantId(), planId, LocalDateTime.now());
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", planId, "PLAN", planId, "PLAN_CREATED",
+        engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "PLAN", planId, "PLAN_CREATED",
                 actor.id(), null, toJson(Map.of("environment", environment.name(),
                         "template", template.template().name(),
                         "templateVersion", template.template().latestVersionNo())), null);
         notificationService.notifyTaskAssigned(actor.tenantId(), plan.planNo(), plan.name(),
                 List.of(cmd.planOwnerUserId()));
-        return refreshPlan(actor, planId);
+        return refreshPlan(actor, projectId, planId);
     }
 
     private void generateFromSnapshot(AuthUser actor, Plan plan, PlanTemplateDetail template,
@@ -148,7 +148,7 @@ public class PlanGenerationService {
                     ? 0 : stageSnapshot.startOffsetDays());
             LocalDateTime stageEnd = stageSnapshot.durationDays() == null ? null
                     : stageStart.plusDays(stageSnapshot.durationDays());
-            store.insertStage(actor.tenantId(), new Stage(stageId, plan.id(), stageNo++,
+            store.insertStage(actor.tenantId(), plan.projectId(), new Stage(stageId, plan.id(), stageNo++,
                     stageSnapshot.stageName(), stageSnapshot.sortNo(), plan.planOwnerUserId(),
                     stageStart, stageEnd, null, null, PlanStatus.NOT_STARTED, false, null, null,
                     null, null));
@@ -170,7 +170,7 @@ public class PlanGenerationService {
                 }
                 for (PlanTarget target : targets) {
                     long taskId = nextId();
-                    store.insertTask(actor.tenantId(), new Task(taskId, plan.id(), stageId, taskNo++,
+                    store.insertTask(actor.tenantId(), plan.projectId(), new Task(taskId, plan.id(), stageId, taskNo++,
                             taskSnapshot.name(),
                             target.targetType() == null ? TargetType.PHYSICAL_SUBSYSTEM
                                     : target.targetType(),
@@ -190,14 +190,14 @@ public class PlanGenerationService {
                     tasksByStage.computeIfAbsent(stageId, k -> new ArrayList<>()).add(handle);
                     int checkNo = 1;
                     for (CheckItemDraft checkItem : taskSnapshot.checkItems()) {
-                        store.insertCheckItem(actor.tenantId(), new CheckItem(nextId(), taskId,
+                        store.insertCheckItem(actor.tenantId(), plan.projectId(), new CheckItem(nextId(), taskId,
                                 checkNo++, checkItem.name(), checkItem.sortNo(),
                                 checkItem.guide(),
                                 com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.PENDING,
                                 null, null, null, false, null, null, null, 0, actor.id()));
                     }
                     for (Long participant : participants) {
-                        store.insertParticipant(actor.tenantId(), nextId(), taskId, participant,
+                        store.insertParticipant(actor.tenantId(), plan.projectId(), nextId(), taskId, participant,
                                 actor.id());
                     }
                 }
@@ -213,7 +213,7 @@ public class PlanGenerationService {
             for (Long predecessorTemplateId : stageSnapshot.dependencyStageIds()) {
                 Long predecessorId = stageIdByTemplateStageId.get(predecessorTemplateId);
                 if (predecessorId != null && stageId != predecessorId) {
-                    store.insertStageDependency(actor.tenantId(), nextId(), plan.id(), stageId,
+                    store.insertStageDependency(actor.tenantId(), plan.projectId(), nextId(), plan.id(), stageId,
                             predecessorId, actor.id());
                 }
             }
@@ -228,7 +228,7 @@ public class PlanGenerationService {
                             predecessorTemplateId, List.of());
                     for (TaskHandle successor : successors) {
                         for (TaskHandle predecessor : taskDependencyMatch(successor, predecessors)) {
-                            store.insertDependency(actor.tenantId(), nextId(), successor.taskId(),
+                            store.insertDependency(actor.tenantId(), plan.projectId(), nextId(), successor.taskId(),
                                     predecessor.taskId(), actor.id());
                         }
                     }
@@ -267,8 +267,9 @@ public class PlanGenerationService {
 
     /** 增加计划目标（使用计划自身模板版本快照生成任务）。 */
     @Transactional
-    public Plan addTargets(AuthUser actor, long planId, AddTargetCommand cmd, boolean isAdmin) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public Plan addTargets(AuthUser actor, long projectId, long planId, AddTargetCommand cmd,
+                           boolean isAdmin) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         engine.requirePlanOwner(actor, plan, isAdmin);
         requireAdjustable(plan);
         String reason = requireText(cmd == null ? null : cmd.reason(), "增加目标原因", 1000);
@@ -277,15 +278,16 @@ public class PlanGenerationService {
         if (physicalIds.isEmpty() && deploymentUnitIds.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "至少选择一个目标");
         }
-        List<TargetRef> physicals = store.listPhysicalSubsystemRefs(actor.tenantId(), physicalIds);
-        List<TargetRef> units = store.listDeploymentUnitRefs(actor.tenantId(), deploymentUnitIds);
+        List<TargetRef> physicals = store.listPhysicalSubsystemRefs(actor.tenantId(), projectId, physicalIds);
+        List<TargetRef> units = store.listDeploymentUnitRefs(actor.tenantId(), projectId, deploymentUnitIds);
         List<PlanTarget> targets = new ArrayList<>();
         Map<Long, TargetRef> physicalRefById = new LinkedHashMap<>();
         for (TargetRef ref : physicals) {
-            if (store.findTarget(actor.tenantId(), planId, TargetType.PHYSICAL_SUBSYSTEM, ref.id())
+            if (store.findTarget(actor.tenantId(), projectId, planId,
+                    TargetType.PHYSICAL_SUBSYSTEM, ref.id())
                     .isEmpty()) {
                 long targetId = nextId();
-                store.insertTarget(actor.tenantId(), new PlanTarget(targetId, planId,
+                store.insertTarget(actor.tenantId(), projectId, new PlanTarget(targetId, planId,
                         TargetType.PHYSICAL_SUBSYSTEM, ref.id(), ref.code(), ref.name(), false, null),
                         reason);
                 targets.add(new PlanTarget(targetId, planId, TargetType.PHYSICAL_SUBSYSTEM, ref.id(),
@@ -295,10 +297,11 @@ public class PlanGenerationService {
         }
         Map<Long, TargetRef> unitRefById = new LinkedHashMap<>();
         for (TargetRef ref : units) {
-            if (store.findTarget(actor.tenantId(), planId, TargetType.DEPLOYMENT_UNIT, ref.id())
+            if (store.findTarget(actor.tenantId(), projectId, planId,
+                    TargetType.DEPLOYMENT_UNIT, ref.id())
                     .isEmpty()) {
                 long targetId = nextId();
-                store.insertTarget(actor.tenantId(), new PlanTarget(targetId, planId,
+                store.insertTarget(actor.tenantId(), projectId, new PlanTarget(targetId, planId,
                         TargetType.DEPLOYMENT_UNIT, ref.id(), ref.code(), ref.name(), false, null),
                         reason);
                 targets.add(new PlanTarget(targetId, planId, TargetType.DEPLOYMENT_UNIT, ref.id(),
@@ -314,10 +317,10 @@ public class PlanGenerationService {
                 plan.templateId());
         List<SnapshotStage> snapshot = templateService.parseSnapshot(
                 template.versions().get(0).contentJson());
-        List<Stage> stages = store.findStages(actor.tenantId(), planId);
-        List<PlanTarget> allPhysical = store.findTargets(actor.tenantId(), planId, false).stream()
+        List<Stage> stages = store.findStages(actor.tenantId(), projectId, planId);
+        List<PlanTarget> allPhysical = store.findTargets(actor.tenantId(), projectId, planId, false).stream()
                 .filter(t -> t.targetType() == TargetType.PHYSICAL_SUBSYSTEM).toList();
-        List<PlanTarget> allUnits = store.findTargets(actor.tenantId(), planId, false).stream()
+        List<PlanTarget> allUnits = store.findTargets(actor.tenantId(), projectId, planId, false).stream()
                 .filter(t -> t.targetType() == TargetType.DEPLOYMENT_UNIT).toList();
         int stageIndex = 0;
         for (SnapshotStage stageSnapshot : snapshot) {
@@ -338,9 +341,9 @@ public class PlanGenerationService {
                     continue;
                 }
                 for (PlanTarget target : newTargets) {
-                    int taskNo = store.findTasks(actor.tenantId(), planId, stage.id()).size() + 1;
+                    int taskNo = store.findTasks(actor.tenantId(), projectId, planId, stage.id()).size() + 1;
                     long taskId = nextId();
-                    store.insertTask(actor.tenantId(), new Task(taskId, planId, stage.id(), taskNo,
+                    store.insertTask(actor.tenantId(), projectId, new Task(taskId, planId, stage.id(), taskNo,
                             taskSnapshot.name(), target.targetType(), target.targetId(), target.targetNo(),
                             target.targetName(), taskSnapshot.taskTemplateId(),
                             taskSnapshot.taskTemplateVersionNo(), taskSnapshot.dimension().name(),
@@ -350,7 +353,7 @@ public class PlanGenerationService {
                             TaskStatus.NOT_STARTED, false, false, null, null, null, 0));
                     int checkNo = 1;
                     for (CheckItemDraft checkItem : taskSnapshot.checkItems()) {
-                        store.insertCheckItem(actor.tenantId(), new CheckItem(nextId(), taskId,
+                        store.insertCheckItem(actor.tenantId(), projectId, new CheckItem(nextId(), taskId,
                                 checkNo++, checkItem.name(), checkItem.sortNo(),
                                 checkItem.guide(),
                                 com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.PENDING,
@@ -359,71 +362,76 @@ public class PlanGenerationService {
                 }
             }
         }
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", planId, "TARGET", null, "TARGET_ADDED",
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "TARGET", null,
+                "TARGET_ADDED",
                 actor.id(), reason, null, toJson(Map.of("count", targets.size())));
-        engine.recompute(actor.tenantId(), planId, LocalDateTime.now());
-        return refreshPlan(actor, planId);
+        engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
+        return refreshPlan(actor, projectId, planId);
     }
 
     /** 移出计划目标：未完成任务自动取消，已完成保留，历史不删除。 */
     @Transactional
-    public Plan removeTarget(AuthUser actor, long planId, long targetId, String reason, boolean isAdmin) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public Plan removeTarget(AuthUser actor, long projectId, long planId, long targetId, String reason,
+                             boolean isAdmin) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         engine.requirePlanOwner(actor, plan, isAdmin);
         requireAdjustable(plan);
-        PlanTarget target = store.findTarget(actor.tenantId(), planId,
+        PlanTarget target = store.findTarget(actor.tenantId(), projectId, planId,
                 TargetType.PHYSICAL_SUBSYSTEM, targetId)
-                .or(() -> store.findTarget(actor.tenantId(), planId, TargetType.DEPLOYMENT_UNIT, targetId))
+                .or(() -> store.findTarget(actor.tenantId(), projectId, planId,
+                        TargetType.DEPLOYMENT_UNIT, targetId))
                 .orElseThrow(() -> new ArchitectureNotFoundException("计划目标不存在"));
         if (target.removed()) {
             throw new BusinessException(ErrorCode.CONFLICT, "计划目标已被移出");
         }
         String removeReason = requireText(reason, "移出目标原因", 1000);
-        store.removeTarget(actor.tenantId(), target.id(), removeReason, actor.id());
+        store.removeTarget(actor.tenantId(), projectId, target.id(), removeReason, actor.id());
         int cancelledTasks = 0;
-        for (Task task : store.findTasks(actor.tenantId(), planId, null)) {
+        for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
             if (!task.cancelled() && task.targetType() == target.targetType()
                     && Objects.equals(task.targetId(), target.targetId())
                     && task.actualStart() == null && task.status() != TaskStatus.COMPLETED) {
-                store.updateTaskCancel(actor.tenantId(), task.id(), true,
+                store.updateTaskCancel(actor.tenantId(), projectId, task.id(), true,
                         "目标移出：" + removeReason, actor.id(), LocalDateTime.now());
                 cancelledTasks++;
             }
         }
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", planId, "TARGET", target.id(),
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "TARGET", target.id(),
                 "TARGET_REMOVED", actor.id(), removeReason, toJson(Map.of("cancelledTasks", cancelledTasks)),
                 null);
-        engine.recompute(actor.tenantId(), planId, LocalDateTime.now());
-        return refreshPlan(actor, planId);
+        engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
+        return refreshPlan(actor, projectId, planId);
     }
 
     /** 新增环节（运行中调整）。 */
     @Transactional
-    public Stage addStage(AuthUser actor, long planId, AddStageCommand cmd, boolean isAdmin) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public Stage addStage(AuthUser actor, long projectId, long planId, AddStageCommand cmd,
+                          boolean isAdmin) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         engine.requirePlanOwner(actor, plan, isAdmin);
         requireAdjustable(plan);
         String name = requireText(cmd == null ? null : cmd.name(), "环节名称", 200);
         requireUser(actor, cmd.ownerUserId(), "环节责任人");
-        List<Stage> stages = store.findStages(actor.tenantId(), planId);
+        List<Stage> stages = store.findStages(actor.tenantId(), projectId, planId);
         int stageNo = stages.stream().mapToInt(Stage::stageNo).max().orElse(0) + 1;
         long stageId = nextId();
-        store.insertStage(actor.tenantId(), new Stage(stageId, planId, stageNo, name, stageNo,
+        store.insertStage(actor.tenantId(), projectId, new Stage(stageId, planId, stageNo, name, stageNo,
                 cmd.ownerUserId(), cmd.plannedStart(), cmd.plannedEnd(), null, null,
                 PlanStatus.NOT_STARTED, false, null, null, null, null));
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", planId, "STAGE", stageId,
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "STAGE", stageId,
                 "STAGE_ADDED", actor.id(), null, null, toJson(Map.of("name", name)));
-        engine.recompute(actor.tenantId(), planId, LocalDateTime.now());
-        return store.findStage(actor.tenantId(), stageId).orElseThrow();
+        engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
+        return store.findStage(actor.tenantId(), projectId, stageId).orElseThrow();
     }
 
     /** 新增任务（运行中调整，目标可选）。 */
     @Transactional
-    public Task addTask(AuthUser actor, long planId, AddTaskCommand cmd, boolean isAdmin) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public Task addTask(AuthUser actor, long projectId, long planId, AddTaskCommand cmd,
+                        boolean isAdmin) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         engine.requirePlanOwner(actor, plan, isAdmin);
         requireAdjustable(plan);
-        Stage stage = store.findStage(actor.tenantId(), cmd.stageId())
+        Stage stage = store.findStage(actor.tenantId(), projectId, cmd.stageId())
                 .orElseThrow(() -> new ArchitectureNotFoundException("环节不存在"));
         if (stage.planId() != planId) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "环节不属于该计划");
@@ -439,9 +447,10 @@ public class PlanGenerationService {
         String targetNo = null;
         String targetName = null;
         if (cmd.targetId() != null) {
-            PlanTarget target = store.findTarget(actor.tenantId(), planId,
+            PlanTarget target = store.findTarget(actor.tenantId(), projectId, planId,
                     TargetType.PHYSICAL_SUBSYSTEM, cmd.targetId())
-                    .or(() -> store.findTarget(actor.tenantId(), planId, TargetType.DEPLOYMENT_UNIT,
+                    .or(() -> store.findTarget(actor.tenantId(), projectId, planId,
+                            TargetType.DEPLOYMENT_UNIT,
                             cmd.targetId()))
                     .orElseThrow(() -> new ArchitectureNotFoundException("目标任务不在计划目标范围内"));
             if (target.removed()) {
@@ -455,37 +464,38 @@ public class PlanGenerationService {
         if (targetType == null) {
             targetType = TargetType.PHYSICAL_SUBSYSTEM;
         }
-        int taskNo = store.findTasks(actor.tenantId(), planId, stage.id()).size() + 1;
+        int taskNo = store.findTasks(actor.tenantId(), projectId, planId, stage.id()).size() + 1;
         long taskId = nextId();
-        store.insertTask(actor.tenantId(), new Task(taskId, planId, stage.id(), taskNo, name,
+        store.insertTask(actor.tenantId(), projectId, new Task(taskId, planId, stage.id(), taskNo, name,
                 targetType, targetId, targetNo, targetName, null, null, null, null,
                 cmd.ownerUserId(), cmd.plannedStart(), cmd.plannedEnd(), null, null,
                 TaskStatus.NOT_STARTED, false, false, null, null, null, 0));
         int checkNo = 1;
         for (String checkItemName : checkItemNames) {
-            store.insertCheckItem(actor.tenantId(), new CheckItem(nextId(), taskId, checkNo++,
+            store.insertCheckItem(actor.tenantId(), projectId, new CheckItem(nextId(), taskId, checkNo++,
                     checkItemName, checkNo, null,
                     com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.PENDING,
                     null, null, null, false, null, null, null, 0, actor.id()));
         }
         for (Long participant : distinctIds(cmd.participantUserIds())) {
             requireUser(actor, participant, "任务参与人");
-            store.insertParticipant(actor.tenantId(), nextId(), taskId, participant, actor.id());
+            store.insertParticipant(actor.tenantId(), projectId, nextId(), taskId, participant, actor.id());
         }
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", planId, "TASK", taskId,
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "TASK", taskId,
                 "TASK_ADDED", actor.id(), null, null, toJson(Map.of("name", name, "stage", stage.name())));
         notificationService.notifyTaskAssigned(actor.tenantId(), plan.planNo(), name,
                 List.of(cmd.ownerUserId()));
-        engine.recompute(actor.tenantId(), planId, LocalDateTime.now());
-        return requireFreshTask(actor, taskId);
+        engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
+        return requireFreshTask(actor, projectId, taskId);
     }
 
     /** 新增检查项（运行中调整，需要对应层级责任人）。 */
     @Transactional
-    public CheckItem addCheckItem(AuthUser actor, long taskId, AddCheckItemCommand cmd, boolean isAdmin) {
-        Task task = engine.requireTask(actor, taskId);
-        Plan plan = engine.requirePlan(actor, task.planId());
-        Stage stage = store.findStage(actor.tenantId(), task.stageId()).orElseThrow();
+    public CheckItem addCheckItem(AuthUser actor, long projectId, long taskId, AddCheckItemCommand cmd,
+                                  boolean isAdmin) {
+        Task task = engine.requireTask(actor, projectId, taskId);
+        Plan plan = engine.requirePlan(actor, projectId, task.planId());
+        Stage stage = store.findStage(actor.tenantId(), projectId, task.stageId()).orElseThrow();
         boolean allowed = isAdmin || actor.id() == plan.planOwnerUserId()
                 || actor.id() == stage.ownerUserId() || actor.id() == task.ownerUserId();
         if (!allowed) {
@@ -495,51 +505,52 @@ public class PlanGenerationService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "计划或任务已取消，不能新增检查项");
         }
         String name = requireText(cmd == null ? null : cmd.name(), "检查项名称", 500);
-        int checkNo = store.findCheckItems(actor.tenantId(), taskId).size() + 1;
+        int checkNo = store.findCheckItems(actor.tenantId(), projectId, taskId).size() + 1;
         long itemId = nextId();
-        store.insertCheckItem(actor.tenantId(), new CheckItem(itemId, taskId, checkNo, name, checkNo,
+        store.insertCheckItem(actor.tenantId(), projectId, new CheckItem(itemId, taskId, checkNo, name, checkNo,
                 cmd == null ? null : cmd.guide(),
                 com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.PENDING, null, null, null,
                 false, null, null, null, 0, actor.id()));
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", task.planId(), "CHECK_ITEM", itemId,
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(), "CHECK_ITEM", itemId,
                 "CHECK_ITEM_ADDED", actor.id(), null, null, toJson(Map.of("taskId", taskId, "name", name)));
-        engine.recompute(actor.tenantId(), task.planId(), LocalDateTime.now());
-        return store.findCheckItem(actor.tenantId(), itemId).orElseThrow();
+        engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
+        return store.findCheckItem(actor.tenantId(), projectId, itemId).orElseThrow();
     }
 
     /** 删除未执行的错误任务（附原因留痕）。 */
     @Transactional
-    public void deleteTask(AuthUser actor, long taskId, String reason, boolean isAdmin) {
-        Task task = engine.requireTask(actor, taskId);
-        Plan plan = engine.requirePlan(actor, task.planId());
+    public void deleteTask(AuthUser actor, long projectId, long taskId, String reason, boolean isAdmin) {
+        Task task = engine.requireTask(actor, projectId, taskId);
+        Plan plan = engine.requirePlan(actor, projectId, task.planId());
         engine.requirePlanOwner(actor, plan, isAdmin);
         String deleteReason = requireText(reason, "删除原因", 1000);
         if (task.actualStart() != null || task.status() == TaskStatus.COMPLETED
                 || task.status() == TaskStatus.CANCELLED
-                || store.findCheckItems(actor.tenantId(), taskId).stream()
+                || store.findCheckItems(actor.tenantId(), projectId, taskId).stream()
                         .anyMatch(c -> c.status() == com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.COMPLETED)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST,
                     "任务已开始、已完成、已取消或存在已完成检查项，不能删除；可改为取消任务");
         }
-        store.deleteParticipants(actor.tenantId(), taskId);
-        store.deleteDependenciesByTask(actor.tenantId(), taskId);
-        store.deleteBlocksByTask(actor.tenantId(), taskId);
-        for (CheckItem item : store.findCheckItems(actor.tenantId(), taskId)) {
-            store.deleteCheckItem(actor.tenantId(), item.id());
+        store.deleteParticipants(actor.tenantId(), projectId, taskId);
+        store.deleteDependenciesByTask(actor.tenantId(), projectId, taskId);
+        store.deleteBlocksByTask(actor.tenantId(), projectId, taskId);
+        for (CheckItem item : store.findCheckItems(actor.tenantId(), projectId, taskId)) {
+            store.deleteCheckItem(actor.tenantId(), projectId, item.id());
         }
-        store.deleteTask(actor.tenantId(), taskId);
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", task.planId(), "TASK", taskId,
+        store.deleteTask(actor.tenantId(), projectId, taskId);
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(), "TASK", taskId,
                 "TASK_DELETED", actor.id(), deleteReason,
                 toJson(Map.of("name", task.name())), null);
-        engine.recompute(actor.tenantId(), task.planId(), LocalDateTime.now());
+        engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
     }
 
     /** 删除未执行错误检查项（附原因留痕）。 */
     @Transactional
-    public void deleteCheckItem(AuthUser actor, long checkItemId, String reason, boolean isAdmin) {
-        CheckItem item = engine.requireCheckItem(actor, checkItemId);
-        Task task = engine.requireTask(actor, item.taskId());
-        Plan plan = engine.requirePlan(actor, task.planId());
+    public void deleteCheckItem(AuthUser actor, long projectId, long checkItemId, String reason,
+                                boolean isAdmin) {
+        CheckItem item = engine.requireCheckItem(actor, projectId, checkItemId);
+        Task task = engine.requireTask(actor, projectId, item.taskId());
+        Plan plan = engine.requirePlan(actor, projectId, task.planId());
         engine.requirePlanOwner(actor, plan, isAdmin);
         String deleteReason = requireText(reason, "删除原因", 1000);
         if (task.actualStart() != null || item.cancelled()
@@ -547,19 +558,19 @@ public class PlanGenerationService {
             throw new BusinessException(ErrorCode.BAD_REQUEST,
                     "任务已开始或检查项已处理（完成/取消），不能物理删除；可改为取消检查项");
         }
-        store.deleteCheckItem(actor.tenantId(), checkItemId);
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", task.planId(), "CHECK_ITEM",
+        store.deleteCheckItem(actor.tenantId(), projectId, checkItemId);
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(), "CHECK_ITEM",
                 checkItemId, "CHECK_ITEM_DELETED", actor.id(), deleteReason,
                 toJson(Map.of("name", item.name())), null);
-        engine.recompute(actor.tenantId(), task.planId(), LocalDateTime.now());
+        engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
     }
 
-    public Plan refreshPlan(AuthUser actor, long planId) {
-        return engine.requirePlan(actor, planId);
+    public Plan refreshPlan(AuthUser actor, long projectId, long planId) {
+        return engine.requirePlan(actor, projectId, planId);
     }
 
-    private Task requireFreshTask(AuthUser actor, long taskId) {
-        return store.findTask(actor.tenantId(), taskId).orElseThrow();
+    private Task requireFreshTask(AuthUser actor, long projectId, long taskId) {
+        return store.findTask(actor.tenantId(), projectId, taskId).orElseThrow();
     }
 
     private void requireAdjustable(Plan plan) {

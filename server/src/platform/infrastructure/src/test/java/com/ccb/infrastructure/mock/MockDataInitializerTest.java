@@ -252,6 +252,7 @@ class MockDataInitializerTest {
         assertEquals(3, physical.path("rows").size());
         physical.path("rows").forEach(row -> {
             assertTrue(row.path("tenant_id").asLong() > 0);
+            assertTrue(row.path("project_id").asLong() > 0);
             assertTrue(row.path("logical_subsystem_name").isTextual());
             assertTrue(row.path("business_component_code").isTextual());
             assertTrue(row.path("responsible_team_name_snapshot").isTextual());

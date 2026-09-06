@@ -81,7 +81,7 @@ public class PlanNotificationService {
     public void scanOverdueAlerts() {
         for (PlanStore.AlertPlan alert : store.planIdsNeedingAlert()) {
             try {
-                long overdueCount = store.countOverdueTasks(alert.tenantId(), alert.planId(),
+                long overdueCount = store.countOverdueTasks(alert.tenantId(), alert.projectId(), alert.planId(),
                         java.time.LocalDateTime.now());
                 if (overdueCount > 0) {
                     publish(alert.tenantId(), "plan.overdue", "逾期提醒", alert.planNo(),

@@ -10,6 +10,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectDeletionGuard;
 import com.ccb.system.capability.ProjectMemberRemovalGuard;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -57,6 +58,7 @@ public class ProjectService {
     private final MinioStorageService storage;
     private final AttachmentPort attachmentPort;
     private ProjectMemberRemovalGuard memberRemovalGuard = (tenantId, projectId, userId) -> { };
+    private List<ProjectDeletionGuard> deletionGuards = List.of();
 
     public ProjectService(JdbcTemplate jdbc, MinioStorageService storage) {
         this(jdbc, storage, null);
@@ -72,6 +74,11 @@ public class ProjectService {
     @Autowired(required = false)
     void setMemberRemovalGuard(ProjectMemberRemovalGuard memberRemovalGuard) {
         if (memberRemovalGuard != null) this.memberRemovalGuard = memberRemovalGuard;
+    }
+
+    @Autowired(required = false)
+    void setDeletionGuards(List<ProjectDeletionGuard> deletionGuards) {
+        this.deletionGuards = deletionGuards == null ? List.of() : List.copyOf(deletionGuards);
     }
 
     public List<Map<String, Object>> workbench(AuthUser user) {
@@ -237,6 +244,7 @@ public class ProjectService {
     public void delete(long projectId, AuthUser user) {
         requireAction("project", "delete", user);
         requireProjectAccess(projectId, user, true);
+        deletionGuards.forEach(guard -> guard.requireNoReferences(user.tenantId(), projectId));
         if (attachmentPort != null) {
             PageResult<AttachmentItem> attachmentPage;
             do {

@@ -32,6 +32,8 @@ import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,15 +68,18 @@ public class EnvironmentResourceController {
     private final com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService;
     private final ResourceRequestSubmissionService workflowService;
     private final SystemOperationAudit operationAudit;
+    private final ProjectAccessService projectAccessService;
 
     public EnvironmentResourceController(EnvironmentResourceService service,
                                          ResourceRequestSubmissionService workflowService,
                                          SystemOperationAudit operationAudit,
-                                         com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService) {
+                                         com.ccb.architecture.plan.service.PlanWorkOrderService planWorkOrderService,
+                                         ProjectAccessService projectAccessService) {
         this.service = service;
         this.workflowService = workflowService;
         this.operationAudit = operationAudit;
         this.planWorkOrderService = planWorkOrderService;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping("/environment-types")
@@ -95,8 +100,9 @@ public class EnvironmentResourceController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listEnvironments(actor, typeCode, status, keyword, limit, offset)
+        return success(service.listEnvironments(actor, project(projectRef, actor), typeCode, status, keyword, limit, offset)
                 .stream().map(this::toEnvironment).toList());
     }
 
@@ -104,18 +110,20 @@ public class EnvironmentResourceController {
     @PreAuthorize("hasAnyAuthority('architecture:environment:view','architecture:environment:manage',"
             + "'architecture:view','architecture:manage')")
     public ApiResponse<EnvironmentDetailResponse> detailEnvironment(@PathVariable long id,
+                                                                    @RequestParam String projectRef,
                                                                     @AuthenticationPrincipal AuthUser actor) {
-        Environment environment = service.detailEnvironment(actor, id);
-        ResourceSummary summary = service.environmentSummary(actor, id);
+        Environment environment = service.detailEnvironment(actor, project(projectRef, actor), id);
+        ResourceSummary summary = service.environmentSummary(actor, project(projectRef, actor), id);
         return success(new EnvironmentDetailResponse(toEnvironment(environment), toSummary(summary)));
     }
 
     @PostMapping("/environments")
     @PreAuthorize("hasAnyAuthority('architecture:environment:manage','architecture:manage')")
     public ApiResponse<EnvironmentResponse> createEnvironment(@RequestBody UpsertEnvironmentRequest request,
+                                                              @RequestParam String projectRef,
                                                               @AuthenticationPrincipal AuthUser actor) {
         Environment environment = audited(actor, "architecture.environment.create", "POST",
-                "/api/architecture/environments", () -> service.createEnvironment(actor,
+                "/api/architecture/environments", () -> service.createEnvironment(actor, project(projectRef, actor),
                         toEnvironmentCommand(request)));
         return success(toEnvironment(environment));
     }
@@ -124,9 +132,10 @@ public class EnvironmentResourceController {
     @PreAuthorize("hasAnyAuthority('architecture:environment:manage','architecture:manage')")
     public ApiResponse<EnvironmentResponse> updateEnvironment(@PathVariable long id,
                                                               @RequestBody UpsertEnvironmentRequest request,
+                                                              @RequestParam String projectRef,
                                                               @AuthenticationPrincipal AuthUser actor) {
         Environment environment = audited(actor, "architecture.environment.update", "PUT",
-                "/api/architecture/environments/" + id, () -> service.updateEnvironment(actor, id,
+                "/api/architecture/environments/" + id, () -> service.updateEnvironment(actor, project(projectRef, actor), id,
                         toEnvironmentCommand(request)));
         return success(toEnvironment(environment));
     }
@@ -135,10 +144,11 @@ public class EnvironmentResourceController {
     @PreAuthorize("hasAnyAuthority('architecture:environment:manage','architecture:manage')")
     public ApiResponse<EnvironmentResponse> deactivateEnvironment(@PathVariable long id,
                                                                   @RequestBody RowVersionRequest request,
+                                                                  @RequestParam String projectRef,
                                                                   @AuthenticationPrincipal AuthUser actor) {
         Environment environment = audited(actor, "architecture.environment.deactivate", "POST",
                 "/api/architecture/environments/" + id + "/deactivate",
-                () -> service.changeEnvironmentStatus(actor, id, requiredRowVersion(request),
+                () -> service.changeEnvironmentStatus(actor, project(projectRef, actor), id, requiredRowVersion(request),
                         RecordStatus.INACTIVE));
         return success(toEnvironment(environment));
     }
@@ -147,10 +157,11 @@ public class EnvironmentResourceController {
     @PreAuthorize("hasAnyAuthority('architecture:environment:manage','architecture:manage')")
     public ApiResponse<EnvironmentResponse> reactivateEnvironment(@PathVariable long id,
                                                                   @RequestBody RowVersionRequest request,
+                                                                  @RequestParam String projectRef,
                                                                   @AuthenticationPrincipal AuthUser actor) {
         Environment environment = audited(actor, "architecture.environment.reactivate", "POST",
                 "/api/architecture/environments/" + id + "/reactivate",
-                () -> service.changeEnvironmentStatus(actor, id, requiredRowVersion(request),
+                () -> service.changeEnvironmentStatus(actor, project(projectRef, actor), id, requiredRowVersion(request),
                         RecordStatus.ACTIVE));
         return success(toEnvironment(environment));
     }
@@ -159,11 +170,12 @@ public class EnvironmentResourceController {
     @PreAuthorize("hasAnyAuthority('architecture:environment:manage','architecture:manage')")
     public ApiResponse<Void> deleteEnvironment(@PathVariable long id,
                                                @RequestBody RowVersionRequest request,
+                                               @RequestParam String projectRef,
                                                @AuthenticationPrincipal AuthUser actor) {
         audited(actor, "architecture.environment.delete", "POST",
                 "/api/architecture/environments/" + id + "/delete",
                 () -> {
-                    service.deleteEnvironment(actor, id, requiredRowVersion(request));
+                    service.deleteEnvironment(actor, project(projectRef, actor), id, requiredRowVersion(request));
                     return null;
                 });
         return success(null);
@@ -175,8 +187,9 @@ public class EnvironmentResourceController {
     public ApiResponse<List<DeploymentUnitOptionResponse>> deploymentUnitOptions(
             @RequestParam long physicalSubsystemId,
             @RequestParam(defaultValue = "100") int limit,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listDeploymentUnitOptions(actor, physicalSubsystemId, limit)
+        return success(service.listDeploymentUnitOptions(actor, project(projectRef, actor), physicalSubsystemId, limit)
                 .stream().map(this::toDeploymentUnit).toList());
     }
 
@@ -189,9 +202,10 @@ public class EnvironmentResourceController {
             @RequestParam(required = false) Long physicalSubsystemId,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor,
             Authentication authentication) {
-        return success(service.listRequests(actor, accessScope(authentication), status, environmentId,
+        return success(service.listRequests(actor, project(projectRef, actor), accessScope(authentication), status, environmentId,
                         physicalSubsystemId, limit, offset)
                 .stream().map(this::toRequestSummary).toList());
     }
@@ -201,9 +215,10 @@ public class EnvironmentResourceController {
             + "'architecture:resource-request:manage','architecture:view','architecture:apply','architecture:manage')")
     public ApiResponse<ResourceRequestDetailResponse> detailResourceRequest(
             @PathVariable long id,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor,
             Authentication authentication) {
-        return success(toRequestDetail(service.detailRequest(actor, accessScope(authentication), id)));
+        return success(toRequestDetail(service.detailRequest(actor, project(projectRef, actor), accessScope(authentication), id)));
     }
 
     @PostMapping("/resource-requests")
@@ -211,9 +226,10 @@ public class EnvironmentResourceController {
             + "'architecture:apply','architecture:manage')")
     public ApiResponse<ResourceRequestDetailResponse> createResourceRequest(
             @RequestBody UpsertResourceRequestRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.create", "POST",
-                "/api/architecture/resource-requests", () -> service.createRequest(actor,
+                "/api/architecture/resource-requests", () -> service.createRequest(actor, project(projectRef, actor),
                         toRequestCommand(request, null)));
         if (request != null && request.planTaskId() != null) {
             planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), request.planTaskId(),
@@ -229,9 +245,10 @@ public class EnvironmentResourceController {
     public ApiResponse<ResourceRequestDetailResponse> updateResourceRequest(
             @PathVariable long id,
             @RequestBody UpsertResourceRequestRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.update", "PUT",
-                "/api/architecture/resource-requests/" + id, () -> service.updateRequest(actor, id,
+                "/api/architecture/resource-requests/" + id, () -> service.updateRequest(actor, project(projectRef, actor), id,
                         toRequestCommand(request, request == null ? null : request.rowVersion())));
         return success(toRequestDetail(detail));
     }
@@ -242,10 +259,11 @@ public class EnvironmentResourceController {
     public ApiResponse<ResourceRequestDetailResponse> submitResourceRequest(
             @PathVariable long id,
             @RequestBody RowVersionRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.submit", "POST",
                 "/api/architecture/resource-requests/" + id + "/submit",
-                () -> workflowService.submit(actor, id, requiredRowVersion(request)));
+                () -> workflowService.submit(actor, project(projectRef, actor), id, requiredRowVersion(request)));
         return success(toRequestDetail(detail));
     }
 
@@ -255,10 +273,11 @@ public class EnvironmentResourceController {
     public ApiResponse<ResourceRequestDetailResponse> cancelResourceRequest(
             @PathVariable long id,
             @RequestBody RowVersionRequest request,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.cancel", "POST",
                 "/api/architecture/resource-requests/" + id + "/cancel",
-                () -> workflowService.cancel(actor, id, requiredRowVersion(request)));
+                () -> workflowService.cancel(actor, project(projectRef, actor), id, requiredRowVersion(request)));
         return success(toRequestDetail(detail));
     }
 
@@ -355,8 +374,9 @@ public class EnvironmentResourceController {
             + "'architecture:resource-request:manage','architecture:view','architecture:manage')")
     public ApiResponse<ProvisionPreviewResult> previewAutomatedProvision(
             @PathVariable long id,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.previewAutomatedProvision(actor, id));
+        return success(service.previewAutomatedProvision(actor, project(projectRef, actor), id));
     }
 
     @PostMapping("/resource-requests/{id}/fulfill")
@@ -364,10 +384,11 @@ public class EnvironmentResourceController {
     public ApiResponse<List<EnvironmentInstanceResponse>> fulfillResourceRequest(
             @PathVariable long id,
             @RequestBody FulfillmentCommand command,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.resource-request.fulfill", "POST",
                 "/api/architecture/resource-requests/" + id + "/fulfill",
-                () -> success(service.fulfillRequest(actor, id, command).stream().map(this::toInstance).toList()));
+                () -> success(service.fulfillRequest(actor, project(projectRef, actor), id, command).stream().map(this::toInstance).toList()));
     }
 
     @GetMapping("/instances")
@@ -381,8 +402,9 @@ public class EnvironmentResourceController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listInstances(actor, environmentId, physicalSubsystemId, deploymentUnitId,
+        return success(service.listInstances(actor, project(projectRef, actor), environmentId, physicalSubsystemId, deploymentUnitId,
                 status, keyword, limit, offset).stream().map(this::toInstance).toList());
     }
 
@@ -391,8 +413,9 @@ public class EnvironmentResourceController {
             + "'architecture:view','architecture:manage')")
     public ApiResponse<EnvironmentInstanceResponse> detailInstance(
             @PathVariable long id,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(toInstance(service.detailInstance(actor, id)));
+        return success(toInstance(service.detailInstance(actor, project(projectRef, actor), id)));
     }
 
     @PostMapping("/instances/{id}/offline")
@@ -400,10 +423,11 @@ public class EnvironmentResourceController {
     public ApiResponse<EnvironmentInstanceResponse> offlineInstance(
             @PathVariable long id,
             @RequestBody OfflineInstanceCommand command,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.instance.offline", "POST",
                 "/api/architecture/instances/" + id + "/offline",
-                () -> success(toInstance(service.offlineInstance(actor, id, command))));
+                () -> success(toInstance(service.offlineInstance(actor, project(projectRef, actor), id, command))));
     }
 
     @GetMapping("/instances/{id}/disaster-recoveries")
@@ -411,8 +435,9 @@ public class EnvironmentResourceController {
             + "'architecture:view','architecture:manage')")
     public ApiResponse<List<InstanceDisasterRecoveryResponse>> listInstanceDisasterRecoveries(
             @PathVariable long id,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listInstanceDisasterRecoveries(actor, id).stream().map(this::toDr).toList());
+        return success(service.listInstanceDisasterRecoveries(actor, project(projectRef, actor), id).stream().map(this::toDr).toList());
     }
 
     @GetMapping("/instance-disaster-recoveries")
@@ -421,29 +446,32 @@ public class EnvironmentResourceController {
     public ApiResponse<List<InstanceDisasterRecoveryResponse>> listDisasterRecoveries(
             @RequestParam(required = false) Long deploymentUnitId,
             @RequestParam(required = false) Long instanceId,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listDisasterRecoveries(actor, deploymentUnitId, instanceId).stream().map(this::toDr).toList());
+        return success(service.listDisasterRecoveries(actor, project(projectRef, actor), deploymentUnitId, instanceId).stream().map(this::toDr).toList());
     }
 
     @PostMapping("/instance-disaster-recoveries")
     @PreAuthorize("hasAnyAuthority('architecture:instance:manage','architecture:manage')")
     public ApiResponse<InstanceDisasterRecoveryResponse> createDisasterRecovery(
             @RequestBody DisasterRecoveryCommand command,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.instance-dr.create", "POST",
                 "/api/architecture/instance-disaster-recoveries",
-                () -> success(toDr(service.createDisasterRecovery(actor, command))));
+                () -> success(toDr(service.createDisasterRecovery(actor, project(projectRef, actor), command))));
     }
 
     @DeleteMapping("/instance-disaster-recoveries/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:instance:manage','architecture:manage')")
     public ApiResponse<Void> deleteDisasterRecovery(
             @PathVariable long id,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.instance-dr.delete", "DELETE",
                 "/api/architecture/instance-disaster-recoveries/" + id,
                 () -> {
-                    service.deleteDisasterRecovery(actor, id);
+                    service.deleteDisasterRecovery(actor, project(projectRef, actor), id);
                     return success(null);
                 });
     }
@@ -454,9 +482,14 @@ public class EnvironmentResourceController {
     public ApiResponse<List<EnvironmentInstanceResponse>> listAvailableStandbys(
             @RequestParam long deploymentUnitId,
             @RequestParam(required = false) Long excludeInstanceId,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listAvailableStandbyInstances(actor, deploymentUnitId, excludeInstanceId)
+        return success(service.listAvailableStandbyInstances(actor, project(projectRef, actor), deploymentUnitId, excludeInstanceId)
                 .stream().map(this::toInstance).toList());
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 
     private <T> ApiResponse<T> success(T data) {

@@ -14,6 +14,8 @@ import com.ccb.architecture.network.service.NetworkAccessService.NetworkAccessDe
 import com.ccb.architecture.network.service.NetworkAccessService.NetworkAccessDecisionResult;
 import com.ccb.architecture.web.ArchitectureExceptionAdvice;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.system.capability.SystemOperationAudit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +46,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class NetworkAccessControllerTest {
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "applicant", "hash", "申请人", 11L, true);
+    private static final long PROJECT_ID = 70L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(PROJECT_ID, "PROJECT-A", "项目 A");
     private static final LocalDateTime TIME = LocalDateTime.of(2026, 8, 28, 10, 0);
 
     private NetworkAccessService service;
@@ -56,7 +60,10 @@ class NetworkAccessControllerTest {
         service = mock(NetworkAccessService.class);
         submissionService = mock(NetworkAccessApplicationSubmissionService.class);
         operationAudit = mock(SystemOperationAudit.class);
-        NetworkAccessController controller = new NetworkAccessController(service, submissionService, operationAudit);
+        ProjectAccessService projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible("PROJECT-A", ACTOR)).thenReturn(PROJECT);
+        NetworkAccessController controller = new NetworkAccessController(
+                service, submissionService, operationAudit, projectAccessService);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver())
@@ -94,11 +101,11 @@ class NetworkAccessControllerTest {
 
     @Test
     void 判定端点调用服务并写审计() throws Exception {
-        when(service.decideAccess(eq(ACTOR), any(NetworkAccessDecisionCommand.class)))
+        when(service.decideAccess(eq(ACTOR), eq(PROJECT), any(NetworkAccessDecisionCommand.class)))
                 .thenReturn(new NetworkAccessDecisionResult(AccessDecision.NEEDS_APPLICATION, true,
                         DecisionBasis.STRICT_REQUIRED, List.of("NO_FULL_COVERAGE"), List.of(), List.of()));
 
-        mvc.perform(post("/api/architecture/network-access/decision")
+        mvc.perform(post("/api/architecture/network-access/decision?projectRef=PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"source":{"kind":"MANAGED","physicalSubsystemId":1,"environmentId":2,
@@ -113,26 +120,26 @@ class NetworkAccessControllerTest {
                 .andExpect(jsonPath("$.data.decision").value("NEEDS_APPLICATION"))
                 .andExpect(jsonPath("$.data.reasonCodes[0]").value("NO_FULL_COVERAGE"));
 
-        verify(service).decideAccess(eq(ACTOR), any(NetworkAccessDecisionCommand.class));
+        verify(service).decideAccess(eq(ACTOR), eq(PROJECT), any(NetworkAccessDecisionCommand.class));
         verify(operationAudit).recordSuccess(any());
     }
 
     @Test
     void 停用免申请规则调用服务并写审计() throws Exception {
-        NetworkAccessExemptionRule rule = new NetworkAccessExemptionRule(55L, 7L, "EXEMPT_1",
+        NetworkAccessExemptionRule rule = new NetworkAccessExemptionRule(55L, 7L, PROJECT_ID, "EXEMPT_1",
                 "默认免申请", 10L, "应用区", 11L, "服务区", AccessProtocol.TCP, "443",
                 TIME, null, ValidityType.LONG_TERM, ExemptionRuleStatus.DISABLED, null, 2L,
                 9L, 9L, TIME, TIME);
-        when(service.updateExemptionRuleStatus(ACTOR, 55L, 1L, ExemptionRuleStatus.DISABLED))
+        when(service.updateExemptionRuleStatus(ACTOR, PROJECT, 55L, 1L, ExemptionRuleStatus.DISABLED))
                 .thenReturn(rule);
 
-        mvc.perform(post("/api/architecture/network-access-exemption-rules/55/disable")
+        mvc.perform(post("/api/architecture/network-access-exemption-rules/55/disable?projectRef=PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
-        verify(service).updateExemptionRuleStatus(ACTOR, 55L, 1L, ExemptionRuleStatus.DISABLED);
+        verify(service).updateExemptionRuleStatus(ACTOR, PROJECT, 55L, 1L, ExemptionRuleStatus.DISABLED);
         verify(operationAudit).recordSuccess(any());
     }
 
@@ -150,15 +157,15 @@ class NetworkAccessControllerTest {
 
     private Class<?>[] params(String methodName) {
         return switch (methodName) {
-            case "decideNetworkAccess" -> new Class<?>[]{NetworkAccessDecisionCommand.class, AuthUser.class};
-            case "listExemptionRules" -> new Class<?>[]{ExemptionRuleStatus.class, AuthUser.class};
-            case "createExemptionRule" -> new Class<?>[]{ExemptionRuleCommand.class, AuthUser.class};
-            case "updateExemptionRule" -> new Class<?>[]{long.class, ExemptionRuleCommand.class, AuthUser.class};
+            case "decideNetworkAccess" -> new Class<?>[]{String.class, NetworkAccessDecisionCommand.class, AuthUser.class};
+            case "listExemptionRules" -> new Class<?>[]{String.class, ExemptionRuleStatus.class, AuthUser.class};
+            case "createExemptionRule" -> new Class<?>[]{String.class, ExemptionRuleCommand.class, AuthUser.class};
+            case "updateExemptionRule" -> new Class<?>[]{String.class, long.class, ExemptionRuleCommand.class, AuthUser.class};
             case "enableExemptionRule", "disableExemptionRule" ->
-                    new Class<?>[]{long.class, NetworkAccessController.RowVersionRequest.class, AuthUser.class};
-            case "createApplication" -> new Class<?>[]{NetworkAccessCommand.class, AuthUser.class};
+                    new Class<?>[]{String.class, long.class, NetworkAccessController.RowVersionRequest.class, AuthUser.class};
+            case "createApplication" -> new Class<?>[]{String.class, NetworkAccessCommand.class, AuthUser.class};
             case "submitApplication", "approveApplication", "rejectApplication", "cancelApplication" ->
-                    new Class<?>[]{long.class, NetworkAccessController.RowVersionRequest.class, AuthUser.class};
+                    new Class<?>[]{String.class, long.class, NetworkAccessController.RowVersionRequest.class, AuthUser.class};
             default -> throw new IllegalArgumentException(methodName);
         };
     }

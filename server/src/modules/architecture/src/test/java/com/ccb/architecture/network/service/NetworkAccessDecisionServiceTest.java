@@ -15,6 +15,7 @@ import com.ccb.architecture.network.model.NetworkAccessModels.RelationStatus;
 import com.ccb.architecture.network.model.NetworkAccessModels.ValidityType;
 import com.ccb.architecture.network.persistence.NetworkAccessStore;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NetworkAccessDecisionServiceTest {
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "applicant", "hash", "申请人", 11L, true);
+    private static final long PROJECT_ID = 70L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(PROJECT_ID, "PROJECT-A", "项目 A");
     private static final LocalDateTime START = LocalDateTime.of(2026, 9, 1, 0, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 12, 31, 23, 59);
 
@@ -54,7 +57,7 @@ class NetworkAccessDecisionServiceTest {
 
     @Test
     void 缺失有效期类型时严格返回需要申请() {
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(null, null,
                         AccessProtocol.TCP, "443", START, END, null));
 
@@ -67,14 +70,14 @@ class NetworkAccessDecisionServiceTest {
     void 同一启用子网内访问不需要申请() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L));
         EndpointCommand target = managed(100L, 200L, 300L, List.of(21L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 100L, 200L, 300L, 800L, "src", "10.16.32.10")));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(21L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(21L)))
                 .thenReturn(List.of(instance(21L, 100L, 200L, 300L, 800L, "dst", "10.16.32.11")));
-        when(store.listSubnets(7L, null, RecordStatus.ACTIVE))
+        when(store.listSubnets(7L, PROJECT_ID, null, RecordStatus.ACTIVE))
                 .thenReturn(List.of(subnet(800L, "10.16.32.0/24")));
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "1-65535", START, END, ValidityType.LIMITED));
 
@@ -90,16 +93,16 @@ class NetworkAccessDecisionServiceTest {
     void 不同启用子网且无覆盖关系时需要申请() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L));
         EndpointCommand target = managed(100L, 200L, 300L, List.of(21L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 100L, 200L, 300L, 800L, "src", "10.16.32.10")));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(21L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(21L)))
                 .thenReturn(List.of(instance(21L, 100L, 200L, 300L, 800L, "dst", "10.16.48.10")));
-        when(store.listSubnets(7L, null, RecordStatus.ACTIVE))
+        when(store.listSubnets(7L, PROJECT_ID, null, RecordStatus.ACTIVE))
                 .thenReturn(List.of(subnet(800L, "10.16.32.0/24"), subnet(800L, "10.16.48.0/24")));
-        when(store.listRelations(7L, RelationStatus.ACTIVE, 2000, 0)).thenReturn(List.of());
-        when(store.listExemptionRules(7L, ExemptionRuleStatus.ACTIVE)).thenReturn(List.of());
+        when(store.listRelations(7L, PROJECT_ID, RelationStatus.ACTIVE, 2000, 0)).thenReturn(List.of());
+        when(store.listExemptionRules(7L, PROJECT_ID, ExemptionRuleStatus.ACTIVE)).thenReturn(List.of());
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "443", START, END, ValidityType.LIMITED));
 
@@ -112,17 +115,17 @@ class NetworkAccessDecisionServiceTest {
     void 子网内部证据不足时需要申请() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L, 12L));
         EndpointCommand target = managed(100L, 200L, 300L, List.of(21L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L, 12L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L, 12L)))
                 .thenReturn(List.of(
                         instance(11L, 100L, 200L, 300L, 800L, "src-1", "10.16.32.10"),
                         instance(12L, 100L, 200L, 300L, 800L, "src-2", null)));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(21L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(21L)))
                 .thenReturn(List.of(instance(21L, 100L, 200L, 300L, 800L, "dst", "10.16.32.11")));
-        lenient().when(store.listSubnets(7L, null, RecordStatus.ACTIVE))
+        lenient().when(store.listSubnets(7L, PROJECT_ID, null, RecordStatus.ACTIVE))
                 .thenReturn(List.of(subnet(800L, "10.16.32.0/24")));
-        when(store.listRelations(7L, RelationStatus.ACTIVE, 2000, 0)).thenReturn(List.of());
+        when(store.listRelations(7L, PROJECT_ID, RelationStatus.ACTIVE, 2000, 0)).thenReturn(List.of());
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "443", START, END, ValidityType.LIMITED));
 
@@ -135,10 +138,10 @@ class NetworkAccessDecisionServiceTest {
     void 来源目标选择同一实例时判定按输入无效处理() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L));
         EndpointCommand target = managed(100L, 200L, 300L, List.of(11L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 100L, 200L, 300L, 800L, "same", "10.16.32.10")));
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "443", START, END, ValidityType.LIMITED));
 
@@ -151,14 +154,14 @@ class NetworkAccessDecisionServiceTest {
     void 有效关系完整覆盖时不需要申请() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L));
         EndpointCommand target = managed(101L, 201L, 301L, List.of(21L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 100L, 200L, 300L, 800L, "src", "10.1.1.10")));
-        when(store.listEndpointInstances(7L, 101L, 201L, 301L, List.of(21L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 101L, 201L, 301L, List.of(21L)))
                 .thenReturn(List.of(instance(21L, 101L, 201L, 301L, 801L, "dst", "10.2.1.20")));
-        when(store.listRelations(7L, RelationStatus.ACTIVE, 2000, 0))
+        when(store.listRelations(7L, PROJECT_ID, RelationStatus.ACTIVE, 2000, 0))
                 .thenReturn(List.of(relation("443,8443-8445", START.minusDays(1), END.plusDays(1))));
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "443,8444", START, END, ValidityType.LIMITED));
 
@@ -171,15 +174,15 @@ class NetworkAccessDecisionServiceTest {
     void 端口覆盖不完整时需要申请() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L));
         EndpointCommand target = managed(101L, 201L, 301L, List.of(21L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 100L, 200L, 300L, 800L, "src", "10.1.1.10")));
-        when(store.listEndpointInstances(7L, 101L, 201L, 301L, List.of(21L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 101L, 201L, 301L, List.of(21L)))
                 .thenReturn(List.of(instance(21L, 101L, 201L, 301L, 801L, "dst", "10.2.1.20")));
-        when(store.listRelations(7L, RelationStatus.ACTIVE, 2000, 0))
+        when(store.listRelations(7L, PROJECT_ID, RelationStatus.ACTIVE, 2000, 0))
                 .thenReturn(List.of(relation("443", START.minusDays(1), END.plusDays(1))));
-        when(store.listExemptionRules(7L, ExemptionRuleStatus.ACTIVE)).thenReturn(List.of());
+        when(store.listExemptionRules(7L, PROJECT_ID, ExemptionRuleStatus.ACTIVE)).thenReturn(List.of());
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "443,8443", START, END, ValidityType.LIMITED));
 
@@ -191,15 +194,15 @@ class NetworkAccessDecisionServiceTest {
     void 免申请规则完整覆盖时不需要申请() {
         EndpointCommand source = managed(100L, 200L, 300L, List.of(11L));
         EndpointCommand target = managed(101L, 201L, 301L, List.of(21L));
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 100L, 200L, 300L, 800L, "src", "10.1.1.10")));
-        when(store.listEndpointInstances(7L, 101L, 201L, 301L, List.of(21L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 101L, 201L, 301L, List.of(21L)))
                 .thenReturn(List.of(instance(21L, 101L, 201L, 301L, 801L, "dst", "10.2.1.20")));
-        when(store.listRelations(7L, RelationStatus.ACTIVE, 2000, 0)).thenReturn(List.of());
-        when(store.listExemptionRules(7L, ExemptionRuleStatus.ACTIVE))
+        when(store.listRelations(7L, PROJECT_ID, RelationStatus.ACTIVE, 2000, 0)).thenReturn(List.of());
+        when(store.listExemptionRules(7L, PROJECT_ID, ExemptionRuleStatus.ACTIVE))
                 .thenReturn(List.of(rule(800L, 801L, "443,8443-8445")));
 
-        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR,
+        NetworkAccessService.NetworkAccessDecisionResult result = service.decideAccess(ACTOR, PROJECT,
                 new NetworkAccessService.NetworkAccessDecisionCommand(source, target,
                         AccessProtocol.TCP, "8444", START, END, ValidityType.LIMITED));
 
@@ -222,24 +225,26 @@ class NetworkAccessDecisionServiceTest {
     }
 
     private NetworkAccessRelation relation(String ports, LocalDateTime validFrom, LocalDateTime validUntil) {
-        return new NetworkAccessRelation(100L, 7L, "NAR100", 90L,
+        return new NetworkAccessRelation(100L, 7L, PROJECT_ID, "NAR100", 90L,
+                null, null, null,
                 EndpointKind.MANAGED,
                 "[{\"id\":11,\"machineName\":\"src\",\"ipAddress\":\"10.1.1.10\",\"networkZoneId\":800}]",
                 EndpointKind.MANAGED,
                 "[{\"id\":21,\"machineName\":\"dst\",\"ipAddress\":\"10.2.1.20\",\"networkZoneId\":801}]",
                 AccessProtocol.TCP, ports, "历史关系", null, validFrom, validUntil,
-                RelationStatus.ACTIVE, null, null, null, 0L, ACTOR.id(), ACTOR.id(), START, START);
+                ValidityType.LIMITED, RelationStatus.ACTIVE, null, null, null, null,
+                false, 0, List.of(), 0L, ACTOR.id(), ACTOR.id(), START, START);
     }
 
     private NetworkAccessExemptionRule rule(long sourceZone, long targetZone, String ports) {
-        return new NetworkAccessExemptionRule(200L, 7L, "EXEMPT_1", "免申请规则",
+        return new NetworkAccessExemptionRule(200L, 7L, PROJECT_ID, "EXEMPT_1", "免申请规则",
                 sourceZone, "来源分区", targetZone, "目标分区", AccessProtocol.TCP,
                 ports, START.minusDays(1), END.plusDays(1), ValidityType.LIMITED,
                 ExemptionRuleStatus.ACTIVE, null, 0L, ACTOR.id(), ACTOR.id(), START, START);
     }
 
     private NetworkZoneSubnet subnet(long networkZoneId, String cidrBlock) {
-        return new NetworkZoneSubnet(300L + networkZoneId, 7L, networkZoneId, "ZONE" + networkZoneId,
+        return new NetworkZoneSubnet(300L + networkZoneId, 7L, PROJECT_ID, networkZoneId, "ZONE" + networkZoneId,
                 "分区" + networkZoneId, cidrBlock, null, null, RecordStatus.ACTIVE,
                 null, 0L, ACTOR.id(), ACTOR.id(), START, START);
     }

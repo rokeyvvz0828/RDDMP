@@ -46,8 +46,9 @@ public class PlanTimeService {
     }
 
     @Transactional
-    public Plan updatePlanSchedule(AuthUser actor, long planId, ScheduleCommand cmd, boolean isAdmin) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public Plan updatePlanSchedule(AuthUser actor, long projectId, long planId, ScheduleCommand cmd,
+                                   boolean isAdmin) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         engine.requirePlanOwner(actor, plan, isAdmin);
         if (plan.cancelled()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "计划已取消，不能调整时间");
@@ -55,19 +56,21 @@ public class PlanTimeService {
         String reason = requiredReasonWhenStarted(cmd == null ? null : cmd.reason(),
                 plan.actualStart() != null);
         validateRange(cmd == null ? null : cmd.plannedStart(), cmd == null ? null : cmd.plannedEnd());
-        store.updatePlanSchedule(actor.tenantId(), planId, cmd.plannedStart(), cmd.plannedEnd());
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", planId, "SCHEDULE", planId,
+        store.updatePlanSchedule(actor.tenantId(), projectId, planId,
+                cmd.plannedStart(), cmd.plannedEnd());
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "SCHEDULE", planId,
                 "PLAN_SCHEDULE_CHANGED", actor.id(), reason,
                 toJson(Map.of("before", scheduleJson(plan.plannedStart(), plan.plannedEnd()),
                         "after", scheduleJson(cmd.plannedStart(), cmd.plannedEnd()))), null);
-        engine.recompute(actor.tenantId(), planId, LocalDateTime.now());
-        return store.findPlan(actor.tenantId(), planId).orElseThrow();
+        engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
+        return store.findPlan(actor.tenantId(), projectId, planId).orElseThrow();
     }
 
     @Transactional
-    public Stage updateStageSchedule(AuthUser actor, long stageId, ScheduleCommand cmd, boolean isAdmin) {
-        Stage stage = engine.requireStage(actor, stageId);
-        Plan plan = engine.requirePlan(actor, stage.planId());
+    public Stage updateStageSchedule(AuthUser actor, long projectId, long stageId, ScheduleCommand cmd,
+                                     boolean isAdmin) {
+        Stage stage = engine.requireStage(actor, projectId, stageId);
+        Plan plan = engine.requirePlan(actor, projectId, stage.planId());
         boolean allowed = isAdmin || actor.id() == plan.planOwnerUserId()
                 || actor.id() == stage.ownerUserId();
         if (!allowed) {
@@ -79,20 +82,23 @@ public class PlanTimeService {
         String reason = requiredReasonWhenStarted(cmd == null ? null : cmd.reason(),
                 stage.actualStart() != null);
         validateRange(cmd == null ? null : cmd.plannedStart(), cmd == null ? null : cmd.plannedEnd());
-        store.updateStageSchedule(actor.tenantId(), stageId, cmd.plannedStart(), cmd.plannedEnd());
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", stage.planId(), "SCHEDULE", stageId,
+        store.updateStageSchedule(actor.tenantId(), projectId, stageId,
+                cmd.plannedStart(), cmd.plannedEnd());
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", stage.planId(),
+                "SCHEDULE", stageId,
                 "STAGE_SCHEDULE_CHANGED", actor.id(), reason,
                 toJson(Map.of("before", scheduleJson(stage.plannedStart(), stage.plannedEnd()),
                         "after", scheduleJson(cmd.plannedStart(), cmd.plannedEnd()))), null);
-        engine.recompute(actor.tenantId(), stage.planId(), LocalDateTime.now());
-        return store.findStage(actor.tenantId(), stageId).orElseThrow();
+        engine.recompute(actor.tenantId(), projectId, stage.planId(), LocalDateTime.now());
+        return store.findStage(actor.tenantId(), projectId, stageId).orElseThrow();
     }
 
     @Transactional
-    public Task updateTaskSchedule(AuthUser actor, long taskId, ScheduleCommand cmd, boolean isAdmin) {
-        Task task = engine.requireTask(actor, taskId);
-        Plan plan = engine.requirePlan(actor, task.planId());
-        Stage stage = store.findStage(actor.tenantId(), task.stageId()).orElseThrow();
+    public Task updateTaskSchedule(AuthUser actor, long projectId, long taskId, ScheduleCommand cmd,
+                                   boolean isAdmin) {
+        Task task = engine.requireTask(actor, projectId, taskId);
+        Plan plan = engine.requirePlan(actor, projectId, task.planId());
+        Stage stage = store.findStage(actor.tenantId(), projectId, task.stageId()).orElseThrow();
         boolean allowed = isAdmin || actor.id() == plan.planOwnerUserId()
                 || actor.id() == task.ownerUserId() || actor.id() == stage.ownerUserId();
         if (!allowed) {
@@ -104,20 +110,22 @@ public class PlanTimeService {
         String reason = requiredReasonWhenStarted(cmd == null ? null : cmd.reason(),
                 task.actualStart() != null);
         validateRange(cmd == null ? null : cmd.plannedStart(), cmd == null ? null : cmd.plannedEnd());
-        store.updateTaskSchedule(actor.tenantId(), taskId, cmd.plannedStart(), cmd.plannedEnd());
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", task.planId(), "SCHEDULE", taskId,
+        store.updateTaskSchedule(actor.tenantId(), projectId, taskId,
+                cmd.plannedStart(), cmd.plannedEnd());
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(),
+                "SCHEDULE", taskId,
                 "TASK_SCHEDULE_CHANGED", actor.id(), reason,
                 toJson(Map.of("before", scheduleJson(task.plannedStart(), task.plannedEnd()),
                         "after", scheduleJson(cmd.plannedStart(), cmd.plannedEnd()))), null);
-        engine.recompute(actor.tenantId(), task.planId(), LocalDateTime.now());
-        return store.findTask(actor.tenantId(), taskId).orElseThrow();
+        engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
+        return store.findTask(actor.tenantId(), projectId, taskId).orElseThrow();
     }
 
     /** 事件更正：有权限人员附原因更正实际时间事件；原事件与更正记录全部保留，实际时间重算。 */
     @Transactional
-    public PlanEvent correctEvent(AuthUser actor, long eventId, LocalDateTime newTime, String reason,
-                                  boolean isAdmin) {
-        PlanEvent event = store.findEvent(actor.tenantId(), eventId)
+    public PlanEvent correctEvent(AuthUser actor, long projectId, long eventId, LocalDateTime newTime,
+                                  String reason, boolean isAdmin) {
+        PlanEvent event = store.findEvent(actor.tenantId(), projectId, eventId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("执行事件不存在"));
         if (event.eventType() != EventType.START && event.eventType() != EventType.COMPLETE
                 && event.eventType() != EventType.REOPEN) {
@@ -126,7 +134,7 @@ public class PlanTimeService {
         if (event.correctOfEventId() != null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "更正事件不能再次更正；请更正原始事件");
         }
-        Plan plan = store.findPlan(actor.tenantId(), event.planId())
+        Plan plan = store.findPlan(actor.tenantId(), projectId, event.planId())
                 .orElseThrow(() -> new ArchitectureNotFoundException("搭建计划不存在"));
         boolean allowed = isAdmin || actor.id() == plan.planOwnerUserId();
         if (!allowed) {
@@ -137,33 +145,38 @@ public class PlanTimeService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "更正时间不能为空");
         }
         long correctionId = nextId();
-        store.insertEvent(actor.tenantId(), new PlanEvent(correctionId, event.planId(),
+        store.insertEvent(actor.tenantId(), projectId, new PlanEvent(correctionId, event.planId(),
                 event.objectType(), event.objectId(), EventType.TIME_CORRECT, newTime, actor.id(),
                 correctReason, eventId));
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", event.planId(), "EVENT", eventId,
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", event.planId(),
+                "EVENT", eventId,
                 "EVENT_CORRECTED", actor.id(), correctReason,
                 toJson(Map.of("eventType", event.eventType().name(), "from",
                         String.valueOf(event.occurredAt()), "to", String.valueOf(newTime))), null);
-        engine.recompute(actor.tenantId(), event.planId(), LocalDateTime.now());
-        return store.findEvent(actor.tenantId(), correctionId).orElseThrow();
+        engine.recompute(actor.tenantId(), projectId, event.planId(), LocalDateTime.now());
+        return store.findEvent(actor.tenantId(), projectId, correctionId).orElseThrow();
     }
 
-    public List<PlanEvent> listEvents(AuthUser actor, long planId, String objectType, long objectId) {
-        return store.findEvents(actor.tenantId(), planId, objectType, objectId);
+    public List<PlanEvent> listEvents(AuthUser actor, long projectId, long planId, String objectType,
+                                      long objectId) {
+        engine.requirePlan(actor, projectId, planId);
+        return store.findEvents(actor.tenantId(), projectId, planId, objectType, objectId);
     }
 
-    public List<PlanEvent> listPlanEvents(AuthUser actor, long planId) {
+    public List<PlanEvent> listPlanEvents(AuthUser actor, long projectId, long planId) {
+        engine.requirePlan(actor, projectId, planId);
         List<PlanEvent> result = new java.util.ArrayList<>();
-        for (long taskId : store.findTasks(actor.tenantId(), planId, null).stream()
+        for (long taskId : store.findTasks(actor.tenantId(), projectId, planId, null).stream()
                 .map(Task::id).toList()) {
-            result.addAll(store.findEvents(actor.tenantId(), planId, "TASK", taskId));
+            result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "TASK", taskId));
             for (com.ccb.architecture.plan.model.PlanModels.CheckItem item
-                    : store.findCheckItems(actor.tenantId(), taskId)) {
-                result.addAll(store.findEvents(actor.tenantId(), planId, "CHECK_ITEM", item.id()));
+                    : store.findCheckItems(actor.tenantId(), projectId, taskId)) {
+                result.addAll(store.findEvents(actor.tenantId(), projectId, planId,
+                        "CHECK_ITEM", item.id()));
             }
         }
-        result.addAll(store.findEvents(actor.tenantId(), planId, "STAGE", planId));
-        result.addAll(store.findEvents(actor.tenantId(), planId, "PLAN", planId));
+        result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "STAGE", planId));
+        result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "PLAN", planId));
         result.sort(java.util.Comparator.comparing(PlanEvent::occurredAt));
         return result;
     }

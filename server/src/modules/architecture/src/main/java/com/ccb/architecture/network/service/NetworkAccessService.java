@@ -28,6 +28,7 @@ import com.ccb.architecture.web.ArchitectureNotFoundException;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -147,128 +148,145 @@ public class NetworkAccessService {
     }
 
     @Transactional(readOnly = true)
-    public List<NetworkZone> listZones(AuthUser actor, RecordStatus status, String keyword) {
+    public List<NetworkZone> listZones(AuthUser actor, ProjectAccess project, RecordStatus status, String keyword) {
         requireActor(actor);
-        return store.listZones(actor.tenantId(), status, keyword);
+        requireProject(project);
+        return store.listZones(actor.tenantId(), project.id(), status, keyword);
     }
 
     @Transactional(readOnly = true)
-    public List<NetworkZoneOption> listZoneOptions(AuthUser actor, boolean leafOnly) {
+    public List<NetworkZoneOption> listZoneOptions(AuthUser actor, ProjectAccess project, boolean leafOnly) {
         requireActor(actor);
-        return store.listZones(actor.tenantId(), RecordStatus.ACTIVE, null).stream()
-                .filter(zone -> !leafOnly || !store.hasActiveChildZones(actor.tenantId(), zone.id()))
+        requireProject(project);
+        return store.listZones(actor.tenantId(), project.id(), RecordStatus.ACTIVE, null).stream()
+                .filter(zone -> !leafOnly || !store.hasActiveChildZones(actor.tenantId(), project.id(), zone.id()))
                 .map(zone -> new NetworkZoneOption(zone.id(), zone.code(), zone.name(), zone.parentId(),
                         zone.parentName(), zone.restrictionLevel(),
-                        !store.hasActiveChildZones(actor.tenantId(), zone.id())))
+                        !store.hasActiveChildZones(actor.tenantId(), project.id(), zone.id())))
                 .toList();
     }
 
     @Transactional
-    public NetworkZone createZone(AuthUser actor, NetworkZoneCommand command) {
+    public NetworkZone createZone(AuthUser actor, ProjectAccess project, NetworkZoneCommand command) {
         requireActor(actor);
-        PreparedZone prepared = prepareZone(actor, command, null);
+        requireProject(project);
+        PreparedZone prepared = prepareZone(actor, project.id(), command, null);
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
-        NetworkZone zone = new NetworkZone(id, actor.tenantId(), prepared.parentId(), prepared.parentName(),
+        NetworkZone zone = new NetworkZone(id, actor.tenantId(), project.id(), prepared.parentId(), prepared.parentName(),
                 prepared.code(), prepared.name(), prepared.restrictionLevel(), RecordStatus.ACTIVE,
                 prepared.description(), prepared.remark(), 0L, actor.id(), actor.id(), now, now);
         store.insertZone(zone);
-        return store.findZone(actor.tenantId(), id).orElse(zone);
+        return store.findZone(actor.tenantId(), project.id(), id).orElse(zone);
     }
 
     @Transactional
-    public NetworkZone updateZone(AuthUser actor, long id, NetworkZoneCommand command) {
+    public NetworkZone updateZone(AuthUser actor, ProjectAccess project, long id, NetworkZoneCommand command) {
         requireActor(actor);
-        NetworkZone current = store.lockZone(actor.tenantId(), id).orElseThrow(() -> notFound("网络分区不存在"));
+        requireProject(project);
+        NetworkZone current = store.lockZone(actor.tenantId(), project.id(), id)
+                .orElseThrow(() -> notFound("网络分区不存在"));
         if (current.status() != RecordStatus.ACTIVE) {
             throw conflict("已停用网络分区不能修改");
         }
         if (command == null || command.rowVersion() == null || command.rowVersion() < 0) {
             throw badRequest("rowVersion 必须为非负整数");
         }
-        if (!Objects.equals(current.parentId(), command.parentId()) && store.hasActiveChildZones(actor.tenantId(), id)) {
+        if (!Objects.equals(current.parentId(), command.parentId())
+                && store.hasActiveChildZones(actor.tenantId(), project.id(), id)) {
             throw conflict("存在启用子分区的分区不能调整父级");
         }
-        if (!Objects.equals(current.parentId(), command.parentId()) && store.hasActiveSubnets(actor.tenantId(), id)) {
+        if (!Objects.equals(current.parentId(), command.parentId())
+                && store.hasActiveSubnets(actor.tenantId(), project.id(), id)) {
             throw conflict("存在启用网段的分区不能调整父级");
         }
-        PreparedZone prepared = prepareZone(actor, command, id);
-        if (!store.updateZone(actor.tenantId(), id, command.rowVersion(), prepared.parentId(), prepared.code(),
+        PreparedZone prepared = prepareZone(actor, project.id(), command, id);
+        if (!store.updateZone(actor.tenantId(), project.id(), id, command.rowVersion(), prepared.parentId(), prepared.code(),
                 prepared.name(), prepared.restrictionLevel(), prepared.description(), prepared.remark(), actor.id())) {
             throw conflict("网络分区已被其他操作修改，请刷新重试");
         }
-        return store.findZone(actor.tenantId(), id).orElseThrow(() -> notFound("网络分区不存在"));
+        return store.findZone(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("网络分区不存在"));
     }
 
     @Transactional
-    public NetworkZone deactivateZone(AuthUser actor, long id) {
+    public NetworkZone deactivateZone(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        NetworkZone current = store.lockZone(actor.tenantId(), id).orElseThrow(() -> notFound("网络分区不存在"));
-        if (store.hasActiveChildZones(actor.tenantId(), id)) {
+        requireProject(project);
+        NetworkZone current = store.lockZone(actor.tenantId(), project.id(), id)
+                .orElseThrow(() -> notFound("网络分区不存在"));
+        if (store.hasActiveChildZones(actor.tenantId(), project.id(), id)) {
             throw conflict("存在启用子分区的网络分区不能停用");
         }
-        if (store.hasActiveSubnets(actor.tenantId(), id)) {
+        if (store.hasActiveSubnets(actor.tenantId(), project.id(), id)) {
             throw conflict("存在启用网段的网络分区不能停用");
         }
-        if (!store.updateZoneStatus(actor.tenantId(), id, RecordStatus.ACTIVE, RecordStatus.INACTIVE, actor.id())) {
+        if (!store.updateZoneStatus(actor.tenantId(), project.id(), id,
+                RecordStatus.ACTIVE, RecordStatus.INACTIVE, actor.id())) {
             throw conflict("网络分区当前状态不允许停用");
         }
-        return store.findZone(actor.tenantId(), id).orElse(current);
+        return store.findZone(actor.tenantId(), project.id(), id).orElse(current);
     }
 
     @Transactional
-    public NetworkZone reactivateZone(AuthUser actor, long id) {
+    public NetworkZone reactivateZone(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        NetworkZone current = store.lockZone(actor.tenantId(), id).orElseThrow(() -> notFound("网络分区不存在"));
+        requireProject(project);
+        NetworkZone current = store.lockZone(actor.tenantId(), project.id(), id)
+                .orElseThrow(() -> notFound("网络分区不存在"));
         if (current.parentId() != null) {
-            NetworkZone parent = requireActiveZone(actor.tenantId(), current.parentId());
+            NetworkZone parent = requireActiveZone(actor.tenantId(), project.id(), current.parentId());
             if (current.restrictionLevel() < parent.restrictionLevel()) {
                 throw conflict("子分区限制级别低于父分区，不能启用");
             }
         }
-        if (!store.updateZoneStatus(actor.tenantId(), id, RecordStatus.INACTIVE, RecordStatus.ACTIVE, actor.id())) {
+        if (!store.updateZoneStatus(actor.tenantId(), project.id(), id,
+                RecordStatus.INACTIVE, RecordStatus.ACTIVE, actor.id())) {
             throw conflict("网络分区当前状态不允许启用");
         }
-        return store.findZone(actor.tenantId(), id).orElse(current);
+        return store.findZone(actor.tenantId(), project.id(), id).orElse(current);
     }
 
     @Transactional(readOnly = true)
-    public ZoneRef requireActiveLeafZone(long tenantId, Long zoneId, String label) {
+    public ZoneRef requireActiveLeafZone(long tenantId, long projectId, Long zoneId, String label) {
         if (zoneId == null || zoneId <= 0) {
             throw badRequest(label + "不能为空");
         }
-        NetworkZone zone = requireActiveZone(tenantId, zoneId);
-        if (store.hasActiveChildZones(tenantId, zoneId)) {
+        NetworkZone zone = requireActiveZone(tenantId, projectId, zoneId);
+        if (store.hasActiveChildZones(tenantId, projectId, zoneId)) {
             throw badRequest(label + "必须选择启用叶子分区");
         }
         return new ZoneRef(zone.id(), zone.code(), zone.name());
     }
 
     @Transactional(readOnly = true)
-    public List<NetworkZoneSubnet> listSubnets(AuthUser actor, Long zoneId, RecordStatus status) {
+    public List<NetworkZoneSubnet> listSubnets(AuthUser actor, ProjectAccess project, Long zoneId, RecordStatus status) {
         requireActor(actor);
-        return store.listSubnets(actor.tenantId(), zoneId, status);
+        requireProject(project);
+        return store.listSubnets(actor.tenantId(), project.id(), zoneId, status);
     }
 
     @Transactional
-    public NetworkZoneSubnet createSubnet(AuthUser actor, long zoneId, NetworkZoneSubnetCommand command) {
+    public NetworkZoneSubnet createSubnet(AuthUser actor, ProjectAccess project, long zoneId,
+                                          NetworkZoneSubnetCommand command) {
         requireActor(actor);
-        requireActiveLeafZone(actor.tenantId(), zoneId, "网络分区网段归属分区");
-        PreparedSubnet prepared = prepareSubnet(actor, command, null);
+        requireProject(project);
+        requireActiveLeafZone(actor.tenantId(), project.id(), zoneId, "网络分区网段归属分区");
+        PreparedSubnet prepared = prepareSubnet(actor, project.id(), command, null);
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
-        NetworkZoneSubnet subnet = new NetworkZoneSubnet(id, actor.tenantId(), zoneId, null, null,
+        NetworkZoneSubnet subnet = new NetworkZoneSubnet(id, actor.tenantId(), project.id(), zoneId, null, null,
                 prepared.cidrBlock(), prepared.gatewayIp(), prepared.purpose(), RecordStatus.ACTIVE,
                 prepared.remark(), 0L, actor.id(), actor.id(), now, now);
         store.insertSubnet(subnet);
-        return store.findSubnet(actor.tenantId(), id).orElse(subnet);
+        return store.findSubnet(actor.tenantId(), project.id(), id).orElse(subnet);
     }
 
     @Transactional
-    public NetworkZoneSubnet updateSubnet(AuthUser actor, long zoneId, long subnetId,
+    public NetworkZoneSubnet updateSubnet(AuthUser actor, ProjectAccess project, long zoneId, long subnetId,
                                           NetworkZoneSubnetCommand command) {
         requireActor(actor);
-        NetworkZoneSubnet current = store.lockSubnet(actor.tenantId(), subnetId)
+        requireProject(project);
+        NetworkZoneSubnet current = store.lockSubnet(actor.tenantId(), project.id(), subnetId)
                 .orElseThrow(() -> notFound("网络分区网段不存在"));
         if (current.networkZoneId() != zoneId) {
             throw badRequest("网络分区网段不属于当前分区");
@@ -279,59 +297,63 @@ public class NetworkAccessService {
         if (command == null || command.rowVersion() == null || command.rowVersion() < 0) {
             throw badRequest("rowVersion 必须为非负整数");
         }
-        requireActiveLeafZone(actor.tenantId(), zoneId, "网络分区网段归属分区");
-        PreparedSubnet prepared = prepareSubnet(actor, command, subnetId);
-        if (!store.updateSubnet(actor.tenantId(), subnetId, command.rowVersion(), prepared.cidrBlock(),
+        requireActiveLeafZone(actor.tenantId(), project.id(), zoneId, "网络分区网段归属分区");
+        PreparedSubnet prepared = prepareSubnet(actor, project.id(), command, subnetId);
+        if (!store.updateSubnet(actor.tenantId(), project.id(), subnetId, command.rowVersion(), prepared.cidrBlock(),
                 prepared.gatewayIp(), prepared.purpose(), prepared.remark(), actor.id())) {
             throw conflict("网络分区网段已被其他操作修改，请刷新重试");
         }
-        return store.findSubnet(actor.tenantId(), subnetId).orElseThrow(() -> notFound("网络分区网段不存在"));
+        return store.findSubnet(actor.tenantId(), project.id(), subnetId)
+                .orElseThrow(() -> notFound("网络分区网段不存在"));
     }
 
     @Transactional
-    public NetworkZoneSubnet deactivateSubnet(AuthUser actor, long zoneId, long subnetId) {
+    public NetworkZoneSubnet deactivateSubnet(AuthUser actor, ProjectAccess project, long zoneId, long subnetId) {
         requireActor(actor);
-        NetworkZoneSubnet current = store.lockSubnet(actor.tenantId(), subnetId)
+        requireProject(project);
+        NetworkZoneSubnet current = store.lockSubnet(actor.tenantId(), project.id(), subnetId)
                 .orElseThrow(() -> notFound("网络分区网段不存在"));
         if (current.networkZoneId() != zoneId) {
             throw badRequest("网络分区网段不属于当前分区");
         }
-        if (!store.updateSubnetStatus(actor.tenantId(), subnetId, RecordStatus.ACTIVE,
+        if (!store.updateSubnetStatus(actor.tenantId(), project.id(), subnetId, RecordStatus.ACTIVE,
                 RecordStatus.INACTIVE, actor.id())) {
             throw conflict("网络分区网段当前状态不允许停用");
         }
-        return store.findSubnet(actor.tenantId(), subnetId).orElse(current);
+        return store.findSubnet(actor.tenantId(), project.id(), subnetId).orElse(current);
     }
 
     @Transactional
-    public NetworkZoneSubnet reactivateSubnet(AuthUser actor, long zoneId, long subnetId) {
+    public NetworkZoneSubnet reactivateSubnet(AuthUser actor, ProjectAccess project, long zoneId, long subnetId) {
         requireActor(actor);
-        NetworkZoneSubnet current = store.lockSubnet(actor.tenantId(), subnetId)
+        requireProject(project);
+        NetworkZoneSubnet current = store.lockSubnet(actor.tenantId(), project.id(), subnetId)
                 .orElseThrow(() -> notFound("网络分区网段不存在"));
         if (current.networkZoneId() != zoneId) {
             throw badRequest("网络分区网段不属于当前分区");
         }
-        requireActiveLeafZone(actor.tenantId(), zoneId, "网络分区网段归属分区");
-        if (!store.updateSubnetStatus(actor.tenantId(), subnetId, RecordStatus.INACTIVE,
+        requireActiveLeafZone(actor.tenantId(), project.id(), zoneId, "网络分区网段归属分区");
+        if (!store.updateSubnetStatus(actor.tenantId(), project.id(), subnetId, RecordStatus.INACTIVE,
                 RecordStatus.ACTIVE, actor.id())) {
             throw conflict("网络分区网段当前状态不允许启用");
         }
-        return store.findSubnet(actor.tenantId(), subnetId).orElse(current);
+        return store.findSubnet(actor.tenantId(), project.id(), subnetId).orElse(current);
     }
 
     @Transactional(readOnly = true)
-    public NetworkZoneSubnet requireIpInActiveSubnet(long tenantId, Long zoneId, String ipAddress, String label) {
+    public NetworkZoneSubnet requireIpInActiveSubnet(long tenantId, long projectId, Long zoneId,
+                                                      String ipAddress, String label) {
         if (zoneId == null || zoneId <= 0) {
             throw badRequest(label + "缺少网络分区");
         }
-        NetworkZone zone = requireActiveZone(tenantId, zoneId);
+        NetworkZone zone = requireActiveZone(tenantId, projectId, zoneId);
         String ip = required(ipAddress, label, 64);
         try {
             NetworkCidr.parseIpv4(ip);
         } catch (IllegalArgumentException exception) {
             throw badRequest(label + "格式无效：" + ip);
         }
-        List<NetworkZoneSubnet> subnets = store.listSubnets(tenantId, zoneId, RecordStatus.ACTIVE);
+        List<NetworkZoneSubnet> subnets = store.listSubnets(tenantId, projectId, zoneId, RecordStatus.ACTIVE);
         if (subnets.isEmpty()) {
             throw badRequest("网络分区「" + zone.name() + "」未配置启用网段，不能下发实例 IP");
         }
@@ -344,115 +366,132 @@ public class NetworkAccessService {
     }
 
     @Transactional(readOnly = true)
-    public String requirePrimaryActiveSubnetCidr(long tenantId, Long zoneId, String label) {
+    public String requirePrimaryActiveSubnetCidr(long tenantId, long projectId, Long zoneId, String label) {
         if (zoneId == null || zoneId <= 0) {
             throw badRequest(label + "缺少网络分区");
         }
-        NetworkZone zone = requireActiveZone(tenantId, zoneId);
-        return store.listSubnets(tenantId, zoneId, RecordStatus.ACTIVE).stream()
+        NetworkZone zone = requireActiveZone(tenantId, projectId, zoneId);
+        return store.listSubnets(tenantId, projectId, zoneId, RecordStatus.ACTIVE).stream()
                 .findFirst()
                 .map(NetworkZoneSubnet::cidrBlock)
                 .orElseThrow(() -> badRequest("网络分区「" + zone.name() + "」未配置启用网段，不能自动下发实例 IP"));
     }
 
     @Transactional(readOnly = true)
-    public List<ExternalNetworkAddress> listAddresses(AuthUser actor, RecordStatus status, String keyword) {
+    public List<ExternalNetworkAddress> listAddresses(AuthUser actor, ProjectAccess project,
+                                                      RecordStatus status, String keyword) {
         requireActor(actor);
-        return store.listAddresses(actor.tenantId(), status, keyword);
+        requireProject(project);
+        return store.listAddresses(actor.tenantId(), project.id(), status, keyword);
     }
 
     @Transactional
-    public ExternalNetworkAddress createAddress(AuthUser actor, ExternalAddressCommand command) {
+    public ExternalNetworkAddress createAddress(AuthUser actor, ProjectAccess project, ExternalAddressCommand command) {
         requireActor(actor);
-        PreparedAddress prepared = prepareAddress(actor, command, null);
+        requireProject(project);
+        PreparedAddress prepared = prepareAddress(actor, project.id(), command, null);
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
-        ExternalNetworkAddress address = new ExternalNetworkAddress(id, actor.tenantId(), prepared.addressType(),
+        ExternalNetworkAddress address = new ExternalNetworkAddress(id, actor.tenantId(), project.id(), prepared.addressType(),
                 prepared.addressValue(), prepared.displayName(), prepared.purpose(), RecordStatus.ACTIVE,
                 prepared.remark(), 0L, actor.id(), actor.id(), now, now);
         store.insertAddress(address);
-        return store.findAddress(actor.tenantId(), id).orElse(address);
+        return store.findAddress(actor.tenantId(), project.id(), id).orElse(address);
     }
 
     @Transactional
-    public ExternalNetworkAddress updateAddress(AuthUser actor, long id, ExternalAddressCommand command) {
+    public ExternalNetworkAddress updateAddress(AuthUser actor, ProjectAccess project, long id,
+                                                ExternalAddressCommand command) {
         requireActor(actor);
-        store.lockAddress(actor.tenantId(), id).orElseThrow(() -> notFound("外部网络地址不存在"));
+        requireProject(project);
+        store.lockAddress(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("外部网络地址不存在"));
         if (command == null || command.rowVersion() == null || command.rowVersion() < 0) {
             throw badRequest("rowVersion 必须为非负整数");
         }
-        PreparedAddress prepared = prepareAddress(actor, command, id);
-        if (!store.updateAddress(actor.tenantId(), id, command.rowVersion(), prepared.addressType(),
+        PreparedAddress prepared = prepareAddress(actor, project.id(), command, id);
+        if (!store.updateAddress(actor.tenantId(), project.id(), id, command.rowVersion(), prepared.addressType(),
                 prepared.addressValue(), prepared.displayName(), prepared.purpose(), prepared.remark(), actor.id())) {
             throw conflict("外部网络地址已被其他操作修改，请刷新重试");
         }
-        return store.findAddress(actor.tenantId(), id).orElseThrow(() -> notFound("外部网络地址不存在"));
+        return store.findAddress(actor.tenantId(), project.id(), id)
+                .orElseThrow(() -> notFound("外部网络地址不存在"));
     }
 
     @Transactional
-    public ExternalNetworkAddress deactivateAddress(AuthUser actor, long id) {
+    public ExternalNetworkAddress deactivateAddress(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        ExternalNetworkAddress current = store.lockAddress(actor.tenantId(), id)
+        requireProject(project);
+        ExternalNetworkAddress current = store.lockAddress(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("外部网络地址不存在"));
-        if (!store.updateAddressStatus(actor.tenantId(), id, RecordStatus.ACTIVE, RecordStatus.INACTIVE, actor.id())) {
+        if (!store.updateAddressStatus(actor.tenantId(), project.id(), id,
+                RecordStatus.ACTIVE, RecordStatus.INACTIVE, actor.id())) {
             throw conflict("外部网络地址当前状态不允许停用");
         }
-        return store.findAddress(actor.tenantId(), id).orElse(current);
+        return store.findAddress(actor.tenantId(), project.id(), id).orElse(current);
     }
 
     @Transactional
-    public ExternalNetworkAddress reactivateAddress(AuthUser actor, long id) {
+    public ExternalNetworkAddress reactivateAddress(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        ExternalNetworkAddress current = store.lockAddress(actor.tenantId(), id)
+        requireProject(project);
+        ExternalNetworkAddress current = store.lockAddress(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("外部网络地址不存在"));
-        if (!store.updateAddressStatus(actor.tenantId(), id, RecordStatus.INACTIVE, RecordStatus.ACTIVE, actor.id())) {
+        if (!store.updateAddressStatus(actor.tenantId(), project.id(), id,
+                RecordStatus.INACTIVE, RecordStatus.ACTIVE, actor.id())) {
             throw conflict("外部网络地址当前状态不允许启用");
         }
-        return store.findAddress(actor.tenantId(), id).orElse(current);
+        return store.findAddress(actor.tenantId(), project.id(), id).orElse(current);
     }
 
     @Transactional(readOnly = true)
-    public List<ManagedEndpointInstance> listEndpointInstances(AuthUser actor, Long physicalSubsystemId,
+    public List<ManagedEndpointInstance> listEndpointInstances(AuthUser actor, ProjectAccess project,
+                                                               Long physicalSubsystemId,
                                                                Long environmentId, Long deploymentUnitId) {
         requireActor(actor);
-        return store.listEndpointInstances(actor.tenantId(), physicalSubsystemId, environmentId, deploymentUnitId, List.of());
+        requireProject(project);
+        return store.listEndpointInstances(actor.tenantId(), project.id(), physicalSubsystemId,
+                environmentId, deploymentUnitId, List.of());
     }
 
     @Transactional(readOnly = true)
-    public List<NetworkAccessApplication> listApplications(AuthUser actor, AccessScope scope,
+    public List<NetworkAccessApplication> listApplications(AuthUser actor, ProjectAccess project, AccessScope scope,
                                                            ApplicationStatus status, int limit, int offset) {
         requireActor(actor);
+        requireProject(project);
         Long applicantId = scope == AccessScope.MANAGE ? null : actor.id();
-        return store.listApplications(actor.tenantId(), applicantId, status, normalizeLimit(limit), Math.max(offset, 0));
+        return store.listApplications(actor.tenantId(), project.id(), applicantId, status,
+                normalizeLimit(limit), Math.max(offset, 0));
     }
 
     @Transactional(readOnly = true)
-    public NetworkAccessDecisionResult decideAccess(AuthUser actor, NetworkAccessDecisionCommand command) {
+    public NetworkAccessDecisionResult decideAccess(AuthUser actor, ProjectAccess project,
+                                                    NetworkAccessDecisionCommand command) {
         requireActor(actor);
+        requireProject(project);
         List<String> reasons = new ArrayList<>();
         try {
             Objects.requireNonNull(command, "网络访问判定不能为空");
-            PreparedEndpoint source = prepareEndpoint(actor, command.source(), "来源");
-            PreparedEndpoint target = prepareEndpoint(actor, command.target(), "目标");
+            PreparedEndpoint source = prepareEndpoint(actor, project.id(), command.source(), "来源");
+            PreparedEndpoint target = prepareEndpoint(actor, project.id(), command.target(), "目标");
             requireDistinctManagedInstances(source, target);
             AccessProtocol protocol = Objects.requireNonNull(command.protocol(), "协议不能为空");
             NetworkPortRanges requestedPorts = NetworkPortRanges.parse(command.ports());
             Validity validity = normalizeValidity(command.validityType(), command.validFrom(), command.validUntil(), true);
 
-            Optional<String> internalSubnetCidr = sameSubnetInternalCidr(actor.tenantId(), source, target);
+            Optional<String> internalSubnetCidr = sameSubnetInternalCidr(actor.tenantId(), project.id(), source, target);
             if (internalSubnetCidr.isPresent()) {
                 return decision(AccessDecision.NOT_REQUIRED, DecisionBasis.SUBNET_INTERNAL,
                         List.of("SAME_SUBNET_INTERNAL"), List.of(), List.of());
             }
 
-            List<String> coveringRelations = coveringRelations(actor.tenantId(), source, target,
+            List<String> coveringRelations = coveringRelations(actor.tenantId(), project.id(), source, target,
                     protocol, requestedPorts, validity);
             if (!coveringRelations.isEmpty()) {
                 return decision(AccessDecision.NOT_REQUIRED, DecisionBasis.RELATION_COVERED,
                         List.of("EXISTING_RELATION_FULLY_COVERS"), coveringRelations, List.of());
             }
 
-            List<String> coveringRules = coveringRules(actor.tenantId(), source, target,
+            List<String> coveringRules = coveringRules(actor.tenantId(), project.id(), source, target,
                     protocol, requestedPorts, validity);
             if (!coveringRules.isEmpty()) {
                 return decision(AccessDecision.NOT_REQUIRED, DecisionBasis.RULE_EXEMPT,
@@ -469,8 +508,9 @@ public class NetworkAccessService {
     }
 
     @Transactional
-    public NetworkAccessApplication createApplication(AuthUser actor, NetworkAccessCommand command) {
+    public NetworkAccessApplication createApplication(AuthUser actor, ProjectAccess project, NetworkAccessCommand command) {
         requireActor(actor);
+        requireProject(project);
         Objects.requireNonNull(command, "网络访问申请不能为空");
         NetworkAccessActionType actionType = command.actionType() == null ? NetworkAccessActionType.OPEN : command.actionType();
         NetworkAccessRelation targetRelation = null;
@@ -479,20 +519,20 @@ public class NetworkAccessService {
         AccessProtocol protocol;
         String ports;
         if (actionType == NetworkAccessActionType.CLOSE || actionType == NetworkAccessActionType.RENEW) {
-            targetRelation = requireActiveTargetRelation(actor, command.targetRelationId(), actionType);
+            targetRelation = requireActiveTargetRelation(actor, project.id(), command.targetRelationId(), actionType);
             source = PreparedEndpoint.fromRelation(targetRelation.sourceKind(), targetRelation.sourceSnapshotJson());
             target = PreparedEndpoint.fromRelation(targetRelation.targetKind(), targetRelation.targetSnapshotJson());
             protocol = targetRelation.protocol();
             ports = targetRelation.ports();
         } else {
-            source = prepareEndpoint(actor, command.source(), "来源");
-            target = prepareEndpoint(actor, command.target(), "目标");
+            source = prepareEndpoint(actor, project.id(), command.source(), "来源");
+            target = prepareEndpoint(actor, project.id(), command.target(), "目标");
             requireDistinctManagedInstances(source, target);
             protocol = Objects.requireNonNull(command.protocol(), "协议不能为空");
             ports = required(command.ports(), "端口", 128);
             NetworkPortRanges.parse(ports);
             if (actionType == NetworkAccessActionType.MODIFY) {
-                targetRelation = requireActiveTargetRelation(actor, command.targetRelationId(), actionType);
+                targetRelation = requireActiveTargetRelation(actor, project.id(), command.targetRelationId(), actionType);
             }
         }
         String purpose = required(command.purpose(), "用途", 1000);
@@ -509,7 +549,7 @@ public class NetworkAccessService {
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
         NetworkAccessApplication application = new NetworkAccessApplication(
-                id, actor.tenantId(), "NAA" + id, actor.id(), actionType,
+                id, actor.tenantId(), project.id(), "NAA" + id, actor.id(), actionType,
                 targetRelation == null ? null : targetRelation.id(),
                 source.kind(), source.physicalSubsystemId(), source.environmentId(), source.deploymentUnitId(),
                 source.externalAddressId(), source.snapshotJson(),
@@ -521,31 +561,33 @@ public class NetworkAccessService {
         store.insertApplication(application);
         store.insertHistory(history(id, actor.tenantId(), "CREATE", null, ApplicationStatus.DRAFT, 0,
                 "创建网络访问" + actionLabel(actionType) + "申请", application, null, actor.id(), now));
-        return store.findApplication(actor.tenantId(), id).orElse(application);
+        return store.findApplication(actor.tenantId(), project.id(), id).orElse(application);
     }
 
     @Transactional
-    public NetworkAccessApplication submitApplication(AuthUser actor, long id, long rowVersion) {
-        coordinateSubmission(actor, id, rowVersion, ignored -> {
+    public NetworkAccessApplication submitApplication(AuthUser actor, ProjectAccess project, long id, long rowVersion) {
+        coordinateSubmission(actor, project, id, rowVersion, ignored -> {
         });
-        return store.findApplication(actor.tenantId(), id).orElseThrow(() -> notFound("网络访问申请不存在"));
+        return store.findApplication(actor.tenantId(), project.id(), id)
+                .orElseThrow(() -> notFound("网络访问申请不存在"));
     }
 
     /**
      * 提交准备：状态先进入 IN_REVIEW，调用方在同一事务继续启动平台工作流并绑定上下文。
      */
     @Transactional
-    public void coordinateSubmission(AuthUser actor, long id, long rowVersion,
+    public void coordinateSubmission(AuthUser actor, ProjectAccess project, long id, long rowVersion,
                                      java.util.function.Consumer<SubmissionPreparation> workflowStarter) {
         requireActor(actor);
+        requireProject(project);
         Objects.requireNonNull(workflowStarter, "工作流启动器不能为空");
-        NetworkAccessApplication application = requireVisibleApplication(actor, AccessScope.OWN, id);
+        NetworkAccessApplication application = requireVisibleApplication(actor, project.id(), AccessScope.OWN, id);
         if (application.status() != ApplicationStatus.DRAFT && application.status() != ApplicationStatus.RETURNED) {
             throw conflict("只有草稿或退回的网络访问申请可以提交");
         }
-        if (!store.updateApplicationStatus(actor.tenantId(), id, ApplicationStatus.DRAFT, rowVersion,
+        if (!store.updateApplicationStatus(actor.tenantId(), project.id(), id, ApplicationStatus.DRAFT, rowVersion,
                 ApplicationStatus.IN_REVIEW, actor.id())) {
-            if (!store.updateApplicationStatus(actor.tenantId(), id, ApplicationStatus.RETURNED, rowVersion,
+            if (!store.updateApplicationStatus(actor.tenantId(), project.id(), id, ApplicationStatus.RETURNED, rowVersion,
                     ApplicationStatus.IN_REVIEW, actor.id())) {
                 throw conflict("网络访问申请已被其他操作修改，请刷新重试");
             }
@@ -558,62 +600,69 @@ public class NetworkAccessService {
     }
 
     @Transactional
-    public NetworkAccessApplication approveApplication(AuthUser actor, long id, long rowVersion) {
+    public NetworkAccessApplication approveApplication(AuthUser actor, ProjectAccess project, long id, long rowVersion) {
         requireActor(actor);
-        NetworkAccessApplication application = store.lockApplication(actor.tenantId(), id)
+        requireProject(project);
+        NetworkAccessApplication application = store.lockApplication(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("网络访问申请不存在"));
         if (application.status() != ApplicationStatus.IN_REVIEW) {
             throw conflict("只有审批中的网络访问申请可以批准");
         }
-        if (!store.updateApplicationStatus(actor.tenantId(), id, ApplicationStatus.IN_REVIEW, rowVersion,
+        if (!store.updateApplicationStatus(actor.tenantId(), project.id(), id,
+                ApplicationStatus.IN_REVIEW, rowVersion,
                 ApplicationStatus.APPROVED, actor.id())) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
-        applyApprovedLifecycle(actor.tenantId(), application, actor.id(), LocalDateTime.now(clock));
-        return store.findApplication(actor.tenantId(), id).orElse(application);
+        applyApprovedLifecycle(actor.tenantId(), project.id(), application, actor.id(), LocalDateTime.now(clock));
+        return store.findApplication(actor.tenantId(), project.id(), id).orElse(application);
     }
 
     @Transactional
-    public void applyApprovalInCurrentTransaction(long tenantId, long id, long expectedRowVersion, long operatorId) {
-        NetworkAccessApplication application = store.lockApplication(tenantId, id)
+    public void applyApprovalInCurrentTransaction(long tenantId, long projectId, long id,
+                                                  long expectedRowVersion, long operatorId) {
+        NetworkAccessApplication application = store.lockApplication(tenantId, projectId, id)
                 .orElseThrow(() -> conflict("工作流事件关联的网络访问申请不存在"));
         if (application.status() != ApplicationStatus.IN_REVIEW || application.cancellationRequested()) {
             throw conflict("工作流事件对应的网络访问申请已变化或正在取消");
         }
-        if (!store.updateApplicationStatus(tenantId, id, ApplicationStatus.IN_REVIEW, expectedRowVersion,
+        if (!store.updateApplicationStatus(tenantId, projectId, id,
+                ApplicationStatus.IN_REVIEW, expectedRowVersion,
                 ApplicationStatus.APPROVED, operatorId)) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
-        applyApprovedLifecycle(tenantId, application, operatorId, LocalDateTime.now(clock));
+        applyApprovedLifecycle(tenantId, projectId, application, operatorId, LocalDateTime.now(clock));
     }
 
     @Transactional
-    public NetworkAccessApplication rejectApplication(AuthUser actor, long id, long rowVersion) {
+    public NetworkAccessApplication rejectApplication(AuthUser actor, ProjectAccess project, long id, long rowVersion) {
         requireActor(actor);
-        NetworkAccessApplication application = store.lockApplication(actor.tenantId(), id)
+        requireProject(project);
+        NetworkAccessApplication application = store.lockApplication(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("网络访问申请不存在"));
         if (application.status() != ApplicationStatus.IN_REVIEW) {
             throw conflict("只有审批中的网络访问申请可以拒绝");
         }
-        if (!store.updateApplicationStatus(actor.tenantId(), id, ApplicationStatus.IN_REVIEW, rowVersion,
+        if (!store.updateApplicationStatus(actor.tenantId(), project.id(), id,
+                ApplicationStatus.IN_REVIEW, rowVersion,
                 ApplicationStatus.REJECTED, actor.id())) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
-        return store.findApplication(actor.tenantId(), id).orElse(application);
+        return store.findApplication(actor.tenantId(), project.id(), id).orElse(application);
     }
 
     @Transactional
-    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long id, long expectedRowVersion,
+    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long projectId, long id, long expectedRowVersion,
                                                        long operatorId, ApplicationStatus outcome) {
         if (outcome != ApplicationStatus.RETURNED && outcome != ApplicationStatus.REJECTED) {
             throw new IllegalArgumentException("退回/拒绝之外的状态不允许通过评审路径落地");
         }
-        NetworkAccessApplication application = store.lockApplication(tenantId, id)
+        NetworkAccessApplication application = store.lockApplication(tenantId, projectId, id)
                 .orElseThrow(() -> conflict("工作流事件关联的网络访问申请不存在"));
         if (application.status() != ApplicationStatus.IN_REVIEW || application.cancellationRequested()) {
             throw conflict("工作流事件对应的网络访问申请已变化或正在取消");
         }
-        if (!store.updateApplicationStatus(tenantId, id, ApplicationStatus.IN_REVIEW, expectedRowVersion,
+        if (!store.updateApplicationStatus(tenantId, projectId, id,
+                ApplicationStatus.IN_REVIEW, expectedRowVersion,
                 outcome, operatorId)) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
@@ -624,9 +673,10 @@ public class NetworkAccessService {
     }
 
     @Transactional
-    public NetworkAccessApplication cancelApplication(AuthUser actor, long id, long rowVersion) {
+    public NetworkAccessApplication cancelApplication(AuthUser actor, ProjectAccess project, long id, long rowVersion) {
         requireActor(actor);
-        NetworkAccessApplication application = requireVisibleApplication(actor, AccessScope.OWN, id);
+        requireProject(project);
+        NetworkAccessApplication application = requireVisibleApplication(actor, project.id(), AccessScope.OWN, id);
         if (application.status() != ApplicationStatus.DRAFT && application.status() != ApplicationStatus.RETURNED
                 && application.status() != ApplicationStatus.IN_REVIEW) {
             throw conflict("当前状态不允许取消网络访问申请");
@@ -634,25 +684,27 @@ public class NetworkAccessService {
         if (application.status() == ApplicationStatus.IN_REVIEW && application.currentWorkflowInstanceId() != null) {
             throw conflict("审批中的网络访问申请必须通过工作流终止确认取消");
         }
-        if (!store.updateApplicationStatus(actor.tenantId(), id, application.status(), rowVersion,
+        if (!store.updateApplicationStatus(actor.tenantId(), project.id(), id, application.status(), rowVersion,
                 ApplicationStatus.CANCELLED, actor.id())) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
-        return store.findApplication(actor.tenantId(), id).orElse(application);
+        return store.findApplication(actor.tenantId(), project.id(), id).orElse(application);
     }
 
     @Transactional
-    public void coordinateCancellation(AuthUser actor, long id, long rowVersion,
+    public void coordinateCancellation(AuthUser actor, ProjectAccess project, long id, long rowVersion,
                                        java.util.function.Consumer<CancellationPreparation> workflowTerminator) {
         requireActor(actor);
+        requireProject(project);
         Objects.requireNonNull(workflowTerminator, "工作流终止器不能为空");
-        NetworkAccessApplication application = requireVisibleApplication(actor, AccessScope.OWN, id);
+        NetworkAccessApplication application = requireVisibleApplication(actor, project.id(), AccessScope.OWN, id);
         if (application.status() != ApplicationStatus.IN_REVIEW
                 || application.currentWorkflowInstanceId() == null
                 || application.currentWorkflowInstanceId() <= 0) {
             throw conflict("当前网络访问申请没有可终止的审批流程");
         }
-        if (!store.compareAndSetCancellationRequested(actor.tenantId(), id, rowVersion, true, actor.id())) {
+        if (!store.compareAndSetCancellationRequested(actor.tenantId(), project.id(), id,
+                rowVersion, true, actor.id())) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
         workflowTerminator.accept(new CancellationPreparation(id, application.currentBusinessRound(),
@@ -660,14 +712,15 @@ public class NetworkAccessService {
     }
 
     @Transactional
-    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long id,
+    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long projectId, long id,
                                                                   long expectedRowVersion, long operatorId) {
-        NetworkAccessApplication application = store.lockApplication(tenantId, id)
+        NetworkAccessApplication application = store.lockApplication(tenantId, projectId, id)
                 .orElseThrow(() -> conflict("工作流事件关联的网络访问申请不存在"));
         if (application.status() != ApplicationStatus.IN_REVIEW || !application.cancellationRequested()) {
             throw conflict("工作流事件没有匹配的取消请求");
         }
-        if (!store.updateApplicationStatus(tenantId, id, ApplicationStatus.IN_REVIEW, expectedRowVersion,
+        if (!store.updateApplicationStatus(tenantId, projectId, id,
+                ApplicationStatus.IN_REVIEW, expectedRowVersion,
                 ApplicationStatus.CANCELLED, operatorId)) {
             throw conflict("网络访问申请已被其他操作修改，请刷新重试");
         }
@@ -677,45 +730,55 @@ public class NetworkAccessService {
     }
 
     @Transactional(readOnly = true)
-    public List<NetworkAccessRelation> listRelations(AuthUser actor, RelationStatus status, int limit, int offset) {
+    public List<NetworkAccessRelation> listRelations(AuthUser actor, ProjectAccess project,
+                                                     RelationStatus status, int limit, int offset) {
         requireActor(actor);
-        return store.listRelations(actor.tenantId(), status, normalizeLimit(limit), Math.max(offset, 0)).stream()
-                .map(relation -> withOfflineRisk(actor.tenantId(), relation))
+        requireProject(project);
+        return store.listRelations(actor.tenantId(), project.id(), status,
+                        normalizeLimit(limit), Math.max(offset, 0)).stream()
+                .map(relation -> withOfflineRisk(actor.tenantId(), project.id(), relation))
                 .toList();
     }
 
     @Transactional
-    public NetworkAccessRelation closeRelation(AuthUser actor, long id, CloseRelationCommand command) {
+    public NetworkAccessRelation closeRelation(AuthUser actor, ProjectAccess project, long id,
+                                               CloseRelationCommand command) {
         requireActor(actor);
+        requireProject(project);
         throw conflict("网络访问关系关闭必须通过关闭申请办理");
     }
 
     @Transactional(readOnly = true)
-    public List<NetworkAccessExemptionRule> listExemptionRules(AuthUser actor, ExemptionRuleStatus status) {
+    public List<NetworkAccessExemptionRule> listExemptionRules(AuthUser actor, ProjectAccess project,
+                                                              ExemptionRuleStatus status) {
         requireActor(actor);
-        return store.listExemptionRules(actor.tenantId(), status);
+        requireProject(project);
+        return store.listExemptionRules(actor.tenantId(), project.id(), status);
     }
 
     @Transactional
-    public NetworkAccessExemptionRule createExemptionRule(AuthUser actor, ExemptionRuleCommand command) {
+    public NetworkAccessExemptionRule createExemptionRule(AuthUser actor, ProjectAccess project,
+                                                          ExemptionRuleCommand command) {
         requireActor(actor);
-        PreparedExemptionRule prepared = prepareExemptionRule(actor, command, null);
+        requireProject(project);
+        PreparedExemptionRule prepared = prepareExemptionRule(actor, project.id(), command, null);
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
-        NetworkAccessExemptionRule rule = new NetworkAccessExemptionRule(id, actor.tenantId(),
+        NetworkAccessExemptionRule rule = new NetworkAccessExemptionRule(id, actor.tenantId(), project.id(),
                 prepared.ruleCode(), prepared.ruleName(), prepared.sourceNetworkZoneId(), null,
                 prepared.targetNetworkZoneId(), null, prepared.protocol(), prepared.ports(),
                 prepared.validFrom(), prepared.validUntil(), prepared.validityType(),
                 ExemptionRuleStatus.ACTIVE, prepared.remark(), 0L, actor.id(), actor.id(), now, now);
         store.insertExemptionRule(rule);
-        return store.findExemptionRule(actor.tenantId(), id).orElse(rule);
+        return store.findExemptionRule(actor.tenantId(), project.id(), id).orElse(rule);
     }
 
     @Transactional
-    public NetworkAccessExemptionRule updateExemptionRule(AuthUser actor, long id,
+    public NetworkAccessExemptionRule updateExemptionRule(AuthUser actor, ProjectAccess project, long id,
                                                           ExemptionRuleCommand command) {
         requireActor(actor);
-        NetworkAccessExemptionRule current = store.lockExemptionRule(actor.tenantId(), id)
+        requireProject(project);
+        NetworkAccessExemptionRule current = store.lockExemptionRule(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("免申请规则不存在"));
         if (current.status() != ExemptionRuleStatus.ACTIVE) {
             throw conflict("已停用免申请规则不能修改");
@@ -723,31 +786,36 @@ public class NetworkAccessService {
         if (command == null || command.rowVersion() == null || command.rowVersion() < 0) {
             throw badRequest("rowVersion 必须为非负整数");
         }
-        PreparedExemptionRule prepared = prepareExemptionRule(actor, command, id);
-        if (!store.updateExemptionRule(actor.tenantId(), id, command.rowVersion(), prepared.ruleCode(),
+        PreparedExemptionRule prepared = prepareExemptionRule(actor, project.id(), command, id);
+        if (!store.updateExemptionRule(actor.tenantId(), project.id(), id,
+                command.rowVersion(), prepared.ruleCode(),
                 prepared.ruleName(), prepared.sourceNetworkZoneId(), prepared.targetNetworkZoneId(),
                 prepared.protocol(), prepared.ports(), prepared.validFrom(), prepared.validUntil(),
                 prepared.validityType(), prepared.remark(), actor.id())) {
             throw conflict("免申请规则已被其他操作修改，请刷新重试");
         }
-        return store.findExemptionRule(actor.tenantId(), id).orElseThrow(() -> notFound("免申请规则不存在"));
+        return store.findExemptionRule(actor.tenantId(), project.id(), id)
+                .orElseThrow(() -> notFound("免申请规则不存在"));
     }
 
     @Transactional
-    public NetworkAccessExemptionRule updateExemptionRuleStatus(AuthUser actor, long id, long rowVersion,
+    public NetworkAccessExemptionRule updateExemptionRuleStatus(AuthUser actor, ProjectAccess project,
+                                                                long id, long rowVersion,
                                                                 ExemptionRuleStatus nextStatus) {
         requireActor(actor);
+        requireProject(project);
         Objects.requireNonNull(nextStatus, "规则目标状态不能为空");
-        NetworkAccessExemptionRule current = store.lockExemptionRule(actor.tenantId(), id)
+        NetworkAccessExemptionRule current = store.lockExemptionRule(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("免申请规则不存在"));
         if (current.status() == nextStatus) {
             return current;
         }
-        if (!store.updateExemptionRuleStatus(actor.tenantId(), id, rowVersion, current.status(), nextStatus,
+        if (!store.updateExemptionRuleStatus(actor.tenantId(), project.id(), id,
+                rowVersion, current.status(), nextStatus,
                 actor.id())) {
             throw conflict("免申请规则已被其他操作修改，请刷新重试");
         }
-        return store.findExemptionRule(actor.tenantId(), id).orElse(current);
+        return store.findExemptionRule(actor.tenantId(), project.id(), id).orElse(current);
     }
 
     private void requireDistinctManagedInstances(PreparedEndpoint source, PreparedEndpoint target) {
@@ -773,7 +841,8 @@ public class NetworkAccessService {
         return ids;
     }
 
-    private Optional<String> sameSubnetInternalCidr(long tenantId, PreparedEndpoint source, PreparedEndpoint target) {
+    private Optional<String> sameSubnetInternalCidr(long tenantId, long projectId,
+                                                    PreparedEndpoint source, PreparedEndpoint target) {
         List<NetworkAccessCoverage.ManagedEndpointAddress> sourceAddresses =
                 NetworkAccessCoverage.managedEndpointAddresses(objectMapper, source.kind(), source.snapshotJson());
         List<NetworkAccessCoverage.ManagedEndpointAddress> targetAddresses =
@@ -793,7 +862,7 @@ public class NetworkAccessService {
                 return Optional.empty();
             }
         }
-        for (NetworkZoneSubnet subnet : store.listSubnets(tenantId, null, RecordStatus.ACTIVE)) {
+        for (NetworkZoneSubnet subnet : store.listSubnets(tenantId, projectId, null, RecordStatus.ACTIVE)) {
             if (sameSubnetCoversAll(subnet, addresses)) {
                 return Optional.of(subnet.cidrBlock());
             }
@@ -817,11 +886,13 @@ public class NetworkAccessService {
         }
     }
 
-    private List<String> coveringRelations(long tenantId, PreparedEndpoint source, PreparedEndpoint target,
+    private List<String> coveringRelations(long tenantId, long projectId,
+                                           PreparedEndpoint source, PreparedEndpoint target,
                                            AccessProtocol protocol, NetworkPortRanges requestedPorts,
                                            Validity validity) {
         List<String> relationNos = new ArrayList<>();
-        for (NetworkAccessRelation relation : store.listRelations(tenantId, RelationStatus.ACTIVE, 2000, 0)) {
+        for (NetworkAccessRelation relation : store.listRelations(
+                tenantId, projectId, RelationStatus.ACTIVE, 2000, 0)) {
             if (relation.protocol() != protocol || !validityCovered(relation.validityType(),
                     relation.validFrom(), relation.validUntil(), validity)) {
                 continue;
@@ -843,7 +914,8 @@ public class NetworkAccessService {
         return relationNos;
     }
 
-    private List<String> coveringRules(long tenantId, PreparedEndpoint source, PreparedEndpoint target,
+    private List<String> coveringRules(long tenantId, long projectId,
+                                       PreparedEndpoint source, PreparedEndpoint target,
                                        AccessProtocol protocol, NetworkPortRanges requestedPorts,
                                        Validity validity) {
         Set<Long> sourceZones = NetworkAccessCoverage.networkZoneIds(objectMapper, source.kind(), source.snapshotJson());
@@ -851,7 +923,8 @@ public class NetworkAccessService {
         if (sourceZones.isEmpty() || targetZones.isEmpty()) {
             return List.of();
         }
-        List<NetworkAccessExemptionRule> candidates = store.listExemptionRules(tenantId, ExemptionRuleStatus.ACTIVE);
+        List<NetworkAccessExemptionRule> candidates = store.listExemptionRules(
+                tenantId, projectId, ExemptionRuleStatus.ACTIVE);
         List<String> coveringCodes = new ArrayList<>();
         for (Long sourceZone : sourceZones) {
             for (Long targetZone : targetZones) {
@@ -898,7 +971,7 @@ public class NetworkAccessService {
                 && !coveringUntil.isBefore(requested.validUntil()));
     }
 
-    private void applyApprovedLifecycle(long tenantId, NetworkAccessApplication application,
+    private void applyApprovedLifecycle(long tenantId, long projectId, NetworkAccessApplication application,
                                         long operatorId, LocalDateTime now) {
         switch (application.actionType()) {
             case OPEN -> {
@@ -909,11 +982,13 @@ public class NetworkAccessService {
                         application, null, operatorId, now));
             }
             case MODIFY, RENEW -> {
-                NetworkAccessRelation target = store.lockRelation(tenantId, requiredId(application.targetRelationId(),
+                NetworkAccessRelation target = store.lockRelation(tenantId, projectId,
+                                requiredId(application.targetRelationId(),
                                 "目标访问关系"))
                         .orElseThrow(() -> conflict("目标网络访问关系不存在"));
                 long relationId = nextId();
-                NetworkAccessRelation replacement = new NetworkAccessRelation(relationId, tenantId, "NAR" + relationId,
+                NetworkAccessRelation replacement = new NetworkAccessRelation(
+                        relationId, tenantId, projectId, "NAR" + relationId,
                         application.id(), target.id(), null, null, application.sourceKind(),
                         application.sourceSnapshotJson(), application.targetKind(), application.targetSnapshotJson(),
                         application.protocol(), application.ports(), application.purpose(), application.processDescription(),
@@ -921,7 +996,8 @@ public class NetworkAccessService {
                         RelationStatus.ACTIVE, null, null, null, null, false, 0, List.of(),
                         0L, operatorId, operatorId, now, now);
                 store.insertRelation(replacement);
-                if (!store.closeRelationByApplication(tenantId, target.id(), replacement.id(), application.id(),
+                if (!store.closeRelationByApplication(tenantId, projectId, target.id(),
+                        replacement.id(), application.id(),
                         RelationCloseType.SUPERSEDED, actionLabel(application.actionType()) + "申请替代原关系",
                         operatorId, now)) {
                     throw conflict("目标网络访问关系已被其他操作修改，请刷新重试");
@@ -933,7 +1009,8 @@ public class NetworkAccessService {
             }
             case CLOSE -> {
                 long targetRelationId = requiredId(application.targetRelationId(), "目标访问关系");
-                if (!store.closeRelationByApplication(tenantId, targetRelationId, null, application.id(),
+                if (!store.closeRelationByApplication(tenantId, projectId, targetRelationId,
+                        null, application.id(),
                         RelationCloseType.CLOSED_BY_APPLICATION, application.purpose(), operatorId, now)) {
                     throw conflict("目标网络访问关系已被其他操作修改，请刷新重试");
                 }
@@ -948,7 +1025,7 @@ public class NetworkAccessService {
                                                           Long replacesRelationId,
                                                           long operatorId, LocalDateTime now) {
         long relationId = nextId();
-        return new NetworkAccessRelation(relationId, application.tenantId(), "NAR" + relationId,
+        return new NetworkAccessRelation(relationId, application.tenantId(), application.projectId(), "NAR" + relationId,
                 application.id(), replacesRelationId, null, null, application.sourceKind(),
                 application.sourceSnapshotJson(), application.targetKind(), application.targetSnapshotJson(),
                 application.protocol(), application.ports(), application.purpose(), application.processDescription(),
@@ -956,7 +1033,7 @@ public class NetworkAccessService {
                 null, null, null, null, false, 0, List.of(), 0L, operatorId, operatorId, now, now);
     }
 
-    private NetworkAccessRelation withOfflineRisk(long tenantId, NetworkAccessRelation relation) {
+    private NetworkAccessRelation withOfflineRisk(long tenantId, long projectId, NetworkAccessRelation relation) {
         Set<Long> ids = new LinkedHashSet<>();
         ids.addAll(NetworkAccessCoverage.managedInstanceIds(objectMapper, relation.sourceKind(),
                 relation.sourceSnapshotJson()));
@@ -966,7 +1043,8 @@ public class NetworkAccessService {
             return relation;
         }
         Map<Long, EndpointInstanceStatus> statuses = new HashMap<>();
-        for (EndpointInstanceStatus status : store.listEndpointInstanceStatuses(tenantId, List.copyOf(ids))) {
+        for (EndpointInstanceStatus status : store.listEndpointInstanceStatuses(
+                tenantId, projectId, List.copyOf(ids))) {
             statuses.put(status.id(), status);
         }
         List<String> risks = new ArrayList<>();
@@ -981,7 +1059,7 @@ public class NetworkAccessService {
         if (risks.isEmpty()) {
             return relation;
         }
-        return new NetworkAccessRelation(relation.id(), relation.tenantId(), relation.relationNo(),
+        return new NetworkAccessRelation(relation.id(), relation.tenantId(), relation.projectId(), relation.relationNo(),
                 relation.applicationId(), relation.replacesRelationId(), relation.replacedByRelationId(),
                 relation.closedApplicationId(), relation.sourceKind(), relation.sourceSnapshotJson(),
                 relation.targetKind(), relation.targetSnapshotJson(), relation.protocol(), relation.ports(),
@@ -992,17 +1070,18 @@ public class NetworkAccessService {
                 relation.updatedAt());
     }
 
-    private PreparedExemptionRule prepareExemptionRule(AuthUser actor, ExemptionRuleCommand command, Long excludeId) {
+    private PreparedExemptionRule prepareExemptionRule(AuthUser actor, long projectId,
+                                                       ExemptionRuleCommand command, Long excludeId) {
         Objects.requireNonNull(command, "免申请规则不能为空");
         String code = normalizeCode(command.ruleCode(), "免申请规则编码");
-        if (store.exemptionRuleCodeExists(actor.tenantId(), code, excludeId)) {
+        if (store.exemptionRuleCodeExists(actor.tenantId(), projectId, code, excludeId)) {
             throw conflict("免申请规则编码已存在");
         }
         String name = required(command.ruleName(), "免申请规则名称", 160);
         long sourceZoneId = requiredId(command.sourceNetworkZoneId(), "来源网络分区");
         long targetZoneId = requiredId(command.targetNetworkZoneId(), "目标网络分区");
-        requireActiveZone(actor.tenantId(), sourceZoneId);
-        requireActiveZone(actor.tenantId(), targetZoneId);
+        requireActiveZone(actor.tenantId(), projectId, sourceZoneId);
+        requireActiveZone(actor.tenantId(), projectId, targetZoneId);
         AccessProtocol protocol = Objects.requireNonNull(command.protocol(), "协议不能为空");
         String ports = required(command.ports(), "端口", 128);
         NetworkPortRanges.parse(ports);
@@ -1012,10 +1091,10 @@ public class NetworkAccessService {
                 optional(command.remark(), "备注", 1000));
     }
 
-    private NetworkAccessRelation requireActiveTargetRelation(AuthUser actor, Long relationId,
+    private NetworkAccessRelation requireActiveTargetRelation(AuthUser actor, long projectId, Long relationId,
                                                              NetworkAccessActionType actionType) {
         long id = requiredId(relationId, "目标访问关系");
-        NetworkAccessRelation relation = store.findRelation(actor.tenantId(), id)
+        NetworkAccessRelation relation = store.findRelation(actor.tenantId(), projectId, id)
                 .orElseThrow(() -> badRequest("目标网络访问关系不存在"));
         if (relation.status() != RelationStatus.ACTIVE) {
             throw badRequest("只能对生效中的网络访问关系发起" + actionLabel(actionType) + "申请");
@@ -1028,7 +1107,8 @@ public class NetworkAccessService {
                                               int businessRound, String summary,
                                               NetworkAccessApplication application, String diffJson,
                                               long operatorId, LocalDateTime occurredAt) {
-        return new NetworkAccessHistoryEvent(nextId(), tenantId, applicationId, eventType, fromStatus, toStatus,
+        return new NetworkAccessHistoryEvent(nextId(), tenantId, application.projectId(), applicationId,
+                eventType, fromStatus, toStatus,
                 Math.max(businessRound, 0), summary, serialize(applicationSnapshot(application)), diffJson,
                 operatorId, occurredAt);
     }
@@ -1102,7 +1182,7 @@ public class NetworkAccessService {
         };
     }
 
-    private PreparedZone prepareZone(AuthUser actor, NetworkZoneCommand command, Long excludeId) {
+    private PreparedZone prepareZone(AuthUser actor, long projectId, NetworkZoneCommand command, Long excludeId) {
         Objects.requireNonNull(command, "网络分区命令不能为空");
         Long parentId = command.parentId();
         if (excludeId != null && parentId != null && parentId.equals(excludeId)) {
@@ -1110,8 +1190,8 @@ public class NetworkAccessService {
         }
         NetworkZone parent = null;
         if (parentId != null) {
-            parent = requireActiveZone(actor.tenantId(), parentId);
-            if (store.hasActiveSubnets(actor.tenantId(), parentId)) {
+            parent = requireActiveZone(actor.tenantId(), projectId, parentId);
+            if (store.hasActiveSubnets(actor.tenantId(), projectId, parentId)) {
                 throw conflict("存在启用网段的网络分区不能新增子分区");
             }
         }
@@ -1124,17 +1204,18 @@ public class NetworkAccessService {
         if (parent != null && level < parent.restrictionLevel()) {
             throw badRequest("子分区限制级别不能低于父分区");
         }
-        if (store.zoneCodeExists(actor.tenantId(), code, excludeId)) {
+        if (store.zoneCodeExists(actor.tenantId(), projectId, code, excludeId)) {
             throw conflict("网络分区编码已存在");
         }
-        if (store.zoneNameExists(actor.tenantId(), parentId, name, excludeId)) {
+        if (store.zoneNameExists(actor.tenantId(), projectId, parentId, name, excludeId)) {
             throw conflict("同一父分区下网络分区名称已存在");
         }
         return new PreparedZone(parentId, parent == null ? null : parent.name(), code, name, level,
                 optional(command.description(), "说明", 1000), optional(command.remark(), "备注", 1000));
     }
 
-    private PreparedSubnet prepareSubnet(AuthUser actor, NetworkZoneSubnetCommand command, Long excludeId) {
+    private PreparedSubnet prepareSubnet(AuthUser actor, long projectId,
+                                         NetworkZoneSubnetCommand command, Long excludeId) {
         Objects.requireNonNull(command, "网络分区网段命令不能为空");
         String cidrBlock;
         try {
@@ -1142,7 +1223,7 @@ public class NetworkAccessService {
         } catch (IllegalArgumentException exception) {
             throw badRequest(exception.getMessage());
         }
-        if (store.subnetCidrExists(actor.tenantId(), cidrBlock, excludeId)) {
+        if (store.subnetCidrExists(actor.tenantId(), projectId, cidrBlock, excludeId)) {
             throw conflict("网络分区网段 CIDR 已存在");
         }
         String gatewayIp = optional(command.gatewayIp(), "网关 IP", 64);
@@ -1160,7 +1241,8 @@ public class NetworkAccessService {
                 optional(command.remark(), "备注", 1000));
     }
 
-    private PreparedAddress prepareAddress(AuthUser actor, ExternalAddressCommand command, Long excludeId) {
+    private PreparedAddress prepareAddress(AuthUser actor, long projectId,
+                                           ExternalAddressCommand command, Long excludeId) {
         Objects.requireNonNull(command, "外部网络地址命令不能为空");
         AddressType type = Objects.requireNonNull(command.addressType(), "地址类型不能为空");
         String value = required(command.addressValue(), "地址值", 255);
@@ -1173,7 +1255,7 @@ public class NetworkAccessService {
         if (type == AddressType.DOMAIN && !value.contains(".")) {
             throw badRequest("域名地址格式无效");
         }
-        if (store.addressExists(actor.tenantId(), type, value, excludeId)) {
+        if (store.addressExists(actor.tenantId(), projectId, type, value, excludeId)) {
             throw conflict("外部网络地址已存在");
         }
         String displayName = required(command.displayName(), "显示名称", 160);
@@ -1181,12 +1263,12 @@ public class NetworkAccessService {
                 optional(command.purpose(), "用途", 500), optional(command.remark(), "备注", 1000));
     }
 
-    private PreparedEndpoint prepareEndpoint(AuthUser actor, EndpointCommand command, String label) {
+    private PreparedEndpoint prepareEndpoint(AuthUser actor, long projectId, EndpointCommand command, String label) {
         Objects.requireNonNull(command, label + "端点不能为空");
         EndpointKind kind = Objects.requireNonNull(command.kind(), label + "端点类型不能为空");
         if (kind == EndpointKind.EXTERNAL) {
             long externalId = requiredId(command.externalAddressId(), label + "外部地址");
-            ExternalNetworkAddress address = store.findAddress(actor.tenantId(), externalId)
+            ExternalNetworkAddress address = store.findAddress(actor.tenantId(), projectId, externalId)
                     .orElseThrow(() -> badRequest(label + "外部地址不存在"));
             if (address.status() != RecordStatus.ACTIVE) {
                 throw badRequest(label + "外部地址已停用");
@@ -1202,7 +1284,7 @@ public class NetworkAccessService {
         long physicalId = requiredId(command.physicalSubsystemId(), label + "物理子系统");
         long environmentId = requiredId(command.environmentId(), label + "具体环境");
         long deploymentUnitId = requiredId(command.deploymentUnitId(), label + "部署单元");
-        List<ManagedEndpointInstance> selected = store.listEndpointInstances(actor.tenantId(), physicalId,
+        List<ManagedEndpointInstance> selected = store.listEndpointInstances(actor.tenantId(), projectId, physicalId,
                 environmentId, deploymentUnitId, command.instanceIds());
         if (selected.isEmpty()) {
             throw badRequest(label + "未选择任何在用环境部署实例");
@@ -1224,8 +1306,9 @@ public class NetworkAccessService {
                 serialize(selected));
     }
 
-    private NetworkAccessApplication requireVisibleApplication(AuthUser actor, AccessScope scope, long id) {
-        NetworkAccessApplication application = store.findApplication(actor.tenantId(), id)
+    private NetworkAccessApplication requireVisibleApplication(AuthUser actor, long projectId,
+                                                               AccessScope scope, long id) {
+        NetworkAccessApplication application = store.findApplication(actor.tenantId(), projectId, id)
                 .orElseThrow(() -> notFound("网络访问申请不存在"));
         if (scope == AccessScope.OWN && application.applicantId() != actor.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能操作本人发起的网络访问申请");
@@ -1233,8 +1316,9 @@ public class NetworkAccessService {
         return application;
     }
 
-    private NetworkZone requireActiveZone(long tenantId, long zoneId) {
-        NetworkZone zone = store.findZone(tenantId, zoneId).orElseThrow(() -> badRequest("网络分区不存在"));
+    private NetworkZone requireActiveZone(long tenantId, long projectId, long zoneId) {
+        NetworkZone zone = store.findZone(tenantId, projectId, zoneId)
+                .orElseThrow(() -> badRequest("网络分区不存在"));
         if (zone.status() != RecordStatus.ACTIVE) {
             throw badRequest("网络分区已停用：" + zone.name());
         }
@@ -1304,6 +1388,12 @@ public class NetworkAccessService {
     private void requireActor(AuthUser actor) {
         if (actor == null || actor.id() <= 0 || actor.tenantId() <= 0) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "需要有效的认证用户和租户");
+        }
+    }
+
+    private void requireProject(ProjectAccess project) {
+        if (project == null || project.id() <= 0 || project.projectRef() == null || project.projectRef().isBlank()) {
+            throw badRequest("当前项目不能为空");
         }
     }
 

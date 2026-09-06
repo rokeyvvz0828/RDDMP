@@ -29,7 +29,7 @@ import java.util.Optional;
 @Repository
 public class NetworkWorkOrderStore {
     private static final String WORK_ORDER_COLUMNS = """
-            id, tenant_id, kind, action_type, subject, applicant_id, reason, status, business_payload,
+            id, tenant_id, project_id, kind, action_type, subject, applicant_id, reason, status, business_payload,
             attachment_ids, result_status, result_description, result_attachment_ids, result_registered_by,
             result_registered_at, current_business_round, current_workflow_definition_id,
             current_workflow_version_id, current_workflow_instance_id, current_payload_digest,
@@ -39,6 +39,7 @@ public class NetworkWorkOrderStore {
             new WorkOrder(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     Kind.fromDatabase(rs.getString("kind")),
                     ActionType.fromDatabase(rs.getString("action_type")),
                     rs.getString("subject"),
@@ -68,6 +69,7 @@ public class NetworkWorkOrderStore {
             new HistoryEvent(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("work_order_id"),
                     rs.getString("event_type"),
                     nullableStatus(rs, "from_status"),
@@ -83,6 +85,7 @@ public class NetworkWorkOrderStore {
             new WorkflowRound(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("work_order_id"),
                     rs.getInt("round_no"),
                     nullableLong(rs, "workflow_definition_id"),
@@ -99,6 +102,7 @@ public class NetworkWorkOrderStore {
             new WorkflowReceipt(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("event_id"),
                     rs.getString("subscriber_key"),
                     nullableLong(rs, "work_order_id"),
@@ -121,15 +125,15 @@ public class NetworkWorkOrderStore {
         Objects.requireNonNull(workOrder, "工单不能为空");
         jdbc.update("""
                         INSERT INTO arch_network_work_order
-                            (id, tenant_id, kind, action_type, subject, applicant_id, reason, status,
+                            (id, tenant_id, project_id, kind, action_type, subject, applicant_id, reason, status,
                              business_payload, attachment_ids, result_status, result_description,
                              result_attachment_ids, result_registered_by, result_registered_at,
                              current_business_round, current_workflow_definition_id,
                              current_workflow_version_id, current_workflow_instance_id,
                              current_payload_digest, cancellation_requested, row_version, created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                workOrder.id(), workOrder.tenantId(), workOrder.kind().name(), workOrder.actionType().name(),
+                workOrder.id(), workOrder.tenantId(), workOrder.projectId(), workOrder.kind().name(), workOrder.actionType().name(),
                 workOrder.subject(), workOrder.applicantId(), workOrder.reason(), workOrder.status().name(),
                 workOrder.payload(), workOrder.attachmentIds(),
                 workOrder.resultStatus() == null ? null : workOrder.resultStatus().name(),
@@ -141,7 +145,17 @@ public class NetworkWorkOrderStore {
                 workOrder.updatedBy());
     }
 
-    public Optional<WorkOrder> findWorkOrder(long tenantId, long workOrderId) {
+    public Optional<WorkOrder> findWorkOrder(long tenantId, long projectId, long workOrderId) {
+        requirePositive(tenantId, "租户编号");
+        requirePositive(projectId, "项目编号");
+        requirePositive(workOrderId, "工单编号");
+        return jdbc.query("SELECT " + WORK_ORDER_COLUMNS + " FROM arch_network_work_order "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                WORK_ORDER_MAPPER, tenantId, projectId, workOrderId).stream().findFirst();
+    }
+
+    /** 附件策略先按业务键恢复项目，再通过项目目录执行成员鉴权。 */
+    public Optional<WorkOrder> findWorkOrderById(long tenantId, long workOrderId) {
         requirePositive(tenantId, "租户编号");
         requirePositive(workOrderId, "工单编号");
         return jdbc.query("SELECT " + WORK_ORDER_COLUMNS + " FROM arch_network_work_order "
@@ -149,25 +163,27 @@ public class NetworkWorkOrderStore {
                 WORK_ORDER_MAPPER, tenantId, workOrderId).stream().findFirst();
     }
 
-    public Optional<WorkOrder> lockWorkOrder(long tenantId, long workOrderId) {
+    public Optional<WorkOrder> lockWorkOrder(long tenantId, long projectId, long workOrderId) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
+        requirePositive(projectId, "项目编号");
         requirePositive(workOrderId, "工单编号");
         return jdbc.query("SELECT " + WORK_ORDER_COLUMNS + " FROM arch_network_work_order "
-                        + "WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                WORK_ORDER_MAPPER, tenantId, workOrderId).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE",
+                WORK_ORDER_MAPPER, tenantId, projectId, workOrderId).stream().findFirst();
     }
 
     /** applicantId/kind/status 为空时不附加对应筛选，仍始终由 tenantId 隔离。 */
-    public List<WorkOrder> listWorkOrders(long tenantId, Long applicantId, Kind kind,
+    public List<WorkOrder> listWorkOrders(long tenantId, long projectId, Long applicantId, Kind kind,
                                           WorkOrderStatus status, int limit, int offset) {
         if (limit <= 0 || offset < 0) {
             throw new IllegalArgumentException("分页参数无效");
         }
         StringBuilder sql = new StringBuilder("SELECT ").append(WORK_ORDER_COLUMNS)
-                .append(" FROM arch_network_work_order WHERE tenant_id = ?");
+                .append(" FROM arch_network_work_order WHERE tenant_id = ? AND project_id = ?");
         List<Object> arguments = new ArrayList<>();
         arguments.add(tenantId);
+        arguments.add(projectId);
         if (applicantId != null) {
             sql.append(" AND applicant_id = ?");
             arguments.add(applicantId);
@@ -187,7 +203,7 @@ public class NetworkWorkOrderStore {
     }
 
     /** 草稿编辑：仅 DRAFT/RETURNED 且行版本匹配时更新载荷、附件与原因。 */
-    public boolean updateDraft(long tenantId, long workOrderId, WorkOrderStatus expectedStatus,
+    public boolean updateDraft(long tenantId, long projectId, long workOrderId, WorkOrderStatus expectedStatus,
                                long expectedRowVersion, String reason, String payload,
                                String attachmentIds, long updatedBy) {
         requireTransaction();
@@ -196,13 +212,13 @@ public class NetworkWorkOrderStore {
                         UPDATE arch_network_work_order
                         SET reason = ?, business_payload = ?, attachment_ids = ?,
                             row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                        """, reason, payload, attachmentIds, updatedBy, tenantId, workOrderId,
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                        """, reason, payload, attachmentIds, updatedBy, tenantId, projectId, workOrderId,
                 expectedStatus.name(), expectedRowVersion) == 1;
     }
 
     /** 仅以状态和行版本作为 CAS 条件；允许的状态图由 service 决定。 */
-    public boolean compareAndSetStatus(long tenantId, long workOrderId,
+    public boolean compareAndSetStatus(long tenantId, long projectId, long workOrderId,
                                        WorkOrderStatus expectedStatus, long expectedRowVersion,
                                        WorkOrderStatus nextStatus, long updatedBy) {
         requireTransaction();
@@ -211,13 +227,13 @@ public class NetworkWorkOrderStore {
         return jdbc.update("""
                         UPDATE arch_network_work_order
                         SET status = ?, row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                        """, nextStatus.name(), updatedBy, tenantId, workOrderId,
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                        """, nextStatus.name(), updatedBy, tenantId, projectId, workOrderId,
                 expectedStatus.name(), expectedRowVersion) == 1;
     }
 
     /** 提交启动成功后原子写入当前轮次和工作流上下文。 */
-    public boolean compareAndSetWorkflowContext(long tenantId, long workOrderId,
+    public boolean compareAndSetWorkflowContext(long tenantId, long projectId, long workOrderId,
                                                 int expectedCurrentBusinessRound,
                                                 long expectedRowVersion, int nextBusinessRound,
                                                 long workflowDefinitionId, long workflowVersionId,
@@ -229,26 +245,26 @@ public class NetworkWorkOrderStore {
                         SET current_business_round = ?, current_workflow_definition_id = ?,
                             current_workflow_version_id = ?, current_workflow_instance_id = ?,
                             current_payload_digest = ?, row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
                           AND status = 'IN_REVIEW'
                         """, nextBusinessRound, workflowDefinitionId, workflowVersionId, workflowInstanceId,
-                payloadDigest, updatedBy, tenantId, workOrderId, expectedCurrentBusinessRound,
+                payloadDigest, updatedBy, tenantId, projectId, workOrderId, expectedCurrentBusinessRound,
                 expectedRowVersion) == 1;
     }
 
-    public boolean compareAndSetCancellationRequested(long tenantId, long workOrderId,
+    public boolean compareAndSetCancellationRequested(long tenantId, long projectId, long workOrderId,
                                                       long expectedRowVersion, boolean requested,
                                                       long updatedBy) {
         requireTransaction();
         return jdbc.update("""
                         UPDATE arch_network_work_order
                         SET cancellation_requested = ?, row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
-                        """, requested, updatedBy, tenantId, workOrderId, expectedRowVersion) == 1;
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
+                        """, requested, updatedBy, tenantId, projectId, workOrderId, expectedRowVersion) == 1;
     }
 
     /** 办理结果登记：IN_REVIEW 或 COMPLETED 且行版本匹配时写入，不改变工单状态。 */
-    public boolean updateHandlingResult(long tenantId, long workOrderId, long expectedRowVersion,
+    public boolean updateHandlingResult(long tenantId, long projectId, long workOrderId, long expectedRowVersion,
                                         String resultStatus, String resultDescription,
                                         String resultAttachmentIds, long registeredBy) {
         requireTransaction();
@@ -257,10 +273,10 @@ public class NetworkWorkOrderStore {
                         SET result_status = ?, result_description = ?, result_attachment_ids = ?,
                             result_registered_by = ?, result_registered_at = CURRENT_TIMESTAMP,
                             row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ?
                           AND status IN ('IN_REVIEW', 'COMPLETED')
                         """, resultStatus, resultDescription, resultAttachmentIds, registeredBy, registeredBy,
-                tenantId, workOrderId, expectedRowVersion) == 1;
+                tenantId, projectId, workOrderId, expectedRowVersion) == 1;
     }
 
     public void insertHistory(HistoryEvent event) {
@@ -268,26 +284,26 @@ public class NetworkWorkOrderStore {
         Objects.requireNonNull(event, "历史事件不能为空");
         jdbc.update("""
                         INSERT INTO arch_network_work_order_history
-                            (id, tenant_id, work_order_id, event_type, from_status, to_status, business_round,
+                            (id, tenant_id, project_id, work_order_id, event_type, from_status, to_status, business_round,
                              summary, snapshot_json, diff_json, operator_id, occurred_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, event.id(), event.tenantId(), event.workOrderId(), event.eventType(),
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, event.id(), event.tenantId(), event.projectId(), event.workOrderId(), event.eventType(),
                 event.fromStatus() == null ? null : event.fromStatus().name(),
                 event.toStatus() == null ? null : event.toStatus().name(), event.businessRound(), event.summary(),
                 event.snapshotJson(), event.diffJson(), event.operatorId(), timestamp(event.occurredAt()));
     }
 
     /** occurred_at 相同的事件按 id 升序返回，避免数据库时间精度造成非稳定顺序。 */
-    public List<HistoryEvent> listHistory(long tenantId, long workOrderId) {
+    public List<HistoryEvent> listHistory(long tenantId, long projectId, long workOrderId) {
         requirePositive(tenantId, "租户编号");
         requirePositive(workOrderId, "工单编号");
         return jdbc.query("""
-                        SELECT id, tenant_id, work_order_id, event_type, from_status, to_status, business_round,
+                        SELECT id, tenant_id, project_id, work_order_id, event_type, from_status, to_status, business_round,
                                summary, snapshot_json, diff_json, operator_id, occurred_at
                         FROM arch_network_work_order_history
-                        WHERE tenant_id = ? AND work_order_id = ?
+                        WHERE tenant_id = ? AND project_id = ? AND work_order_id = ?
                         ORDER BY occurred_at ASC, id ASC
-                        """, HISTORY_MAPPER, tenantId, workOrderId);
+                        """, HISTORY_MAPPER, tenantId, projectId, workOrderId);
     }
 
     /** PENDING 轮次不得预先伪造平台 definition/version/instance 或摘要。 */
@@ -306,51 +322,51 @@ public class NetworkWorkOrderStore {
         }
         jdbc.update("""
                         INSERT INTO arch_network_workflow_round
-                            (id, tenant_id, work_order_id, round_no, workflow_definition_id,
+                            (id, tenant_id, project_id, work_order_id, round_no, workflow_definition_id,
                              workflow_version_id, workflow_instance_id, payload_digest, status,
                              started_at, ended_at)
-                        VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
-                        """, round.id(), round.tenantId(), round.workOrderId(), round.roundNo());
+                        VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
+                        """, round.id(), round.tenantId(), round.projectId(), round.workOrderId(), round.roundNo());
     }
 
-    public Optional<WorkflowRound> findWorkflowRound(long tenantId, long workOrderId, int roundNo) {
+    public Optional<WorkflowRound> findWorkflowRound(long tenantId, long projectId, long workOrderId, int roundNo) {
         requirePositive(tenantId, "租户编号");
         requirePositive(workOrderId, "工单编号");
         requirePositive(roundNo, "工作流轮次");
         return jdbc.query("""
-                        SELECT id, tenant_id, work_order_id, round_no, workflow_definition_id,
+                        SELECT id, tenant_id, project_id, work_order_id, round_no, workflow_definition_id,
                                workflow_version_id, workflow_instance_id, payload_digest, status,
                                started_at, ended_at, created_at, updated_at
                         FROM arch_network_workflow_round
-                        WHERE tenant_id = ? AND work_order_id = ? AND round_no = ?
-                        """, WORKFLOW_ROUND_MAPPER, tenantId, workOrderId, roundNo).stream().findFirst();
+                        WHERE tenant_id = ? AND project_id = ? AND work_order_id = ? AND round_no = ?
+                        """, WORKFLOW_ROUND_MAPPER, tenantId, projectId, workOrderId, roundNo).stream().findFirst();
     }
 
-    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long workflowInstanceId) {
+    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long projectId, long workflowInstanceId) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
         requirePositive(workflowInstanceId, "工作流实例编号");
         return jdbc.query("""
-                        SELECT id, tenant_id, work_order_id, round_no, workflow_definition_id,
+                        SELECT id, tenant_id, project_id, work_order_id, round_no, workflow_definition_id,
                                workflow_version_id, workflow_instance_id, payload_digest, status,
                                started_at, ended_at, created_at, updated_at
                         FROM arch_network_workflow_round
-                        WHERE tenant_id = ? AND workflow_instance_id = ? FOR UPDATE
-                        """, WORKFLOW_ROUND_MAPPER, tenantId, workflowInstanceId).stream().findFirst();
+                        WHERE tenant_id = ? AND project_id = ? AND workflow_instance_id = ? FOR UPDATE
+                        """, WORKFLOW_ROUND_MAPPER, tenantId, projectId, workflowInstanceId).stream().findFirst();
     }
 
-    public boolean isLatestWorkflowRound(long tenantId, long workOrderId, int roundNo) {
+    public boolean isLatestWorkflowRound(long tenantId, long projectId, long workOrderId, int roundNo) {
         requirePositive(tenantId, "租户编号");
         requirePositive(workOrderId, "工单编号");
         requirePositive(roundNo, "工作流轮次");
         Integer latest = jdbc.queryForObject("""
                         SELECT MAX(round_no) FROM arch_network_workflow_round
-                        WHERE tenant_id = ? AND work_order_id = ?
-                        """, Integer.class, tenantId, workOrderId);
+                        WHERE tenant_id = ? AND project_id = ? AND work_order_id = ?
+                        """, Integer.class, tenantId, projectId, workOrderId);
         return latest != null && latest == roundNo;
     }
 
-    public boolean bindWorkflowRoundStarted(long tenantId, long workOrderId, int roundNo,
+    public boolean bindWorkflowRoundStarted(long tenantId, long projectId, long workOrderId, int roundNo,
                                             long workflowDefinitionId, long workflowVersionId,
                                             long workflowInstanceId, String payloadDigest,
                                             LocalDateTime startedAt) {
@@ -366,20 +382,20 @@ public class NetworkWorkOrderStore {
                         UPDATE arch_network_workflow_round
                         SET workflow_definition_id = ?, workflow_version_id = ?, workflow_instance_id = ?,
                             payload_digest = ?, status = 'STARTED', started_at = ?
-                        WHERE tenant_id = ? AND work_order_id = ? AND round_no = ? AND status = 'PENDING'
+                        WHERE tenant_id = ? AND project_id = ? AND work_order_id = ? AND round_no = ? AND status = 'PENDING'
                         """, workflowDefinitionId, workflowVersionId, workflowInstanceId, payloadDigest,
-                timestamp(startedAt), tenantId, workOrderId, roundNo) == 1;
+                timestamp(startedAt), tenantId, projectId, workOrderId, roundNo) == 1;
     }
 
-    public boolean completeStartedWorkflowRound(long tenantId, long workOrderId, int roundNo,
+    public boolean completeStartedWorkflowRound(long tenantId, long projectId, long workOrderId, int roundNo,
                                                 WorkflowRoundStatus nextStatus, LocalDateTime endedAt) {
         requireTransaction();
         Objects.requireNonNull(nextStatus, "轮次目标状态不能为空");
         return jdbc.update("""
                         UPDATE arch_network_workflow_round
                         SET status = ?, ended_at = ?
-                        WHERE tenant_id = ? AND work_order_id = ? AND round_no = ? AND status = 'STARTED'
-                        """, nextStatus.name(), timestamp(endedAt), tenantId, workOrderId, roundNo) == 1;
+                        WHERE tenant_id = ? AND project_id = ? AND work_order_id = ? AND round_no = ? AND status = 'STARTED'
+                        """, nextStatus.name(), timestamp(endedAt), tenantId, projectId, workOrderId, roundNo) == 1;
     }
 
     /** 占位回执以 FAILED 写入；仅当前事务创建的占位回执可以写入最终处理结论。 */
@@ -396,15 +412,15 @@ public class NetworkWorkOrderStore {
         requirePositive(receipt.workflowInstanceId(), "工作流实例编号");
         return jdbc.update("""
                         INSERT IGNORE INTO arch_network_workflow_receipt
-                            (id, tenant_id, event_id, subscriber_key, work_order_id, round_no,
+                            (id, tenant_id, project_id, event_id, subscriber_key, work_order_id, round_no,
                              workflow_instance_id, event_type, processing_status, detail)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, receipt.id(), receipt.tenantId(), receipt.eventId(), receipt.subscriberKey(),
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, receipt.id(), receipt.tenantId(), receipt.projectId(), receipt.eventId(), receipt.subscriberKey(),
                 receipt.workOrderId(), receipt.roundNo(), receipt.workflowInstanceId(), receipt.eventType(),
                 WorkflowReceiptStatus.FAILED.name(), "事务内事件尚未完成") == 1;
     }
 
-    public boolean completeReceipt(long tenantId, String eventId, String subscriberKey,
+    public boolean completeReceipt(long tenantId, long projectId, String eventId, String subscriberKey,
                                    WorkflowReceiptStatus status, String detail) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
@@ -414,22 +430,22 @@ public class NetworkWorkOrderStore {
         return jdbc.update("""
                         UPDATE arch_network_workflow_receipt
                         SET processing_status = ?, detail = ?, processed_at = CURRENT_TIMESTAMP
-                        WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
+                        WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
                           AND processing_status = 'FAILED'
-                        """, status.name(), detail, tenantId, eventId, subscriberKey) == 1;
+                        """, status.name(), detail, tenantId, projectId, eventId, subscriberKey) == 1;
     }
 
-    public Optional<WorkflowReceipt> findReceipt(long tenantId, String eventId, String subscriberKey) {
+    public Optional<WorkflowReceipt> findReceipt(long tenantId, long projectId, String eventId, String subscriberKey) {
         requirePositive(tenantId, "租户编号");
         requireNonBlank(eventId, "事件编号");
         requireNonBlank(subscriberKey, "订阅方标识");
         return jdbc.query("""
-                        SELECT id, tenant_id, event_id, subscriber_key, work_order_id, round_no,
+                        SELECT id, tenant_id, project_id, event_id, subscriber_key, work_order_id, round_no,
                                workflow_instance_id, event_type, processing_status, detail,
                                received_at, processed_at
                         FROM arch_network_workflow_receipt
-                        WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
-                        """, WORKFLOW_RECEIPT_MAPPER, tenantId, eventId, subscriberKey).stream().findFirst();
+                        WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
+                        """, WORKFLOW_RECEIPT_MAPPER, tenantId, projectId, eventId, subscriberKey).stream().findFirst();
     }
 
     private void requireTransaction() {

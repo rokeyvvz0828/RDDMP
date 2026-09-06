@@ -8,14 +8,17 @@ import com.ccb.architecture.network.model.NetworkAccessModels.EndpointKind;
 import com.ccb.architecture.network.model.NetworkAccessModels.ExternalNetworkAddress;
 import com.ccb.architecture.network.model.NetworkAccessModels.ManagedEndpointInstance;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessApplication;
+import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessActionType;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkAccessRelation;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZone;
 import com.ccb.architecture.network.model.NetworkAccessModels.NetworkZoneSubnet;
 import com.ccb.architecture.network.model.NetworkAccessModels.RecordStatus;
 import com.ccb.architecture.network.model.NetworkAccessModels.RelationStatus;
+import com.ccb.architecture.network.model.NetworkAccessModels.ValidityType;
 import com.ccb.architecture.network.persistence.NetworkAccessStore;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +45,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NetworkAccessServiceTest {
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "applicant", "hash", "申请人", 11L, true);
+    private static final long PROJECT_ID = 70L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(PROJECT_ID, "PROJECT-A", "项目 A");
     private static final LocalDateTime TIME = LocalDateTime.of(2026, 8, 26, 10, 0);
 
     @Mock
@@ -58,12 +63,12 @@ class NetworkAccessServiceTest {
 
     @Test
     void 创建访问申请快照托管实例和外部地址() {
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 300L, 800L, "vm-src", "10.10.1.1")));
-        when(store.findAddress(7L, 50L)).thenReturn(Optional.of(activeAddress()));
+        when(store.findAddress(7L, PROJECT_ID, 50L)).thenReturn(Optional.of(activeAddress()));
         ArgumentCaptor<NetworkAccessApplication> saved = ArgumentCaptor.forClass(NetworkAccessApplication.class);
 
-        NetworkAccessApplication result = service.createApplication(ACTOR, new NetworkAccessService.NetworkAccessCommand(
+        NetworkAccessApplication result = service.createApplication(ACTOR, PROJECT, new NetworkAccessService.NetworkAccessCommand(
                 managed(100L, 200L, 300L, List.of(11L)),
                 external(50L),
                 AccessProtocol.TCP,
@@ -83,10 +88,10 @@ class NetworkAccessServiceTest {
 
     @Test
     void 托管端点实例缺少结构化网络分区时拒绝创建申请() {
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 300L, null, "vm-src", "10.10.1.1")));
 
-        assertThatThrownBy(() -> service.createApplication(ACTOR, new NetworkAccessService.NetworkAccessCommand(
+        assertThatThrownBy(() -> service.createApplication(ACTOR, PROJECT, new NetworkAccessService.NetworkAccessCommand(
                 managed(100L, 200L, 300L, List.of(11L)),
                 external(50L),
                 AccessProtocol.TCP,
@@ -103,10 +108,10 @@ class NetworkAccessServiceTest {
 
     @Test
     void 来源目标不能选择同一环境部署实例() {
-        when(store.listEndpointInstances(7L, 100L, 200L, 300L, List.of(11L)))
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
                 .thenReturn(List.of(instance(11L, 300L, 800L, "vm-same", "10.10.1.1")));
 
-        assertThatThrownBy(() -> service.createApplication(ACTOR, new NetworkAccessService.NetworkAccessCommand(
+        assertThatThrownBy(() -> service.createApplication(ACTOR, PROJECT, new NetworkAccessService.NetworkAccessCommand(
                 managed(100L, 200L, 300L, List.of(11L)),
                 managed(100L, 200L, 300L, List.of(11L)),
                 AccessProtocol.TCP,
@@ -125,13 +130,13 @@ class NetworkAccessServiceTest {
     void 批准申请生成访问关系快照且不重新计算端点实例() {
         NetworkAccessApplication reviewing = application(ApplicationStatus.IN_REVIEW, 2L);
         NetworkAccessApplication approved = application(ApplicationStatus.APPROVED, 3L);
-        when(store.lockApplication(7L, 900L)).thenReturn(Optional.of(reviewing));
-        when(store.updateApplicationStatus(7L, 900L, ApplicationStatus.IN_REVIEW, 2L,
+        when(store.lockApplication(7L, PROJECT_ID, 900L)).thenReturn(Optional.of(reviewing));
+        when(store.updateApplicationStatus(7L, PROJECT_ID, 900L, ApplicationStatus.IN_REVIEW, 2L,
                 ApplicationStatus.APPROVED, ACTOR.id())).thenReturn(true);
-        when(store.findApplication(7L, 900L)).thenReturn(Optional.of(approved));
+        when(store.findApplication(7L, PROJECT_ID, 900L)).thenReturn(Optional.of(approved));
         ArgumentCaptor<NetworkAccessRelation> relation = ArgumentCaptor.forClass(NetworkAccessRelation.class);
 
-        NetworkAccessApplication result = service.approveApplication(ACTOR, 900L, 2L);
+        NetworkAccessApplication result = service.approveApplication(ACTOR, PROJECT, 900L, 2L);
 
         assertThat(result.status()).isEqualTo(ApplicationStatus.APPROVED);
         verify(store).insertRelation(relation.capture());
@@ -144,13 +149,13 @@ class NetworkAccessServiceTest {
 
     @Test
     void 创建网络分区网段规范化CIDR并要求叶子分区() {
-        when(store.findZone(7L, 800L)).thenReturn(Optional.of(activeZone(800L, null, "P8_APP", "P8开放AP", 2)));
-        when(store.hasActiveChildZones(7L, 800L)).thenReturn(false);
-        when(store.subnetCidrExists(7L, "10.16.32.0/20", null)).thenReturn(false);
-        when(store.findSubnet(7L, 900001L)).thenReturn(Optional.of(subnet(900001L, "10.16.32.0/20")));
+        when(store.findZone(7L, PROJECT_ID, 800L)).thenReturn(Optional.of(activeZone(800L, null, "P8_APP", "P8开放AP", 2)));
+        when(store.hasActiveChildZones(7L, PROJECT_ID, 800L)).thenReturn(false);
+        when(store.subnetCidrExists(7L, PROJECT_ID, "10.16.32.0/20", null)).thenReturn(false);
+        when(store.findSubnet(7L, PROJECT_ID, 900001L)).thenReturn(Optional.of(subnet(900001L, "10.16.32.0/20")));
         ArgumentCaptor<NetworkZoneSubnet> saved = ArgumentCaptor.forClass(NetworkZoneSubnet.class);
 
-        NetworkZoneSubnet result = service.createSubnet(ACTOR, 800L,
+        NetworkZoneSubnet result = service.createSubnet(ACTOR, PROJECT, 800L,
                 new NetworkAccessService.NetworkZoneSubnetCommand("10.16.33.8/20",
                         "10.16.32.1", "开放区 AP 下发", null, null));
 
@@ -162,19 +167,19 @@ class NetworkAccessServiceTest {
 
     @Test
     void 非叶子分区不能维护网段且实例IP必须落入启用网段() {
-        when(store.findZone(7L, 800L)).thenReturn(Optional.of(activeZone(800L, null, "P8", "P8开放区", 1)));
-        when(store.hasActiveChildZones(7L, 800L)).thenReturn(true);
+        when(store.findZone(7L, PROJECT_ID, 800L)).thenReturn(Optional.of(activeZone(800L, null, "P8", "P8开放区", 1)));
+        when(store.hasActiveChildZones(7L, PROJECT_ID, 800L)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.createSubnet(ACTOR, 800L,
+        assertThatThrownBy(() -> service.createSubnet(ACTOR, PROJECT, 800L,
                 new NetworkAccessService.NetworkZoneSubnetCommand("10.16.32.0/20",
                         null, "父区网段", null, null)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("必须选择启用叶子分区");
 
-        when(store.listSubnets(7L, 800L, RecordStatus.ACTIVE))
+        when(store.listSubnets(7L, PROJECT_ID, 800L, RecordStatus.ACTIVE))
                 .thenReturn(List.of(subnet(900001L, "10.16.32.0/20")));
 
-        assertThatThrownBy(() -> service.requireIpInActiveSubnet(7L, 800L,
+        assertThatThrownBy(() -> service.requireIpInActiveSubnet(7L, PROJECT_ID, 800L,
                 "10.17.1.10", "第 1 台实例 IP 地址"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("不属于网络分区");
@@ -199,27 +204,29 @@ class NetworkAccessServiceTest {
     }
 
     private ExternalNetworkAddress activeAddress() {
-        return new ExternalNetworkAddress(50L, 7L, AddressType.DOMAIN, "external.example.com",
+        return new ExternalNetworkAddress(50L, 7L, PROJECT_ID, AddressType.DOMAIN, "external.example.com",
                 "外部 API", "第三方服务", RecordStatus.ACTIVE, null, 0L, ACTOR.id(), ACTOR.id(), TIME, TIME);
     }
 
     private NetworkZone activeZone(long id, Long parentId, String code, String name, int restrictionLevel) {
-        return new NetworkZone(id, 7L, parentId, null, code, name, restrictionLevel,
+        return new NetworkZone(id, 7L, PROJECT_ID, parentId, null, code, name, restrictionLevel,
                 RecordStatus.ACTIVE, null, null, 0L, ACTOR.id(), ACTOR.id(), TIME, TIME);
     }
 
     private NetworkZoneSubnet subnet(long id, String cidrBlock) {
-        return new NetworkZoneSubnet(id, 7L, 800L, "P8_APP", "P8开放AP", cidrBlock,
+        return new NetworkZoneSubnet(id, 7L, PROJECT_ID, 800L, "P8_APP", "P8开放AP", cidrBlock,
                 null, "开放区 AP 下发", RecordStatus.ACTIVE, null, 0L, ACTOR.id(), ACTOR.id(), TIME, TIME);
     }
 
     private NetworkAccessApplication application(ApplicationStatus status, long rowVersion) {
-        return new NetworkAccessApplication(900L, 7L, "NAA900", ACTOR.id(),
+        return new NetworkAccessApplication(900L, 7L, PROJECT_ID, "NAA900", ACTOR.id(),
+                NetworkAccessActionType.OPEN, null,
                 EndpointKind.MANAGED, 100L, 200L, 300L, null,
                 "[{\"machineName\":\"vm-src\",\"networkZoneName\":\"生产应用区\"}]",
                 EndpointKind.EXTERNAL, null, null, null, 50L,
                 "[{\"displayName\":\"外部 API\",\"addressValue\":\"external.example.com\"}]",
                 AccessProtocol.TCP, "443", "应用访问外部 API", "审批生成关系", null, null,
-                status, rowVersion, ACTOR.id(), ACTOR.id(), TIME, TIME);
+                ValidityType.LONG_TERM, status, 0, null, null, null, null, false,
+                rowVersion, ACTOR.id(), ACTOR.id(), TIME, TIME);
     }
 }

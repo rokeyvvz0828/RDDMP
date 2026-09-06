@@ -78,14 +78,15 @@ public class SubsystemPublicationService {
     }
 
     private ApprovalResult approveInTransaction(ApprovalCommand command, AuthUser operator) {
-        ChangeApplication application = store.lockApplication(operator.tenantId(), command.applicationId())
-                .orElseThrow(() -> conflict("变更申请不存在、跨租户或已被删除"));
+        ChangeApplication application = store.lockApplication(operator.tenantId(), command.projectId(),
+                        command.applicationId())
+                .orElseThrow(() -> conflict("变更申请不存在、不属于当前项目或已被删除"));
         verifyApprovalContext(application, command);
 
         PreparedPublication publication = preparePhysicalPublication(application, operator);
 
         // CAS 在主记录写入前完成；其后任一步失败都会由整个事务回滚，不会留下 APPROVED 半状态。
-        if (!store.compareAndSetApplicationStatus(application.tenantId(), application.id(),
+        if (!store.compareAndSetApplicationStatus(application.tenantId(), application.projectId(), application.id(),
                 ApplicationStatus.IN_REVIEW, command.expectedApplicationRowVersion(),
                 ApplicationStatus.APPROVED, operator.id())) {
             throw conflict("变更申请状态或版本已变化，请使用最新工作流事件重试");
@@ -93,12 +94,12 @@ public class SubsystemPublicationService {
 
         publication.writer().run();
         if (application.targetId() != null) {
-            store.deleteTargetLock(application.tenantId(), application.targetKind(), application.targetId(),
+            store.deleteTargetLock(application.tenantId(), application.projectId(), application.targetKind(), application.targetId(),
                     application.id());
         }
-        store.deleteValueReservations(application.tenantId(), application.id());
+        store.deleteValueReservations(application.tenantId(), application.projectId(), application.id());
         store.insertHistory(new ChangeHistoryEvent(
-                nextIdentifier(), application.tenantId(), application.id(), "APPROVED_PUBLISHED",
+                nextIdentifier(), application.tenantId(), application.projectId(), application.id(), "APPROVED_PUBLISHED",
                 ApplicationStatus.IN_REVIEW, ApplicationStatus.APPROVED, application.currentBusinessRound(),
                 safeHistorySummary(application), null, null, operator.id(), LocalDateTime.now()));
 
@@ -128,7 +129,7 @@ public class SubsystemPublicationService {
         ensurePermanentUnique(application, draft, null);
         long physicalSubsystemId = nextIdentifier();
         return new PreparedPublication(List.of(physicalSubsystemId), () ->
-                store.insertPhysicalPublished(physicalSubsystemId, application.tenantId(), draft,
+                store.insertPhysicalPublished(physicalSubsystemId, application.tenantId(), application.projectId(), draft,
                         PublishedStatus.ACTIVE, 0L, operator.id()));
     }
 
@@ -138,7 +139,8 @@ public class SubsystemPublicationService {
         requireSameCode(context.draft(), context.target());
         ensurePermanentUnique(application, context.draft(), context.target().id());
         return new PreparedPublication(List.of(context.target().id()), () -> {
-            if (!store.updatePhysicalPublishedFields(application.tenantId(), context.target().id(), context.draft(),
+            if (!store.updatePhysicalPublishedFields(application.tenantId(), application.projectId(),
+                    context.target().id(), context.draft(),
                     context.target().rowVersion(), operator.id())) {
                 throw conflict("物理子系统源行版本已变化，字段更新失败");
             }
@@ -157,7 +159,8 @@ public class SubsystemPublicationService {
                     ReferenceCheckRequest.SubsystemKind.PHYSICAL, context.target().id(), guardOperation));
         }
         return new PreparedPublication(List.of(context.target().id()), () -> {
-            if (!store.updatePhysicalPublishedStatus(application.tenantId(), context.target().id(), targetStatus,
+            if (!store.updatePhysicalPublishedStatus(application.tenantId(), application.projectId(),
+                    context.target().id(), targetStatus,
                     context.target().rowVersion(), operator.id())) {
                 throw conflict("物理子系统源行版本已变化，状态更新失败");
             }
@@ -172,7 +175,7 @@ public class SubsystemPublicationService {
                 ReferenceCheckRequest.SubsystemKind.PHYSICAL, context.target().id(),
                 ReferenceCheckRequest.Operation.VOID));
         return new PreparedPublication(List.of(context.target().id()), () -> {
-            if (!store.updatePhysicalPublishedStatus(application.tenantId(), context.target().id(),
+            if (!store.updatePhysicalPublishedStatus(application.tenantId(), application.projectId(), context.target().id(),
                     PublishedStatus.VOIDED, context.target().rowVersion(), operator.id())) {
                 throw conflict("物理子系统源行版本已变化，作废失败");
             }
@@ -190,13 +193,14 @@ public class SubsystemPublicationService {
         long newPhysicalSubsystemId = nextIdentifier();
         long replacementId = nextIdentifier();
         return new PreparedPublication(List.of(newPhysicalSubsystemId), () -> {
-            store.insertPhysicalPublished(newPhysicalSubsystemId, application.tenantId(), context.draft(),
+            store.insertPhysicalPublished(newPhysicalSubsystemId, application.tenantId(), application.projectId(), context.draft(),
                     PublishedStatus.ACTIVE, 0L, operator.id());
-            if (!store.updatePhysicalPublishedStatus(application.tenantId(), context.target().id(),
+            if (!store.updatePhysicalPublishedStatus(application.tenantId(), application.projectId(), context.target().id(),
                     PublishedStatus.OFFLINE, context.target().rowVersion(), operator.id())) {
                 throw conflict("被替换物理子系统源行版本已变化，下线失败");
             }
             store.insertPhysicalReplacement(new PhysicalReplacement(replacementId, application.tenantId(),
+                    application.projectId(),
                     context.target().id(), newPhysicalSubsystemId, application.id(), LocalDateTime.now()));
         });
     }
@@ -205,12 +209,14 @@ public class SubsystemPublicationService {
         long targetId = requireExistingTarget(application);
         verifyOwnedTargetLock(application, targetId);
         PhysicalDraft draft = singleSubmittedPhysicalDraft(application);
-        PhysicalPublishedState target = store.lockPhysical(application.tenantId(), targetId)
-                .orElseThrow(() -> conflict("物理子系统源记录不存在或跨租户"));
-        if (target.tenantId() != application.tenantId() || target.id() != targetId || target.deleted()) {
-            throw conflict("物理子系统源记录租户、编号或删除状态无效");
+        PhysicalPublishedState target = store.lockPhysical(application.tenantId(), application.projectId(), targetId)
+                .orElseThrow(() -> conflict("物理子系统源记录不存在或不属于当前项目"));
+        if (target.tenantId() != application.tenantId() || target.projectId() != application.projectId()
+                || target.id() != targetId || target.deleted()) {
+            throw conflict("物理子系统源记录租户、项目、编号或删除状态无效");
         }
         if (draft.applicationId() != application.id() || draft.tenantId() != application.tenantId()
+                || draft.projectId() != application.projectId()
                 || draft.lineNo() <= 0 || !Objects.equals(draft.sourcePhysicalSubsystemId(), targetId)
                 || draft.sourceRowVersion() == null || draft.sourceRowVersion() != target.rowVersion()) {
             throw conflict("物理草稿的申请、租户、源编号或源行版本与发布记录不一致");
@@ -219,7 +225,7 @@ public class SubsystemPublicationService {
     }
 
     private PhysicalDraft singleSubmittedPhysicalDraft(ChangeApplication application) {
-        List<PhysicalDraft> drafts = store.findPhysicalDrafts(application.tenantId(), application.id());
+        List<PhysicalDraft> drafts = store.findPhysicalDrafts(application.tenantId(), application.projectId(), application.id());
         if (drafts.size() != 1) {
             throw conflict("物理变更申请必须且只能包含一条已提交物理草稿");
         }
@@ -232,6 +238,7 @@ public class SubsystemPublicationService {
 
     private void requireCreateDraft(ChangeApplication application, PhysicalDraft draft) {
         if (draft.applicationId() != application.id() || draft.tenantId() != application.tenantId()
+                || draft.projectId() != application.projectId()
                 || draft.lineNo() <= 0 || draft.sourcePhysicalSubsystemId() != null
                 || draft.sourceRowVersion() != null || isBlank(draft.code())) {
             throw conflict("物理新增草稿的申请、租户、来源、版本或编号无效");
@@ -246,9 +253,11 @@ public class SubsystemPublicationService {
     }
 
     private void verifyOwnedTargetLock(ChangeApplication application, long targetId) {
-        TargetLock targetLock = store.findTargetLock(application.tenantId(), application.targetKind(), targetId)
+        TargetLock targetLock = store.findTargetLock(application.tenantId(), application.projectId(),
+                        application.targetKind(), targetId)
                 .orElseThrow(() -> conflict("变更申请未持有目标排他锁"));
-        if (targetLock.tenantId() != application.tenantId() || targetLock.targetKind() != application.targetKind()
+        if (targetLock.tenantId() != application.tenantId() || targetLock.projectId() != application.projectId()
+                || targetLock.targetKind() != application.targetKind()
                 || targetLock.targetId() != targetId || targetLock.applicationId() != application.id()) {
             throw conflict("目标排他锁不属于当前变更申请");
         }
@@ -280,14 +289,15 @@ public class SubsystemPublicationService {
     }
 
     private void ensurePermanentUnique(ChangeApplication application, PhysicalDraft draft, Long excludeId) {
-        if (store.physicalCodeExists(application.tenantId(), draft.code(), excludeId)) {
+        if (store.physicalCodeExists(application.tenantId(), application.projectId(), draft.code(), excludeId)) {
             throw conflict("物理子系统编号已存在，删除后的编号也不能复用");
         }
-        if (store.physicalNameExists(application.tenantId(), draft.name(), excludeId)) {
+        if (store.physicalNameExists(application.tenantId(), application.projectId(), draft.name(), excludeId)) {
             throw conflict("物理子系统名称已存在，删除后的名称也不能复用");
         }
         if (draft.englishName() != null
-                && store.physicalEnglishNameExists(application.tenantId(), draft.englishName(), excludeId)) {
+                && store.physicalEnglishNameExists(application.tenantId(), application.projectId(),
+                draft.englishName(), excludeId)) {
             throw conflict("物理子系统英文名称已存在，删除后的英文名称也不能复用");
         }
     }
@@ -344,12 +354,13 @@ public class SubsystemPublicationService {
     /** 仅含工作流一致性条件，绝不接收审批人可篡改的业务草稿字段。 */
     public record ApprovalCommand(
             long applicationId,
+            long projectId,
             int expectedBusinessRound,
             long expectedApplicationRowVersion,
             Long expectedWorkflowInstanceId,
             String expectedPayloadDigest) {
         public ApprovalCommand {
-            if (applicationId <= 0 || expectedBusinessRound <= 0 || expectedApplicationRowVersion < 0
+            if (applicationId <= 0 || projectId <= 0 || expectedBusinessRound <= 0 || expectedApplicationRowVersion < 0
                     || expectedWorkflowInstanceId == null || expectedWorkflowInstanceId <= 0
                     || expectedPayloadDigest == null || expectedPayloadDigest.isBlank()
                     || expectedPayloadDigest.length() > 64) {

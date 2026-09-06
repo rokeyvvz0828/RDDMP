@@ -10,6 +10,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.ccb.system.capability.SystemParameterReference;
@@ -74,11 +75,13 @@ public class PhysicalSubsystemService {
         this.transactions = transactions;
     }
 
-    public PageResult<PhysicalSubsystemView> list(AuthUser actor, PageQuery page, PhysicalSubsystemQuery query) {
+    public PageResult<PhysicalSubsystemView> list(AuthUser actor, ProjectAccess project, PageQuery page,
+                                                   PhysicalSubsystemQuery query) {
         requireActor(actor);
+        requireProject(project);
         PhysicalSubsystemQuery normalized = normalizeQuery(actor, query);
         validateQueryIds(normalized);
-        PageResult<PhysicalSubsystem> result = repository.pagePhysical(actor.tenantId(), page, normalized);
+        PageResult<PhysicalSubsystem> result = repository.pagePhysical(actor.tenantId(), project.id(), page, normalized);
         ProjectionContext context = projectionContext(actor);
         List<PhysicalSubsystemView> records = result.records().stream()
                 .map(item -> toView(actor, item, context))
@@ -86,26 +89,32 @@ public class PhysicalSubsystemService {
         return new PageResult<>(records, result.total(), result.page(), result.size());
     }
 
-    public PhysicalSubsystemView detail(AuthUser actor, long id) {
+    public PhysicalSubsystemView detail(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        PhysicalSubsystem subsystem = repository.findPhysical(actor.tenantId(), id)
+        PhysicalSubsystem subsystem = repository.findPhysical(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound(id));
         return toView(actor, subsystem, projectionContext(actor));
     }
 
-    public PhysicalSubsystemView create(AuthUser actor, PhysicalSubsystemCommand command, String traceId) {
+    public PhysicalSubsystemView create(AuthUser actor, ProjectAccess project, PhysicalSubsystemCommand command,
+                                         String traceId) {
         requireActor(actor);
+        requireProject(project);
         throw workOrderRequired();
     }
 
-    public PhysicalSubsystemView update(AuthUser actor, long id, PhysicalSubsystemCommand command, String traceId) {
+    public PhysicalSubsystemView update(AuthUser actor, ProjectAccess project, long id,
+                                         PhysicalSubsystemCommand command, String traceId) {
         requireActor(actor);
+        requireProject(project);
         throw workOrderRequired();
     }
 
-    public void delete(AuthUser actor, long id, String traceId) {
+    public void delete(AuthUser actor, ProjectAccess project, long id, String traceId) {
         requireActor(actor);
+        requireProject(project);
         throw workOrderRequired();
     }
 
@@ -224,11 +233,11 @@ public class PhysicalSubsystemService {
                 .orElseThrow(() -> badRequest(label + "参数无效或已停用"));
     }
 
-    private void ensureUnique(long tenantId, PhysicalSubsystemCommand command, Long excludeId) {
-        if (repository.physicalCodeExists(tenantId, command.code(), excludeId)) {
+    private void ensureUnique(long tenantId, long projectId, PhysicalSubsystemCommand command, Long excludeId) {
+        if (repository.physicalCodeExists(tenantId, projectId, command.code(), excludeId)) {
             throw conflict("系统编号已存在，删除后的编号也不能复用");
         }
-        if (repository.physicalNameExists(tenantId, command.name(), excludeId)) {
+        if (repository.physicalNameExists(tenantId, projectId, command.name(), excludeId)) {
             throw conflict("系统名称已存在，删除后的名称也不能复用");
         }
     }
@@ -366,6 +375,12 @@ public class PhysicalSubsystemService {
 
     private record ProjectionContext(Map<Long, OrgTreeNode> organizations,
                                      Map<Long, Optional<SystemUserReference>> users) {
+    }
+
+    private void requireProject(ProjectAccess project) {
+        if (project == null || project.id() <= 0) {
+            throw badRequest("请选择项目后重试");
+        }
     }
 
     public record PhysicalSubsystemView(

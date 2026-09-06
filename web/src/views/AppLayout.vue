@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ArrowDown, Brush, Camera, DataBoard, Expand, Fold, Lock, Menu, Refresh, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Brush, Camera, DataBoard, Expand, Fold, FolderOpened, Lock, Menu, Refresh, SwitchButton } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import UiRouteMenuNode from '../components/ui/UiRouteMenuNode.vue'
@@ -105,6 +105,7 @@ const themeLabel = computed(() => {
   const appearance = { light: '浅色', dark: '深色', system: '跟随系统' }[theme.appearance]
   return palette + ' / ' + appearance
 })
+const currentProjectLabel = computed(() => projectContext.current?.name || (projectContext.loading ? '项目加载中' : '选择项目'))
 
 function removeProjectQueryTabs() {
   tabsStore.tabs
@@ -236,6 +237,11 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         <span class="brand-mark" aria-hidden="true">EP</span>
         <span class="app-logo__text"><strong>工程交付平台</strong><small>ENGINEERING DELIVERY</small></span>
       </router-link>
+      <el-tooltip v-if="mobileView" :content="`当前项目：${currentProjectLabel}`" placement="bottom">
+        <el-button class="mobile-project-context-trigger" text :aria-label="`当前项目：${currentProjectLabel}，打开项目切换`" @click="mobileMenuOpen = true">
+          <el-icon><FolderOpened /></el-icon><span>{{ currentProjectLabel }}</span><el-icon><ArrowDown /></el-icon>
+        </el-button>
+      </el-tooltip>
       <el-menu :default-active="route.path" mode="horizontal" router class="app-top-menu">
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
         <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
@@ -258,7 +264,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       </el-aside>
       <el-container>
         <el-header v-if="!topNavigationVisible || mobileView" class="app-header">
-          <div v-if="mobileNavigationVisible || sideNavigationVisible" class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><div v-if="mobileView" class="breadcrumb"><strong>{{ title }}</strong></div></div>
+          <div v-if="mobileNavigationVisible || sideNavigationVisible" class="header-left"><el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button><el-button v-else-if="sideNavigationVisible" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button><el-tooltip v-if="mobileView && !topNavigationVisible" :content="`当前项目：${currentProjectLabel}`" placement="bottom"><el-button class="mobile-project-context-trigger" text :aria-label="`当前项目：${currentProjectLabel}，打开项目切换`" @click="mobileMenuOpen = true"><el-icon><FolderOpened /></el-icon><span>{{ currentProjectLabel }}</span><el-icon><ArrowDown /></el-icon></el-button></el-tooltip><div v-else-if="mobileView" class="breadcrumb"><strong>{{ title }}</strong></div></div>
           <el-select v-if="!topNavigationVisible" :key="projectSelectVersion" class="project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" :disabled="projectSwitching" placeholder="选择项目" :no-data-text="projectContext.error || '暂无可用项目'" @change="confirmProjectSwitch"><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref" /><template #empty><div class="project-context-select__empty"><span>{{ projectContext.error || '暂无可用项目' }}</span><el-button v-if="projectContext.error" link type="primary" :loading="projectContext.loading" @click.stop="projectContext.retry"><el-icon><Refresh /></el-icon>重试</el-button></div></template></el-select>
           <div v-if="!topNavigationVisible" class="header-actions"><UiNotificationCenter /><ThemeModeFan /><el-tooltip :content="`主题与布局 · ${themeLabel}`" placement="bottom"><el-button text circle title="主题与布局" @click="settingsOpen = true"><el-icon :size="18"><Brush /></el-icon></el-button></el-tooltip><el-dropdown class="user-menu" trigger="click" @command="handleUserCommand"><el-button class="user-chip" text><UiUserIdentity :user="auth.user" :show-profile="false" /><el-icon class="user-chip__arrow"><ArrowDown /></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="change-avatar"><el-icon><Camera /></el-icon>更换头像</el-dropdown-item><el-dropdown-item command="change-password"><el-icon><Lock /></el-icon>修改密码</el-dropdown-item><el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
         </el-header>

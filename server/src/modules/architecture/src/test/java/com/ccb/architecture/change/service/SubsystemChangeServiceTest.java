@@ -12,6 +12,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemParameterReference;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemReferenceQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SubsystemChangeServiceTest {
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "architect", "hash", "架构师", 11L, true);
+    private static final ProjectAccess PROJECT = new ProjectAccess(70L, "PROJECT-A", "项目 A");
     private static final LocalDateTime TIME = LocalDateTime.of(2026, 8, 23, 10, 0);
 
     @Mock
@@ -78,7 +80,7 @@ class SubsystemChangeServiceTest {
                 .thenReturn(List.of(new SystemParameterReference(
                         "architecture.business-component.employee-portal", "员工门户")));
 
-        SubsystemChangeService.ApplicationDetail detail = service.createPhysical(ACTOR,
+        SubsystemChangeService.ApplicationDetail detail = service.createPhysical(ACTOR, PROJECT,
                 new SubsystemChangeService.PhysicalApplicationCommand(ActionType.CREATE, null, " 申请原因 ",
                         input(" phy_mall ", null, null)));
 
@@ -92,34 +94,35 @@ class SubsystemChangeServiceTest {
             assertThat(draft.sourceRowVersion()).isNull();
         });
         verify(store).insertApplication(detail.application());
-        verify(store).replacePhysicalDrafts(eq(ACTOR.tenantId()), eq(detail.application().id()), any());
+        verify(store).replacePhysicalDrafts(eq(ACTOR.tenantId()), eq(PROJECT.id()),
+                eq(detail.application().id()), any());
     }
 
     @Test
     void createPhysicalRejectsInvalidBusinessComponentBeforePersistingDraft() {
         when(referenceQuery.activeParameters(ACTOR, "ARCH_BUSINESS_COMPONENT")).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.createPhysical(ACTOR,
+        assertThatThrownBy(() -> service.createPhysical(ACTOR, PROJECT,
                 new SubsystemChangeService.PhysicalApplicationCommand(ActionType.CREATE, null, "申请原因",
                         input("PHY_MALL", null, null))))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST));
 
         verify(store, never()).insertApplication(any());
-        verify(store, never()).replacePhysicalDrafts(anyLong(), anyLong(), any());
+        verify(store, never()).replacePhysicalDrafts(anyLong(), anyLong(), anyLong(), any());
     }
 
     @Test
     void coordinateSubmissionStoresSnapshotReservesValuesAndReturnsPhysicalCodes() {
         ChangeApplication application = application(100L, ActionType.CREATE, null, ApplicationStatus.DRAFT, 0L);
         PhysicalDraft draft = draft(application, "PHY_MALL", null, null, null);
-        when(store.lockApplication(ACTOR.tenantId(), application.id())).thenReturn(Optional.of(application));
-        when(store.findPhysicalDrafts(ACTOR.tenantId(), application.id())).thenReturn(List.of(draft));
-        when(store.findValueReservation(eq(ACTOR.tenantId()), any(), any())).thenReturn(Optional.empty());
-        when(store.compareAndSetApplicationStatus(ACTOR.tenantId(), application.id(), ApplicationStatus.DRAFT,
+        when(store.lockApplication(ACTOR.tenantId(), PROJECT.id(), application.id())).thenReturn(Optional.of(application));
+        when(store.findPhysicalDrafts(ACTOR.tenantId(), PROJECT.id(), application.id())).thenReturn(List.of(draft));
+        when(store.findValueReservation(eq(ACTOR.tenantId()), eq(PROJECT.id()), any(), any())).thenReturn(Optional.empty());
+        when(store.compareAndSetApplicationStatus(ACTOR.tenantId(), PROJECT.id(), application.id(), ApplicationStatus.DRAFT,
                 0L, ApplicationStatus.IN_REVIEW, ACTOR.id())).thenReturn(true);
 
-        SubsystemChangeService.SubmissionPreparation preparation = service.coordinateSubmission(ACTOR,
+        SubsystemChangeService.SubmissionPreparation preparation = service.coordinateSubmission(ACTOR, PROJECT,
                 SubsystemChangeService.AccessScope.OWN, application.id(), 0L, ignored -> { });
 
         assertThat(preparation.applicationId()).isEqualTo(application.id());
@@ -130,7 +133,8 @@ class SubsystemChangeServiceTest {
         assertThat(preparation.physicalSubsystemCodes()).containsExactly("PHY_MALL");
 
         ArgumentCaptor<List<PhysicalDraft>> submittedDrafts = ArgumentCaptor.forClass(List.class);
-        verify(store).replacePhysicalDrafts(eq(ACTOR.tenantId()), eq(application.id()), submittedDrafts.capture());
+        verify(store).replacePhysicalDrafts(eq(ACTOR.tenantId()), eq(PROJECT.id()), eq(application.id()),
+                submittedDrafts.capture());
         assertThat(submittedDrafts.getValue()).singleElement()
                 .satisfies(item -> assertThat(item.submittedSnapshotJson()).isEqualTo(preparation.snapshot()));
 
@@ -145,17 +149,17 @@ class SubsystemChangeServiceTest {
     void coordinateSubmissionRejectsDuplicateSelfFilledCode() {
         ChangeApplication application = application(101L, ActionType.CREATE, null, ApplicationStatus.DRAFT, 0L);
         PhysicalDraft draft = draft(application, "PHY_DUP", null, null, null);
-        when(store.lockApplication(ACTOR.tenantId(), application.id())).thenReturn(Optional.of(application));
-        when(store.findPhysicalDrafts(ACTOR.tenantId(), application.id())).thenReturn(List.of(draft));
-        when(store.physicalCodeExists(ACTOR.tenantId(), "PHY_DUP", null)).thenReturn(true);
+        when(store.lockApplication(ACTOR.tenantId(), PROJECT.id(), application.id())).thenReturn(Optional.of(application));
+        when(store.findPhysicalDrafts(ACTOR.tenantId(), PROJECT.id(), application.id())).thenReturn(List.of(draft));
+        when(store.physicalCodeExists(ACTOR.tenantId(), PROJECT.id(), "PHY_DUP", null)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.coordinateSubmission(ACTOR,
+        assertThatThrownBy(() -> service.coordinateSubmission(ACTOR, PROJECT,
                 SubsystemChangeService.AccessScope.OWN, application.id(), 0L, ignored -> { }))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.code()).isEqualTo(ErrorCode.CONFLICT));
 
         verify(store, never()).insertValueReservation(any());
-        verify(store, never()).compareAndSetApplicationStatus(anyLong(), anyLong(), any(), anyLong(), any(), anyLong());
+        verify(store, never()).compareAndSetApplicationStatus(anyLong(), anyLong(), anyLong(), any(), anyLong(), any(), anyLong());
     }
 
     private SubsystemChangeService.PhysicalDraftInput input(String code, Long sourceVersion, Long ownerUserId) {
@@ -169,14 +173,14 @@ class SubsystemChangeServiceTest {
 
     private ChangeApplication application(long id, ActionType action, Long targetId,
                                           ApplicationStatus status, long rowVersion) {
-        return new ChangeApplication(id, ACTOR.tenantId(), TargetKind.PHYSICAL, action, targetId,
+        return new ChangeApplication(id, ACTOR.tenantId(), PROJECT.id(), TargetKind.PHYSICAL, action, targetId,
                 ACTOR.id(), "申请原因", status, 0, null, null, null, null,
                 false, rowVersion, ACTOR.id(), ACTOR.id(), TIME, TIME);
     }
 
     private PhysicalDraft draft(ChangeApplication application, String code, Long sourceId,
                                 Long sourceVersion, String submittedSnapshotJson) {
-        return new PhysicalDraft(application.id(), 1, application.tenantId(), sourceId, code,
+        return new PhysicalDraft(application.id(), 1, application.tenantId(), application.projectId(), sourceId, code,
                 "商城物理", "商城物理系统", "商城逻辑域",
                 "architecture.business-component.employee-portal", "Mall Platform", "渠道",
                 "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",

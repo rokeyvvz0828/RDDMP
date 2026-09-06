@@ -12,6 +12,7 @@ import com.ccb.architecture.network.service.NetworkWorkOrderService.WorkOrderDet
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowProgress;
@@ -46,6 +47,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NetworkWorkOrderSubmissionServiceTest {
     private static final AuthUser ACTOR = new AuthUser(9L, 7L, "applicant", "hash", "申请人", 11L, true);
+    private static final long PROJECT_ID = 70L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(PROJECT_ID, "PROJECT-A", "项目 A");
     private static final long WORK_ORDER_ID = 900021L;
     private static final long INSTANCE_ID = 880021L;
     private static final String DIGEST = "a".repeat(64);
@@ -69,7 +72,7 @@ class NetworkWorkOrderSubmissionServiceTest {
     }
 
     private WorkOrder reviewOrder() {
-        return new WorkOrder(WORK_ORDER_ID, 7L, Kind.DNS, ActionType.ADD, "demo.example.test",
+        return new WorkOrder(WORK_ORDER_ID, 7L, PROJECT_ID, Kind.DNS, ActionType.ADD, "demo.example.test",
                 ACTOR.id(), "原因", WorkOrderStatus.IN_REVIEW, "{}", "[]", null, null, "[]",
                 null, null, 0, 900000000000032L, 900000000000033L, INSTANCE_ID, DIGEST,
                 false, 3, ACTOR.id(), ACTOR.id(), TIME, TIME);
@@ -78,29 +81,29 @@ class NetworkWorkOrderSubmissionServiceTest {
     @Test
     void 提交启动工作流并绑定轮次() {
         WorkOrder prepared = reviewOrder();
-        when(store.lockWorkOrder(7L, WORK_ORDER_ID)).thenReturn(Optional.of(prepared));
+        when(store.lockWorkOrder(7L, PROJECT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(prepared));
         when(workflowGateway.startByCode(any(WorkflowStartCommand.class), eq(ACTOR))).thenReturn(
                 new WorkflowStartResult(INSTANCE_ID, 900000000000032L, 1, "RUNNING",
                         new WorkflowBusinessContext("architecture", "架构管理",
                                 "architecture_network_work_order", String.valueOf(WORK_ORDER_ID),
-                                "网络专项工单 " + WORK_ORDER_ID, 1, null, null,
+                                "网络专项工单 " + WORK_ORDER_ID, 1, PROJECT.projectRef(), PROJECT.projectName(),
                                 "/architecture/network-work-orders/" + WORK_ORDER_ID, DIGEST)));
-        when(store.bindWorkflowRoundStarted(eq(7L), eq(WORK_ORDER_ID), eq(1), eq(900000000000032L),
+        when(store.bindWorkflowRoundStarted(eq(7L), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(1), eq(900000000000032L),
                 eq(1L), eq(INSTANCE_ID), eq(DIGEST), any())).thenReturn(true);
-        when(store.compareAndSetWorkflowContext(eq(7L), eq(WORK_ORDER_ID), eq(0), eq(3L),
+        when(store.compareAndSetWorkflowContext(eq(7L), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(0), eq(3L),
                 eq(1), eq(900000000000032L), eq(1L), eq(INSTANCE_ID),
                 eq(DIGEST), eq(ACTOR.id()))).thenReturn(true);
-        when(changes.detail(ACTOR, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
+        when(changes.detail(ACTOR, PROJECT, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
                 new WorkOrderDetail(prepared, List.of()));
 
         org.mockito.Mockito.doAnswer(invocation -> {
                     java.util.function.Consumer<NetworkWorkOrderService.SubmissionPreparation> starter =
-                            invocation.getArgument(3);
+                            invocation.getArgument(4);
                     starter.accept(new NetworkWorkOrderService.SubmissionPreparation(WORK_ORDER_ID, 1, DIGEST));
                     return null;
-                }).when(changes).coordinateSubmission(eq(ACTOR), eq(WORK_ORDER_ID), eq(3L), any());
+                }).when(changes).coordinateSubmission(eq(ACTOR), eq(PROJECT), eq(WORK_ORDER_ID), eq(3L), any());
 
-        service.submit(ACTOR, WORK_ORDER_ID, 3L);
+        service.submit(ACTOR, PROJECT, WORK_ORDER_ID, 3L);
 
         ArgumentCaptor<WorkflowStartCommand> startCaptor = ArgumentCaptor.forClass(WorkflowStartCommand.class);
         verify(workflowGateway).startByCode(startCaptor.capture(), eq(ACTOR));
@@ -111,9 +114,9 @@ class NetworkWorkOrderSubmissionServiceTest {
         assertThat(startCaptor.getValue().context().actionPath())
                 .isEqualTo("/architecture/network-work-orders/" + WORK_ORDER_ID);
         verify(store).insertPendingWorkflowRound(any(WorkflowRound.class));
-        verify(store).bindWorkflowRoundStarted(eq(7L), eq(WORK_ORDER_ID), eq(1),
+        verify(store).bindWorkflowRoundStarted(eq(7L), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(1),
                 eq(900000000000032L), eq(1L), eq(INSTANCE_ID), eq(DIGEST), any());
-        verify(store).compareAndSetWorkflowContext(eq(7L), eq(WORK_ORDER_ID), eq(0), eq(3L),
+        verify(store).compareAndSetWorkflowContext(eq(7L), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(0), eq(3L),
                 eq(1), eq(900000000000032L), eq(1L), eq(INSTANCE_ID), eq(DIGEST),
                 eq(ACTOR.id()));
     }
@@ -121,21 +124,21 @@ class NetworkWorkOrderSubmissionServiceTest {
     @Test
     void 提交结果上下文不一致时返回409() {
         WorkOrder prepared = reviewOrder();
-        when(store.lockWorkOrder(7L, WORK_ORDER_ID)).thenReturn(Optional.of(prepared));
+        when(store.lockWorkOrder(7L, PROJECT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(prepared));
         when(workflowGateway.startByCode(any(WorkflowStartCommand.class), eq(ACTOR))).thenReturn(
                 new WorkflowStartResult(INSTANCE_ID, 900000000000032L, 1, "RUNNING",
                         new WorkflowBusinessContext("architecture", "架构管理",
                                 "architecture_network_work_order", String.valueOf(WORK_ORDER_ID),
-                                "网络专项工单 " + WORK_ORDER_ID, 2, null, null,
+                                "网络专项工单 " + WORK_ORDER_ID, 2, PROJECT.projectRef(), PROJECT.projectName(),
                                 "/architecture/network-work-orders/" + WORK_ORDER_ID, DIGEST)));
         org.mockito.Mockito.doAnswer(invocation -> {
                     java.util.function.Consumer<NetworkWorkOrderService.SubmissionPreparation> starter =
-                            invocation.getArgument(3);
+                            invocation.getArgument(4);
                     starter.accept(new NetworkWorkOrderService.SubmissionPreparation(WORK_ORDER_ID, 1, DIGEST));
                     return null;
-                }).when(changes).coordinateSubmission(eq(ACTOR), eq(WORK_ORDER_ID), eq(3L), any());
+                }).when(changes).coordinateSubmission(eq(ACTOR), eq(PROJECT), eq(WORK_ORDER_ID), eq(3L), any());
 
-        assertThatThrownBy(() -> service.submit(ACTOR, WORK_ORDER_ID, 3L))
+        assertThatThrownBy(() -> service.submit(ACTOR, PROJECT, WORK_ORDER_ID, 3L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).code())
                 .isEqualTo(ErrorCode.CONFLICT);
@@ -143,35 +146,35 @@ class NetworkWorkOrderSubmissionServiceTest {
 
     @Test
     void 草稿取消走同步路径() {
-        WorkOrder draft = new WorkOrder(WORK_ORDER_ID, 7L, Kind.CLB, ActionType.OPEN, "CLB-A",
+        WorkOrder draft = new WorkOrder(WORK_ORDER_ID, 7L, PROJECT_ID, Kind.CLB, ActionType.OPEN, "CLB-A",
                 ACTOR.id(), "原因", WorkOrderStatus.DRAFT, "{}", "[]", null, null, "[]", null, null,
                 0, null, null, null, null, false, 1, ACTOR.id(), ACTOR.id(), TIME, TIME);
-        when(changes.detail(ACTOR, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
+        when(changes.detail(ACTOR, PROJECT, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
                 new WorkOrderDetail(draft, List.of()));
-        when(changes.cancel(ACTOR, AccessScope.OWN, WORK_ORDER_ID, 1L)).thenReturn(
+        when(changes.cancel(ACTOR, PROJECT, AccessScope.OWN, WORK_ORDER_ID, 1L)).thenReturn(
                 new WorkOrderDetail(draft, List.of()));
 
-        service.cancel(ACTOR, WORK_ORDER_ID, 1L);
+        service.cancel(ACTOR, PROJECT, WORK_ORDER_ID, 1L);
 
-        verify(changes).cancel(ACTOR, AccessScope.OWN, WORK_ORDER_ID, 1L);
+        verify(changes).cancel(ACTOR, PROJECT, AccessScope.OWN, WORK_ORDER_ID, 1L);
     }
 
     @Test
     void 审批中取消先登记再终止流程() {
         WorkOrder review = reviewOrder();
-        when(changes.detail(ACTOR, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
+        when(changes.detail(ACTOR, PROJECT, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
                 new WorkOrderDetail(review, List.of()));
         when(workflowGateway.progress(INSTANCE_ID, ACTOR)).thenReturn(
                 new WorkflowProgress(INSTANCE_ID, 900000000000032L, 1, "RUNNING", null, TIME));
         org.mockito.Mockito.doAnswer(invocation -> {
                     java.util.function.Consumer<NetworkWorkOrderService.CancellationPreparation> terminator =
-                            invocation.getArgument(3);
+                            invocation.getArgument(4);
                     terminator.accept(new NetworkWorkOrderService.CancellationPreparation(
                             WORK_ORDER_ID, INSTANCE_ID, 1));
                     return null;
-                }).when(changes).coordinateCancellation(eq(ACTOR), eq(WORK_ORDER_ID), eq(3L), any());
+                }).when(changes).coordinateCancellation(eq(ACTOR), eq(PROJECT), eq(WORK_ORDER_ID), eq(3L), any());
 
-        service.cancel(ACTOR, WORK_ORDER_ID, 3L);
+        service.cancel(ACTOR, PROJECT, WORK_ORDER_ID, 3L);
 
         ArgumentCaptor<WorkflowTerminateCommand> terminateCaptor =
                 ArgumentCaptor.forClass(WorkflowTerminateCommand.class);
@@ -184,19 +187,19 @@ class NetworkWorkOrderSubmissionServiceTest {
     @Test
     void 审批流程已结束时取消返回409() {
         WorkOrder review = reviewOrder();
-        when(changes.detail(ACTOR, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
+        when(changes.detail(ACTOR, PROJECT, AccessScope.OWN, WORK_ORDER_ID)).thenReturn(
                 new WorkOrderDetail(review, List.of()));
         when(workflowGateway.progress(INSTANCE_ID, ACTOR)).thenReturn(
                 new WorkflowProgress(INSTANCE_ID, 900000000000032L, 1, "ENDED", null, TIME));
         org.mockito.Mockito.doAnswer(invocation -> {
                     java.util.function.Consumer<NetworkWorkOrderService.CancellationPreparation> terminator =
-                            invocation.getArgument(3);
+                            invocation.getArgument(4);
                     terminator.accept(new NetworkWorkOrderService.CancellationPreparation(
                             WORK_ORDER_ID, INSTANCE_ID, 1));
                     return null;
-                }).when(changes).coordinateCancellation(eq(ACTOR), eq(WORK_ORDER_ID), eq(3L), any());
+                }).when(changes).coordinateCancellation(eq(ACTOR), eq(PROJECT), eq(WORK_ORDER_ID), eq(3L), any());
 
-        assertThatThrownBy(() -> service.cancel(ACTOR, WORK_ORDER_ID, 3L))
+        assertThatThrownBy(() -> service.cancel(ACTOR, PROJECT, WORK_ORDER_ID, 3L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).code())
                 .isEqualTo(ErrorCode.CONFLICT);

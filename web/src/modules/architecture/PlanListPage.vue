@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -10,6 +10,7 @@ import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import { listEnvironments, loadPhysicalSubsystemOptions, loadResourceDeploymentUnitOptions } from './api'
 import type { DeploymentUnitOption, Environment, PhysicalSubsystemOption } from './types'
 import { cancelPlan, createPlan, listPlanTemplates, listPlans, loadPlanUserOptions, restorePlan } from './planApi'
@@ -18,6 +19,7 @@ import './architecture.css'
 
 const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const canView = computed(() => ['architecture:plan:view', 'architecture:plan:manage', 'architecture:view', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const canManage = computed(() => auth.hasPermission('architecture:plan:manage') || auth.hasPermission('architecture:manage'))
 
@@ -38,6 +40,7 @@ const filters = reactive({
 })
 
 async function load() {
+  if (!canView.value || !projectContext.currentRef) return
   loading.value = true
   loadError.value = ''
   forbidden.value = false
@@ -65,8 +68,6 @@ async function load() {
     loading.value = false
   }
 }
-
-onMounted(load)
 
 function search() {
   page.value = 1
@@ -99,9 +100,13 @@ function next() {
 const hasNext = computed(() => page.value * pageSize.value < total.value)
 
 const environments = ref<Environment[]>([])
-onMounted(async () => {
-  environments.value = await listEnvironments({}).catch(() => [])
-})
+watch(() => [canView.value, projectContext.currentRef] as const, async ([allowed, projectRef]) => {
+  if (!allowed || !projectRef) return
+  await Promise.all([
+    load(),
+    listEnvironments({}).then(items => { environments.value = items }).catch(() => { environments.value = [] })
+  ])
+}, { immediate: true })
 
 const statusLabels: Record<PlanStatus, string> = {
   NOT_STARTED: '未开始',
@@ -266,7 +271,7 @@ function formatDateTime(value: string | null | undefined) {
 
     <template v-else>
       <UiToolbar>
-        <el-select v-model="filters.environmentId" clearable filterable placeholder="具体环境" class="architecture-filter-select">
+        <el-select v-model="filters.environmentId" clearable filterable placeholder="环境" class="architecture-filter-select">
           <el-option v-for="env in environments" :key="env.id" :label="`${env.name}（${env.code}）`" :value="env.id" />
         </el-select>
         <el-select v-model="filters.status" clearable placeholder="状态" class="architecture-filter-select">
@@ -376,8 +381,8 @@ function formatDateTime(value: string | null | undefined) {
       </el-steps>
 
       <el-form v-if="wizard === 0" label-width="110px">
-        <el-form-item label="具体环境" required>
-          <el-select v-model="createForm.environmentId" placeholder="选择具体环境" filterable style="width: 100%">
+        <el-form-item label="环境" required>
+          <el-select v-model="createForm.environmentId" placeholder="选择环境" filterable style="width: 100%">
             <el-option v-for="env in environments" :key="env.id" :label="`${env.name}（${env.code}）`" :value="env.id" />
           </el-select>
         </el-form-item>

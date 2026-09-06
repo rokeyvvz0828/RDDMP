@@ -9,6 +9,7 @@ import com.ccb.architecture.persistence.DeploymentUnitStore.PhysicalSubsystemRef
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemReferenceQuery;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.when;
 
 class DeploymentUnitServiceTest {
     private static final long TENANT_ID = 1L;
+    private static final ProjectAccess PROJECT = new ProjectAccess(70L, "PROJECT-A", "项目 A");
     private static final long PHYSICAL_ID = 501L;
 
     private final DeploymentUnitStore store = mock(DeploymentUnitStore.class);
@@ -62,59 +64,61 @@ class DeploymentUnitServiceTest {
 
     @Test
     void createPublishesVersionOneWithAssignedNumber() {
-        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+        when(store.findPhysical(TENANT_ID, PROJECT.id(), PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(false);
-        when(store.allocateNumber(TENANT_ID, PHYSICAL_ID, "W0001A")).thenReturn("DW0001A001");
-        when(store.findUnit(TENANT_ID, 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "ECIP_AP", null)).thenReturn(false);
+        when(store.allocateNumber(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "W0001A")).thenReturn("DW0001A001");
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
+                .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
 
-        DeploymentUnitService.DeploymentUnitView view = service.create(operator, command("ECIP_AP", "APPLICATION"), "trace");
+        DeploymentUnitService.DeploymentUnitView view = service.create(
+                operator, PROJECT, command("ECIP_AP", "APPLICATION"), "trace");
 
         assertThat(view.code()).isEqualTo("DW0001A001");
         assertThat(view.currentVersion()).isEqualTo(1);
-        verify(store).insertUnit(1_001L, TENANT_ID, "DW0001A001", PHYSICAL_ID, "ECIP_AP",
+        verify(store).insertUnit(1_001L, TENANT_ID, PROJECT.id(), "DW0001A001", PHYSICAL_ID, "ECIP_AP",
                 "APPLICATION", null, null, operator.id());
-        verify(store).insertVersion(1_002L, TENANT_ID, 1_001L, 1, "ECIP_AP",
+        verify(store).insertVersion(1_002L, TENANT_ID, PROJECT.id(), 1_001L, 1, "ECIP_AP",
                 "APPLICATION", null, null, operator.id());
-        verify(store).replaceRelations(TENANT_ID, 1_001L, Set.of(), operator.id(), 1);
+        verify(store).replaceRelations(TENANT_ID, PROJECT.id(), 1_001L, Set.of(), operator.id(), 1);
         verify(operationAudit).recordSuccess(any());
     }
 
     @Test
     void createRejectsMissingOrNonActivePhysical() {
-        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+        when(store.findPhysical(TENANT_ID, PROJECT.id(), PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "OFFLINE", false)));
 
-        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, PROJECT, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST));
-        verify(store, never()).insertUnit(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyString(),
-                any(), any(), anyLong());
+        verify(store, never()).insertUnit(anyLong(), anyLong(), anyLong(), anyString(), anyLong(), anyString(),
+                anyString(), any(), any(), anyLong());
     }
 
     @Test
     void createRejectsDuplicateNameAndRecordsAuditFailure() {
-        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+        when(store.findPhysical(TENANT_ID, PROJECT.id(), PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(true);
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "ECIP_AP", null)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, PROJECT, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
-        verify(store, never()).allocateNumber(anyLong(), anyLong(), anyString());
+        verify(store, never()).allocateNumber(anyLong(), anyLong(), anyLong(), anyString());
         verify(operationAudit).recordFailure(any());
     }
 
     @Test
     void createRejectsInvalidKind() {
-        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "KUBERNETES"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, PROJECT, command("ECIP_AP", "KUBERNETES"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST));
     }
 
     @Test
     void createRejectsStandardSuffixKindMismatch() {
-        assertThatThrownBy(() -> service.create(operator, command("ECIP_DB", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, PROJECT, command("ECIP_DB", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
                 .hasMessageContaining("后缀_DB");
@@ -122,47 +126,48 @@ class DeploymentUnitServiceTest {
 
     @Test
     void createAllowsCustomSuffixWithExplicitKind() {
-        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+        when(store.findPhysical(TENANT_ID, PROJECT.id(), PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, "BATCH_JOB1", null)).thenReturn(false);
-        when(store.allocateNumber(TENANT_ID, PHYSICAL_ID, "W0001A")).thenReturn("DW0001A001");
-        when(store.findUnit(TENANT_ID, 1_001L))
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "BATCH_JOB1", null)).thenReturn(false);
+        when(store.allocateNumber(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "W0001A")).thenReturn("DW0001A001");
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unitWithVersion(1_001L, "DW0001A001", "ACTIVE", 1, "BATCH_JOB1")));
 
         DeploymentUnitService.DeploymentUnitView view = service.create(
-                operator, command("batch_job1", "APPLICATION"), "trace");
+                operator, PROJECT, command("batch_job1", "APPLICATION"), "trace");
 
         assertThat(view.name()).isEqualTo("BATCH_JOB1");
-        verify(store).insertUnit(1_001L, TENANT_ID, "DW0001A001", PHYSICAL_ID, "BATCH_JOB1",
+        verify(store).insertUnit(1_001L, TENANT_ID, PROJECT.id(), "DW0001A001", PHYSICAL_ID, "BATCH_JOB1",
                 "APPLICATION", null, null, operator.id());
     }
 
     @Test
     void createRejectsUnknownCrossTenantOrInactiveRelationTarget() {
-        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+        when(store.findPhysical(TENANT_ID, PROJECT.id(), PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(false);
-        when(store.lockActiveUnits(TENANT_ID, List.of(2_002L))).thenReturn(List.of());
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "ECIP_AP", null)).thenReturn(false);
+        when(store.lockActiveUnits(TENANT_ID, PROJECT.id(), List.of(2_002L))).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.create(operator,
+        assertThatThrownBy(() -> service.create(operator, PROJECT,
                 new DeploymentUnitCommand(PHYSICAL_ID, "ECIP_AP", "APPLICATION", List.of(2_002L),
                         null, null, null, null), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
-                .hasMessageContaining("不属于当前租户或已非 ACTIVE");
-        verify(store, never()).allocateNumber(anyLong(), anyLong(), anyString());
-        verify(store, never()).insertUnit(anyLong(), anyLong(), anyString(), anyLong(), anyString(), anyString(),
-                any(), any(), anyLong());
+                .hasMessageContaining("不属于当前项目或已非 ACTIVE");
+        verify(store, never()).allocateNumber(anyLong(), anyLong(), anyLong(), anyString());
+        verify(store, never()).insertUnit(anyLong(), anyLong(), anyLong(), anyString(), anyLong(), anyString(),
+                anyString(), any(), any(), anyLong());
     }
 
     @Test
     void createMapsDuplicateKeyRaceToConflictAndRecordsAuditFailure() {
-        when(store.findPhysical(TENANT_ID, PHYSICAL_ID))
+        when(store.findPhysical(TENANT_ID, PROJECT.id(), PHYSICAL_ID))
                 .thenReturn(Optional.of(new PhysicalSubsystemRef(PHYSICAL_ID, "W0001A", "渠道接入系统", "ACTIVE", false)));
-        when(store.unitNameExists(TENANT_ID, "ECIP_AP", null)).thenReturn(false);
-        when(store.allocateNumber(TENANT_ID, PHYSICAL_ID, "W0001A")).thenThrow(new DuplicateKeyException("race"));
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "ECIP_AP", null)).thenReturn(false);
+        when(store.allocateNumber(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "W0001A"))
+                .thenThrow(new DuplicateKeyException("race"));
 
-        assertThatThrownBy(() -> service.create(operator, command("ECIP_AP", "APPLICATION"), "trace"))
+        assertThatThrownBy(() -> service.create(operator, PROJECT, command("ECIP_AP", "APPLICATION"), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(operationAudit).recordFailure(any());
@@ -172,65 +177,66 @@ class DeploymentUnitServiceTest {
 
     @Test
     void updatePublishesNewVersionAndKeepsOldVersionImmutable() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.unitNameExists(TENANT_ID, "ECIP_DB", 1_001L)).thenReturn(false);
-        when(store.updateUnitContent(TENANT_ID, 1_001L, 7L, "ECIP_DB",
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "ECIP_DB", 1_001L)).thenReturn(false);
+        when(store.updateUnitContent(TENANT_ID, PROJECT.id(), 1_001L, 7L, "ECIP_DB",
                 "DATABASE", "迁移到数据库服务", null, operator.id())).thenReturn(1);
-        when(store.findUnit(TENANT_ID, 1_001L))
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unitWithVersion(1_001L, "DW0001A001", "ACTIVE", 2, "ECIP_DB")));
 
-        DeploymentUnitService.DeploymentUnitView view = service.update(operator, 1_001L,
+        DeploymentUnitService.DeploymentUnitView view = service.update(operator, PROJECT, 1_001L,
                 new DeploymentUnitCommand(null, "ECIP_DB", "DATABASE", List.of(), null,
                         "迁移到数据库服务", null, 7L), "trace");
 
         assertThat(view.currentVersion()).isEqualTo(2);
-        verify(store).insertVersion(1_001L, TENANT_ID, 1_001L, 2, "ECIP_DB", "DATABASE",
+        verify(store).insertVersion(1_001L, TENANT_ID, PROJECT.id(), 1_001L, 2, "ECIP_DB", "DATABASE",
                 "迁移到数据库服务", null, operator.id());
-        verify(store).updateUnitCurrentVersion(TENANT_ID, 1_001L, 2, operator.id());
+        verify(store).updateUnitCurrentVersion(TENANT_ID, PROJECT.id(), 1_001L, 2, operator.id());
         verify(operationAudit).recordSuccess(any());
     }
 
     @Test
     void updateRejectsInactiveAndVoidedUnits() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 2)));
-        assertThatThrownBy(() -> service.update(operator, 1_001L,
+        assertThatThrownBy(() -> service.update(operator, PROJECT, 1_001L,
                 new DeploymentUnitCommand(null, "NEW_AP", "APPLICATION", List.of(), null, null, null, 7L), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
-        verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), anyString(),
-                any(), any(), anyLong());
+        verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyLong(), anyInt(), anyString(),
+                anyString(), any(), any(), anyLong());
     }
 
     @Test
     void updateRejectsStaleRowVersion() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.unitNameExists(TENANT_ID, "NEW_AP", 1_001L)).thenReturn(false);
-        when(store.updateUnitContent(anyLong(), anyLong(), anyLong(), anyString(), anyString(), any(),
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), "NEW_AP", 1_001L)).thenReturn(false);
+        when(store.updateUnitContent(anyLong(), anyLong(), anyLong(), anyLong(), anyString(), anyString(), any(),
                 any(), anyLong())).thenReturn(0);
 
-        assertThatThrownBy(() -> service.update(operator, 1_001L,
+        assertThatThrownBy(() -> service.update(operator, PROJECT, 1_001L,
                 new DeploymentUnitCommand(null, "NEW_AP", "APPLICATION", List.of(), null, null, null, 7L), "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
-        verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyInt(), anyString(), anyString(),
-                any(), any(), anyLong());
+        verify(store, never()).insertVersion(anyLong(), anyLong(), anyLong(), anyLong(), anyInt(), anyString(),
+                anyString(), any(), any(), anyLong());
     }
 
     // ---------- 生命周期 ----------
 
     @Test
     void deactivateTransitionsActiveToInactiveWithoutReferenceCheck() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.hasRelations(TENANT_ID, 1_001L)).thenReturn(false);
-        when(store.updateUnitStatus(TENANT_ID, 1_001L, "ACTIVE", "INACTIVE", operator.id())).thenReturn(1);
-        when(store.findUnit(TENANT_ID, 1_001L))
+        when(store.hasRelations(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(false);
+        when(store.updateUnitStatus(TENANT_ID, PROJECT.id(), 1_001L, "ACTIVE", "INACTIVE", operator.id()))
+                .thenReturn(1);
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 1)));
 
-        DeploymentUnitService.DeploymentUnitView view = service.deactivate(operator, 1_001L, "trace");
+        DeploymentUnitService.DeploymentUnitView view = service.deactivate(operator, PROJECT, 1_001L, "trace");
 
         assertThat(view.status()).isEqualTo("INACTIVE");
         verify(referenceGuard, never()).requireClear(any());
@@ -239,37 +245,39 @@ class DeploymentUnitServiceTest {
 
     @Test
     void reactivateTransitionsInactiveToActive() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 1)));
-        when(store.updateUnitStatus(TENANT_ID, 1_001L, "INACTIVE", "ACTIVE", operator.id())).thenReturn(1);
-        when(store.findUnit(TENANT_ID, 1_001L))
+        when(store.updateUnitStatus(TENANT_ID, PROJECT.id(), 1_001L, "INACTIVE", "ACTIVE", operator.id()))
+                .thenReturn(1);
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
 
-        service.reactivate(operator, 1_001L, "trace");
+        service.reactivate(operator, PROJECT, 1_001L, "trace");
 
-        verify(store).updateUnitStatus(TENANT_ID, 1_001L, "INACTIVE", "ACTIVE", operator.id());
+        verify(store).updateUnitStatus(TENANT_ID, PROJECT.id(), 1_001L, "INACTIVE", "ACTIVE", operator.id());
     }
 
     @Test
     void voidRejectsReferencedUnit() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         doThrow(new BusinessException(ErrorCode.CONFLICT, "环境部署实例仍引用该部署单元"))
                 .when(referenceGuard).requireClear(new DeploymentUnitReferenceCheckRequest(TENANT_ID, 1_001L));
 
-        assertThatThrownBy(() -> service.voidUnit(operator, 1_001L, "trace"))
+        assertThatThrownBy(() -> service.voidUnit(operator, PROJECT, 1_001L, "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
-        verify(store, never()).updateUnitStatus(anyLong(), anyLong(), anyString(), eq("VOIDED"), anyLong());
+        verify(store, never()).updateUnitStatus(anyLong(), anyLong(), anyLong(), anyString(), eq("VOIDED"),
+                anyLong());
     }
 
     @Test
     void voidRejectsUnitWithDeploymentUnitRelations() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.hasRelations(TENANT_ID, 1_001L)).thenReturn(true);
+        when(store.hasRelations(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.voidUnit(operator, 1_001L, "trace"))
+        assertThatThrownBy(() -> service.voidUnit(operator, PROJECT, 1_001L, "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
                 .hasMessageContaining("先解除关联");
@@ -278,27 +286,29 @@ class DeploymentUnitServiceTest {
 
     @Test
     void voidFailsClosedWhenReferenceCheckIsIndeterminate() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         doThrow(new BusinessException(DeploymentUnitReferenceGuard.SERVICE_UNAVAILABLE, "外部引用检查暂不可用"))
                 .when(referenceGuard).requireClear(new DeploymentUnitReferenceCheckRequest(TENANT_ID, 1_001L));
 
-        assertThatThrownBy(() -> service.voidUnit(operator, 1_001L, "trace"))
+        assertThatThrownBy(() -> service.voidUnit(operator, PROJECT, 1_001L, "trace"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code())
                         .isEqualTo(DeploymentUnitReferenceGuard.SERVICE_UNAVAILABLE));
-        verify(store, never()).updateUnitStatus(anyLong(), anyLong(), anyString(), eq("VOIDED"), anyLong());
+        verify(store, never()).updateUnitStatus(anyLong(), anyLong(), anyLong(), anyString(), eq("VOIDED"),
+                anyLong());
     }
 
     @Test
     void voidAllowsClearUnitAndKeepsNumberOccupied() {
-        when(store.lockUnit(TENANT_ID, 1_001L))
+        when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
-        when(store.updateUnitStatus(TENANT_ID, 1_001L, "ACTIVE", "VOIDED", operator.id())).thenReturn(1);
-        when(store.findUnit(TENANT_ID, 1_001L))
+        when(store.updateUnitStatus(TENANT_ID, PROJECT.id(), 1_001L, "ACTIVE", "VOIDED", operator.id()))
+                .thenReturn(1);
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "VOIDED", 1)));
 
-        DeploymentUnitService.DeploymentUnitView view = service.voidUnit(operator, 1_001L, "trace");
+        DeploymentUnitService.DeploymentUnitView view = service.voidUnit(operator, PROJECT, 1_001L, "trace");
 
         assertThat(view.status()).isEqualTo("VOIDED");
         assertThat(view.code()).isEqualTo("DW0001A001");
@@ -309,8 +319,9 @@ class DeploymentUnitServiceTest {
 
     @Test
     void versionsListsImmutableSnapshotsInOrder() {
-        when(store.findUnit(TENANT_ID, 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 2)));
-        when(store.findVersions(TENANT_ID, 1_001L)).thenReturn(List.of(
+        when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L))
+                .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 2)));
+        when(store.findVersions(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(List.of(
                 new DeploymentUnitVersion(1L, 1_001L, 1, "ECIP_AP", "APPLICATION",
                         null, null, null, null, 88L, LocalDateTime.of(2026, 8, 23, 10, 0)),
                 new DeploymentUnitVersion(2L, 1_001L, 2, "ECIP_DB", "DATABASE",
@@ -319,7 +330,7 @@ class DeploymentUnitServiceTest {
                 .thenReturn(Optional.of(new com.ccb.system.capability.SystemUserReference(
                         88L, "技术架构师", "tech", null, true)));
 
-        List<DeploymentUnitService.DeploymentUnitVersionView> versions = service.versions(operator, 1_001L);
+        List<DeploymentUnitService.DeploymentUnitVersionView> versions = service.versions(operator, PROJECT, 1_001L);
 
         assertThat(versions).hasSize(2);
         assertThat(versions.get(0).versionNo()).isEqualTo(1);

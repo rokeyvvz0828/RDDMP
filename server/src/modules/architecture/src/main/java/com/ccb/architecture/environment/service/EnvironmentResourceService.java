@@ -31,6 +31,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemParameterReference;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -145,108 +146,108 @@ public class EnvironmentResourceService {
         return activeEnvironmentTypes(actor);
     }
 
-    public List<Environment> listEnvironments(AuthUser actor, String typeCode, RecordStatus status,
+    public List<Environment> listEnvironments(AuthUser actor, ProjectAccess project, String typeCode, RecordStatus status,
                                               String keyword, int limit, int offset) {
         requireActor(actor);
         return decorateEnvironments(actor,
-                store.listEnvironments(actor.tenantId(), trimToNull(typeCode), status, keyword, limit, offset));
+                store.listEnvironments(actor.tenantId(), project.id(), trimToNull(typeCode), status, keyword, limit, offset));
     }
 
-    public Environment detailEnvironment(AuthUser actor, long id) {
+    public Environment detailEnvironment(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
         return decorateEnvironment(actor,
-                store.findEnvironment(actor.tenantId(), id).orElseThrow(() -> notFound("具体环境不存在")));
+                store.findEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在")));
     }
 
     public com.ccb.architecture.environment.model.EnvironmentResourceModels.ResourceSummary environmentSummary(
-            AuthUser actor, long id) {
+            AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        store.findEnvironment(actor.tenantId(), id).orElseThrow(() -> notFound("具体环境不存在"));
-        return store.resourceSummary(actor.tenantId(), id);
+        store.findEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在"));
+        return store.resourceSummary(actor.tenantId(), project.id(), id);
     }
 
     @Transactional
-    public Environment createEnvironment(AuthUser actor, EnvironmentCommand command) {
+    public Environment createEnvironment(AuthUser actor, ProjectAccess project, EnvironmentCommand command) {
         requireActor(actor);
-        EnvironmentInput input = validateEnvironmentInput(actor, command, null);
+        EnvironmentInput input = validateEnvironmentInput(actor, project.id(), command, null);
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
-        Environment environment = new Environment(id, actor.tenantId(), input.code(), input.name(),
+        Environment environment = new Environment(id, actor.tenantId(), project.id(), input.code(), input.name(),
                 input.type().code(), input.type().name(), RecordStatus.ACTIVE,
                 input.description(), input.remark(), 0, actor.id(), actor.id(), now, now);
         store.insertEnvironment(environment);
-        return decorateEnvironment(actor, store.findEnvironment(actor.tenantId(), id).orElse(environment));
+        return decorateEnvironment(actor, store.findEnvironment(actor.tenantId(), project.id(), id).orElse(environment));
     }
 
     @Transactional
-    public Environment updateEnvironment(AuthUser actor, long id, EnvironmentCommand command) {
+    public Environment updateEnvironment(AuthUser actor, ProjectAccess project, long id, EnvironmentCommand command) {
         requireActor(actor);
         Objects.requireNonNull(command, "具体环境命令不能为空");
-        store.lockEnvironment(actor.tenantId(), id).orElseThrow(() -> notFound("具体环境不存在"));
+        store.lockEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在"));
         long rowVersion = requiredRowVersion(command.rowVersion());
-        EnvironmentInput input = validateEnvironmentInput(actor, command, id);
-        if (!store.updateEnvironment(actor.tenantId(), id, rowVersion, input.code(), input.name(),
+        EnvironmentInput input = validateEnvironmentInput(actor, project.id(), command, id);
+        if (!store.updateEnvironment(actor.tenantId(), project.id(), id, rowVersion, input.code(), input.name(),
                 input.type().code(), input.description(), input.remark(), actor.id())) {
             throw conflict("具体环境已被其他人修改，请刷新后重试");
         }
         return decorateEnvironment(actor,
-                store.findEnvironment(actor.tenantId(), id).orElseThrow(() -> notFound("具体环境不存在")));
+                store.findEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在")));
     }
 
     @Transactional
-    public Environment changeEnvironmentStatus(AuthUser actor, long id, long rowVersion, RecordStatus toStatus) {
+    public Environment changeEnvironmentStatus(AuthUser actor, ProjectAccess project, long id, long rowVersion, RecordStatus toStatus) {
         requireActor(actor);
-        Environment current = store.lockEnvironment(actor.tenantId(), id)
+        Environment current = store.lockEnvironment(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("具体环境不存在"));
         if (current.status() == toStatus) {
             return current;
         }
-        if (!store.updateEnvironmentStatus(actor.tenantId(), id, rowVersion,
+        if (!store.updateEnvironmentStatus(actor.tenantId(), project.id(), id, rowVersion,
                 current.status(), toStatus, actor.id())) {
             throw conflict("具体环境已被其他人修改，请刷新后重试");
         }
         return decorateEnvironment(actor,
-                store.findEnvironment(actor.tenantId(), id).orElseThrow(() -> notFound("具体环境不存在")));
+                store.findEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在")));
     }
 
     @Transactional
-    public void deleteEnvironment(AuthUser actor, long id, long rowVersion) {
+    public void deleteEnvironment(AuthUser actor, ProjectAccess project, long id, long rowVersion) {
         requireActor(actor);
-        store.lockEnvironment(actor.tenantId(), id).orElseThrow(() -> notFound("具体环境不存在"));
-        if (!store.deleteEnvironment(actor.tenantId(), id, rowVersion)) {
+        store.lockEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在"));
+        if (!store.deleteEnvironment(actor.tenantId(), project.id(), id, rowVersion)) {
             throw conflict("具体环境已被资源申请引用或已被其他人修改，不能删除");
         }
     }
 
-    public List<DeploymentUnitRef> listDeploymentUnitOptions(AuthUser actor, long physicalSubsystemId, int limit) {
+    public List<DeploymentUnitRef> listDeploymentUnitOptions(AuthUser actor, ProjectAccess project, long physicalSubsystemId, int limit) {
         requireActor(actor);
-        PhysicalSubsystemRef physical = requireActivePhysical(actor.tenantId(), physicalSubsystemId);
-        return store.listDeploymentUnits(actor.tenantId(), physical.id(), Math.min(Math.max(limit, 1), 200));
+        PhysicalSubsystemRef physical = requireActivePhysical(actor.tenantId(), project.id(), physicalSubsystemId);
+        return store.listDeploymentUnits(actor.tenantId(), project.id(), physical.id(), Math.min(Math.max(limit, 1), 200));
     }
 
-    public List<ResourceRequest> listRequests(AuthUser actor, AccessScope scope, RequestStatus status,
+    public List<ResourceRequest> listRequests(AuthUser actor, ProjectAccess project, AccessScope scope, RequestStatus status,
                                               Long environmentId, Long physicalSubsystemId,
                                               int limit, int offset) {
         requireActor(actor);
         Long applicantId = scope == AccessScope.MANAGE ? null : actor.id();
-        return decorateRequests(actor, store.listRequests(actor.tenantId(), applicantId, status, environmentId,
+        return decorateRequests(actor, store.listRequests(actor.tenantId(), project.id(), applicantId, status, environmentId,
                 physicalSubsystemId, limit, offset));
     }
 
-    public ResourceRequestDetail detailRequest(AuthUser actor, AccessScope scope, long requestId) {
+    public ResourceRequestDetail detailRequest(AuthUser actor, ProjectAccess project, AccessScope scope, long requestId) {
         requireActor(actor);
-        ResourceRequest request = requireVisible(actor, scope, requestId);
-        return new ResourceRequestDetail(decorateRequest(actor, request), store.listItems(actor.tenantId(), requestId),
-                store.listHistory(actor.tenantId(), requestId));
+        ResourceRequest request = requireVisible(actor, project.id(), scope, requestId);
+        return new ResourceRequestDetail(decorateRequest(actor, request), store.listItems(actor.tenantId(), project.id(), requestId),
+                store.listHistory(actor.tenantId(), project.id(), requestId));
     }
 
     @Transactional
-    public ResourceRequestDetail createRequest(AuthUser actor, ResourceRequestCommand command) {
+    public ResourceRequestDetail createRequest(AuthUser actor, ProjectAccess project, ResourceRequestCommand command) {
         requireActor(actor);
-        RequestInput input = validateRequestInput(actor, command);
+        RequestInput input = validateRequestInput(actor, project.id(), command);
         long id = nextId();
         LocalDateTime now = LocalDateTime.now(clock);
-        ResourceRequest request = new ResourceRequest(id, actor.tenantId(), requestNo(id),
+        ResourceRequest request = new ResourceRequest(id, actor.tenantId(), project.id(), requestNo(id),
                 input.physical().id(), input.physical().code(), input.physical().shortName(),
                 input.physical().name(), input.physical().businessGroupName(),
                 input.physical().systemLevelCode(), input.physical().deploymentPlatform(),
@@ -256,47 +257,47 @@ public class EnvironmentResourceService {
                 RequestStatus.DRAFT, 0, null, null, null, null, false, 0,
                 actor.id(), actor.id(), now, now);
         store.insertResourceRequest(request);
-        List<ResourceRequestItem> items = toItems(actor.tenantId(), id, input.items());
-        store.replaceItems(actor.tenantId(), id, items);
-        ResourceRequest saved = store.findRequest(actor.tenantId(), id)
+        List<ResourceRequestItem> items = toItems(actor.tenantId(), project.id(), id, input.items());
+        store.replaceItems(actor.tenantId(), project.id(), id, items);
+        ResourceRequest saved = store.findRequest(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), id, "CREATED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), id, "CREATED",
                 null, RequestStatus.DRAFT, 0, "创建资源申请草稿",
-                snapshot(saved, store.listItems(actor.tenantId(), id)), null, actor.id(), now));
-        return detailRequest(actor, AccessScope.OWN, id);
+                snapshot(saved, store.listItems(actor.tenantId(), project.id(), id)), null, actor.id(), now));
+        return detailRequest(actor, project, AccessScope.OWN, id);
     }
 
     @Transactional
-    public ResourceRequestDetail updateRequest(AuthUser actor, long requestId, ResourceRequestCommand command) {
+    public ResourceRequestDetail updateRequest(AuthUser actor, ProjectAccess project, long requestId, ResourceRequestCommand command) {
         requireActor(actor);
-        ResourceRequest current = requireVisible(actor, AccessScope.OWN, requestId);
+        ResourceRequest current = requireVisible(actor, project.id(), AccessScope.OWN, requestId);
         requireOwner(current, actor);
         if (current.status() != RequestStatus.DRAFT && current.status() != RequestStatus.RETURNED) {
             throw conflict("当前状态不允许编辑资源申请");
         }
         long rowVersion = requiredRowVersion(command == null ? null : command.rowVersion());
-        RequestInput input = validateRequestInput(actor, command);
-        if (!store.updateDraft(actor.tenantId(), requestId, current.status(), rowVersion,
+        RequestInput input = validateRequestInput(actor, project.id(), command);
+        if (!store.updateDraft(actor.tenantId(), project.id(), requestId, current.status(), rowVersion,
                 input.physical().id(), input.environment().id(), input.contactUserId(),
                 input.requestType(), input.reason(), actor.id())) {
             throw conflict("资源申请已被其他人修改，请刷新后重试");
         }
-        store.replaceItems(actor.tenantId(), requestId, toItems(actor.tenantId(), requestId, input.items()));
-        ResourceRequest updated = store.findRequest(actor.tenantId(), requestId)
+        store.replaceItems(actor.tenantId(), project.id(), requestId, toItems(actor.tenantId(), project.id(), requestId, input.items()));
+        ResourceRequest updated = store.findRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), requestId, "UPDATED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), requestId, "UPDATED",
                 current.status(), updated.status(), current.currentBusinessRound(),
-                "更新资源申请草稿", snapshot(updated, store.listItems(actor.tenantId(), requestId)),
+                "更新资源申请草稿", snapshot(updated, store.listItems(actor.tenantId(), project.id(), requestId)),
                 diff(current, updated), actor.id(), LocalDateTime.now(clock)));
-        return detailRequest(actor, AccessScope.OWN, requestId);
+        return detailRequest(actor, project, AccessScope.OWN, requestId);
     }
 
     @Transactional
-    public void coordinateSubmission(AuthUser actor, long requestId, long expectedRowVersion,
+    public void coordinateSubmission(AuthUser actor, ProjectAccess project, long requestId, long expectedRowVersion,
                                      Consumer<SubmissionPreparation> workflowStarter) {
         requireActor(actor);
         Objects.requireNonNull(workflowStarter, "工作流启动器不能为空");
-        ResourceRequest current = store.lockRequest(actor.tenantId(), requestId)
+        ResourceRequest current = store.lockRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请不存在"));
         requireOwner(current, actor);
         if (current.status() != RequestStatus.DRAFT && current.status() != RequestStatus.RETURNED) {
@@ -305,16 +306,16 @@ public class EnvironmentResourceService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("资源申请已被其他人修改，请刷新后重试");
         }
-        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), requestId);
-        validateStillActive(actor, current, items);
+        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), project.id(), requestId);
+        validateStillActive(actor, project.id(), current, items);
         String digest = digest(current, items);
-        if (!store.compareAndSetStatus(actor.tenantId(), requestId, current.status(),
+        if (!store.compareAndSetStatus(actor.tenantId(), project.id(), requestId, current.status(),
                 current.rowVersion(), RequestStatus.IN_REVIEW, actor.id())) {
             throw conflict("资源申请状态已被其他人修改，请刷新后重试");
         }
-        ResourceRequest submitted = store.lockRequest(actor.tenantId(), requestId)
+        ResourceRequest submitted = store.lockRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), requestId, "SUBMITTED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), requestId, "SUBMITTED",
                 current.status(), RequestStatus.IN_REVIEW, current.currentBusinessRound(),
                 "提交资源申请审批", snapshotWithDigest(submitted, items, digest),
                 null, actor.id(), LocalDateTime.now(clock)));
@@ -322,9 +323,9 @@ public class EnvironmentResourceService {
     }
 
     @Transactional
-    public ResourceRequestDetail cancel(AuthUser actor, AccessScope scope, long requestId, long expectedRowVersion) {
+    public ResourceRequestDetail cancel(AuthUser actor, ProjectAccess project, AccessScope scope, long requestId, long expectedRowVersion) {
         requireActor(actor);
-        ResourceRequest current = requireVisible(actor, scope, requestId);
+        ResourceRequest current = requireVisible(actor, project.id(), scope, requestId);
         requireOwner(current, actor);
         if (current.status() == RequestStatus.IN_REVIEW) {
             throw conflict("审批中的资源申请必须通过终止流程取消");
@@ -335,25 +336,25 @@ public class EnvironmentResourceService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("资源申请已被其他人修改，请刷新后重试");
         }
-        if (!store.compareAndSetStatus(actor.tenantId(), requestId, current.status(), current.rowVersion(),
+        if (!store.compareAndSetStatus(actor.tenantId(), project.id(), requestId, current.status(), current.rowVersion(),
                 RequestStatus.CANCELLED, actor.id())) {
             throw conflict("资源申请状态已被其他人修改，请刷新后重试");
         }
-        ResourceRequest cancelled = store.lockRequest(actor.tenantId(), requestId)
+        ResourceRequest cancelled = store.lockRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), requestId, "CANCELLED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), requestId, "CANCELLED",
                 current.status(), RequestStatus.CANCELLED, current.currentBusinessRound(),
-                "取消资源申请", snapshot(cancelled, store.listItems(actor.tenantId(), requestId)),
+                "取消资源申请", snapshot(cancelled, store.listItems(actor.tenantId(), project.id(), requestId)),
                 null, actor.id(), LocalDateTime.now(clock)));
-        return detailRequest(actor, AccessScope.OWN, requestId);
+        return detailRequest(actor, project, AccessScope.OWN, requestId);
     }
 
     @Transactional
-    public void coordinateCancellation(AuthUser actor, long requestId, long expectedRowVersion,
+    public void coordinateCancellation(AuthUser actor, ProjectAccess project, long requestId, long expectedRowVersion,
                                        Consumer<CancellationPreparation> workflowTerminator) {
         requireActor(actor);
         Objects.requireNonNull(workflowTerminator, "工作流终止器不能为空");
-        ResourceRequest current = store.lockRequest(actor.tenantId(), requestId)
+        ResourceRequest current = store.lockRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请不存在"));
         requireOwner(current, actor);
         if (current.status() != RequestStatus.IN_REVIEW) {
@@ -365,11 +366,11 @@ public class EnvironmentResourceService {
         if (current.currentWorkflowInstanceId() == null) {
             throw conflict("审批流程尚未启动，不能取消");
         }
-        if (!store.compareAndSetCancellationRequested(actor.tenantId(), requestId,
+        if (!store.compareAndSetCancellationRequested(actor.tenantId(), project.id(), requestId,
                 current.rowVersion(), true, actor.id())) {
             throw conflict("资源申请已被其他人修改，请刷新后重试");
         }
-        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), requestId, "CANCEL_REQUESTED",
+        store.insertHistory(new HistoryEvent(nextId(), actor.tenantId(), project.id(), requestId, "CANCEL_REQUESTED",
                 RequestStatus.IN_REVIEW, RequestStatus.IN_REVIEW, current.currentBusinessRound(),
                 "登记取消请求并终止审批流程", null, null, actor.id(), LocalDateTime.now(clock)));
         workflowTerminator.accept(new CancellationPreparation(requestId,
@@ -377,13 +378,13 @@ public class EnvironmentResourceService {
     }
 
     @Transactional
-    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long requestId,
+    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long projectId, long requestId,
                                                        long expectedRowVersion, long operatorId,
                                                        RequestStatus outcome) {
         if (outcome != RequestStatus.RETURNED && outcome != RequestStatus.REJECTED) {
             throw new IllegalArgumentException("退回/拒绝之外的终态不允许通过评审路径落地");
         }
-        ResourceRequest current = store.lockRequest(tenantId, requestId)
+        ResourceRequest current = store.lockRequest(tenantId, projectId, requestId)
                 .orElseThrow(() -> conflict("工作流事件关联的资源申请不存在"));
         if (current.status() != RequestStatus.IN_REVIEW || current.cancellationRequested()) {
             throw conflict("工作流事件对应的资源申请已变化或正在取消");
@@ -391,23 +392,23 @@ public class EnvironmentResourceService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("资源申请行版本已变化，无法应用工作流结论");
         }
-        if (!store.compareAndSetStatus(tenantId, requestId, RequestStatus.IN_REVIEW,
+        if (!store.compareAndSetStatus(tenantId, projectId, requestId, RequestStatus.IN_REVIEW,
                 current.rowVersion(), outcome, operatorId)) {
             throw conflict("资源申请状态已被其他人修改");
         }
-        ResourceRequest updated = store.lockRequest(tenantId, requestId)
+        ResourceRequest updated = store.lockRequest(tenantId, projectId, requestId)
                 .orElseThrow(() -> conflict("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), tenantId, requestId, outcome.name(),
+        store.insertHistory(new HistoryEvent(nextId(), tenantId, projectId, requestId, outcome.name(),
                 RequestStatus.IN_REVIEW, outcome, current.currentBusinessRound(),
                 outcome == RequestStatus.RETURNED ? "审批退回，等待修改后重提" : "审批拒绝",
-                snapshot(updated, store.listItems(tenantId, requestId)), null, operatorId,
+                snapshot(updated, store.listItems(tenantId, projectId, requestId)), null, operatorId,
                 LocalDateTime.now(clock)));
     }
 
     @Transactional
-    public void applyApprovalInCurrentTransaction(long tenantId, long requestId,
+    public void applyApprovalInCurrentTransaction(long tenantId, long projectId, long requestId,
                                                   long expectedRowVersion, long operatorId) {
-        ResourceRequest current = store.lockRequest(tenantId, requestId)
+        ResourceRequest current = store.lockRequest(tenantId, projectId, requestId)
                 .orElseThrow(() -> conflict("工作流事件关联的资源申请不存在"));
         if (current.status() != RequestStatus.IN_REVIEW || current.cancellationRequested()) {
             throw conflict("工作流事件对应的资源申请已变化或正在取消");
@@ -415,23 +416,23 @@ public class EnvironmentResourceService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("资源申请行版本已变化，无法应用工作流结论");
         }
-        if (!store.compareAndSetStatus(tenantId, requestId, RequestStatus.IN_REVIEW,
+        if (!store.compareAndSetStatus(tenantId, projectId, requestId, RequestStatus.IN_REVIEW,
                 current.rowVersion(), RequestStatus.APPROVED, operatorId)) {
             throw conflict("资源申请状态已被其他人修改");
         }
-        ResourceRequest updated = store.lockRequest(tenantId, requestId)
+        ResourceRequest updated = store.lockRequest(tenantId, projectId, requestId)
                 .orElseThrow(() -> conflict("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), tenantId, requestId, "APPROVED",
+        store.insertHistory(new HistoryEvent(nextId(), tenantId, projectId, requestId, "APPROVED",
                 RequestStatus.IN_REVIEW, RequestStatus.APPROVED, current.currentBusinessRound(),
                 "审批通过，资源申请进入申请态；实际分配待后续搭建任务接入",
-                snapshot(updated, store.listItems(tenantId, requestId)), null, operatorId,
+                snapshot(updated, store.listItems(tenantId, projectId, requestId)), null, operatorId,
                 LocalDateTime.now(clock)));
     }
 
     @Transactional
-    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long requestId,
+    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long projectId, long requestId,
                                                                   long expectedRowVersion, long operatorId) {
-        ResourceRequest current = store.lockRequest(tenantId, requestId)
+        ResourceRequest current = store.lockRequest(tenantId, projectId, requestId)
                 .orElseThrow(() -> conflict("工作流事件关联的资源申请不存在"));
         if (current.status() != RequestStatus.IN_REVIEW || !current.cancellationRequested()) {
             throw conflict("工作流事件没有匹配的取消请求");
@@ -439,15 +440,15 @@ public class EnvironmentResourceService {
         if (current.rowVersion() != expectedRowVersion) {
             throw conflict("资源申请行版本已变化，无法应用工作流结论");
         }
-        if (!store.compareAndSetStatus(tenantId, requestId, RequestStatus.IN_REVIEW,
+        if (!store.compareAndSetStatus(tenantId, projectId, requestId, RequestStatus.IN_REVIEW,
                 current.rowVersion(), RequestStatus.CANCELLED, operatorId)) {
             throw conflict("资源申请状态已被其他人修改");
         }
-        ResourceRequest updated = store.lockRequest(tenantId, requestId)
+        ResourceRequest updated = store.lockRequest(tenantId, projectId, requestId)
                 .orElseThrow(() -> conflict("资源申请不存在"));
-        store.insertHistory(new HistoryEvent(nextId(), tenantId, requestId, "CANCELLED",
+        store.insertHistory(new HistoryEvent(nextId(), tenantId, projectId, requestId, "CANCELLED",
                 RequestStatus.IN_REVIEW, RequestStatus.CANCELLED, current.currentBusinessRound(),
-                "审批流程已终止并取消资源申请", snapshot(updated, store.listItems(tenantId, requestId)),
+                "审批流程已终止并取消资源申请", snapshot(updated, store.listItems(tenantId, projectId, requestId)),
                 null, operatorId, LocalDateTime.now(clock)));
     }
 
@@ -510,7 +511,7 @@ public class EnvironmentResourceService {
 
     private Environment withEnvironmentTypeName(Environment environment, Map<String, String> labels) {
         String typeName = typeLabel(environment.typeCode(), labels);
-        return new Environment(environment.id(), environment.tenantId(), environment.code(), environment.name(),
+        return new Environment(environment.id(), environment.tenantId(), environment.projectId(), environment.code(), environment.name(),
                 environment.typeCode(), typeName, environment.status(), environment.description(),
                 environment.remark(), environment.rowVersion(), environment.createdBy(), environment.updatedBy(),
                 environment.createdAt(), environment.updatedAt());
@@ -527,7 +528,7 @@ public class EnvironmentResourceService {
 
     private ResourceRequest withEnvironmentTypeName(ResourceRequest request, Map<String, String> labels) {
         String typeName = typeLabel(request.environmentTypeName(), labels);
-        return new ResourceRequest(request.id(), request.tenantId(), request.requestNo(),
+        return new ResourceRequest(request.id(), request.tenantId(), request.projectId(), request.requestNo(),
                 request.physicalSubsystemId(), request.physicalSubsystemCode(),
                 request.physicalSubsystemShortName(), request.physicalSubsystemName(),
                 request.physicalSubsystemBusinessGroupName(), request.physicalSubsystemSystemLevelCode(),
@@ -564,7 +565,7 @@ public class EnvironmentResourceService {
         return value.trim().toUpperCase(Locale.ROOT);
     }
 
-    private RequestInput validateRequestInput(AuthUser actor, ResourceRequestCommand command) {
+    private RequestInput validateRequestInput(AuthUser actor, long projectId, ResourceRequestCommand command) {
         Objects.requireNonNull(command, "资源申请命令不能为空");
         long physicalSubsystemId = requiredPositive(command.physicalSubsystemId(), "物理子系统");
         long environmentId = requiredPositive(command.environmentId(), "具体环境");
@@ -573,32 +574,32 @@ public class EnvironmentResourceService {
             throw badRequest("资源申请联系人不存在、已停用或不属于当前租户");
         }
         RequestType requestType = Objects.requireNonNull(command.requestType(), "申请类型不能为空");
-        PhysicalSubsystemRef physical = requireActivePhysical(actor.tenantId(), physicalSubsystemId);
-        Environment environment = requireActiveEnvironment(actor.tenantId(), environmentId);
-        List<ItemInput> items = validateItems(actor, physical, command.items());
+        PhysicalSubsystemRef physical = requireActivePhysical(actor.tenantId(), projectId, physicalSubsystemId);
+        Environment environment = requireActiveEnvironment(actor.tenantId(), projectId, environmentId);
+        List<ItemInput> items = validateItems(actor, projectId, physical, command.items());
         return new RequestInput(physical, environment, requestType, trimToNull(command.reason()),
                 contactUserId, items);
     }
 
-    private EnvironmentInput validateEnvironmentInput(AuthUser actor, EnvironmentCommand command, Long excludeId) {
+    private EnvironmentInput validateEnvironmentInput(AuthUser actor, long projectId, EnvironmentCommand command, Long excludeId) {
         Objects.requireNonNull(command, "具体环境命令不能为空");
         String code = normalizeCode(command.code(), "环境编码");
         String name = requireText(command.name(), "环境名称", 160);
         EnvironmentType type = requireActiveEnvironmentType(actor, command.typeCode());
-        if (store.environmentCodeExists(actor.tenantId(), code, excludeId)) {
+        if (store.environmentCodeExists(actor.tenantId(), projectId, code, excludeId)) {
             throw conflict("环境编码已存在");
         }
-        if (store.environmentNameExists(actor.tenantId(), name, excludeId)) {
+        if (store.environmentNameExists(actor.tenantId(), projectId, name, excludeId)) {
             throw conflict("环境名称已存在");
         }
         return new EnvironmentInput(code, name, type, trimToNull(command.description()), trimToNull(command.remark()));
     }
 
-    private void validateStillActive(AuthUser actor, ResourceRequest request, List<ResourceRequestItem> items) {
-        requireActivePhysical(actor.tenantId(), request.physicalSubsystemId());
-        requireActiveEnvironment(actor.tenantId(), request.environmentId());
+    private void validateStillActive(AuthUser actor, long projectId, ResourceRequest request, List<ResourceRequestItem> items) {
+        requireActivePhysical(actor.tenantId(), projectId, request.physicalSubsystemId());
+        requireActiveEnvironment(actor.tenantId(), projectId, request.environmentId());
         for (ResourceRequestItem item : items) {
-            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), item.deploymentUnitId())
+            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), projectId, item.deploymentUnitId())
                     .orElseThrow(() -> badRequest("部署单元不存在：" + item.deploymentUnitId()));
             if (!"ACTIVE".equals(unit.status()) || unit.physicalSubsystemId() != request.physicalSubsystemId()) {
                 throw badRequest("部署单元不属于当前物理子系统或已停用：" + unit.code());
@@ -606,8 +607,8 @@ public class EnvironmentResourceService {
         }
     }
 
-    private PhysicalSubsystemRef requireActivePhysical(long tenantId, long physicalSubsystemId) {
-        PhysicalSubsystemRef physical = store.findPhysical(tenantId, physicalSubsystemId)
+    private PhysicalSubsystemRef requireActivePhysical(long tenantId, long projectId, long physicalSubsystemId) {
+        PhysicalSubsystemRef physical = store.findPhysical(tenantId, projectId, physicalSubsystemId)
                 .orElseThrow(() -> badRequest("物理子系统不存在"));
         if (physical.deleted() || !"ACTIVE".equals(physical.status())) {
             throw badRequest("物理子系统不是 ACTIVE 状态，不能发起资源申请");
@@ -615,8 +616,8 @@ public class EnvironmentResourceService {
         return physical;
     }
 
-    private Environment requireActiveEnvironment(long tenantId, long environmentId) {
-        Environment environment = store.findEnvironment(tenantId, environmentId)
+    private Environment requireActiveEnvironment(long tenantId, long projectId, long environmentId) {
+        Environment environment = store.findEnvironment(tenantId, projectId, environmentId)
                 .orElseThrow(() -> badRequest("具体环境不存在"));
         if (environment.status() != RecordStatus.ACTIVE) {
             throw badRequest("具体环境已停用，不能发起资源申请");
@@ -624,7 +625,7 @@ public class EnvironmentResourceService {
         return environment;
     }
 
-    private List<ItemInput> validateItems(AuthUser actor, PhysicalSubsystemRef physical,
+    private List<ItemInput> validateItems(AuthUser actor, long projectId, PhysicalSubsystemRef physical,
                                           List<ResourceItemCommand> commands) {
         if (commands == null || commands.isEmpty()) {
             throw badRequest("资源申请至少需要 1 条部署单元规格");
@@ -638,7 +639,7 @@ public class EnvironmentResourceService {
                 throw badRequest("资源申请明细不能为空");
             }
             long unitId = requiredPositive(command.deploymentUnitId(), "部署单元");
-            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), unitId)
+            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), projectId, unitId)
                     .orElseThrow(() -> badRequest("部署单元不存在：" + unitId));
             if (!"ACTIVE".equals(unit.status())) {
                 throw badRequest("部署单元已停用：" + unit.code());
@@ -698,7 +699,8 @@ public class EnvironmentResourceService {
                 serverType = validateParameter(actor, SERVER_TYPE_CATEGORY,
                         trimToNull(command.serverType()) == null ? DEFAULT_SERVER_TYPE_CODE : command.serverType(),
                         "服务器类型");
-                ZoneRef zone = resolveResourceItemNetworkZone(actor, command.networkZoneId(), unit, command.networkZone());
+                ZoneRef zone = resolveResourceItemNetworkZone(
+                        actor, projectId, command.networkZoneId(), unit, command.networkZone());
                 networkZoneId = zone == null ? null : zone.id();
                 networkZoneName = zone == null ? null : zone.name();
                 networkZone = networkZoneName == null ? optional(command.networkZone(), "网络分区", 100) : networkZoneName;
@@ -725,7 +727,7 @@ public class EnvironmentResourceService {
         return List.copyOf(items);
     }
 
-    private ZoneRef resolveResourceItemNetworkZone(AuthUser actor, Long requestedZoneId,
+    private ZoneRef resolveResourceItemNetworkZone(AuthUser actor, long projectId, Long requestedZoneId,
                                                    DeploymentUnitRef unit, String legacyText) {
         Long selectedZoneId = requestedZoneId == null ? unit.defaultNetworkZoneId() : requestedZoneId;
         if (selectedZoneId != null) {
@@ -733,7 +735,8 @@ public class EnvironmentResourceService {
                 return new ZoneRef(selectedZoneId, null,
                         requestedZoneId == null ? unit.defaultNetworkZoneName() : null);
             }
-            return networkAccessService.requireActiveLeafZone(actor.tenantId(), selectedZoneId, "资源申请网络分区");
+            return networkAccessService.requireActiveLeafZone(
+                    actor.tenantId(), projectId, selectedZoneId, "资源申请网络分区");
         }
         if (networkAccessService != null) {
             throw badRequest("非 DB 资源申请明细必须选择网络分区");
@@ -741,7 +744,7 @@ public class EnvironmentResourceService {
         return null;
     }
 
-    private ZoneRef resolveFulfillmentNetworkZone(AuthUser actor, Long requestedZoneId,
+    private ZoneRef resolveFulfillmentNetworkZone(AuthUser actor, long projectId, Long requestedZoneId,
                                                   ResourceRequestItem sourceItem, DeploymentUnitRef unit, int seq) {
         Long selectedZoneId = requestedZoneId;
         String fallbackName = null;
@@ -757,7 +760,7 @@ public class EnvironmentResourceService {
             if (networkAccessService == null) {
                 return new ZoneRef(selectedZoneId, null, fallbackName);
             }
-            return networkAccessService.requireActiveLeafZone(actor.tenantId(), selectedZoneId,
+            return networkAccessService.requireActiveLeafZone(actor.tenantId(), projectId, selectedZoneId,
                     "第 " + seq + " 台实例网络分区");
         }
         if (networkAccessService != null) {
@@ -766,11 +769,11 @@ public class EnvironmentResourceService {
         return null;
     }
 
-    private List<ResourceRequestItem> toItems(long tenantId, long requestId, List<ItemInput> inputs) {
+    private List<ResourceRequestItem> toItems(long tenantId, long projectId, long requestId, List<ItemInput> inputs) {
         java.util.ArrayList<ResourceRequestItem> items = new java.util.ArrayList<>();
         int seq = 1;
         for (ItemInput input : inputs) {
-            items.add(new ResourceRequestItem(nextId(), tenantId, requestId, seq++,
+            items.add(new ResourceRequestItem(nextId(), tenantId, projectId, requestId, seq++,
                     input.unit().id(), input.unit().code(), input.unit().name(), input.unit().kind(),
                     input.deploymentUnitDescription(), input.databaseStorageGb(), input.fileStorageGb(),
                     input.networkZoneId(), input.networkZoneName(), input.networkZone(),
@@ -784,8 +787,8 @@ public class EnvironmentResourceService {
         return List.copyOf(items);
     }
 
-    private ResourceRequest requireVisible(AuthUser actor, AccessScope scope, long requestId) {
-        ResourceRequest request = store.findRequest(actor.tenantId(), requestId)
+    private ResourceRequest requireVisible(AuthUser actor, long projectId, AccessScope scope, long requestId) {
+        ResourceRequest request = store.findRequest(actor.tenantId(), projectId, requestId)
                 .orElseThrow(() -> notFound("资源申请不存在"));
         if (scope == AccessScope.OWN && request.applicantId() != actor.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能查看本人发起的资源申请");
@@ -993,14 +996,14 @@ public class EnvironmentResourceService {
     // ===== REQ-20260825-053：资源工单下发、环境部署实例生命周期与灾备关系 =====
 
     @Transactional(readOnly = true)
-    public ProvisionPreviewResult previewAutomatedProvision(AuthUser actor, long requestId) {
+    public ProvisionPreviewResult previewAutomatedProvision(AuthUser actor, ProjectAccess project, long requestId) {
         requireActor(actor);
-        ResourceRequest request = store.findRequest(actor.tenantId(), requestId)
+        ResourceRequest request = store.findRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请工单不存在：" + requestId));
         if (request.status() != RequestStatus.APPROVED) {
             throw badRequest("只有审批通过 (APPROVED) 的资源工单才能执行自动部署下发");
         }
-        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), requestId);
+        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), project.id(), requestId);
         if (items.isEmpty()) {
             throw badRequest("资源申请工单无明细项，无法执行部署预览");
         }
@@ -1009,11 +1012,12 @@ public class EnvironmentResourceService {
         for (ResourceRequestItem item : items) {
             int nodeCount = Math.max(1, item.plannedNodeCount());
             int nextSequenceStart = nextSequenceByUnit.computeIfAbsent(item.deploymentUnitId(),
-                    ignored -> store.countInstancesForEnvironmentUnit(actor.tenantId(),
+                    ignored -> store.countInstancesForEnvironmentUnit(actor.tenantId(), project.id(),
                             request.environmentId(), item.deploymentUnitId()) + 1);
             nextSequenceByUnit.put(item.deploymentUnitId(), nextSequenceStart + nodeCount);
             String subnetCidr = networkAccessService == null ? null
-                    : networkAccessService.requirePrimaryActiveSubnetCidr(actor.tenantId(), item.networkZoneId(),
+                    : networkAccessService.requirePrimaryActiveSubnetCidr(
+                    actor.tenantId(), project.id(), item.networkZoneId(),
                     "自动部署明细 " + item.itemSeq());
 
             provisionItems.add(new ProvisionItemRequest(
@@ -1051,6 +1055,9 @@ public class EnvironmentResourceService {
 
         ProvisionRequest provisionRequest = new ProvisionRequest(
                 actor.tenantId(),
+                project.id(),
+                project.projectRef(),
+                project.projectName(),
                 request.id(),
                 request.requestNo(),
                 request.environmentId(),
@@ -1065,7 +1072,7 @@ public class EnvironmentResourceService {
     }
 
     @Transactional
-    public List<EnvironmentInstance> fulfillRequest(AuthUser actor, long requestId, FulfillmentCommand command) {
+    public List<EnvironmentInstance> fulfillRequest(AuthUser actor, ProjectAccess project, long requestId, FulfillmentCommand command) {
         requireActor(actor);
         if (command == null) {
             throw badRequest("办理下发参数不能为空");
@@ -1073,7 +1080,7 @@ public class EnvironmentResourceService {
         if (command.instances().isEmpty()) {
             throw badRequest("请至少填报一台下发机器/实例");
         }
-        ResourceRequest request = store.lockRequest(actor.tenantId(), requestId)
+        ResourceRequest request = store.lockRequest(actor.tenantId(), project.id(), requestId)
                 .orElseThrow(() -> notFound("资源申请工单不存在：" + requestId));
         if (request.status() != RequestStatus.APPROVED) {
             throw conflict("只有审批通过 (APPROVED) 的工单允许办理下发，当前状态: " + request.status());
@@ -1081,7 +1088,7 @@ public class EnvironmentResourceService {
         if (command.rowVersion() != null && !command.rowVersion().equals(request.rowVersion())) {
             throw conflict("资源申请工单已被其他操作更新，请刷新重试");
         }
-        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), requestId);
+        List<ResourceRequestItem> items = store.listItems(actor.tenantId(), project.id(), requestId);
         Map<Long, ResourceRequestItem> itemsById = new LinkedHashMap<>();
         Map<Long, List<ResourceRequestItem>> itemsByUnitId = new LinkedHashMap<>();
         for (ResourceRequestItem item : items) {
@@ -1143,7 +1150,7 @@ public class EnvironmentResourceService {
                 }
                 sourceItem = matchedItems.get(0);
             }
-            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), instCmd.deploymentUnitId())
+            DeploymentUnitRef unit = store.findDeploymentUnit(actor.tenantId(), project.id(), instCmd.deploymentUnitId())
                     .orElseThrow(() -> badRequest("部署单元不存在：" + instCmd.deploymentUnitId()));
             if (!"ACTIVE".equals(unit.status())) {
                 throw badRequest("部署单元已停用：" + unit.code());
@@ -1158,7 +1165,7 @@ public class EnvironmentResourceService {
             String ipAddress = requireText(instCmd.ipAddress(), "IP 地址", 64);
 
             // Rule 41: Guarantee same machine and IP only has 1 active instance in this environment
-            var existingActive = store.findActiveInstanceByMachineOrIp(actor.tenantId(), request.environmentId(), machineName, ipAddress, null);
+            var existingActive = store.findActiveInstanceByMachineOrIp(actor.tenantId(), project.id(), request.environmentId(), machineName, ipAddress, null);
             if (existingActive.isPresent()) {
                 throw conflict("具体环境「" + request.environmentName() + "」中已存在机器名或 IP 相同的在用实例：" + machineName + " / " + ipAddress);
             }
@@ -1169,7 +1176,8 @@ public class EnvironmentResourceService {
             String middleware = validateOptionalParameter(actor, MIDDLEWARE_CATEGORY, instCmd.middleware(), "中间件");
             String os = validateOptionalParameter(actor, OPERATING_SYSTEM_CATEGORY, instCmd.operatingSystem(), "操作系统");
             String platform = optional(instCmd.deploymentPlatform() == null ? request.physicalSubsystemDeploymentPlatform() : instCmd.deploymentPlatform(), "部署平台", 64);
-            ZoneRef zoneRef = resolveFulfillmentNetworkZone(actor, instCmd.networkZoneId(), sourceItem, unit, seq);
+            ZoneRef zoneRef = resolveFulfillmentNetworkZone(
+                    actor, project.id(), instCmd.networkZoneId(), sourceItem, unit, seq);
             Long zoneId = zoneRef == null ? null : zoneRef.id();
             String zoneName = zoneRef == null ? null : zoneRef.name();
             String zone = zoneName == null
@@ -1177,7 +1185,7 @@ public class EnvironmentResourceService {
                     "网络分区", 100)
                     : zoneName;
             if (networkAccessService != null) {
-                networkAccessService.requireIpInActiveSubnet(actor.tenantId(), zoneId, ipAddress,
+                networkAccessService.requireIpInActiveSubnet(actor.tenantId(), project.id(), zoneId, ipAddress,
                         "第 " + seq + " 台实例 IP 地址");
             }
 
@@ -1187,6 +1195,7 @@ public class EnvironmentResourceService {
             EnvironmentInstance instance = new EnvironmentInstance(
                     instanceId,
                     actor.tenantId(),
+                    project.id(),
                     instanceNo,
                     request.environmentId(),
                     request.environmentCode(),
@@ -1246,7 +1255,7 @@ public class EnvironmentResourceService {
         }
 
         RequestStatus nextStatus = hasDiff ? RequestStatus.DIFF_FULFILLED : RequestStatus.FULFILLED;
-        if (!store.compareAndSetStatus(actor.tenantId(), requestId, RequestStatus.APPROVED,
+        if (!store.compareAndSetStatus(actor.tenantId(), project.id(), requestId, RequestStatus.APPROVED,
                 request.rowVersion(), nextStatus, actor.id())) {
             throw conflict("资源申请工单已被其他操作更新，请刷新后重新办理下发");
         }
@@ -1266,6 +1275,7 @@ public class EnvironmentResourceService {
         store.insertHistory(new HistoryEvent(
                 nextId(),
                 actor.tenantId(),
+                project.id(),
                 requestId,
                 nextStatus.name(),
                 RequestStatus.APPROVED,
@@ -1290,29 +1300,29 @@ public class EnvironmentResourceService {
     }
 
     @Transactional(readOnly = true)
-    public List<EnvironmentInstance> listInstances(AuthUser actor, Long environmentId, Long physicalSubsystemId,
+    public List<EnvironmentInstance> listInstances(AuthUser actor, ProjectAccess project, Long environmentId, Long physicalSubsystemId,
                                                    Long deploymentUnitId, InstanceStatus status,
                                                    String keyword, int limit, int offset) {
         requireActor(actor);
-        return store.listInstances(actor.tenantId(), environmentId, physicalSubsystemId, deploymentUnitId, status,
+        return store.listInstances(actor.tenantId(), project.id(), environmentId, physicalSubsystemId, deploymentUnitId, status,
                 keyword, limit <= 0 ? 50 : Math.min(limit, 200), Math.max(0, offset));
     }
 
     @Transactional(readOnly = true)
-    public EnvironmentInstance detailInstance(AuthUser actor, long instanceId) {
+    public EnvironmentInstance detailInstance(AuthUser actor, ProjectAccess project, long instanceId) {
         requireActor(actor);
-        return store.findInstance(actor.tenantId(), instanceId)
+        return store.findInstance(actor.tenantId(), project.id(), instanceId)
                 .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
     }
 
     @Transactional
-    public EnvironmentInstance offlineInstance(AuthUser actor, long instanceId, OfflineInstanceCommand command) {
+    public EnvironmentInstance offlineInstance(AuthUser actor, ProjectAccess project, long instanceId, OfflineInstanceCommand command) {
         requireActor(actor);
         if (command == null) {
             throw badRequest("下线参数不能为空");
         }
         String reason = requireText(command.offlineReason(), "下线原因", 1000);
-        EnvironmentInstance instance = store.lockInstance(actor.tenantId(), instanceId)
+        EnvironmentInstance instance = store.lockInstance(actor.tenantId(), project.id(), instanceId)
                 .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
         if (instance.status() != InstanceStatus.ACTIVE) {
             throw conflict("该实例当前已处于下线状态，无需重复下线");
@@ -1321,30 +1331,30 @@ public class EnvironmentResourceService {
             throw conflict("实例已被其他人修改，请刷新后重试");
         }
         LocalDateTime now = LocalDateTime.now(clock);
-        boolean ok = store.offlineInstance(actor.tenantId(), instanceId, instance.rowVersion(), reason, actor.id(), now);
+        boolean ok = store.offlineInstance(actor.tenantId(), project.id(), instanceId, instance.rowVersion(), reason, actor.id(), now);
         if (!ok) {
             throw conflict("实例下线失败，可能已被其他人操作");
         }
-        return store.findInstance(actor.tenantId(), instanceId)
+        return store.findInstance(actor.tenantId(), project.id(), instanceId)
                 .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
     }
 
     @Transactional(readOnly = true)
-    public List<InstanceDisasterRecovery> listInstanceDisasterRecoveries(AuthUser actor, long instanceId) {
+    public List<InstanceDisasterRecovery> listInstanceDisasterRecoveries(AuthUser actor, ProjectAccess project, long instanceId) {
         requireActor(actor);
-        store.findInstance(actor.tenantId(), instanceId)
+        store.findInstance(actor.tenantId(), project.id(), instanceId)
                 .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
-        return store.listDisasterRecoveries(actor.tenantId(), null, instanceId);
+        return store.listDisasterRecoveries(actor.tenantId(), project.id(), null, instanceId);
     }
 
     @Transactional(readOnly = true)
-    public List<InstanceDisasterRecovery> listDisasterRecoveries(AuthUser actor, Long deploymentUnitId, Long instanceId) {
+    public List<InstanceDisasterRecovery> listDisasterRecoveries(AuthUser actor, ProjectAccess project, Long deploymentUnitId, Long instanceId) {
         requireActor(actor);
-        return store.listDisasterRecoveries(actor.tenantId(), deploymentUnitId, instanceId);
+        return store.listDisasterRecoveries(actor.tenantId(), project.id(), deploymentUnitId, instanceId);
     }
 
     @Transactional
-    public InstanceDisasterRecovery createDisasterRecovery(AuthUser actor, DisasterRecoveryCommand command) {
+    public InstanceDisasterRecovery createDisasterRecovery(AuthUser actor, ProjectAccess project, DisasterRecoveryCommand command) {
         requireActor(actor);
         if (command == null) {
             throw badRequest("灾备关系创建参数不能为空");
@@ -1358,9 +1368,9 @@ public class EnvironmentResourceService {
         if (command.drMode() == null) {
             throw badRequest("必须指定灾备模式");
         }
-        EnvironmentInstance primary = store.findInstance(actor.tenantId(), command.primaryInstanceId())
+        EnvironmentInstance primary = store.findInstance(actor.tenantId(), project.id(), command.primaryInstanceId())
                 .orElseThrow(() -> notFound("主实例不存在：" + command.primaryInstanceId()));
-        EnvironmentInstance standby = store.findInstance(actor.tenantId(), command.standbyInstanceId())
+        EnvironmentInstance standby = store.findInstance(actor.tenantId(), project.id(), command.standbyInstanceId())
                 .orElseThrow(() -> notFound("备实例不存在：" + command.standbyInstanceId()));
 
         if (primary.status() != InstanceStatus.ACTIVE || standby.status() != InstanceStatus.ACTIVE) {
@@ -1373,7 +1383,7 @@ public class EnvironmentResourceService {
         if (command.deploymentUnitId() != null && !command.deploymentUnitId().equals(primary.deploymentUnitId())) {
             throw badRequest("灾备关系所属部署单元必须与主备实例所属部署单元一致");
         }
-        if (store.findDisasterRecoveryPair(actor.tenantId(), primary.id(), standby.id()).isPresent()) {
+        if (store.findDisasterRecoveryPair(actor.tenantId(), project.id(), primary.id(), standby.id()).isPresent()) {
             throw conflict("主实例「" + primary.machineName() + "」与备实例「" + standby.machineName() + "」之间已存在灾备关系");
         }
 
@@ -1382,6 +1392,7 @@ public class EnvironmentResourceService {
         InstanceDisasterRecovery dr = new InstanceDisasterRecovery(
                 drId,
                 actor.tenantId(),
+                project.id(),
                 primary.deploymentUnitId(),
                 primary.deploymentUnitCode(),
                 primary.deploymentUnitName(),
@@ -1406,20 +1417,20 @@ public class EnvironmentResourceService {
     }
 
     @Transactional
-    public void deleteDisasterRecovery(AuthUser actor, long id) {
+    public void deleteDisasterRecovery(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        store.findDisasterRecovery(actor.tenantId(), id)
+        store.findDisasterRecovery(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> notFound("灾备关系记录不存在：" + id));
-        boolean deleted = store.deleteDisasterRecovery(actor.tenantId(), id);
+        boolean deleted = store.deleteDisasterRecovery(actor.tenantId(), project.id(), id);
         if (!deleted) {
             throw conflict("灾备关系解除失败");
         }
     }
 
     @Transactional(readOnly = true)
-    public List<EnvironmentInstance> listAvailableStandbyInstances(AuthUser actor, long deploymentUnitId, Long excludeInstanceId) {
+    public List<EnvironmentInstance> listAvailableStandbyInstances(AuthUser actor, ProjectAccess project, long deploymentUnitId, Long excludeInstanceId) {
         requireActor(actor);
-        return store.listAvailableStandbyInstances(actor.tenantId(), deploymentUnitId, excludeInstanceId);
+        return store.listAvailableStandbyInstances(actor.tenantId(), project.id(), deploymentUnitId, excludeInstanceId);
     }
 
     private static BusinessException conflict(String message) {

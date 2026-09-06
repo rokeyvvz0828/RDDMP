@@ -46,10 +46,11 @@ public class PlanDependencyService {
 
     /** 全量替换任务前置依赖（含移除与改绑）；移除的前置以“待处理”语义保留置为 REMOVED。 */
     @Transactional
-    public List<Dependency> setDependencies(AuthUser actor, long taskId, List<Long> predecessorTaskIds,
-                                            String reason, boolean isAdmin) {
-        Task task = engine.requireTask(actor, taskId);
-        Plan plan = engine.requirePlan(actor, task.planId());
+    public List<Dependency> setDependencies(AuthUser actor, long projectId, long taskId,
+                                            List<Long> predecessorTaskIds, String reason,
+                                            boolean isAdmin) {
+        Task task = engine.requireTask(actor, projectId, taskId);
+        Plan plan = engine.requirePlan(actor, projectId, task.planId());
         engine.requirePlanOwner(actor, plan, isAdmin);
         String changeReason = reason == null || reason.isBlank() ? "依赖调整" : reason.trim();
         List<Long> target = predecessorTaskIds == null ? List.of()
@@ -58,59 +59,63 @@ public class PlanDependencyService {
             if (predecessorId == taskId) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "任务不能依赖自身");
             }
-            Task predecessor = store.findTask(actor.tenantId(), predecessorId)
+            Task predecessor = store.findTask(actor.tenantId(), projectId, predecessorId)
                     .orElseThrow(() -> new ArchitectureNotFoundException("前置任务不存在"));
             if (predecessor.planId() != task.planId()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "前置任务必须属于同一计划");
             }
         }
-        List<Dependency> current = store.findDependencies(actor.tenantId(), taskId, false);
+        List<Dependency> current = store.findDependencies(actor.tenantId(), projectId, taskId, false);
         List<Long> keepIds = target.stream().filter(id -> current.stream()
                 .anyMatch(dep -> dep.predecessorId() == id)).toList();
         for (Dependency dep : current) {
             if (!keepIds.contains(dep.predecessorId())) {
-                store.removeDependency(actor.tenantId(), dep.id(), changeReason, actor.id());
+                store.removeDependency(actor.tenantId(), projectId, dep.id(), changeReason, actor.id());
             }
         }
         // 循环校验：现有未移除依赖 + 新增依赖构成图
-        Map<Long, List<Long>> adjacency = loadAdjacency(actor, task.planId(), taskId);
+        Map<Long, List<Long>> adjacency = loadAdjacency(actor, projectId, task.planId(), taskId);
         for (Long predecessorId : target) {
             if (current.stream().noneMatch(dep -> dep.predecessorId() == predecessorId)) {
                 adjacency.computeIfAbsent(taskId, k -> new ArrayList<>()).add(predecessorId);
                 if (hasCycle(adjacency)) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST, "依赖关系存在循环，已拒绝保存");
                 }
-                store.insertDependency(actor.tenantId(), nextId(), taskId, predecessorId, actor.id());
+                store.insertDependency(actor.tenantId(), projectId, nextId(), taskId,
+                        predecessorId, actor.id());
             }
         }
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", task.planId(), "DEPENDENCY", taskId,
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(),
+                "DEPENDENCY", taskId,
                 "DEPENDENCY_CHANGED", actor.id(), changeReason,
                 null, toJson(Map.of("taskId", taskId, "predecessors", target)));
-        engine.recompute(actor.tenantId(), task.planId(), LocalDateTime.now());
-        return store.findDependencies(actor.tenantId(), taskId, false);
+        engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
+        return store.findDependencies(actor.tenantId(), projectId, taskId, false);
     }
 
     @Transactional
-    public void removeDependency(AuthUser actor, long dependencyId, String reason, boolean isAdmin) {
-        Dependency dependency = requireDependency(actor, dependencyId);
-        Task task = engine.requireTask(actor, dependency.taskId());
-        Plan plan = engine.requirePlan(actor, task.planId());
+    public void removeDependency(AuthUser actor, long projectId, long dependencyId, String reason,
+                                 boolean isAdmin) {
+        Dependency dependency = requireDependency(actor, projectId, dependencyId);
+        Task task = engine.requireTask(actor, projectId, dependency.taskId());
+        Plan plan = engine.requirePlan(actor, projectId, task.planId());
         engine.requirePlanOwner(actor, plan, isAdmin);
         String removeReason = reason == null || reason.isBlank() ? "移除依赖" : reason.trim();
-        store.removeDependency(actor.tenantId(), dependencyId, removeReason, actor.id());
-        store.insertActivity(actor.tenantId(), nextId(), "PLAN", task.planId(), "DEPENDENCY",
+        store.removeDependency(actor.tenantId(), projectId, dependencyId, removeReason, actor.id());
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(), "DEPENDENCY",
                 dependencyId, "DEPENDENCY_REMOVED", actor.id(), removeReason,
                 toJson(Map.of("predecessorId", dependency.predecessorId())), null);
-        engine.recompute(actor.tenantId(), task.planId(), LocalDateTime.now());
+        engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
     }
 
-    private Map<Long, List<Long>> loadAdjacency(AuthUser actor, long planId, long excludeChangesForTask) {
+    private Map<Long, List<Long>> loadAdjacency(AuthUser actor, long projectId, long planId,
+                                                long excludeChangesForTask) {
         Map<Long, List<Long>> adjacency = new HashMap<>();
-        for (Task task : store.findTasks(actor.tenantId(), planId, null)) {
+        for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
             if (task.id() == excludeChangesForTask) {
                 continue;
             }
-            for (Dependency dep : store.findDependencies(actor.tenantId(), task.id(), false)) {
+            for (Dependency dep : store.findDependencies(actor.tenantId(), projectId, task.id(), false)) {
                 adjacency.computeIfAbsent(task.id(), k -> new ArrayList<>()).add(dep.predecessorId());
             }
         }
@@ -145,8 +150,8 @@ public class PlanDependencyService {
         return false;
     }
 
-    private Dependency requireDependency(AuthUser actor, long dependencyId) {
-        return store.findDependencyById(actor.tenantId(), dependencyId)
+    private Dependency requireDependency(AuthUser actor, long projectId, long dependencyId) {
+        return store.findDependencyById(actor.tenantId(), projectId, dependencyId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("依赖记录不存在"));
     }
 

@@ -49,23 +49,25 @@ public class PlanQueryService {
                           LocalDateTime plannedEnd, long planOwnerUserId, LocalDateTime updatedAt) {
     }
 
-    public PageResult<PlanRow> list(AuthUser actor, PlanFilter filter, long page, long size) {
-        List<PlanListRow> rows = store.searchPlans(actor.tenantId(), filter.environmentId(), filter.status(),
+    public PageResult<PlanRow> list(AuthUser actor, long projectId, PlanFilter filter, long page, long size) {
+        List<PlanListRow> rows = store.searchPlans(actor.tenantId(), projectId, filter.environmentId(),
+                filter.status(),
                 filter.ownerUserId(), filter.hasBlocked(), filter.hasOverdue(), filter.hasWaived(),
                 filter.keyword(), filter.targetType(), filter.targetId(), (int) size, (int) ((page - 1) * size));
         LocalDateTime now = LocalDateTime.now();
         List<PlanRow> views = new ArrayList<>();
         for (PlanListRow row : rows) {
-            boolean overdue = filter.hasOverdue() || planHasOverdueTask(actor, row.plan().id(), now);
+            boolean overdue = filter.hasOverdue()
+                    || planHasOverdueTask(actor, projectId, row.plan().id(), now);
             views.add(new PlanRow(row.plan().id(), row.plan().planNo(), row.plan().name(),
                     row.environmentCode(), row.environmentName(), row.plan().status(),
                     PlanStatusCalculator.progressPercent((int) row.completedCheckItems(),
                             (int) row.totalCheckItems(), (int) row.cancelledCheckItems()),
                     row.taskCount(), row.openBlocks() > 0, overdue,
-                    row.cancelledCheckItems() > 0 || hasWaived(actor, row.plan().id(), row),
+                    row.cancelledCheckItems() > 0 || hasWaived(actor, projectId, row.plan().id(), row),
                     row.plan().plannedEnd(), row.plan().planOwnerUserId(), null));
         }
-        long total = store.countPlans(actor.tenantId(), filter.environmentId(), filter.status(),
+        long total = store.countPlans(actor.tenantId(), projectId, filter.environmentId(), filter.status(),
                 filter.ownerUserId(), filter.hasBlocked(), filter.hasOverdue(), filter.hasWaived(),
                 filter.keyword(), filter.targetType(), filter.targetId());
         return new PageResult<>(views, total, page, size);
@@ -110,22 +112,22 @@ public class PlanQueryService {
                                  List<Long[]> stageDependencies, List<PlanEventView> events) {
     }
 
-    public PlanDetailView detail(AuthUser actor, long planId) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public PlanDetailView detail(AuthUser actor, long projectId, long planId) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         // 惰性重算（幂等）：查看时按依赖/阻塞/检查项推导最新状态，
         // 同时自动修复历史数据（如生成时未重算导致的前置未完成却为 NOT_STARTED）
-        engine.recompute(actor.tenantId(), planId, java.time.LocalDateTime.now());
-        EnvironmentRef environment = store.envReference(actor.tenantId(), plan.environmentId())
+        engine.recompute(actor.tenantId(), projectId, planId, java.time.LocalDateTime.now());
+        EnvironmentRef environment = store.envReference(actor.tenantId(), projectId, plan.environmentId())
                 .orElse(new EnvironmentRef(0L, "", "", ""));
         List<TargetView> targets = new ArrayList<>();
         Map<Long, String> currentPhysicalNames = new HashMap<>();
         Map<Long, String> currentUnitNames = new HashMap<>();
-        for (PlanTarget target : store.findTargets(actor.tenantId(), planId, true)) {
+        for (PlanTarget target : store.findTargets(actor.tenantId(), projectId, planId, true)) {
             if (target.targetType() == TargetType.PHYSICAL_SUBSYSTEM) {
-                currentPhysicalNames.putIfAbsent(target.targetId(), currentName(actor,
+                currentPhysicalNames.putIfAbsent(target.targetId(), currentName(actor, projectId,
                         TargetType.PHYSICAL_SUBSYSTEM, target.targetId()));
             } else {
-                currentUnitNames.putIfAbsent(target.targetId(), currentName(actor,
+                currentUnitNames.putIfAbsent(target.targetId(), currentName(actor, projectId,
                         TargetType.DEPLOYMENT_UNIT, target.targetId()));
             }
             String current = target.targetType() == TargetType.PHYSICAL_SUBSYSTEM
@@ -143,10 +145,10 @@ public class PlanQueryService {
         int doneCounter = 0;
         int totalCounter = 0;
         int cancelledCounter = 0;
-        for (Stage stage : store.findStages(actor.tenantId(), planId)) {
+        for (Stage stage : store.findStages(actor.tenantId(), projectId, planId)) {
             List<TaskView> taskViews = new ArrayList<>();
-            for (Task task : store.findTasks(actor.tenantId(), planId, stage.id())) {
-                List<CheckItem> items = store.findCheckItems(actor.tenantId(), task.id());
+            for (Task task : store.findTasks(actor.tenantId(), projectId, planId, stage.id())) {
+                List<CheckItem> items = store.findCheckItems(actor.tenantId(), projectId, task.id());
                 String targetName = TaskTargetName.of(task);
                 List<CheckItemView> itemViews = items.stream()
                         .map(item -> new CheckItemView(item.id(), item.name(), item.guide(),
@@ -164,13 +166,15 @@ public class PlanQueryService {
                     totalCounter += items.size();
                     cancelledCounter += cancelled;
                 }
-                List<Dependency> dependencies = store.findDependencies(actor.tenantId(), task.id(), true);
-                List<Dependency> activeDependencies = store.findDependencies(actor.tenantId(), task.id(),
-                        false);
-                List<Block> blocks = store.findBlocks(actor.tenantId(), task.id());
+                List<Dependency> dependencies = store.findDependencies(actor.tenantId(), projectId,
+                        task.id(), true);
+                List<Dependency> activeDependencies = store.findDependencies(actor.tenantId(), projectId,
+                        task.id(), false);
+                List<Block> blocks = store.findBlocks(actor.tenantId(), projectId, task.id());
                 boolean taskBlocked = blocks.stream().anyMatch(b -> !b.resolved());
-                List<TaskWorkOrder> workOrders = store.findWorkOrders(actor.tenantId(), task.id());
-                boolean openWorkOrder = !engine.openWorkOrderRefs(actor.tenantId(), workOrders).isEmpty();
+                List<TaskWorkOrder> workOrders = store.findWorkOrders(actor.tenantId(), projectId, task.id());
+                boolean openWorkOrder = !engine.openWorkOrderRefs(actor.tenantId(), projectId,
+                        workOrders).isEmpty();
                 boolean overdue = !task.cancelled() && task.status() != TaskStatus.COMPLETED
                         && task.plannedEnd() != null
                         && LocalDateTime.now().isAfter(task.plannedEnd());
@@ -183,9 +187,9 @@ public class PlanQueryService {
                         task.status().name(), progress, task.waivedAll(), overdue, taskBlocked,
                         openWorkOrder, task.ownerUserId(), task.plannedStart(), task.plannedEnd(),
                         task.actualStart(), task.actualEnd(), task.cancelled(), task.cancelReason(),
-                        store.findParticipantUserIds(actor.tenantId(), task.id()),
+                        store.findParticipantUserIds(actor.tenantId(), projectId, task.id()),
                         activeDependencies, blocks, workOrders, itemViews,
-                        store.findEvents(actor.tenantId(), planId, "TASK", task.id()).stream()
+                        store.findEvents(actor.tenantId(), projectId, planId, "TASK", task.id()).stream()
                                 .map(PlanQueryService::toEventView).toList()));
             }
             boolean stageWaived = taskViews.stream()
@@ -198,15 +202,17 @@ public class PlanQueryService {
                     stageProgress(taskViews), stageWaived, taskViews));
         }
         Long planProgress = PlanStatusCalculator.progressPercent(doneCounter, totalCounter, cancelledCounter);
-        long pendingSuggestions = store.findPendingSuggestions(actor.tenantId(), 0L).stream()
-                .filter(s -> planContains(actor, planId, s.checkItemId())).count();
-        List<PlanEventView> events = store.findEvents(actor.tenantId(), planId, "PLAN", planId).stream()
+        long pendingSuggestions = store.findPendingSuggestions(actor.tenantId(), projectId, 0L).stream()
+                .filter(s -> planContains(actor, projectId, planId, s.checkItemId())).count();
+        List<PlanEventView> events = store.findEvents(actor.tenantId(), projectId, planId,
+                "PLAN", planId).stream()
                 .map(PlanQueryService::toEventView).toList();
         boolean uncompletable = !plan.cancelled()
-                && store.findStages(actor.tenantId(), planId).stream().noneMatch(s -> !s.cancelled());
+                && store.findStages(actor.tenantId(), projectId, planId).stream()
+                .noneMatch(s -> !s.cancelled());
         return new PlanDetailView(plan, environment.code(), environment.name(), targets, stages,
                 planProgress, hasBlocked, hasOverdue, hasWaived, uncompletable, pendingSuggestions,
-                store.findStageDependencies(actor.tenantId(), planId), events);
+                store.findStageDependencies(actor.tenantId(), projectId, planId), events);
     }
 
     public record DashboardStage(long id, int stageNo, String name, String status, Long progress,
@@ -222,8 +228,8 @@ public class PlanQueryService {
                                 boolean hasWaived, List<DashboardStage> stages) {
     }
 
-    public DashboardView dashboard(AuthUser actor, long planId) {
-        PlanDetailView detail = detail(actor, planId);
+    public DashboardView dashboard(AuthUser actor, long projectId, long planId) {
+        PlanDetailView detail = detail(actor, projectId, planId);
         List<DashboardStage> stages = detail.stages().stream().map(stage -> new DashboardStage(
                 stage.id(), stage.stageNo(), stage.name(), stage.status(), stage.progress(),
                 stage.hasWaived(), stage.tasks().stream().map(task -> new DashboardTask(task.id(),
@@ -243,49 +249,50 @@ public class PlanQueryService {
     public record TimelineView(long planId, String planNo, String name, List<TimelineRow> rows) {
     }
 
-    public TimelineView timeline(AuthUser actor, long planId) {
-        Plan plan = engine.requirePlan(actor, planId);
+    public TimelineView timeline(AuthUser actor, long projectId, long planId) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
         List<TimelineRow> rows = new ArrayList<>();
         rows.add(new TimelineRow(plan.id(), plan.name(), "PLAN", 0, plan.status().name(),
                 plan.plannedStart(), plan.plannedEnd(), plan.actualStart(), plan.actualEnd(), null,
                 false, null));
-        for (Stage stage : store.findStages(actor.tenantId(), planId)) {
+        for (Stage stage : store.findStages(actor.tenantId(), projectId, planId)) {
             rows.add(new TimelineRow(stage.id(), stage.name(), "STAGE", stage.planId(),
                     stage.status().name(), stage.plannedStart(), stage.plannedEnd(),
                     stage.actualStart(), stage.actualEnd(), null, false, null));
-            for (Task task : store.findTasks(actor.tenantId(), planId, stage.id())) {
+            for (Task task : store.findTasks(actor.tenantId(), projectId, planId, stage.id())) {
                 boolean overdue = !task.cancelled() && task.status() != TaskStatus.COMPLETED
                         && task.plannedEnd() != null
                         && LocalDateTime.now().isAfter(task.plannedEnd());
                 rows.add(new TimelineRow(task.id(), task.name(), "TASK", stage.id(),
                         task.status().name(), task.plannedStart(), task.plannedEnd(),
-                        task.actualStart(), task.actualEnd(), taskProgress(actor, task), overdue,
+                        task.actualStart(), task.actualEnd(), taskProgress(actor, projectId, task), overdue,
                         TaskTargetName.of(task)));
             }
         }
         return new TimelineView(plan.id(), plan.planNo(), plan.name(), rows);
     }
 
-    public List<CancelSuggestion> pendingSuggestions(AuthUser actor, long planId) {
+    public List<CancelSuggestion> pendingSuggestions(AuthUser actor, long projectId, long planId) {
         Map<Long, Long> checkToTask = new HashMap<>();
-        for (Task task : store.findTasks(actor.tenantId(), planId, null)) {
-            for (CheckItem item : store.findCheckItems(actor.tenantId(), task.id())) {
+        for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            for (CheckItem item : store.findCheckItems(actor.tenantId(), projectId, task.id())) {
                 checkToTask.put(item.id(), task.id());
             }
         }
-        return store.findPendingSuggestions(actor.tenantId(), 0L).stream()
+        return store.findPendingSuggestions(actor.tenantId(), projectId, 0L).stream()
                 .filter(suggestion -> checkToTask.containsKey(suggestion.checkItemId())).toList();
     }
 
     public record ReportView(PlanDetailView detail, DashboardView dashboard, TimelineView timeline) {
     }
 
-    public ReportView report(AuthUser actor, long planId) {
-        return new ReportView(detail(actor, planId), dashboard(actor, planId), timeline(actor, planId));
+    public ReportView report(AuthUser actor, long projectId, long planId) {
+        return new ReportView(detail(actor, projectId, planId), dashboard(actor, projectId, planId),
+                timeline(actor, projectId, planId));
     }
 
-    private Long taskProgress(AuthUser actor, Task task) {
-        List<CheckItem> items = store.findCheckItems(actor.tenantId(), task.id());
+    private Long taskProgress(AuthUser actor, long projectId, Task task) {
+        List<CheckItem> items = store.findCheckItems(actor.tenantId(), projectId, task.id());
         int completed = (int) items.stream().filter(i -> !i.cancelled()
                 && i.status() == com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.COMPLETED)
                 .count();
@@ -309,9 +316,9 @@ public class PlanQueryService {
         return PlanStatusCalculator.progressPercent(done, total, cancelled);
     }
 
-    private boolean planContains(AuthUser actor, long planId, long checkItemId) {
-        for (Task task : store.findTasks(actor.tenantId(), planId, null)) {
-            if (store.findCheckItems(actor.tenantId(), task.id()).stream()
+    private boolean planContains(AuthUser actor, long projectId, long planId, long checkItemId) {
+        for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            if (store.findCheckItems(actor.tenantId(), projectId, task.id()).stream()
                     .anyMatch(item -> item.id() == checkItemId)) {
                 return true;
             }
@@ -319,8 +326,8 @@ public class PlanQueryService {
         return false;
     }
 
-    private boolean planHasOverdueTask(AuthUser actor, long planId, LocalDateTime now) {
-        for (Task task : store.findTasks(actor.tenantId(), planId, null)) {
+    private boolean planHasOverdueTask(AuthUser actor, long projectId, long planId, LocalDateTime now) {
+        for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
             if (!task.cancelled() && task.status() != TaskStatus.COMPLETED
                     && task.plannedEnd() != null && now.isAfter(task.plannedEnd())) {
                 return true;
@@ -329,14 +336,14 @@ public class PlanQueryService {
         return false;
     }
 
-    private boolean hasWaived(AuthUser actor, long planId, PlanListRow row) {
-        boolean cancelled = store.findTasks(actor.tenantId(), planId, null).stream()
+    private boolean hasWaived(AuthUser actor, long projectId, long planId, PlanListRow row) {
+        boolean cancelled = store.findTasks(actor.tenantId(), projectId, planId, null).stream()
                 .anyMatch(t -> t.cancelled() || t.waivedAll());
         if (cancelled) {
             return true;
         }
-        for (Task task : store.findTasks(actor.tenantId(), planId, null)) {
-            if (store.findCheckItems(actor.tenantId(), task.id()).stream()
+        for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            if (store.findCheckItems(actor.tenantId(), projectId, task.id()).stream()
                     .anyMatch(CheckItem::cancelled)) {
                 return true;
             }
@@ -344,8 +351,8 @@ public class PlanQueryService {
         return false;
     }
 
-    private String currentName(AuthUser actor, TargetType targetType, long targetId) {
-        return store.currentTargetNames(actor.tenantId(), targetType, List.of(targetId))
+    private String currentName(AuthUser actor, long projectId, TargetType targetType, long targetId) {
+        return store.currentTargetNames(actor.tenantId(), projectId, targetType, List.of(targetId))
                 .get(targetId);
     }
 

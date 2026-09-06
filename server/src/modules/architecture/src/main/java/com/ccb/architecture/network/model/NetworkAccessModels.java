@@ -152,6 +152,7 @@ public final class NetworkAccessModels {
     public record NetworkZone(
             long id,
             long tenantId,
+            long projectId,
             Long parentId,
             String parentName,
             String code,
@@ -180,6 +181,7 @@ public final class NetworkAccessModels {
     public record NetworkZoneSubnet(
             long id,
             long tenantId,
+            long projectId,
             long networkZoneId,
             String networkZoneCode,
             String networkZoneName,
@@ -198,6 +200,7 @@ public final class NetworkAccessModels {
     public record ExternalNetworkAddress(
             long id,
             long tenantId,
+            long projectId,
             AddressType addressType,
             String addressValue,
             String displayName,
@@ -252,6 +255,7 @@ public final class NetworkAccessModels {
     public record NetworkAccessApplication(
             long id,
             long tenantId,
+            long projectId,
             String applicationNo,
             long applicantId,
             NetworkAccessActionType actionType,
@@ -287,31 +291,12 @@ public final class NetworkAccessModels {
             long updatedBy,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
-        public NetworkAccessApplication(long id, long tenantId, String applicationNo, long applicantId,
-                                        EndpointKind sourceKind, Long sourcePhysicalSubsystemId,
-                                        Long sourceEnvironmentId, Long sourceDeploymentUnitId,
-                                        Long sourceExternalAddressId, String sourceSnapshotJson,
-                                        EndpointKind targetKind, Long targetPhysicalSubsystemId,
-                                        Long targetEnvironmentId, Long targetDeploymentUnitId,
-                                        Long targetExternalAddressId, String targetSnapshotJson,
-                                        AccessProtocol protocol, String ports, String purpose,
-                                        String processDescription, LocalDateTime validFrom,
-                                        LocalDateTime validUntil, ApplicationStatus status,
-                                        long rowVersion, long createdBy, long updatedBy,
-                                        LocalDateTime createdAt, LocalDateTime updatedAt) {
-            this(id, tenantId, applicationNo, applicantId, NetworkAccessActionType.OPEN, null,
-                    sourceKind, sourcePhysicalSubsystemId, sourceEnvironmentId, sourceDeploymentUnitId,
-                    sourceExternalAddressId, sourceSnapshotJson, targetKind, targetPhysicalSubsystemId,
-                    targetEnvironmentId, targetDeploymentUnitId, targetExternalAddressId, targetSnapshotJson,
-                    protocol, ports, purpose, processDescription, validFrom, validUntil,
-                    validUntil == null ? ValidityType.LONG_TERM : ValidityType.LIMITED, status,
-                    0, null, null, null, null, false, rowVersion, createdBy, updatedBy, createdAt, updatedAt);
-        }
     }
 
     public record NetworkAccessRelation(
             long id,
             long tenantId,
+            long projectId,
             String relationNo,
             long applicationId,
             Long replacesRelationId,
@@ -346,26 +331,12 @@ public final class NetworkAccessModels {
                     ? List.of() : offlineEndpointSummaries);
         }
 
-        public NetworkAccessRelation(long id, long tenantId, String relationNo, long applicationId,
-                                     EndpointKind sourceKind, String sourceSnapshotJson,
-                                     EndpointKind targetKind, String targetSnapshotJson,
-                                     AccessProtocol protocol, String ports, String purpose,
-                                     String processDescription, LocalDateTime validFrom,
-                                     LocalDateTime validUntil, RelationStatus status,
-                                     String closeReason, Long closedBy, LocalDateTime closedAt,
-                                     long rowVersion, long createdBy, long updatedBy,
-                                     LocalDateTime createdAt, LocalDateTime updatedAt) {
-            this(id, tenantId, relationNo, applicationId, null, null, null, sourceKind, sourceSnapshotJson,
-                    targetKind, targetSnapshotJson, protocol, ports, purpose, processDescription, validFrom,
-                    validUntil, validUntil == null ? ValidityType.LONG_TERM : ValidityType.LIMITED, status,
-                    closeReason, null, closedBy, closedAt, false, 0, List.of(), rowVersion, createdBy,
-                    updatedBy, createdAt, updatedAt);
-        }
     }
 
     public record NetworkAccessExemptionRule(
             long id,
             long tenantId,
+            long projectId,
             String ruleCode,
             String ruleName,
             long sourceNetworkZoneId,
@@ -389,6 +360,7 @@ public final class NetworkAccessModels {
     public record NetworkAccessHistoryEvent(
             long id,
             long tenantId,
+            long projectId,
             long applicationId,
             String eventType,
             ApplicationStatus fromStatus,
@@ -404,6 +376,7 @@ public final class NetworkAccessModels {
     public record WorkflowRound(
             long id,
             long tenantId,
+            long projectId,
             long applicationId,
             int roundNo,
             Long workflowDefinitionId,
@@ -420,6 +393,7 @@ public final class NetworkAccessModels {
     public record WorkflowReceiptStart(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             long applicationId,
@@ -431,6 +405,7 @@ public final class NetworkAccessModels {
     public record WorkflowReceipt(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             Long applicationId,

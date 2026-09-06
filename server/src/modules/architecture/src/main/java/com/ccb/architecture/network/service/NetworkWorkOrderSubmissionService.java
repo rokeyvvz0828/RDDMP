@@ -12,6 +12,7 @@ import com.ccb.architecture.network.service.NetworkWorkOrderService.WorkOrderDet
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowProgress;
@@ -71,25 +72,25 @@ public class NetworkWorkOrderSubmissionService {
     }
 
     /** 申请人本人提交；manage 用户发起自己的申请时仍走同一工作流。 */
-    public WorkOrderDetail submit(AuthUser actor, long workOrderId, long expectedRowVersion) {
-        changes.coordinateSubmission(actor, workOrderId, expectedRowVersion,
-                preparation -> startWorkflow(actor, preparation));
-        return changes.detail(actor, AccessScope.OWN, workOrderId);
+    public WorkOrderDetail submit(AuthUser actor, ProjectAccess project, long workOrderId, long expectedRowVersion) {
+        changes.coordinateSubmission(actor, project, workOrderId, expectedRowVersion,
+                preparation -> startWorkflow(actor, project, preparation));
+        return changes.detail(actor, project, AccessScope.OWN, workOrderId);
     }
 
     /** 草稿/退回同步取消；审批中先登记取消请求并调用 terminate，等待 TERMINATED 事件终态化。 */
-    public WorkOrderDetail cancel(AuthUser actor, long workOrderId, long expectedRowVersion) {
-        WorkOrderDetail current = changes.detail(actor, AccessScope.OWN, workOrderId);
+    public WorkOrderDetail cancel(AuthUser actor, ProjectAccess project, long workOrderId, long expectedRowVersion) {
+        WorkOrderDetail current = changes.detail(actor, project, AccessScope.OWN, workOrderId);
         if (current.workOrder().status() != WorkOrderStatus.IN_REVIEW) {
-            return changes.cancel(actor, AccessScope.OWN, workOrderId, expectedRowVersion);
+            return changes.cancel(actor, project, AccessScope.OWN, workOrderId, expectedRowVersion);
         }
-        changes.coordinateCancellation(actor, workOrderId, expectedRowVersion,
+        changes.coordinateCancellation(actor, project, workOrderId, expectedRowVersion,
                 preparation -> terminateWorkflow(actor, preparation));
-        return changes.detail(actor, AccessScope.OWN, workOrderId);
+        return changes.detail(actor, project, AccessScope.OWN, workOrderId);
     }
 
-    private void startWorkflow(AuthUser actor, SubmissionPreparation preparation) {
-        WorkOrder prepared = store.lockWorkOrder(actor.tenantId(), preparation.workOrderId())
+    private void startWorkflow(AuthUser actor, ProjectAccess project, SubmissionPreparation preparation) {
+        WorkOrder prepared = store.lockWorkOrder(actor.tenantId(), project.id(), preparation.workOrderId())
                 .orElseThrow(() -> conflict("提交准备后的工单不存在"));
         if (prepared.status() != WorkOrderStatus.IN_REVIEW
                 || prepared.currentBusinessRound() != preparation.nextRound() - 1) {
@@ -97,21 +98,21 @@ public class NetworkWorkOrderSubmissionService {
         }
 
         long roundId = nextId();
-        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.id(),
+        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.projectId(), prepared.id(),
                 preparation.nextRound(), null, null, null, null, WorkflowRoundStatus.PENDING,
                 null, null, null, null));
-        WorkflowBusinessContext context = context(prepared, preparation);
+        WorkflowBusinessContext context = context(prepared, project, preparation);
         WorkflowStartResult result = workflowGateway.startByCode(new WorkflowStartCommand(
                 WORKFLOW_DEFINITION_CODE, context, workflowVariables(prepared, preparation)), actor);
         validateWorkflowResult(result, context);
 
         LocalDateTime startedAt = LocalDateTime.now(clock);
-        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.id(), preparation.nextRound(),
+        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.projectId(), prepared.id(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), startedAt)) {
             throw conflict("审批轮次启动状态已变化");
         }
-        if (!store.compareAndSetWorkflowContext(prepared.tenantId(), prepared.id(),
+        if (!store.compareAndSetWorkflowContext(prepared.tenantId(), prepared.projectId(), prepared.id(),
                 prepared.currentBusinessRound(), prepared.rowVersion(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), actor.id())) {
@@ -130,7 +131,7 @@ public class NetworkWorkOrderSubmissionService {
                 preparation.businessRound(), "申请人取消网络专项工单"), actor);
     }
 
-    private WorkflowBusinessContext context(WorkOrder workOrder, SubmissionPreparation preparation) {
+    private WorkflowBusinessContext context(WorkOrder workOrder, ProjectAccess project, SubmissionPreparation preparation) {
         return new WorkflowBusinessContext(
                 MODULE_CODE,
                 MODULE_NAME,
@@ -138,8 +139,8 @@ public class NetworkWorkOrderSubmissionService {
                 String.valueOf(workOrder.id()),
                 "网络专项工单 " + workOrder.id(),
                 preparation.nextRound(),
-                null,
-                null,
+                project.projectRef(),
+                project.projectName(),
                 DETAIL_PATH_PREFIX + workOrder.id(),
                 preparation.digest());
     }
@@ -151,6 +152,7 @@ public class NetworkWorkOrderSubmissionService {
         variables.put("kind", workOrder.kind().name());
         variables.put("actionType", workOrder.actionType().name());
         variables.put("applicantId", workOrder.applicantId());
+        variables.put("projectId", workOrder.projectId());
         return Map.copyOf(variables);
     }
 
@@ -161,6 +163,8 @@ public class NetworkWorkOrderSubmissionService {
                 || !Objects.equals(result.context().businessType(), expected.businessType())
                 || !Objects.equals(result.context().businessKey(), expected.businessKey())
                 || result.context().businessRound() != expected.businessRound()
+                || !Objects.equals(result.context().projectRef(), expected.projectRef())
+                || !Objects.equals(result.context().projectName(), expected.projectName())
                 || !Objects.equals(result.context().dataDigest(), expected.dataDigest())) {
             throw conflict("审批流程启动结果与网络专项工单上下文不一致");
         }

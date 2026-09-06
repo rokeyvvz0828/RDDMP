@@ -326,7 +326,7 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("req_import_batch", set("id", "tenant_id", "biz_type", "project_id", "file_name", "template_type", "total_rows", "success_rows", "error_rows", "errors_json", "status", "operator_id", "operator_name", "deleted"));
         result.put("req_attachment", set("id", "tenant_id", "biz_type", "biz_id", "file_name", "file_size", "content_type", "preview_id", "preview_url", "operator_id", "deleted"));
         result.put("req_business_group_member", set("id", "tenant_id", "business_group", "user_id", "created_by", "deleted"));
-        result.put("arch_physical_subsystem", set("id", "tenant_id", "code", "short_name", "name", "logical_subsystem_name", "business_component_code", "business_group_name", "deployment_platform", "disaster_recovery_mode", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "status", "row_version", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
+        result.put("arch_physical_subsystem", set("id", "tenant_id", "project_id", "code", "short_name", "name", "logical_subsystem_name", "business_component_code", "business_group_name", "deployment_platform", "disaster_recovery_mode", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "status", "row_version", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
         return Collections.unmodifiableMap(result);
     }
 

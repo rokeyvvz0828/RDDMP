@@ -10,6 +10,9 @@ import com.ccb.architecture.network.persistence.NetworkWorkOrderStore;
 import com.ccb.architecture.network.service.NetworkWorkOrderService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
@@ -30,12 +33,16 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NetworkWorkflowLifecycleConsumerTest {
     private static final long TENANT_ID = 7L;
+    private static final long PROJECT_ID = 100L;
+    private static final ProjectAccess PROJECT =
+            new ProjectAccess(PROJECT_ID, "RDDMP-PLATFORM", "RDDMP 平台");
     private static final long WORK_ORDER_ID = 900041L;
     private static final long ROUND_ID = 900042L;
     private static final long INSTANCE_ID = 880041L;
@@ -47,24 +54,29 @@ class NetworkWorkflowLifecycleConsumerTest {
     private NetworkWorkOrderStore store;
     @Mock
     private NetworkWorkOrderService changes;
+    @Mock
+    private ProjectAccessService projectAccessService;
 
     private final AtomicLong ids = new AtomicLong(900051L);
     private NetworkWorkflowLifecycleConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new NetworkWorkflowLifecycleConsumer(store, changes, ids::incrementAndGet);
+        lenient().when(projectAccessService.requireAccessible(eq(PROJECT.projectRef()), any(AuthUser.class)))
+                .thenReturn(PROJECT);
+        consumer = new NetworkWorkflowLifecycleConsumer(
+                store, changes, projectAccessService, ids::incrementAndGet);
     }
 
     private WorkOrder reviewOrder() {
-        return new WorkOrder(WORK_ORDER_ID, TENANT_ID, Kind.CERT, ActionType.APPLY, "demo.example.test",
+        return new WorkOrder(WORK_ORDER_ID, TENANT_ID, PROJECT_ID, Kind.CERT, ActionType.APPLY, "demo.example.test",
                 9L, "原因", WorkOrderStatus.IN_REVIEW, "{}", "[]", null, null, "[]", null, null,
                 1, 900000000000032L, 900000000000033L, INSTANCE_ID, DIGEST, false, 3,
                 9L, 9L, OCCURRED_AT, OCCURRED_AT);
     }
 
     private WorkflowRound startedRound() {
-        return new WorkflowRound(ROUND_ID, TENANT_ID, WORK_ORDER_ID, 1,
+        return new WorkflowRound(ROUND_ID, TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 1,
                 900000000000032L, 900000000000033L, INSTANCE_ID, DIGEST, WorkflowRoundStatus.STARTED,
                 OCCURRED_AT, null, OCCURRED_AT, OCCURRED_AT);
     }
@@ -77,7 +89,7 @@ class NetworkWorkflowLifecycleConsumerTest {
                 type,
                 new WorkflowBusinessContext("architecture", "架构管理",
                         "architecture_network_work_order", String.valueOf(WORK_ORDER_ID),
-                        "网络专项工单 " + WORK_ORDER_ID, 1, null, null,
+                        "网络专项工单 " + WORK_ORDER_ID, 1, PROJECT.projectRef(), PROJECT.projectName(),
                         "/architecture/network-work-orders/" + WORK_ORDER_ID, DIGEST),
                 101L,
                 OCCURRED_AT);
@@ -93,70 +105,71 @@ class NetworkWorkflowLifecycleConsumerTest {
     @Test
     void 批准事件推进工单完成并完成轮次与回执() {
         WorkOrder order = reviewOrder();
-        when(store.lockWorkOrder(TENANT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
+        when(store.lockWorkOrder(TENANT_ID, PROJECT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
-        when(store.isLatestWorkflowRound(TENANT_ID, WORK_ORDER_ID, 1)).thenReturn(true);
-        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(WORK_ORDER_ID), eq(1),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
+        when(store.isLatestWorkflowRound(TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 1)).thenReturn(true);
+        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(1),
                 eq(WorkflowRoundStatus.APPROVED), eq(OCCURRED_AT))).thenReturn(true);
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-approved"), eq(SUBSCRIBER_KEY),
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-approved"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowReceiptStatus.PROCESSED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.APPROVED));
 
-        verify(changes).applyCompletionInCurrentTransaction(TENANT_ID, WORK_ORDER_ID, 3L, 101L);
-        verify(store).completeStartedWorkflowRound(eq(TENANT_ID), eq(WORK_ORDER_ID), eq(1),
+        verify(changes).applyCompletionInCurrentTransaction(TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 3L, 101L);
+        verify(store).completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(1),
                 eq(WorkflowRoundStatus.APPROVED), eq(OCCURRED_AT));
     }
 
     @Test
     void 退回事件应用退回结论() {
         WorkOrder order = reviewOrder();
-        when(store.lockWorkOrder(TENANT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
+        when(store.lockWorkOrder(TENANT_ID, PROJECT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
-        when(store.isLatestWorkflowRound(TENANT_ID, WORK_ORDER_ID, 1)).thenReturn(true);
-        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(WORK_ORDER_ID), eq(1),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(startedRound()));
+        when(store.isLatestWorkflowRound(TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 1)).thenReturn(true);
+        when(store.completeStartedWorkflowRound(eq(TENANT_ID), eq(PROJECT_ID), eq(WORK_ORDER_ID), eq(1),
                 eq(WorkflowRoundStatus.RETURNED), eq(OCCURRED_AT))).thenReturn(true);
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-returned"), eq(SUBSCRIBER_KEY),
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-returned"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowReceiptStatus.PROCESSED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.RETURNED));
 
-        verify(changes).applyReviewOutcomeInCurrentTransaction(TENANT_ID, WORK_ORDER_ID, 3L, 101L,
+        verify(changes).applyReviewOutcomeInCurrentTransaction(TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 3L, 101L,
                 WorkOrderStatus.RETURNED);
     }
 
     @Test
     void 重复事件幂等跳过() {
         WorkOrder order = reviewOrder();
-        when(store.lockWorkOrder(TENANT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
+        when(store.lockWorkOrder(TENANT_ID, PROJECT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
         when(store.beginReceipt(any())).thenReturn(false);
 
         consumer.consume(event(WorkflowLifecycleEventType.APPROVED));
 
-        verify(store, never()).lockWorkflowRoundByInstance(anyLong(), anyLong());
-        verify(changes, never()).applyCompletionInCurrentTransaction(anyLong(), anyLong(), anyLong(), anyLong());
+        verify(store, never()).lockWorkflowRoundByInstance(anyLong(), anyLong(), anyLong());
+        verify(changes, never()).applyCompletionInCurrentTransaction(
+                anyLong(), anyLong(), anyLong(), anyLong(), anyLong());
     }
 
     @Test
     void 事件不匹配当前轮次时忽略() {
         WorkOrder order = reviewOrder();
-        WorkflowRound staleRound = new WorkflowRound(ROUND_ID, TENANT_ID, WORK_ORDER_ID, 2,
+        WorkflowRound staleRound = new WorkflowRound(ROUND_ID, TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 2,
                 900000000000032L, 900000000000033L, INSTANCE_ID, "c".repeat(64), WorkflowRoundStatus.STARTED,
                 OCCURRED_AT, null, OCCURRED_AT, OCCURRED_AT);
-        when(store.lockWorkOrder(TENANT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
+        when(store.lockWorkOrder(TENANT_ID, PROJECT_ID, WORK_ORDER_ID)).thenReturn(Optional.of(order));
         when(store.beginReceipt(any())).thenReturn(true);
-        when(store.lockWorkflowRoundByInstance(TENANT_ID, INSTANCE_ID)).thenReturn(Optional.of(staleRound));
-        when(store.completeReceipt(eq(TENANT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
+        when(store.lockWorkflowRoundByInstance(TENANT_ID, PROJECT_ID, INSTANCE_ID)).thenReturn(Optional.of(staleRound));
+        when(store.completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowReceiptStatus.IGNORED),
                 anyString())).thenReturn(true);
 
         consumer.consume(event(WorkflowLifecycleEventType.STARTED));
 
-        verify(store).completeReceipt(eq(TENANT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
+        verify(store).completeReceipt(eq(TENANT_ID), eq(PROJECT_ID), eq("event-started"), eq(SUBSCRIBER_KEY),
                 eq(com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowReceiptStatus.IGNORED),
                 anyString());
     }
@@ -167,7 +180,7 @@ class NetworkWorkflowLifecycleConsumerTest {
                 "", TENANT_ID, INSTANCE_ID, WorkflowLifecycleEventType.APPROVED,
                 new WorkflowBusinessContext("architecture", "架构管理",
                         "architecture_network_work_order", String.valueOf(WORK_ORDER_ID),
-                        "网络专项工单 " + WORK_ORDER_ID, 1, null, null,
+                        "网络专项工单 " + WORK_ORDER_ID, 1, PROJECT.projectRef(), PROJECT.projectName(),
                         "/architecture/network-work-orders/" + WORK_ORDER_ID, "short"),
                 101L,
                 OCCURRED_AT);

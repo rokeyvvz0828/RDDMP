@@ -6,6 +6,7 @@ import com.ccb.architecture.network.persistence.NetworkWorkOrderStore;
 import com.ccb.attachment.integration.AttachmentAccessPolicy;
 import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectWorkflowDirectoryService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -26,9 +27,12 @@ public class NetworkAttachmentAccessPolicy implements AttachmentAccessPolicy {
     private static final String MANAGE_AUTHORITY = "architecture:network-work-order:manage";
 
     private final NetworkWorkOrderStore store;
+    private final ProjectWorkflowDirectoryService projectDirectory;
 
-    public NetworkAttachmentAccessPolicy(NetworkWorkOrderStore store) {
+    public NetworkAttachmentAccessPolicy(NetworkWorkOrderStore store,
+                                         ProjectWorkflowDirectoryService projectDirectory) {
         this.store = store;
+        this.projectDirectory = projectDirectory;
     }
 
     @Override
@@ -50,8 +54,13 @@ public class NetworkAttachmentAccessPolicy implements AttachmentAccessPolicy {
         if (workOrderId <= 0) {
             return false;
         }
-        WorkOrder workOrder = store.findWorkOrder(user.tenantId(), workOrderId).orElse(null);
+        WorkOrder workOrder = store.findWorkOrderById(user.tenantId(), workOrderId).orElse(null);
         if (workOrder == null) {
+            return false;
+        }
+        try {
+            projectDirectory.requireAccessible(workOrder.projectId(), user);
+        } catch (RuntimeException exception) {
             return false;
         }
         boolean manage = hasAuthority(MANAGE_AUTHORITY);
