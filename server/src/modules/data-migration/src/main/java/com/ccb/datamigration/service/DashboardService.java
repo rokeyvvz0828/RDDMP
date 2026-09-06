@@ -24,7 +24,7 @@ public class DashboardService {
         long scope = permissions.requireProject(projectId, user);
         Map<String,Object> result = new LinkedHashMap<>();
         result.put("projects", accessibleProjectCount(user));
-        result.put("components", jdbc.queryForObject("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND deleted = 0", Integer.class, user.tenantId(), scope));
+        result.put("components", jdbc.queryForObject("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND enabled = 1", Integer.class, user.tenantId(), scope));
         // 资产总数与类型分布共用一次分组统计（byType 已排除零计数，类型求和即资产总数）
         List<Map<String, Object>> byType = assetsByType(scope, user);
         long assets = byType.stream().mapToLong(row -> ((Number) row.get("total")).longValue()).sum();
@@ -54,27 +54,27 @@ public class DashboardService {
     public List<Map<String,Object>> component(AuthUser user, Long projectId) {
         long scope = permissions.requireProject(projectId, user);
         // 组件身份由系统编号承担；系统编号/名称来自物理子系统（LEFT JOIN，缺失时回退编号本身）。
-        // T34（9.2 P2「跨表统计线性增长」）：资产数由逐组件 × 逐表的相关子查询改为
-        // 一次分组统计——9 张内容表 UNION ALL 后按 component_id 分组计数，再 LEFT JOIN 组件；
+        // T34 + V182：资产数由逐组件 × 逐表的相关子查询改为
+        // 一次分组统计——9 张内容表 UNION ALL 后按 system_code 分组计数，再 LEFT JOIN 组件；
         // 仍保留 tenant_id + project_id + deleted=0 的项目过滤。
         StringBuilder union = new StringBuilder();
         for (String table : ContentAssetTables.ALL_TABLES) {
             if (union.length() > 0) union.append(" UNION ALL ");
-            union.append("SELECT component_id, tenant_id FROM ").append(table)
+            union.append("SELECT system_code, tenant_id FROM ").append(table)
                  .append(" WHERE tenant_id = ? AND project_id = ? AND deleted = 0");
         }
         List<Object> args = new ArrayList<>();
         for (int i = 0; i < ContentAssetTables.ALL_TABLES.size(); i++) { args.add(user.tenantId()); args.add(scope); }
-        String sql = "SELECT c.id, c.physical_subsystem_code AS system_code, "
-                + "COALESCE(s.short_name, s.name, c.physical_subsystem_code) AS system_name, "
+        String sql = "SELECT c.system_code, "
+                + "COALESCE(s.short_name, s.name, c.system_code) AS system_name, "
                 + "COALESCE(agg.cnt, 0) AS asset_count "
                 + "FROM dm_component c "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 "
-                + "LEFT JOIN (SELECT component_id, tenant_id, COUNT(*) AS cnt FROM (" + union + ") u "
-                + "   WHERE component_id IS NOT NULL GROUP BY component_id, tenant_id) agg "
-                + "   ON agg.component_id = c.id AND agg.tenant_id = c.tenant_id "
-                + "WHERE c.tenant_id = ? AND c.deleted = 0 AND c.project_id = ? "
-                + "GROUP BY c.id, c.physical_subsystem_code, s.short_name, s.name ORDER BY system_name";
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                + "LEFT JOIN (SELECT system_code, tenant_id, COUNT(*) AS cnt FROM (" + union + ") u "
+                + "   WHERE system_code IS NOT NULL AND system_code <> '' GROUP BY system_code, tenant_id) agg "
+                + "   ON agg.system_code = c.system_code AND agg.tenant_id = c.tenant_id "
+                + "WHERE c.tenant_id = ? AND c.enabled = 1 AND c.project_id = ? "
+                + "GROUP BY c.system_code, s.short_name, s.name ORDER BY system_name";
         args.add(user.tenantId());
         args.add(scope);
         return jdbc.queryForList(sql, args.toArray());

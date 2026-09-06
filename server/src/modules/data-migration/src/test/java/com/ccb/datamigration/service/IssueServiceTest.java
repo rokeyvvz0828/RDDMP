@@ -128,7 +128,7 @@ class IssueServiceTest {
     }
 
     private IssueService service(StubJdbcTemplate jdbc) {
-        return new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()));
+        return new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
     }
 
     private Map<String, Object> minimalBody() {

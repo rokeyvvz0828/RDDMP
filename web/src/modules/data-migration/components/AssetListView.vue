@@ -9,28 +9,35 @@
 -->
 <script setup lang="ts">
 import '../data-migration.css'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { Delete, Download, Plus, Refresh, Search, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
+import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
 import UiToolbar from '../../../components/ui/UiToolbar.vue'
 import UiPagination from '../../../components/ui/UiPagination.vue'
 import { apiErrorMessage } from '../../../api/error'
 import { deleteDataMigrationAssets, downloadDataMigrationAsset, listDataMigrationAssetsPage, replaceDataMigrationAsset, uploadDataMigrationAsset, type DataMigrationAsset } from '../../../api/data-migration'
+import { useAuthStore } from '../../../stores/auth'
 import { useProjectScope } from '../composables/useProjectScope'
 import ProjectScopeState from './ProjectScopeState.vue'
 
 const props = defineProps<{ assetType: string; pageTitle: string }>()
+
+const auth = useAuthStore()
+const canUpload = computed(() => auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canDelete = computed(() => auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
 
 const scope = useProjectScope()
 const scopeState = scope.state
 const scopeProjectId = scope.projectId
 
 const loading = ref(false)
+const forbidden = ref(false)
 const assets = ref<DataMigrationAsset[]>([])
 const keyword = ref('')
-const componentId = ref<number | null>(null)
+const systemCode = ref('')
 const page = ref(1)
 const size = ref(20)
 const total = ref(0)
@@ -50,6 +57,7 @@ function resetList() {
   assets.value = []
   total.value = 0
   selectedIds.value = []
+  forbidden.value = false
 }
 
 async function load() {
@@ -58,18 +66,22 @@ async function load() {
     return
   }
   loading.value = true
+  forbidden.value = false
   selectedIds.value = []
   try {
     const result = (await listDataMigrationAssetsPage(props.assetType, {
       projectId: scopeProjectId.value,
-      componentId: componentId.value ?? undefined,
+      systemCode: systemCode.value || undefined,
       keyword: keyword.value || undefined,
       page: page.value,
       size: size.value,
     })).data.data
     assets.value = result?.records ?? []
     total.value = result?.total ?? 0
-  } catch (e) { ElMessage.error(messageOf(e)) }
+  } catch (e) {
+    if ((e as { response?: { status?: number } }).response?.status === 403) forbidden.value = true
+    else ElMessage.error(messageOf(e))
+  }
   finally { loading.value = false }
 }
 
@@ -105,7 +117,7 @@ async function saveUpload() {
   saving.value = true
   try {
     if (replacingAsset.value) {
-      await replaceDataMigrationAsset(props.assetType, replacingAsset.value.id, scopeProjectId.value, uploadFile.value, replacingAsset.value.component_id)
+      await replaceDataMigrationAsset(props.assetType, replacingAsset.value.id, scopeProjectId.value, uploadFile.value, replacingAsset.value.system_code)
       ElMessage.success('文件已替换')
     } else {
       await uploadDataMigrationAsset(props.assetType, scopeProjectId.value, uploadFile.value)
@@ -113,7 +125,10 @@ async function saveUpload() {
     }
     drawerOpen.value = false
     await load()
-  } catch (e) { ElMessage.error(messageOf(e)) }
+  } catch (e) {
+    if ((e as { response?: { status?: number } }).response?.status === 403) forbidden.value = true
+    else ElMessage.error(messageOf(e))
+  }
   finally { saving.value = false }
 }
 
@@ -127,7 +142,10 @@ async function downloadAsset(row: DataMigrationAsset) {
     anchor.download = row.asset_name || row.asset_code || 'asset'
     anchor.click()
     URL.revokeObjectURL(url)
-  } catch (e) { ElMessage.error(messageOf(e)) }
+  } catch (e) {
+    if ((e as { response?: { status?: number } }).response?.status === 403) forbidden.value = true
+    else ElMessage.error(messageOf(e))
+  }
   finally { actionBusy.value = false }
 }
 
@@ -144,13 +162,16 @@ async function moveToRecycleBin() {
   }
 }
 
+const forbiddenTitle = computed(() => `暂无${props.pageTitle}查看权限`)
+
 // 全局项目变化时清空上一个项目的列表、筛选与分页状态，再按新项目查询。
 watch(scopeProjectId, () => {
   resetList()
   keyword.value = ''
-  componentId.value = null
+  systemCode.value = ''
   page.value = 1
   drawerOpen.value = false
+  forbidden.value = false
   void load()
 }, { immediate: true })
 
@@ -160,17 +181,18 @@ onMounted(() => { void scope.ensureLoaded() })
 <template>
   <section class="dm-page-root">
     <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel"><el-result icon="warning" :title="forbiddenTitle" sub-title="请向数据迁移管理员申请 data-migration:access 权限。" /></section>
     <template v-else>
     <UiToolbar>
       <el-input v-model="keyword" clearable placeholder="搜索编号或名称" style="width: 240px" @keyup.enter="load">
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
-      <el-input-number v-model="componentId" :min="1" :precision="0" :controls="false" clearable placeholder="组件 ID" style="width: 140px" />
+      <el-input v-model="systemCode" clearable placeholder="系统编号" style="width: 180px" @keyup.enter="load" />
       <template #actions>
         <el-button :disabled="loading || actionBusy" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button>
         <el-button type="primary" :disabled="loading || actionBusy" @click="load"><el-icon><Search /></el-icon>查询</el-button>
-        <el-button type="primary" plain :disabled="actionBusy" @click="openUpload"><el-icon><Plus /></el-icon>上传文件</el-button>
-        <el-button type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="moveToRecycleBin"><el-icon><Delete /></el-icon>移入回收站 ({{ selectedIds.length }})</el-button>
+        <el-button v-if="canUpload" type="primary" plain :disabled="actionBusy" @click="openUpload"><el-icon><Plus /></el-icon>上传文件</el-button>
+        <el-button v-if="canDelete" type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="moveToRecycleBin"><el-icon><Delete /></el-icon>移入回收站 ({{ selectedIds.length }})</el-button>
       </template>
     </UiToolbar>
 
@@ -179,10 +201,11 @@ onMounted(() => { void scope.ensureLoaded() })
       <el-table-column prop="asset_code" label="资产编码" min-width="150" />
       <el-table-column prop="asset_name" label="名称" min-width="180" />
       <el-table-column prop="asset_type" label="类型" min-width="110" />
+      <el-table-column prop="system_code" label="系统编号" min-width="150" />
       <el-table-column label="操作" width="170" fixed="right">
         <template #default="scope">
           <el-button link type="primary" :disabled="actionBusy" @click="downloadAsset(scope.row)"><el-icon><Download /></el-icon>下载</el-button>
-          <el-button link type="primary" :disabled="actionBusy" @click="openReplace(scope.row)"><el-icon><UploadFilled /></el-icon>替换</el-button>
+          <el-button v-if="canUpload" link type="primary" :disabled="actionBusy" @click="openReplace(scope.row)"><el-icon><UploadFilled /></el-icon>替换</el-button>
         </template>
       </el-table-column>
     </UiDataTable>

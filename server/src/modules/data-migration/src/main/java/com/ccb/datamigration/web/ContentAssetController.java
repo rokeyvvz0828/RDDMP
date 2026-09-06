@@ -25,11 +25,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 @PreAuthorize("hasAnyAuthority('data-migration:access','data-migration:write','data-migration:manage','system:admin','data-migration:assets')")
 public class ContentAssetController {
     private static final Map<String, String> RESOURCE_TYPES = Map.of(
-            "mappings", "MAPPING_DOC",
-            "dependencies", "DEPENDENCY",
-            "programs", "SCRIPT",
-            "topics", "TOPIC",
-            "release-drills", "RELEASE_DRILL");
+            "dependencies", "DEPENDENCY");
     private static final String PREFIX = "/api/data-migration/";
 
     private final ContentFileAssetService service;
@@ -40,43 +36,43 @@ public class ContentAssetController {
         this.attachmentStream = attachmentStream;
     }
 
-    @GetMapping({"/mappings", "/dependencies", "/programs", "/topics", "/release-drills"})
+    @GetMapping("/dependencies")
     public ApiResponse<PageResult<Map<String, Object>>> list(HttpServletRequest request,
             @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) Long componentId,
+            @RequestParam(required = false) String systemCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.list(type(request), projectId, componentId, keyword, page, size, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(type(request), projectId, systemCode, keyword, page, size, user), TraceId.getOrCreate());
     }
 
-    @PostMapping({"/mappings/upload", "/dependencies/upload", "/programs/upload", "/topics/upload", "/release-drills/upload"})
+    @PostMapping("/dependencies/upload")
     @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> upload(HttpServletRequest request,
-            @RequestParam long projectId, @RequestParam(required = false) Long componentId,
+            @RequestParam long projectId, @RequestParam(required = false) String systemCode,
             @RequestParam Long attachmentId,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.create(type(request), projectId, componentId, attachmentId, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.create(type(request), projectId, systemCode, attachmentId, user), TraceId.getOrCreate());
     }
 
-    @PutMapping({"/mappings/{id}/upload", "/dependencies/{id}/upload", "/programs/{id}/upload", "/topics/{id}/upload", "/release-drills/{id}/upload"})
+    @PutMapping("/dependencies/{id}/upload")
     @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> replace(HttpServletRequest request, @PathVariable long id,
-            @RequestParam(required = false) Long componentId,
+            @RequestParam(required = false) String systemCode,
             @RequestParam Long attachmentId,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.replace(type(request), id, componentId, attachmentId, user), TraceId.getOrCreate());
+        return ApiResponse.success(service.replace(type(request), id, systemCode, attachmentId, user), TraceId.getOrCreate());
     }
 
-    @PostMapping({"/mappings/delete", "/dependencies/delete", "/programs/delete", "/topics/delete", "/release-drills/delete"})
+    @PostMapping("/dependencies/delete")
     @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Void> delete(HttpServletRequest request, @RequestBody List<Long> ids, @AuthenticationPrincipal AuthUser user) {
         service.delete(type(request), ids, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
-    @GetMapping({"/mappings/{id}/download", "/dependencies/{id}/download", "/programs/{id}/download", "/topics/{id}/download", "/release-drills/{id}/download"})
+    @GetMapping("/dependencies/{id}/download")
     public ResponseEntity<StreamingResponseBody> download(HttpServletRequest request, @PathVariable long id,
                                                           @AuthenticationPrincipal AuthUser user) {
         return attachmentStream.stream(service.downloadAttachmentId(type(request), id, user), user, request);

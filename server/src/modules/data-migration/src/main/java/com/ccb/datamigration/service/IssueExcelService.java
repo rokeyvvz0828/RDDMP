@@ -28,24 +28,12 @@ public class IssueExcelService {
             "问题描述", "解决方案", "会议结论", "问题处理过程", "所属业务场景", "问题处置方", "问题处置责任主体",
             "问题关键字索引", "关联纪要", "问题相关表", "问题相关字段", "所属项目", "创建人", "创建时间", "更新时间"
     };
-    private static final Map<String, String> GRANULARITIES = Map.of(
-            "项目级", "PROJECT", "组件级", "COMPONENT", "表级", "TABLE", "字段级", "FIELD");
-    private static final Map<String, String> SOURCES = Map.of(
-            "数迁检核", "MIGRATION_CHECK", "SIT测试反馈", "SIT_FEEDBACK", "UAT测试反馈", "UAT_FEEDBACK",
-            "数据线反馈", "DATA_LINE_FEEDBACK", "事业群专家反馈", "EXPERT_FEEDBACK", "风险识别", "RISK_IDENTIFICATION",
-            "数迁投产过程", "MIGRATION_RELEASE");
-    private static final Map<String, String> DEFECT_TYPES = Map.ofEntries(
-            Map.entry("需求问题", "REQUIREMENT"), Map.entry("设计问题", "DESIGN"), Map.entry("编码问题", "CODING"),
-            Map.entry("数据质量问题", "DATA_QUALITY"), Map.entry("清理补录问题", "CLEANUP"), Map.entry("业务问题", "BUSINESS"),
-            Map.entry("理解问题", "UNDERSTANDING"), Map.entry("性能问题", "PERFORMANCE"), Map.entry("脱敏问题", "MASKING"),
-            Map.entry("其他问题", "OTHER"));
-    private static final Map<String, String> FREQUENCIES = Map.of(
-            "经典问题", "CLASSIC", "高频重复", "HIGH_FREQ", "低频偶发", "LOW_FREQ", "单次个案", "SINGLE_CASE");
-
     private final IssueService issues;
+    private final DataMigrationCodeValueService codeValues;
 
-    public IssueExcelService(IssueService issues) {
+    public IssueExcelService(IssueService issues, DataMigrationCodeValueService codeValues) {
         this.issues = issues;
+        this.codeValues = codeValues;
     }
 
     public Map<String, Object> importIssues(long projectId, MultipartFile file, AuthUser user) {
@@ -61,11 +49,15 @@ public class IssueExcelService {
             Map<String, Integer> columns = columns(sheet.getRow(0));
             requireColumns(columns, "问题编号", "问题名称", "问题描述");
             DataFormatter formatter = new DataFormatter();
+            Map<String, String> granularityLabels = labelToCode(DataMigrationCodeValueService.DM_ISSUE_GRANULARITY, user);
+            Map<String, String> sourceLabels = labelToCode(DataMigrationCodeValueService.DM_ISSUE_SOURCE, user);
+            Map<String, String> defectLabels = labelToCode(DataMigrationCodeValueService.DM_DEFECT_TYPE, user);
+            Map<String, String> frequencyLabels = labelToCode(DataMigrationCodeValueService.DM_ISSUE_FREQUENCY, user);
             for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (isBlank(row, formatter)) continue;
                 try {
-                    issues.create(toIssue(projectId, row, columns, formatter), user);
+                    issues.create(toIssue(projectId, row, columns, formatter, granularityLabels, sourceLabels, defectLabels, frequencyLabels), user);
                     successCount++;
                 } catch (BusinessException ex) {
                     failureCount++;
@@ -88,6 +80,10 @@ public class IssueExcelService {
     public byte[] exportIssues(Long projectId, String granularity, String systemCode, String issueSource, String defectType,
                                String frequency, String keyword, AuthUser user) {
         List<Map<String, Object>> rows = issues.exportRows(projectId, granularity, systemCode, issueSource, defectType, frequency, keyword, user);
+        Map<String, String> granularityCodes = codeToLabel(DataMigrationCodeValueService.DM_ISSUE_GRANULARITY, user);
+        Map<String, String> sourceCodes = codeToLabel(DataMigrationCodeValueService.DM_ISSUE_SOURCE, user);
+        Map<String, String> defectCodes = codeToLabel(DataMigrationCodeValueService.DM_DEFECT_TYPE, user);
+        Map<String, String> frequencyCodes = codeToLabel(DataMigrationCodeValueService.DM_ISSUE_FREQUENCY, user);
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("问题清单");
             Row header = sheet.createRow(0);
@@ -96,9 +92,9 @@ public class IssueExcelService {
             for (Map<String, Object> data : rows) {
                 Row row = sheet.createRow(rowIndex++);
                 String[] values = {
-                        value(data, "asset_code"), value(data, "asset_name"), label(GRANULARITIES, data.get("granularity")),
-                        value(data, "systemCode"), value(data, "systemName"), label(SOURCES, data.get("issueSource")),
-                        label(DEFECT_TYPES, data.get("defectType")), label(FREQUENCIES, data.get("frequency")),
+                        value(data, "asset_code"), value(data, "asset_name"), label(granularityCodes, data.get("granularity")),
+                        value(data, "systemCode"), value(data, "systemName"), label(sourceCodes, data.get("issueSource")),
+                        label(defectCodes, data.get("defectType")), label(frequencyCodes, data.get("frequency")),
                         value(data, "issueDescription"), value(data, "solution"), value(data, "meetingConclusion"),
                         value(data, "processingSteps"), value(data, "businessScenario"), value(data, "handler"),
                         value(data, "responsibleParty"), value(data, "keywords"), value(data, "relatedMeetingMinuteNames"),
@@ -115,17 +111,19 @@ public class IssueExcelService {
         }
     }
 
-    private static Map<String, Object> toIssue(long projectId, Row row, Map<String, Integer> columns, DataFormatter formatter) {
+    private static Map<String, Object> toIssue(long projectId, Row row, Map<String, Integer> columns, DataFormatter formatter,
+                                               Map<String, String> granularityLabels, Map<String, String> sourceLabels,
+                                               Map<String, String> defectLabels, Map<String, String> frequencyLabels) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("projectId", projectId);
         body.put("issueCode", required(row, columns, formatter, "问题编号"));
         body.put("issueName", required(row, columns, formatter, "问题名称"));
         body.put("issueDescription", required(row, columns, formatter, "问题描述"));
-        put(body, "granularity", enumValue(cell(row, columns, formatter, "颗粒度"), GRANULARITIES, "颗粒度"));
+        put(body, "granularity", enumValue(cell(row, columns, formatter, "颗粒度"), granularityLabels, "颗粒度"));
         put(body, "systemCode", cell(row, columns, formatter, "系统编号"));
-        put(body, "issueSource", enumValue(cell(row, columns, formatter, "问题来源"), SOURCES, "问题来源"));
-        put(body, "defectType", enumValue(cell(row, columns, formatter, "缺陷类型"), DEFECT_TYPES, "缺陷类型"));
-        put(body, "frequency", enumValue(cell(row, columns, formatter, "问题频率分类"), FREQUENCIES, "问题频率分类"));
+        put(body, "issueSource", enumValue(cell(row, columns, formatter, "问题来源"), sourceLabels, "问题来源"));
+        put(body, "defectType", enumValue(cell(row, columns, formatter, "缺陷类型"), defectLabels, "缺陷类型"));
+        put(body, "frequency", enumValue(cell(row, columns, formatter, "问题频率分类"), frequencyLabels, "问题频率分类"));
         put(body, "solution", cell(row, columns, formatter, "解决方案"));
         put(body, "meetingConclusion", cell(row, columns, formatter, "会议结论"));
         put(body, "processingSteps", cell(row, columns, formatter, "问题处理过程"));
@@ -177,12 +175,28 @@ public class IssueExcelService {
         return mapped;
     }
 
+    private Map<String, String> codeToLabel(String category, AuthUser user) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Map<String, Object> option : codeValues.options(category, user)) {
+            result.put(String.valueOf(option.get("value")), String.valueOf(option.get("label")));
+        }
+        return result;
+    }
+
+    private Map<String, String> labelToCode(String category, AuthUser user) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Map<String, Object> option : codeValues.options(category, user)) {
+            result.put(String.valueOf(option.get("label")), String.valueOf(option.get("value")));
+        }
+        return result;
+    }
+
     private static void put(Map<String, Object> body, String key, String value) { if (value != null && !value.isBlank()) body.put(key, value); }
     private static Map<String, Object> rowError(int row, String message) { return Map.of("row", row, "message", message == null ? "导入失败" : message); }
     private static String value(Map<String, Object> data, String key) { Object value = data.get(key); return value == null ? "" : String.valueOf(value); }
     private static String label(Map<String, String> labels, Object code) {
         if (code == null) return "";
         String text = String.valueOf(code);
-        return labels.entrySet().stream().filter(entry -> entry.getValue().equals(text)).map(Map.Entry::getKey).findFirst().orElse(text);
+        return labels.getOrDefault(text, text);
     }
 }

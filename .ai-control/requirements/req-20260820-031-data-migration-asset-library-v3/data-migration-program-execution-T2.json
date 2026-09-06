@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task": "T2",
+  "status": "verified",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java", "purpose": "程序包 CRUD、程序类型/系统编号校验、多文件绑定、分页筛选、下载路径、逻辑删除与统一回收站 SPI"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java", "purpose": "必填/多文件/参数码值/系统项目/编辑重设附件/回收站行为测试"}
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R5", "R7"],
+  "commands": ["mvn -q -pl :ccb-data-migration -am -Dtest=ProgramServiceTest -Dsurefire.failIfNoSpecifiedTests=false test -> 退出码 0"],
+  "local_checks": ["ProgramServiceTest 10 用例 0 失败", "创建绑定两个文件，编辑按提交列表重设多附件"],
+  "diff_summary": ["新增 ProgramService", "审计操作码 PROGRAM_*"],
+  "invariants_checked": ["项目隔离与实体归属", "附件每项不超过 50MB", "doc_code 服务端生成不可改"],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "进入 T3 Controller/RecycleBinSource"
+}

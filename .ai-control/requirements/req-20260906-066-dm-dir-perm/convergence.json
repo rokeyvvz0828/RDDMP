@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "revision": 2,
+  "created_at": "2026-09-06T14:40:00+08:00",
+  "updated_at": "2026-09-06T15:00:00+08:00",
+  "objective": "清理数据迁移目录菜单的冗余权限节点与斜杠权限码",
+  "requirement_coverage": {
+    "R1_数据库目录权限节点清理": "pass - 数据迁移目录 699/720/740/1350 权限节点为 0",
+    "R2_斜杠权限码修复": "pass - 无 data-migration:content/ 残留",
+    "R3_平台模块不改动": "pass - SystemService.java 与 RolePermissionView.vue 已回退"
+  },
+  "task_results": {
+    "T1": "completed"
+  },
+  "test_evidence": {
+    "mysql_directory_permission_count": "目录 699/720/740/1350 均为 0",
+    "platform_code_reverted": "SystemService.java / RolePermissionView.vue 无改动"
+  },
+  "residual_risks": [
+    {
+      "description": "V84 在全新库上仍会对数据迁移目录生成权限节点；V193 已追加幂等清理，执行后目录不再有权限节点",
+      "severity": "low",
+      "mitigation": "沿用 V193 追加迁移即可兜底"
+    }
+  ],
+  "gate_conclusion": "converged",
+  "gate_evidence": "数据迁移目录冗余权限节点与斜杠权限码已清理，平台模块代码无改动，未超出业务模块边界。",
+  "owner_review": "pending - DB 迁移属平台基础设施变更，需 Owner rokeyvvz0828 复核后合入"
+}

@@ -32,12 +32,12 @@ class ContentFileAssetDocCodeGovernanceTest {
                 new ContentDocCodeGenerator());
 
         Map<String, Object> created = service.create(
-                "MAPPING_DOC", 10L, null, 101L, USER);
+                "DEPENDENCY", 10L, null, 101L, USER);
         String code = String.valueOf(created.get("asset_code"));
-        assertTrue(code.matches("MAP-[0-9a-f]{32}"));
+        assertTrue(code.matches("DEP-[0-9a-f]{32}"));
 
         Map<String, Object> replaced = service.replace(
-                "MAPPING_DOC", ((Number) created.get("id")).longValue(), null,
+                "DEPENDENCY", ((Number) created.get("id")).longValue(), null,
                 102L, USER);
 
         assertEquals(code, replaced.get("asset_code"));
@@ -54,7 +54,7 @@ class ContentFileAssetDocCodeGovernanceTest {
 
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.startsWith("SELECT project_id, component_id, owner_id FROM dm_mapping_doc")) {
+            if (sql.startsWith("SELECT project_id, system_code, owner_id FROM dm_dependency")) {
                 return row.isEmpty() ? List.of() : List.of(row);
             }
             return List.of();
@@ -72,15 +72,15 @@ class ContentFileAssetDocCodeGovernanceTest {
 
         @Override
         public int update(String sql, Object... args) {
-            if (sql.startsWith("INSERT INTO dm_mapping_doc")) {
+            if (sql.startsWith("INSERT INTO dm_dependency")) {
                 row.put("id", args[0]);
                 row.put("project_id", args[2]);
-                row.put("component_id", args[3]);
+                row.put("system_code", args[3]);
                 row.put("asset_code", args[4]);
                 row.put("asset_name", args[5]);
                 row.put("owner_id", args[6]);
-            } else if (sql.startsWith("UPDATE dm_mapping_doc SET component_id")) {
-                row.put("component_id", args[0]);
+            } else if (sql.startsWith("UPDATE dm_dependency SET system_code")) {
+                row.put("system_code", args[0]);
                 row.put("asset_name", args[1]);
             }
             return 1;

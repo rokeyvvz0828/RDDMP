@@ -10,7 +10,7 @@
 -->
 <script setup lang="ts">
 import '../data-migration.css'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download, Edit, Search, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../../../components/ui/UiDataTable.vue'
@@ -26,10 +26,16 @@ import {
   updateDataMigrationStructured,
   type DataMigrationAsset
 } from '../../../api/data-migration'
+import { useAuthStore } from '../../../stores/auth'
 import { useProjectScope } from '../composables/useProjectScope'
 import ProjectScopeState from './ProjectScopeState.vue'
 
 const props = defineProps<{ structuredType: string; pageTitle: string }>()
+
+const auth = useAuthStore()
+const canImport = computed(() => auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canDeleteItems = computed(() => auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canEditItems = computed(() => auth.hasPermission('data-migration:write') || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
 
 const scope = useProjectScope()
 const scopeState = scope.state
@@ -140,7 +146,7 @@ async function saveEdit() {
   try { structuredData = JSON.parse(editJson.value) } catch { ElMessage.warning('字段 JSON 格式无效'); return }
   saving.value = true
   try {
-    await updateDataMigrationStructured(props.structuredType, asset.id, { componentId: asset.component_id, assetName: editName.value.trim(), structuredData })
+    await updateDataMigrationStructured(props.structuredType, asset.id, { systemCode: asset.system_code ?? '', assetName: editName.value.trim(), structuredData })
     ElMessage.success('已保存')
     drawerOpen.value = false
     await load()
@@ -200,9 +206,9 @@ watch(scopeProjectId, () => {
         <template #actions>
           <el-button :disabled="loading || actionBusy" @click="load"><el-icon><Search /></el-icon>查询</el-button>
           <input ref="structuredInput" class="dm-hidden" type="file" accept=".xlsx" @change="inspectStructuredImport">
-          <el-button :disabled="actionBusy" @click="chooseStructuredImport"><el-icon><UploadFilled /></el-icon>导入 Excel</el-button>
+          <el-button v-if="canImport" :disabled="actionBusy" @click="chooseStructuredImport"><el-icon><UploadFilled /></el-icon>导入 Excel</el-button>
           <el-button :disabled="actionBusy" @click="exportStructured"><el-icon><Download /></el-icon>导出 Excel</el-button>
-          <el-button type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="removeSelected"><el-icon><Delete /></el-icon>删除 ({{ selectedIds.length }})</el-button>
+          <el-button v-if="canDeleteItems" type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="removeSelected"><el-icon><Delete /></el-icon>删除 ({{ selectedIds.length }})</el-button>
         </template>
       </UiToolbar>
 
@@ -213,9 +219,10 @@ watch(scopeProjectId, () => {
         <el-table-column prop="asset_code" label="资产编码" min-width="150" />
         <el-table-column prop="asset_name" label="名称" min-width="180" />
         <el-table-column prop="asset_type" label="类型" min-width="110" />
+        <el-table-column prop="system_code" label="系统编号" min-width="150" />
         <el-table-column label="操作" width="110" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" :disabled="actionBusy" @click="openEdit(scope.row)"><el-icon><Edit /></el-icon>编辑字段</el-button>
+            <el-button v-if="canEditItems" link type="primary" :disabled="actionBusy" @click="openEdit(scope.row)"><el-icon><Edit /></el-icon>编辑字段</el-button>
           </template>
         </el-table-column>
       </UiDataTable>

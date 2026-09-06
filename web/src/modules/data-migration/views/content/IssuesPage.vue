@@ -20,8 +20,9 @@ import { useAuthStore } from '../../../../stores/auth'
 import {
   listIssues, getIssue, createIssue, updateIssue, deleteIssues, importIssues, exportIssues,
   listIssueRecycleBin, restoreIssues, purgeIssues, purgeAllIssues,
-  getIssueSystemOptions, getIssueSystemName,
+  getSystemOptions, getIssueSystemName,
   getIssueMeetingOptions, getIssueTargetTableOptions, getIssueTargetFieldOptions,
+  getDataMigrationParamOptions, DM_CODE_CATEGORIES,
   type IssueRecord, type IssueQuery, type IssueFormData, type IssueUpdateData, type IssueImportResult, type SelectOption
 } from '../../../../api/data-migration'
 import ProjectScopeState from '../../components/ProjectScopeState.vue'
@@ -36,10 +37,10 @@ const scopeProjectName = scope.projectName
 const loading = ref(false), records = ref<IssueRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
 const fGranularity = ref(''), fSystem = ref(''), fSource = ref(''), fDefect = ref(''), fFreq = ref(''), fKeyword = ref('')
 const cache = { sys: new Map<number, SelectOption[]>(), meet: new Map<number, SelectOption[]>(), tbl: new Map<number, SelectOption[]>(), fld: new Map<number, SelectOption[]>() }
-const GRAV = [{ value: 'PROJECT', label: '项目级' }, { value: 'COMPONENT', label: '组件级' }, { value: 'TABLE', label: '表级' }, { value: 'FIELD', label: '字段级' }]
-const SRC = [{ value: 'MIGRATION_CHECK', label: '数迁检核' }, { value: 'SIT_FEEDBACK', label: 'SIT测试反馈' }, { value: 'UAT_FEEDBACK', label: 'UAT测试反馈' }, { value: 'DATA_LINE_FEEDBACK', label: '数据线反馈' }, { value: 'EXPERT_FEEDBACK', label: '事业群专家反馈' }, { value: 'RISK_IDENTIFICATION', label: '风险识别' }, { value: 'MIGRATION_RELEASE', label: '数迁投产过程' }]
-const DEF = [{ value: 'REQUIREMENT', label: '需求问题' }, { value: 'DESIGN', label: '设计问题' }, { value: 'CODING', label: '编码问题' }, { value: 'DATA_QUALITY', label: '数据质量问题' }, { value: 'CLEANUP', label: '清理补录问题' }, { value: 'BUSINESS', label: '业务问题' }, { value: 'UNDERSTANDING', label: '理解问题' }, { value: 'PERFORMANCE', label: '性能问题' }, { value: 'MASKING', label: '脱敏问题' }, { value: 'OTHER', label: '其他问题' }]
-const FREQ = [{ value: 'CLASSIC', label: '经典问题' }, { value: 'HIGH_FREQ', label: '高频重复' }, { value: 'LOW_FREQ', label: '低频偶发' }, { value: 'SINGLE_CASE', label: '单次个案' }]
+const GRAV = ref<SelectOption[]>([])
+const SRC = ref<SelectOption[]>([])
+const DEF = ref<SelectOption[]>([])
+const FREQ = ref<SelectOption[]>([])
 const drawer = ref(false), saving = ref(false), editing = ref(false), editId = ref<number | null>(null)
 const fv = ref({ projectId: null as number | null, issueCode: '', issueName: '', granularity: '', systemCode: '', systemName: '', issueSource: '', defectType: '', issueDescription: '', solution: '', meetingConclusion: '', processingSteps: '', businessScenario: '', handler: '', responsibleParty: '', keywords: [] as string[], relatedMeetingMinutes: [] as number[], frequency: '', relatedTables: [] as number[], relatedFields: [] as number[] })
 const fSystemOpts = ref<SelectOption[]>([]), fMeetingOpts = ref<SelectOption[]>([]), fTableOpts = ref<SelectOption[]>([]), fFieldOpts = ref<SelectOption[]>([]), kwInput = ref('')
@@ -59,7 +60,7 @@ const cancelled = (e: unknown): boolean => { if (e === 'cancel' || e === 'close'
 const sd = (i: IssueRecord): Record<string, any> => i as Record<string, any>
 const fmtDate = (v?: string | null) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? String(v) : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
 const lbl = (o: SelectOption[], v?: string) => o.find(x => x.value === v)?.label ?? v ?? '—'
-async function loadFilterSystems() { const pid = scopeProjectId.value; filterSysOpts.value = pid ? ((await getIssueSystemOptions(pid).catch(() => null))?.data.data ?? []) : [] }
+async function loadFilterSystems() { const pid = scopeProjectId.value; filterSysOpts.value = pid ? ((await getSystemOptions(pid).catch(() => null))?.data.data ?? []) : [] }
 async function getCached(m: Map<number, SelectOption[]>, id: number, l: (id: number) => Promise<SelectOption[]>): Promise<SelectOption[]> { if (m.has(id)) return m.get(id)!; const r = await l(id); m.set(id, r); return r }
 async function loadList() { if (scopeProjectId.value == null) { records.value = []; total.value = 0; selectedIds.value = []; return }; loading.value = true; selectedIds.value = []; try { const p: IssueQuery = { page: page.value, size: size.value, projectId: scopeProjectId.value }; if (fGranularity.value) p.granularity = fGranularity.value; if (fSystem.value) p.systemCode = fSystem.value; if (fSource.value) p.issueSource = fSource.value; if (fDefect.value) p.defectType = fDefect.value; if (fFreq.value) p.frequency = fFreq.value; if (fKeyword.value.trim()) p.keyword = fKeyword.value.trim(); const d = (await listIssues(p)).data.data; records.value = d?.records ?? []; total.value = d?.total ?? 0 } catch (e) { ElMessage.error(msg(e)); records.value = []; total.value = 0 } finally { loading.value = false } }
 async function loadRecycle() { if (scopeProjectId.value == null) { recRecords.value = []; recTotal.value = 0; recSelected.value = []; return }; recLoading.value = true; recSelected.value = []; try { const p: { projectId: number; keyword?: string; page?: number; size?: number } = { page: recPage.value, size: recSize.value, projectId: scopeProjectId.value }; if (recKeyword.value.trim()) p.keyword = recKeyword.value.trim(); const d = (await listIssueRecycleBin(p)).data.data; recRecords.value = d?.records ?? []; recTotal.value = d?.total ?? 0 } catch (e) { ElMessage.error(msg(e)); recRecords.value = []; recTotal.value = 0 } finally { recLoading.value = false } }
@@ -68,7 +69,16 @@ function doReset() { fGranularity.value = ''; fSystem.value = ''; fSource.value 
 function switchTab(t: string) { t === 'recycle' ? loadRecycle() : loadList() }
 function resetForm() { fv.value = { projectId: scopeProjectId.value, issueCode: '', issueName: '', granularity: '', systemCode: '', systemName: '', issueSource: '', defectType: '', issueDescription: '', solution: '', meetingConclusion: '', processingSteps: '', businessScenario: '', handler: '', responsibleParty: '', keywords: [], relatedMeetingMinutes: [], frequency: '', relatedTables: [], relatedFields: [] }; previousTableIds.value = []; kwInput.value = ''; fSystemOpts.value = []; fMeetingOpts.value = []; fTableOpts.value = []; fFieldOpts.value = [] }
 function openAdd() { editing.value = false; editId.value = null; resetForm(); if (scopeProjectId.value) void loadFormOpts(scopeProjectId.value); drawer.value = true }
-async function loadFormOpts(pid: number) { const [s, m, t] = await Promise.all([getCached(cache.sys, pid, id => getIssueSystemOptions(id).then(r => r.data.data ?? [])), getCached(cache.meet, pid, id => getIssueMeetingOptions(id).then(r => r.data.data ?? [])), getCached(cache.tbl, pid, id => getIssueTargetTableOptions(id).then(r => r.data.data ?? []))]); fSystemOpts.value = s; fMeetingOpts.value = m; fTableOpts.value = t }
+async function loadFormOpts(pid: number) { const [s, m, t] = await Promise.all([getCached(cache.sys, pid, id => getSystemOptions(id).then(r => r.data.data ?? [])), getCached(cache.meet, pid, id => getIssueMeetingOptions(id).then(r => r.data.data ?? [])), getCached(cache.tbl, pid, id => getIssueTargetTableOptions(id).then(r => r.data.data ?? []))]); fSystemOpts.value = s; fMeetingOpts.value = m; fTableOpts.value = t }
+async function loadCodeOptions() {
+  const [g, s, d, f] = await Promise.all([
+    getDataMigrationParamOptions(DM_CODE_CATEGORIES.issueGranularity).then(r => r.data.data ?? []).catch(() => []),
+    getDataMigrationParamOptions(DM_CODE_CATEGORIES.issueSource).then(r => r.data.data ?? []).catch(() => []),
+    getDataMigrationParamOptions(DM_CODE_CATEGORIES.defectType).then(r => r.data.data ?? []).catch(() => []),
+    getDataMigrationParamOptions(DM_CODE_CATEGORIES.issueFrequency).then(r => r.data.data ?? []).catch(() => [])
+  ])
+  GRAV.value = g; SRC.value = s; DEF.value = d; FREQ.value = f
+}
 async function loadFieldOpts(tableCodes: number[]) { fFieldOpts.value = []; fieldTableMap.clear(); for (const tableCode of tableCodes) { const r = await getCached(cache.fld, tableCode, tid => getIssueTargetFieldOptions(tid).then(res => res.data.data ?? [])); r.forEach(o => fieldTableMap.set(Number(o.value), tableCode)); fFieldOpts.value.push(...r) } }
 async function openEdit(item: IssueRecord) {
   if (!canEdit(item)) return
@@ -141,7 +151,7 @@ function openImport() { importFile.value = null; importResult.value = null; impo
 function handleImportFile(file: File) { importFile.value = file; importResult.value = null; return false }
 function handleImportRemove() { importFile.value = null; importResult.value = null }
 async function doImport() { const pid = scopeProjectId.value; if (!pid) { ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目'); return } if (!importFile.value) { ElMessage.warning('请选择 Excel 文件'); return }; busy.value = true; try { importResult.value = (await importIssues(pid, importFile.value)).data.data; ElMessage.success(`导入完成：成功 ${importResult.value?.successCount ?? 0} 条，失败 ${importResult.value?.failureCount ?? 0} 条`); loadList() } catch (e) { ElMessage.error(msg(e)) } finally { busy.value = false } }
-onMounted(async () => { await scope.ensureLoaded(); await loadFilterSystems() })
+onMounted(async () => { await scope.ensureLoaded(); await loadFilterSystems(); await loadCodeOptions() })
 
 // 全局项目变化：丢弃上一个项目的列表、回收站、筛选与表单状态，按新项目重新加载。
 watch(scopeProjectId, () => {
@@ -188,7 +198,7 @@ watch(scopeProjectId, () => {
           <el-select v-model="fGranularity" placeholder="颗粒度" clearable style="width:110px" @change="doSearch">
             <el-option v-for="o in GRAV" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
-          <el-select v-model="fSystem" placeholder="系统编号" clearable filterable style="width:140px" @change="doSearch">
+          <el-select v-model="fSystem" placeholder="输入系统编号或名称搜索" clearable filterable style="width:180px" @change="doSearch">
             <el-option v-for="o in filterSysOpts" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
           <el-select v-model="fSource" placeholder="问题来源" clearable style="width:140px" @change="doSearch">
@@ -294,7 +304,7 @@ watch(scopeProjectId, () => {
           </el-col>
           <el-col :span="8">
             <el-form-item label="系统编号">
-              <el-select v-model="fv.systemCode" placeholder="选择系统" clearable filterable style="width:100%" @change="onSysChange">
+              <el-select v-model="fv.systemCode" placeholder="输入系统编号或名称搜索" clearable filterable style="width:100%" @change="onSysChange">
                 <el-option v-for="o in fSystemOpts" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>

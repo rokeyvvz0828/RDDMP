@@ -1,0 +1,40 @@
+{
+  "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "increment": "迁移检核规则专属域优化（REQ-20260820-031 增量）",
+  "execution_date": "2026-09-06",
+  "user_decisions": {
+    "doc_docname_removed": true,
+    "single_row_edit": true,
+    "param_categories": ["DM_RULE_TARGET_TYPE", "DM_RULE_CATEGORY"],
+    "association_linkage": "不联动（表/字段名自由文本）",
+    "landing": "并入现有分支 feat/REQ-20260820-031-data-migration",
+    "batch_upload_semantics": "选择文件不自动上传，点击“提交导入”后才上传解析"
+  },
+  "changes": [
+    "V194__data_migration_rule_domain.sql：dm_rule 删除 doc_code/doc_name/structured_data，新增 check_target_type/rule_category/rule_code/rule_code_desc/rule_description/table_name_en/cn/field_name_en/cn 及唯一/查询/关键字索引，初始化 DM_RULE_TARGET_TYPE/DM_RULE_CATEGORY 参数类别",
+    "V195__data_migration_rule_recycle_permission.sql：统一回收站菜单补 manage 权限节点并授权角色1/200",
+    "V196__data_migration_restore_admin_bypass_permission.sql：恢复 data-migration:manage 管理员豁免权限节点并授权角色1/200",
+    "RuleService/RuleController/RuleRecycleBinSource 新增；RULE 从通用结构化资产链路摘除",
+    "web/src/api/data-migration.ts 新增 Rule 契约；ValidationRulesPage.vue 重写为专属页",
+    "ContentRecycleBinController 守卫补充 data-migration:content:recycle-bin:manage"
+  ],
+  "commands_run": [
+    "mvn -DskipTests clean install -pl :ccb-boot -am -Dspring-boot.repackage.skip=true",
+    "mvn -DskipTests install -pl :ccb-data-migration -Dspring-boot.repackage.skip=true",
+    "mvn -DskipTests install -pl :ccb-infrastructure -Dspring-boot.repackage.skip=true",
+    "mvn -DskipTests test ...（定向测试 40/40 通过）",
+    "npm --prefix web run build（通过）",
+    "后端 spring-boot:run 本地启动并完成 API 冒烟验证"
+  ],
+  "runtime_smoke": {
+    "endpoint": "http://127.0.0.1:8080/api/data-migration/rules",
+    "unauth_list": "HTTP 401 Authentication required",
+    "auth_list_detail_update_delete_import_export_template_recycle": "通过（未认证 401 → 登录后 list/detail/create/update/delete/import/export/template/options/systems/recycle restore+purge 均正常）",
+    "db_schema": "dm_rule 已删除 doc_code/doc_name/structured_data，新增专属列与索引；flyway_schema_history V194/V195/V196 success=true"
+  },
+  "cleanup": "本地冒烟测试数据（dm_rule 测试行、dm_component 测试系统、arch_physical_subsystem 测试系统）已删除",
+  "known_risks_or_pre_existing": [
+    "全量 mvn test 中 DataMigrationGovernanceRemediationMySqlTest 等 MySQL 治理测试存在本分支既有失败（sys_user_role 相关 BadSqlGrammar），与本次增量无关",
+    "V194 在本机开发过程中曾被修改（增加 structured_data 删除）并按未发布增量重新应用；如已推送/发布需按台后数据一致性复核"
+  ]
+}

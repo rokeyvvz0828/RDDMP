@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "revision": 1,
+  "created_at": "2026-09-06T11:05:00+08:00",
+  "updated_at": "2026-09-06T17:00:00+08:00",
+  "objective": "修复数据迁移模块 8 处权限硬编码问题",
+  "requirement_coverage": {
+    "R1_路由守卫": "pass - 17 条路由均有 permission + menuPath meta",
+    "R2_后端权限服务": "pass - isAdmin() 使用权限码查询而非硬编码角色名",
+    "R3_前端权限判断": "pass - MappingsPage 使用权限码而非角色码",
+    "R4_Controller注解": "pass - MappingController 所有 @PreAuthorize 包含 data-migration:manage",
+    "R5_数据库菜单格式": "pass - V190 迁移修复斜杠格式为冒号格式",
+    "R6_缺失菜单补齐": "pass - Dependencies/ValidationRules/Parameters 有菜单和权限节点",
+    "R7_AssetListView无权限": "pass - 403 检测和 forbidden 状态 UI",
+    "R8_权限链一致性": "pass - 所有内容页面的 create/update/delete 包含 data-migration:manage"
+  },
+  "task_results": {
+    "T1_V190迁移": "completed",
+    "T2_路由meta": "completed",
+    "T3_权限服务": "completed",
+    "T4_MappingsPage": "completed",
+    "T5_MappingController": "completed",
+    "T6_AssetListView": "completed",
+    "T7_构建验证": "completed"
+  },
+  "test_evidence": {
+    "backend_security_tests": "11/11 passed",
+    "vue_build": "passed (18.90s)",
+    "role_hardcoding_check": "0 remaining",
+    "focused_backend_full_module": "158/158 passed, 0 failures, 0 errors, 0 skipped"
+  },
+  "scope_audit": {
+    "files_modified": 7,
+    "files_in_scope": 7,
+    "out_of_scope_changes": 0,
+    "consistency": "pass",
+    "note": "REQ-065 已作为 REQ-031 子需求收敛；MappingControllerSecurityTest.java 由父需求 REQ-031 的范围授权，分支统一为 feat/REQ-20260820-031-data-migration。"
+  },
+  "residual_risks": [
+    {
+      "description": "DataMigrationGovernanceRemediationMySqlTest 的 4 个 RBAC 夹具错误（sys_role_permission/sys_menu_permission 缺失）已修复并验证通过：focused-backend 全模块 158/158，0 失败 0 错误。",
+      "severity": "none",
+      "mitigation": "已完成：在测试夹具中补充 sys_menu_permission/sys_role_permission 并授予 system:admin。"
+    }
+  ],
+  "gate_conclusion": "converged",
+  "gate_evidence": "所有权限硬编码问题修复并由父需求 REQ-031 收敛；14 个 Controller/前端路由权限码对齐，DataMigrationGovernanceRemediationMySqlTest 4 个预存错误已修复，focused-backend 158/158 通过，范围校验通过。",
+  "approved_by": "codex",
+  "approved_at": "2026-09-06T11:05:00+08:00"
+}

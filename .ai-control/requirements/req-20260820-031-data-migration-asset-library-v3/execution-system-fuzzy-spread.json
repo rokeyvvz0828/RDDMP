@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "task_id": "system-fuzzy-spread",
+  "parent_task": "REQ-20260820-031-data-migration-asset-library-v3",
+  "trigger": "用户要求将专题材料已验收的「系统编号/名称本地模糊搜索」策略推广到会议纪要、迁移方案、问题清单、迁移程序、投产及演练、系统/组件清单、目标表结构、中间表结构，并将汇报材料关键字索引新增对齐会议纪要。",
+  "status": "implemented_and_browser_verified",
+  "scope_kind": "frontend_fuzzy_search_spread_and_release_drill_filter",
+  "decision_recorded": "候选系统统一来自当前项目 dm_component.enabled=1，浏览器一次加载、filterable 本地随输随筛，编号/名称大小写不敏感，不增加架构权限。投产及演练筛选新增 systemCode 后端参数和服务端 SQL 过滤；移动端分页跳转控件在小屏隐藏以消除横向溢出。",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java", "purpose": "list 新增 systemCode 查询参数。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java", "purpose": "list/appendFilters 支持 a.system_code = ? 过滤。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillServiceTest.java", "purpose": "适配 service.list 新签名（补 null systemCode）。"},
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "ReleaseDrillQuery 增加 systemCode。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue", "purpose": "筛选栏新增涉及物理子系统下拉，placeholder=输入系统编号或名称搜索，filterable 一次加载。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/MeetingsPage.vue", "purpose": "关联系统筛选/表单 placeholder 改为输入系统编号或名称搜索；原有 filterable 本地过滤保留。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/PlansPage.vue", "purpose": "关联系统筛选/表单 placeholder 对齐。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/IssuesPage.vue", "purpose": "系统编号筛选/表单 placeholder 对齐。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ProgramsPage.vue", "purpose": "程序类型筛选系统下拉 placeholder 对齐。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/base/ComponentsPage.vue", "purpose": "涉及物理子系统筛选 placeholder 改为涉及物理子系统(编号/名称)。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/base/TargetTablesPage.vue", "purpose": "目标表/中间表页系统编号筛选 placeholder 对齐。ReportsPage 关键字索引交互已在前序任务实现，本次浏览器验收确认。"},
+    {"path_or_resource": "web/src/modules/data-migration/data-migration.css", "purpose": "小屏隐藏 dm-page 分页 total/sizes/jumper，修复跨页横向溢出。"}
+  ],
+  "commands": [
+    {"command": "mvn -q -pl server/src/modules/data-migration -am test", "exit": 0, "observed": "data-migration 模块测试 130 run / 0 fail / 0 error / 0 skip。"},
+    {"command": "npm --prefix web run build", "exit": 0, "observed": "Vite production build 成功，约 19s，仅 chunk-size 警告。"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit": 0, "observed": "Codex scope check passed; 298 changed file(s)。"},
+    {"command": "./backend-dev.sh stop && ./backend-dev.sh start", "exit": 0, "observed": "后端重启成功；/actuator/health=200，应用启动时间约 4.7s。"},
+    {"command": "Playwright Core + /snap/bin/chromium 运行 /tmp/dmgui-BMl8O3/browser-check.mjs（桌面 1440x900 + 移动 390x844）", "exit": 0, "observed": "27/27 断言通过：登录、投产及演练/会议/方案/问题/程序/组件/目标表/中间表系统下拉模糊筛选、投产及演练 systemCode 过滤、汇报材料关键字标签新增、5 个代表页移动端无横向溢出、无控制台错误、无 4xx/5xx。"}
+  ],
+  "risk_notes": [
+    "验收期间为补足本地 fixture，临时将 P2026-002 两个组件 enabled 置 1 并在浏览器中新增一条投产及演练测试资料，验收后已逻辑删除并 purge、恢复 enabled=0、删除临时附件；本地默认数据不保留验收脏数据。",
+    "全部变更限于 codex-task-scope writable_paths，未新增 Flyway，未触碰平台/shared 只读面。"
+  ]
+}

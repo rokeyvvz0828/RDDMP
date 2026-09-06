@@ -18,7 +18,6 @@ public class ContentDocCodeGenerator {
             Map.entry("TOPIC", "TOPIC"),
             Map.entry("RELEASE_DRILL", "DRILL"),
             Map.entry("REPORT", "REPORT"),
-            Map.entry("RULE", "RULE"),
             Map.entry("PARAMETER", "PARAM"));
 
     public String generate(String contentType) {

@@ -15,16 +15,17 @@ import java.util.concurrent.ThreadLocalRandom;
 /** 独立问题清单服务：所有问题业务字段直接存储在 dm_issue。 */
 @Service
 public class IssueService {
-    private static final Set<String> GRANULARITIES = Set.of("PROJECT", "COMPONENT", "TABLE", "FIELD");
-    private static final Set<String> ISSUE_SOURCES = Set.of("MIGRATION_CHECK", "SIT_FEEDBACK", "UAT_FEEDBACK", "DATA_LINE_FEEDBACK", "EXPERT_FEEDBACK", "RISK_IDENTIFICATION", "MIGRATION_RELEASE");
-    private static final Set<String> DEFECT_TYPES = Set.of("REQUIREMENT", "DESIGN", "CODING", "DATA_QUALITY", "CLEANUP", "BUSINESS", "UNDERSTANDING", "PERFORMANCE", "MASKING", "OTHER");
-    private static final Set<String> FREQUENCIES = Set.of("CLASSIC", "HIGH_FREQ", "LOW_FREQ", "SINGLE_CASE");
     private static final Set<Integer> PAGE_SIZES = Set.of(20, 50, 100);
 
     private final JdbcTemplate jdbc;
     private final DataMigrationPermissionService permissions;
+    private final DataMigrationCodeValueService codeValues;
 
-    public IssueService(JdbcTemplate jdbc, DataMigrationPermissionService permissions) { this.jdbc = jdbc; this.permissions = permissions; }
+    public IssueService(JdbcTemplate jdbc, DataMigrationPermissionService permissions, DataMigrationCodeValueService codeValues) {
+        this.jdbc = jdbc;
+        this.permissions = permissions;
+        this.codeValues = codeValues;
+    }
 
     public PageResult<Map<String, Object>> list(Long projectId, String granularity, String systemCode, String issueSource, String defectType, String frequency, String keyword, int page, int size, AuthUser user) {
         long scope = permissions.requireProject(projectId, user);
@@ -49,7 +50,7 @@ public class IssueService {
         long projectId = number(body.get("projectId"), "projectId"); ensureProject(projectId, user);
         String code = text(body.get("issueCode"), "issueCode"); String name = text(body.get("issueName"), "issueName");
         String systemCode = textOrNull(body.get("systemCode")); ensureSystemCode(projectId, systemCode, user);
-        ensureCodeAvailable(projectId, code, null, user); validateEnums(body);
+        ensureCodeAvailable(projectId, code, null, user); validateEnums(body, user);
         long id = nextId();
         try {
             jdbc.update("INSERT INTO dm_issue (id, tenant_id, project_id, issue_code, issue_name, granularity, system_code, issue_source, defect_type, issue_description, solution, meeting_conclusion, processing_steps, business_scenario, handler, responsible_party, keywords, frequency, owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -67,7 +68,7 @@ public class IssueService {
         long projectId = permissions.requireStoredProject(current.get("project_id"), user);
         String code = text(body.getOrDefault("issueCode", current.get("asset_code")), "issueCode"); String name = text(body.getOrDefault("issueName", current.get("asset_name")), "issueName");
         String systemCode = textOrNull(body.get("systemCode")); ensureSystemCode(projectId, systemCode, user);
-        ensureCodeAvailable(projectId, code, id, user); validateEnums(body);
+        ensureCodeAvailable(projectId, code, id, user); validateEnums(body, user);
         try {
             int changed = jdbc.update("UPDATE dm_issue SET issue_code = ?, issue_name = ?, granularity = ?, system_code = ?, issue_source = ?, defect_type = ?, issue_description = ?, solution = ?, meeting_conclusion = ?, processing_steps = ?, business_scenario = ?, handler = ?, responsible_party = ?, keywords = ?, frequency = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0",
                     code, name, textOrNull(body.get("granularity")), systemCode, textOrNull(body.get("issueSource")), textOrNull(body.get("defectType")), textOrNull(body.get("issueDescription")), textOrNull(body.get("solution")), textOrNull(body.get("meetingConclusion")), textOrNull(body.get("processingSteps")), textOrNull(body.get("businessScenario")), textOrNull(body.get("handler")), textOrNull(body.get("responsibleParty")), keywords(body.get("keywords")), textOrNull(body.get("frequency")), user.id(), id, user.tenantId());
@@ -141,7 +142,6 @@ public class IssueService {
     @Transactional
     public void purgeAll(Long projectId, AuthUser user) { permissions.requireAdmin(user); long scope = permissions.requireProject(projectId, user); jdbc.update("DELETE FROM dm_issue_relation WHERE tenant_id = ? AND (issue_id IN (SELECT id FROM dm_issue WHERE tenant_id = ? AND project_id = ? AND deleted = 1) OR (related_type = 'MEETING' AND related_id IN (SELECT meeting_id FROM dm_meeting WHERE tenant_id = ? AND project_id = ? AND deleted = 1)))", user.tenantId(), user.tenantId(), scope, user.tenantId(), scope); jdbc.update("DELETE FROM dm_issue WHERE tenant_id = ? AND project_id = ? AND deleted = 1", user.tenantId(), scope); audit(user, "ISSUE_PURGE_ALL", scope, 0L); }
 
-    public List<Map<String, Object>> getSystemOptions(Long projectId, AuthUser user) { long scope = permissions.requireProject(projectId, user); return jdbc.queryForList("SELECT c.physical_subsystem_code AS value, CONCAT(c.physical_subsystem_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label FROM dm_component c LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 WHERE c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0 ORDER BY c.physical_subsystem_code", user.tenantId(), scope); }
     public String getSystemName(String systemCode, AuthUser user) { if (systemCode == null || systemCode.isBlank()) return null; List<Map<String, Object>> rows = jdbc.queryForList("SELECT COALESCE(short_name, name, '') AS system_name FROM arch_physical_subsystem WHERE tenant_id = ? AND code = ? AND deleted = 0", user.tenantId(), systemCode.trim()); return rows.isEmpty() ? null : String.valueOf(rows.get(0).get("system_name")); }
     public List<Map<String, Object>> getMeetingOptions(Long projectId, AuthUser user) { long scope = permissions.requireProject(projectId, user); return jdbc.queryForList("SELECT meeting_id AS value, meeting_title AS label FROM dm_meeting WHERE tenant_id = ? AND project_id = ? AND deleted = 0 ORDER BY meeting_title, meeting_id", user.tenantId(), scope); }
     public List<Map<String, Object>> getTargetTableOptions(Long projectId, AuthUser user) { long scope = permissions.requireProject(projectId, user); return jdbc.queryForList("SELECT table_code AS value, table_name_en AS label FROM dm_target_table WHERE tenant_id = ? AND project_id = ? AND deleted = 0 ORDER BY table_name_en", user.tenantId(), scope); }
@@ -157,11 +157,11 @@ public class IssueService {
 
     private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String granularity, String systemCode, String issueSource, String defectType, String frequency, String keyword, boolean deleted) {
         sql.append(" AND i.project_id = ?"); args.add(projectId);
-        if (!deleted && granularity != null && GRANULARITIES.contains(granularity)) { sql.append(" AND i.granularity = ?"); args.add(granularity); }
+        if (!deleted && granularity != null && !granularity.isBlank()) { sql.append(" AND i.granularity = ?"); args.add(granularity); }
         if (!deleted && systemCode != null && !systemCode.isBlank()) { sql.append(" AND i.system_code = ?"); args.add(systemCode.trim()); }
-        if (!deleted && issueSource != null && ISSUE_SOURCES.contains(issueSource)) { sql.append(" AND i.issue_source = ?"); args.add(issueSource); }
-        if (!deleted && defectType != null && DEFECT_TYPES.contains(defectType)) { sql.append(" AND i.defect_type = ?"); args.add(defectType); }
-        if (!deleted && frequency != null && FREQUENCIES.contains(frequency)) { sql.append(" AND i.frequency = ?"); args.add(frequency); }
+        if (!deleted && issueSource != null && !issueSource.isBlank()) { sql.append(" AND i.issue_source = ?"); args.add(issueSource); }
+        if (!deleted && defectType != null && !defectType.isBlank()) { sql.append(" AND i.defect_type = ?"); args.add(defectType); }
+        if (!deleted && frequency != null && !frequency.isBlank()) { sql.append(" AND i.frequency = ?"); args.add(frequency); }
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + keyword.trim() + "%";
             sql.append(" AND (i.issue_code LIKE ? OR i.issue_name LIKE ? OR i.keywords LIKE ?)");
@@ -216,10 +216,17 @@ public class IssueService {
         if (exists(sql, user.tenantId(), issueId)) throw new BusinessException(ErrorCode.BAD_REQUEST, "关联字段必须属于已关联的目标表");
     }
     private void ensureCodeAvailable(long projectId, String code, Long currentId, AuthUser user) { String sql = "SELECT COUNT(*) FROM dm_issue WHERE tenant_id = ? AND project_id = ? AND issue_code = ?" + (currentId == null ? "" : " AND id <> ?"); List<Object> args = new ArrayList<>(List.of(user.tenantId(), projectId, code)); if (currentId != null) args.add(currentId); if (exists(sql, args.toArray())) throw new BusinessException(ErrorCode.CONFLICT, "问题编号在该项目下已存在（含已删除记录）"); }
-    private void validateEnums(Map<String, Object> body) { validateEnum(body.get("granularity"), GRANULARITIES, "颗粒度"); validateEnum(body.get("issueSource"), ISSUE_SOURCES, "问题来源"); validateEnum(body.get("defectType"), DEFECT_TYPES, "缺陷类型"); validateEnum(body.get("frequency"), FREQUENCIES, "问题频率"); }
-    private void validateEnum(Object value, Set<String> allowed, String label) { if (value != null && !String.valueOf(value).isBlank() && !allowed.contains(String.valueOf(value))) throw new BusinessException(ErrorCode.BAD_REQUEST, label + "值无效"); }
+    private void validateEnums(Map<String, Object> body, AuthUser user) {
+        codeValues.requireActive(DataMigrationCodeValueService.DM_ISSUE_GRANULARITY, "颗粒度", stringValue(body.get("granularity")), user);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_ISSUE_SOURCE, "问题来源", stringValue(body.get("issueSource")), user);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_DEFECT_TYPE, "缺陷类型", stringValue(body.get("defectType")), user);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_ISSUE_FREQUENCY, "问题频率", stringValue(body.get("frequency")), user);
+    }
+    private static String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value).trim();
+    }
     private void ensureProject(long id, AuthUser user) { permissions.requireAccessible(id, user); }
-    private void ensureSystemCode(long projectId, String systemCode, AuthUser user) { if (systemCode != null && !exists("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_code = ? AND deleted = 0", user.tenantId(), projectId, systemCode)) throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目"); }
+    private void ensureSystemCode(long projectId, String systemCode, AuthUser user) { if (systemCode != null && !exists("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND system_code = ? AND enabled = 1", user.tenantId(), projectId, systemCode)) throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目或已停用"); }
     private static int normalizePageSize(int size) { return PAGE_SIZES.contains(size) ? size : 20; }
     private boolean exists(String sql, Object... args) { Integer count = jdbc.queryForObject(sql, Integer.class, args); return count != null && count > 0; }
     private static String text(Object value, String field) { if (value == null || String.valueOf(value).trim().isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, field + " 不能为空"); return String.valueOf(value).trim(); }

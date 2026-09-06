@@ -49,9 +49,36 @@ class DataMigrationGovernanceRemediationMySqlTest {
             execute(connection, "DROP TABLE IF EXISTS "
                 + "dm_component, dm_target_table, dm_target_table_field, dm_issue, dm_meeting, dm_meeting_system, dm_plan, "
                 + "dm_mapping_doc, dm_dependency, dm_script, dm_topic, dm_release_drill, dm_report, dm_rule, dm_parameter, "
-                + "arch_physical_subsystem, pm_project, sys_user, sys_role, sys_user_role, dm_operation_log, dm_issue_relation, "
+                + "arch_physical_subsystem, pm_project, sys_user, sys_role, sys_role_permission, sys_menu_permission, sys_user_role, dm_operation_log, dm_issue_relation, "
                 + "flyway_schema_history");
         }
+    }
+
+    private void createRbacFixtureForAdmin(Connection connection) throws Exception {
+        execute(connection, """
+                CREATE TABLE sys_menu_permission (
+                    id BIGINT PRIMARY KEY,
+                    tenant_id BIGINT NOT NULL DEFAULT 1,
+                    menu_id BIGINT NOT NULL,
+                    action_code VARCHAR(32) NOT NULL,
+                    permission_code VARCHAR(160) NOT NULL,
+                    permission_name VARCHAR(64) NOT NULL,
+                    status TINYINT NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+                """);
+        execute(connection, """
+                CREATE TABLE sys_role_permission (
+                    role_id BIGINT NOT NULL,
+                    permission_id BIGINT NOT NULL,
+                    tenant_id BIGINT NOT NULL DEFAULT 1,
+                    PRIMARY KEY (role_id, permission_id)
+                )
+                """);
+        // 权限构造：给测试 ADMIN（user_id=1 / role_id=1）授予 system:admin，与 DataMigrationPermissionService.isAdmin() 的 RBAC 口径一致。
+        execute(connection, "INSERT INTO sys_menu_permission (id, tenant_id, menu_id, action_code, permission_code, permission_name, status) VALUES (1, 1, 720, 'read', 'system:admin', '超级管理员', 1)");
+        execute(connection, "INSERT INTO sys_role_permission (role_id, permission_id, tenant_id) VALUES (1, 1, 1)");
     }
 
     /** V175 端到端：真实服务 create 只写 system_code / physical_subsystem_code，id 引用列已下线。 */
@@ -108,6 +135,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, "INSERT INTO sys_role (id, tenant_id, role_code) VALUES (1, 1, 'ADMIN')");
             execute(connection, "INSERT INTO sys_user_role (user_id, role_id, tenant_id) VALUES (1, 1, 1)");
+            createRbacFixtureForAdmin(connection);
             execute(connection, """
                     CREATE TABLE dm_operation_log (
                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -117,6 +145,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         operation_code VARCHAR(64) NOT NULL,
                         entity_type VARCHAR(64) NOT NULL,
                         entity_id BIGINT NULL,
+                        detail_json JSON,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """);
@@ -143,20 +172,19 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, """
                     CREATE TABLE dm_component (
-                        id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
-                        physical_subsystem_code VARCHAR(64) NULL,
+                        system_code VARCHAR(64) NOT NULL,
+                        enabled TINYINT NOT NULL DEFAULT 1,
                         total_check TINYINT NOT NULL DEFAULT 0,
                         owner_id BIGINT NOT NULL,
                         created_by BIGINT NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_by BIGINT NULL,
                         updated_at TIMESTAMP NULL,
-                        deleted TINYINT NOT NULL DEFAULT 0,
-                        deleted_by BIGINT NULL,
-                        deleted_at TIMESTAMP NULL,
-                        UNIQUE KEY uk_dm_component_subsystem (tenant_id, project_id, physical_subsystem_code)
+                        PRIMARY KEY (tenant_id, project_id, system_code),
+                        KEY idx_dm_component_enabled (tenant_id, project_id, enabled),
+                        KEY idx_dm_component_list (tenant_id, project_id, enabled, updated_at)
                     )
                     """);
             execute(connection, """
@@ -252,27 +280,27 @@ class DataMigrationGovernanceRemediationMySqlTest {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        IssueService issueService = new IssueService(jdbc, permissions);
+        IssueService issueService = new IssueService(jdbc, permissions, TestDataMigrationCodeValues.service());
         ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions);
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions);
+        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         transaction.executeWithoutResult(status -> {
             Map<String, Object> component = new LinkedHashMap<>();
             component.put("projectId", 10L);
-            component.put("physicalSubsystemCode", "SYS-2");
+            component.put("systemCode", "SYS-2");
             component.put("totalCheck", 1);
             componentService.createComponent(component, ADMIN);
 
             Map<String, Object> componentArchOne = new LinkedHashMap<>();
             componentArchOne.put("projectId", 10L);
-            componentArchOne.put("physicalSubsystemCode", "SYS-1");
+            componentArchOne.put("systemCode", "SYS-1");
             componentArchOne.put("totalCheck", 0);
             componentService.createComponent(componentArchOne, ADMIN);
 
             Map<String, Object> componentNoArch = new LinkedHashMap<>();
             componentNoArch.put("projectId", 10L);
-            componentNoArch.put("physicalSubsystemCode", "NO-ARCH");
+            componentNoArch.put("systemCode", "NO-ARCH");
             componentService.createComponent(componentNoArch, ADMIN);
 
             Map<String, Object> issue = new LinkedHashMap<>();
@@ -314,7 +342,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
             assertEquals("SYS-1", value(connection, "SELECT system_code FROM dm_issue WHERE issue_code = 'ISS-DUAL'"));
             assertEquals("NO-ARCH", value(connection, "SELECT system_code FROM dm_issue WHERE issue_code = 'ISS-NO-ARCH'"));
             assertEquals("SYS-1", value(connection, "SELECT system_code FROM dm_target_table WHERE table_name_en = 'dual_tbl'"));
-            assertEquals("NO-ARCH", value(connection, "SELECT physical_subsystem_code FROM dm_component WHERE id = (SELECT MIN(id) FROM dm_component WHERE physical_subsystem_code = 'NO-ARCH')"));
+            assertEquals("NO-ARCH", value(connection, "SELECT system_code FROM dm_component WHERE system_code = 'NO-ARCH'"));
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_issue WHERE issue_code = 'ISS-GHOST'"));
         }
     }
@@ -767,22 +795,22 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, "INSERT INTO sys_role (id, tenant_id, role_code) VALUES (1, 1, 'ADMIN')");
             execute(connection, "INSERT INTO sys_user_role (user_id, role_id, tenant_id) VALUES (1, 1, 1)");
+            createRbacFixtureForAdmin(connection);
             execute(connection, """
                     CREATE TABLE dm_component (
-                        id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
-                        physical_subsystem_code VARCHAR(64) NULL,
+                        system_code VARCHAR(64) NOT NULL,
+                        enabled TINYINT NOT NULL DEFAULT 1,
                         total_check TINYINT NOT NULL DEFAULT 0,
                         owner_id BIGINT NOT NULL,
                         created_by BIGINT NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_by BIGINT NULL,
                         updated_at TIMESTAMP NULL,
-                        deleted TINYINT NOT NULL DEFAULT 0,
-                        deleted_by BIGINT NULL,
-                        deleted_at TIMESTAMP NULL,
-                        UNIQUE KEY uk_dm_component_subsystem (tenant_id, project_id, physical_subsystem_code, deleted)
+                        PRIMARY KEY (tenant_id, project_id, system_code),
+                        KEY idx_dm_component_enabled (tenant_id, project_id, enabled),
+                        KEY idx_dm_component_list (tenant_id, project_id, enabled, updated_at)
                     )
                     """);
             execute(connection, """
@@ -868,7 +896,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, "INSERT INTO arch_physical_subsystem (id, tenant_id, code, name, short_name) VALUES (10, 1, 'SYS-1', '系统一', 'SY1'), (20, 1, 'SYS-2', '系统二', 'SY2')");
             execute(connection, "INSERT INTO pm_project (id, tenant_id, project_code, project_name) VALUES (10, 1, 'P001', '项目A'), (20, 1, 'P002', '项目B')");
-            execute(connection, "INSERT INTO dm_component (id, tenant_id, project_id, physical_subsystem_code, owner_id) VALUES (10, 1, 10, 'SYS-1', 1), (20, 1, 20, 'SYS-2', 1)");
+            execute(connection, "INSERT INTO dm_component (tenant_id, project_id, system_code, enabled, owner_id) VALUES (1, 10, 'SYS-1', 1, 1), (1, 20, 'SYS-2', 1, 1)");
         }
 
         assertTrue(flyway("175", "176").migrate().success);
@@ -883,8 +911,8 @@ class DataMigrationGovernanceRemediationMySqlTest {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        IssueService issueService = new IssueService(jdbc, permissions);
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions);
+        IssueService issueService = new IssueService(jdbc, permissions, TestDataMigrationCodeValues.service());
+        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
         ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions);
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
@@ -927,7 +955,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
 
             Map<String, Object> component = new LinkedHashMap<>();
             component.put("projectId", 10L);
-            component.put("physicalSubsystemCode", "SYS-2");
+            component.put("systemCode", "SYS-2");
             component.put("totalCheck", 0);
             componentService.createComponent(component, ADMIN);
         });
@@ -1004,6 +1032,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, "INSERT INTO sys_role (id, tenant_id, role_code) VALUES (1, 1, 'ADMIN')");
             execute(connection, "INSERT INTO sys_user_role (user_id, role_id, tenant_id) VALUES (1, 1, 1)");
+            createRbacFixtureForAdmin(connection);
             execute(connection, """
                     CREATE TABLE dm_operation_log (
                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -1020,18 +1049,19 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, """
                     CREATE TABLE dm_component (
-                        id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
-                        physical_subsystem_code VARCHAR(64) NULL,
+                        system_code VARCHAR(64) NOT NULL,
+                        enabled TINYINT NOT NULL DEFAULT 1,
                         total_check TINYINT NOT NULL DEFAULT 0,
                         owner_id BIGINT NOT NULL,
                         created_by BIGINT NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_by BIGINT NULL,
                         updated_at TIMESTAMP NULL,
-                        deleted TINYINT NOT NULL DEFAULT 0,
-                        UNIQUE KEY uk_dm_component_subsystem (tenant_id, project_id, physical_subsystem_code, deleted)
+                        PRIMARY KEY (tenant_id, project_id, system_code),
+                        KEY idx_dm_component_enabled (tenant_id, project_id, enabled),
+                        KEY idx_dm_component_list (tenant_id, project_id, enabled, updated_at)
                     )
                     """);
             execute(connection, """
@@ -1117,7 +1147,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, "INSERT INTO arch_physical_subsystem (id, tenant_id, code, name, short_name) VALUES (10, 1, 'SYS-1', '系统一', 'SY1'), (20, 1, 'SYS-2', '系统二', 'SY2')");
             execute(connection, "INSERT INTO pm_project (id, tenant_id, project_code, project_name) VALUES (10, 1, 'P001', '项目A')");
-            execute(connection, "INSERT INTO dm_component (id, tenant_id, project_id, physical_subsystem_code, owner_id) VALUES (10, 1, 10, 'SYS-1', 1)");
+            execute(connection, "INSERT INTO dm_component (tenant_id, project_id, system_code, enabled, owner_id) VALUES (1, 10, 'SYS-1', 1, 1)");
             execute(connection, """
                     INSERT INTO dm_target_table
                         (id, tenant_id, table_code, project_id, system_code, table_name_en, table_name_cn, table_meaning, table_category, owner_id, created_by)
@@ -1141,7 +1171,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions);
+        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         try (Connection connection = connection()) {
@@ -1247,6 +1277,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
             execute(connection, "INSERT INTO sys_role (id, tenant_id, role_code) VALUES (1, 1, 'ADMIN')");
             execute(connection, "INSERT INTO sys_user_role (user_id, role_id, tenant_id) VALUES (1, 1, 1)");
+            createRbacFixtureForAdmin(connection);
             execute(connection, """
                     CREATE TABLE dm_operation_log (
                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -1424,7 +1455,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions);
+        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         String[] tables = {
@@ -1452,15 +1483,24 @@ class DataMigrationGovernanceRemediationMySqlTest {
             assertEquals("tenant_id,business_type,business_id,attachment_id", indexColumns(connection, "dm_content_attachment", "uk_dm_content_att"));
             // 存量编号零改写：原 table_code 字符串被 V177 回填为数值 1001，V178 不再改动数据
             assertEquals(1001L, valueLong(connection, "SELECT table_code FROM dm_target_table WHERE table_name_en = 'legacy_tbl'"));
+            // 服务层已按 V182 自然键收敛（dm_component.system_code + enabled，删除物理化）；
+            // 此处把 V178 基线夹具手工推进到 V182 结构，再跑后续 DB/服务断言。
+            execute(connection, "ALTER TABLE dm_component DROP INDEX uk_dm_component_subsystem");
+            execute(connection, "ALTER TABLE dm_component DROP PRIMARY KEY");
+            execute(connection, "ALTER TABLE dm_component CHANGE COLUMN physical_subsystem_code system_code VARCHAR(64) NOT NULL");
+            execute(connection, "ALTER TABLE dm_component ADD COLUMN enabled TINYINT NOT NULL DEFAULT 1 AFTER system_code");
+            execute(connection, "ALTER TABLE dm_component DROP COLUMN deleted");
+            execute(connection, "ALTER TABLE dm_component DROP COLUMN id");
+            execute(connection, "ALTER TABLE dm_component ADD PRIMARY KEY (tenant_id, project_id, system_code)");
+            execute(connection, "ALTER TABLE dm_component ADD KEY idx_dm_component_enabled (tenant_id, project_id, enabled)");
             // 3. DB 层：软删行占唯一名额，删除后不可直接同名/同编号重建
             execute(connection, "INSERT INTO dm_issue (id, tenant_id, project_id, issue_code, issue_name, owner_id) VALUES (9002, 1, 10, 'ISS-2', '问题二', 1)");
             execute(connection, "UPDATE dm_issue SET deleted = 1 WHERE id = 9002");
             assertThrows(SQLException.class, () -> execute(connection,
                     "INSERT INTO dm_issue (id, tenant_id, project_id, issue_code, issue_name, owner_id) VALUES (9003, 1, 10, 'ISS-2', '问题二', 1)"));
-            execute(connection, "INSERT INTO dm_component (id, tenant_id, project_id, physical_subsystem_code, owner_id) VALUES (11, 1, 10, 'SYS-2', 1)");
-            execute(connection, "UPDATE dm_component SET deleted = 1 WHERE id = 11");
+            // V182 已改用 (tenant_id, project_id, system_code) 自然键，重复系统编号由主键直接拒绝。
             assertThrows(SQLException.class, () -> execute(connection,
-                    "INSERT INTO dm_component (id, tenant_id, project_id, physical_subsystem_code, owner_id) VALUES (12, 1, 10, 'SYS-2', 1)"));
+                    "INSERT INTO dm_component (tenant_id, project_id, system_code, enabled, owner_id) VALUES (1, 10, 'SYS-1', 1, 2)"));
             execute(connection, "INSERT INTO dm_content_attachment (tenant_id, business_type, business_id, attachment_id) VALUES (1, 'MEETING', 10, 100)");
             execute(connection, "UPDATE dm_content_attachment SET deleted = 1 WHERE business_type = 'MEETING' AND business_id = 10 AND attachment_id = 100");
             assertThrows(SQLException.class, () -> execute(connection,
@@ -1502,11 +1542,16 @@ class DataMigrationGovernanceRemediationMySqlTest {
         try (Connection connection = connection()) {
             execute(connection, """
                     CREATE TABLE dm_component (
-                        id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
-                        physical_subsystem_code VARCHAR(64) NULL,
-                        deleted TINYINT NOT NULL DEFAULT 0
+                        system_code VARCHAR(64) NOT NULL,
+                        enabled TINYINT NOT NULL DEFAULT 1,
+                        total_check TINYINT NOT NULL DEFAULT 0,
+                        owner_id BIGINT NULL,
+                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP NULL,
+                        PRIMARY KEY (tenant_id, project_id, system_code),
+                        KEY idx_dm_component_enabled (tenant_id, project_id, enabled)
                     )
                     """);
             execute(connection, """
@@ -1525,18 +1570,18 @@ class DataMigrationGovernanceRemediationMySqlTest {
                             id BIGINT PRIMARY KEY,
                             tenant_id BIGINT NOT NULL,
                             project_id BIGINT NOT NULL,
-                            component_id BIGINT NULL,
+                            system_code VARCHAR(64) NULL,
                             deleted TINYINT NOT NULL DEFAULT 0
                         )
                         """.formatted(table));
             }
             execute(connection, "INSERT INTO arch_physical_subsystem (id, tenant_id, code, name, short_name) VALUES (10, 1, 'SYS-1', '系统一', 'SY1'), (20, 1, 'SYS-2', '系统二', 'SY2')");
-            execute(connection, "INSERT INTO dm_component (id, tenant_id, project_id, physical_subsystem_code) VALUES (1, 1, 100, 'SYS-1'), (2, 1, 100, 'SYS-2')");
-            execute(connection, "INSERT INTO dm_plan (id, tenant_id, project_id, component_id) VALUES (1, 1, 100, 1), (2, 1, 100, 1), (3, 1, 100, 2)");
-            execute(connection, "INSERT INTO dm_report (id, tenant_id, project_id, component_id, deleted) VALUES (1, 1, 100, 1, 1)");
-            execute(connection, "INSERT INTO dm_rule (id, tenant_id, project_id, component_id) VALUES (1, 1, 100, 1)");
-            execute(connection, "INSERT INTO dm_parameter (id, tenant_id, project_id, component_id) VALUES (1, 1, 100, 2)");
-            execute(connection, "INSERT INTO dm_mapping_doc (id, tenant_id, project_id, component_id) VALUES (1, 1, 100, NULL)");
+            execute(connection, "INSERT INTO dm_component (tenant_id, project_id, system_code, enabled) VALUES (1, 100, 'SYS-1', 1), (1, 100, 'SYS-2', 1)");
+            execute(connection, "INSERT INTO dm_plan (id, tenant_id, project_id, system_code) VALUES (1, 1, 100, 'SYS-1'), (2, 1, 100, 'SYS-1'), (3, 1, 100, 'SYS-2')");
+            execute(connection, "INSERT INTO dm_report (id, tenant_id, project_id, system_code, deleted) VALUES (1, 1, 100, 'SYS-1', 1)");
+            execute(connection, "INSERT INTO dm_rule (id, tenant_id, project_id, system_code) VALUES (1, 1, 100, 'SYS-1')");
+            execute(connection, "INSERT INTO dm_parameter (id, tenant_id, project_id, system_code) VALUES (1, 1, 100, 'SYS-2')");
+            execute(connection, "INSERT INTO dm_mapping_doc (id, tenant_id, project_id, system_code) VALUES (1, 1, 100, NULL)");
         }
 
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());

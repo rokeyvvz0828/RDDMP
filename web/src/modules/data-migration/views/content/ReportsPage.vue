@@ -26,9 +26,11 @@ import {
   updateReportMaterial,
   deleteReportMaterials,
   downloadReportMaterial,
+  getDataMigrationParamOptions, DM_CODE_CATEGORIES,
   type ReportMaterial,
   type ReportPageQuery,
-  type ReportUpdateParams
+  type ReportUpdateParams,
+  type SelectOption
 } from '../../../../api/data-migration'
 import ProjectScopeState from '../../components/ProjectScopeState.vue'
 import { useProjectScope } from '../../composables/useProjectScope'
@@ -81,13 +83,7 @@ const filterReportPeriod = ref<string>('')
 const filterKeyword = ref('')
 
 // 汇报周期选项
-const reportPeriodOptions = [
-  { value: 'DAILY', label: '日报' },
-  { value: 'WEEKLY', label: '周报' },
-  { value: 'BIWEEKLY', label: '双周报' },
-  { value: 'MONTHLY', label: '月报' },
-  { value: 'IRREGULAR', label: '不定期汇报' }
-]
+const reportPeriodOptions = ref<SelectOption[]>([])
 
 // 上传抽屉
 const uploadDrawerOpen = ref(false)
@@ -167,6 +163,20 @@ function removeEditKeyword(index: number) {
 // 权限检查（回收站已收敛到统一页）
 const hasCreatePermission = computed(() => {
   return authStore.hasPermission('data-migration:content:reports:create') ||
+         authStore.hasPermission('data-migration:write') ||
+         authStore.hasPermission('data-migration:manage') ||
+         authStore.hasPermission('system:admin')
+})
+
+const hasUpdatePermission = computed(() => {
+  return authStore.hasPermission('data-migration:content:reports:update') ||
+         authStore.hasPermission('data-migration:write') ||
+         authStore.hasPermission('data-migration:manage') ||
+         authStore.hasPermission('system:admin')
+})
+
+const hasDeletePermission = computed(() => {
+  return authStore.hasPermission('data-migration:content:reports:delete') ||
          authStore.hasPermission('data-migration:write') ||
          authStore.hasPermission('data-migration:manage') ||
          authStore.hasPermission('system:admin')
@@ -659,14 +669,11 @@ async function deleteSingleReport(row: ReportMaterial) {
 
 // 格式化汇报周期
 function formatReportPeriod(period: string): string {
-  const periodMap: Record<string, string> = {
-    'DAILY': '日报',
-    'WEEKLY': '周报',
-    'BIWEEKLY': '双周报',
-    'MONTHLY': '月报',
-    'IRREGULAR': '不定期汇报'
-  }
-  return periodMap[period] || period
+  return reportPeriodOptions.value.find(o => String(o.value) === String(period))?.label ?? period
+}
+
+async function loadCodeOptions() {
+  try { reportPeriodOptions.value = (await getDataMigrationParamOptions(DM_CODE_CATEGORIES.reportPeriod)).data.data ?? [] } catch { reportPeriodOptions.value = [] }
 }
 
 // 格式化文件大小
@@ -680,7 +687,14 @@ function formatFileSize(size?: number): string {
 // 检查是否可以编辑/删除
 function canEditOrDelete(row: ReportMaterial): boolean {
   if (isAdmin.value) return true
-  return row.owner_id === authStore.user?.id
+  if (hasUpdatePermission.value && row.owner_id === authStore.user?.id) return true
+  return false
+}
+
+function canDelete(row: ReportMaterial): boolean {
+  if (isAdmin.value) return true
+  if (hasDeletePermission.value && row.owner_id === authStore.user?.id) return true
+  return false
 }
 
 // 项目切换：清空上一项目的列表、筛选、分页与弹层，避免残留，随后按当前项目重查
@@ -713,6 +727,7 @@ watch(scopeProjectId, () => {
 // 初始化
 onMounted(() => {
   void scope.ensureLoaded()
+  void loadCodeOptions()
 })
 </script>
 

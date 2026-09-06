@@ -1,0 +1,580 @@
+{
+  "baseline_revision": "2",
+  "model_revision": "1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "V185迁移、DM_PROGRAM_TYPE参数种子和迁移测试",
+      "requirement_ids": [
+        "R2",
+        "R9"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "当前最高迁移为V184（事实：构建日志schema ccb_platform=184）"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_program_domain.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"DataMigrationCodeValueService\", \"sys_dict_type\", \"sys_config\"]",
+        "produces: [\"dm_script.program_type/program_description\", \"DM_PROGRAM_TYPE options\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "编写V185含幂等类别/配置与dm_script加列",
+        "添加DM_PROGRAM_TYPE常量并加入ALLOWED_CATEGORIES",
+        "跑MySQL迁移测试"
+      ],
+      "acceptance_checks": [
+        "dm_script两列存在",
+        "DM_PROGRAM_TYPE两配置存在",
+        "Flyway clean+migrate成功"
+      ],
+      "evidence_required": [
+        "migration文件",
+        "git diff",
+        "surefire报告"
+      ],
+      "rollback": "未发布迁移可移除，删除测试断言",
+      "stop_conditions": [
+        "迁移容器失败",
+        "真实数据需回填却无回填规则"
+      ],
+      "escalation_conditions": [
+        "发现dm_script有真实业务行需要补录"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "ProgramService完整实现",
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ReleaseDrillService是参考模板（事实：现有Service）",
+        "ProjectComponentService.getSystemOptions可复用（事实：接口存在）"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"JdbcTemplate\", \"ContentAttachmentService\", \"DataMigrationCodeValueService\", \"DataMigrationPermissionService\", \"ContentDocCodeGenerator\", \"ProjectComponentService\"]",
+        "produces: [\"ProgramService字面方法集\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "实现list/create/update/detail/download/listAttachments/recycle",
+        "实现多附件创建编辑与打包下载",
+        "运行ProgramServiceTest"
+      ],
+      "acceptance_checks": [
+        "必填和50MB校验",
+        "系统启用校验",
+        "编辑保留/增删附件",
+        "回收站四方法"
+      ],
+      "evidence_required": [
+        "ProgramService.java",
+        "单测断言",
+        "surefire"
+      ],
+      "rollback": "删除未引用Service",
+      "stop_conditions": [
+        "附件原子性无法保证"
+      ],
+      "escalation_conditions": [
+        "公共附件能力不支持按列表批量恢复或清理"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "ProgramController、RecycleBinSource并从通用链路摘除SCRIPT",
+      "requirement_ids": [
+        "R5",
+        "R6",
+        "R7",
+        "R9"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "ContentRecycleBinService根据RecycleBinSource supports注册（现有代码）",
+        "ContentAssetRecycleBinSource基于MANAGED_TYPES生成（现有代码）"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProgramController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRecycleBinSource.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"ProgramService\", \"ProjectComponentService.getSystemOptions\"]",
+        "produces: [\"/api/data-migration/programs/**\", \"SCRIPT由ProgramRecycleBinSource认领\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "新建Controller全部端点",
+        "新建RecycleBinSource",
+        "摘除通用SCRIPT",
+        "跑后端测试"
+      ],
+      "acceptance_checks": [
+        "匿名401",
+        "只读可读",
+        "无权限写403",
+        "回收站无重复认领"
+      ],
+      "evidence_required": [
+        "Controller文件",
+        "Source文件",
+        "diff",
+        "surefire"
+      ],
+      "rollback": "恢复SCRIPT到通用链路并删除新Controller",
+      "stop_conditions": [
+        "ContentRecycleBinService重复认领启动失败"
+      ],
+      "escalation_conditions": [
+        "发现其他调用方依赖通用SCRIPT接口"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "前端API和ProgramsPage多文件交互",
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R8"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "ReleaseDrillsPage为现有参考页面",
+        "系统选项需浏览器内筛选（用户此前确认）"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/content/ProgramsPage.vue"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"T3 programs REST\", \"平台附件上传\"]",
+        "produces: [\"ProgramsPage.vue完整页面\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "扩展data-migration.ts programs API",
+        "重写ProgramsPage包含筛选、表单、多文件、下载",
+        "前端构建"
+      ],
+      "acceptance_checks": [
+        "类型/名称/系统筛选",
+        "系统本地筛选",
+        "多文件上传",
+        "单个+打包下载",
+        "删除/编辑"
+      ],
+      "evidence_required": [
+        "api文件",
+        "vue文件",
+        "web/dist"
+      ],
+      "rollback": "恢复旧AssetListView",
+      "stop_conditions": [
+        "浏览器无法选择多个文件"
+      ],
+      "escalation_conditions": [
+        "需要新增后端契约字段或路由变更时升级"
+      ]
+    },
+    {
+      "id": "T5",
+      "goal": "全量回归、范围检查和浏览器验收",
+      "requirement_ids": [
+        "R6",
+        "R8",
+        "R9",
+        "R10"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "design R6要求回收站唯一认领",
+        "design-h5要求移动端无横向滚动"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-convergence.json"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"T1-T4结果\"]",
+        "produces: [\"execution/observation/convergence证据\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "后端module test",
+        "治理与范围检查",
+        "编写并运行浏览器验收脚本 /tmp/program_acceptance_playwright.mjs，覆盖桌面1280x800和375/390/430视口",
+        "写convergence"
+      ],
+      "acceptance_checks": [
+        "0失败",
+        "范围无越界",
+        "浏览器无4xx/5xx",
+        "移动无溢出"
+      ],
+      "evidence_required": [
+        "surefire",
+        "退出码0",
+        "截图与console",
+        "convergence.json"
+      ],
+      "rollback": "应用回退保留表与附件",
+      "stop_conditions": [
+        "任一验收失败未修复"
+      ],
+      "escalation_conditions": [
+        "需要生产/测试环境数据才能继续时升级"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "数据库和参数类别是Service依赖"
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "Controller依赖Service"
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "reason": "前端依赖后端契约"
+    },
+    {
+      "from": "T1",
+      "to": "T5",
+      "reason": "T5集成包含T1验证"
+    },
+    {
+      "from": "T2",
+      "to": "T5",
+      "reason": "T5集成包含T2验证"
+    },
+    {
+      "from": "T3",
+      "to": "T5",
+      "reason": "T5集成包含T3验证"
+    },
+    {
+      "from": "T4",
+      "to": "T5",
+      "reason": "T5浏览器验收依赖T4页面"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "command": "mvn -q -pl :ccb-data-migration -am -Dtest=DataMigrationProgramMigrationMySqlTest test",
+      "expected": "BUILD SUCCESS"
+    },
+    {
+      "after_tasks": [
+        "T3"
+      ],
+      "command": "mvn -q -pl :ccb-data-migration -am test",
+      "expected": "BUILD SUCCESS"
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "command": "npm --prefix web run build",
+      "expected": "构建成功"
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1完成采样",
+      "trigger": "T1返回",
+      "observer": "独立观察者",
+      "sensors": [
+        "S2"
+      ],
+      "requirement_ids": [
+        "R2",
+        "R9"
+      ]
+    },
+    {
+      "label": "T2完成采样",
+      "trigger": "T2返回",
+      "observer": "独立观察者",
+      "sensors": [
+        "S1"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R7"
+      ]
+    },
+    {
+      "label": "T3完成采样",
+      "trigger": "T3返回",
+      "observer": "独立观察者",
+      "sensors": [
+        "S3"
+      ],
+      "requirement_ids": [
+        "R5",
+        "R6",
+        "R7",
+        "R9"
+      ]
+    },
+    {
+      "label": "T4完成采样",
+      "trigger": "T4返回",
+      "observer": "独立观察者",
+      "sensors": [
+        "S4"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R8"
+      ]
+    },
+    {
+      "label": "最终验收采样",
+      "trigger": "T5",
+      "observer": "独立观察者",
+      "sensors": [
+        "S5"
+      ],
+      "requirement_ids": [
+        "R6",
+        "R8",
+        "R9",
+        "R10"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T2",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T2",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T2",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "task_ids": [
+        "T4",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "task_ids": [
+        "T1",
+        "T3",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "task_ids": [
+        "T1",
+        "T5"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

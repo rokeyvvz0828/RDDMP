@@ -30,20 +30,31 @@ public class TargetTableService {
             "是否关键栏位", "ORACLE字段类型", "mysql字段类型", "是否可空", "是否主键", "数据字典编号");
     private final JdbcTemplate jdbc;
     private final DataMigrationPermissionService permissions;
+    private final DataMigrationCodeValueService codeValues;
 
-    public TargetTableService(JdbcTemplate jdbc, DataMigrationPermissionService permissions) {
+    public TargetTableService(JdbcTemplate jdbc, DataMigrationPermissionService permissions, DataMigrationCodeValueService codeValues) {
         this.jdbc = jdbc;
         this.permissions = permissions;
+        this.codeValues = codeValues;
     }
+
+    /**
+     * 系统选项：一次性返回该项目组件清单（dm_component）内的全部系统（约 150 条以内），
+     * 由前端在浏览器内本地随输随筛（编号/名称均可、不区分大小写）；备选展示「系统编号 - 系统名称」。
+     */
 
     private long nextId() {
         return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000);
     }
 
     private String categoryOf(String category) {
-        if (category == null || category.isBlank() || "TARGET".equalsIgnoreCase(category)) return "TARGET";
-        if ("INTERMEDIATE".equalsIgnoreCase(category)) return "INTERMEDIATE";
-        throw new BusinessException(ErrorCode.BAD_REQUEST, "不支持的表结构类别");
+        return category == null || category.isBlank() ? "TARGET" : category.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private String requireCategory(String category, AuthUser user) {
+        String cat = categoryOf(category);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_TARGET_TABLE_CATEGORY, "表结构类别", cat, user);
+        return cat;
     }
 
     // ============ 列表（字段粒度分页） ============
@@ -58,8 +69,8 @@ public class TargetTableService {
                         "FROM dm_target_table_field f " +
                         "JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                         "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                        "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.physical_subsystem_code = t.system_code AND dc.deleted = 0 " +
-                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.physical_subsystem_code AND ps.deleted = 0 " +
+                        "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
+                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                         "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                         "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?");
         List<Object> args = new ArrayList<>();
@@ -114,8 +125,8 @@ public class TargetTableService {
                 "SELECT t.*, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name " +
                         "FROM dm_target_table t " +
                         "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                        "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.physical_subsystem_code = t.system_code AND dc.deleted = 0 " +
-                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.physical_subsystem_code AND ps.deleted = 0 " +
+                        "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
+                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                         "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                         "WHERE t.table_code = ? AND t.tenant_id = ? AND t.deleted = 0 AND t.table_category = ?",
                 tableCode, user.tenantId(), cat);
@@ -132,7 +143,7 @@ public class TargetTableService {
     // ============ 新增表（可带字段） ============
     @Transactional
     public Map<String, Object> createTable(String category, Map<String, Object> body, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "create");
         long projectId = num(body.get("projectId"), "projectId");
         ensureProject(projectId, user);
@@ -156,7 +167,7 @@ public class TargetTableService {
     // ============ 修改表信息 ============
     @Transactional
     public Map<String, Object> updateTable(long tableCode, String category, Map<String, Object> body, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "update");
         Map<String, Object> current = requireTable(tableCode, cat, user);
         permissions.requireStoredProject(current.get("project_id"), user);
@@ -176,7 +187,7 @@ public class TargetTableService {
     // ============ 删除表（同步删字段） ============
     @Transactional
     public void deleteTables(Collection<Long> tableCodes, String category, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "delete");
         for (Long tableCode : tableCodes == null ? List.<Long>of() : tableCodes) {
             Map<String, Object> current = requireTable(tableCode, cat, user);
@@ -200,7 +211,7 @@ public class TargetTableService {
     // ============ 字段：新增 ============
     @Transactional
     public Map<String, Object> addField(long tableCode, String category, Map<String, Object> body, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "update");
         Map<String, Object> table = requireTable(tableCode, cat, user);
         permissions.requireStoredProject(table.get("project_id"), user);
@@ -215,7 +226,7 @@ public class TargetTableService {
     // ============ 字段：行编辑 ============
     @Transactional
     public Map<String, Object> updateField(long fieldCode, String category, Map<String, Object> body, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "update");
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT f.*, t.table_code AS table_code, t.owner_id, t.project_id, t.system_code FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
@@ -245,7 +256,7 @@ public class TargetTableService {
     // ============ 字段：删除（单条，级联删空表） ============
     @Transactional
     public void deleteField(long fieldCode, String category, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "delete");
         List<Map<String, Object>> rows = jdbc.queryForList(
                 "SELECT f.*, t.owner_id, t.project_id FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
@@ -264,7 +275,7 @@ public class TargetTableService {
     // ============ 字段：批量删除（级联删空表） ============
     @Transactional
     public void deleteFields(Collection<Long> fieldCodes, String category, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "delete");
         Map<Long, Long> affectedTables = new LinkedHashMap<>();
         for (Long fieldCode : fieldCodes == null ? List.<Long>of() : fieldCodes) {
@@ -302,7 +313,7 @@ public class TargetTableService {
      */
     @Transactional
     public Map<String, Object> importTables(String category, Long projectId, byte[] file, AuthUser user) {
-        String cat = categoryOf(category);
+        String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "create");
         long scope = permissions.requireProject(projectId, user);
         int accepted = 0, failed = 0;
@@ -444,8 +455,8 @@ public class TargetTableService {
                             "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                     "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                            "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.physical_subsystem_code = t.system_code AND dc.deleted = 0 " +
-                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.physical_subsystem_code AND ps.deleted = 0 " +
+                            "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
+                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                             "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                             "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ? AND t.project_id = ? AND f.field_code IN (" + placeholders + ") ORDER BY t.table_code ASC, f.field_code ASC",
                     concat(List.of(user.tenantId(), cat, scope), fieldCodes).toArray());
@@ -457,8 +468,8 @@ public class TargetTableService {
                             "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                             "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                            "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.physical_subsystem_code = t.system_code AND dc.deleted = 0 " +
-                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.physical_subsystem_code AND ps.deleted = 0 " +
+                            "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
+                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                             "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                             "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?");
             List<Object> args = new ArrayList<>(List.of(user.tenantId(), cat));
@@ -573,7 +584,7 @@ public class TargetTableService {
 
     private void ensureSystemBelongsToProject(long projectId, String systemCode, AuthUser user) {
         Integer c = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 WHERE c.project_id = ? AND c.physical_subsystem_code = ? AND c.tenant_id = ? AND c.deleted = 0",
+                "SELECT COUNT(*) FROM dm_component c JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 WHERE c.project_id = ? AND c.system_code = ? AND c.tenant_id = ? AND c.enabled = 1",
                 Integer.class, projectId, systemCode, user.tenantId());
         if (c == null || c == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目下的组件清单");
     }

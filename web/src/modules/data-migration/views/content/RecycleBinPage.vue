@@ -13,7 +13,7 @@
 import '../../data-migration.css'
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Refresh, Search, View } from '@element-plus/icons-vue'
+import { Delete, Document, Refresh, Search, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
@@ -87,19 +87,19 @@ function cancelled(err: unknown) {
 }
 
 const DETAIL_LABELS: Record<string, string> = {
-  project_id: '项目 ID', component_id: '组件 ID', owner_id: '属主 ID',
+  project_id: '项目 ID', system_code: '系统编号', owner_id: '属主 ID',
   attachment_id: '附件 ID', file_name: '文件名', content_type: '文件类型', file_size: '文件大小',
   report_period: '汇报周期', report_date: '汇报日期', granularity: '颗粒度', meeting_source: '会议来源',
   meeting_content: '会议内容', meeting_conclusion: '会议结论', business_scenario: '业务场景', keywords: '关键字',
   structured_data: '结构化内容', attachments: '附件', system_names: '关联系统', related_issue_names: '关联问题',
 }
-const DETAIL_HIDDEN = new Set(['id', 'asset_type', 'asset_code', 'asset_name', 'project_id', 'component_id', 'owner_id', 'deleted_by', 'deleted_at', 'created_at', 'updated_at', 'deleted', 'tenant_id'])
+const DETAIL_HIDDEN = new Set(['id', 'asset_type', 'asset_code', 'asset_name', 'project_id', 'system_code', 'owner_id', 'deleted_by', 'deleted_at', 'created_at', 'updated_at', 'deleted', 'tenant_id'])
 
 const standardDetail = computed(() => {
   const item = detail.value
   if (!item) return []
   return [
-    ['编号', item.asset_code], ['名称', item.asset_name], ['组件 ID', item.component_id],
+    ['编号', item.asset_code], ['名称', item.asset_name], ['系统编号', item.system_code],
     ['属主 ID', item.owner_id], ['删除人', item.deleted_by_name ?? item.deleted_by], ['删除时间', item.deleted_at],
     ['创建时间', item.created_at], ['更新时间', item.updated_at],
   ].filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -108,8 +108,18 @@ const extraDetail = computed(() => {
   const item = detail.value
   if (!item) return []
   return Object.entries(item)
-    .filter(([key, value]) => !DETAIL_HIDDEN.has(key) && value !== undefined && value !== null && value !== '')
+    .filter(([key, value]) => !DETAIL_HIDDEN.has(key) && key !== 'attachments' && value !== undefined && value !== null && value !== '')
     .map(([key, value]) => ({ label: DETAIL_LABELS[key] ?? key, value: formatDetailValue(value) }))
+})
+
+const attachmentList = computed(() => {
+  const item = detail.value
+  if (!item || !item.attachments || !Array.isArray(item.attachments)) return []
+  // 处理附件列表格式，兼容后端返回的两种格式
+  return (item.attachments as any[]).map((att: any) => ({
+    attachmentId: att.attachment_id ?? att.attachmentId,
+    fileName: att.file_name ?? att.fileName,
+  }))
 })
 
 function formatDetailValue(value: unknown) {
@@ -348,6 +358,15 @@ watch(scopeProjectId, () => {
             </el-descriptions-item>
           </el-descriptions>
         </template>
+        <template v-if="attachmentList.length">
+          <el-divider content-position="left">附件列表</el-divider>
+          <div class="attachment-list">
+            <div v-for="att in attachmentList" :key="att.attachmentId" class="attachment-item">
+              <div class="attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
+              <div class="attachment-info"><div class="attachment-name">{{ att.fileName }}</div></div>
+            </div>
+          </div>
+        </template>
       </template>
     </el-drawer>
   </main>
@@ -356,6 +375,11 @@ watch(scopeProjectId, () => {
 <style scoped>
 .dm-detail-descriptions { margin-bottom: 16px; }
 .dm-detail-json { margin: 0; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.5; }
+.attachment-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.attachment-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--panel-bg, #f5f7fa); border: 1px solid var(--line, #e4e7ed); border-radius: 8px; }
+.attachment-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: var(--brand-light, #ecf5ff); border-radius: 8px; color: var(--brand, #409eff); flex-shrink: 0; }
+.attachment-info { flex: 1; min-width: 0; }
+.attachment-name { font-size: 14px; font-weight: 500; color: var(--text, #303133); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 600px) {
   :deep(.el-drawer__body) { padding: 16px; overflow-y: auto; }
 }

@@ -55,9 +55,28 @@ public class DataMigrationPermissionService {
         return requireAccessible(number.longValue(), user);
     }
 
-    /** 功能权限（RBAC 动作码）口径下的管理员；不参与项目数据范围判定。 */
+    /**
+     * 功能权限（RBAC 动作码）口径下的管理员判定。
+     * <p>不再硬编码角色代码（如 ADMIN / SUPER_ADMIN / DATA_MIGRATION_ADMIN），
+     * 而是通过 sys_menu_permission 查询用户是否持有 bypass 权限码，
+     * 与平台 RBAC 体系保持一致。判定条件：
+     * <ol>
+     *   <li>持有 system:admin（超级管理员）；或</li>
+     *   <li>持有 data-migration:bypass（数据迁移管理员专属豁免）；或</li>
+     *   <li>持有 data-migration:manage（数据迁移管理权限）。</li>
+     * </ol>
+     * 不参与项目数据范围判定。
+     */
     public boolean isAdmin(AuthUser user) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_role ur JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id WHERE ur.user_id = ? AND ur.tenant_id = ? AND r.role_code IN ('ADMIN','SUPER_ADMIN','DATA_MIGRATION_ADMIN') AND r.status = 1 AND r.deleted = 0", Integer.class, user.id(), user.tenantId());
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM sys_user_role ur "
+                        + "JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id "
+                        + "JOIN sys_role_permission rp ON rp.role_id = r.id AND rp.tenant_id = r.tenant_id "
+                        + "JOIN sys_menu_permission p ON p.id = rp.permission_id AND p.tenant_id = rp.tenant_id "
+                        + "WHERE ur.user_id = ? AND ur.tenant_id = ? "
+                        + "AND p.permission_code IN ('system:admin', 'data-migration:bypass', 'data-migration:manage') "
+                        + "AND p.status = 1 AND r.status = 1 AND r.deleted = 0",
+                Integer.class, user.id(), user.tenantId());
         return count != null && count > 0;
     }
 

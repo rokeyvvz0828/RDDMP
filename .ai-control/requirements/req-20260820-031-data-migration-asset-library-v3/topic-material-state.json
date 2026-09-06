@@ -1,0 +1,1551 @@
+{
+  "schema_version": 4,
+  "revision": 25,
+  "created_at": "2026-09-05T01:03:45+00:00",
+  "updated_at": "2026-09-05T02:47:35+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-05T01:03:45+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "专题材料边界、参数归属、项目上下文和非目标已明确",
+      "recorded_at": "2026-09-05T01:04:20+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型确认边界内执行器和传感器足以覆盖R1-R6",
+      "recorded_at": "2026-09-05T01:05:08+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1-T5任务契约完整，R1-R6全部覆盖，开始执行T1",
+      "recorded_at": "2026-09-05T01:06:33+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T5已验证，执行产物已登记；开始独立采样",
+      "recorded_at": "2026-09-05T02:46:34+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "观测完成：3次采样、无未裁决反馈、所有任务verified；运行时缺口为P2",
+      "recorded_at": "2026-09-05T02:47:08+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "verifying报告pass，P2为环境级残余风险，代码实现已收敛",
+      "recorded_at": "2026-09-05T02:47:35+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "已复核用户确认、专题材料设计、实施计划和REQ-031范围；R1-R6均具备验收与反例",
+        "recorded_at": "2026-09-05T01:04:20+00:00",
+        "data": {
+          "objective": "将数迁资产内容下专题材料升级为参数管理类型、多系统、多附件、详情编辑下载逻辑删除和统一回收站的专属域功能。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "专题记录保存颗粒度、参数类型、名称、简述和附件集合。",
+              "acceptance": [
+                "新增和编辑校验必填元数据及附件",
+                "详情和列表返回完整专题元数据"
+              ],
+              "priority": "must",
+              "source": "用户功能说明和已批准设计",
+              "counterexample": [
+                "继续只保存通用doc_name和单文件"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "专题类型统一由系统管理参数按颗粒度提供并校验。",
+              "acceptance": [
+                "DM_TOPIC_PROJECT_TYPE和DM_TOPIC_SYSTEM_TYPE可读取",
+                "V180幂等初始化23项",
+                "停用或未知编码不能写入"
+              ],
+              "priority": "must",
+              "source": "用户确认统一采用系统管理/参数管理",
+              "counterexample": [
+                "新增dm_topic_type表",
+                "前端硬编码类型"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "专题支持多系统多附件且生命周期一致。",
+              "acceptance": [
+                "dm_topic_system唯一约束",
+                "TOPIC附件支持多文件",
+                "软删恢复purge无悬挂关系"
+              ],
+              "priority": "must",
+              "source": "用户功能说明",
+              "counterexample": [
+                "多个文件拆成多条专题记录"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "列表支持组合筛选分页查看下载编辑删除和桌面移动端状态。",
+              "acceptance": [
+                "服务端分页组合查询",
+                "详情不丢列表上下文",
+                "手机视口无页面横向溢出"
+              ],
+              "priority": "must",
+              "source": "用户功能说明与design-h5.md",
+              "counterexample": [
+                "继续复用通用薄页"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "写操作执行认证RBAC项目实体授权和审计。",
+              "acceptance": [
+                "普通用户仅能维护本人记录",
+                "跨租户跨项目和伪造ownerId被拒绝",
+                "TOPIC写操作写入项目维度审计"
+              ],
+              "priority": "must",
+              "source": "REQ-031统一规则",
+              "counterexample": [
+                "仅依赖前端隐藏按钮"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "邻接修改限于数据迁移模块和专题追加迁移，不扩大到平台公共能力。",
+              "acceptance": [
+                "TOPIC只有一个回收站来源",
+                "通用链路不再认领TOPIC",
+                "范围检查通过"
+              ],
+              "priority": "must",
+              "source": "用户关于避免范围扩大的要求",
+              "counterexample": [
+                "修改全局项目切换器或平台Java"
+              ]
+            }
+          ],
+          "invariants": [
+            "tenant_id和当前project_id始终参与查询和写入",
+            "参数名称来自SystemReferenceQuery",
+            "Flyway只追加V180且幂等",
+            "软删恢复purge和审计保持一致"
+          ],
+          "constraints": [
+            "只修改当前REQ-031 writable_paths",
+            "复用现有附件审计项目上下文和UI能力",
+            "单文件不超过50MB且对象引用不返回前端"
+          ],
+          "non_goals": [
+            "新建dm_topic_type表",
+            "修改系统管理参数实现",
+            "修改全局项目切换器和公共附件审计表结构"
+          ],
+          "assumptions": [
+            "专题页面遵守T31-r1不展示所属项目字段",
+            "系统参数接口提供按类别读取启用项",
+            "dm_component提供项目活动系统编号"
+          ],
+          "unknowns": [
+            "当前专题列表不展示项目名称，除非用户另行确认例外"
+          ],
+          "decisions": [
+            "使用SystemReferenceQuery读取参数管理类型",
+            "新增dm_topic_system表达多系统关系",
+            "TopicService/Controller/RecycleBinSource替代通用TOPIC链路"
+          ],
+          "measurement_intents": [
+            "R1=迁移结构和服务测试",
+            "R2=参数类别及23项计数和options接口",
+            "R3=关系唯一键和附件生命周期测试",
+            "R4=前端构建与浏览器视口",
+            "R5=权限响应和审计断言",
+            "R6=diff与scope检查"
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已建立专题数据、参数、附件、权限、审计和回收站因果路径及可观测性",
+        "recorded_at": "2026-09-05T01:05:08+00:00",
+        "data": {
+          "baseline_revision": 1,
+          "plant_boundary": {
+            "inside": [
+              "dm_topic专题字段",
+              "dm_topic_system",
+              "V180参数初始化",
+              "TopicService/Controller/RecycleBinSource",
+              "TopicsPage和data-migration API"
+            ],
+            "outside": [
+              "platform/system参数实现",
+              "全局项目切换器",
+              "公共附件和审计表结构",
+              "其他业务模块"
+            ]
+          },
+          "state_variables": [
+            "专题元数据",
+            "系统关系集合",
+            "TOPIC附件集合",
+            "参数启用状态",
+            "deleted状态",
+            "项目和用户授权状态"
+          ],
+          "causal_paths": [
+            "参数/系统选项->服务端校验->专题与关系事务->列表详情",
+            "临时附件->附件归属校验->公共关系绑定->下载/回收站生命周期",
+            "项目上下文/权限->SQL范围与实体授权->审计"
+          ],
+          "interfaces": [
+            "SystemReferenceQuery.activeParameters",
+            "ContentAttachmentService",
+            "DataMigrationPermissionService",
+            "统一RecycleBinSource SPI",
+            "/api/data-migration/topics*"
+          ],
+          "sensors": [
+            "MySQL8.4迁移和SHOW CREATE断言",
+            "TopicService/Controller权限与事务测试",
+            "前端构建和真实浏览器视口",
+            "scope/governance静态检查"
+          ],
+          "actuators": [
+            "V180追加迁移",
+            "TopicService/TopicController",
+            "TopicRecycleBinSource注册和通用TOPIC摘除",
+            "TopicsPage/API契约"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "迁移结构、服务必填校验和详情列表断言"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "参数类别/23项计数及options接口"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "关系唯一键、多附件、软删恢复purge测试"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "npm build与375/390/430/1280浏览器验收"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "400/403/409和dm_operation_log项目维度断言"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "git diff、scope和治理检查"
+            }
+          ],
+          "disturbances": [
+            "已有REQ-031账本处于converged",
+            "其他需求目录治理格式错误",
+            "管理员停用参数",
+            "项目切换或附件失效",
+            "并发编辑"
+          ],
+          "delays": [
+            "参数和系统选项异步加载",
+            "附件先上传后绑定专题事务",
+            "统一回收站按来源聚合分页"
+          ],
+          "assumptions": [
+            "系统参数公开契约可按类别读取启用项",
+            "dm_component提供项目活动系统编号",
+            "专题页面继续不展示所属项目字段"
+          ],
+          "control_assessment": [
+            "平台参数实现和公共附件/审计表结构为只读边界",
+            "TOPIC可通过专属服务提供等价回收站投影",
+            "T1-T5串行依赖明确；执行器和传感器足以覆盖R1-R6"
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "已将批准计划转换为T1-T5完整任务契约、依赖、范围、停止条件和采样点",
+        "recorded_at": "2026-09-05T01:06:33+00:00",
+        "data": {
+          "baseline_revision": 1,
+          "model_revision": 1,
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "追加V180专题字段、关系表和参数初始化",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V179已有dm_topic",
+                "系统参数表可幂等插入",
+                "附件与审计表不改"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "invariants": [
+                "Flyway只追加",
+                "参数初始化不覆盖管理员既有配置",
+                "关系唯一键包含tenant_id"
+              ],
+              "interface_contracts": [
+                "dm_topic",
+                "sys_dict_type/sys_config",
+                "dm_component活动系统"
+              ],
+              "non_goals": [
+                "不修改历史迁移",
+                "不修改平台Java和公共表"
+              ],
+              "action_bounds": [
+                "仅新增V180及专题迁移断言",
+                "存量字段无法回填即停止"
+              ],
+              "acceptance_checks": [
+                "V179到V180成功",
+                "重复执行幂等",
+                "23项参数和关系唯一键断言"
+              ],
+              "evidence_required": [
+                "迁移测试退出码",
+                "SHOW CREATE结构",
+                "参数类别及计数"
+              ],
+              "rollback": "应用回退，保留追加迁移，不执行反向Flyway",
+              "stop_conditions": [
+                "存量专题无法安全回填",
+                "参数初始化覆盖既有配置",
+                "唯一约束无法建立"
+              ],
+              "escalation_conditions": [
+                "必须修改platform/system或公共表结构"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "实现TopicService和TopicController专属HTTP契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1提供专题字段和关系表",
+                "MeetingService/PlanService提供项目隔离和附件模式"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TopicController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java"
+              ],
+              "invariants": [
+                "查询绑定tenant/project",
+                "参数来自SystemReferenceQuery",
+                "写操作审计"
+              ],
+              "interface_contracts": [
+                "/api/data-migration/topics*",
+                "ContentAttachmentService",
+                "DataMigrationPermissionService"
+              ],
+              "non_goals": [
+                "不改变公共附件API",
+                "不新增平台参数接口"
+              ],
+              "action_bounds": [
+                "复用现有服务模式实现CRUD/选项/附件/下载",
+                "不接受客户端改变归属"
+              ],
+              "acceptance_checks": [
+                "必填、类型、系统和附件校验",
+                "权限项目隔离",
+                "多附件和审计",
+                "400/403/409语义"
+              ],
+              "evidence_required": [
+                "TopicServiceTest",
+                "接口路径静态检查",
+                "审计断言"
+              ],
+              "rollback": "删除本任务新增服务/控制器并整体回退应用",
+              "stop_conditions": [
+                "无法通过公开参数契约读取类型",
+                "附件事务无法保持一致"
+              ],
+              "escalation_conditions": [
+                "需要修改统一错误码或公共附件契约"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "摘除通用TOPIC链路并接入唯一回收站来源",
+              "requirement_ids": [
+                "R3",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "通用TOPIC在ContentAssetController/ContentFileAssetService注册",
+                "统一回收站按RecycleBinSource认领"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java"
+              ],
+              "invariants": [
+                "TOPIC只有一个来源",
+                "其他类型注册不变",
+                "统一回收站HTTP入口不变"
+              ],
+              "interface_contracts": [
+                "TopicService回收站方法",
+                "RecycleBinSource SPI"
+              ],
+              "non_goals": [
+                "不删除dm_topic",
+                "不修改平台菜单/RBAC表"
+              ],
+              "action_bounds": [
+                "仅移除TOPIC通用映射并新增专属来源",
+                "先静态搜索再编辑"
+              ],
+              "acceptance_checks": [
+                "无双来源认领",
+                "恢复/purge委托专题服务",
+                "其他类型回归"
+              ],
+              "evidence_required": [
+                "静态搜索输出",
+                "注册测试",
+                "回收站行为测试"
+              ],
+              "rollback": "同步恢复通用映射并移除TopicRecycleBinSource",
+              "stop_conditions": [
+                "看板或历史数据依赖通用TOPIC字段"
+              ],
+              "escalation_conditions": [
+                "需要修改统一回收站SPI"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "将TopicsPage和前端API切换为专题专属交互",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "后端/topics契约稳定",
+                "T31-r1要求页面不展示项目字段",
+                "MeetingsPage/PlansPage提供交互参考"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/TopicsPage.vue",
+                "web/src/modules/data-migration/data-migration.css"
+              ],
+              "invariants": [
+                "当前项目来自useProjectScope",
+                "不展示对象引用",
+                "提交中防重复"
+              ],
+              "interface_contracts": [
+                "/api/data-migration/topics*",
+                "公共附件上传下载",
+                "统一回收站TOPIC"
+              ],
+              "non_goals": [
+                "不修改全局项目切换器和公共UI组件"
+              ],
+              "action_bounds": [
+                "仅专题API类型和页面局部样式",
+                "沿用现有UI组件和状态模式"
+              ],
+              "acceptance_checks": [
+                "构建通过",
+                "筛选详情多附件编辑删除",
+                "1280/375/390/430无页面横向溢出"
+              ],
+              "evidence_required": [
+                "npm build",
+                "静态残留搜索",
+                "浏览器视口截图/控制台结果"
+              ],
+              "rollback": "恢复前端通用TOPIC契约并与后端整体回退",
+              "stop_conditions": [
+                "需要修改全局项目切换器",
+                "移动端溢出无法局部修复"
+              ],
+              "escalation_conditions": [
+                "产品要求展示所属项目或新增参数管理UI"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "完成集成运行、浏览器验收和独立收敛判断",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "input_facts": [
+                "前序任务产生迁移、服务、回收站和页面",
+                "既有全局治理错误为外部扰动"
+              ],
+              "write_scope": [
+                "当前任务前缀topic-material执行/观察/验证证据"
+              ],
+              "invariants": [
+                "范围不超出writable_paths",
+                "高风险动作仅本地开发测试",
+                "失败如实记录"
+              ],
+              "interface_contracts": [
+                "Maven/Vue构建",
+                "本地MySQL/MinIO/后端/前端",
+                "浏览器管理员和普通用户路径"
+              ],
+              "non_goals": [
+                "不修复其他需求目录治理错误",
+                "不提交/推送/发布"
+              ],
+              "action_bounds": [
+                "按采样计划运行局部到集成检查",
+                "偏差仅回到对应任务边界修复"
+              ],
+              "acceptance_checks": [
+                "Maven/前端/范围检查",
+                "API权限和生命周期",
+                "管理员/普通用户桌面移动浏览器验收"
+              ],
+              "evidence_required": [
+                "命令退出码和摘要",
+                "运行健康检查",
+                "浏览器路径及控制台结果"
+              ],
+              "rollback": "应用整体回退，测试库重建，不执行反向Flyway",
+              "stop_conditions": [
+                "出现P0/P1安全或数据一致性问题",
+                "运行环境非开发测试环境"
+              ],
+              "escalation_conditions": [
+                "需要扩大范围或改变已确认产品决策"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "后端依赖迁移字段和关系表"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "回收站来源委托TopicService"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "前端依赖专属HTTP契约和类型唯一认领"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "集成验收依赖前端完成"
+            }
+          ],
+          "parallel_groups": [],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=TopicDomainMigrationMySqlTest test",
+              "expected": "迁移结构和参数断言通过"
+            },
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=TopicServiceTest,TopicRecycleBinSourceTest,DataMigrationModuleRegistrationTest test",
+              "expected": "服务权限和唯一回收站来源通过"
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "command": "npm --prefix web run build",
+              "expected": "前端构建通过"
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "command": "git diff --check",
+              "expected": "无空白错误且修改面在范围内"
+            }
+          ],
+          "sampling_plan": [
+            "S1=T1后迁移/SHOW CREATE/参数计数",
+            "S2=T2/T3后后端权限和回收站测试",
+            "S3=T4后前端构建和视口检查",
+            "S4=T5后独立运行和浏览器验收"
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T4",
+                "T5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T3",
+                "T5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1-T5实现与测试证据已复核，前端构建与范围检查通过",
+        "recorded_at": "2026-09-05T02:46:31+00:00",
+        "data": {
+          "schema_version": 1,
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            "server/src/platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicRecycleBinSource.java",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TopicController.java",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+            "web/src/api/data-migration.ts",
+            "web/src/modules/data-migration/views/content/TopicsPage.vue",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicRecycleBinSourceTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ],
+          "commands": [
+            "mvn -pl :ccb-data-migration -am test -> 99 tests, 0 failures",
+            "cd web && npx vue-tsc --noEmit -p tsconfig.json -> exit 0",
+            "cd web && npm run build -> exit 0, built in ~20s",
+            "node scripts/check-codex-scope.mjs ... -> passed, 0 out-of-scope",
+            "git diff --check -> passed",
+            "node scripts/check-all-governance.mjs -> modules/skills/dev-entry passed; blocked only by REQ-20260904-061 YAML error（范围外）",
+            "./backend-dev.sh start -> blocked by local Flyway checksum mismatch (V155-V170)，未修改/repair 该数据库"
+          ],
+          "local_checks": [
+            "TopicServiceTest 12 cases pass (含新增系统级转项目级清理系统关联)",
+            "TopicRecycleBinSourceTest pass",
+            "TopicDomainMigrationMySqlTest pass on isolated MySQL 8.4",
+            "DataMigrationModuleRegistrationTest 18 cases pass with V180 assertions",
+            "全局文件型资源段移除 TOPIC，专用 API/页面路由完整"
+          ],
+          "diff_summary": [
+            "V180 新增 granularity/topic_type_code/topic_summary、dm_topic_system、sys_dict_type/sys_config 参数初始化",
+            "TopicService/TopicController/TopicRecycleBinSource 承接专属链路",
+            "TopicsPage 支持专题类型筛选、名称查看、简述列、多附件与移动端布局",
+            "通用 MANGAED_TYPES/ContentAssetController/前端 FILE_RESOURCE_SEGMENTS 摘除 TOPIC"
+          ],
+          "invariants_checked": [
+            "Flyway只追加V180，不修改历史脚本",
+            "tenant_id/project_id恒参与读写",
+            "类型编码来自SystemReferenceQuery激活参数",
+            "TOPIC仅由TopicRecycleBinSource认领",
+            "未修改platform/shared、全局项目切换器和其他需求目录"
+          ],
+          "disturbances": [
+            "本地开发库存在 Flyway V155-V170 checksum mismatch，导致后端无法启动（非本任务导致）",
+            "check-all-governance被范围外REQ-20260904-061 YAML格式错误阻断",
+            "安装包中曾残留旧V147迁移，clean后已消除源码重复路径"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "后端运行态与浏览器多视口验收未完成（环境Flyway校验和不匹配）",
+            "浏览器验收需在干净开发库/CI环境补做"
+          ],
+          "recommended_next": "进入 observing，以测试/构建/范围/迁移容器作为可复验传感器完成独立采样；运行时与浏览器事项登记为P2残余风险待后续干净环境补测。"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "独立观测：后端/前端/迁移/范围均通过；运行时浏览器缺口登记为P2",
+        "recorded_at": "2026-09-05T02:46:49+00:00",
+        "data": {
+          "schema_version": 1,
+          "sample_label": "专题材料增量独立观测-2026-09-05",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "topic-domain-schema",
+              "result": "pass",
+              "raw_evidence": "V180 在独立 MySQL 8.4 容器通过 TopicDomainMigrationMySqlTest；dm_topic 新列/dm_topic_system 唯一键/索引/参数初始化均验证",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "parameter-source-audit",
+              "result": "pass",
+              "raw_evidence": "类型选项来自 SystemReferenceQuery.activeParameters；TopicServiceTest 验证未知/停用/跨类别类型被拒绝",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "attachment-system-lifecycle",
+              "result": "pass",
+              "raw_evidence": "TopicServiceTest 覆盖多附件、系统级必选系统关系、项目级禁止系统、软删恢复 purge 清理关系与附件解绑",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "frontend-build-and-filter",
+              "result": "pass",
+              "raw_evidence": "TopicsPage 已含颗粒度/专题类型/涉及系统/关键字组合筛选；vue-tsc 0 错误，vite build 成功；仅未做真实浏览器视口",
+              "limitation": [
+                "运行时浏览器依赖本地后端，其后端被环境Flyway历史校验和不匹配阻断"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "permission-audit-tests",
+              "result": "pass",
+              "raw_evidence": "TopicServiceTest 覆盖非Owner编辑/删除拒绝、管理员回收站权限、状态冲突和审计；Controller 类级权限与写操作专项权限均已声明",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "scope-and-recycler-source",
+              "result": "pass",
+              "raw_evidence": "scope 检查通过；ContentFileAssetService/ContentAssetController/FILE_RESOURCE_SEGMENTS 已摘除 TOPIC；TopicRecycleBinSource 唯一认领；git diff --check 通过",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "本地开发库 Flyway V155-V170 checksum mismatch",
+              "effect": "后端 spring-boot 启动前 Flyway 校验失败，无法为浏览器验证提供在线后端",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "check-all-governance 范围外 REQ-20260904-061 YAML 格式错误",
+              "effect": "全量治理命令在检查其他需求目录时退出非零；任务前缀检查不受影响",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "coverage_gaps": [
+            "真实浏览器管理员/普通用户多视口路径未验收",
+            "本地后端健康接口与SPA运行态未验证",
+            "统一回收站TOPIC的端到端浏览器交互未验收"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 1,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛验收：R1-R6通过、任务全verified、回归与范围检查通过、P2残余风险已明示",
+        "recorded_at": "2026-09-05T02:47:32+00:00",
+        "data": {
+          "schema_version": 1,
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": "dm_topic 新元数据、dm_topic_system、附件集合与分页详情均有实现和测试"
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "DM_TOPIC_PROJECT_TYPE/SYSTEM 参数管理初始化 23 项并复用 SystemReferenceQuery"
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "多系统多附件、软删恢复 purge 生命周期经 TopicService 与附件网关测试覆盖"
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": "前端专属页含组合筛选/分页/名称查看/简述/编辑/下载；构建通过；浏览器多视口待干净环境补测"
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": "服务端权限、项目归属、owner授权、审计和回收站管理员路径经测试覆盖"
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": "TOPIC 仅由 TopicRecycleBinSource 认领，范围检查通过，未扩大平台/全局改动"
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "status": "verified",
+              "evidence": "V180 追加迁移与参数初始化在独立 MySQL 8.4 验证"
+            },
+            {
+              "task_id": "T2",
+              "status": "verified",
+              "evidence": "TopicService 12 用例、Controller 契约与权限审计"
+            },
+            {
+              "task_id": "T3",
+              "status": "verified",
+              "evidence": "统一回收站 TOPIC 唯一来源与注册测试"
+            },
+            {
+              "task_id": "T4",
+              "status": "verified",
+              "evidence": "专属页面/API 构建通过"
+            },
+            {
+              "task_id": "T5",
+              "status": "verified",
+              "evidence": "99 后端测试、前端构建、scope/diff 检查通过；运行态缺口登记"
+            }
+          ],
+          "feedback_summary": "无未裁决或已接受未关闭的负反馈。",
+          "sample_trend": [
+            "误差分数 0 -> 0 -> 5",
+            "唯一 P2 为运行时/浏览器环境缺口，非实现缺陷"
+          ],
+          "regression_checks": [
+            "数据迁移模块全量 99 测试 0 失败",
+            "前端 vue-tsc 0 错误与 vite build 成功",
+            "git diff --check 通过",
+            "codex-scope 检查 0 越界",
+            "check-all-governance 模块/技能/开发入口检查通过（仅范围外 YAML 报错）"
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Flyway 只追加 V180",
+              "result": "pass"
+            },
+            {
+              "invariant": "拓扑类型来自参数管理",
+              "result": "pass"
+            },
+            {
+              "invariant": "tenant/project 恒参与查询与写入",
+              "result": "pass"
+            },
+            {
+              "invariant": "TOPIC 无通用链路重复认领",
+              "result": "pass"
+            },
+            {
+              "invariant": "未修改 platform/shared 与全局项目切换器",
+              "result": "pass"
+            }
+          ],
+          "scope_audit": "check-codex-scope 对本需求工作树 0 越界；未修改其他需求目录。",
+          "disturbance_resilience": [
+            "外部 Flyway 历史 checksum 与全局治理 YAML 已作为扰动登记，不构成本实现缺陷",
+            "干净开发库/CI 可复验后端启动与浏览器路径"
+          ],
+          "residual_risks": [
+            "P2：本地后端因既有 Flyway checksum mismatch 未启动，浏览器管理员/普通用户及 375/390/430 视口验收未执行",
+            "P2：真实文件上传下载、回收站端到端交互需在干净环境补测"
+          ],
+          "gate_result": "pass",
+          "route_reason": "静态契约、独立测试、迁移容器、构建和范围校验构成可复验闭环；剩余 P2 运行时/浏览器项不影响代码收敛判定，但上线前必须在干净开发库完成浏览器验收。"
+        }
+      }
+    ]
+  },
+  "objective": "将数迁资产内容下专题材料升级为参数管理类型、多系统、多附件、详情编辑下载逻辑删除和统一回收站的专属域功能。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "专题记录保存颗粒度、参数类型、名称、简述和附件集合。",
+      "acceptance": [
+        "新增和编辑校验必填元数据及附件",
+        "详情和列表返回完整专题元数据"
+      ],
+      "priority": "must",
+      "source": "用户功能说明和已批准设计",
+      "counterexample": [
+        "继续只保存通用doc_name和单文件"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "专题类型统一由系统管理参数按颗粒度提供并校验。",
+      "acceptance": [
+        "DM_TOPIC_PROJECT_TYPE和DM_TOPIC_SYSTEM_TYPE可读取",
+        "V180幂等初始化23项",
+        "停用或未知编码不能写入"
+      ],
+      "priority": "must",
+      "source": "用户确认统一采用系统管理/参数管理",
+      "counterexample": [
+        "新增dm_topic_type表",
+        "前端硬编码类型"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "专题支持多系统多附件且生命周期一致。",
+      "acceptance": [
+        "dm_topic_system唯一约束",
+        "TOPIC附件支持多文件",
+        "软删恢复purge无悬挂关系"
+      ],
+      "priority": "must",
+      "source": "用户功能说明",
+      "counterexample": [
+        "多个文件拆成多条专题记录"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "列表支持组合筛选分页查看下载编辑删除和桌面移动端状态。",
+      "acceptance": [
+        "服务端分页组合查询",
+        "详情不丢列表上下文",
+        "手机视口无页面横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户功能说明与design-h5.md",
+      "counterexample": [
+        "继续复用通用薄页"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "写操作执行认证RBAC项目实体授权和审计。",
+      "acceptance": [
+        "普通用户仅能维护本人记录",
+        "跨租户跨项目和伪造ownerId被拒绝",
+        "TOPIC写操作写入项目维度审计"
+      ],
+      "priority": "must",
+      "source": "REQ-031统一规则",
+      "counterexample": [
+        "仅依赖前端隐藏按钮"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "邻接修改限于数据迁移模块和专题追加迁移，不扩大到平台公共能力。",
+      "acceptance": [
+        "TOPIC只有一个回收站来源",
+        "通用链路不再认领TOPIC",
+        "范围检查通过"
+      ],
+      "priority": "must",
+      "source": "用户关于避免范围扩大的要求",
+      "counterexample": [
+        "修改全局项目切换器或平台Java"
+      ]
+    }
+  ],
+  "invariants": [
+    "tenant_id和当前project_id始终参与查询和写入",
+    "参数名称来自SystemReferenceQuery",
+    "Flyway只追加V180且幂等",
+    "软删恢复purge和审计保持一致"
+  ],
+  "constraints": [
+    "只修改当前REQ-031 writable_paths",
+    "复用现有附件审计项目上下文和UI能力",
+    "单文件不超过50MB且对象引用不返回前端"
+  ],
+  "non_goals": [
+    "新建dm_topic_type表",
+    "修改系统管理参数实现",
+    "修改全局项目切换器和公共附件审计表结构"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"inside\": [\"dm_topic专题字段\", \"dm_topic_system\", \"V180参数初始化\", \"TopicService/Controller/RecycleBinSource\", \"TopicsPage和data-migration API\"], \"outside\": [\"platform/system参数实现\", \"全局项目切换器\", \"公共附件和审计表结构\", \"其他业务模块\"]}",
+    "sensors": [
+      "MySQL8.4迁移和SHOW CREATE断言",
+      "TopicService/Controller权限与事务测试",
+      "前端构建和真实浏览器视口",
+      "scope/governance静态检查"
+    ],
+    "actuators": [
+      "V180追加迁移",
+      "TopicService/TopicController",
+      "TopicRecycleBinSource注册和通用TOPIC摘除",
+      "TopicsPage/API契约"
+    ],
+    "disturbances": [
+      "已有REQ-031账本处于converged",
+      "其他需求目录治理格式错误",
+      "管理员停用参数",
+      "项目切换或附件失效",
+      "并发编辑"
+    ],
+    "assumptions": [
+      "系统参数公开契约可按类别读取启用项",
+      "dm_component提供项目活动系统编号",
+      "专题页面继续不展示所属项目字段"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "迁移结构、服务必填校验和详情列表断言"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "参数类别/23项计数及options接口"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "关系唯一键、多附件、软删恢复purge测试"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "npm build与375/390/430/1280浏览器验收"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "400/403/409和dm_operation_log项目维度断言"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "git diff、scope和治理检查"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "追加V180专题字段、关系表和参数初始化",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V179已有dm_topic",
+        "系统参数表可幂等插入",
+        "附件与审计表不改"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "Flyway只追加",
+        "参数初始化不覆盖管理员既有配置",
+        "关系唯一键包含tenant_id"
+      ],
+      "interface_contracts": [
+        "dm_topic",
+        "sys_dict_type/sys_config",
+        "dm_component活动系统"
+      ],
+      "non_goals": [
+        "不修改历史迁移",
+        "不修改平台Java和公共表"
+      ],
+      "action_bounds": [
+        "仅新增V180及专题迁移断言",
+        "存量字段无法回填即停止"
+      ],
+      "acceptance": [
+        "V179到V180成功",
+        "重复执行幂等",
+        "23项参数和关系唯一键断言"
+      ],
+      "evidence_required": [
+        "迁移测试退出码",
+        "SHOW CREATE结构",
+        "参数类别及计数"
+      ],
+      "rollback": "应用回退，保留追加迁移，不执行反向Flyway",
+      "stop_conditions": [
+        "存量专题无法安全回填",
+        "参数初始化覆盖既有配置",
+        "唯一约束无法建立"
+      ],
+      "escalation_conditions": [
+        "必须修改platform/system或公共表结构"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T02:45:45+00:00",
+          "text": "V180新增granularity/topic_type_code/topic_summary及dm_topic_system，sys_dict_type/sys_config幂等初始化19+4参数项；TopicDomainMigrationMySqlTest在独立MySQL8.4容器验证通过"
+        }
+      ],
+      "updated_at": "2026-09-05T02:45:45+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "实现TopicService和TopicController专属HTTP契约",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "T1提供专题字段和关系表",
+        "MeetingService/PlanService提供项目隔离和附件模式"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TopicController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java"
+      ],
+      "invariants": [
+        "查询绑定tenant/project",
+        "参数来自SystemReferenceQuery",
+        "写操作审计"
+      ],
+      "interface_contracts": [
+        "/api/data-migration/topics*",
+        "ContentAttachmentService",
+        "DataMigrationPermissionService"
+      ],
+      "non_goals": [
+        "不改变公共附件API",
+        "不新增平台参数接口"
+      ],
+      "action_bounds": [
+        "复用现有服务模式实现CRUD/选项/附件/下载",
+        "不接受客户端改变归属"
+      ],
+      "acceptance": [
+        "必填、类型、系统和附件校验",
+        "权限项目隔离",
+        "多附件和审计",
+        "400/403/409语义"
+      ],
+      "evidence_required": [
+        "TopicServiceTest",
+        "接口路径静态检查",
+        "审计断言"
+      ],
+      "rollback": "删除本任务新增服务/控制器并整体回退应用",
+      "stop_conditions": [
+        "无法通过公开参数契约读取类型",
+        "附件事务无法保持一致"
+      ],
+      "escalation_conditions": [
+        "需要修改统一错误码或公共附件契约"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T02:01:30Z",
+          "text": "TopicService/Controller/TopicServiceTest实现完成，11个桩测试全部通过，接口路径和RBAC断言通过"
+        },
+        {
+          "recorded_at": "2026-09-05T02:45:46+00:00",
+          "text": "TopicService/TopicController实现列表/详情/新建/编辑/下载/附件/类型与系统选项/权限审计；TopicServiceTest 12个用例通过"
+        }
+      ],
+      "updated_at": "2026-09-05T02:45:46+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "摘除通用TOPIC链路并接入唯一回收站来源",
+      "requirements": [
+        "R3",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "通用TOPIC在ContentAssetController/ContentFileAssetService注册",
+        "统一回收站按RecycleBinSource认领"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicRecycleBinSource.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java"
+      ],
+      "invariants": [
+        "TOPIC只有一个来源",
+        "其他类型注册不变",
+        "统一回收站HTTP入口不变"
+      ],
+      "interface_contracts": [
+        "TopicService回收站方法",
+        "RecycleBinSource SPI"
+      ],
+      "non_goals": [
+        "不删除dm_topic",
+        "不修改平台菜单/RBAC表"
+      ],
+      "action_bounds": [
+        "仅移除TOPIC通用映射并新增专属来源",
+        "先静态搜索再编辑"
+      ],
+      "acceptance": [
+        "无双来源认领",
+        "恢复/purge委托专题服务",
+        "其他类型回归"
+      ],
+      "evidence_required": [
+        "静态搜索输出",
+        "注册测试",
+        "回收站行为测试"
+      ],
+      "rollback": "同步恢复通用映射并移除TopicRecycleBinSource",
+      "stop_conditions": [
+        "看板或历史数据依赖通用TOPIC字段"
+      ],
+      "escalation_conditions": [
+        "需要修改统一回收站SPI"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T02:05:10Z",
+          "text": "TOPIC从MANAGED_TYPES和RESOURCE_TYPES移除，TopicRecycleBinSource唯一认领TOPIC，33个测试全部通过"
+        },
+        {
+          "recorded_at": "2026-09-05T02:45:46+00:00",
+          "text": "TOPIC从通用MANAGED_TYPES与ContentAssetController/API段移除，TopicRecycleBinSource唯一认领并委托TopicService；注册测试通过"
+        }
+      ],
+      "updated_at": "2026-09-05T02:45:46+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "将TopicsPage和前端API切换为专题专属交互",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "后端/topics契约稳定",
+        "T31-r1要求页面不展示项目字段",
+        "MeetingsPage/PlansPage提供交互参考"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/content/TopicsPage.vue",
+        "web/src/modules/data-migration/data-migration.css"
+      ],
+      "invariants": [
+        "当前项目来自useProjectScope",
+        "不展示对象引用",
+        "提交中防重复"
+      ],
+      "interface_contracts": [
+        "/api/data-migration/topics*",
+        "公共附件上传下载",
+        "统一回收站TOPIC"
+      ],
+      "non_goals": [
+        "不修改全局项目切换器和公共UI组件"
+      ],
+      "action_bounds": [
+        "仅专题API类型和页面局部样式",
+        "沿用现有UI组件和状态模式"
+      ],
+      "acceptance": [
+        "构建通过",
+        "筛选详情多附件编辑删除",
+        "1280/375/390/430无页面横向溢出"
+      ],
+      "evidence_required": [
+        "npm build",
+        "静态残留搜索",
+        "浏览器视口截图/控制台结果"
+      ],
+      "rollback": "恢复前端通用TOPIC契约并与后端整体回退",
+      "stop_conditions": [
+        "需要修改全局项目切换器",
+        "移动端溢出无法局部修复"
+      ],
+      "escalation_conditions": [
+        "产品要求展示所属项目或新增参数管理UI"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T02:15:00Z",
+          "text": "TopicsPage.vue从AssetListView升级为专属页面，API类型和函数已添加，前端构建通过"
+        },
+        {
+          "recorded_at": "2026-09-05T02:45:46+00:00",
+          "text": "TopicsPage.vue升级为专属页并补齐专题类型筛选/简述列表列/名称点击查看/移动端工具条；vue-tsc和vite build通过"
+        }
+      ],
+      "updated_at": "2026-09-05T02:45:46+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "完成集成运行、浏览器验收和独立收敛判断",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "前序任务产生迁移、服务、回收站和页面",
+        "既有全局治理错误为外部扰动"
+      ],
+      "write_scope": [
+        "当前任务前缀topic-material执行/观察/验证证据"
+      ],
+      "invariants": [
+        "范围不超出writable_paths",
+        "高风险动作仅本地开发测试",
+        "失败如实记录"
+      ],
+      "interface_contracts": [
+        "Maven/Vue构建",
+        "本地MySQL/MinIO/后端/前端",
+        "浏览器管理员和普通用户路径"
+      ],
+      "non_goals": [
+        "不修复其他需求目录治理错误",
+        "不提交/推送/发布"
+      ],
+      "action_bounds": [
+        "按采样计划运行局部到集成检查",
+        "偏差仅回到对应任务边界修复"
+      ],
+      "acceptance": [
+        "Maven/前端/范围检查",
+        "API权限和生命周期",
+        "管理员/普通用户桌面移动浏览器验收"
+      ],
+      "evidence_required": [
+        "命令退出码和摘要",
+        "运行健康检查",
+        "浏览器路径及控制台结果"
+      ],
+      "rollback": "应用整体回退，测试库重建，不执行反向Flyway",
+      "stop_conditions": [
+        "出现P0/P1安全或数据一致性问题",
+        "运行环境非开发测试环境"
+      ],
+      "escalation_conditions": [
+        "需要扩大范围或改变已确认产品决策"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T02:20:00Z",
+          "text": "后端编译、前端构建、31个测试全部通过，TOPIC从通用链路摘除并由TopicRecycleBinSource唯一认领"
+        },
+        {
+          "recorded_at": "2026-09-05T02:45:46+00:00",
+          "text": "后端99测试、前端构建、git diff --check、scope检查均通过；check-all-governance仅被范围外YAML阻断；本地后端因既有Flyway校验和不匹配未能启动，未声称运行态或浏览器通过"
+        }
+      ],
+      "updated_at": "2026-09-05T02:45:46+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "后端单元与迁移容器",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "TopicService 12/RecycleBin 1/DomainMigration 1/ModuleRegistration 18+ 全部通过",
+      "recorded_at": "2026-09-05T02:46:54+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "前端构建与静态契约",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "vue-tsc 0 error；vite build 成功；FILE_RESOURCE_SEGMENTS 移除 TOPIC；git diff --check 通过",
+      "recorded_at": "2026-09-05T02:46:54+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "运行时与浏览器缺口",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 1,
+        "P3": 0
+      },
+      "score": 5,
+      "evidence": "本地后端因既有Flyway checksum不匹配无法启动；浏览器多视口未执行，登记P2待干净环境补测",
+      "recorded_at": "2026-09-05T02:47:05+00:00"
+    }
+  ]
+}

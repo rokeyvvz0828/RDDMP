@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicRecycleBinSource.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TopicController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+    "web/src/api/data-migration.ts",
+    "web/src/modules/data-migration/views/content/TopicsPage.vue",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicRecycleBinSourceTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am test -> 99 tests, 0 failures",
+    "cd web && npx vue-tsc --noEmit -p tsconfig.json -> exit 0",
+    "cd web && npm run build -> exit 0, built in ~20s",
+    "node scripts/check-codex-scope.mjs ... -> passed, 0 out-of-scope",
+    "git diff --check -> passed",
+    "node scripts/check-all-governance.mjs -> modules/skills/dev-entry passed; blocked only by REQ-20260904-061 YAML error（范围外）",
+    "./backend-dev.sh start -> blocked by local Flyway checksum mismatch (V155-V170)，未修改/repair 该数据库"
+  ],
+  "local_checks": [
+    "TopicServiceTest 12 cases pass (含新增系统级转项目级清理系统关联)",
+    "TopicRecycleBinSourceTest pass",
+    "TopicDomainMigrationMySqlTest pass on isolated MySQL 8.4",
+    "DataMigrationModuleRegistrationTest 18 cases pass with V180 assertions",
+    "全局文件型资源段移除 TOPIC，专用 API/页面路由完整"
+  ],
+  "diff_summary": [
+    "V180 新增 granularity/topic_type_code/topic_summary、dm_topic_system、sys_dict_type/sys_config 参数初始化",
+    "TopicService/TopicController/TopicRecycleBinSource 承接专属链路",
+    "TopicsPage 支持专题类型筛选、名称查看、简述列、多附件与移动端布局",
+    "通用 MANAGED_TYPES/ContentAssetController/前端 FILE_RESOURCE_SEGMENTS 摘除 TOPIC"
+  ],
+  "invariants_checked": [
+    "Flyway只追加V180，不修改历史脚本",
+    "tenant_id/project_id恒参与读写",
+    "类型编码来自SystemReferenceQuery激活参数",
+    "TOPIC仅由TopicRecycleBinSource认领",
+    "未修改platform/shared、全局项目切换器和其他需求目录"
+  ],
+  "disturbances": [
+    "本地开发库存在 Flyway V155-V170 checksum mismatch，导致后端无法启动（非本任务导致）",
+    "check-all-governance被范围外REQ-20260904-061 YAML格式错误阻断",
+    "安装包中曾残留旧V147迁移，clean后已消除源码重复路径"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "后端运行态与浏览器多视口验收未完成（环境Flyway校验和不匹配）",
+    "浏览器验收需在干净开发库/CI环境补做"
+  ],
+  "recommended_next": "进入 observing，以测试/构建/范围/迁移容器作为可复验传感器完成独立采样；运行时与浏览器事项登记为P2残余风险待后续干净环境补测。"
+}

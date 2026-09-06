@@ -39,13 +39,6 @@ public class PlanController {
         return ApiResponse.success(service.list(projectId, granularity, planType, systemCode, keyword, page, size, user), TraceId.getOrCreate());
     }
 
-    @GetMapping("/options/systems")
-    public ApiResponse<List<Map<String, Object>>> systemOptions(
-            @RequestParam(required = false) Long projectId,
-            @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.getSystemOptions(projectId, user), TraceId.getOrCreate());
-    }
-
     @GetMapping("/{id:\\d+}")
     public ApiResponse<Map<String, Object>> detail(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.detail(id, user), TraceId.getOrCreate());

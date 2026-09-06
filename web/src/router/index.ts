@@ -271,13 +271,13 @@ const router = createRouter({
           path: 'data-migration/dashboard/overall',
           name: 'data-migration-dashboard-overall',
           component: DataMigrationOverallDashboard,
-          meta: { title: '整体看板' }
+          meta: { title: '整体看板', permission: 'data-migration:dashboard:overall', menuPath: '/data-migration/dashboard/overall' }
         },
         {
           path: 'data-migration/dashboard/components',
           name: 'data-migration-dashboard-components',
           component: DataMigrationComponentDashboard,
-          meta: { title: '组件看板' }
+          meta: { title: '组件看板', permission: 'data-migration:dashboard:components', menuPath: '/data-migration/dashboard/components' }
         },
         {
           path: 'data-migration/content',
@@ -287,73 +287,73 @@ const router = createRouter({
           path: 'data-migration/content/reports',
           name: 'data-migration-content-reports',
           component: DataMigrationReports,
-          meta: { title: '汇报材料' }
+          meta: { title: '汇报材料', permission: 'data-migration:content:reports', menuPath: '/data-migration/content/reports' }
         },
         {
           path: 'data-migration/content/meetings',
           name: 'data-migration-content-meetings',
           component: DataMigrationMeetings,
-          meta: { title: '会议纪要' }
+          meta: { title: '会议纪要', permission: 'data-migration:content:meetings', menuPath: '/data-migration/content/meetings' }
         },
         {
           path: 'data-migration/content/plans',
           name: 'data-migration-content-plans',
           component: DataMigrationPlans,
-          meta: { title: '迁移方案' }
+          meta: { title: '迁移方案', permission: 'data-migration:content:plans', menuPath: '/data-migration/content/plans' }
         },
         {
           path: 'data-migration/content/mappings',
           name: 'data-migration-content-mappings',
           component: DataMigrationMappings,
-          meta: { title: '迁移映射' }
+          meta: { title: '迁移映射', permission: 'data-migration:content:mappings', menuPath: '/data-migration/content/mappings' }
         },
         {
           path: 'data-migration/content/validation-rules',
           name: 'data-migration-content-validation-rules',
           component: DataMigrationValidationRules,
-          meta: { title: '迁移检核规则' }
+          meta: { title: '迁移检核规则', permission: 'data-migration:content:validation-rules', menuPath: '/data-migration/content/validation-rules' }
         },
         {
           path: 'data-migration/content/parameters',
           name: 'data-migration-content-parameters',
           component: DataMigrationParameters,
-          meta: { title: '迁移参数' }
+          meta: { title: '迁移参数', permission: 'data-migration:content:parameters', menuPath: '/data-migration/content/parameters' }
         },
         {
           path: 'data-migration/content/dependencies',
           name: 'data-migration-content-dependencies',
           component: DataMigrationDependencies,
-          meta: { title: '迁移过程依赖文件' }
+          meta: { title: '迁移过程依赖文件', permission: 'data-migration:content:dependencies', menuPath: '/data-migration/content/dependencies' }
         },
         {
           path: 'data-migration/content/programs',
           name: 'data-migration-content-programs',
           component: DataMigrationPrograms,
-          meta: { title: '迁移程序' }
+          meta: { title: '迁移程序', permission: 'data-migration:content:programs', menuPath: '/data-migration/content/programs' }
         },
         {
           path: 'data-migration/content/topics',
           name: 'data-migration-content-topics',
           component: DataMigrationTopics,
-          meta: { title: '专题材料' }
+          meta: { title: '专题材料', permission: 'data-migration:content:topics', menuPath: '/data-migration/content/topics' }
         },
         {
           path: 'data-migration/content/release-drills',
           name: 'data-migration-content-release-drills',
           component: DataMigrationReleaseDrills,
-          meta: { title: '投产及演练' }
+          meta: { title: '投产及演练', permission: 'data-migration:content:release-drills', menuPath: '/data-migration/content/release-drills' }
         },
         {
           path: 'data-migration/content/issues',
           name: 'data-migration-content-issues',
           component: DataMigrationIssues,
-          meta: { title: '问题清单' }
+          meta: { title: '问题清单', permission: 'data-migration:content:issues', menuPath: '/data-migration/content/issues' }
         },
         {
           path: 'data-migration/content/recycle-bin',
           name: 'data-migration-content-recycle-bin',
           component: DataMigrationRecycleBin,
-          meta: { title: '回收站' }
+          meta: { title: '回收站', permission: 'data-migration:content:recycle-bin', menuPath: '/data-migration/content/recycle-bin' }
         },
         {
           path: 'data-migration/base',
@@ -363,21 +363,21 @@ const router = createRouter({
           path: 'data-migration/base/components',
           name: 'data-migration-base-components',
           component: DataMigrationBaseComponents,
-          meta: { title: '系统/组件清单' }
+          meta: { title: '系统/组件清单', permission: 'data-migration:base:components', menuPath: '/data-migration/base/components' }
         },
         {
           path: 'data-migration/base/target-tables',
           name: 'data-migration-base-target-tables',
           component: DataMigrationTargetTables,
           props: true,
-          meta: { title: '目标表结构', category: 'TARGET' }
+          meta: { title: '目标表结构', category: 'TARGET', permission: 'data-migration:base:table-fields-target', menuPath: '/data-migration/base/target-tables' }
         },
         {
           path: 'data-migration/base/intermediate-tables',
           name: 'data-migration-base-intermediate-tables',
           component: DataMigrationTargetTables,
           props: true,
-          meta: { title: '中间表结构', category: 'INTERMEDIATE' }
+          meta: { title: '中间表结构', category: 'INTERMEDIATE', permission: 'data-migration:base:table-fields-intermediate', menuPath: '/data-migration/base/intermediate-tables' }
         },
         { path: 'requirements', redirect: '/requirements/new-project' },
         { path: 'requirements/systems', redirect: '/requirements/new-project' },

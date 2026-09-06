@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260820-031-data-migration-asset-library-v3",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-05-data-migration-topic-material-design.md",
+  "objective": "将数迁资产内容下的专题材料从通用文件资产链路升级为支持颗粒度、参数管理专题类型、多系统、多附件、详情、编辑、下载、逻辑删除和统一回收站的专属域功能。",
+  "users": ["数据迁移管理员维护专题材料和回收站", "普通数据迁移人员查看、下载并维护本人专题材料"],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "专题记录保存项目级/系统级颗粒度、参数管理专题类型编码、名称、简述和附件集合。",
+      "acceptance": ["新增/编辑缺少必填元数据或附件返回400", "系统级至少一个有效系统且项目级不保存系统关系", "详情和列表返回完整专题元数据"],
+      "priority": "must",
+      "source": "用户功能说明与已确认设计",
+      "counterexample": ["继续只保存通用doc_name和单文件", "客户端传入无效系统或类型仍能落库"]
+    },
+    {
+      "id": "R2",
+      "statement": "专题类型统一由系统管理/参数管理提供，并按颗粒度动态过滤。",
+      "acceptance": ["启用参数类别DM_TOPIC_PROJECT_TYPE和DM_TOPIC_SYSTEM_TYPE可查询", "V180幂等初始化23个参数项", "停用或未知参数编码不能写入"],
+      "priority": "must",
+      "source": "用户确认统一采用系统管理/参数管理，并允许初始化",
+      "counterexample": ["新增dm_topic_type表", "前端硬编码类型名称或接受任意自由文本"]
+    },
+    {
+      "id": "R3",
+      "statement": "专题支持多个涉及系统和多个源文件，附件与关系生命周期一致。",
+      "acceptance": ["dm_topic_system唯一约束阻止重复系统", "dm_content_attachment business_type=TOPIC支持多文件", "软删/恢复/purge无悬挂关系和附件"],
+      "priority": "must",
+      "source": "用户功能说明",
+      "counterexample": ["复用会议关系表", "多个文件被拆为多条专题记录"]
+    },
+    {
+      "id": "R4",
+      "statement": "专题列表提供组合筛选、分页、查看、下载、编辑和逻辑删除，并覆盖完整前端状态。",
+      "acceptance": ["颗粒度/类型/系统/关键字组合查询服务端分页", "详情点击不离开当前列表上下文", "桌面及三种手机视口无页面横向溢出"],
+      "priority": "must",
+      "source": "用户功能说明与design-h5.md",
+      "counterexample": ["只保留AssetListView通用上传", "筛选条件导致无界全表查询或旧项目数据残留"]
+    },
+    {
+      "id": "R5",
+      "statement": "专题写操作执行认证、RBAC、项目可达性、实体授权和审计。",
+      "acceptance": ["普通用户仅能编辑/删除本人记录", "跨租户/跨项目/伪造ownerId被拒绝", "TOPIC写操作记录dm_operation_log项目维度审计"],
+      "priority": "must",
+      "source": "REQ-031统一规则",
+      "counterexample": ["仅前端隐藏按钮", "直接信任客户端tenantId或ownerId"]
+    },
+    {
+      "id": "R6",
+      "statement": "专题外邻接变更受控且不扩大到平台业务或公共表结构。",
+      "acceptance": ["通用TOPIC路由和回收站来源不再重复认领", "仅修改data-migration、专题迁移和前端契约授权路径", "范围检查通过"],
+      "priority": "must",
+      "source": "用户关于避免范围扩大的要求",
+      "counterexample": ["修改全局项目切换器", "修改platform/system Java实现或公共附件表结构"]
+    }
+  ],
+  "invariants": [
+    "tenant_id与当前project_id始终参与查询和写入",
+    "参数名称来自SystemReferenceQuery，不在专题代码中硬编码",
+    "单文件不超过50MB，对象引用不返回前端",
+    "Flyway只追加，V180幂等",
+    "软删、恢复、purge和审计保持一致"
+  ],
+  "constraints": [
+    "Java17/Spring Boot 3.4.4/MySQL8.4/Vue3",
+    "只修改当前REQ-031 writable_paths",
+    "复用SystemReferenceQuery、ContentAttachmentService、ContentRecycleBinService和现有UI组件",
+    "遵守design-h5.md和T31-r1项目上下文规则"
+  ],
+  "non_goals": [
+    "新建dm_topic_type业务字典表",
+    "修改系统管理参数服务实现",
+    "修改全局项目切换器",
+    "在线编辑、OCR、全文检索、用户可见文件版本历史"
+  ],
+  "selected_approach": {
+    "name": "专题专属服务/控制器 + 系统参数管理 + 专题系统关系表",
+    "reason": "与会议纪要和迁移方案域模式一致，能表达多系统、多附件和服务端校验，同时不复制平台参数维护能力。",
+    "alternatives": [
+      {"name": "继续复用AssetListView并扩展JSON", "rejected_because": "无法稳定表达关系、权限和附件生命周期"},
+      {"name": "新建dm_topic_type表", "rejected_because": "与用户确认的系统管理/参数管理归属冲突"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["dm_topic新增专题字段", "dm_topic_system", "V180参数初始化", "TopicService/Controller/RecycleBinSource", "TopicsPage和data-migration API契约"],
+      "outside": ["platform/system Java实现", "全局项目切换器", "公共附件和审计表结构", "其他业务模块"]
+    },
+    "components": [
+      {"name": "TopicService", "responsibility": "专题CRUD、关系、附件、权限、审计", "depends_on": ["SystemReferenceQuery", "DataMigrationPermissionService", "ContentAttachmentService"]},
+      {"name": "TopicController", "responsibility": "专题HTTP契约和参数/系统选项", "depends_on": ["TopicService"]},
+      {"name": "TopicRecycleBinSource", "responsibility": "TOPIC统一回收站分发", "depends_on": ["TopicService", "ContentRecycleBinService"]},
+      {"name": "TopicsPage", "responsibility": "筛选、列表、详情、编辑、附件和状态交互", "depends_on": ["Topic API", "useProjectScope", "UiDataTable", "UiFormDrawer"]}
+    ],
+    "interfaces": [
+      {"name": "SystemReferenceQuery.activeParameters", "producer": "platform/system", "consumers": ["TopicService", "TopicsPage via options endpoint"], "contract": "按参数类别返回启用的code/label"},
+      {"name": "/api/data-migration/topics*", "producer": "TopicController", "consumers": ["TopicsPage", "统一回收站"], "contract": "统一ApiResponse、项目隔离、RBAC和分页"},
+      {"name": "dm_content_attachment", "producer": "platform attachment capability", "consumers": ["TopicService"], "contract": "TOPIC多附件绑定和受控下载"}
+    ],
+    "data_flows": [
+      {"input": "当前项目、参数选项、系统选项和临时附件ID", "transitions": ["服务端校验项目/类型/系统/附件", "事务保存dm_topic", "替换dm_topic_system和附件关系", "记录审计"], "output": "专题详情和分页列表"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "参数类别缺失或参数停用", "behavior": "选项错误或400，不接受自由文本", "recovery": "管理员在参数管理补齐/启用后重试"},
+    {"condition": "跨项目/跨租户/非本人维护", "behavior": "403且不返回实体细节", "recovery": "切换到可访问项目或由管理员操作"},
+    {"condition": "附件超限、失效或绑定失败", "behavior": "400/413并清理未绑定临时附件", "recovery": "重新上传后提交"},
+    {"condition": "并发状态变化或唯一冲突", "behavior": "409并保留当前表单", "recovery": "刷新详情后重新提交"}
+  ],
+  "quality_attributes": {
+    "security": ["服务端认证/RBAC/项目/实体授权", "不暴露对象引用和租户字段"],
+    "performance": ["服务端分页", "类型/系统索引", "关键字限定名称和简述"],
+    "compatibility": ["保留统一回收站和公共附件契约", "V180追加式迁移", "旧TOPIC记录兼容回填"],
+    "operations": ["TOPIC操作审计", "迁移幂等", "应用回退不执行反向Flyway"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R3"], "signal": "V180结构/参数/关系及服务层行为", "method": "MySQL8.4迁移测试和后端单元/集成测试"},
+    {"requirement_ids": ["R4"], "signal": "API分页、前端交互和视口布局", "method": "npm build、真实浏览器桌面/移动验收"},
+    {"requirement_ids": ["R5"], "signal": "401/403/400/409和审计记录", "method": "权限矩阵测试与数据库断言"},
+    {"requirement_ids": ["R6"], "signal": "实际diff与范围检查", "method": "governance/scope脚本和人工文件审计"}
+  ],
+  "assumptions": [
+    {"text": "系统参数允许两个专题类型类别", "basis": "用户确认统一由参数管理维护", "falsifier": "参数管理只能提供单类别且无法按颗粒度区分"},
+    {"text": "当前项目由全局项目切换器提供，页面不展示项目字段", "basis": "REQ-031 T31-r1", "falsifier": "用户另行确认专题页面例外展示项目名称"}
+  ],
+  "unknowns": [
+    {"question": "专题列表是否需要展示当前项目名称", "impact": "影响列表列和T31-r1局部例外", "owner": "需求负责人", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "专题类型统一使用系统管理/参数管理，不新建dm_topic_type", "reason": "避免重复字典维护", "source": "用户确认"},
+    {"id": "D2", "decision": "V180允许幂等初始化两个参数类别及23个参数项", "reason": "保证首次部署可用", "source": "用户确认"},
+    {"id": "D3", "decision": "涉及系统使用dm_topic_system多对多关系表", "reason": "满足多选且不复用会议关系语义", "source": "设计选择"},
+    {"id": "D4", "decision": "专题专属链路替代通用TOPIC链路，邻接修改限于注册、路由、回收站和前端契约", "reason": "避免重复认领和范围扩大", "source": "用户范围要求"}
+  ],
+  "risks": [
+    {"risk": "参数类别或初始项未正确初始化", "impact": "专题类型下拉为空", "mitigation": "V180幂等插入、迁移测试和参数接口检查"},
+    {"risk": "通用TOPIC链路仍注册导致重复路由/回收站来源", "impact": "请求分发不确定或重复计数", "mitigation": "注册测试断言MANAGED_TYPES/RESOURCE_TYPES和RecycleBinSource唯一认领"},
+    {"risk": "多附件替换留下孤儿关系", "impact": "下载/回收站状态不一致", "mitigation": "事务级全量关系替换、附件生命周期测试和purge断言"},
+    {"risk": "移动端多选系统和文件弹层溢出", "impact": "关键操作不可达", "mitigation": "按design-h5.md验收三组手机视口"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认专题类型统一由系统管理/参数管理维护，并允许追加迁移初始化两个参数类别及23个参数项。",
+    "confirmed_at": "2026-09-05T00:00:00+08:00"
+  }
+}

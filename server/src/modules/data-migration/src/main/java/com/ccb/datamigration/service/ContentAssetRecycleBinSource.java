@@ -27,7 +27,7 @@ public class ContentAssetRecycleBinSource implements RecycleBinSource {
     @Override
     public Set<String> supports() {
         Set<String> types = new LinkedHashSet<>(ContentFileAssetService.MANAGED_TYPES);
-        for (String table : ContentAssetTables.STRUCTURED_TABLES) types.add(ContentAssetTables.typeFor(table));
+        for (String type : StructuredAssetService.TYPES) types.add(type);
         return Set.copyOf(types);
     }
 

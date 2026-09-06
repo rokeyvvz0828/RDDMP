@@ -37,16 +37,14 @@ public class PlanService {
     /** dm_content_attachment.business_type 值。 */
     private static final String CONTENT_TYPE = "PLAN";
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
-    private static final Set<String> GRANULARITIES = Set.of("PROJECT", "SYSTEM");
-    private static final Set<String> PLAN_TYPES = Set.of("BUSINESS", "DATA");
     private static final String NO_SYSTEM_CODE = "";
 
     private static final String MAIN_FILE_JOIN =
         " LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = 'PLAN' AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 " +
         " LEFT JOIN att_file f ON f.id = m.attachment_id AND f.tenant_id = m.tenant_id ";
     private static final String SYSTEM_JOIN =
-        " LEFT JOIN dm_component c ON c.tenant_id = a.tenant_id AND c.project_id = a.project_id AND c.physical_subsystem_code = a.system_code AND c.deleted = 0 " +
-        " LEFT JOIN arch_physical_subsystem sys ON sys.tenant_id = c.tenant_id AND sys.code = c.physical_subsystem_code AND sys.deleted = 0 ";
+        " LEFT JOIN dm_component c ON c.tenant_id = a.tenant_id AND c.project_id = a.project_id AND c.system_code = a.system_code " +
+        " LEFT JOIN arch_physical_subsystem sys ON sys.tenant_id = c.tenant_id AND sys.code = c.system_code AND sys.deleted = 0 ";
     private static final String SELECT_COLUMNS =
         "SELECT a.id, a.project_id, p.project_name, a.granularity, a.plan_type, a.system_code, sys.name AS system_name, " +
         "a.doc_code AS asset_code, a.doc_name AS asset_name, a.plan_summary, " +
@@ -66,11 +64,13 @@ public class PlanService {
     private final DataMigrationPermissionService permissions;
     private final UserDirectoryPort userDirectory;
     private final ContentDocCodeGenerator docCodes;
+    private final DataMigrationCodeValueService codeValues;
 
     @Autowired
     public PlanService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
                        ContentFileAssetService fileAssets, DataMigrationPermissionService permissions,
-                       UserDirectoryPort userDirectory, ContentDocCodeGenerator docCodes) {
+                       UserDirectoryPort userDirectory, ContentDocCodeGenerator docCodes,
+                       DataMigrationCodeValueService codeValues) {
         this.jdbc = jdbc;
         this.attachmentGateway = attachmentGateway;
         this.attachments = attachments;
@@ -78,12 +78,13 @@ public class PlanService {
         this.permissions = permissions;
         this.userDirectory = userDirectory;
         this.docCodes = docCodes;
+        this.codeValues = codeValues;
     }
 
     public PlanService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
                        ContentFileAssetService fileAssets, DataMigrationPermissionService permissions,
-                       UserDirectoryPort userDirectory) {
-        this(jdbc, attachmentGateway, attachments, fileAssets, permissions, userDirectory, new ContentDocCodeGenerator());
+                       UserDirectoryPort userDirectory, DataMigrationCodeValueService codeValues) {
+        this(jdbc, attachmentGateway, attachments, fileAssets, permissions, userDirectory, new ContentDocCodeGenerator(), codeValues);
     }
 
     /** 为行集回填上传人/更新人/删除人显示名（与会议纪要同款目录解析）。 */
@@ -112,8 +113,8 @@ public class PlanService {
             .append("WHERE a.tenant_id = ? AND a.deleted = 0");
         List<Object> args = new ArrayList<>(List.of(user.tenantId()));
         sql.append(" AND a.project_id = ?"); args.add(scope);
-        if (granularity != null && GRANULARITIES.contains(granularity)) { sql.append(" AND a.granularity = ?"); args.add(granularity); }
-        if (planType != null && PLAN_TYPES.contains(planType)) { sql.append(" AND a.plan_type = ?"); args.add(planType); }
+        if (granularity != null && !granularity.isBlank()) { sql.append(" AND a.granularity = ?"); args.add(granularity); }
+        if (planType != null && !planType.isBlank()) { sql.append(" AND a.plan_type = ?"); args.add(planType); }
         if (systemCode != null && !systemCode.isBlank()) { sql.append(" AND a.system_code = ?"); args.add(systemCode.trim()); }
         if (keyword != null && !keyword.isBlank()) { sql.append(" AND a.doc_name LIKE ?"); args.add("%" + keyword.trim() + "%"); }
 
@@ -155,8 +156,8 @@ public class PlanService {
         String planType = requireText(firstNonNull(body.get("planType"), body.get("plan_type")), "迁移方案类型不能为空");
         String systemCodeArg = optionalText(firstNonNull(body.get("systemCode"), body.get("system_code")));
         String summary = optionalText(firstNonNull(body.get("summary"), body.get("planSummary"), body.get("plan_summary")));
-        validateEnum(granularity, GRANULARITIES, "资产颗粒度无效，支持：PROJECT/SYSTEM");
-        validateEnum(planType, PLAN_TYPES, "迁移方案类型无效，支持：BUSINESS/DATA");
+        codeValues.requireActive(DataMigrationCodeValueService.DM_PLAN_GRANULARITY, "资产颗粒度", granularity, user);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_PLAN_TYPE, "迁移方案类型", planType, user);
         String systemCode = resolveSystemCode(granularity, systemCodeArg);
         if ("SYSTEM".equals(granularity)) ensureSystemCodeBelongsToProject(systemCode, projectId, user);
         // T32：新增归属取前端 projectId，但必须是调用者可访问的项目
@@ -187,9 +188,9 @@ public class PlanService {
         assertDimensionUnique(tenantId, projectId, granularity, planType, systemCode, null);
         long id = nextId();
         try {
-            jdbc.update("INSERT INTO dm_plan (id, tenant_id, project_id, component_id, doc_code, doc_name, " +
+            jdbc.update("INSERT INTO dm_plan (id, tenant_id, project_id, doc_code, doc_name, " +
                     "granularity, plan_type, system_code, plan_summary, owner_id, created_by, updated_by) " +
-                    "VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, tenantId, projectId, docCodes.generate(CONTENT_TYPE), docName.trim(),
                     granularity, planType, systemCode, summary, user.id(), user.id(), user.id());
         } catch (DataIntegrityViolationException ex) {
@@ -217,8 +218,8 @@ public class PlanService {
         boolean systemCodeProvided = body.containsKey("systemCode") || body.containsKey("system_code");
         String systemCodeArg = systemCodeProvided
                 ? optionalText(firstNonNull(body.get("systemCode"), body.get("system_code"))) : null;
-        validateEnum(granularity, GRANULARITIES, "资产颗粒度无效，支持：PROJECT/SYSTEM");
-        validateEnum(planType, PLAN_TYPES, "迁移方案类型无效，支持：BUSINESS/DATA");
+        codeValues.requireActive(DataMigrationCodeValueService.DM_PLAN_GRANULARITY, "资产颗粒度", granularity, user);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_PLAN_TYPE, "迁移方案类型", planType, user);
         String systemCode;
         if (systemCodeProvided) {
             systemCode = resolveSystemCode(granularity, systemCodeArg);
@@ -355,6 +356,9 @@ public class PlanService {
         Map<String, Object> row = rows.get(0);
         permissions.requireStoredProject(row.get("project_id"), user);
         decorateUsers(rows, user.tenantId());
+        // 添加附件列表
+        List<Map<String, Object>> attachmentList = attachments.list("PLAN", id, user.tenantId());
+        row.put("attachments", attachmentList);
         return row;
     }
 
@@ -388,16 +392,6 @@ public class PlanService {
     // ============ 关联数据 ============
 
     /** 关联系统下拉（T32/T39）：{@code projectId} 必填，仅返回该项目 {@code dm_component} 活动清单的系统编号。 */
-    public List<Map<String, Object>> getSystemOptions(Long projectId, AuthUser user) {
-        long scope = permissions.requireProject(projectId, user);
-        return jdbc.queryForList(
-            "SELECT c.physical_subsystem_code AS value, CONCAT(c.physical_subsystem_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label " +
-            "FROM dm_component c " +
-            "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
-            "WHERE c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0 " +
-            "ORDER BY c.physical_subsystem_code",
-            user.tenantId(), scope);
-    }
 
     // ============ 私有辅助 ============
 
@@ -459,7 +453,7 @@ public class PlanService {
     private void ensureSystemCodeBelongsToProject(String systemCode, long projectId, AuthUser user) {
         Integer count = jdbc.queryForObject(
             "SELECT COUNT(*) FROM dm_component c " +
-            "WHERE c.tenant_id = ? AND c.project_id = ? AND c.physical_subsystem_code = ? AND c.deleted = 0",
+            "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ? AND c.enabled = 1",
             Integer.class, user.tenantId(), projectId, systemCode);
         if (count == null || count == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "关联系统不存在或不属于当前项目");
     }
@@ -478,10 +472,6 @@ public class PlanService {
             files.add(single);
         }
         return files;
-    }
-
-    private void validateEnum(String value, Set<String> allowed, String message) {
-        if (value == null || !allowed.contains(value)) throw new BusinessException(ErrorCode.BAD_REQUEST, message);
     }
 
     private void audit(AuthUser user, String operation, long projectId, long id) {

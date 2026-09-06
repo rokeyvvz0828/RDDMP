@@ -12,7 +12,7 @@ class ContentDocCodeGeneratorTest {
     private final ContentDocCodeGenerator generator = new ContentDocCodeGenerator();
 
     @Test
-    void generatesRegisteredPrefixesWithLowercaseUuidWithoutHyphens() {
+    void generatesRegisteredContentPrefixesWithLowercaseUuidWithoutHyphens() {
         Map<String, String> prefixes = Map.ofEntries(
                 Map.entry("PLAN", "PLAN"),
                 Map.entry("MAPPING_DOC", "MAP"),
@@ -21,7 +21,6 @@ class ContentDocCodeGeneratorTest {
                 Map.entry("TOPIC", "TOPIC"),
                 Map.entry("RELEASE_DRILL", "DRILL"),
                 Map.entry("REPORT", "REPORT"),
-                Map.entry("RULE", "RULE"),
                 Map.entry("PARAMETER", "PARAM"));
 
         prefixes.forEach((type, prefix) -> {
@@ -33,7 +32,7 @@ class ContentDocCodeGeneratorTest {
     }
 
     @Test
-    void rejectsTypesOutsideTheNineContentTables() {
+    void rejectsTypesOutsideTheContentTables() {
         assertThrows(BusinessException.class, () -> generator.generate("MEETING"));
     }
 }

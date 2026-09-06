@@ -103,7 +103,7 @@ class ReportServiceTest {
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
         ContentAttachmentService contentAttachments = new ContentAttachmentService(jdbc, attachments);
         ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments, permissions);
-        return new ReportService(jdbc, attachments, contentAttachments, fileAssets, permissions);
+        return new ReportService(jdbc, attachments, contentAttachments, fileAssets, permissions, TestDataMigrationCodeValues.service());
     }
 
     private static AttachmentItem attachment(long id, String name) {

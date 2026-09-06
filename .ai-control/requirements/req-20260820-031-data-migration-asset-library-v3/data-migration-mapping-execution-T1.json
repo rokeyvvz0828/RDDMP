@@ -1,0 +1,84 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_mapping_domain.sql",
+      "purpose": "移除 mapping_type 空字符串默认值和历史回填 SQL"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationMappingMigrationMySqlTest.java",
+      "purpose": "断言 mapping_type 非空、无默认值且迁移不包含历史回填"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R10"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test (修改前基准)",
+      "exit_code": 0,
+      "salient_output": "Tests run: 1, Failures: 0, Errors: 0, Skipped: 0；旧测试未检测空默认值和历史回填"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test (修改后)",
+      "exit_code": 0,
+      "salient_output": "MySQL 8.4 Testcontainers；Tests run: 1, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS"
+    },
+    {
+      "command": "rg -n \"UPDATE dm_mapping_doc SET mapping_type|mapping_type[^\\n]*DEFAULT ''\" V186__data_migration_mapping_domain.sql",
+      "exit_code": 0,
+      "salient_output": "无匹配；命令通过 || true 归一化退出码，结果为空"
+    },
+    {
+      "command": "git diff --check -- V186__data_migration_mapping_domain.sql DataMigrationMappingMigrationMySqlTest.java",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "MySQL 迁移结构、参数种子和幂等检查",
+      "result": "pass",
+      "evidence": "DataMigrationMappingMigrationMySqlTest 在 mysql:8.4 上 1/1 通过",
+      "limitations": ["测试直接执行 V186 语句，不代表共享环境 Flyway 状态"]
+    },
+    {
+      "check": "无历史回填与无兼容默认值",
+      "result": "pass",
+      "evidence": "information_schema 返回 IS_NULLABLE=NO、COLUMN_DEFAULT=NULL；迁移语句扫描无 UPDATE dm_mapping_doc SET mapping_type",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "mapping_type 定义从 NOT NULL DEFAULT '' 收紧为 NOT NULL",
+    "删除把空类型历史行回填为 MIGRATE_IN 的 UPDATE",
+    "测试新增列默认值和迁移源码反例断言"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Flyway 只追加且不修改 V185 及更早脚本",
+      "result": "pass",
+      "evidence": "仅修改工作区尚未发布的 V186 和其直接测试"
+    },
+    {
+      "invariant": "不回填历史映射记录且不引入兼容默认类型",
+      "result": "pass",
+      "evidence": "静态扫描和 MySQL 元数据断言通过"
+    },
+    {
+      "invariant": "保护工作区中其他需求的迁移和测试修改",
+      "result": "pass",
+      "evidence": "修改面仅限 T1 两个既定文件"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "T1 两个目标文件在任务开始前均为未跟踪文件",
+      "impact": "普通 git diff 无法展示新增文件内部增量，因此以源码扫描、文件读取和运行测试作为证据"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "完整 Flyway 链、模块回归和共享环境发布状态由 T4 验证或上线前人工确认"
+  ],
+  "recommended_next": "observe"
+}

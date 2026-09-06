@@ -91,7 +91,7 @@ class IssueMigrationMySqlTest {
         }
 
         RaceInjectingJdbcTemplate jdbc = new RaceInjectingJdbcTemplate(dataSource());
-        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()));
+        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
 
         BusinessException error = assertThrows(BusinessException.class,
@@ -113,7 +113,7 @@ class IssueMigrationMySqlTest {
         }
 
         RaceInjectingJdbcTemplate jdbc = new RaceInjectingJdbcTemplate(dataSource());
-        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()));
+        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("projectId", 100L);

@@ -23,7 +23,8 @@ import UiFilePreview from '../../../../components/ui/UiFilePreview.vue'
 import { useAuthStore } from '../../../../stores/auth'
 import {
   listPlans, getPlan, createPlan, updatePlan, deletePlans,
-  getPlanSystemOptions, getPlanAttachments,
+  getSystemOptions, getPlanAttachments,
+  getDataMigrationParamOptions, DM_CODE_CATEGORIES,
   type PlanRecord, type PlanQuery, type PlanFormData, type PlanAttachment, type SelectOption
 } from '../../../../api/data-migration'
 import ProjectScopeState from '../../components/ProjectScopeState.vue'
@@ -39,8 +40,8 @@ const scopeProjectId = scope.projectId
 const loading = ref(false), records = ref<PlanRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
 const fGranularity = ref(''), fPlanType = ref(''), fSystem = ref(''), fKeyword = ref('')
 const filterSysOpts = ref<SelectOption[]>([])
-const GRAV: SelectOption[] = [{ value: 'PROJECT', label: '项目级' }, { value: 'SYSTEM', label: '系统级' }]
-const PLAN_TYPES: SelectOption[] = [{ value: 'BUSINESS', label: '业务迁移方案' }, { value: 'DATA', label: '数据迁移方案' }]
+const GRAV = ref<SelectOption[]>([])
+const PLAN_TYPES = ref<SelectOption[]>([])
 
 const drawer = ref(false), saving = ref(false), editing = ref(false), editId = ref<number | null>(null)
 interface PlanFormState {
@@ -89,7 +90,11 @@ const stripExt = (name: string) => { const dot = name.lastIndexOf('.'); return d
 
 async function loadFilterSystems() {
   const pid = scopeProjectId.value
-  filterSysOpts.value = pid ? ((await getPlanSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
+  filterSysOpts.value = pid ? ((await getSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
+}
+async function loadCodeValueOpts() {
+  try { const g = await getDataMigrationParamOptions(DM_CODE_CATEGORIES.planGranularity); GRAV.value = g.data.data ?? [] } catch { GRAV.value = [] }
+  try { const t = await getDataMigrationParamOptions(DM_CODE_CATEGORIES.planType); PLAN_TYPES.value = t.data.data ?? [] } catch { PLAN_TYPES.value = [] }
 }
 async function loadList() {
   if (scopeProjectId.value == null) { records.value = []; total.value = 0; selectedIds.value = []; return }
@@ -108,7 +113,7 @@ async function loadList() {
 function doSearch() { page.value = 1; loadList() }
 function doReset() { fGranularity.value = ''; fPlanType.value = ''; fSystem.value = ''; fKeyword.value = ''; page.value = 1; loadList() }
 async function loadFormSysOpts(pid: number | null) {
-  formSysOpts.value = pid ? ((await getPlanSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
+  formSysOpts.value = pid ? ((await getSystemOptions(pid).catch(() => null))?.data.data ?? []) : []
 }
 function resetForm() {
   fv.value = { projectId: scopeProjectId.value, granularity: '', planType: '', systemCode: '', planName: '', summary: '' }
@@ -280,6 +285,7 @@ async function doPreviewById(attachmentId: number, fileName: string, fallback?: 
 onMounted(async () => {
   await scope.ensureLoaded()
   await loadFilterSystems()
+  await loadCodeValueOpts()
 })
 
 // 全局项目变化：丢弃上一个项目的列表、筛选与表单状态，按新项目重新加载。
@@ -319,7 +325,7 @@ watch(scopeProjectId, () => {
       <el-select v-model="fPlanType" placeholder="迁移方案类型" clearable style="width:150px" @change="doSearch">
         <el-option v-for="o in PLAN_TYPES" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
-      <el-select v-model="fSystem" placeholder="关联系统" clearable filterable style="width:170px" @change="doSearch">
+      <el-select v-model="fSystem" placeholder="输入系统编号或名称搜索" clearable filterable style="width:190px" @change="doSearch">
         <el-option v-for="o in filterSysOpts" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
       <el-input v-model="fKeyword" clearable placeholder="搜索方案名称" style="width:200px" @keyup.enter="doSearch">
@@ -400,7 +406,7 @@ watch(scopeProjectId, () => {
           </el-col>
           <el-col :span="12">
             <el-form-item v-if="fv.granularity === 'SYSTEM'" label="关联系统" required>
-              <el-select v-model="fv.systemCode" placeholder="选择关联系统" filterable style="width:100%">
+              <el-select v-model="fv.systemCode" placeholder="输入系统编号或名称搜索" filterable style="width:100%">
                 <el-option v-for="o in formSysOpts" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>

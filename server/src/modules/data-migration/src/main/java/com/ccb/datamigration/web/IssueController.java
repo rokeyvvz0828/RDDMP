@@ -161,11 +161,6 @@ public class IssueController {
     /**
      * 获取系统选项（根据项目）
      */
-    @GetMapping("/options/systems")
-    public ApiResponse<List<Map<String, Object>>> systemOptions(
-            @RequestParam(required = false) Long projectId, @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.getSystemOptions(projectId, user), TraceId.getOrCreate());
-    }
 
     /**
      * 获取系统名称（根据系统编号）

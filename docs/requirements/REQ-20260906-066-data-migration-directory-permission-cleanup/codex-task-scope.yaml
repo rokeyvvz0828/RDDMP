@@ -1,0 +1,74 @@
+schema_version: "1.0"
+requirement_id: "REQ-20260906-066"
+requirement_title: "数据迁移目录菜单权限清理"
+status: "ready"
+created_at: "2026-09-06T14:00:00+08:00"
+
+# 开发环境
+developer: "codex"
+branch: "feat/REQ-20260820-031-data-migration"
+owner: "rokeyvvz0828"
+risk_level: "important"
+
+# 目标模块
+target_modules:
+  - business/data-migration
+  - platform/infrastructure
+
+# 路径授权
+writable_paths:
+  - "server/src/platform/infrastructure/src/main/resources/db/migration/V193__data_migration_remove_directory_permission_nodes.sql"
+  - "docs/requirements/REQ-20260906-066-data-migration-directory-permission-cleanup/**"
+  - ".ai-control/requirements/req-20260906-066-dm-dir-perm/*.json"
+  - ".ai-control/requirements/req-20260906-066-dm-dir-perm/*.md"
+
+read_only_paths:
+  - "server/src/modules/data-migration/**"
+  - "server/src/platform/system/**"
+  - "server/src/platform/infrastructure/src/main/resources/db/migration/V190__data_migration_permission_hardcode_fix.sql"
+  - "server/src/platform/infrastructure/src/main/resources/db/migration/V191__data_migration_directory_permission_independence.sql"
+  - "server/src/platform/infrastructure/src/main/resources/db/migration/V192__data_migration_remove_directory_write_permissions.sql"
+  - "web/src/modules/data-migration/**"
+  - "web/src/views/RolePermissionView.vue"
+  - "governance/modules.yaml"
+  - "docs/governance/**"
+
+forbidden_paths:
+  - "server/src/platform/security/**"
+  - ".ai-control/original/**"
+  - "**/*.pem"
+  - "**/*.key"
+  - ".env"
+
+# 复用能力
+reuse_capabilities:
+  - "platform/security: RBAC 权限查询"
+  - "web/src/components/ui: 已有权限管理页（本需求不改平台代码）"
+
+# 数据库影响
+database_impact:
+  type: "flyway_append_only"
+  new_migration: "V193__data_migration_remove_directory_permission_nodes.sql"
+  tables_affected:
+    - "sys_menu_permission: 删除数据迁移目录权限节点、修复斜杠权限码"
+    - "sys_role_permission: 删除数据迁移目录权限的存量角色关联"
+  no_schema_change: true
+
+# 权限影响
+permission_impact:
+  - "清理数据迁移目录的历史冗余权限节点（7204/7404）"
+  - "修复 V190 遗漏的斜杠动作权限码"
+
+# 测试计划
+test_plan:
+  - "数据库验证: 执行新增迁移后数据迁移目录权限节点为 0、无斜杠权限码残留"
+  - "静态检查: 校验新增迁移不修改历史脚本、平台代码无改动"
+
+# 完成标准
+completion:
+  control_mode: "full"
+  control_prefix: "req-20260906-066-dm-dir-perm"
+  verification_steps:
+    - "数据库目录 720/740 权限节点为 0"
+    - "无 data-migration:content/ 斜杠权限码残留"
+    - "平台 system/权限管理页面无改动"

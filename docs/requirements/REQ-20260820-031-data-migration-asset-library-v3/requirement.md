@@ -315,3 +315,109 @@ module: business/data-migration
 3. 通用文件按 `id` 替换后，`project_id`、`doc_code`、owner/权限和审计语义不变，主附件关系正确更新且不产生 MD5 冲突。
 4. 上传表单无编号输入，规则/参数编辑请求不发送编号，计划/报告/回收站继续显示业务编号且不显示技术记录 ID。
 5. 聚焦后端测试、模块测试、全量 Maven 测试、前端构建、治理与范围检查通过；本地运行和桌面/移动浏览器验收按可用环境取证。
+
+## 增量：投产及演练专属域优化（对标迁移方案）
+
+> 2026-09-05 由用户提出并确认：将「数迁资产内容 › 投产及演练」从通用文件型资产链路（`ContentFileAssetService` + `AssetListView`）升级为专属域功能，并入 REQ-20260820-031 范围，新增追加式迁移 `V184`。
+
+### 功能目标
+
+投产及演练资料统一管理：项目级/组件级颗粒度、八类资料类型、所属轮次、涉及物理子系统、单文件绑定、组合筛选、分页、查看、编辑、下载、逻辑删除与统一回收站。
+
+### 字段与规则（用户确认）
+
+- 颗粒度：`DM_RELEASE_DRILL_GRANULARITY`（项目级 `PROJECT` / 组件级 `COMPONENT`），由“系统管理/参数管理”维护。
+- 资料类型：`DM_RELEASE_DRILL_TYPE`（投产方案、应急方案、投产总结、宣讲通知、调度时序、关键路径、里程碑汇报指令、数迁环境信息），由“系统管理/参数管理”维护。
+- 所属轮次：纯手工输入文本，可选；不跨投产模块读轮次。
+- 涉及物理子系统：组件级必填且单选，数据源为当前项目 `dm_component` 启用清单，关联键 `(project_id, system_code)`；项目级不填。
+- 资料名称：必填；上传时可自动以源文件名去扩展名填充并可修改。
+- 源文件：单文件，新增必传；编辑可保留原文件或重新上传替换。
+- 列表展示：资料编号、资料名称、资料类型、颗粒度、所属轮次、涉及物理子系统、操作。
+- 筛选：颗粒度、资料类型、资料名称关键字；服务端分页。
+- 逻辑删除记录删除人/时间；写操作记 `dm_operation_log`；回收站经 `ReleaseDrillRecycleBinSource` 并入统一回收站。
+- 权限：沿用 `data-migration:content:release-drills` 菜单码和 `:create/:update/:delete` 动作码，服务端强制认证/RBAC/项目隔离/实体授权。
+
+### 数据与接口
+
+- 迁移：`V184__data_migration_release_drill_domain.sql` 为 `dm_release_drill` 追加 `granularity/material_type_code/drill_round` 及索引，并幂等初始化上术两个参数类别和 10 个初始参数项。
+- 后端：新增 `ReleaseDrillService`/`ReleaseDrillController`/`ReleaseDrillRecycleBinSource`；路由 `/api/data-migration/release-drills*`；`RELEASE_DRILL` 从通用文件资产链路上摘除，`ContentAssetTables` 保留类型标签供看板识别。
+- 前端：`web/src/api/data-migration.ts` 新增 ReleaseDrill 契约；重写 `ReleaseDrillsPage.vue` 为专属页面。
+
+### 验收标准
+
+1. 列表可按颗粒度、资料类型、名称关键字组合筛选并分页，展示新增两列且组件级可看到系统编号-名称。
+2. 组件级新增/编辑必须选择系统；项目级提交系统拒绝；所属轮次手填可空。
+3. 新增必传单文件，编辑不传新文件保留原文件；文件不超过 50MB。
+4. 删除/恢复/彻底清理保持附件、审计和系统校验一致；统一回收站无重复认领。
+5. 参数停用/未知编码拒绝写入；前端不硬编码颗粒度与资料类型名称。
+6. `mvn -pl :ccb-data-migration -am test`、`node scripts/check-all-governance.mjs`、任务范围检查和 `npm --prefix web run build` 通过；本地桌面/移动浏览器验收覆盖列表、筛选、新增、编辑、下载、删除和回收站。
+
+## 增量：迁移映射专属域优化（对标迁移程序）
+
+> 2026-09-05 由用户提出：将「数迁资产内容 › 迁移映射」从通用文件型资产链路升级为专属域功能，补充映射类型与系统编号，支持多文件上传、组合筛选、统一回收站与全量权限管控，并入 REQ-20260820-031 范围，新增追加式迁移 `V186`。
+
+### 功能目标
+
+迁移映射统一管理：映射类型、系统编号、文件名称、多源文件、组合筛选、分页、查看、编辑、下载、逻辑删除与统一回收站。
+
+### 字段与规则
+
+- 映射类型：`DM_MAPPING_TYPE`（`MIGRATE_OUT`=迁出程序、`MIGRATE_IN`=迁入程序），由“系统管理/参数管理”维护；停用或未知编码不能写入，前端不硬编码。
+- 系统编号：必填单选，数据源为当前项目 `dm_component` 启用清单，关联键 `(project_id, system_code)`，选项展示“系统编号 - 系统名称”并支持本地筛选。
+- 文件名称：必填，最大 200 字符。
+- 源文件：新增至少绑定一个；一条记录支持多个普通文件或压缩包，单个文件/压缩包不超过 50MB；编辑可保留、追加、移除文件。
+- 列表展示：系统、映射类型、文件编号、文件名称及操作。
+- 筛选：映射类型、系统编号、文件名称模糊搜索，组合生效并服务端分页。
+- 逻辑删除记录删除人/时间；写操作记 `dm_operation_log`；回收站经 `MappingRecycleBinSource` 并入统一回收站。
+- 权限：沿用 `data-migration:content:mappings` 菜单码和 `:create/:update/:delete` 动作码，服务端强制认证、RBAC、项目隔离、实体授权、附件归属校验与审计。
+
+### 数据与接口
+
+- 迁移：`V186__data_migration_mapping_domain.sql` 为 `dm_mapping_doc` 追加非空 `mapping_type` 与查询索引，并幂等初始化 `DM_MAPPING_TYPE` 参数类别和迁出/迁入两个初始项；用户已确认当前无历史数据，不执行历史回填或兼容默认值。
+- 后端：新增 `MappingService`/`MappingController`/`MappingRecycleBinSource`；路由 `/api/data-migration/mappings*`；`MAPPING_DOC` 从通用文件资产链路上摘除，`ContentAssetTables` 保留类型标签供看板识别。
+- 前端：`web/src/api/data-migration.ts` 新增 Mapping 契约；重写 `MappingsPage.vue` 为专属页面，桌面/移动端遵循 `design-h5.md`。
+
+### 验收标准
+
+1. 列表可按映射类型、系统编号、文件名称组合筛选并分页，展示系统、映射类型、文件编号、文件名称。
+2. 新增/编辑必须填写映射类型、系统编号、文件名称；新增至少上传一个 ≤50MB 源文件，支持多文件和压缩包。
+3. 参数停用/未知编码、项目外系统、越权编辑/删除均被服务端拒绝；写操作产生 `MAPPING_*` 审计。
+4. 删除、恢复、彻底清理保持附件和审计一致；统一回收站无重复认领。
+5. 多文件上传逐项展示待上传、上传中、成功和失败状态；部分失败时保留表单及成功项并允许仅重试失败文件，保存期间禁止重复提交。
+6. `mvn -pl :ccb-data-migration -am test`、`node scripts/check-all-governance.mjs`、任务范围检查和 `npm --prefix web run build` 通过；本地桌面 `1280x800` 和移动 `375x812`、`390x844`、`430x932` 浏览器验收覆盖列表、筛选、新增、编辑、单附件/打包下载、删除和回收站，且无页面级横向溢出。
+
+## 增量：迁移检核规则专属域优化（对标迁移映射 / 迁移方案）
+
+> 2026-09-06 经用户确认：将「数迁资产内容 › 迁移检核规则」从通用结构化资产薄页升级为专属域功能，作为本需求增量并入现有分支 `feat/REQ-20260820-031-data-migration`。用户同时确认：`doc_code`/`doc_name` 不使用并删除，缺少字段重建；单条编辑只编辑一条数据；参数类别命名按推荐 `DM_RULE_TARGET_TYPE`/`DM_RULE_CATEGORY`；检核规则与目标表/中间表**不做关联联动校验**（表/字段名自由文本）；批量上传选择文件不自动上传，点击“提交导入”后才上传解析。
+
+### 功能目标
+
+迁移检核规则统一管理：目标类型、规则大类、关联系统、表/字段英中名、规则编码/说明与检核说明等维度录入，组合筛选、分页、查看、编辑、逻辑删除、条件化 Excel 批量导入/导出与统一回收站。
+
+### 字段与规则
+
+- 检核目标类型：`DM_RULE_TARGET_TYPE`（迁出/迁入中间表/迁入目标表），由“系统管理/参数管理”维护。
+- 检核规则大类：`DM_RULE_CATEGORY`（基础/表间横向/纵向/总分核对），由“系统管理/参数管理”维护。
+- 关联系统：下拉选择当前项目 `dm_component` 启用清单，`(project_id, system_code)` 合法且启用。
+- 表英文名、表中文名、字段英文名称、字段中文名称：可空自由文本，不做目标表/中间表关联校验。
+- 规则编码：必填且 `(tenant_id, rule_code)` 全局唯一，≤96 字符。
+- 规则编码说明、检核规则说明：可空自由文本。
+- 下载导出列与列表一致：项目、目标类型、规则大类、系统编号/名称、表/字段英中名、规则编码/说明、检核说明。
+- 必填：所属项目（服务端读库归属校验）、检核目标类型、检核规则大类、关联系统、规则编码。
+- 逻辑删除记录删除人/时间；写操作记 `RULE_*` 审计；回收站经 `RuleRecycleBinSource` 并入统一回收站。
+
+### 数据与接口
+
+- 迁移：`V194__data_migration_rule_domain.sql` 删除 `dm_rule.doc_code/doc_name/structured_data` 并重建专属列、查询/关键字索引与两个参数类别；`V195`/`V196` 补齐统一回收站管理权限与 `data-migration:manage` 管理员豁免，保证回收站恢复/彻底删除可用（权限仍由 RBAC 管控，不硬编码）。
+- 后端：新增 `RuleService`/`RuleController`/`RuleRecycleBinSource`；路由 `/api/data-migration/rules*`（list/detail/create/update/delete/template/import/export）；`RULE` 从通用结构化资产链路摘除，`ContentAssetTables` 保留类型标签供看板与回收站识别。
+- 系统下拉统一入口：数据迁移各页面（规则、迁移方案、映射、问题、会议纪要、专题材料、投产及演练、迁移程序、目标/中间表、系统/组件清单）的“关联系统”下拉统一走 `GET /api/data-migration/components/options/systems?projectId=`，由 `DataMigrationSystemOptionsController` 调用 `ProjectComponentService.getSystemOptions` 实现，口径为当前项目 `dm_component` 启用清单；各页面旧 `/xxx/options/systems` 端点已下线，前端 `web/src/api/data-migration.ts` 仅保留 `getSystemOptions` 一个取数函数（方案B）。
+- 前端：`web/src/api/data-migration.ts` 新增 Rule 契约；重写 `ValidationRulesPage.vue` 为专属页面，桌面/移动端遵循 `design-h5.md`。
+
+### 验收标准
+
+1. 列表可按检核目标类型、检核规则大类、关联系统、规则关键字、表/字段关键字组合筛选并分页，展示项目、目标类型、规则大类、系统编号/名称、表/字段英中名、规则编码/说明、检核说明。
+2. 新增/编辑必填项由服务端校验；规则编码全局唯一（编辑排除自身）；参数停用/未知编码、项目外系统、越权编辑/删除均被拒绝。
+3. 批量上传前置选择项目、目标类型、规则大类、关联系统；选择文件后不自动上传，点击“提交导入”才上传解析；模板 7 列；逐行校验失败行跳过并提示，不影响其余行入库。
+4. 条件化批量导出内容与列表一致；模板可下载。
+5. 删除/恢复/彻底清理走统一回收站，`RULE` 资产编码以规则编码呈现；回收站无重复认领。
+6. `mvn -pl :ccb-data-migration -am test`、`node scripts/check-all-governance.mjs`、任务范围检查和 `npm --prefix web run build` 通过；本地桌面与移动浏览器验收覆盖列表、筛选、新增、编辑、模板下载、批量导入、条件导出、删除和回收站。

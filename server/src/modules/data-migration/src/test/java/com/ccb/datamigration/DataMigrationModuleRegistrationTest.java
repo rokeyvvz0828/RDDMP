@@ -81,16 +81,34 @@ class DataMigrationModuleRegistrationTest {
         String recycle = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ContentRecycleBinController.java"));
         String structured = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java"));
         String plan = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/PlanController.java"));
-        // PLAN 已从通用文件控制器剥离至专属 PlanController（REQ-20260820-031 增量），通用侧改验 /mappings。
-        assertTrue(!assets.contains("/plans") && assets.contains("/mappings/upload") && assets.contains("data-migration:write"));
-        assertTrue(assets.contains("/release-drills/delete") && assets.contains("data-migration:write"));
+        String releaseDrill = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java"));
+        String mapping = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/MappingController.java"));
+        // PLAN/RELEASE_DRILL/MAPPING_DOC 已从通用文件控制器剥离至专属 Controller（REQ-20260820-031 增量），通用侧仅验 dependencies。
+        assertTrue(!assets.contains("/plans") && !assets.contains("/release-drills") && !assets.contains("/mappings") && assets.contains("/dependencies/upload") && assets.contains("data-migration:write"));
+        assertTrue(mapping.contains("/api/data-migration/mappings")
+                && mapping.contains("data-migration:content:mappings:create")
+                && mapping.contains("data-migration:content:mappings:delete")
+                && mapping.contains("data-migration:write"));
+        String rule = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/RuleController.java"));
+        assertTrue(rule.contains("/api/data-migration/rules")
+                && rule.contains("data-migration:content:validation-rules:create")
+                && rule.contains("data-migration:content:validation-rules:delete")
+                && rule.contains("data-migration:write"));
         assertTrue(recycle.contains("/restore") && recycle.contains("data-migration:manage"));
-        assertTrue(structured.contains("/rules/import") && structured.contains("data-migration:write"));
-        assertTrue(structured.contains("/parameters/delete") && structured.contains("data-migration:write"));
+        String parameter = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ParameterController.java"));
+        assertTrue(parameter.contains("/api/data-migration/parameters")
+                && parameter.contains("data-migration:content:parameters:create")
+                && parameter.contains("data-migration:content:parameters:delete")
+                && parameter.contains("data-migration:write"));
+        assertTrue(!structured.contains("/parameters/import") && !structured.contains("/parameters/delete"));
         assertTrue(plan.contains("/api/data-migration/plans")
                 && plan.contains("data-migration:content:plans:create")
                 && plan.contains("data-migration:content:plans:delete")
                 && plan.contains("data-migration:write"));
+        assertTrue(releaseDrill.contains("/api/data-migration/release-drills")
+                && releaseDrill.contains("data-migration:content:release-drills:create")
+                && releaseDrill.contains("data-migration:content:release-drills:delete")
+                && releaseDrill.contains("data-migration:write"));
     }
 
     @Test
@@ -218,10 +236,62 @@ class DataMigrationModuleRegistrationTest {
     }
 
     @Test
+    void v180TopicDomainAddsColumnsRelationsAndParameterSeeds() throws Exception {
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql");
+        assertTrue(Files.exists(migration));
+        String sql = Files.readString(migration);
+        assertTrue(sql.contains("dm_topic ADD COLUMN granularity"));
+        assertTrue(sql.contains("ADD COLUMN topic_type_code"));
+        assertTrue(sql.contains("ADD COLUMN topic_summary"));
+        assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS dm_topic_system"));
+        assertTrue(sql.contains("uk_dm_topic_system (tenant_id, topic_id, system_code)"));
+        assertTrue(sql.contains("idx_dm_topic_granularity"));
+        assertTrue(sql.contains("idx_dm_topic_type"));
+        assertTrue(sql.contains("'DM_TOPIC_PROJECT_TYPE'"));
+        assertTrue(sql.contains("'DM_TOPIC_SYSTEM_TYPE'"));
+        assertTrue(sql.contains("INSERT IGNORE INTO sys_config"));
+        // 幂等初始化不覆盖管理员既有配置：仅 INSERT IGNORE，不允许覆盖既有名称/排序/状态。
+        assertTrue(!sql.contains("UPDATE sys_config"));
+        assertTrue(!sql.contains("UPDATE sys_dict_type"));
+        assertTrue(!sql.contains("INSERT INTO sys_config "));
+    }
+
+    @Test
     void dmProjectIsDroppedFromFinalModelByV179() throws Exception {
         Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V179__data_migration_drop_dm_project.sql");
         assertTrue(Files.exists(migration));
         assertTrue(Files.readString(migration).contains("DROP TABLE IF EXISTS dm_project"));
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentAssetTables.java")).contains("dm_project"));
     }
+
+    @Test
+    void ruleDomainUsesDedicatedStorageAndDropGenericRuleEnvelope() throws Exception {
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V194__data_migration_rule_domain.sql");
+        assertTrue(Files.exists(migration));
+        String sql = Files.readString(migration);
+        assertTrue(sql.contains("ALTER TABLE dm_rule DROP COLUMN doc_code"));
+        assertTrue(sql.contains("ALTER TABLE dm_rule DROP COLUMN doc_name"));
+        assertTrue(sql.contains("ADD COLUMN check_target_type"));
+        assertTrue(sql.contains("ADD COLUMN rule_category"));
+        assertTrue(sql.contains("ADD COLUMN rule_code"));
+        assertTrue(sql.contains("ADD COLUMN table_name_en"));
+        assertTrue(sql.contains("'DM_RULE_TARGET_TYPE'"));
+        assertTrue(sql.contains("'DM_RULE_CATEGORY'"));
+        assertTrue(sql.contains("INSERT IGNORE INTO sys_config"));
+
+        String service = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/RuleService.java"));
+        assertTrue(service.contains("FROM dm_rule"));
+        assertTrue(service.contains("entity_type, entity_id"));
+        assertTrue(service.contains("'RULE'"));
+        assertTrue(service.contains("RULE_CREATE"));
+        assertTrue(service.contains("RULE_IMPORT"));
+
+        String structured = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java"));
+        assertTrue(!structured.contains("PARAMETER"));
+        assertTrue(!structured.contains("RULE"));
+        assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ParameterController.java")).contains("/api/data-migration/parameters"));
+        assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java")).contains("/rules/import"));
+        assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/RuleRecycleBinSource.java")).contains("supports()"));
+    }
+
 }

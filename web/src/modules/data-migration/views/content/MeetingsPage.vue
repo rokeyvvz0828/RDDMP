@@ -22,9 +22,10 @@ import UiFilePreview from '../../../../components/ui/UiFilePreview.vue'
 import { useAuthStore } from '../../../../stores/auth'
 import {
   listMeetings, getMeeting, createMeeting, updateMeeting, deleteMeetings,
-  getMeetingSystemOptions, getMeetingIssueOptions,
+  getSystemOptions, getMeetingIssueOptions,
   getMeetingAttachments, deleteMeetingAttachment, getMeetingAttachmentRecycleBin, restoreMeetingAttachment,
   listAttachmentRecycleBin, restoreAttachments, purgeAttachments, purgeAllAttachments,
+  getDataMigrationParamOptions, DM_CODE_CATEGORIES,
   type MeetingRecord, type MeetingQuery, type MeetingFormData, type MeetingUpdateData, type MeetingAttachment, type SelectOption
 } from '../../../../api/data-migration'
 import ProjectScopeState from '../../components/ProjectScopeState.vue'
@@ -41,8 +42,8 @@ const scopeProjectName = scope.projectName
 const loading = ref(false), records = ref<MeetingRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
 const fSource = ref(''), fGranularity = ref(''), fSystem = ref(''), fKeyword = ref('')
 const filterSysOpts = ref<SelectOption[]>([])
-const GRAV = [{ value: 'PROJECT', label: '项目级' }, { value: 'COMPONENT', label: '组件级' }, { value: 'TABLE', label: '表级' }, { value: 'FIELD', label: '字段级' }]
-const SRC = [{ value: 'MEETING_MINUTES', label: '会议纪要' }, { value: 'ISSUE_EXTRACT', label: '问题提取' }]
+const GRAV = ref<SelectOption[]>([])
+const SRC = ref<SelectOption[]>([])
 const drawer = ref(false), saving = ref(false), editing = ref(false), editId = ref<number | null>(null)
 const fv = ref<MeetingFormData & { keywords: string[]; systemCodes: string[]; issueIds: number[]; attachments: { attachmentId: number; fileName: string }[] }>({
   projectId: 0,
@@ -83,7 +84,14 @@ const lbl = (o: SelectOption[], v?: string) => o.find(x => x.value === v)?.label
 async function loadFilterSystems() {
   const pid = scopeProjectId.value
   if (!pid) { filterSysOpts.value = []; return }
-  filterSysOpts.value = ((await getMeetingSystemOptions(pid).catch(() => null))?.data.data ?? [])
+  filterSysOpts.value = ((await getSystemOptions(pid).catch(() => null))?.data.data ?? [])
+}
+async function loadCodeOptions() {
+  const [g, s] = await Promise.all([
+    getDataMigrationParamOptions(DM_CODE_CATEGORIES.meetingGranularity).then(r => r.data.data ?? []).catch(() => []),
+    getDataMigrationParamOptions(DM_CODE_CATEGORIES.meetingSource).then(r => r.data.data ?? []).catch(() => [])
+  ])
+  GRAV.value = g; SRC.value = s
 }
 async function loadList() {
   if (scopeProjectId.value == null) { records.value = []; total.value = 0; selectedIds.value = []; return }
@@ -112,7 +120,7 @@ function resetForm() {
 }
 function openAdd() { editing.value = false; editId.value = null; resetForm(); if (scopeProjectId.value) void loadFormOpts(scopeProjectId.value); drawer.value = true }
 async function loadFormOpts(pid: number) {
-  const [sysRes, issRes] = await Promise.all([getMeetingSystemOptions(pid), getMeetingIssueOptions(pid)])
+  const [sysRes, issRes] = await Promise.all([getSystemOptions(pid), getMeetingIssueOptions(pid)])
   fSystemOpts.value = sysRes.data.data ?? []
   fIssueOpts.value = issRes.data.data ?? []
 }
@@ -430,7 +438,7 @@ watch(scopeProjectId, () => {
   switchTab(tab.value)
 }, { immediate: true })
 
-onMounted(() => { void scope.ensureLoaded() })
+onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
 </script>
 
 <template>
@@ -451,7 +459,7 @@ onMounted(() => { void scope.ensureLoaded() })
           <el-select v-model="fGranularity" placeholder="颗粒度" clearable style="width:110px" @change="doSearch">
             <el-option v-for="o in GRAV" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
-          <el-select v-model="fSystem" placeholder="关联系统" clearable filterable style="width:160px" @change="doSearch">
+          <el-select v-model="fSystem" placeholder="输入系统编号或名称搜索" clearable filterable style="width:180px" @change="doSearch">
             <el-option v-for="o in filterSysOpts" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
           <el-input v-model="fKeyword" clearable placeholder="搜索主题/系统/关键字" style="width:200px" @keyup.enter="doSearch">
@@ -593,7 +601,7 @@ onMounted(() => { void scope.ensureLoaded() })
         <el-row :gutter="16">
           <el-col :span="8">
             <el-form-item label="关联系统">
-              <el-select v-model="fv.systemCodes" placeholder="选择关联系统" multiple filterable style="width:100%">
+              <el-select v-model="fv.systemCodes" placeholder="输入系统编号或名称搜索" multiple filterable style="width:100%">
                 <el-option v-for="o in fSystemOpts" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>

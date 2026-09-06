@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/data-migration/recycle-bin")
-@PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
+@PreAuthorize("hasAnyAuthority('data-migration:content:recycle-bin:manage','data-migration:manage','system:admin')")
 public class ContentRecycleBinController {
     private final ContentRecycleBinService service;
 

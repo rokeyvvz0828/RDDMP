@@ -26,15 +26,17 @@ import {
   deleteTargetTables,
   downloadTargetTableTemplate,
   exportTargetTables,
+  getSystemOptions,
   importTargetTables,
-  listPhysicalSubsystemsByCode,
+  listAllPhysicalSubsystems,
   listTargetTableFields,
   listTargetTables,
   updateTargetTable,
   updateTargetTableField,
   type TableCategory,
   type TargetTableField,
-  type TargetTableRecord
+  type TargetTableRecord,
+  type SelectOption
 } from '../../../../api/data-migration'
 import ProjectScopeState from '../../components/ProjectScopeState.vue'
 import { useProjectScope } from '../../composables/useProjectScope'
@@ -53,9 +55,9 @@ const readCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migr
 const createCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target:create' : 'data-migration:base:table-fields-intermediate:create')
 const updateCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target:update' : 'data-migration:base:table-fields-intermediate:update')
 const deleteCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target:delete' : 'data-migration:base:table-fields-intermediate:delete')
-const canCreate = computed(() => auth.hasPermission(createCode.value))
-const canUpdate = computed(() => auth.hasPermission(updateCode.value))
-const canDelete = computed(() => auth.hasPermission(deleteCode.value))
+const canCreate = computed(() => auth.hasPermission(createCode.value) || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canUpdate = computed(() => auth.hasPermission(updateCode.value) || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canDelete = computed(() => auth.hasPermission(deleteCode.value) || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
 
 const title = computed(() => (resolvedCategory.value === 'TARGET' ? '目标表结构' : '中间表结构'))
 
@@ -82,6 +84,21 @@ const filters = reactive({
   tableKeyword: '',
   fieldKeyword: ''
 })
+// 系统筛选：本项目数迁系统数量小（≤150），一次性加载后下拉本地随输随筛（编号/名称均可、不区分大小写）
+const filterSysOpts = ref<SelectOption[]>([])
+const filterSysLoading = ref(false)
+async function loadFilterSystems() {
+  if (scopeProjectId.value == null) { filterSysOpts.value = []; return }
+  filterSysLoading.value = true
+  try {
+    const { data } = await getSystemOptions(scopeProjectId.value)
+    filterSysOpts.value = data.data ?? []
+  } catch {
+    filterSysOpts.value = []
+  } finally {
+    filterSysLoading.value = false
+  }
+}
 
 function httpStatus(e: unknown) {
   return (e as { response?: { status?: number } }).response?.status
@@ -238,9 +255,11 @@ async function submitEdit() {
 /* ---------- 新增表 + 字段 ---------- */
 const createOpen = ref(false)
 const createSaving = ref(false)
-const subsystemSearching = ref(false)
+const subsystemLoading = ref(false)
 const subsystemForbidden = ref(false)
-const subsystemCandidates = ref<{ code: string; name: string; businessGroupName?: string | null }[]>([])
+const createSystemOpts = ref<SelectOption[]>([])
+const subsystemMeta = new Map<string, { name: string; businessGroupName?: string | null }>()
+const subsystemMetaLoaded = ref(false)
 const createForm = reactive<{
   systemCode: string
   table_name_en: string
@@ -248,25 +267,44 @@ const createForm = reactive<{
   table_meaning: string
   fields: Record<string, unknown>[]
 }>({ systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
-const selectedSubsystem = computed(() => subsystemCandidates.value.find(c => c.code === createForm.systemCode))
+const selectedSubsystem = computed(() => {
+  const code = createForm.systemCode
+  const meta = subsystemMeta.get(code)
+  return meta ? { code, ...meta } : undefined
+})
 
-async function searchSubsystem() {
-  if (!createForm.systemCode.trim()) return
-  subsystemSearching.value = true
+// 新增表：只允许选择已纳入本项目组件清单的系统（候选「编号 - 名称」），本地随输随筛；
+// 系统名称/事业群由物理子系统主数据一次性加载后联动展示（跨模块只读契约）。
+async function loadCreateSubsystems() {
+  if (subsystemMetaLoaded.value) return
+  const pid = scopeProjectId.value
+  if (pid == null) { createSystemOpts.value = []; return }
+  subsystemLoading.value = true
   subsystemForbidden.value = false
   try {
-    const r = await listPhysicalSubsystemsByCode(createForm.systemCode.trim())
-    subsystemCandidates.value = (r.data.data.records ?? []).map(s => ({ code: s.code, name: s.name, businessGroupName: s.businessGroupName ?? undefined }))
-    if (!subsystemCandidates.value.length) ElMessage.warning('未找到匹配的物理子系统')
+    const { data } = await getSystemOptions(pid)
+    createSystemOpts.value = data.data ?? []
+  } catch {
+    createSystemOpts.value = []
+    subsystemLoading.value = false
+    return
+  }
+  try {
+    const subsystems = await listAllPhysicalSubsystems()
+    subsystemMeta.clear()
+    for (const s of subsystems) subsystemMeta.set(s.code, { name: s.name, businessGroupName: s.businessGroupName ?? undefined })
+    subsystemMetaLoaded.value = true
   } catch (e) {
-    if (httpStatus(e) === 403) { subsystemForbidden.value = true; ElMessage.warning('缺少物理子系统查询权限，无法联动带出系统信息') }
-    else ElMessage.error(apiErrorMessage(e, '系统编号查询失败'))
-  } finally { subsystemSearching.value = false }
+    subsystemMetaLoaded.value = true
+    if (httpStatus(e) === 403) subsystemForbidden.value = true
+  } finally {
+    subsystemLoading.value = false
+  }
 }
 function openCreate() {
   Object.assign(createForm, { systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
-  subsystemCandidates.value = []
   subsystemForbidden.value = false
+  void loadCreateSubsystems()
   createOpen.value = true
 }
 function addCreateField() { createForm.fields.push({ fieldNameEn: '', fieldNameCn: '', fieldMeaning: '', codeDescription: '', isKeyField: 0, oracleType: '', mysqlType: '', isNullable: 1, isPrimaryKey: 0, dictCode: '' }) }
@@ -486,6 +524,11 @@ watch(scopeProjectId, () => {
   importVisible.value = false
   error.value = ''
   forbidden.value = false
+  filterSysOpts.value = []
+  subsystemMetaLoaded.value = false
+  subsystemMeta.clear()
+  createSystemOpts.value = []
+  void loadFilterSystems()
   void load()
 }, { immediate: true })
 </script>
@@ -503,9 +546,9 @@ watch(scopeProjectId, () => {
     </section>
     <template v-else>
       <UiToolbar>
-        <el-input v-model="filters.systemCode" clearable placeholder="系统编号" style="width: 150px" @keyup.enter="search">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+        <el-select v-model="filters.systemCode" clearable filterable :loading="filterSysLoading" placeholder="输入系统编号或名称搜索" style="width: 220px" @change="search" @clear="search">
+          <el-option v-for="o in filterSysOpts" :key="o.value" :label="o.label" :value="o.value" />
+        </el-select>
         <el-select v-model="filters.isKeyField" clearable placeholder="关键栏位" style="width: 120px">
           <el-option label="是" :value="1" /><el-option label="否" :value="0" />
         </el-select>
@@ -658,17 +701,16 @@ watch(scopeProjectId, () => {
     <UiFormDrawer v-model="createOpen" :title="`新增${title}`" width="720px" :loading="createSaving" confirm-text="保存" @submit="submitCreate">
       <el-form label-width="110px" label-position="left">
         <el-form-item label="系统编号" required>
-          <div class="tt-subsystem-search">
-            <el-input v-model="createForm.systemCode" placeholder="输入物理子系统编号" @keyup.enter="searchSubsystem" />
-            <el-button type="primary" :loading="subsystemSearching" @click="searchSubsystem">查询</el-button>
-          </div>
+          <el-select v-model="createForm.systemCode" filterable :loading="subsystemLoading" placeholder="输入系统编号或名称搜索" style="width: 100%">
+            <el-option v-for="o in createSystemOpts" :key="o.value" :label="o.label" :value="o.value" />
+          </el-select>
         </el-form-item>
         <template v-if="selectedSubsystem">
           <el-form-item label="所属事业群"><el-input :model-value="selectedSubsystem.businessGroupName ?? '-'" disabled /></el-form-item>
           <el-form-item label="系统名称"><el-input :model-value="selectedSubsystem.name" disabled /></el-form-item>
         </template>
         <el-alert v-else-if="subsystemForbidden" type="warning" :closable="false" show-icon title="缺少物理子系统查询权限，无法联动带出系统信息，请先授权架构模块查询权限。" class="tt-subsystem-alert" />
-        <el-alert v-else type="info" :closable="false" show-icon title="输入系统编号后点击「查询」，系统信息将自动带出（仅展示、不保存）。" class="tt-subsystem-alert" />
+        <el-alert v-else type="info" :closable="false" show-icon title="输入系统编号或名称搜索并选择系统，系统信息将自动带出（仅展示、不保存）。" class="tt-subsystem-alert" />
         <el-form-item label="表英文名" required><el-input v-model="createForm.table_name_en" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表中文名" required><el-input v-model="createForm.table_name_cn" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表含义"><el-input v-model="createForm.table_meaning" type="textarea" :rows="2" /></el-form-item>
@@ -764,7 +806,6 @@ watch(scopeProjectId, () => {
 .tt-page .dm-table-actions { gap: 6px; }
 .tt-page .dm-state-panel { padding: 0; }
 .tt-section-title { margin: 14px 0 8px; font-size: 14px; font-weight: 600; color: var(--text); }
-.tt-subsystem-search { display: flex; width: 100%; gap: 8px; }
 .tt-subsystem-alert { width: 100%; margin-bottom: 12px; }
 .tt-create-field { padding: 8px 0; }
 .tt-field-toolbar { margin: 8px 0; }

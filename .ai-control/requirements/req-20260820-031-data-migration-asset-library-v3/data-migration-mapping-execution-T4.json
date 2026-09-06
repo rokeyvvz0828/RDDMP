@@ -1,0 +1,100 @@
+{
+  "task_id": "T4",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "isolated MySQL 8.4, MinIO, backend :8080 and frontend :5173",
+      "purpose": "运行迁移映射 API、附件、权限、审计、回收站和浏览器组合验收"
+    },
+    {
+      "path_or_resource": "/tmp/rddmp-mapping-1280x800.png and three mobile screenshots",
+      "purpose": "记录桌面及 375x812、390x844、430x932 响应式证据"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit_code": 0,
+      "salient_output": "15 reactor modules succeeded; data-migration module 147 tests, 0 failures/errors; MySQL 8.4 Testcontainers passed"
+    },
+    {
+      "command": "mvn test",
+      "exit_code": 0,
+      "salient_output": "all 15 reactor modules passed; total time 19:47; data-migration 147 tests"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "2571 modules transformed; build passed with existing PURE annotation and chunk-size warnings"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "scope passed for 323 changed files"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "blocked by tracked-clean unrelated REQ-20260904-061 scope file that is not JSON-compatible YAML"
+    },
+    {
+      "command": "isolated API lifecycle probes",
+      "exit_code": 0,
+      "salient_output": "multi-attachment create/update/download, combined filters, project isolation, delete/restore/purge and MAPPING audit counts passed"
+    },
+    {
+      "command": "Playwright partial-upload and four-viewport probes",
+      "exit_code": 0,
+      "salient_output": "partial failure retained successful upload and retried only the failed file; desktop/mobile views were mutually exclusive with no page-level horizontal overflow; drawer and download dialog fit mobile viewports"
+    },
+    {
+      "command": "Playwright read-only role probe with DATA_MIGRATION_DEVELOPER",
+      "exit_code": 1,
+      "salient_output": "browser could not observe the mapping record because mapping-page write visibility and legacy permission semantics required direct RBAC calibration; database/auth probe showed the read-only role carries data-migration:manage as a read action while Mapping Controller/page treat it as a write fallback"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "automated regression and isolated runtime lifecycle",
+      "result": "pass",
+      "evidence": "module/full Maven, frontend build, scope, HTTP lifecycle, audit and four viewport probes passed",
+      "limitations": ["global governance remains blocked by an unrelated tracked-clean baseline file"]
+    },
+    {
+      "check": "R8 read-only role boundary",
+      "result": "fail",
+      "evidence": "DATA_MIGRATION_DEVELOPER has only mapping read action but also legacy data-migration:manage(read); MappingController write annotations and MappingsPage write guards include data-migration:manage",
+      "limitations": ["failure is isolated to Mapping-specific write fallback; public permission implementation and other menus were not modified"]
+    }
+  ],
+  "diff_summary": [
+    "T1-T3 implementation reached complete automated, API and responsive runtime sampling",
+    "T4 browser role calibration found one reproducible Mapping-specific authorization deviation"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "no production identity, data, attachment or environment is used",
+      "result": "pass",
+      "evidence": "all probes used isolated Docker services and synthetic fixtures"
+    },
+    {
+      "invariant": "read-only roles cannot obtain mapping write actions",
+      "result": "fail",
+      "evidence": "legacy data-migration:manage is a read action assigned to DATA_MIGRATION_DEVELOPER but currently accepted by Mapping write guards"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "global governance baseline parser failure outside current requirement",
+      "impact": "governance aggregate cannot pass without modifying an unrelated read-only task file"
+    }
+  ],
+  "assumptions_falsified": [
+    "data-migration:manage cannot be treated as an administrator write authority because the role seed assigns it as a read action to DATA_MIGRATION_DEVELOPER"
+  ],
+  "unresolved_items": [
+    "remove Mapping-specific legacy write fallbacks, add direct regression coverage and repeat API/browser role checks"
+  ],
+  "recommended_next": "observe"
+}

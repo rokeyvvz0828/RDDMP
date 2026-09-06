@@ -11,8 +11,11 @@ import java.util.stream.Stream;
 public final class ContentAssetTables {
     public static final List<String> FILE_TABLES = List.of(
             "dm_plan", "dm_mapping_doc", "dm_dependency", "dm_script", "dm_topic", "dm_release_drill", "dm_report");
-    public static final List<String> STRUCTURED_TABLES = List.of("dm_rule", "dm_parameter");
-    public static final List<String> ALL_TABLES = Stream.concat(FILE_TABLES.stream(), STRUCTURED_TABLES.stream()).toList();
+    public static final List<String> STRUCTURED_TABLES = List.of("dm_rule");
+    /** 仪表盘统计仍包含参数内容表；参数已域化为专属业务表，不再作为通用结构化资源参与关系位级 JSON 关联。 */
+    public static final List<String> ALL_TABLES = Stream.concat(
+            Stream.concat(FILE_TABLES.stream(), STRUCTURED_TABLES.stream()),
+            Stream.of("dm_parameter")).toList();
 
     private ContentAssetTables() {}
 

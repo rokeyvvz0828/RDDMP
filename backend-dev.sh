@@ -18,6 +18,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+# Maven 本地仓库：统一使用 ~/.m2/repository，避免 settings 指到 /tmp 后重启丢失缓存；
+# 可用 MAVEN_LOCAL_REPO 覆盖。
+MAVEN_LOCAL_REPO="${MAVEN_LOCAL_REPO:-${HOME}/.m2/repository}"
+mkdir -p "${MAVEN_LOCAL_REPO}"
+MAVEN_REPO_OPTS=(-Dmaven.repo.local="${MAVEN_LOCAL_REPO}")
+
 PORT=8080
 PID_FILE="/tmp/backend-dev.pid"
 CLEAN=0   # 1=先清理各模块 target 再构建（start/restart --clean 或 clean 命令）
@@ -138,7 +144,7 @@ start_service() {
   fi
   echo "[步骤1/2] 编译并安装依赖模块(跳过测试)..."
   # shellcheck disable=SC2086
-  mvn -DskipTests $goals -pl :ccb-boot -am -Dspring-boot.repackage.skip=true
+  mvn "${MAVEN_REPO_OPTS[@]}" -DskipTests $goals -pl :ccb-boot -am -Dspring-boot.repackage.skip=true
 
   echo "[步骤2/2] 启动后端: http://127.0.0.1:${PORT}  (前台运行，Ctrl+C 停止)"
 
@@ -150,7 +156,7 @@ start_service() {
   # 在 ccb-boot 模块目录单独以调试模式前台运行（reactor 仅含 boot，能正确定位主类）
   # 编译与启动日志实时输出到终端，保持进程不退出
   cd "$ROOT_DIR/server/src/platform/boot"
-  mvn spring-boot:run -Dspring-boot.run.profiles=local
+  mvn "${MAVEN_REPO_OPTS[@]}" spring-boot:run -Dspring-boot.run.profiles=local
 
   # mvn 退出后（非 Ctrl+C 的异常退出）走到这里，清理并退出
   trap - INT TERM EXIT
@@ -164,7 +170,7 @@ clean_build() {
     exit 1
   fi
   echo "[清理] 清理 ccb-boot 及其依赖模块的 target 目录..."
-  mvn clean -pl :ccb-boot -am
+  mvn "${MAVEN_REPO_OPTS[@]}" clean -pl :ccb-boot -am
   echo "[完成] 已清理构建产物，下次 start 将从干净状态重新编译。"
 }
 

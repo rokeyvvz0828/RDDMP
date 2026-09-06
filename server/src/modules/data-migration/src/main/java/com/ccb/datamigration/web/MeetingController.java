@@ -177,12 +177,6 @@ public class MeetingController {
     /**
      * 获取系统选项（根据项目）
      */
-    @GetMapping("/options/systems")
-    public ApiResponse<List<Map<String, Object>>> systemOptions(
-            @RequestParam(required = false) Long projectId,
-            @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(service.getSystemOptions(projectId, user), TraceId.getOrCreate());
-    }
 
     /**
      * 获取问题选项（根据项目）

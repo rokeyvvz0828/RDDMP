@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task_id": "T1-T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V184__data_migration_release_drill_domain.sql",
+      "purpose": "追加式迁移：dm_release_drill 增 granularity/material_type_code/drill_round，回填与索引，参数类别/项幂等初始化"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java",
+      "purpose": "专属 CRUD、筛选、单附件、组件级系统校验、审计与回收站 SPI"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java",
+      "purpose": "/api/data-migration/release-drills 路由与 RBAC"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSource.java",
+      "purpose": "统一回收站认领 RELEASE_DRILL"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+      "purpose": "MANAGED_TYPES 移除 RELEASE_DRILL"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+      "purpose": "通用文件控制器移除 release-drills 映射"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+      "purpose": "注册 DM_RELEASE_DRILL_GRANULARITY/DM_RELEASE_DRILL_TYPE"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "ReleaseDrill API 与参数类别常量"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue",
+      "purpose": "专属页面重写"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/*.java",
+      "purpose": "服务/回收站/Controller 权限/Mysql/码值测试"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8"
+  ],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationCodeValueServiceTest,ContentAssetMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test -q -> 退出码0",
+    "mvn -pl :ccb-data-migration -am -Dtest=ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test -q -> 退出码0",
+    "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ReleaseDrillRecycleBinSourceTest,ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test -q -> 退出码0",
+    "mvn -pl :ccb-data-migration -am test -q -> 退出码0",
+    "npm --prefix web run build -> 退出码0",
+    "node scripts/check-governance.mjs -> 17模块通过"
+  ],
+  "local_checks": [
+    "ReleaseDrillServiceTest 9 用例 0 失败；ReleaseDrillControllerSecurityTest 1 用例 0 失败",
+    "ReleaseDrillRecycleBinSourceTest/DataMigrationModuleRegistrationTest 通过",
+    "vue-tsc 0 错误，vite build 成功"
+  ],
+  "diff_summary": [
+    "新增 V184 追加迁移与参数初始化",
+    "新增 ReleaseDrillService/Controller/RecycleBinSource 与配套测试",
+    "通用文件控制器/服务摘除 RELEASE_DRILL",
+    "前端新增 ReleaseDrill API 与专属页面",
+    "未改已发布迁移、未越界平台/全局"
+  ],
+  "invariants_checked": [
+    "Flyway 只追加 V184",
+    "颗粒度/资料类型经参数管理读取",
+    "dm_release_drill 查询/写入恒带 tenant/project",
+    "组件级系统来自 dm_component.enabled=1 且同项目",
+    "单文件、逻辑删除、唯一回收站来源"
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "进入独立观测并补三次采样；随后执行收敛验收。"
+}

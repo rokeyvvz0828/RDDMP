@@ -32,7 +32,7 @@ class IssueExcelServiceTest {
         when(issues.create(any(), eq(USER)))
                 .thenReturn(Map.of("id", 1L))
                 .thenThrow(new BusinessException(ErrorCode.CONFLICT, "问题编号在该项目下已存在"));
-        IssueExcelService excel = new IssueExcelService(issues);
+        IssueExcelService excel = new IssueExcelService(issues, TestDataMigrationCodeValues.service());
         MockMultipartFile file = workbook(
                 List.of("问题编号", "问题名称", "问题描述", "颗粒度"),
                 List.of(
@@ -53,7 +53,7 @@ class IssueExcelServiceTest {
     @Test
     void oversizedWorkbookIsRejectedBeforeParsing() {
         IssueService issues = mock(IssueService.class);
-        IssueExcelService excel = new IssueExcelService(issues);
+        IssueExcelService excel = new IssueExcelService(issues, TestDataMigrationCodeValues.service());
         MultipartFile file = mock(MultipartFile.class);
         when(file.isEmpty()).thenReturn(false);
         when(file.getSize()).thenReturn(50L * 1024 * 1024 + 1);
@@ -73,7 +73,7 @@ class IssueExcelServiceTest {
         row.put("issueDescription", "Description");
         row.put("project_name", "Project A");
         when(issues.exportRows(10L, null, null, null, null, null, "First", USER)).thenReturn(List.of(row));
-        IssueExcelService excel = new IssueExcelService(issues);
+        IssueExcelService excel = new IssueExcelService(issues, TestDataMigrationCodeValues.service());
 
         byte[] bytes = excel.exportIssues(10L, null, null, null, null, null, "First", USER);
 

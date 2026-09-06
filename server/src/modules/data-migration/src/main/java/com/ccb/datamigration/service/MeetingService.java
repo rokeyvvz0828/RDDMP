@@ -22,21 +22,21 @@ import java.util.concurrent.ThreadLocalRandom;
 public class MeetingService {
     public static final String BUSINESS_TYPE = "DATA_MIGRATION_MEETING";
     private static final String CONTENT_TYPE = "MEETING";
-    private static final Set<String> GRANULARITIES = Set.of("PROJECT", "COMPONENT", "TABLE", "FIELD");
-    private static final Set<String> MEETING_SOURCES = Set.of("MEETING_MINUTES", "ISSUE_EXTRACT");
     private static final Set<Integer> PAGE_SIZES = Set.of(20, 50, 100);
 
     private final JdbcTemplate jdbc;
     private final ContentAttachmentService contentAttachments;
     private final DataMigrationPermissionService permissions;
     private final UserDirectoryPort userDirectory;
+    private final DataMigrationCodeValueService codeValues;
 
     public MeetingService(JdbcTemplate jdbc, ContentAttachmentService contentAttachments, DataMigrationPermissionService permissions,
-                          UserDirectoryPort userDirectory) {
+                          UserDirectoryPort userDirectory, DataMigrationCodeValueService codeValues) {
         this.jdbc = jdbc;
         this.contentAttachments = contentAttachments;
         this.permissions = permissions;
         this.userDirectory = userDirectory;
+        this.codeValues = codeValues;
     }
 
     /**
@@ -87,7 +87,7 @@ public class MeetingService {
         String granularity = text(body.get("granularity"), "granularity");
         String meetingSource = text(body.get("meetingSource"), "meetingSource");
 
-        validateEnums(body);
+        validateEnums(body, user);
 
         long meetingId = nextId();
         // 会议编号沿用独立契约：用户显式提供则校验活动域唯一，留空时生成 MEET-{meetingId}。
@@ -145,7 +145,7 @@ public class MeetingService {
         // 会议编号可修改，但活动域内仍需唯一；留空回退到当前值，避免旧前端不感知新字段时丢失。
         String meetingCode = text(body.getOrDefault("meetingCode", current.get("meeting_code")), "meetingCode");
 
-        validateEnums(body);
+        validateEnums(body, user);
         ensureCodeAvailable(projectId, meetingCode, meetingId, user);
 
         try {
@@ -344,18 +344,6 @@ public class MeetingService {
     }
 
     /** 获取系统选项（根据项目）：返回该项目 {@code dm_component} 活动清单的系统编号。 */
-    public List<Map<String, Object>> getSystemOptions(Long projectId, AuthUser user) {
-        long scope = permissions.requireProject(projectId, user);
-        return jdbc.queryForList(
-                "SELECT c.physical_subsystem_code AS value, " +
-                "CONCAT(c.physical_subsystem_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label " +
-                "FROM dm_component c " +
-                "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
-                "WHERE c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0 " +
-                "ORDER BY c.physical_subsystem_code",
-                user.tenantId(), scope
-        );
-    }
 
     /**
      * 获取问题选项（根据项目）
@@ -383,8 +371,8 @@ public class MeetingService {
                 "m.deleted_by, m.deleted_at, " +
                 "(SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ') " +
                 " FROM dm_meeting_system ms " +
-                " JOIN dm_component c ON c.tenant_id = ms.tenant_id AND c.project_id = ms.project_id AND c.physical_subsystem_code = ms.system_code AND c.deleted = 0 " +
-                " JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 " +
+                " JOIN dm_component c ON c.tenant_id = ms.tenant_id AND c.project_id = ms.project_id AND c.system_code = ms.system_code " +
+                " JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 " +
                 " WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id) AS system_names, " +
                 "(SELECT GROUP_CONCAT(ms.system_code) " +
                 " FROM dm_meeting_system ms " +
@@ -407,11 +395,11 @@ public class MeetingService {
         // T32：项目隔离谓词恒定拼接，不存在“未选项目则返回全租户数据”的分支。
         sql.append(" AND m.project_id = ?");
         args.add(projectId);
-        if (!deleted && meetingSource != null && MEETING_SOURCES.contains(meetingSource)) {
+        if (!deleted && meetingSource != null && !meetingSource.isBlank()) {
             sql.append(" AND m.meeting_source = ?");
             args.add(meetingSource);
         }
-        if (!deleted && granularity != null && GRANULARITIES.contains(granularity)) {
+        if (!deleted && granularity != null && !granularity.isBlank()) {
             sql.append(" AND m.granularity = ?");
             args.add(granularity);
         }
@@ -421,7 +409,7 @@ public class MeetingService {
         }
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (m.meeting_code LIKE ? OR m.meeting_title LIKE ? OR m.keywords LIKE ? OR EXISTS (SELECT 1 FROM dm_meeting_system ms JOIN dm_component c ON c.tenant_id = ms.tenant_id AND c.project_id = ms.project_id AND c.physical_subsystem_code = ms.system_code AND c.deleted = 0 JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0 WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id AND s.name LIKE ?))");
+            sql.append(" AND (m.meeting_code LIKE ? OR m.meeting_title LIKE ? OR m.keywords LIKE ? OR EXISTS (SELECT 1 FROM dm_meeting_system ms JOIN dm_component c ON c.tenant_id = ms.tenant_id AND c.project_id = ms.project_id AND c.system_code = ms.system_code JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 WHERE ms.tenant_id = m.tenant_id AND ms.meeting_id = m.meeting_id AND s.name LIKE ?))");
             args.add(value);
             args.add(value);
             args.add(value);
@@ -736,21 +724,19 @@ public class MeetingService {
     private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
         // 验证系统编号存在于当前项目 dm_component 活动清单
         String sql = "SELECT COUNT(*) FROM dm_component c " +
-                "WHERE c.physical_subsystem_code = ? AND c.tenant_id = ? AND c.project_id = ? AND c.deleted = 0";
+                "WHERE c.system_code = ? AND c.tenant_id = ? AND c.project_id = ? AND c.enabled = 1";
         if (!exists(sql, systemCode, user.tenantId(), projectId)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目");
         }
     }
 
-    private void validateEnums(Map<String, Object> body) {
-        validateEnum(body.get("granularity"), GRANULARITIES, "颗粒度");
-        validateEnum(body.get("meetingSource"), MEETING_SOURCES, "会议纪要来源");
+    private void validateEnums(Map<String, Object> body, AuthUser user) {
+        codeValues.requireActive(DataMigrationCodeValueService.DM_MEETING_GRANULARITY, "会议纪要颗粒度", value(body.get("granularity")), user);
+        codeValues.requireActive(DataMigrationCodeValueService.DM_MEETING_SOURCE, "会议纪要来源", value(body.get("meetingSource")), user);
     }
 
-    private void validateEnum(Object value, Set<String> allowed, String label) {
-        if (value != null && !String.valueOf(value).isBlank() && !allowed.contains(String.valueOf(value))) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, label + "值无效");
-        }
+    private static String value(Object raw) {
+        return raw == null ? null : String.valueOf(raw).trim();
     }
 
     /** 与 IssueService.ensureCodeAvailable 同构：活动域内校验会议编号唯一，允许已删除记录释放编号。 */

@@ -1,0 +1,111 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/MappingsPage.vue",
+      "purpose": "实现独立响应式页面、逐文件上传恢复、附件下载、全状态和项目切换隔离"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R8", "R9"],
+  "commands": [
+    {
+      "command": "npm --prefix web run build (修改前基准)",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 成功；2571 modules transformed；仅有既有 Rollup PURE 注释和大 chunk 警告"
+    },
+    {
+      "command": "npm --prefix web run build (页面重构后)",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 成功；2571 modules transformed；built in 17.08s"
+    },
+    {
+      "command": "npm --prefix web run build (状态边界修正后)",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 成功；2571 modules transformed；built in 16.96s"
+    },
+    {
+      "command": "git diff --check -- web/src/api/data-migration.ts web/src/modules/data-migration/views/content/MappingsPage.vue",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    },
+    {
+      "command": "rg Mapping 页面上传状态、下载、响应式和项目切换契约",
+      "exit_code": 0,
+      "salient_output": "四个上传状态、retryUpload、getMappingDownloadPath/getAttachmentDownload/getMappingDownloadAll、dm-desktop-table/dm-mobile-list、watch(scopeProjectId) 和持久 listError 均有匹配"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Vue/TypeScript/API 编译契约",
+      "result": "pass",
+      "evidence": "修改后两次完整 web build 退出码 0",
+      "limitations": ["构建不验证真实请求、视觉布局和下载字节"]
+    },
+    {
+      "check": "部分上传失败恢复",
+      "result": "pass",
+      "evidence": "上传项保存 pending/uploading/uploaded/error、attachmentId 和 error；失败时保留成功项并阻断业务提交，error 项有单独 retryUpload",
+      "limitations": ["真实网络失败注入由 T4 浏览器验收"]
+    },
+    {
+      "check": "项目切换和错误状态",
+      "result": "pass",
+      "evidence": "watch(scopeProjectId) 关闭抽屉/下载弹层并清空列表、筛选、选项和附件；上传后提交前再次核对 projectId；列表、选项、附件加载和提交错误均有持久状态及重试入口",
+      "limitations": ["项目切换交互尚未在浏览器触发"]
+    },
+    {
+      "check": "桌面/移动结构和下载入口",
+      "result": "pass",
+      "evidence": "桌面表格由 dm-desktop-table 包裹，移动卡片使用 dm-mobile-list；下载弹层列出单附件并提供全部下载",
+      "limitations": ["四视口尺寸和溢出由 T4 测量"]
+    }
+  ],
+  "diff_summary": [
+    "移除重复说明型页面副标题并保留紧凑业务标题和新增操作",
+    "列表增加持久加载错误、选项错误、筛选空状态和重试入口",
+    "桌面表格与移动卡片互斥，卡片展示系统、类型、编号和名称",
+    "上传队列增加四态、成功附件 ID 保留、失败项单独重试和前后端 50MB/200 字符门禁",
+    "编辑附件加载失败与业务提交失败分离，避免误清空或阻断重试",
+    "下载弹层支持指定附件授权校验后下载及全部 ZIP 下载",
+    "项目切换关闭弹层并清空旧状态，异步请求和最终提交都校验当前项目"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "前端权限只控制交互可见性且不替代服务端授权",
+      "result": "pass",
+      "evidence": "页面仍调用 T2 受保护 API；按钮使用现有 read/create/update/delete/manage 权限口径"
+    },
+    {
+      "invariant": "部分失败不丢失成功附件 ID",
+      "result": "pass",
+      "evidence": "uploaded 项保留 attachmentId，handleSave 仅上传 pending，error 必须单独重试或移除"
+    },
+    {
+      "invariant": "项目切换不保留旧业务和表单状态",
+      "result": "pass",
+      "evidence": "resetForProject 清空列表、筛选、选项、抽屉、下载和附件状态；异步响应带项目令牌检查"
+    },
+    {
+      "invariant": "不修改公共 UI、store 或全局主题",
+      "result": "pass",
+      "evidence": "实际修改面仅 MappingsPage.vue；公共组件和全局样式只读复用"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "web 构建持续报告既有第三方 PURE 注释和大 chunk 警告",
+      "impact": "不影响构建退出码，且与 Mapping 页面行为无直接因果关系"
+    },
+    {
+      "event": "Mapping API 段在任务开始前已完整存在于交叠工作区修改",
+      "impact": "T3 只验证并消费该契约，没有重写同文件其他业务增量"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实上传失败、下载和项目切换交互由 T4 本地浏览器验收",
+    "1280x800 与三个手机视口的横向溢出和遮挡由 T4 测量"
+  ],
+  "recommended_next": "observe"
+}

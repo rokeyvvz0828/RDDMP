@@ -26,8 +26,6 @@ public class ReportService {
     public static final String BUSINESS_TYPE = ContentFileAssetService.BUSINESS_TYPE;
     private static final String CONTENT_TYPE = "REPORT";
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
-    private static final Set<String> REPORT_PERIODS = Set.of("DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY", "IRREGULAR");
-
     private static final String MAIN_FILE_JOIN =
         " LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = 'REPORT' AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 " +
         " LEFT JOIN att_file f ON f.id = m.attachment_id AND f.tenant_id = m.tenant_id ";
@@ -38,22 +36,25 @@ public class ReportService {
     private final ContentFileAssetService fileAssets;
     private final DataMigrationPermissionService permissions;
     private final ContentDocCodeGenerator docCodes;
+    private final DataMigrationCodeValueService codeValues;
 
     @Autowired
     public ReportService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
                          ContentFileAssetService fileAssets, DataMigrationPermissionService permissions,
-                         ContentDocCodeGenerator docCodes) {
+                         ContentDocCodeGenerator docCodes, DataMigrationCodeValueService codeValues) {
         this.jdbc = jdbc;
         this.attachmentGateway = attachmentGateway;
         this.attachments = attachments;
         this.fileAssets = fileAssets;
         this.permissions = permissions;
         this.docCodes = docCodes;
+        this.codeValues = codeValues;
     }
 
     public ReportService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, ContentAttachmentService attachments,
-                         ContentFileAssetService fileAssets, DataMigrationPermissionService permissions) {
-        this(jdbc, attachmentGateway, attachments, fileAssets, permissions, new ContentDocCodeGenerator());
+                         ContentFileAssetService fileAssets, DataMigrationPermissionService permissions,
+                         DataMigrationCodeValueService codeValues) {
+        this(jdbc, attachmentGateway, attachments, fileAssets, permissions, new ContentDocCodeGenerator(), codeValues);
     }
 
     /**
@@ -73,7 +74,7 @@ public class ReportService {
 
         sql.append(" AND a.project_id = ?");
         args.add(scope);
-        if (reportPeriod != null && !reportPeriod.isBlank() && REPORT_PERIODS.contains(reportPeriod)) {
+        if (reportPeriod != null && !reportPeriod.isBlank()) {
             sql.append(" AND a.report_period = ?");
             args.add(reportPeriod);
         }
@@ -106,7 +107,7 @@ public class ReportService {
     public Map<String, Object> upload(long projectId, String reportPeriod, String reportName, 
                                      String reportDate, String keywords, Long attachmentId,
                                      AuthUser user) {
-        validateReportPeriod(reportPeriod);
+        validateReportPeriod(reportPeriod, user);
         if (reportName == null || reportName.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "资料名称不能为空");
         }
@@ -143,7 +144,7 @@ public class ReportService {
     public List<Map<String, Object>> batchUpload(long projectId, String reportPeriod,
                                                  List<AttachmentItem> attachments,
                                                  AuthUser user) {
-        validateReportPeriod(reportPeriod);
+        validateReportPeriod(reportPeriod, user);
         ensureProject(projectId, user);
         if (attachments == null || attachments.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件列表不能为空");
@@ -194,7 +195,7 @@ public class ReportService {
         long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
         permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
 
-        if (reportPeriod != null) validateReportPeriod(reportPeriod);
+        if (reportPeriod != null) validateReportPeriod(reportPeriod, user);
         if (reportName != null && reportName.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "资料名称不能为空");
         }
@@ -310,6 +311,9 @@ public class ReportService {
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "汇报材料不存在于回收站");
         Map<String, Object> row = rows.get(0);
         permissions.requireStoredProject(row.get("project_id"), user);
+        // 添加附件列表
+        List<Map<String, Object>> attachmentList = attachments.list("REPORT", id, user.tenantId());
+        row.put("attachments", attachmentList);
         return row;
     }
 
@@ -325,7 +329,7 @@ public class ReportService {
     private void appendRecycleBinFilters(StringBuilder sql, List<Object> args, long projectId, String reportPeriod, String keyword) {
         sql.append(" AND a.project_id = ?");
         args.add(projectId);
-        if (reportPeriod != null && !reportPeriod.isBlank() && REPORT_PERIODS.contains(reportPeriod)) {
+        if (reportPeriod != null && !reportPeriod.isBlank()) {
             sql.append(" AND a.report_period = ?");
             args.add(reportPeriod);
         }
@@ -401,10 +405,8 @@ public class ReportService {
 
     // ========== 私有方法 ==========
 
-    private void validateReportPeriod(String reportPeriod) {
-        if (reportPeriod == null || !REPORT_PERIODS.contains(reportPeriod)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "汇报周期无效，支持：DAILY/WEEKLY/BIWEEKLY/MONTHLY/IRREGULAR");
-        }
+    private void validateReportPeriod(String reportPeriod, AuthUser user) {
+        codeValues.requireActive(DataMigrationCodeValueService.DM_REPORT_PERIOD, "汇报周期", reportPeriod, user);
     }
 
     private void ensureProject(long id, AuthUser user) {
