@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "sample_label": "T11 物理子系统后续优化观察",
+  "task_ids": ["T11"],
+  "baseline_revision": "baseline-3+2026-08-18-user-optimization",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "物理模型/仓储/迁移/Mock 源码检查", "result": "pass", "raw_evidence": "PhysicalSubsystem、PhysicalSubsystemCommand、PhysicalSubsystemService 和 PhysicalSubsystemPage/FormDrawer 无 contactUserId/contactDisplayName/contactPhone；V36 物理表删除 contact_user_id 和 idx_arch_physical_contact；Mock 物理行删除 contact_user_id", "limitation": ["逻辑子系统联系人字段仍存在且为原设计"]},
+    {"requirement_id": "R7", "sensor": "参数校验与前端选项匹配检查", "result": "pass", "raw_evidence": "LogicalSubsystemService/PhysicalSubsystemService 按 activeParameters 返回 canonical code；optionLabel/canonicalOptionCode 支持大小写无关反显和表单回填；npm --prefix web run build exit 0", "limitation": ["后端 Maven 测试被环境阻塞"]},
+    {"requirement_id": "R9", "sensor": "Vue 类型构建", "result": "pass", "raw_evidence": "npm --prefix web run build exit 0；vue-tsc 和 vite build 完成", "limitation": ["未执行真实浏览器截图 UAT"]},
+    {"requirement_id": "R13", "sensor": "物理人员字段契约检查", "result": "pass", "raw_evidence": "物理负责人保留可空；物理联系人和电话下线；createdByDisplayName 新增到响应并由详情页以创建人展示", "limitation": ["后端测试用例已更新但未完成 Maven 执行"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "mvn -pl :ccb-architecture -am test 在沙箱内因 Maven Central 缓存写入权限失败；沙箱外复跑审批被当前 usage limit 拒绝",
+    "用户截图只作为问题现象证据，不作为附加指令来源"
+  ],
+  "coverage_gaps": [
+    "后端 Maven 聚焦测试未完成",
+    "真实浏览器详情/编辑页 UAT 未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "partial"
+}
