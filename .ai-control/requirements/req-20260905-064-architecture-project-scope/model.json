@@ -1,0 +1,74 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["顶部项目上下文与架构前端请求封装", "architecture Controller、Service、Store 与业务表", "ProjectAccessService 项目访问公开能力", "ProjectService 项目删除流程与 ProjectDeletionGuard 扩展点", "WorkflowBusinessGateway 与架构工作流生命周期消费者", "data-migration 和 test-management 的物理子系统只读消费者", "Flyway 迁移、Mock 数据、模块测试与浏览器验收路径"],
+    "environment": ["MySQL 8.4 与 Flyway 运行时", "现有项目、成员、RBAC 和工作流实例数据", "用户或其他任务的并行工作区修改", "本地 Maven、Node、浏览器和 Docker 运行环境"]
+  },
+  "state_variables": [
+    {"name": "current_project_ref", "owner": "web project-context store", "valid_values": ["空", "可访问项目编码"]},
+    {"name": "trusted_project_id", "owner": "ProjectAccessService", "valid_values": ["拒绝", "当前租户可访问项目主键"]},
+    {"name": "architecture_entity_scope", "owner": "architecture tables", "valid_values": ["tenant_id + project_id"]},
+    {"name": "architecture_relation_scope", "owner": "architecture stores and constraints", "valid_values": ["同项目", "拒绝跨项目"]},
+    {"name": "architecture_uniqueness_scope", "owner": "MySQL indexes and service validation", "valid_values": ["项目内永久唯一"]},
+    {"name": "workflow_project_scope", "owner": "workflow instance and business context", "valid_values": ["与业务项目一致", "拒绝不一致"]},
+    {"name": "project_delete_guard_state", "owner": "ProjectService and guard implementations", "valid_values": ["无引用可删除", "有架构引用冲突"]},
+    {"name": "consumer_join_scope", "owner": "data-migration and test-management SQL", "valid_values": ["tenant + project + subsystem", "错误的租户级匹配"]},
+    {"name": "environment_display_name", "owner": "architecture web", "valid_values": ["环境管理"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "携带 projectRef 的架构请求", "transitions": ["ProjectAccessService 解析可信项目", "Controller 将 ProjectAccess 交给 Service", "Store 使用 tenant_id 与 project_id 查询或写入", "关键子表继承同一项目"], "outputs": ["仅返回或改变当前项目数据", "数据库行具备非空 project_id"]},
+    {"requirement_id": "R2", "input": "用户在顶部切换当前项目", "transitions": ["project-context 保存 currentRef 并刷新", "架构页面读取 currentRef", "API 请求显式发送 projectRef", "无项目时阻止请求"], "outputs": ["六个页面只展示当前项目", "不存在第二项目选择器"]},
+    {"requirement_id": "R3", "input": "创建或修改带编号名称的对象", "transitions": ["服务按 tenant_id + project_id 检查历史记录", "MySQL 项目级唯一索引兜底", "软删除记录仍参与永久唯一判断"], "outputs": ["跨项目可重复", "同项目重复或删除后复用被拒绝"]},
+    {"requirement_id": "R4", "input": "提交父子、部署、申请、实例或计划关联 ID", "transitions": ["按当前项目加载候选", "服务校验关联对象 tenant_id + project_id", "事务写入项目化关系"], "outputs": ["无跨项目活动关系", "伪造其他项目 ID 返回 400/404"]},
+    {"requirement_id": "R5", "input": "普通成员、非成员或超级管理员访问 architecture API", "transitions": ["Spring Security 校验 architecture:* RBAC", "ProjectAccessService 校验项目存在和成员资格", "实体查询继续限定可信项目"], "outputs": ["成员且有权限成功", "非成员或缺权限 403", "超级管理员仍使用明确项目上下文"]},
+    {"requirement_id": "R6", "input": "读取共享模板或由模板生成搭建计划", "transitions": ["模板 Store 保持 tenant_id 范围", "生成服务接收可信 ProjectAccess", "计划、目标、阶段、任务和执行事件保存 project_id"], "outputs": ["模板跨项目复用", "执行计划仅当前项目可见"]},
+    {"requirement_id": "R7", "input": "资源申请或物理子系统变更发起及工作流生命周期事件", "transitions": ["架构提交服务构造含 projectRef/projectName 的 WorkflowBusinessContext", "workflow 写入实例 project_id", "生命周期消费者比对事件项目与业务项目"], "outputs": ["业务与流程实例项目一致", "不一致事件不改变业务状态"]},
+    {"requirement_id": "R8", "input": "含存量架构数据的既有库执行 V156", "transitions": ["按租户定位唯一活动 RDDMP-PLATFORM", "缺失或不唯一时显式触发迁移失败", "回填主表和可靠子链 project_id", "校验无空值后改为非空并重建约束"], "outputs": ["存量数据归入默认项目", "无法确定归属时 Flyway 失败"]},
+    {"requirement_id": "R9", "input": "删除项目命令", "transitions": ["ProjectService 调用全部 ProjectDeletionGuard", "architecture guard 统计未删除架构主数据", "存在引用时抛出冲突"], "outputs": ["有架构数据返回 409", "无引用保持现有删除行为"]},
+    {"requirement_id": "R10", "input": "数据迁移或测试管理按物理子系统查询", "transitions": ["消费者从自身记录取得 project_id", "JOIN 或直接查询增加 arch_physical_subsystem.project_id 等值条件"], "outputs": ["相同编号或 ID 投影不会跨项目串联", "受影响模块回归通过"]},
+    {"requirement_id": "R11", "input": "用户进入原具体环境相关页面", "transitions": ["路由、标题、提示和关联字段文案改为环境管理", "Java 包、表名与 /api/architecture/environments 保持不变"], "outputs": ["用户界面统一显示环境管理", "稳定技术契约兼容"]}
+  ],
+  "interfaces": [
+    {"name": "ProjectAccessService.requireAccessible", "producers": ["platform/system"], "consumers": ["architecture controllers/services"], "invariant": "projectRef 解析为当前租户可访问的 ProjectAccess(id, projectRef, projectName)"},
+    {"name": "architecture REST projectRef", "producers": ["architecture web API wrappers"], "consumers": ["architecture controllers"], "invariant": "六类业务和关联选项请求显式携带非空 projectRef，业务 DTO 不接收 projectId/tenantId"},
+    {"name": "WorkflowBusinessContext", "producers": ["architecture submission services"], "consumers": ["platform/workflow and lifecycle consumers"], "invariant": "projectRef/projectName 与业务实体可信项目一致"},
+    {"name": "ProjectDeletionGuard", "producers": ["platform/system public capability"], "consumers": ["architecture guard implementation and ProjectService"], "invariant": "system 不反向依赖 architecture，guard 仅返回项目删除阻断事实"},
+    {"name": "arch_physical_subsystem read projection", "producers": ["business/architecture database owner"], "consumers": ["data-migration and test-management read-only SQL"], "invariant": "消费者同时使用 tenant_id 与自身 project_id 匹配"},
+    {"name": "Flyway V156", "producers": ["platform/infrastructure"], "consumers": ["MySQL schema and architecture module"], "invariant": "仅追加迁移，模板表不增加 project_id，历史迁移和 ACT_* 不修改"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "数据库项目列、非空、外键和项目级唯一约束", "method": "真实 MySQL 空库/既有库 Flyway 测试与 information_schema 断言", "blind_spots": ["生产大表执行时长"], "independence": "直接观察数据库结构和迁移退出结果"},
+    {"id": "S2", "target": "架构 API 查询、直接 ID 和跨项目关联隔离", "method": "双项目服务/Controller/MySQL 测试正负矩阵", "blind_spots": ["未覆盖的新调用入口"], "independence": "运行时响应与持久化行断言"},
+    {"id": "S3", "target": "项目成员资格与 RBAC 叠加", "method": "普通成员、非成员、双项目成员和超级管理员权限测试", "blind_spots": ["外部身份源未在本任务范围"], "independence": "服务端 400/403/404 响应断言"},
+    {"id": "S4", "target": "工作流实例与业务项目一致性", "method": "架构工作流集成测试、启动结果和生命周期回调状态断言", "blind_spots": ["无法可靠关联的历史工作流实例"], "independence": "同时检查业务行、上下文和工作流实例"},
+    {"id": "S5", "target": "项目删除引用保护", "method": "ProjectService 单元测试与 architecture guard 集成测试", "blind_spots": ["未来未登记的业务 guard"], "independence": "从 system 删除入口观察 409 与无引用成功路径"},
+    {"id": "S6", "target": "跨模块物理子系统匹配", "method": "重复编号双项目数据的 data-migration/test-management MySQL 回归测试和 rg SQL 审计", "blind_spots": ["动态 SQL 或未来消费者"], "independence": "数据库结果断言与静态消费者扫描两类证据"},
+    {"id": "S7", "target": "前端项目请求、状态重置与环境管理文案", "method": "TypeScript 生产构建、真实浏览器网络请求和四视口明暗主题验收", "blind_spots": ["未实际运行的非 Chromium 浏览器"], "independence": "编译约束、请求观察和渲染截图组合"},
+    {"id": "S8", "target": "范围、模块边界和回归", "method": "governance、scope、Flyway、git diff --check 与 Maven 受影响模块测试", "blind_spots": ["已知无关治理基线失败需单列"], "independence": "仓库脚本和构建工具退出码"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "architecture schema", "action": "追加 V156 项目列回填、校验、非空与约束迁移及迁移测试", "authority": "scope 授权的 V156 与 architecture 测试", "impact_radius": "多张架构业务表和 MySQL 迁移", "rollback": "应用回退；已执行数据库变更使用后续补偿迁移"},
+    {"id": "A2", "target": "可信项目上下文和删除保护", "action": "复用 ProjectAccessService，增加 ProjectDeletionGuard 并接入 ProjectService", "authority": "已批准公共能力写入路径", "impact_radius": "platform/system 项目删除与 architecture 入口", "rollback": "回退接口、注入和 architecture 实现"},
+    {"id": "A3", "target": "architecture 业务读写和关联", "action": "为模型、Controller、Service、Store 增加项目参数和项目限定", "authority": "architecture 模块写权限", "impact_radius": "六类主数据及关键子链", "rollback": "按 T3-T5 提交边界逆序回退"},
+    {"id": "A4", "target": "工作流项目一致性", "action": "填充 WorkflowBusinessContext 项目字段并在生命周期消费者校验", "authority": "architecture 写权限，workflow 只读", "impact_radius": "架构相关流程启动和回调", "rollback": "回退架构提交与消费者修改"},
+    {"id": "A5", "target": "architecture web", "action": "API 增加 projectRef，页面绑定 currentRef、重置状态并更新环境管理文案", "authority": "architecture web 与 router 授权路径", "impact_radius": "六类页面和架构路由", "rollback": "回退前端业务提交"},
+    {"id": "A6", "target": "跨模块只读消费者", "action": "为物理子系统 JOIN/查询补齐 project_id 条件并增加回归测试", "authority": "计划列明的 data-migration/test-management 文件", "impact_radius": "13 个消费者服务及其测试", "rollback": "回退消费者 SQL 和新增测试"},
+    {"id": "A7", "target": "验证和证据", "action": "运行 Maven、Flyway、前端构建、浏览器与治理传感器并记录账本", "authority": "本地执行和当前任务账本", "impact_radius": "测试环境与证据文件", "rollback": "停止本地服务并清理临时测试资源"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"}, {"requirement_id": "R2", "sensor_ids": ["S7"], "observable": "yes"}, {"requirement_id": "R3", "sensor_ids": ["S1", "S2"], "observable": "yes"}, {"requirement_id": "R4", "sensor_ids": ["S2"], "observable": "yes"}, {"requirement_id": "R5", "sensor_ids": ["S3", "S7"], "observable": "yes"}, {"requirement_id": "R6", "sensor_ids": ["S1", "S2", "S7"], "observable": "yes"}, {"requirement_id": "R7", "sensor_ids": ["S4"], "observable": "yes"}, {"requirement_id": "R8", "sensor_ids": ["S1"], "observable": "yes"}, {"requirement_id": "R9", "sensor_ids": ["S5"], "observable": "yes"}, {"requirement_id": "R10", "sensor_ids": ["S6"], "observable": "yes"}, {"requirement_id": "R11", "sensor_ids": ["S7", "S8"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Flyway 版本竞争", "effect": "V156 文件名冲突或迁移顺序变化", "detectable": true, "controllable": true}, {"source": "默认项目缺失或同租户不唯一", "effect": "存量回填无法确定项目", "detectable": true, "controllable": false}, {"source": "历史软删除与唯一键语义", "effect": "服务校验和数据库约束不一致", "detectable": true, "controllable": true}, {"source": "旧工作流实例没有项目", "effect": "历史回调无法可靠匹配", "detectable": true, "controllable": false}, {"source": "用户已有 scripts/dev.mjs 和其他任务账本修改", "effect": "范围审计噪声或冲突", "detectable": true, "controllable": false}, {"source": "本地 Docker、端口或依赖环境", "effect": "MySQL、服务或浏览器验收不可运行", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "多表回填和索引重建", "consequence": "既有库迁移反馈慢于单元测试", "sampling_rule": "先小型既有库失败测试，再执行完整 MySQL 迁移"}, {"source": "串行 T1-T8 契约依赖", "consequence": "下游测试在上游接口稳定前噪声较大", "sampling_rule": "每个任务独立观察通过后再启动下游"}, {"source": "工作流异步生命周期事件", "consequence": "立即读取可能尚未消费", "sampling_rule": "以事件处理完成或持久化确认后采样"}, {"source": "前端整页刷新项目切换", "consequence": "切换后的请求和页面状态需要刷新后观察", "sampling_rule": "等待路由与首轮请求稳定后检查网络和 DOM"}
+  ],
+  "assumptions": [
+    {"text": "每个存在待迁移架构数据的租户都有且只有一个活动 RDDMP-PLATFORM 项目", "evidence": "用户批准的迁移规则", "falsifier": "V156 预检查询得到零条或多条"}, {"text": "data-migration 与 test-management 消费者可从自身记录或父链获得 project_id", "evidence": "dm_component、tm_test_participating_system 及主要业务表已有 project_id", "falsifier": "T7 审计发现某查询没有可靠项目键"}, {"text": "WorkflowBusinessContext 和工作流实例项目能力已可复用", "evidence": "公开 record 已含 projectRef/projectName，工作流模块已有项目访问网关", "falsifier": "架构集成测试发现启动结果无法返回或持久化项目"}, {"text": "V156 在开始实施时仍是下一个可用迁移版本", "evidence": "2026-09-05 扫描最高版本为 V155", "falsifier": "编码前再次扫描出现 V156 或更高并发生冲突"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3"}, {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A5"}, {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A1+A3"}, {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A3"}, {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A2+A3+A5"}, {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A1+A3+A5"}, {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "A4"}, {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "A1；默认项目缺失时按需求失败关闭"}, {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "A2"}, {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "A6"}, {"requirement_id": "R11", "observable": "yes", "controllable": "yes", "action": "A5"}
+  ],
+  "model_status": "ready"
+}

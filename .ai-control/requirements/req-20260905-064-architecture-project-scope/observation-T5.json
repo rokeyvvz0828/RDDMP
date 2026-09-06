@@ -1,0 +1,18 @@
+{
+  "sample_label": "T5 搭建计划项目隔离采样",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1,R4,R6", "sensor": "计划真实 MySQL 双项目隔离测试", "result": "pass", "raw_evidence": "1/1 通过；同租户不同项目可复用 plan_no，计划及全部子对象直接 ID 不可跨项目读取或更新，列表、统计和逾期提醒不串项目。", "limitation": []},
+    {"requirement_id": "R5", "sensor": "PlanController 项目上下文测试", "result": "pass", "raw_evidence": "2/2 通过；缺少 projectRef 返回 400 且不访问业务服务，携带 projectRef 时使用 ProjectAccessService 解析出的可信 projectId。", "limitation": []},
+    {"requirement_id": "R6", "sensor": "模板兼容测试与结构断言", "result": "pass", "raw_evidence": "PlanTemplateServiceTest 11/11 通过；arch_plan_template 不含 project_id，同一共享模板可被两个项目的计划引用。", "limitation": []},
+    {"requirement_id": "R1,R4,R5,R6", "sensor": "architecture 回归、编译与静态扫描", "result": "pass", "raw_evidence": "完整回归 286/286、T5 聚焦测试合计 23/23、主代码 compile 和 git diff --check 通过；Controller 与 SQL 范围扫描符合设计。", "limitation": ["完整回归不包含后补的两类 T5 测试，但聚焦命令已重新编译全部测试源码并执行新增测试。"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "测试环境产生既有 Flyway/MySQL 告警并重复执行迁移", "impact": "仅增加日志和耗时，不影响断言。"}
+  ],
+  "coverage_gaps": ["前端计划请求携带顶部项目和浏览器综合验收留待 T6/T8。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

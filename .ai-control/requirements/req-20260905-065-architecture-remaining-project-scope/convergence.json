@@ -1,0 +1,62 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2", "T3", "T4"], "evidence": ["V158 真实 MySQL 迁移到 v158", "architecture 291 项通过"], "limitations": ["生产数据规模未采样"]},
+    {"id": "R2", "result": "pass", "task_ids": ["T2", "T3", "T4", "T6"], "evidence": ["Controller/Service 项目权限与实体归属测试通过", "浏览器项目切换通过"], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T2", "T3", "T4"], "evidence": ["项目维度唯一索引和双项目测试通过"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T1", "T2", "T3", "T4"], "evidence": ["数据库组合约束和跨项目伪造 ID 测试通过"], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T2", "T3", "T4", "T5"], "evidence": ["三类业务工作流上下文和回调项目一致", "Publisher 3 项测试通过"], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T2", "T4", "T6"], "evidence": ["附件策略跨项目负向测试通过", "浏览器 UAT 无跨项目数据泄露"], "limitations": ["UAT 使用本地虚构数据"]},
+    {"id": "R7", "result": "pass", "task_ids": ["T1", "T7"], "evidence": ["V158 默认项目异常失败关闭测试通过"], "limitations": ["上线前需评估迁移窗口"]},
+    {"id": "R8", "result": "pass", "task_ids": ["T5", "T7"], "evidence": ["ArchitectureProjectDeletionGuard 覆盖 13 类表且测试通过"], "limitations": []},
+    {"id": "R9", "result": "pass", "task_ids": ["T6", "T7"], "evidence": ["项目 A/B 切换重新加载", "375/390/430 视口无横向溢出"], "limitations": ["一次可恢复加载瞬态已记录为扰动"]},
+    {"id": "R10", "result": "pass", "task_ids": ["T1", "T5", "T6"], "evidence": ["共享配置表未项目化", "共享接口继续租户级"], "limitations": []},
+    {"id": "R11", "result": "pass", "task_ids": ["T5", "T7"], "evidence": ["LocalSeededWorkflowPublisher 默认 5 条租户级定义", "单测 3 项通过"], "limitations": []},
+    {"id": "R12", "result": "pass", "task_ids": ["T1", "T7"], "evidence": ["mvn test 15 模块全通过", "前端生产构建通过", "V158 只追加并有备份/补偿回退清单"], "limitations": ["未执行生产发布"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["V158 和迁移测试通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["网络工单项目隔离回归通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["网络分区与访问全链路回归通过"]},
+    {"id": "T4", "status": "verified", "evidence": ["架构决策、附件和流程回归通过"]},
+    {"id": "T5", "status": "verified", "evidence": ["删除保护和 Publisher 测试通过"]},
+    {"id": "T6", "status": "verified", "evidence": ["前端构建和四视口 UAT 通过"]},
+    {"id": "T7", "status": "verified", "evidence": ["完整 Maven、运行健康、浏览器和范围审计完成"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S1-MySQL-Flyway", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S2-Maven-Workflow", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S3-Browser-Frontend", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "完整 Maven Reactor", "result": "pass", "evidence": "15 模块全部 SUCCESS，总耗时 25:20"},
+    {"check": "架构聚焦回归", "result": "pass", "evidence": "291 项，0 失败"},
+    {"check": "LocalSeededWorkflowPublisher", "result": "pass", "evidence": "3 项，0 失败"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "npm --prefix web run build 退出码 0"},
+    {"check": "运行健康", "result": "pass", "evidence": "后端 UP，前端 HTTP 200"},
+    {"check": "差异空白检查", "result": "pass", "evidence": "git diff --check 退出码 0，仅 CRLF 提示"}
+  ],
+  "invariant_results": [
+    {"invariant": "可信项目上下文和服务端鉴权", "result": "pass", "evidence": "项目访问和跨项目负向测试通过"},
+    {"invariant": "工作流定义租户共享、业务实例项目私有", "result": "pass", "evidence": "Publisher 无项目参数，三类业务上下文携带项目"},
+    {"invariant": "共享架构配置不项目化", "result": "pass", "evidence": "V158 目标表和前端 API 审计通过"},
+    {"invariant": "历史 Flyway 不修改", "result": "pass", "evidence": "本任务仅新增 V158"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": [],
+    "notes": ["工作区存在 REQ-20260905-064 和其他用户未提交修改，本任务未回退或覆盖；scripts/dev.mjs 未修改"]
+  },
+  "disturbance_resilience": [
+    {"disturbance": "项目切换首次加载瞬态", "result": "pass", "evidence": "接口 200，重试恢复，最终控制台无错误"},
+    {"disturbance": "历史治理 YAML 基线失败", "result": "isolated", "evidence": "失败文件属于 REQ-20260904-061，当前需求 JSON 和范围可解析"},
+    {"disturbance": "历史 Flyway 文件名基线失败", "result": "isolated", "evidence": "失败文件为 V84_1，V158 命名与迁移执行正常"}
+  ],
+  "residual_risks": [
+    "上线前需使用脱敏的目标数据规模演练 V158 迁移窗口、锁等待和备份恢复",
+    "同一 Codex 上下文完成最终观测，仍建议代码评审阶段安排独立人员复核"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R12 均有任务、实现、异质传感器和最终证据；T1-T7 可验证；P0-P3 均为零；完整回归、运行和浏览器门禁通过，历史基线问题已隔离披露"
+}

@@ -1,0 +1,492 @@
+{
+  "schema_version": 1,
+  "topic": "architecture-remaining-project-scope",
+  "handoff_status": "completed",
+  "created_at": "2026-09-05",
+  "design": {
+    "schema_version": 1,
+    "topic": "architecture-remaining-project-scope",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-05-architecture-remaining-project-scope-design.md",
+    "objective": "将网络专项工单、网络分区及网段、网络访问全链路和架构决策接入顶部当前项目，形成数据库、服务、流程、通知、附件和前端状态的完整项目隔离。",
+    "users": ["当前项目的架构维护人员", "网络专项工单申请人与处理人", "网络访问申请人与审批人", "架构决策发起人与评审人", "超级管理员"],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "四类业务主数据及关键子数据必须显式保存项目归属。",
+        "acceptance": ["项目列非空", "读写限定 tenant_id 与 project_id", "直接 ID 不跨项目"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["Store 仅按 tenant_id 和 id 查询"]
+      },
+      {
+        "id": "R2",
+        "statement": "目标接口必须强制 projectRef 并校验项目访问权、RBAC 和实体归属。",
+        "acceptance": ["缺项目 400", "无权限 403", "其他项目实体 404"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["前端显隐替代服务端授权"]
+      },
+      {
+        "id": "R3",
+        "statement": "业务编号、分区编码名称和外部地址必须项目内永久唯一。",
+        "acceptance": ["跨项目允许重复", "同项目重复和软删除后复用被拒绝"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["租户级唯一索引"]
+      },
+      {
+        "id": "R4",
+        "statement": "网络分区、网段、访问关系、实例、工单、决策和结论禁止跨项目引用。",
+        "acceptance": ["候选仅当前项目", "伪造 ID 被拒绝", "数据库无跨项目活动关系"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["项目 A 引用项目 B 分区或结论"]
+      },
+      {
+        "id": "R5",
+        "statement": "网络工单、网络访问申请和架构决策工作流必须绑定业务项目。",
+        "acceptance": ["上下文包含 projectRef/projectName", "业务与实例项目一致", "不一致回调不更新"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["WorkflowBusinessContext 项目为空"]
+      },
+      {
+        "id": "R6",
+        "statement": "通知、附件和事件不得泄露或关联其他项目数据。",
+        "acceptance": ["通知重新鉴权", "附件策略校验业务项目", "幂等身份包含项目"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["凭附件 ID 下载其他项目文件"]
+      },
+      {
+        "id": "R7",
+        "statement": "历史数据只迁入 RDDMP-PLATFORM，默认项目异常时迁移失败。",
+        "acceptance": ["项目列无空值", "不复制到其他项目", "缺失或不唯一阻止迁移"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["自动选择其他项目"]
+      },
+      {
+        "id": "R8",
+        "statement": "存在新增项目化架构数据时必须阻止删除项目。",
+        "acceptance": ["guard 覆盖目标主表", "有引用 409", "无引用保持原行为"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["删除后遗留孤立数据"]
+      },
+      {
+        "id": "R9",
+        "statement": "页面跟随顶部项目并在切换时清除旧项目状态。",
+        "acceptance": ["无第二选择器", "无项目不请求", "旧请求和页面状态不残留"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["旧响应覆盖新项目列表"]
+      },
+      {
+        "id": "R10",
+        "statement": "架构规范、计划模板、环境类型和平台字典继续租户共享。",
+        "acceptance": ["共享接口不强制项目", "共享表无 project_id", "不同项目看到相同共享配置"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["把共享配置复制到项目"]
+      },
+      {
+        "id": "R11",
+        "statement": "LocalSeededWorkflowPublisher 保持租户级定义发布并覆盖三条业务流程。",
+        "acceptance": ["定义不按项目复制", "三条草稿定义可发布", "平台工作流源码不修改"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["每项目发布重复定义"]
+      },
+      {
+        "id": "R12",
+        "statement": "数据库、后端和前端同批发布并具有可验证回退方案。",
+        "acceptance": ["V158 只追加", "上线前备份和预检查", "失败时整批回退或恢复备份"],
+        "priority": "must",
+        "source": "批准设计",
+        "counterexample": ["只上线后端导致旧前端缺 projectRef"]
+      }
+    ],
+    "invariants": [
+      "tenant_id 与 project_id 来自服务端可信上下文",
+      "业务 DTO 不接收 tenantId 或 projectId",
+      "architecture 不直接写 system、workflow 或 attachment 私有表",
+      "父子和跨业务引用必须同租户同项目",
+      "工作流定义租户共享、业务实例项目私有",
+      "共享架构配置不增加 project_id",
+      "历史 Flyway 与 Flowable ACT_* 不修改",
+      "不得覆盖 REQ-20260905-064 未提交修改"
+    ],
+    "constraints": [
+      "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3",
+      "复用 ProjectAccessService、ProjectDeletionGuard、WorkflowBusinessGateway 和 AttachmentAccessPolicy",
+      "Flyway 只追加且 V158 未占用才允许实施",
+      "前端遵循 design-h5.md 和架构目录 AGENTS.md",
+      "只使用本地虚构测试数据"
+    ],
+    "non_goals": [
+      "跨项目共享、复制或转移业务数据",
+      "项目化架构规范、计划模板、环境类型或平台字典",
+      "新增项目级架构角色",
+      "修改工作流或附件平台内部实现",
+      "重命名稳定技术契约"
+    ],
+    "selected_approach": {
+      "name": "全链路显式项目归属",
+      "reason": "数据库约束、直接 ID、附件策略和生命周期回调均可明确验证。",
+      "alternatives": [
+        {"name": "根实体推导", "rejected_because": "子数据直接访问和回调容易遗漏项目条件。"},
+        {"name": "项目绑定关系表", "rejected_because": "与单项目独占不一致并增加唯一性复杂度。"}
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": ["business/architecture 网络与决策链", "architecture 项目删除 guard", "boot 本地流程定义发布", "架构前端页面", "V158 与 Mock"],
+        "outside": ["Flowable ACT_*", "platform/workflow 内部实现", "platform/attachment 内部实现", "生产系统和真实数据"]
+      },
+      "components": [
+        {"name": "前端项目上下文", "responsibility": "提供 current projectRef 并在切换时清理状态", "depends_on": ["useProjectContextStore"]},
+        {"name": "目标 Controller", "responsibility": "强制 projectRef 和原有 RBAC", "depends_on": ["ProjectAccessService"]},
+        {"name": "网络与决策 Service/Store", "responsibility": "同项目业务规则及 tenant_id + project_id 持久化", "depends_on": ["ProjectAccess"]},
+        {"name": "工作流提交和生命周期消费者", "responsibility": "保持业务、实例、轮次和回调项目一致", "depends_on": ["WorkflowBusinessGateway"]},
+        {"name": "附件访问策略", "responsibility": "从业务实体恢复项目并校验用户访问", "depends_on": ["AttachmentAccessPolicy"]},
+        {"name": "项目删除 guard", "responsibility": "删除前检查目标主表", "depends_on": ["ProjectDeletionGuard"]},
+        {"name": "LocalSeededWorkflowPublisher", "responsibility": "每租户发布三条流程定义且不按项目复制", "depends_on": ["流程定义发布公开接口"]}
+      ],
+      "interfaces": [
+        {"name": "ProjectAccessService", "producer": "platform/system", "consumers": ["business/architecture"], "contract": "按 projectRef 校验租户和成员并返回可信项目"},
+        {"name": "ProjectDeletionGuard", "producer": "platform/system", "consumers": ["business/architecture"], "contract": "项目删除前调用业务引用检查"},
+        {"name": "WorkflowBusinessGateway", "producer": "platform/workflow", "consumers": ["business/architecture"], "contract": "项目上下文固化工作流实例项目"},
+        {"name": "AttachmentAccessPolicy", "producer": "platform/attachment", "consumers": ["business/architecture"], "contract": "按业务键和用户判定附件操作授权"}
+      ],
+      "data_flows": [
+        {"input": "projectRef 与认证用户", "transitions": ["项目访问校验", "实体和关联项目校验", "项目限定读写"], "output": "当前项目数据或明确错误"},
+        {"input": "项目业务提交", "transitions": ["构造项目工作流上下文", "实例固化项目", "生命周期项目复核"], "output": "项目隔离的流程和业务状态"},
+        {"input": "附件业务键", "transitions": ["加载项目化业务实体", "校验项目访问和状态"], "output": "允许或拒绝附件操作"},
+        {"input": "历史目标数据", "transitions": ["查找唯一默认项目", "父链回填", "完整性校验", "非空与组合约束"], "output": "明确项目归属"}
+      ]
+    },
+    "error_handling": [
+      {"condition": "projectRef 缺失", "behavior": "400，前端不发送目标业务请求", "recovery": "选择项目后重试"},
+      {"condition": "无项目访问权或缺少 RBAC", "behavior": "403", "recovery": "申请成员或动作权限"},
+      {"condition": "实体不属于当前项目", "behavior": "列表隐藏，详情和写操作 404", "recovery": "返回当前项目列表"},
+      {"condition": "跨项目引用", "behavior": "400 且不写入", "recovery": "选择当前项目对象"},
+      {"condition": "工作流项目不一致", "behavior": "拒绝启动或消费，不改变业务状态", "recovery": "修正上下文或人工处理失败事件"},
+      {"condition": "附件业务项目不可访问", "behavior": "拒绝预览、下载或删除", "recovery": "切换到有权项目或申请权限"},
+      {"condition": "默认项目缺失、不唯一或迁移数据异常", "behavior": "Flyway 失败", "recovery": "修复前置数据后重新发布"},
+      {"condition": "项目存在目标业务数据", "behavior": "项目删除 409", "recovery": "先按业务规则处理数据"}
+    ],
+    "quality_attributes": {
+      "security": ["认证、RBAC、项目成员、实体归属和附件策略服务端校验", "双项目直接 ID 负向测试"],
+      "performance": ["高频索引以 tenant_id、project_id 为前缀", "不使用租户全量 JOIN 推导项目"],
+      "compatibility": ["稳定包名、表名和 API 根路径", "共享配置与流程定义行为保持不变"],
+      "operations": ["迁移前默认项目和版本检查", "迁移后空值、约束、流程和附件抽查", "整批发布和备份恢复"]
+    },
+    "verification_strategy": [
+      {"requirement_ids": ["R1", "R2", "R3", "R4"], "signal": "双项目数据库和 API 无跨项目读写或关联", "method": "真实 MySQL、Controller/Service/Store 测试"},
+      {"requirement_ids": ["R5", "R11"], "signal": "三条流程上下文、实例和回调项目一致且定义租户级发布", "method": "工作流集成与 publisher 测试"},
+      {"requirement_ids": ["R6"], "signal": "通知和附件不能跨项目", "method": "附件策略负向测试和浏览器 UAT"},
+      {"requirement_ids": ["R7", "R8"], "signal": "迁移失败关闭且项目删除保护生效", "method": "Flyway 与 guard 测试"},
+      {"requirement_ids": ["R9", "R10"], "signal": "项目切换无残留且共享接口不变", "method": "前端构建、源码扫描和四视口浏览器验收"},
+      {"requirement_ids": ["R12"], "signal": "同批发布、备份和回退清单可执行", "method": "发布清单人工复核"}
+    ],
+    "assumptions": [
+      {"text": "存在目标历史数据的租户具有唯一活动 RDDMP-PLATFORM", "basis": "用户批准迁移策略", "falsifier": "V158 前置查询返回零条或多条"},
+      {"text": "附件策略能从业务键加载项目化实体", "basis": "现有网络和决策策略已按业务键加载实体", "falsifier": "附件调用无法校验项目成员"}
+    ],
+    "unknowns": [
+      {"question": "目标历史数据是否存在孤立子表或无法证明的流程实例", "impact": "可能阻止 V158", "owner": "实施阶段迁移观测", "blocking": false},
+      {"question": "LocalSeededWorkflowPublisher 当前 064 差异与本任务能否独立提交", "impact": "影响提交归属，不影响实现", "owner": "实施执行者", "blocking": false}
+    ],
+    "decisions": [
+      {"id": "D1", "decision": "四类业务全链路显式 project_id", "reason": "隔离可直接约束和验证", "source": "用户批准"},
+      {"id": "D2", "decision": "历史数据只迁入 RDDMP-PLATFORM", "reason": "归属确定且不复制", "source": "用户批准"},
+      {"id": "D3", "decision": "编号和名称项目内永久唯一", "reason": "项目独立维护业务标识", "source": "用户批准"},
+      {"id": "D4", "decision": "所有目标接口强制 projectRef", "reason": "每次请求具有明确项目边界", "source": "用户批准"},
+      {"id": "D5", "decision": "复用已有项目工作流和附件公开契约", "reason": "避免平行实现平台能力", "source": "用户批准"},
+      {"id": "D6", "decision": "共享配置和流程定义继续租户级", "reason": "仅业务事实属于项目", "source": "用户批准"}
+    ],
+    "risks": [
+      {"risk": "多表迁移顺序错误", "impact": "迁移失败或错误项目归属", "mitigation": "分阶段 SQL、前置 guard、空库和既有库测试"},
+      {"risk": "Store 遗漏 project_id", "impact": "跨项目越权", "mitigation": "SQL 扫描和双项目直接 ID 负向测试"},
+      {"risk": "历史工作流缺少项目", "impact": "错误业务状态更新", "mitigation": "按业务父链验证，无法匹配时失败"},
+      {"risk": "附件策略间接泄露", "impact": "其他项目文件可访问", "mitigation": "策略加载项目化实体并校验项目访问"},
+      {"risk": "覆盖 064 未提交差异", "impact": "已完成能力回归或提交归属混乱", "mitigation": "逐文件增量修改、禁止回退、无法拆分时延后提交"}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户于 2026-09-05 复核并批准设计修订 1。",
+      "confirmed_at": "2026-09-05"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-05-architecture-remaining-project-scope-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "所有目标请求和持久化使用可信项目上下文",
+      "共享配置和流程定义保持租户级",
+      "V158 只追加且默认项目异常失败关闭",
+      "不修改 platform/workflow、platform/attachment 或项目访问公共契约",
+      "保护 064 未提交差异，同文件无法拆分时不混合提交",
+      "用户批准并导入控制账本前不修改产品代码"
+    ],
+    "file_map": [
+      {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V158__scope_remaining_architecture_by_project.sql", "status": "candidate-new", "responsibility": "目标表项目归属迁移、回填、索引和约束", "evidence": "当前最高业务版本 V157，批准设计指定下一版本"},
+      {"path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkWorkOrderModels.java", "status": "existing", "responsibility": "工单及流程项目模型", "evidence": "工程勘察"},
+      {"path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/persistence/NetworkWorkOrderStore.java", "status": "existing", "responsibility": "工单项目限定持久化", "evidence": "当前方法仅按 tenantId"},
+      {"path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/persistence/NetworkAccessStore.java", "status": "existing", "responsibility": "分区与访问全链路项目持久化", "evidence": "当前方法仅按 tenantId"},
+      {"path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/persistence/DecisionStore.java", "status": "existing", "responsibility": "决策全链路项目持久化", "evidence": "当前方法仅按 tenantId"},
+      {"path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuard.java", "status": "existing", "responsibility": "项目删除前目标业务引用检查", "evidence": "064 已创建六类主表检查"},
+      {"path": "server/src/platform/boot/src/main/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisher.java", "status": "existing", "responsibility": "租户级发布三条新增流程定义", "evidence": "当前默认代码只有子系统和资源申请，且文件含 064 未提交差异"},
+      {"path": "web/src/modules/architecture/api.ts", "status": "existing", "responsibility": "网络、分区、访问和决策项目请求", "evidence": "目标调用仍使用普通 http，且文件含 064 未提交差异"},
+      {"path": "web/src/modules/architecture/network.ts", "status": "existing", "responsibility": "网络工单项目请求", "evidence": "全部工单调用仍使用普通 http"},
+      {"path": "mock/mock-data.json", "status": "existing", "responsibility": "双项目重复编号 UAT 数据", "evidence": "验收要求，且文件含 064 未提交差异"}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "建立 V158 和网络、访问、决策模型项目契约",
+        "requirement_ids": ["R1", "R3", "R4", "R7", "R10"],
+        "prerequisites": [],
+        "input_facts": ["当前最高迁移为 V157", "目标表主要按 tenant_id 隔离", "V156 已项目化关联资产"],
+        "files": {
+          "create": ["server/src/platform/infrastructure/src/main/resources/db/migration/V158__scope_remaining_architecture_by_project.sql", "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureRemainingProjectScopeMigrationMySqlTest.java"],
+          "modify": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkWorkOrderModels.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkAccessModels.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/model/DecisionModels.java"],
+          "test": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureRemainingProjectScopeMigrationMySqlTest.java"]
+        },
+        "interfaces": {"consumes": ["pm_project 默认项目", "V156 项目化资产"], "produces": ["目标表非空 project_id", "项目唯一索引和组合约束", "模型 projectId"]},
+        "steps": [
+          {"id": "T1-S1", "action": "复扫 Flyway 并建立失败测试", "command": "node scripts/check-flyway-migrations.mjs; mvn -pl :ccb-architecture -am -Dtest=ArchitectureRemainingProjectScopeMigrationMySqlTest test", "expected": "V158 未占用且新增测试在实现前失败", "evidence": "版本、退出码和失败断言"},
+          {"id": "T1-S2", "action": "实现分阶段迁移和模型字段", "command": null, "expected": "默认项目回填、非空、唯一性和组合关系完整，共享表不变", "evidence": "SQL、模型 diff 和 information_schema"},
+          {"id": "T1-S3", "action": "复验迁移和编译", "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureRemainingProjectScopeMigrationMySqlTest test; mvn -pl :ccb-architecture -am -DskipTests compile", "expected": "全部通过", "evidence": "测试和编译报告"}
+        ],
+        "acceptance_checks": ["默认项目异常失败", "跨项目重复成功", "同项目永久唯一", "共享表无项目列"],
+        "risks": ["多表回填顺序错误", "组合约束遗漏关联表", "V158 与并行迁移竞争"],
+        "rollback": "未执行迁移时回退文件；已执行 V158 使用备份或补偿迁移。",
+        "stop_conditions": ["V158 被占用", "must 表无法可靠回填", "需要修改历史迁移或 ACT_*"],
+        "escalation_conditions": ["需要范围外表或公共项目契约"]
+      },
+      {
+        "id": "T2",
+        "goal": "网络专项工单、附件和工作流按项目隔离",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": ["T1"],
+        "input_facts": ["工单 Store 仅按 tenant 查询", "工作流上下文项目为空", "附件策略只校验租户和工单"],
+        "files": {
+          "create": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicyTest.java"],
+          "modify": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkWorkOrderController.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderService.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderSubmissionService.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/persistence/NetworkWorkOrderStore.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkWorkflowLifecycleConsumer.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicy.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java"],
+          "test": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/network/web/NetworkWorkOrderControllerTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkWorkOrderServiceTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkWorkOrderSubmissionServiceTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/persistence/NetworkWorkOrderMySqlTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkWorkflowLifecycleConsumerTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkWorkflowIntegrationMySqlTest.java"]
+        },
+        "interfaces": {"consumes": ["ProjectAccessService", "WorkflowBusinessGateway", "AttachmentAccessPolicy"], "produces": ["工单 API projectRef", "Store projectId", "项目工作流上下文", "计划工单继承项目"]},
+        "steps": [
+          {"id": "T2-S1", "action": "建立双项目、附件和回调失败测试", "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderControllerTest,NetworkWorkOrderServiceTest,NetworkWorkOrderSubmissionServiceTest,NetworkWorkflowLifecycleConsumerTest,NetworkAttachmentAccessPolicyTest test", "expected": "新增项目断言失败", "evidence": "失败测试名和断言"},
+          {"id": "T2-S2", "action": "逐层接入 ProjectAccess 并补流程、附件和计划工单项目", "command": null, "expected": "直接 ID、附件和回调不跨项目", "evidence": "Controller/Service/Store/consumer diff"},
+          {"id": "T2-S3", "action": "运行局部和 MySQL 回归", "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkWorkOrderControllerTest,NetworkWorkOrderServiceTest,NetworkWorkOrderSubmissionServiceTest,NetworkWorkOrderMySqlTest,NetworkWorkflowLifecycleConsumerTest,NetworkWorkflowIntegrationMySqlTest,NetworkAttachmentAccessPolicyTest test", "expected": "全部通过", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["工单号项目内唯一", "附件不跨项目", "流程项目一致", "计划工单同项目"],
+        "risks": ["附件策略缺少显式 projectRef", "计划生成工单与人工工单项目来源不一致", "生命周期旧事件无项目"],
+        "rollback": "回退 T2 Java 和测试，不回退 V158。",
+        "stop_conditions": ["附件策略无法取得项目", "计划工单无可靠项目", "回调无法证明项目"],
+        "escalation_conditions": ["需改 attachment 或 workflow 平台"]
+      },
+      {
+        "id": "T3",
+        "goal": "网络分区、网段和网络访问全链路按项目隔离",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+        "prerequisites": ["T2"],
+        "input_facts": ["NetworkAccessStore 仅按 tenant 查询", "部署单元和环境资源已由 V156 项目化", "网络访问流程项目为空"],
+        "files": {
+          "create": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/network/persistence/NetworkAccessProjectIsolationMySqlTest.java"],
+          "modify": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkAccessController.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessApplicationSubmissionService.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessCoverage.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/persistence/NetworkAccessStore.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAccessWorkflowLifecycleConsumer.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java"],
+          "test": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/network/web/NetworkAccessControllerTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessServiceTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessLifecycleServiceTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/persistence/NetworkAccessMigrationMySqlTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkAccessWorkflowLifecycleConsumerTest.java"]
+        },
+        "interfaces": {"consumes": ["可信 ProjectAccess", "项目化部署单元、环境、申请和实例"], "produces": ["分区、访问、关系、豁免和流程项目隔离"]},
+        "steps": [
+          {"id": "T3-S1", "action": "建立项目唯一和跨引用失败测试", "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkAccessControllerTest,NetworkAccessServiceTest,NetworkAccessWorkflowLifecycleConsumerTest,NetworkAccessProjectIsolationMySqlTest test", "expected": "新增隔离断言失败", "evidence": "失败测试名和断言"},
+          {"id": "T3-S2", "action": "项目化 Controller、Service、Store 和关联资产查询", "command": null, "expected": "所有直接 ID 和关系同项目", "evidence": "调用链和 SQL diff"},
+          {"id": "T3-S3", "action": "补工作流项目并运行回归", "command": "mvn -pl :ccb-architecture -am -Dtest=NetworkAccessControllerTest,NetworkAccessServiceTest,NetworkAccessLifecycleServiceTest,NetworkAccessDecisionServiceTest,NetworkAccessMigrationMySqlTest,NetworkAccessProjectIsolationMySqlTest,NetworkAccessWorkflowLifecycleConsumerTest test", "expected": "全部通过", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["分区和编号项目内唯一", "跨项目端点和关系拒绝", "回调项目一致"],
+        "risks": ["网络覆盖算法误用租户全量数据", "已项目化资产引用条件遗漏", "存量关系项目无法确定"],
+        "rollback": "回退 T3 Java 和测试。",
+        "stop_conditions": ["关联资产缺可靠项目", "迁移发现跨项目存量引用", "覆盖算法依赖租户全量"],
+        "escalation_conditions": ["需改范围外消费者或网络公开契约"]
+      },
+      {
+        "id": "T4",
+        "goal": "架构决策、附件和发布流程按项目隔离",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": ["T3"],
+        "input_facts": ["DecisionStore 仅按 tenant 查询", "发布流程项目为空", "附件策略仅校验事项存在"],
+        "files": {
+          "create": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/decision/web/ArchitectureDecisionControllerTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/decision/integration/DecisionAttachmentAccessPolicyTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/decision/persistence/ArchitectureDecisionProjectIsolationMySqlTest.java"],
+          "modify": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/service/ArchitectureDecisionService.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/persistence/DecisionStore.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/integration/ArchitectureDecisionWorkflowLifecycleConsumer.java", "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/integration/DecisionAttachmentAccessPolicy.java"],
+          "test": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/decision/service/ArchitectureDecisionServiceTest.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/decision/integration/ArchitectureDecisionWorkflowLifecycleConsumerTest.java"]
+        },
+        "interfaces": {"consumes": ["ProjectAccessService", "WorkflowBusinessGateway", "AttachmentAccessPolicy"], "produces": ["决策全链路项目读写", "项目发布流程", "项目附件策略"]},
+        "steps": [
+          {"id": "T4-S1", "action": "建立决策、替代链、附件和回调失败测试", "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureDecisionControllerTest,ArchitectureDecisionServiceTest,ArchitectureDecisionWorkflowLifecycleConsumerTest,DecisionAttachmentAccessPolicyTest,ArchitectureDecisionProjectIsolationMySqlTest test", "expected": "新增项目断言失败", "evidence": "失败测试名和断言"},
+          {"id": "T4-S2", "action": "项目化决策调用链、序列、替代关系、附件和工作流", "command": null, "expected": "事项、结论、流程和附件项目一致", "evidence": "Controller/Service/Store/consumer diff"},
+          {"id": "T4-S3", "action": "运行决策回归", "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureDecisionControllerTest,ArchitectureDecisionServiceTest,ArchitectureDecisionWorkflowLifecycleConsumerTest,DecisionAttachmentAccessPolicyTest,ArchitectureDecisionProjectIsolationMySqlTest test", "expected": "全部通过", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["决策号和序列按项目", "子对象直接 ID 隔离", "替代链同项目", "附件和流程同项目"],
+        "risks": ["结论和替代链项目条件遗漏", "附件策略间接越权", "发布回调错误更新其他项目事项"],
+        "rollback": "回退 T4 Java 和测试。",
+        "stop_conditions": ["结论无法追溯项目", "附件策略无法鉴权", "历史流程无法匹配事项"],
+        "escalation_conditions": ["需改 attachment/workflow 平台或已发布结论语义"]
+      },
+      {
+        "id": "T5",
+        "goal": "扩展项目删除保护并租户级发布三条流程定义",
+        "requirement_ids": ["R5", "R8", "R10", "R11"],
+        "prerequisites": ["T4"],
+        "input_facts": ["ProjectDeletionGuard 已由 064 提供", "LocalSeededWorkflowPublisher 默认只有子系统和资源申请", "三条定义代码已存在"],
+        "files": {
+          "create": [],
+          "modify": ["server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuard.java", "server/src/modules/architecture/src/test/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuardTest.java", "server/src/platform/boot/src/main/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisher.java", "server/src/platform/boot/src/test/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisherTest.java"],
+          "test": ["server/src/modules/architecture/src/test/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuardTest.java", "server/src/platform/boot/src/test/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisherTest.java"]
+        },
+        "interfaces": {"consumes": ["ProjectDeletionGuard.requireNoReferences", "租户级定义发布接口"], "produces": ["四类主数据删除保护", "三条定义租户级发布"]},
+        "steps": [
+          {"id": "T5-S1", "action": "建立 guard 和 publisher 失败测试", "command": "mvn -pl :ccb-architecture,:ccb-boot -am -Dtest=ArchitectureProjectDeletionGuardTest,LocalSeededWorkflowPublisherTest test", "expected": "新增目标表和定义断言失败", "evidence": "失败断言"},
+          {"id": "T5-S2", "action": "追加主表查询和三条默认定义代码", "command": null, "expected": "system/workflow 平台不变且定义不按项目复制", "evidence": "guard 与 publisher diff"},
+          {"id": "T5-S3", "action": "运行平台与架构回归", "command": "mvn -pl :ccb-architecture,:ccb-boot -am -Dtest=ArchitectureProjectDeletionGuardTest,LocalSeededWorkflowPublisherTest test", "expected": "全部通过", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["任一目标主数据阻止删除", "三条草稿定义发布", "已发布定义不重复"],
+        "risks": ["guard 查询遗漏主表", "publisher 重复发布定义", "与 064 同文件差异无法安全提交"],
+        "rollback": "回退 guard 查询和默认定义代码，不删除已发布定义。",
+        "stop_conditions": ["定义未被历史迁移创建", "064 publisher 差异不稳定", "主表无法覆盖引用"],
+        "escalation_conditions": ["需改定义范围模型或删除公共接口"]
+      },
+      {
+        "id": "T6",
+        "goal": "网络与决策前端接入当前项目并清理切换状态",
+        "requirement_ids": ["R2", "R6", "R9", "R10"],
+        "prerequisites": ["T5"],
+        "input_facts": ["api.ts 已有 projectHttp", "network.ts 和目标 api.ts 调用仍用普通 http", "应用壳层项目切换已整页刷新"],
+        "files": {
+          "create": [],
+          "modify": ["web/src/modules/architecture/api.ts", "web/src/modules/architecture/network.ts", "web/src/modules/architecture/NetworkWorkOrderListPage.vue", "web/src/modules/architecture/NetworkWorkOrderFormPage.vue", "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue", "web/src/modules/architecture/NetworkZonePage.vue", "web/src/modules/architecture/NetworkAccessPage.vue", "web/src/modules/architecture/DecisionMatterListPage.vue", "web/src/modules/architecture/DecisionMatterFormPage.vue", "web/src/modules/architecture/DecisionMatterDetailPage.vue", "web/src/modules/architecture/architecture.css"],
+          "test": []
+        },
+        "interfaces": {"consumes": ["useProjectContextStore.currentRef", "T2-T4 projectRef API"], "produces": ["目标调用使用 projectHttp", "共享调用继续普通 http", "无项目和切换状态"]},
+        "steps": [
+          {"id": "T6-S1", "action": "切换目标 API 并用构建发现遗漏", "command": "npm --prefix web run build", "expected": "首次暴露遗漏调用，修复后类型和构建通过", "evidence": "构建错误和最终退出码"},
+          {"id": "T6-S2", "action": "补页面全状态和移动布局", "command": null, "expected": "无第二选择器、旧状态不残留、共享接口不变", "evidence": "页面和 API diff"},
+          {"id": "T6-S3", "action": "执行四视口明暗主题浏览器检查", "command": "npm --prefix web run build", "expected": "构建通过，scrollWidth 不超过视口且控制台无错误", "evidence": "构建、截图、路径和断言"}
+        ],
+        "acceptance_checks": ["无项目不请求", "切换无残留", "共享接口不项目化", "四视口无溢出"],
+        "risks": ["共享接口被误切换到 projectHttp", "项目切换旧响应残留", "移动端操作或弹层溢出"],
+        "rollback": "回退目标 API 和页面修改。",
+        "stop_conditions": ["需改公共 store/拦截器/壳层", "移动端需改变业务规则"],
+        "escalation_conditions": ["需公共 UI 或路由契约变更"]
+      },
+      {
+        "id": "T7",
+        "goal": "完成双项目 Mock、全量回归、UAT 和高保证收敛",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"],
+        "prerequisites": ["T6"],
+        "input_facts": ["T1-T6 提供完整实现", "本地 UAT 环境可用", "工作区存在其他需求差异"],
+        "files": {
+          "create": [".ai-control/requirements/req-20260905-065-architecture-remaining-project-scope/execution-T*.json", ".ai-control/requirements/req-20260905-065-architecture-remaining-project-scope/observation-T*.json", ".ai-control/requirements/req-20260905-065-architecture-remaining-project-scope/convergence.json"],
+          "modify": ["mock/mock-data.json", "docs/requirements/REQ-20260905-065-architecture-remaining-project-scope/codex-task-scope.yaml", ".ai-control/requirements/req-20260905-065-architecture-remaining-project-scope/handoff.json"],
+          "test": ["完整 Maven", "前端构建", "真实 MySQL/Flyway", "工作流集成", "浏览器四视口"]
+        },
+        "interfaces": {"consumes": ["T1-T6 全部产出"], "produces": ["R1-R12 可复验证据和收敛判定"]},
+        "steps": [
+          {"id": "T7-S1", "action": "准备两个项目重复编号虚构数据", "command": null, "expected": "单项目成员、双项目成员和管理员矩阵可运行", "evidence": "Mock diff 和初始化结果"},
+          {"id": "T7-S2", "action": "运行目标和完整后端测试", "command": "mvn -pl :ccb-architecture,:ccb-boot,:ccb-system,:ccb-workflow -am test; mvn test", "expected": "目标与完整反应堆通过", "evidence": "测试报告和退出码"},
+          {"id": "T7-S3", "action": "运行前端构建、MySQL、工作流和浏览器 UAT", "command": "npm --prefix web run build", "expected": "迁移、流程、附件、项目切换和四视口矩阵无跨项目问题", "evidence": "SQL、HTTP、截图、控制台和 scrollWidth"},
+          {"id": "T7-S4", "action": "运行治理、Flyway、范围和差异检查", "command": "node scripts/check-all-governance.mjs; node scripts/check-flyway-migrations.mjs; git diff --check; git status --short", "expected": "本任务无新增失败，历史基线失败单列", "evidence": "退出码和来源说明"},
+          {"id": "T7-S5", "action": "独立观测并执行收敛门禁", "command": null, "expected": "R1-R12 全覆盖，P0/P1 为零且无未关闭 must 反馈", "evidence": "observation 和 convergence"}
+        ],
+        "acceptance_checks": ["双项目隔离", "工作流/附件一致", "删除保护", "共享配置不变", "发布回退清单完整"],
+        "risks": ["完整回归耗时", "历史基线失败混入本任务结论", "本地 UAT 数据与迁移前置不一致"],
+        "rollback": "按前端、publisher/guard、决策、网络访问、网络工单逆序回退；V158 使用备份或补偿迁移。",
+        "stop_conditions": ["任何越权、附件泄露、错误回调、迁移失败、删除绕过或范围违规"],
+        "escalation_conditions": ["需生产数据、真实凭据、范围外公共能力或接受高风险"]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "业务实现依赖数据库和模型项目契约"},
+      {"from": "T2", "to": "T3", "reason": "网络包共享且计划工单项目先稳定"},
+      {"from": "T3", "to": "T4", "reason": "先完成网络链再进入独立决策链"},
+      {"from": "T4", "to": "T5", "reason": "删除保护和 publisher 覆盖已完成的主链"},
+      {"from": "T5", "to": "T6", "reason": "前端等待目标 API 和定义发布稳定"},
+      {"from": "T6", "to": "T7", "reason": "最终验收覆盖全部实现"}
+    ],
+    "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"], ["T5"], ["T6"], ["T7"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureRemainingProjectScopeMigrationMySqlTest test", "expected": "迁移、回填、唯一性和共享边界通过"},
+      {"after_tasks": ["T2", "T3", "T4"], "command": "mvn -pl :ccb-architecture -am test", "expected": "网络、决策、附件和三条工作流项目隔离通过"},
+      {"after_tasks": ["T5"], "command": "mvn -pl :ccb-architecture,:ccb-boot -am -Dtest=ArchitectureProjectDeletionGuardTest,LocalSeededWorkflowPublisherTest test", "expected": "删除保护和租户级定义发布通过"},
+      {"after_tasks": ["T6"], "command": "npm --prefix web run build", "expected": "前端构建通过并完成四视口验收"},
+      {"after_tasks": ["T7"], "command": "mvn test", "expected": "完整回归、治理、Flyway、浏览器和范围证据支持收敛"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3", "T4", "T7"]},
+      {"requirement_id": "R2", "task_ids": ["T2", "T3", "T4", "T6", "T7"]},
+      {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3", "T4", "T7"]},
+      {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3", "T4", "T7"]},
+      {"requirement_id": "R5", "task_ids": ["T2", "T3", "T4", "T5", "T7"]},
+      {"requirement_id": "R6", "task_ids": ["T2", "T4", "T6", "T7"]},
+      {"requirement_id": "R7", "task_ids": ["T1", "T7"]},
+      {"requirement_id": "R8", "task_ids": ["T5", "T7"]},
+      {"requirement_id": "R9", "task_ids": ["T6", "T7"]},
+      {"requirement_id": "R10", "task_ids": ["T1", "T5", "T6", "T7"]},
+      {"requirement_id": "R11", "task_ids": ["T5", "T7"]},
+      {"requirement_id": "R12", "task_ids": ["T7"]}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户于 2026-09-05 批准实施计划修订 1并进入开发。",
+      "confirmed_at": "2026-09-05"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["顶部项目上下文", "architecture 网络和决策 API/Service/Store/表", "项目删除 guard", "workflow 集成", "附件策略", "boot publisher", "Mock 和浏览器路径"],
+    "state_variable_candidates": ["projectRef", "projectId", "实体项目归属", "流程实例项目", "成员与 RBAC", "项目唯一键", "附件访问判定", "删除引用计数", "迁移状态"],
+    "interface_candidates": ["ProjectAccessService", "ProjectDeletionGuard", "WorkflowBusinessGateway", "AttachmentAccessPolicy", "architecture REST API"],
+    "sensor_candidates": ["双项目 API", "MySQL 约束", "Flyway 退出码", "workflow event", "附件策略测试", "浏览器网络/控制台/scrollWidth", "Maven/Vite/治理退出码"],
+    "actuator_candidates": ["V158", "Store 项目条件", "Controller projectRef", "Service 关联校验", "生命周期消费者", "附件策略", "删除 guard", "publisher 默认代码", "前端 projectHttp"],
+    "disturbance_candidates": ["V158 版本竞争", "默认项目异常", "软删除", "重复编号", "历史流程无项目", "064 未提交差异", "本地服务状态"],
+    "delay_candidates": ["大表回填", "Flyway", "完整 Maven", "前端构建", "浏览器 UAT"],
+    "assumptions": [
+      {"text": "目标历史子表均可从父链确定项目", "basis": "批准设计和表关系勘察", "falsifier": "V158 前置校验发现孤立记录"},
+      {"text": "附件策略可从业务实体恢复项目并验证用户访问", "basis": "现有策略已按业务键加载实体", "falsifier": "附件调用上下文无法区分用户可访问项目"},
+      {"text": "三条流程定义已由历史迁移创建", "basis": "现有定义代码常量和种子迁移", "falsifier": "本地定义查询缺失任一代码"}
+    ]
+  },
+  "delivery": {
+    "completed_at": "2026-09-06",
+    "control_prefix": "req-20260905-065-architecture-remaining-project-scope",
+    "final_phase": "converged",
+    "uat": {
+      "frontend": "http://127.0.0.1:5173",
+      "backend": "http://127.0.0.1:8080",
+      "account": "admin/admin123",
+      "status": "running"
+    },
+    "verification": [
+      "mvn test：15 个模块全部 SUCCESS，总耗时 25:20",
+      "architecture：291 项，0 失败",
+      "LocalSeededWorkflowPublisherTest：3 项，0 失败",
+      "前端生产构建通过",
+      "后端健康 UP，前端 HTTP 200",
+      "项目 A/B 切换、移动视口和明暗主题浏览器验收通过"
+    ],
+    "known_baseline_issues": [
+      "check-all-governance 被 REQ-20260904-061 的非 JSON 兼容 YAML 阻断",
+      "check-flyway-migrations 被历史 V84_1 文件名阻断"
+    ],
+    "rollback": [
+      "应用未执行 V158 时，按前端、Publisher/Guard、决策、网络访问、网络工单的逆序回退本任务修改",
+      "V158 已执行时，先停止写入，恢复上线前数据库备份；无法恢复时仅通过新的补偿迁移修正，不修改 V158",
+      "数据库、后端和前端必须整批回退，避免旧前端或旧服务与 projectRef 契约不一致"
+    ]
+  }
+}

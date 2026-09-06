@@ -1,0 +1,24 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V158__scope_remaining_architecture_by_project.sql", "purpose": "为剩余架构业务表追加项目归属、回填、组合约束和项目内唯一约束"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureRemainingProjectScopeMigrationMySqlTest.java", "purpose": "验证 V158 成功和失败关闭路径"}
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R7", "R10", "R12"],
+  "commands": [
+    {"command": "mvn -pl :ccb-architecture -am test", "exit_code": 0, "salient_output": "ArchitectureRemainingProjectScopeMigrationMySqlTest 2 项通过；架构模块总计 291 项通过"}
+  ],
+  "local_checks": [
+    {"check": "V158 真实 MySQL 迁移", "result": "pass", "evidence": "从 V157 升级到 V158 成功，异常默认项目场景按测试预期失败关闭", "limitations": ["未使用生产数据规模测量锁等待"]}
+  ],
+  "diff_summary": ["目标历史数据仅回填到唯一活动 RDDMP-PLATFORM", "目标表增加非空项目列及同项目关系约束", "共享配置表保持租户级"],
+  "invariants_checked": [
+    {"invariant": "Flyway 迁移只追加", "result": "pass", "evidence": "新增 V158，未修改历史脚本"},
+    {"invariant": "共享架构配置不增加 project_id", "result": "pass", "evidence": "V158 目标表清单不包含规范、计划模板、环境类型和平台字典"}
+  ],
+  "disturbances": ["历史种子数据属于 tenant_id=1，测试需在 V158 前准备唯一活动默认项目"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["发布前仍需在目标数据规模下评估迁移窗口"],
+  "recommended_next": "observe"
+}

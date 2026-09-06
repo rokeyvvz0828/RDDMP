@@ -1,0 +1,18 @@
+{
+  "sample_label": "T6 架构前端项目上下文采样",
+  "task_ids": ["T6"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R2,R5", "sensor": "前端生产构建与项目请求静态扫描", "result": "pass", "raw_evidence": "两次 npm build 通过；项目私有 API 均经 projectHttp 附加 currentRef，空项目时不发请求。", "limitation": ["浏览器网络面板留待 T8。"]},
+    {"requirement_id": "R6", "sensor": "计划模板与执行路径分离扫描", "result": "pass", "raw_evidence": "planApi 模板段继续使用 http，计划执行段使用 projectHttp；未增加第二项目选择器。", "limitation": []},
+    {"requirement_id": "R11", "sensor": "路由与用户可见文案扫描", "result": "pass", "raw_evidence": "菜单和页面主标题为环境管理，Vue 用户文案不存在具体环境；技术契约未改名。", "limitation": []},
+    {"requirement_id": "R2,R11", "sensor": "本地运行启动", "result": "blocked", "raw_evidence": "前端 5173 成功启动；后端因 T8 范围内旧 Mock 缺 project_id 在初始化阶段退出。", "limitation": ["无法在本轮执行四视口、明暗主题、scrollWidth 和真实请求检查。"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Mock 数据结构滞后于 V156", "impact": "属于已计划 T8 工作，不改变 T6 源码与构建结论。"}
+  ],
+  "coverage_gaps": ["浏览器四视口、明暗主题、页面级横向溢出和网络请求 projectRef 需在 T8 补齐。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

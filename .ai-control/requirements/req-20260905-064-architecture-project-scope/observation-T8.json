@@ -1,0 +1,24 @@
+{
+  "sample_label": "T8 最终集成与浏览器收敛采样",
+  "task_ids": ["T8"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id":"R1,R3,R4,R5,R6,R7,R8,R9,R10","sensor":"全量 Maven、真实 MySQL/Flyway 和工作流回归","result":"pass","raw_evidence":"mvn test 退出码 0；15 个模块全部 SUCCESS，architecture 289/289、test-management 21/21、boot 8/8，0 失败、0 错误。","limitation":["未测量生产数据规模下的迁移锁等待。"]},
+    {"requirement_id":"R2,R11","sensor":"真实浏览器四视口明暗主题矩阵","result":"pass","raw_evidence":"六路由 x 四视口 x 两主题共 48/48 通过；当前项目持续可见，环境管理文案可见，旧具体环境文案不可见，横向溢出为 0。","limitation":["使用本地虚构管理员账号。"]},
+    {"requirement_id":"R1,R2,R3,R4,R5","sensor":"双项目切换、网络请求与重复编号探针","result":"pass","raw_evidence":"所有项目私有架构请求携带正确 projectRef；平台项目含 PHY_MOBILE+PHY_PORTAL，数据项目仅含 PHY_PORTAL，切换后持久化 RDDMP-DATA。","limitation":[]},
+    {"requirement_id":"R1,R7,R9,R10","sensor":"生产构建、运行健康和跨模块回归","result":"pass","raw_evidence":"npm 生产构建成功，健康检查 UP；workflow、system、data-migration、test-management 和 boot 在全量 Maven 中全部成功。","limitation":[]},
+    {"requirement_id":"R1,R8,R11","sensor":"治理、迁移、范围和空白静态检查","result":"pass-with-baseline-disturbance","raw_evidence":"研发准入与 git diff --check 通过；治理仅被 REQ-20260904-061 阻断，Flyway 仅被历史 V84_1 阻断，scope 剩余仅为其他任务相对 origin/main 的差异。","limitation":["全仓三个检查无法提供全绿退出码，但无失败指向本需求文件。"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event":"REQ-20260904-061 的范围文件不是 JSON-compatible YAML","impact":"check-all-governance 在已通过模块、Skill 和研发准入后退出 1。"},
+    {"event":"历史 V84_1 迁移命名不符合当前检查器格式","impact":"check-flyway-migrations 退出 1。"},
+    {"event":"当前 dev-ivanh 工作区包含其他任务修改","impact":"相对 origin/main 的 scope 检查退出 1；本任务自身公共能力清单问题已经消失。"}
+  ],
+  "coverage_gaps": [
+    "未使用生产数据、生产凭据或生产权限矩阵。",
+    "生产规模迁移执行窗口和锁等待需要发布前专项验证。"
+  ],
+  "error_counts": {"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status": "complete"
+}

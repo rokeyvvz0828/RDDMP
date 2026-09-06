@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "topic": "architecture-project-scope",
+  "handoff_status": "completed",
+  "created_at": "2026-09-05T16:06:25+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "architecture-project-scope",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-05-architecture-project-scope-design.md",
+    "objective": "六类架构与环境业务数据及相关审批在顶部当前项目下实现服务端强制隔离，不同项目可复用业务编号且不会发生跨项目读取、写入或关联。",
+    "users": ["项目成员", "架构维护人员", "项目审批人", "超级管理员"],
+    "requirements": [
+      {"id":"R1","statement":"六类主数据及关键子数据显式保存项目归属。","acceptance":["查询和写入限定 tenant_id 与 project_id","直接 ID 不跨项目"],"priority":"must","source":"批准设计","counterexample":["仅按 tenant_id 查询"]},
+      {"id":"R2","statement":"页面跟随顶部项目并保留架构管理菜单。","acceptance":["无第二项目选择器","切换后只显示当前项目"],"priority":"must","source":"批准设计","counterexample":["显示租户全量数据"]},
+      {"id":"R3","statement":"编号和名称项目内永久唯一。","acceptance":["跨项目可重复","同项目软删除后不可复用"],"priority":"must","source":"批准设计","counterexample":["租户级唯一"]},
+      {"id":"R4","statement":"关联、下发、实例和计划目标保持项目一致。","acceptance":["跨项目候选不可见","伪造 ID 被拒绝"],"priority":"must","source":"批准设计","counterexample":["项目 A 引用项目 B"]},
+      {"id":"R5","statement":"项目成员资格与 architecture RBAC 叠加授权。","acceptance":["非成员 403","缺权限 403","超级管理员明确项目访问"],"priority":"must","source":"批准设计","counterexample":["只依赖前端显隐"]},
+      {"id":"R6","statement":"搭建计划模板租户共享，执行计划按项目隔离。","acceptance":["模板无 project_id","生成计划有当前 project_id"],"priority":"must","source":"批准设计","counterexample":["模板项目私有"]},
+      {"id":"R7","statement":"复用项目工作流并传递真实项目上下文。","acceptance":["业务与 wf_instance 项目一致","回调项目不一致不更新"],"priority":"must","source":"批准设计","counterexample":["WorkflowBusinessContext 项目为空"]},
+      {"id":"R8","statement":"存量数据归入 RDDMP-PLATFORM，缺失时失败。","acceptance":["迁移后无空项目","默认项目缺失迁移失败"],"priority":"must","source":"批准设计","counterexample":["自动选择其他项目"]},
+      {"id":"R9","statement":"存在架构数据的项目禁止删除。","acceptance":["有引用返回 409","无引用保持原行为"],"priority":"must","source":"批准设计","counterexample":["删除后遗留孤立数据"]},
+      {"id":"R10","statement":"数据迁移和测试管理按项目匹配物理子系统。","acceptance":["重复编号不串项目","受影响模块回归通过"],"priority":"must","source":"工程勘察","counterexample":["JOIN 缺少 project_id"]},
+      {"id":"R11","statement":"具体环境用户界面改名环境管理，稳定技术契约不变。","acceptance":["用户文案为环境管理","包名表名 API 不重命名"],"priority":"must","source":"用户请求","counterexample":["迁移数据库表名"]}
+    ],
+    "invariants": ["tenant_id 与 project_id 来自可信上下文", "业务 DTO 不接收项目主键", "architecture 不直写其他模块表", "system 不反向依赖 architecture", "模板保持租户共享", "历史 Flyway 与 ACT_* 不修改"],
+    "constraints": ["Java 17", "Spring Boot 3.4.4", "MySQL 8.4", "Vue 3", "复用 ProjectAccessService 与 WorkflowBusinessGateway", "前端遵循 design-h5.md", "只使用本地测试数据"],
+    "non_goals": ["跨项目共享或转移", "新增项目级角色", "页面移入项目详情", "重新实现工作流项目权限", "重命名稳定技术契约"],
+    "selected_approach": {"name":"全链路显式项目归属","reason":"数据库约束和直接 ID 隔离可明确验证。","alternatives":[{"name":"根实体推导","rejected_because":"子数据直接访问易漏隔离。"},{"name":"项目绑定表","rejected_because":"与单项目独占不一致。"}]},
+    "architecture": {
+      "boundary": {"inside":["business/architecture","platform/system 删除扩展","架构前端","Flyway 与 Mock","受影响消费者"],"outside":["Flowable ACT_*","工作流项目权限内部实现","生产数据"]},
+      "components": [
+        {"name":"前端项目上下文","responsibility":"提供当前 projectRef","depends_on":["useProjectContextStore"]},
+        {"name":"项目上下文解析","responsibility":"解析可信 ProjectAccess","depends_on":["ProjectAccessService"]},
+        {"name":"架构 Service/Store","responsibility":"项目一致性和 tenant_id + project_id 持久化","depends_on":["项目上下文解析"]},
+        {"name":"项目删除 guard","responsibility":"删除前检查架构引用","depends_on":["system 扩展点"]},
+        {"name":"工作流接入","responsibility":"传递并校验项目上下文","depends_on":["WorkflowBusinessGateway"]},
+        {"name":"消费者适配","responsibility":"按项目关联物理子系统","depends_on":["arch_physical_subsystem.project_id"]}
+      ],
+      "interfaces": [
+        {"name":"ProjectAccessService","producer":"platform/system","consumers":["business/architecture"],"contract":"按 projectRef 返回可信项目"},
+        {"name":"ProjectDeletionGuard","producer":"platform/system","consumers":["business/architecture"],"contract":"项目删除前业务引用检查"},
+        {"name":"WorkflowBusinessGateway","producer":"platform/workflow","consumers":["business/architecture"],"contract":"项目业务上下文固化实例项目"}
+      ],
+      "data_flows": [
+        {"input":"projectRef 与认证用户","transitions":["访问校验","解析 projectId","项目限定读写"],"output":"当前项目数据或错误"},
+        {"input":"项目业务提交","transitions":["业务项目校验","工作流启动","回调复核"],"output":"项目隔离审批"},
+        {"input":"历史架构数据","transitions":["默认项目查找","回填","约束校验"],"output":"非空项目归属"}
+      ]
+    },
+    "error_handling": [
+      {"condition":"projectRef 缺失","behavior":"400","recovery":"选择项目后重试"},
+      {"condition":"无项目访问或动作权限","behavior":"403","recovery":"申请权限"},
+      {"condition":"实体不属于项目","behavior":"404","recovery":"返回当前项目列表"},
+      {"condition":"跨项目关联","behavior":"400","recovery":"选择当前项目对象"},
+      {"condition":"工作流项目不一致","behavior":"拒绝且不改变业务","recovery":"修正上下文"},
+      {"condition":"默认项目缺失","behavior":"迁移失败","recovery":"创建唯一活动默认项目"},
+      {"condition":"项目有架构引用","behavior":"409","recovery":"先处理架构数据"}
+    ],
+    "quality_attributes": {"security":["认证、RBAC、成员和实体归属校验"],"performance":["tenant_id + project_id 前缀索引"],"compatibility":["稳定包名表名 API"],"operations":["迁移前后完整性检查"]},
+    "verification_strategy": [
+      {"requirement_ids":["R1","R2","R4","R5"],"signal":"双项目 API 与浏览器无泄漏","method":"成员与超级管理员正负矩阵"},
+      {"requirement_ids":["R3","R8"],"signal":"唯一性和迁移规则稳定","method":"真实 MySQL"},
+      {"requirement_ids":["R6","R7"],"signal":"模板共享且流程项目一致","method":"集成测试"},
+      {"requirement_ids":["R9","R10","R11"],"signal":"删除保护、消费者和文案通过","method":"模块回归和浏览器验收"}
+    ],
+    "assumptions": [{"text":"有存量架构数据的租户存在唯一活动 RDDMP-PLATFORM","basis":"用户确认","falsifier":"迁移查询为零或多条"},{"text":"消费者能从自身记录或父链取得项目 ID","basis":"工程勘察","falsifier":"T7 审计发现无可靠项目键"}],
+    "unknowns": [{"question":"执行时下一个 Flyway 版本","impact":"决定迁移文件名","owner":"实施协调者","blocking":false}],
+    "decisions": [{"id":"D1","decision":"单项目独占","reason":"完全隔离","source":"用户批准"},{"id":"D2","decision":"默认项目迁移","reason":"归属确定","source":"用户批准"},{"id":"D3","decision":"模板共享","reason":"模板是租户复用结构","source":"用户批准"},{"id":"D4","decision":"保留架构菜单","reason":"沿用专业工作区","source":"用户批准"},{"id":"D5","decision":"项目内永久唯一","reason":"项目独立维护编号","source":"用户批准"},{"id":"D6","decision":"成员与 RBAC 叠加","reason":"复用权限","source":"用户批准"},{"id":"D7","decision":"全链路 project_id","reason":"隔离可验证","source":"用户批准"},{"id":"D8","decision":"复用项目工作流","reason":"平台已项目化","source":"用户批准"}],
+    "risks": [{"risk":"多表迁移错误","impact":"迁移失败或空项目","mitigation":"分阶段 SQL 和 MySQL 测试"},{"risk":"遗漏项目条件","impact":"越权","mitigation":"双项目负向测试和 SQL 扫描"},{"risk":"公共删除扩展点","impact":"system 回归","mitigation":"Owner 复核和聚焦测试"},{"risk":"跨模块旧 JOIN","impact":"重复编号串数据","mitigation":"固定消费者清单和回归"}],
+    "approval": {"status":"approved","evidence":"用户于 2026-09-05 批准设计修订 1。","confirmed_at":"2026-09-05T15:50:20+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-05-architecture-project-scope-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["可信项目上下文", "tenant_id + project_id", "模板租户共享", "Flyway 只追加", "稳定技术契约不重命名", "批准前不修改产品代码"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V156__scope_architecture_by_project.sql","status":"candidate-new","responsibility":"项目归属迁移","evidence":"当前最高 V155，执行前复扫"},
+      {"path":"server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectDeletionGuard.java","status":"candidate-new","responsibility":"项目删除引用检查契约","evidence":"R9"},
+      {"path":"server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureProjectContextService.java","status":"candidate-new","responsibility":"项目上下文解析","evidence":"设计数据流"},
+      {"path":"server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","status":"existing","responsibility":"物理子系统项目持久化","evidence":"工程勘察"},
+      {"path":"server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java","status":"existing","responsibility":"部署单元项目持久化","evidence":"工程勘察"},
+      {"path":"server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java","status":"existing","responsibility":"环境资源项目持久化","evidence":"工程勘察"},
+      {"path":"server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java","status":"existing","responsibility":"计划执行链项目持久化","evidence":"工程勘察"},
+      {"path":"web/src/modules/architecture/api.ts","status":"existing","responsibility":"架构 API 项目参数","evidence":"工程勘察"},
+      {"path":"web/src/modules/architecture/planApi.ts","status":"existing","responsibility":"计划 API 项目参数","evidence":"工程勘察"},
+      {"path":"mock/mock-data.json","status":"existing","responsibility":"双项目验收数据","evidence":"验收标准"}
+    ],
+    "tasks": [
+      {
+        "id":"T1","goal":"数据库迁移与项目归属模型契约","requirement_ids":["R1","R3","R6","R8"],"prerequisites":[],
+        "input_facts":["当前最高迁移为 V155","计划模板链保持租户共享"],
+        "files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V156__scope_architecture_by_project.sql"],"modify":["server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystem.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java"],"test":["server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/EmptyDatabaseMigrationBaselineMySqlTest.java"]},
+        "interfaces":{"consumes":["pm_project 默认项目"],"produces":["纳入表非空 project_id","项目维度唯一键和组合外键"]},
+        "steps":[{"id":"T1-S1","action":"复扫版本并建立失败迁移测试","command":"node scripts/check-flyway-migrations.mjs","expected":"版本可分配且新增断言失败","evidence":"退出码与断言"},{"id":"T1-S2","action":"实现分阶段迁移和模型字段","command":null,"expected":"纳入表项目列完整且模板表不变","evidence":"SQL 与模型 diff"},{"id":"T1-S3","action":"复验 MySQL","command":"mvn -pl :ccb-architecture -am -Dtest=ArchitectureMigrationMySqlTest,EmptyDatabaseMigrationBaselineMySqlTest test","expected":"全部通过","evidence":"测试报告"}],
+        "acceptance_checks":["默认项目缺失失败","跨项目重复成功","同项目永久唯一"],"risks":["多表回填"],"rollback":"应用回退；已执行迁移用补偿迁移。","stop_conditions":["默认项目缺失或不唯一","版本冲突","关系无法确定项目"],"escalation_conditions":["发现额外关键子表"]
+      },
+      {
+        "id":"T2","goal":"项目上下文与删除 guard","requirement_ids":["R5","R9"],"prerequisites":["T1"],
+        "input_facts":["ProjectAccessService 已存在","system 不得依赖 architecture"],
+        "files":{"create":["server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureProjectContextService.java","server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectDeletionGuard.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuard.java"],"modify":["server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java","governance/modules.yaml"],"test":["server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/ArchitectureProjectContextServiceTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuardTest.java"]},
+        "interfaces":{"consumes":["ProjectAccessService.requireAccessible(String, AuthUser)"],"produces":["ArchitectureProjectContextService.require(String, AuthUser)","ProjectDeletionGuard.requireDeletable(long, long)"]},
+        "steps":[{"id":"T2-S1","action":"建立权限和删除失败测试","command":null,"expected":"当前缺少 guard 行为","evidence":"失败断言"},{"id":"T2-S2","action":"实现公开扩展和 architecture 实现","command":null,"expected":"system 无业务反向依赖","evidence":"代码 diff"},{"id":"T2-S3","action":"运行聚焦测试","command":"mvn -pl :ccb-system,:ccb-architecture -am test","expected":"通过","evidence":"测试报告"}],
+        "acceptance_checks":["有引用 409","无引用原行为","非成员 403"],"risks":["公共能力回归"],"rollback":"回退接口、注入点和实现。","stop_conditions":["Owner 不批准","Spring 注入回归"],"escalation_conditions":["需改变项目删除事务"]
+      },
+      {
+        "id":"T3","goal":"物理子系统、变更流程、部署单元和导入隔离","requirement_ids":["R1","R3","R4","R5","R7"],"prerequisites":["T2"],
+        "input_facts":["相关 Store 当前主要按 tenant_id","物理子系统流程项目字段为空"],
+        "files":{"create":[],"modify":["server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/SubsystemChangeStore.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/ArchitectureSubsystemSubmissionService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/change/integration/ArchitectureWorkflowLifecycleConsumer.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/PhysicalSubsystemController.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitImportController.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/change/web/SubsystemChangeApplicationController.java"],"test":["server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureSubsystemRepositoryTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/ArchitectureSubsystemSubmissionServiceTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/change/integration/ArchitectureWorkflowLifecycleConsumerTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java"]},
+        "interfaces":{"consumes":["可信 ProjectAccess"],"produces":["目标 API 必填 projectRef","Store 必填 projectId","真实工作流项目上下文"]},
+        "steps":[{"id":"T3-S1","action":"建立双项目与越权测试","command":null,"expected":"当前隔离断言失败","evidence":"失败断言"},{"id":"T3-S2","action":"逐层接入项目并补工作流上下文","command":null,"expected":"读写、唯一性、关系和导入限定项目","evidence":"代码 diff"},{"id":"T3-S3","action":"运行架构聚焦测试","command":"mvn -pl :ccb-architecture -am test","expected":"目标测试通过","evidence":"测试报告"}],
+        "acceptance_checks":["直接 ID 隔离","导入批次隔离","流程项目一致"],"risks":["签名变更面大"],"rollback":"回退本任务 Java 提交。","stop_conditions":["入口无 projectRef","遗留变更与根项目冲突"],"escalation_conditions":["网络业务需整体项目化"]
+      },
+      {
+        "id":"T4","goal":"环境、资源申请、实例、灾备和工作流隔离","requirement_ids":["R1","R3","R4","R5","R7"],"prerequisites":["T3"],
+        "input_facts":["资源申请工作流项目字段为空","环境资源 Store 按 tenant_id"],
+        "files":{"create":["server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/persistence/EnvironmentResourceProjectIsolationMySqlTest.java"],"modify":["server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/model/EnvironmentResourceModels.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/ResourceRequestSubmissionService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/integration/ResourceRequestWorkflowLifecycleConsumer.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java"],"test":["server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"]},
+        "interfaces":{"consumes":["可信 ProjectAccess","同项目物理子系统和部署单元"],"produces":["环境资源执行链项目隔离"]},
+        "steps":[{"id":"T4-S1","action":"建立关联、实例和回调失败测试","command":null,"expected":"当前隔离断言失败","evidence":"失败断言"},{"id":"T4-S2","action":"实现项目限定和工作流校验","command":null,"expected":"跨项目关系拒绝","evidence":"代码 diff"},{"id":"T4-S3","action":"运行聚焦测试","command":"mvn -pl :ccb-architecture -am test","expected":"目标测试通过","evidence":"测试报告"}],
+        "acceptance_checks":["下发实例同项目","灾备同项目","回调不串项目"],"risks":["历史事件无项目"],"rollback":"回退环境资源实现。","stop_conditions":["provider 无项目证据"],"escalation_conditions":["需修改 workflow 平台"]
+      },
+      {
+        "id":"T5","goal":"搭建计划执行链项目隔离且模板共享","requirement_ids":["R1","R4","R5","R6"],"prerequisites":["T4"],
+        "input_facts":["PlanStore 子对象当前可按 tenant_id + id 操作","模板链独立"],
+        "files":{"create":["server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/persistence/PlanProjectIsolationMySqlTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanControllerTest.java"],"modify":["server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanDependencyService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"],"test":["server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanStatusCalculatorTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanTemplateServiceTest.java"]},
+        "interfaces":{"consumes":["共享模板","当前 ProjectAccess","同项目环境和目标"],"produces":["项目化计划执行链"]},
+        "steps":[{"id":"T5-S1","action":"建立模板共享和子对象越权测试","command":null,"expected":"当前隔离断言失败","evidence":"失败断言"},{"id":"T5-S2","action":"项目化全部计划执行读写","command":null,"expected":"模板不变且计划私有","evidence":"代码 diff"},{"id":"T5-S3","action":"运行聚焦测试","command":"mvn -pl :ccb-architecture -am test","expected":"目标测试通过","evidence":"测试报告"}],
+        "acceptance_checks":["模板跨项目复用","直接 ID 不越权","后台提醒按项目"],"risks":["后台任务项目上下文"],"rollback":"回退计划执行链。","stop_conditions":["工单无项目键","后台任务无法确定项目"],"escalation_conditions":["需项目化网络工单"]
+      },
+      {
+        "id":"T6","goal":"前端接入当前项目并改名环境管理","requirement_ids":["R2","R5","R6","R11"],"prerequisites":["T5"],
+        "input_facts":["currentRef 已存在","前端无自动测试框架"],
+        "files":{"create":[],"modify":["web/src/modules/architecture/api.ts","web/src/modules/architecture/planApi.ts","web/src/modules/architecture/types.ts","web/src/modules/architecture/PhysicalSubsystemPage.vue","web/src/modules/architecture/SubsystemChangeApplicationListPage.vue","web/src/modules/architecture/SubsystemChangeApplicationFormPage.vue","web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue","web/src/modules/architecture/DeploymentUnitPage.vue","web/src/modules/architecture/DeploymentUnitImportPage.vue","web/src/modules/architecture/EnvironmentPage.vue","web/src/modules/architecture/ResourceRequestPage.vue","web/src/modules/architecture/InstanceListPage.vue","web/src/modules/architecture/PlanListPage.vue","web/src/modules/architecture/PlanDetailPage.vue","web/src/modules/architecture/architecture.css","web/src/router/index.ts"],"test":[]},
+        "interfaces":{"consumes":["useProjectContextStore().currentRef","T3-T5 稳定 API"],"produces":["每个目标请求必填 projectRef","环境管理用户文案"]},
+        "steps":[{"id":"T6-S1","action":"API 显式增加 projectRef","command":null,"expected":"类型检查约束所有调用点","evidence":"编译错误清零"},{"id":"T6-S2","action":"页面接入 currentRef、重置状态并改名","command":null,"expected":"无第二选择器且无旧项目残留","evidence":"页面 diff"},{"id":"T6-S3","action":"构建和浏览器验收","command":"npm --prefix web run build","expected":"构建成功且四视口无溢出","evidence":"构建结果与截图"}],
+        "acceptance_checks":["无项目不请求","环境管理文案","明暗主题和四视口"],"risks":["切换残留状态"],"rollback":"回退前端提交。","stop_conditions":["currentRef 初始化不稳定"],"escalation_conditions":["需改公共选择器或 HTTP 拦截器"]
+      },
+      {
+        "id":"T7","goal":"跨模块消费者按项目匹配物理子系统","requirement_ids":["R10"],"prerequisites":["T6"],
+        "input_facts":["已检出 data-migration 4 文件和 test-management 9 文件"],
+        "files":{"create":["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/PhysicalSubsystemProjectIsolationMySqlTest.java","server/src/modules/test-management/src/test/java/com/ccb/testmanagement/PhysicalSubsystemProjectIsolationMySqlTest.java"],"modify":["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsAdvancedService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/casework/TestCaseService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/defect/TestDefectService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/execution/TestExecutionService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/scope/TestScopeService.java","server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java"],"test":["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProjectComponentServiceTest.java","server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java","server/src/modules/test-management/src/test/java/com/ccb/testmanagement/plan/TestPlanServiceTest.java","server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java"]},
+        "interfaces":{"consumes":["arch_physical_subsystem.project_id"],"produces":["全部物理子系统 JOIN 的项目等值条件"]},
+        "steps":[{"id":"T7-S1","action":"建立重复编号失败测试","command":null,"expected":"当前查询错误或重复","evidence":"失败断言"},{"id":"T7-S2","action":"修正全部 JOIN 并扫描","command":"rg -n \"JOIN arch_physical_subsystem\" server/src/modules/data-migration/src/main/java server/src/modules/test-management/src/main/java","expected":"每个命中有项目条件或排除证据","evidence":"扫描输出"},{"id":"T7-S3","action":"运行模块回归","command":"mvn -pl :ccb-data-migration,:ccb-test-management -am test","expected":"通过","evidence":"测试报告"}],
+        "acceptance_checks":["13 个文件完成审计","重复编号不串项目"],"risks":["父链缺项目"],"rollback":"回退消费者 SQL 和测试。","stop_conditions":["无法可靠确定项目"],"escalation_conditions":["发现其他模块消费者"]
+      },
+      {
+        "id":"T8","goal":"集成、MySQL、浏览器和治理验收","requirement_ids":["R7","R8","R9","R10","R11"],"prerequisites":["T7"],
+        "input_facts":["T1-T7 提供完整实现","治理存在已知无关基线失败"],
+        "files":{"create":[],"modify":["mock/mock-data.json","docs/requirements/REQ-20260905-064-architecture-project-scope/codex-task-scope.yaml"],"test":[".ai-control/requirements/req-20260905-064-architecture-project-scope/execution-*.json",".ai-control/requirements/req-20260905-064-architecture-project-scope/observation-*.json",".ai-control/requirements/req-20260905-064-architecture-project-scope/convergence.json"]},
+        "interfaces":{"consumes":["T1-T7 全部产出"],"produces":["可复验验收证据"]},
+        "steps":[{"id":"T8-S1","action":"更新双项目 Mock 并执行完整测试","command":"mvn -pl :ccb-architecture,:ccb-system,:ccb-workflow,:ccb-data-migration,:ccb-test-management -am test","expected":"通过","evidence":"测试报告"},{"id":"T8-S2","action":"执行 MySQL、工作流和浏览器矩阵","command":null,"expected":"无跨项目泄漏","evidence":"SQL、HTTP 和截图"},{"id":"T8-S3","action":"执行治理与范围检查","command":"node scripts/check-all-governance.mjs; node scripts/check-flyway-migrations.mjs; git diff --check; git status --short","expected":"本任务无新增失败，基线失败单列","evidence":"退出码与说明"}],
+        "acceptance_checks":["R1-R11 全覆盖","需求 15 条验收均有证据","无未关闭 must 反馈"],"risks":["全量回归耗时"],"rollback":"逆序回退应用，数据库用补偿迁移。","stop_conditions":["任何越权、迁移异常或范围违规"],"escalation_conditions":["需生产数据、真实凭据或 Owner 接受风险"]
+      }
+    ],
+    "dependency_edges": [
+      {"from":"T1","to":"T2","reason":"平台和业务实现依赖项目列契约。"},{"from":"T2","to":"T3","reason":"业务入口依赖项目上下文。"},{"from":"T3","to":"T4","reason":"环境资源依赖项目化资产。"},{"from":"T4","to":"T5","reason":"计划依赖项目化环境和工单。"},{"from":"T5","to":"T6","reason":"前端依赖稳定 API。"},{"from":"T6","to":"T7","reason":"消费者在主链稳定后适配。"},{"from":"T7","to":"T8","reason":"最终验收覆盖全部实现。"}
+    ],
+    "parallel_groups": [["T1"],["T2"],["T3"],["T4"],["T5"],["T6"],["T7"],["T8"]],
+    "integration_checks": [
+      {"after_tasks":["T1"],"command":"architecture migration MySQL tests","expected":"迁移和唯一性通过"},
+      {"after_tasks":["T3","T4","T5"],"command":"mvn -pl :ccb-architecture -am test","expected":"架构项目隔离通过"},
+      {"after_tasks":["T7"],"command":"mvn -pl :ccb-data-migration,:ccb-test-management -am test","expected":"消费者回归通过"},
+      {"after_tasks":["T8"],"command":"治理、Flyway、构建、浏览器、scope、diff","expected":"本任务无新增失败"}
+    ],
+    "coverage": [
+      {"requirement_id":"R1","task_ids":["T1","T3","T4","T5"]},{"requirement_id":"R2","task_ids":["T6"]},{"requirement_id":"R3","task_ids":["T1","T3","T4"]},{"requirement_id":"R4","task_ids":["T3","T4","T5"]},{"requirement_id":"R5","task_ids":["T2","T3","T4","T5","T6"]},{"requirement_id":"R6","task_ids":["T1","T5","T6"]},{"requirement_id":"R7","task_ids":["T3","T4","T8"]},{"requirement_id":"R8","task_ids":["T1","T8"]},{"requirement_id":"R9","task_ids":["T2","T8"]},{"requirement_id":"R10","task_ids":["T7","T8"]},{"requirement_id":"R11","task_ids":["T6","T8"]}
+    ],
+    "approval": {"status":"approved","evidence":"用户于 2026-09-05 明确回复可以，批准实施计划修订 1 并进入开发。","confirmed_at":"2026-09-05T16:09:30+08:00"}
+  },
+  "final_delivery": {
+    "status": "completed",
+    "completed_at": "2026-09-05T22:04:30+08:00",
+    "control_prefix": "req-20260905-064-architecture-project-scope",
+    "summary": "六类架构与环境业务、相关工作流和受影响消费者已完成项目隔离，环境界面改名为环境管理，移动端持续显示当前项目入口。",
+    "verification": [
+      "mvn test：15 个反应堆模块全部 SUCCESS，总耗时 20:20",
+      "npm --prefix web run build：通过",
+      "真实浏览器：48/48 组合通过，无溢出、控制台或页面错误",
+      "运行健康：UP",
+      "git diff --check：通过"
+    ],
+    "known_baseline_failures": [
+      "check-all-governance 被范围外 REQ-20260904-061 非 JSON-compatible YAML 阻断",
+      "check-flyway-migrations 被历史 V84_1 文件命名阻断",
+      "scope 相对 origin/main 包含其他任务和用户已有修改"
+    ],
+    "release_verification": [
+      "确认每个存在架构存量数据的租户恰有一个活动 RDDMP-PLATFORM",
+      "在发布窗口评估 V156 的锁等待和执行耗时",
+      "迁移后抽查六类主表 project_id 非空及工作流实例项目一致"
+    ],
+    "rollback": "应用按前端、业务模块、消费者和平台扩展点逆序回退；已执行 V156/V157 不回写历史脚本，通过后续补偿迁移恢复兼容索引或关闭入口。"
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["顶部项目上下文","architecture API/Service/Store","architecture 表","system 项目删除","workflow 集成","跨模块消费者"],
+    "state_variable_candidates": ["projectRef","projectId","实体项目归属","工作流实例项目","成员与 RBAC","唯一键","迁移状态","删除引用计数"],
+    "interface_candidates": ["ProjectAccessService","ProjectDeletionGuard","WorkflowBusinessGateway","architecture REST API","消费者 SQL"],
+    "sensor_candidates": ["双项目 API","SQL 约束","Flyway 退出码","workflow event","浏览器请求","Maven/Vite/治理退出码"],
+    "actuator_candidates": ["Flyway 迁移","Store 条件","Controller 参数","Service 校验","删除 guard","前端 API","消费者 JOIN"],
+    "disturbance_candidates": ["迁移版本竞争","默认项目缺失","软删除","重复编号","旧 workflow 无项目","无关工作区修改"],
+    "delay_candidates": ["大表回填","Flyway","Maven 回归","前端构建","浏览器矩阵"],
+    "assumptions": [{"text":"默认项目唯一且消费者均可确定项目","basis":"批准设计与工程勘察","falsifier":"迁移或消费者审计发现反例"}]
+  }
+}

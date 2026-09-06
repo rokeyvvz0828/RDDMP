@@ -1,0 +1,107 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectDeletionGuard.java",
+      "purpose": "提供不含业务域类型的项目删除引用保护公共接口"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "purpose": "在附件及项目数据删除前聚合调用可选删除保护实现"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+      "purpose": "覆盖调用顺序、失败关闭和无 guard 兼容行为"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuard.java",
+      "purpose": "按租户与项目检查六类架构主数据引用并返回冲突"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuardTest.java",
+      "purpose": "覆盖有引用、无引用和查询范围约束"
+    }
+  ],
+  "requirements_addressed": ["R9"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-system,:ccb-architecture -am -Dtest=ProjectServiceTest,ArchitectureProjectDeletionGuardTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "沙箱内首次运行因 Maven Central 访问被拒绝，父 POM 无法解析；未形成代码失败结论。"
+    },
+    {
+      "command": "mvn -pl :ccb-system,:ccb-architecture -am -Dtest=ProjectServiceTest,ArchitectureProjectDeletionGuardTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "联网授权后 BUILD SUCCESS；ProjectServiceTest 33/33、ArchitectureProjectDeletionGuardTest 3/3 通过。"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误；仅报告工作区 LF/CRLF 提示。"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 1,
+      "salient_output": "既有 requirement/boot 对 workflow 私有包的 5 处引用导致全仓检查失败；本任务 system 与 architecture 新增依赖方向未命中违规。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "system 与 architecture 聚焦测试",
+      "result": "pass",
+      "evidence": "36 项测试通过，Maven reactor BUILD SUCCESS。",
+      "limitations": ["T2 未单独启动完整 boot 应用"]
+    },
+    {
+      "check": "删除副作用顺序",
+      "result": "pass",
+      "evidence": "Mockito InOrder 证明 guard 先于附件查询和 pm_project 删除更新。",
+      "limitations": []
+    },
+    {
+      "check": "模块依赖方向",
+      "result": "pass",
+      "evidence": "system 源码未引用 com.ccb.architecture；architecture 复用已登记的 platform/system 公开包。",
+      "limitations": ["全仓模块边界脚本受 5 处范围外既有违规阻断"]
+    }
+  ],
+  "diff_summary": [
+    "新增 ProjectDeletionGuard 中性 SPI，并支持零到多个实现",
+    "ProjectService 在任何删除副作用前执行全部 guard，异常自然传播",
+    "architecture 对六类主表执行 tenant_id + project_id 存在性检查",
+    "物理子系统仅统计 deleted = 0，其他无软删除列的主表统计全部记录"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "system 只依赖中性公开接口",
+      "result": "pass",
+      "evidence": "接口位于 com.ccb.system.capability 且不包含 architecture 类型。"
+    },
+    {
+      "invariant": "无架构引用时项目删除行为不变",
+      "result": "pass",
+      "evidence": "空 guard 兼容测试通过。"
+    },
+    {
+      "invariant": "guard 异常失败关闭",
+      "result": "pass",
+      "evidence": "异常场景未调用附件端口且无任何 JDBC update。"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "沙箱禁止 Maven Central 网络访问",
+      "impact": "首次测试未启动，通过授权联网重跑解决。"
+    },
+    {
+      "event": "全仓模块边界检查存在 5 处历史违规",
+      "impact": "无法取得全仓绿色结果；已用定向依赖扫描确认本任务未新增反向依赖。"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "完整 boot 装配与项目删除 HTTP 409 将在后续集成验收统一验证。"
+  ],
+  "recommended_next": "observe"
+}

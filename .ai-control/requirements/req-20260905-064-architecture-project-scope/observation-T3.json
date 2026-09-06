@@ -1,0 +1,16 @@
+{
+  "sample_label": "T3 架构主链项目隔离采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1,R3,R4", "sensor": "MySQL 双项目聚焦测试", "result": "pass", "raw_evidence": "15/15 通过；相同编号、锁目标和事件 ID 跨项目共存，直接 ID 按项目定位。", "limitation": []},
+    {"requirement_id": "R5,R7", "sensor": "Controller/Service/工作流单元测试", "result": "pass", "raw_evidence": "projectRef 必填，ProjectAccess 贯穿调用；工作流项目冲突不读取或更新工单。", "limitation": []},
+    {"requirement_id": "R1,R3,R4,R5,R7", "sensor": "architecture 完整 Maven 回归", "result": "pass", "raw_evidence": "278/278 通过，BUILD SUCCESS。", "limitation": ["未在 T3 单独执行浏览器验收"]},
+    {"requirement_id": "R1,R4", "sensor": "SQL 与范围静态扫描", "result": "pass", "raw_evidence": "change JDBC 读写均含 tenant_id+project_id；git diff --check 通过。", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": [{"event": "Flyway/MySQL 输出既有弃用和版本提示", "impact": "不影响迁移和测试结果。"}],
+  "coverage_gaps": ["浏览器与跨模块综合验收留待 T8。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

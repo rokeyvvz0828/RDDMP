@@ -1,0 +1,23 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision", "purpose": "架构决策事项、结论、替代关系、附件和发布流程按项目隔离"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/decision", "purpose": "验证决策直接 ID、流程回调和附件授权"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {"command": "mvn -pl :ccb-architecture -am test", "exit_code": 0, "salient_output": "架构模块 291 项通过，ArchitectureStandardsDecisionsMySqlTest 4 项通过"}
+  ],
+  "local_checks": [
+    {"check": "架构决策项目隔离", "result": "pass", "evidence": "决策事项、结论、替代链、附件和生命周期测试通过", "limitations": []}
+  ],
+  "diff_summary": ["决策编号和序列按项目限定", "直接 ID 和替代关系校验项目", "附件策略重新校验当前用户项目访问"],
+  "invariants_checked": [
+    {"invariant": "architecture 不直接写 workflow 或 attachment 私有表", "result": "pass", "evidence": "继续复用 WorkflowBusinessGateway 与 AttachmentAccessPolicy"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

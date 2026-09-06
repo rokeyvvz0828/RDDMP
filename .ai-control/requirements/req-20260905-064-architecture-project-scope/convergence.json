@@ -1,0 +1,71 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id":"R1","result":"pass","task_ids":["T1","T3","T4","T5","T8"],"evidence":["V156 真实 MySQL 迁移通过","架构完整回归 289/289","双项目浏览器和 API 无泄漏"],"limitations":[]},
+    {"id":"R2","result":"pass","task_ids":["T6","T8"],"evidence":["六页面复用顶部项目上下文","移动端当前项目持续可见","切换后仅显示 RDDMP-DATA 数据"],"limitations":[]},
+    {"id":"R3","result":"pass","task_ids":["T1","T3","T4","T8"],"evidence":["项目级唯一索引和软删除占用测试通过","两个项目可复用 PHY_PORTAL"],"limitations":[]},
+    {"id":"R4","result":"pass","task_ids":["T3","T4","T5","T8"],"evidence":["跨项目直接 ID、关联、实例、灾备和计划目标测试通过"],"limitations":[]},
+    {"id":"R5","result":"pass","task_ids":["T2","T3","T4","T5","T6","T8"],"evidence":["ProjectAccessService 可信解析贯穿入口","缺项目参数和跨项目访问负向测试通过"],"limitations":["浏览器矩阵使用超级管理员；普通成员/RBAC 负向路径由后端测试覆盖。"]},
+    {"id":"R6","result":"pass","task_ids":["T1","T5","T6","T8"],"evidence":["模板表无 project_id","生成计划绑定当前项目","计划项目隔离 MySQL 测试通过"],"limitations":[]},
+    {"id":"R7","result":"pass","task_ids":["T3","T4","T8"],"evidence":["架构工作流启动传递真实项目","冲突项目回调不更新业务","workflow 与 boot 全量回归通过"],"limitations":[]},
+    {"id":"R8","result":"pass","task_ids":["T1","T8"],"evidence":["存量回填到唯一活动 RDDMP-PLATFORM","默认项目缺失时真实 Flyway 失败关闭"],"limitations":["生产执行前仍需逐租户预检默认项目。"]},
+    {"id":"R9","result":"pass","task_ids":["T2","T8"],"evidence":["ProjectDeletionGuard 在删除副作用前执行","有引用冲突和无引用兼容测试通过","ccb-system 全量回归通过"],"limitations":[]},
+    {"id":"R10","result":"pass","task_ids":["T7","T8"],"evidence":["13 个消费者服务文件完成项目条件审计","重复编号与跨项目 ID 测试通过","数据迁移和测试管理回归通过"],"limitations":["旧 system-name 接口无项目参数时对重复编号失败关闭。"]},
+    {"id":"R11","result":"pass","task_ids":["T6","T8"],"evidence":["浏览器 48 个组合显示环境管理且不显示旧文案","包名、表名和 API 路径未重命名"],"limitations":[]}
+  ],
+  "task_results": [
+    {"id":"T1","status":"verified","evidence":["V156 MySQL 迁移和数据契约采样通过"]},
+    {"id":"T2","status":"verified","evidence":["项目上下文与删除 guard 聚焦测试通过"]},
+    {"id":"T3","status":"verified","evidence":["物理子系统、变更流程和部署单元隔离通过"]},
+    {"id":"T4","status":"verified","evidence":["环境、资源申请、实例与工作流隔离通过"]},
+    {"id":"T5","status":"verified","evidence":["搭建计划项目隔离和模板共享通过"]},
+    {"id":"T6","status":"verified","evidence":["前端项目上下文、环境改名和构建通过"]},
+    {"id":"T7","status":"verified","evidence":["跨模块消费者项目匹配通过"]},
+    {"id":"T8","status":"verified","evidence":["全量 Maven、浏览器矩阵、运行健康和最终门禁采样完成"]}
+  ],
+  "feedback_summary": {"total":0,"accepted_open":0,"escalated":0,"deferred_by_severity":{"P2":0,"P3":0}},
+  "sample_trend": [
+    {"sample_id":"S-0001","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0002","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0003","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0004","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0005","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0006","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0007","P0":0,"P1":0,"P2":0,"P3":0,"score":0},
+    {"sample_id":"S-0008","P0":0,"P1":0,"P2":0,"P3":0,"score":0}
+  ],
+  "regression_checks": [
+    {"check":"mvn test","result":"pass","evidence":"15 个反应堆模块全部 SUCCESS，总耗时 20:20"},
+    {"check":"npm --prefix web run build","result":"pass","evidence":"生产构建成功"},
+    {"check":"真实浏览器矩阵","result":"pass","evidence":"48/48，无溢出、控制台或页面错误"},
+    {"check":"运行健康","result":"pass","evidence":"actuator status=UP"},
+    {"check":"git diff --check","result":"pass","evidence":"退出码 0"},
+    {"check":"全仓治理/Flyway/scope","result":"baseline-fail-disclosed","evidence":"失败仅指向其他需求、历史 V84_1 或用户已有修改，未指向本需求新增实现"}
+  ],
+  "invariant_results": [
+    {"invariant":"tenant_id 与 project_id 来自可信上下文","result":"pass","evidence":"Controller、Service、Store 契约和负向测试通过"},
+    {"invariant":"业务 DTO 不接收项目主键","result":"pass","evidence":"API 使用 projectRef 查询参数并解析 ProjectAccess"},
+    {"invariant":"system 不反向依赖 architecture","result":"pass","evidence":"中性 ProjectDeletionGuard SPI 和定向依赖扫描"},
+    {"invariant":"模板保持租户共享","result":"pass","evidence":"MySQL information_schema 和计划测试"},
+    {"invariant":"历史 Flyway 与 ACT_* 不修改","result":"pass","evidence":"仅追加 V156/V157，工作流平台复用现有接口"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": [
+      "工作区相对 origin/main 存在 REQ-20260904-063、scripts/dev.mjs 和旧 T11 账本等其他任务修改；这些改动未归因于本需求且未被覆盖或回退。"
+    ]
+  },
+  "disturbance_resilience": [
+    {"disturbance":"两个项目复用同一物理子系统编号","result":"pass","evidence":"项目切换后列表和 API 未串项目"},
+    {"disturbance":"MySQL 8.4 与完整 Flyway 链","result":"pass","evidence":"architecture 全量回归 289/289"},
+    {"disturbance":"四种桌面/移动视口与明暗主题","result":"pass","evidence":"48/48 浏览器组合通过"},
+    {"disturbance":"范围外治理基线失败","result":"controlled-degradation","evidence":"失败来源精确定位并保留，本需求定向检查和运行证据通过"}
+  ],
+  "residual_risks": [
+    "上线前必须确认所有有架构存量数据的租户存在唯一活动 RDDMP-PLATFORM。",
+    "生产规模 V156 DDL 的锁等待和执行窗口尚未测量。",
+    "全仓治理、Flyway 命名和 scope 基线需要由各自需求单独清理。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R11 均具备任务、实现和异质传感器证据；T1-T8 全部 verified，8 次样本 P0-P3 均为 0，无未关闭反馈，全量回归和浏览器验收通过，范围外基线失败已披露且未指向本需求。"
+}

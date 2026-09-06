@@ -1,0 +1,18 @@
+{
+  "sample_label": "T4 环境与资源链项目隔离采样",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1,R3,R4", "sensor": "环境 MySQL 双项目隔离测试", "result": "pass", "raw_evidence": "1/1 通过；同租户不同项目可复用环境、申请和实例编号，错误项目直接 ID 查询环境、申请、实例和灾备均不可见。", "limitation": []},
+    {"requirement_id": "R5,R7", "sensor": "Controller、自动部署与工作流单元测试", "result": "pass", "raw_evidence": "25/25 通过；缺少 projectRef 返回 400，Provider 获得可信项目上下文，伪造工作流项目不读取或更新申请。", "limitation": []},
+    {"requirement_id": "R1,R3,R4,R5,R7", "sensor": "architecture 完整 Maven 回归", "result": "pass", "raw_evidence": "286/286 通过，BUILD SUCCESS。", "limitation": ["浏览器综合验收留待 T8"]},
+    {"requirement_id": "R1,R4", "sensor": "SQL、Controller 与范围静态扫描", "result": "pass", "raw_evidence": "项目私有 SQL 和关联 JOIN 均限定 tenant_id+project_id；项目私有端点必填 projectRef；git diff --check 通过。", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Flyway/MySQL 输出既有弃用、重复种子和版本提示", "impact": "不影响迁移和测试结果。"}
+  ],
+  "coverage_gaps": ["前端项目上下文、环境管理文案与浏览器四视口验收留待 T6/T8。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

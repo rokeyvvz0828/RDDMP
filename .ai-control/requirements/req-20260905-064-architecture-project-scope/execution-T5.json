@@ -1,0 +1,39 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/**", "purpose": "搭建计划、目标、环节、任务、检查项、依赖、阻塞、建议、事件和工单关系按可信项目读写"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/**", "purpose": "覆盖项目参数、双项目直接 ID 隔离、提醒统计和模板共享"}
+  ],
+  "requirements_addressed": ["R1", "R4", "R5", "R6"],
+  "commands": [
+    {"command": "mvn -pl :ccb-architecture -am -DskipTests compile", "exit_code": 0, "salient_output": "主代码编译通过，BUILD SUCCESS。"},
+    {"command": "mvn -pl :ccb-architecture -am test", "exit_code": 0, "salient_output": "286/286 通过，BUILD SUCCESS，总耗时 18:55；该轮在新增 T5 测试前启动。"},
+    {"command": "mvn -pl :ccb-architecture -am '-Dtest=PlanControllerTest,PlanProjectIsolationMySqlTest,PlanTemplateServiceTest,PlanStatusCalculatorTest' '-Dsurefire.failIfNoSpecifiedTests=false' test", "exit_code": 0, "salient_output": "23/23 通过，BUILD SUCCESS；包含 T5 新增 Controller 和真实 MySQL 双项目测试。"},
+    {"command": "git diff --check -- server/src/modules/architecture/src/main/java/com/ccb/architecture/plan server/src/modules/architecture/src/test/java/com/ccb/architecture/plan", "exit_code": 0, "salient_output": "无空白错误，仅有既有 LF/CRLF 提示。"}
+  ],
+  "local_checks": [
+    {"check": "计划 Store SQL 项目范围扫描", "result": "pass", "evidence": "计划私有查询、更新、删除、插入、统计和关联 JOIN 均使用 tenant_id+project_id。", "limitations": ["后台兼容入口 findTaskProjectId 按 tenant_id+task_id 恢复任务所属项目，随后所有操作继续使用恢复出的项目。"]},
+    {"check": "Controller 项目参数扫描", "result": "pass", "evidence": "PlanController 的计划执行链端点均声明必填 projectRef，并通过 ProjectAccessService 解析可信项目。", "limitations": []},
+    {"check": "模板共享边界扫描", "result": "pass", "evidence": "PlanTemplateController 与 PlanTemplateStore 未引入 projectRef/projectId；真实 MySQL 验证同一模板可被两个项目计划引用。", "limitations": []}
+  ],
+  "diff_summary": [
+    "Plan 模型增加 projectId，计划及全部私有子表写入项目归属",
+    "PlanStore 列表、详情、状态汇总、提醒和直接 ID 操作限定 tenantId+projectId",
+    "PlanController 强制 projectRef，Service 只使用 ProjectAccess 解析的可信项目",
+    "模板与模板版本保持租户共享，网络工单保持既有租户共享语义"
+  ],
+  "invariants_checked": [
+    {"invariant": "模板及版本继续只按 tenant_id", "result": "pass", "evidence": "模板源码静态扫描与 information_schema 断言均未发现 project_id。"},
+    {"invariant": "由模板生成的计划使用可信项目", "result": "pass", "evidence": "Controller 解析 projectRef 后将 projectId 传给生成服务，计划行保存该 project_id。"},
+    {"invariant": "后台提醒、依赖、阻塞和工单均不能脱离计划项目", "result": "pass", "evidence": "真实 MySQL 双项目测试覆盖提醒、依赖、阻塞、建议、事件和工单关系隔离。"}
+  ],
+  "disturbances": [
+    {"event": "完整架构回归在新增 T5 测试前启动", "impact": "完整回归验证实现代码和既有 286 个测试；新增 T5 测试另以聚焦命令编译并执行 23/23。"},
+    {"event": "PowerShell 首次拆分 Maven -D 参数且沙箱内依赖解析受限", "impact": "前两次命令未进入测试；修正参数并在获准环境重跑后通过。"},
+    {"event": "MySQL 8.4 与 Flyway 输出既有兼容性和弃用告警", "impact": "不影响 V156 迁移和测试结果。"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "topic": "architecture-project-scope",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-05-architecture-project-scope-design.md",
+  "objective": "六类架构与环境业务数据及相关审批在顶部当前项目下实现服务端强制隔离，不同项目可复用业务编号且不会发生跨项目读取、写入或关联。",
+  "users": [
+    "项目成员在当前项目中查看架构与环境数据",
+    "具备架构动作权限的项目成员维护数据并提交业务流程",
+    "审批人在项目工作流中处理架构业务待办",
+    "超级管理员按明确项目上下文进行跨项目管理"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "物理子系统、部署单元、环境、资源申请、环境部署实例和搭建计划及关键子数据必须具有显式项目归属。",
+      "acceptance": ["所有业务查询和写入限定 tenant_id 与可信 project_id", "直接提交其他项目实体 ID 不返回或修改数据"],
+      "priority": "must",
+      "source": "用户确认采用单项目独占和全链路显式 project_id",
+      "counterexample": ["仅按 tenant_id 查询", "子表直接按全局 ID 更新"]
+    },
+    {
+      "id": "R2",
+      "statement": "页面必须自动跟随顶部项目上下文并保留架构管理菜单入口。",
+      "acceptance": ["六个页面不提供第二项目选择器", "切换项目确认并刷新后只显示目标项目数据"],
+      "priority": "must",
+      "source": "用户确认保留架构管理菜单",
+      "counterexample": ["页面仍显示全部租户数据", "页面要求用户重复选择项目"]
+    },
+    {
+      "id": "R3",
+      "statement": "编号和名称唯一性必须调整为项目内永久唯一。",
+      "acceptance": ["两个项目可保存相同编号", "同一项目重复或软删除后复用被拒绝"],
+      "priority": "must",
+      "source": "用户确认项目内唯一",
+      "counterexample": ["其他项目同编号被租户级唯一索引拒绝"]
+    },
+    {
+      "id": "R4",
+      "statement": "关联、资源下发、实例生成和搭建计划目标必须保持项目一致。",
+      "acceptance": ["跨项目候选不可见", "伪造跨项目 ID 返回错误", "数据库无跨项目活动关系"],
+      "priority": "must",
+      "source": "项目完全隔离目标",
+      "counterexample": ["项目 A 资源申请引用项目 B 部署单元"]
+    },
+    {
+      "id": "R5",
+      "statement": "授权必须叠加项目有效成员资格与现有 architecture RBAC，超级管理员可访问全部项目。",
+      "acceptance": ["非成员返回 403", "成员缺少动作权限返回 403", "超级管理员可在明确项目上下文访问"],
+      "priority": "must",
+      "source": "用户确认权限方案 1",
+      "counterexample": ["仅凭前端显隐授权", "项目成员自动获得所有写权限"]
+    },
+    {
+      "id": "R6",
+      "statement": "搭建计划模板与模板版本保持租户级共享，生成的计划绑定当前项目。",
+      "acceptance": ["模板表不增加 project_id", "从模板生成的计划具有当前项目 ID"],
+      "priority": "must",
+      "source": "用户确认模板共享方案",
+      "counterexample": ["模板被错误过滤为项目私有", "计划缺少项目归属"]
+    },
+    {
+      "id": "R7",
+      "statement": "架构业务必须复用现有项目工作流能力并传递真实项目上下文。",
+      "acceptance": ["业务 project_id 与 wf_instance.project_id 一致", "跨项目用户不能查看或审批", "生命周期事件项目不一致时不更新业务"],
+      "priority": "must",
+      "source": "用户指出工作流模块已接入项目并确认复用设计",
+      "counterexample": ["WorkflowBusinessContext 项目字段继续为 null", "生命周期回调不校验项目"]
+    },
+    {
+      "id": "R8",
+      "statement": "存量架构数据必须归入 RDDMP-PLATFORM，默认项目缺失时迁移失败。",
+      "acceptance": ["迁移后项目列无空值", "存在待迁移数据且默认项目不存在时 Flyway 明确失败"],
+      "priority": "must",
+      "source": "用户确认默认项目迁移规则",
+      "counterexample": ["自动选择最早项目", "遗留空 project_id"]
+    },
+    {
+      "id": "R9",
+      "statement": "存在架构数据的项目必须禁止删除。",
+      "acceptance": ["存在未删除架构数据时项目删除返回 409", "无引用项目维持现有删除行为"],
+      "priority": "must",
+      "source": "完整性设计",
+      "counterexample": ["删除项目后留下不可访问架构数据"]
+    },
+    {
+      "id": "R10",
+      "statement": "数据迁移、测试管理等现有消费者必须按项目匹配物理子系统。",
+      "acceptance": ["相同物理子系统编号不会串联其他项目", "受影响模块回归测试通过"],
+      "priority": "must",
+      "source": "代码勘察发现跨模块按租户和编号关联",
+      "counterexample": ["JOIN arch_physical_subsystem 时缺少 project_id 条件"]
+    },
+    {
+      "id": "R11",
+      "statement": "原具体环境用户界面必须改名为环境管理，同时保持内部稳定技术契约。",
+      "acceptance": ["菜单、页面标题和用户提示显示环境管理", "Java 包、表名和 API 路径不重命名"],
+      "priority": "must",
+      "source": "用户原始请求",
+      "counterexample": ["用户入口继续显示具体环境", "为改名迁移数据库表"]
+    }
+  ],
+  "invariants": [
+    "tenant_id 与 project_id 来自服务端可信上下文",
+    "业务写 DTO 不接收 tenantId 或 projectId",
+    "architecture 不直接访问 system 私有表或 workflow 表",
+    "system 不反向依赖业务模块",
+    "搭建计划模板保持租户级共享",
+    "历史 Flyway 和 Flowable ACT_* 表不修改"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3 现有技术栈",
+    "复用 ProjectAccessService 与 WorkflowBusinessGateway",
+    "Flyway 迁移只追加",
+    "前端遵循 design-h5.md 和交付示范中心模式",
+    "不访问生产或敏感数据"
+  ],
+  "non_goals": [
+    "架构数据多项目共享或转移",
+    "新增项目级架构角色",
+    "将页面移入项目详情",
+    "重新实现工作流项目权限",
+    "重命名 Java 包、数据库表和环境 API 路径"
+  ],
+  "selected_approach": {
+    "name": "全链路显式项目归属",
+    "reason": "查询边界清晰，可用数据库约束表达项目一致性，并能直接验证 ID 越权与跨项目关联。",
+    "alternatives": [
+      {"name": "根实体项目归属、子表 JOIN 推导", "rejected_because": "直接查询子数据时容易遗漏隔离条件。"},
+      {"name": "独立项目绑定关系表", "rejected_because": "与单项目独占不一致，并增加唯一性和查询复杂度。"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["business/architecture", "platform/system 项目访问与删除扩展契约", "架构前端页面", "Flyway 与 Mock", "受影响业务消费者"],
+      "outside": ["Flowable ACT_* 表", "工作流项目权限内部实现", "跨项目共享和转移", "生产数据"]
+    },
+    "components": [
+      {"name": "前端项目上下文", "responsibility": "向架构 API 提供当前 projectRef 并在项目切换后刷新", "depends_on": ["useProjectContextStore"]},
+      {"name": "架构项目上下文解析", "responsibility": "将 projectRef 解析为经过授权的可信项目", "depends_on": ["ProjectAccessService"]},
+      {"name": "架构服务与存储", "responsibility": "执行项目一致性业务规则及 tenant_id + project_id 持久化", "depends_on": ["架构项目上下文解析"]},
+      {"name": "项目删除引用检查", "responsibility": "项目删除前检查架构活动数据", "depends_on": ["platform/system 扩展点"]},
+      {"name": "架构工作流接入", "responsibility": "传递项目上下文并校验生命周期事件项目一致性", "depends_on": ["WorkflowBusinessGateway"]},
+      {"name": "下游消费者适配", "responsibility": "按项目关联物理子系统", "depends_on": ["arch_physical_subsystem.project_id"]}
+    ],
+    "interfaces": [
+      {"name": "ProjectAccessService", "producer": "platform/system", "consumers": ["business/architecture"], "contract": "按 projectRef 校验租户和项目访问并返回可信 ID、编号和名称"},
+      {"name": "ProjectDeletionGuard", "producer": "platform/system", "consumers": ["business/architecture"], "contract": "项目删除前调用业务引用检查；存在架构数据时返回冲突"},
+      {"name": "WorkflowBusinessGateway", "producer": "platform/workflow", "consumers": ["business/architecture"], "contract": "项目业务上下文必须包含稳定 projectRef，平台固化 wf_instance.project_id"}
+    ],
+    "data_flows": [
+      {"input": "当前 projectRef 与认证用户", "transitions": ["项目访问校验", "解析 projectId", "项目限定查询或写入"], "output": "当前项目架构数据或明确权限错误"},
+      {"input": "当前项目业务提交", "transitions": ["业务项目校验", "工作流启动", "实例固化项目", "生命周期项目复核"], "output": "项目隔离的审批实例与业务状态"},
+      {"input": "历史架构数据", "transitions": ["查找 RDDMP-PLATFORM", "沿关联链回填", "完整性校验", "非空与索引约束"], "output": "具有项目归属的存量数据"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "projectRef 缺失", "behavior": "返回 400 并阻止页面业务请求", "recovery": "选择可访问项目后重试"},
+    {"condition": "项目不存在或已删除", "behavior": "返回 400", "recovery": "刷新项目列表并重新选择"},
+    {"condition": "用户不是项目有效成员或缺少动作权限", "behavior": "返回 403", "recovery": "申请项目成员或 RBAC 权限"},
+    {"condition": "实体不属于当前项目", "behavior": "列表隐藏，详情返回 404", "recovery": "返回当前项目列表"},
+    {"condition": "跨项目关联", "behavior": "返回 400 并保留输入", "recovery": "选择当前项目对象"},
+    {"condition": "工作流项目不一致", "behavior": "拒绝启动或事件消费且不改变业务状态", "recovery": "修正项目上下文后重试或人工处置失败事件"},
+    {"condition": "默认项目缺失", "behavior": "Flyway 迁移失败", "recovery": "先创建唯一活动 RDDMP-PLATFORM 项目"},
+    {"condition": "项目仍有架构数据", "behavior": "删除返回 409", "recovery": "先按业务规则处理架构数据"}
+  ],
+  "quality_attributes": {
+    "security": ["认证、RBAC、项目成员资格和实体归属四层服务端校验", "负向 ID 越权测试", "审计记录项目上下文且不记录敏感正文"],
+    "performance": ["高频索引以 tenant_id、project_id 为前缀", "列表和选项继续服务端分页", "不依赖无界父表 JOIN 推导项目"],
+    "compatibility": ["保留 Java 包、数据库表和 API 根路径", "历史工作流无法可靠关联时不伪造项目", "搭建计划模板行为保持不变"],
+    "operations": ["迁移前检查默认项目和版本占用", "迁移后检查空项目列、跨项目关系和工作流一致性", "结构回退使用补偿迁移"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R4", "R5"], "signal": "双项目 API 与浏览器矩阵无跨项目读取或写入", "method": "普通成员、双项目成员和超级管理员执行正负场景"},
+    {"requirement_ids": ["R3"], "signal": "跨项目同编号成功、项目内重复失败", "method": "数据库约束与 service 测试"},
+    {"requirement_ids": ["R6"], "signal": "共享模板生成项目计划", "method": "模板与计划聚焦测试"},
+    {"requirement_ids": ["R7"], "signal": "业务、流程实例、待办和生命周期项目一致", "method": "工作流集成测试和真实 API 流程"},
+    {"requirement_ids": ["R8", "R9"], "signal": "迁移和项目删除保护按前置条件稳定通过或失败", "method": "真实 MySQL/Flyway 与项目删除集成测试"},
+    {"requirement_ids": ["R10"], "signal": "消费者在重复编号场景解析正确项目物理子系统", "method": "数据迁移与测试管理聚焦回归"},
+    {"requirement_ids": ["R11"], "signal": "界面显示环境管理且稳定契约未重命名", "method": "前端构建、路由检查和四视口浏览器验收"}
+  ],
+  "assumptions": [
+    {"text": "存在架构存量数据的租户具有唯一活动项目 RDDMP-PLATFORM", "basis": "用户确认该项目为默认归属", "falsifier": "迁移前置查询返回零条或多条"},
+    {"text": "ProjectAccessService 继续作为业务模块统一项目访问语义", "basis": "现有 workflow 已使用等价项目访问契约", "falsifier": "system Owner 要求采用新的项目授权契约"}
+  ],
+  "unknowns": [
+    {"question": "实施时可用的下一个 Flyway 版本号", "impact": "决定迁移文件名和 scope", "owner": "实施协调者", "blocking": false},
+    {"question": "受影响跨模块 SQL 的最终完整文件清单", "impact": "决定实施写入范围和回归集合", "owner": "实施计划", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "六类数据单项目独占", "reason": "满足项目完全隔离", "source": "用户选择方案 1"},
+    {"id": "D2", "decision": "存量数据归入 RDDMP-PLATFORM，缺失时失败", "reason": "迁移结果确定且不误归属", "source": "用户确认"},
+    {"id": "D3", "decision": "搭建计划模板租户级共享", "reason": "模板是复用结构，执行事实才属于项目", "source": "用户选择方案 1"},
+    {"id": "D4", "decision": "保留架构管理菜单并跟随顶部项目", "reason": "保持专业工作区和现有导航", "source": "用户选择方案 1"},
+    {"id": "D5", "decision": "编号与名称项目内唯一", "reason": "隔离项目可独立维护相同业务标识", "source": "用户选择方案 1"},
+    {"id": "D6", "decision": "项目成员资格与现有架构 RBAC 叠加", "reason": "复用现有权限并增加项目边界", "source": "用户选择方案 1"},
+    {"id": "D7", "decision": "全链路显式保存 project_id", "reason": "隔离和约束可直接验证", "source": "用户选择方案 1"},
+    {"id": "D8", "decision": "复用已有项目工作流能力", "reason": "工作流模块已完成项目化，架构仅需补齐项目上下文", "source": "用户说明并确认修订设计"}
+  ],
+  "risks": [
+    {"risk": "多表迁移回填或约束顺序错误", "impact": "迁移失败或留下空项目数据", "mitigation": "分阶段 SQL、前置统计、空库和既有库测试"},
+    {"risk": "Store 查询遗漏 project_id", "impact": "跨项目越权", "mitigation": "SQL 扫描、双项目直接 ID 负向测试"},
+    {"risk": "跨模块消费者仍按租户和编号关联", "impact": "重复编号导致串数据", "mitigation": "固定消费者清单并执行受影响模块回归"},
+    {"risk": "项目删除扩展点影响 system 公共能力", "impact": "项目管理回归或模块耦合", "mitigation": "使用公开扩展接口、Owner 审批和 system 回归"},
+    {"risk": "工作流历史上下文缺少项目", "impact": "历史实例无法可靠关联", "mitigation": "仅回填可证明关系，其他历史保持兼容且不伪造"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-05 复核并批准落盘设计修订 1。",
+    "confirmed_at": "2026-09-05T15:50:20+08:00"
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V156__scope_architecture_by_project.sql",
+      "purpose": "为六类架构与环境主数据及关键子链增加项目归属、存量回填、失败关闭校验和项目级永久唯一约束"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureProjectScopeMigrationMySqlTest.java",
+      "purpose": "用 MySQL 8.4 验证空库迁移、存量归属、项目级唯一性和默认项目缺失失败路径"
+    }
+  ],
+  "requirements_addressed": ["R1", "R3", "R6", "R8"],
+  "commands": [
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 1,
+      "salient_output": "既有 V84_1__seed_requirement_system_catalog.sql 命名不符合脚本要求；该文件不属于本任务且 V156 未被报告为异常"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureProjectScopeMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "首次真实 MySQL 运行在历史 V80 因测试库默认 utf8mb4_0900_ai_ci 与迁移临时表 utf8mb4_unicode_ci 冲突而停止，V156 尚未执行"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=ArchitectureProjectScopeMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "显式校准测试库排序规则后，Tests run: 3, Failures: 0, Errors: 0；空库到 V156、V155 存量到 V156 和失败关闭路径均通过"
+    },
+    {
+      "command": "git diff --check -- V156__scope_architecture_by_project.sql ArchitectureProjectScopeMigrationMySqlTest.java",
+      "exit_code": 0,
+      "salient_output": "目标迁移和测试未发现空白错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "MySQL 8.4 空库迁移",
+      "result": "pass",
+      "evidence": "Flyway 成功应用 151 个迁移并到达 V156；断言六类主表 project_id 非空且模板表无 project_id",
+      "limitations": ["不测量生产大表执行时长和锁等待"]
+    },
+    {
+      "check": "存量回填和永久唯一性",
+      "result": "pass",
+      "evidence": "存量物理子系统回填到同租户 RDDMP-PLATFORM；跨项目重复编号成功，同项目重复及软删除后复用失败",
+      "limitations": ["聚焦断言物理子系统代表性唯一索引，其余主表由结构扫描和迁移执行覆盖"]
+    },
+    {
+      "check": "默认项目缺失失败关闭",
+      "result": "pass",
+      "evidence": "存在存量架构数据但无 RDDMP-PLATFORM 时 FlywayException；失败后 arch_physical_subsystem 不存在 project_id 永久列",
+      "limitations": ["默认项目重复场景由相同 COUNT(*) <> 1 守卫覆盖，未单列第四个运行用例"]
+    },
+    {
+      "check": "Flyway 仓库脚本",
+      "result": "baseline-fail",
+      "evidence": "脚本因既有 V84_1 文件名失败，与本任务 V156 内容无关",
+      "limitations": ["无法用该脚本提供全绿证据"]
+    }
+  ],
+  "diff_summary": [
+    "追加 V156，在永久 DDL 前验证有待迁移架构数据的租户恰有一个未删除 RDDMP-PLATFORM",
+    "为物理子系统、部署单元、环境、资源申请、环境实例、搭建计划及关键子链增加 project_id 并按默认项目回填",
+    "将六类主表已有编号或名称唯一键改为 tenant_id + project_id，软删除记录继续占用唯一值",
+    "搭建计划模板及版本保持租户共享，混合活动表仅 PLAN 行要求 project_id 非空",
+    "新增 MySQL 8.4 迁移测试并校准测试库排序规则"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "历史 Flyway 和 ACT_* 不修改",
+      "result": "pass",
+      "evidence": "实际产品迁移仅新增 V156，未修改历史迁移和工作流表"
+    },
+    {
+      "invariant": "模板及模板版本不增加 project_id",
+      "result": "pass",
+      "evidence": "information_schema 断言 arch_plan_template 与 arch_plan_template_version 无 project_id"
+    },
+    {
+      "invariant": "存量归属只能使用同租户唯一活动 RDDMP-PLATFORM",
+      "result": "pass",
+      "evidence": "临时守卫按 tenant_id 检查 project_code 和 deleted，回填表仅保存 HAVING COUNT(*) = 1 的项目"
+    },
+    {
+      "invariant": "缺失或不唯一时迁移失败",
+      "result": "pass",
+      "evidence": "缺失场景真实 MySQL 测试通过；守卫对零条或多条统一使用 COUNT(*) <> 1"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "MySQL 8.4 容器新建数据库默认使用 utf8mb4_0900_ai_ci",
+      "impact": "历史 V80 在测试环境先于 V156 失败；按仓库既有测试模式将测试库校准为 utf8mb4_unicode_ci 后恢复有效传感器"
+    },
+    {
+      "event": "Flyway 检查脚本存在 V84_1 历史命名基线失败",
+      "impact": "本次不能取得全仓 Flyway 脚本绿灯，已保留失败证据且未修改范围外历史迁移"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "生产规模表的 DDL 执行时长、锁等待和补偿迁移策略留待上线前评审",
+    "其余主表项目级唯一索引将在后续业务链任务和最终集成采样中继续覆盖"
+  ],
+  "recommended_next": "observe"
+}

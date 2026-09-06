@@ -1,0 +1,31 @@
+{
+  "sample_label": "T1-T7 最终异质观测",
+  "task_ids": ["T1", "T2", "T3", "T4", "T5", "T6", "T7"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 真实 MySQL/Flyway + S2 架构模块测试", "result": "pass", "raw_evidence": "V158 在多组 MySQL 8.4 容器迁移到 v158；architecture 291 项通过", "limitation": ["未使用生产数据规模"]},
+    {"requirement_id": "R2", "sensor": "S2 Controller/Service 负向测试 + S6 浏览器项目切换", "result": "pass", "raw_evidence": "缺项目、无权和跨项目实体测试通过；浏览器项目 A/B 切换可加载", "limitation": []},
+    {"requirement_id": "R3", "sensor": "S1 组合唯一约束 + S2 双项目测试", "result": "pass", "raw_evidence": "同项目冲突、跨项目重复允许的迁移与服务测试通过", "limitation": []},
+    {"requirement_id": "R4", "sensor": "S1 数据库组合约束 + S2 伪造 ID 负向测试", "result": "pass", "raw_evidence": "网络、决策和关联资产跨项目引用均被拒绝", "limitation": []},
+    {"requirement_id": "R5", "sensor": "S3 工作流集成/生命周期测试 + S5 Publisher 测试", "result": "pass", "raw_evidence": "业务上下文、实例和回调项目一致；LocalSeededWorkflowPublisherTest 3 项通过", "limitation": []},
+    {"requirement_id": "R6", "sensor": "S4 附件策略负向测试 + S6 浏览器 UAT", "result": "pass", "raw_evidence": "网络与决策附件跨项目拒绝；浏览器未观察到其他项目数据泄露", "limitation": ["浏览器仅使用本地管理员和虚构数据"]},
+    {"requirement_id": "R7", "sensor": "S1 V158 迁移测试", "result": "pass", "raw_evidence": "历史数据仅回填唯一活动 RDDMP-PLATFORM，默认项目异常时失败关闭", "limitation": ["生产数据规模未采样"]},
+    {"requirement_id": "R8", "sensor": "S5 ArchitectureProjectDeletionGuardTest", "result": "pass", "raw_evidence": "13 类架构表引用检查覆盖且架构模块回归通过", "limitation": []},
+    {"requirement_id": "R9", "sensor": "S6 浏览器项目切换 + S7 前端构建", "result": "pass", "raw_evidence": "页面无第二项目选择器，切换后按新项目重载；移动视口无横向溢出", "limitation": ["观察到一次可恢复的加载瞬态，归类为 disturbance"]},
+    {"requirement_id": "R10", "sensor": "S1 迁移目标表审计 + S6 浏览器菜单/页面", "result": "pass", "raw_evidence": "共享配置表未增加 project_id，共享接口继续普通 http", "limitation": []},
+    {"requirement_id": "R11", "sensor": "S5 Publisher 单测 + 源码配置检查", "result": "pass", "raw_evidence": "默认 5 个租户级架构定义，包含网络工单、网络访问和架构决策；3 项测试通过", "limitation": []},
+    {"requirement_id": "R12", "sensor": "S7 完整构建回归 + S8 发布回退清单", "result": "pass", "raw_evidence": "mvn test 15 模块通过，前端构建通过，V158 只追加，交接包含备份/补偿回退", "limitation": ["未执行生产发布"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "项目切换后架构决策首次加载出现一次瞬态失败，接口均为 200，重试后恢复且控制台无错误",
+    "治理和 Flyway 静态检查被两个历史基线问题阻断，与本任务变更无因果关系",
+    "本观测由同一 Codex 上下文完成，判断独立性低于独立验证人员"
+  ],
+  "coverage_gaps": [
+    "生产数据规模下的迁移锁等待、耗时和回退恢复演练",
+    "独立人员对最终 diff 和 UAT 的二次复核"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

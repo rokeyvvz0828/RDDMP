@@ -1,0 +1,42 @@
+{
+  "task_id": "T7",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "mock/mock-data.json", "purpose": "提供项目 A、项目 B 的架构业务虚构数据用于项目切换 UAT"},
+    {"path_or_resource": ".ai-control/requirements/req-20260905-065-architecture-remaining-project-scope", "purpose": "记录完整回归、运行验收、观测和收敛证据"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"],
+  "commands": [
+    {"command": "mvn test", "exit_code": 0, "salient_output": "15 个 Reactor 模块全部 SUCCESS；总耗时 25:20；architecture 291 项、test-management 21 项、boot 8 项均为 0 失败"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "Vue TypeScript 与 Vite 生产构建通过，仅有 Rollup 大 chunk 警告"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "研发准入前置通过，最终被 REQ-20260904-061 的非 JSON 兼容 YAML 阻断，非本任务引入"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 1, "salient_output": "被历史文件 V84_1__seed_requirement_system_catalog.sql 命名阻断，V158 本身符合规则"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误，仅工作区 LF/CRLF 转换提示"}
+  ],
+  "local_checks": [
+    {"check": "本地运行健康", "result": "pass", "evidence": "2026-09-06 后端 /actuator/health 为 UP，前端入口 HTTP 200", "limitations": []},
+    {"check": "真实浏览器项目切换", "result": "pass", "evidence": "admin 从项目 B 切换到项目 A 后，架构决策、网络分区、网络访问关系均按当前项目重新加载", "limitations": ["架构决策切换后首次出现一次可重试的瞬态加载失败，接口均为 200，重试恢复且控制台无错误"]},
+    {"check": "移动端响应式", "result": "pass", "evidence": "架构决策和网络访问页在 375/390/430 x 844 下 scrollWidth 等于 clientWidth", "limitations": []},
+    {"check": "明暗主题", "result": "pass", "evidence": "深色主题 data-theme=dark 可切换并已恢复浅色；最终 console warn/error 为空", "limitations": []}
+  ],
+  "diff_summary": [
+    "双项目 Mock 支持项目切换验收",
+    "完整 Maven、前端构建、真实 MySQL/Flyway 和浏览器 UAT 均形成证据",
+    "治理与 Flyway 两项历史基线失败已隔离记录"
+  ],
+  "invariants_checked": [
+    {"invariant": "数据库、后端和前端同批交付", "result": "pass", "evidence": "V158、Java、前端和 Mock 在同一 UAT 环境运行"},
+    {"invariant": "不修改其他需求和 scripts/dev.mjs", "result": "pass", "evidence": "本任务收尾仅写当前 065 前缀账本；scripts/dev.mjs 的既有用户修改未触碰"}
+  ],
+  "disturbances": [
+    "架构决策页面在项目切换后首次加载出现一次瞬态失败；服务端接口均返回 200，点击重试恢复，浏览器控制台无错误",
+    "治理检查受 REQ-20260904-061 历史 YAML 格式阻断",
+    "Flyway 文件名检查受历史 V84_1 文件阻断"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "生产数据规模下的 V158 锁等待和迁移窗口需在上线前演练",
+    "最终观测由同一 Codex 上下文执行，不等同于独立人员复核"
+  ],
+  "recommended_next": "observe"
+}
