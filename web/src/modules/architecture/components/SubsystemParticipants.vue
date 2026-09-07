@@ -22,6 +22,7 @@ const error = ref('')
 const owner = computed(() => data.value?.participants.find(person => person.userId === data.value?.ownerUserId))
 const otherSelected = computed(() => selected.value.filter(id => id !== data.value?.ownerUserId))
 let request = 0
+let discardConfirmation: Promise<boolean> | null = null
 const dirty = computed(() => !!data.value && (reason.value !== ''
   || JSON.stringify([...selected.value].sort()) !== JSON.stringify([...data.value.explicitParticipantUserIds].sort())))
 const options = computed(() => {
@@ -54,12 +55,22 @@ async function load() {
 async function discardAllowed() {
   if (saving.value) return false
   if (!dirty.value) return true
-  return ElMessageBox.confirm('参与人员调整尚未保存，离开将丢弃本次修改。', '放弃修改？', {
-    confirmButtonText: '放弃修改', cancelButtonText: '继续编辑', type: 'warning'
-  }).then(() => true).catch(() => false)
+  if (!discardConfirmation) {
+    discardConfirmation = ElMessageBox.confirm('参与人员调整尚未保存，离开将丢弃本次修改。', '放弃修改？', {
+      confirmButtonText: '放弃修改', cancelButtonText: '继续编辑', type: 'warning',
+      closeOnClickModal: false, closeOnPressEscape: false
+    }).then(() => true).catch(() => false).finally(() => { discardConfirmation = null })
+  }
+  return discardConfirmation
 }
 async function close(value: boolean) {
-  if (!value && await discardAllowed()) emit('update:modelValue', false)
+  const ticket = request
+  if (!value && await discardAllowed() && ticket === request) emit('update:modelValue', false)
+}
+// 遮罩、右上角和 Esc 必须在内部关闭之前确认；确认后只更新受控值，
+// 不调用内部 done，避免它再次触发 update:modelValue 并重复确认。
+function beforeDrawerClose() {
+  void close(false)
 }
 async function submit() {
   if (loading.value || saving.value) return
@@ -110,7 +121,7 @@ onBeforeUnmount(() => { ++request; window.removeEventListener('beforeunload', be
 
 <template>
   <UiFormDrawer :model-value="modelValue" :title="`${subsystem?.name || '系统'} · 参与人员`"
-    width="min(640px, calc(100vw - 24px))" :loading="saving"
+    width="min(640px, calc(100vw - 24px))" :loading="saving" :before-close="beforeDrawerClose"
     :confirm-text="data?.canManage ? '保存参与人员' : '关闭'" @update:model-value="close" @submit="submit">
     <section v-loading="loading" class="subsystem-people" aria-label="系统参与人员">
       <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
