@@ -14,7 +14,8 @@
       "input_facts": [
         "既有系统负责人字段、平台公开用户/项目能力",
         "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
-        "负责人变更由SubsystemPublicationService事务发布，接入参与服务移交守卫；平台成员退出守卫当前是单实例注入，不能直接增加第二个Bean，另行受控实现。"
+        "负责人变更由SubsystemPublicationService事务发布，接入参与服务移交守卫；平台成员退出守卫当前是单实例注入，不能直接增加第二个Bean，另行受控实现。",
+        "收尾纠偏：项目资格普通快照读不能与成员退出串行化。沿用已获Owner审批，平台公开查询签名不变；事务内项目成员引用采用FOR SHARE，同时锁成员和用户有效状态。ProjectService退出先锁成员再运行全部业务守卫。新增独立MySQL两事务验证，不允许架构访问平台私有表。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
@@ -32,7 +33,11 @@
         "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
         "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
-        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectMemberReferenceQuery.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/capability/ProjectMemberReferenceQueryTest.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/capability/ProjectMemberReferenceLockMySqlTest.java",
+        "server/src/platform/system/pom.xml"
       ],
       "invariants": [
         "租户/项目/实体授权",
@@ -679,5 +684,5 @@
     }
   ],
   "plan_status": "ready",
-  "plan_revision": "plan-6"
+  "plan_revision": "plan-7"
 }
