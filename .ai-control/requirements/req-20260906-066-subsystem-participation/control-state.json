@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 110,
+  "revision": 112,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T06:33:30+00:00",
+  "updated_at": "2026-09-07T06:44:50+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -7167,6 +7167,60 @@
             "跨项目真实部署单元和附件UI全路径未逐项覆盖"
           ]
         }
+      },
+      {
+        "revision": 8,
+        "evidence": "最终mvn test退出1，旧精确权限断言失配；范围外未写",
+        "recorded_at": "2026-09-07T06:44:50+00:00",
+        "data": {
+          "task_ids": [
+            "T5",
+            "T6"
+          ],
+          "coverage_gaps": [
+            "全仓未通过，后续两个模块未运行",
+            "需用户将该测试单文件纳入scope后才能同步断言"
+          ],
+          "baseline_revision": "baseline-1",
+          "feedback": [
+            {
+              "requirement_id": "R6",
+              "observed": "ArchitectureOptionsControllerTest:182对physicalUsers仍精确断言旧表达式，失败；physicalParameters同样保留旧表达式",
+              "correction_check": "同步两条精确断言，保留organizations/businessComponents旧断言；重跑该类、权限代理测试及全仓",
+              "causal_hypothesis": "新增资源权限时遗漏更新旧精确注解断言",
+              "classification": "sensor-fault",
+              "expected": "资源申请必要users/parameters兼容资源申请权限，其他选项保持原权限；测试同步已批准契约",
+              "severity": "P1",
+              "evidence": "TEMP/rddmp-066-full-options-denial.log:22605-22612；ArchitectureOptionsControllerTest.java:182",
+              "confidence": "high",
+              "reproduction": "mvn test",
+              "sensor_limit": "旧契约断言失配，不证明运行授权失效；真实代理及UI已通过"
+            }
+          ],
+          "measurements": [
+            {
+              "sensor": "mvn test",
+              "result": "fail",
+              "requirement_id": "R6",
+              "limitation": [
+                "不是最终全仓通过",
+                "统计为日志中已执行测试类，不包含未运行模块"
+              ],
+              "raw_evidence": "2026-09-07 14:43:18结束，退出1；121类688项，1失败0错误0跳过；ccb-test-management和ccb-boot模块未运行；TEMP/rddmp-066-full-options-denial.log"
+            }
+          ],
+          "observation_status": "incomplete",
+          "error_counts": {
+            "P0": 0,
+            "P3": 0,
+            "P2": 0,
+            "P1": 0
+          },
+          "disturbances": [
+            "ArchitectureOptionsControllerTest.java不在当前scope精确可写路径；未修改也未自行扩权"
+          ],
+          "sample_label": "最终全仓回归：旧权限断言未同步"
+        }
       }
     ],
     "correcting": [
@@ -9267,7 +9321,7 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "observing",
+      "status": "blocked",
       "evidence": [
         {
           "recorded_at": "2026-09-07T02:01:05+00:00",
@@ -9288,9 +9342,13 @@
         {
           "recorded_at": "2026-09-07T06:32:45+00:00",
           "text": "F4/F5修复完成，复验记录已入账，全仓仍运行"
+        },
+        {
+          "recorded_at": "2026-09-07T06:44:50+00:00",
+          "text": "需将ArchitectureOptionsControllerTest.java纳入scope以同步两条旧权限断言；不扩大实际业务权限"
         }
       ],
-      "updated_at": "2026-09-07T06:32:45+00:00"
+      "updated_at": "2026-09-07T06:44:50+00:00"
     },
     {
       "id": "T6",

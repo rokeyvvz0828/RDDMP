@@ -95,3 +95,10 @@
 - 合成资源主单RR1788760806959026已拒绝，复制草稿1788760836273012及UI草稿RR1788761891729496均已取消；没有资源下发。浏览器恢复浅色及默认桌面视口。
 - 本次scope检查88文件通过，diff --check通过。既有REQ061范围文件非JSON兼容YAML和V84_1迁移命名仍导致治理检查失败；不越范围修改、不绕过Required Checks。
 - 尚未代签：非作者上线权限/数据库专项复核。跨项目真实部署单元及附件全部UI路径未逐项覆盖，不以单测/API覆盖冒充全量UI验收。当前phase为observing，不宣称converged或可上线。
+
+### 2026-09-07 14:43 最新全仓最终结果（替代上述“仍运行”状态）
+
+- `mvn test` 退出1，耗时27:28；实际执行121类688项，1失败、0错误、0跳过。ccb-test-management和ccb-boot模块因前序失败未运行，不得计入已通过。
+- 唯一失败为 `ArchitectureOptionsControllerTest.eachKnownContext兼容旧读取权限并纳入新三级权限`：physicalUsers精确断言仍为旧权限表达式；physicalParameters也仍使用旧期望，首次断言失败后未继续执行。应仅同步这两条期望，保留organizations/businessComponents限制及真实方法安全代理测试，不删除、不跳过测试。
+- 这是本次修复遗漏的关联测试同步，不归因于既有治理问题。日志：本地TEMP/rddmp-066-full-options-denial.log，22605起；对应结构化记录observation-full-regression.json。
+- `server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitectureOptionsControllerTest.java` 未纳入当前scope精确可写列表；未擅自修改或扩写scope。T5记录为blocked，phase保持observing，等待该单文件范围确认后同步断言、重跑聚焦和全仓。
