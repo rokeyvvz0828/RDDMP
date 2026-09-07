@@ -10,11 +10,12 @@
 import '../../data-migration.css'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, genFileId, type UploadFile, type UploadInstance, type UploadProps, type UploadRawFile } from 'element-plus'
+import { Delete, Document, Download, Edit, Plus, Refresh, Search, Upload, UploadFilled, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
 import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
+import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../../../api/error'
 import { useAuthStore } from '../../../../stores/auth'
@@ -48,7 +49,6 @@ const resolvedCategory = computed<TableCategory>(() => (props.category ?? (route
 const scope = useProjectScope()
 const scopeState = scope.state
 const scopeProjectId = scope.projectId
-const scopeProjectName = scope.projectName
 
 const auth = useAuthStore()
 const readCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target' : 'data-migration:base:table-fields-intermediate')
@@ -186,31 +186,88 @@ async function downloadTemplate() {
     const blob = new Blob([r.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = '目标表结构模板.xlsx'
+    a.href = url
+    a.download = resolvedCategory.value === 'TARGET' ? '目标表结构模板.xlsx' : '中间表结构模板.xlsx'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     URL.revokeObjectURL(url)
   } catch (e) { ElMessage.error(apiErrorMessage(e, '模板下载失败')) }
 }
 
-/* ---------- 导入 ---------- */
-const importVisible = ref(false)
-const importFile = ref<File | null>(null)
-const importLoading = ref(false)
+/* ---------- 导入（当前页对话框） ---------- */
+const importDialogOpen = ref(false)
+const importUploadRef = ref<UploadInstance>()
+const pendingImportFile = ref<File | null>(null)
 const importResult = ref<{ accepted: number; failed: number; errors: string[] } | null>(null)
-function openImport() { importVisible.value = true; importFile.value = null; importResult.value = null }
+const importError = ref('')
+
+const importReady = computed(() => Boolean(scopeProjectId.value))
+const canImport = computed(() => canCreate.value && importReady.value)
+const canSubmitImport = computed(() => canImport.value && Boolean(pendingImportFile.value) && !actionBusy.value)
+
+function resetImportDialog() {
+  pendingImportFile.value = null
+  importResult.value = null
+  importError.value = ''
+  importUploadRef.value?.clearFiles()
+}
+
+function openImportDialog() {
+  resetImportDialog()
+  importDialogOpen.value = true
+}
+
+function onImportFileChange(file: UploadFile) {
+  pendingImportFile.value = file.raw ?? null
+  importResult.value = null
+  importError.value = ''
+}
+
+const onImportFileExceed: UploadProps['onExceed'] = (files) => {
+  importUploadRef.value?.clearFiles()
+  const file = files[0] as UploadRawFile
+  file.uid = genFileId()
+  importUploadRef.value?.handleStart(file)
+}
+
+function onImportFileRemove() {
+  pendingImportFile.value = null
+  importResult.value = null
+  importError.value = ''
+}
+
+function clearImportFile() {
+  importUploadRef.value?.clearFiles()
+  onImportFileRemove()
+}
+
+function beforeImportDialogClose(done: () => void) {
+  if (!actionBusy.value) done()
+}
+
+function closeImportDialog() {
+  if (!actionBusy.value) importDialogOpen.value = false
+}
+
 async function submitImport() {
-  if (!importFile.value) return ElMessage.warning('请选择 Excel 文件')
-  // T32 决策 D4：导入必须绑定当前项目，服务端按行校验模板项目编码与请求项目一致。
   const projectId = scopeProjectId.value
-  if (projectId == null) return ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
-  importLoading.value = true
+  const file = pendingImportFile.value
+  if (!projectId) return void ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+  if (!file) return void ElMessage.warning('请先选择 Excel 文件')
+  if (actionBusy.value) return
+  actionBusy.value = true
+  importResult.value = null
+  importError.value = ''
   try {
-    const r = await importTargetTables(resolvedCategory.value, projectId, importFile.value)
+    const r = await importTargetTables(resolvedCategory.value, projectId, file)
     importResult.value = r.data.data
-    ElMessage.success(`导入完成：成功 ${r.data.data.accepted} 条，失败 ${r.data.data.failed} 条`)
-    importVisible.value = false
+    const text = `导入完成：成功 ${r.data.data.accepted} 条，失败 ${r.data.data.failed} 条`
+    if (r.data.data.errors?.length) ElMessage.warning(text)
+    else ElMessage.success(text)
     await load()
-  } catch (e) { ElMessage.error(apiErrorMessage(e, '导入失败')) } finally { importLoading.value = false }
+  } catch (e) {
+    importError.value = apiErrorMessage(e, '导入失败')
+    ElMessage.error(importError.value)
+  } finally { actionBusy.value = false }
 }
 
 /* ---------- 查看 ---------- */
@@ -521,7 +578,8 @@ watch(scopeProjectId, () => {
   editOpen.value = false
   viewOpen.value = false
   fieldOpen.value = false
-  importVisible.value = false
+  importDialogOpen.value = false
+  resetImportDialog()
   error.value = ''
   forbidden.value = false
   filterSysOpts.value = []
@@ -531,10 +589,26 @@ watch(scopeProjectId, () => {
   void loadFilterSystems()
   void load()
 }, { immediate: true })
+
+watch(resolvedCategory, () => {
+  importDialogOpen.value = false
+  resetImportDialog()
+})
 </script>
 
 <template>
   <main class="dm-page-root tt-page">
+    <UiPageHeader :title="title" description="列表、新增与导入均固定属于顶部项目切换器选择的当前项目。">
+      <template #actions>
+        <el-button v-if="canCreate && scopeState === 'ready' && !forbidden && !error" :disabled="loading || actionBusy" @click="openImportDialog">
+          <el-icon><UploadFilled /></el-icon>批量导入
+        </el-button>
+        <el-button v-if="canCreate && scopeState === 'ready' && !forbidden && !error" type="primary" :disabled="loading || actionBusy" @click="openCreate">
+          <el-icon><Plus /></el-icon>新增{{ title }}
+        </el-button>
+      </template>
+    </UiPageHeader>
+
     <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
     <section v-else-if="forbidden" class="dm-state-panel">
       <el-result icon="warning" :title="`暂无${title}查看权限`" sub-title="请向数据迁移管理员申请相应权限。" />
@@ -566,9 +640,7 @@ watch(scopeProjectId, () => {
           <el-button :disabled="loading || actionBusy" @click="search"><el-icon><Search /></el-icon>查询</el-button>
           <el-button :disabled="loading" @click="resetFilters">重置</el-button>
           <el-button :disabled="loading || actionBusy" @click="exportExcel()"><el-icon><Download /></el-icon>导出</el-button>
-          <el-button v-if="canCreate" :disabled="loading || actionBusy" @click="downloadTemplate"><el-icon><Download /></el-icon>模板</el-button>
-          <el-button v-if="canCreate" :disabled="loading || actionBusy" @click="openImport"><el-icon><Upload /></el-icon>批量上传</el-button>
-          <el-button v-if="canCreate" type="primary" :disabled="loading || actionBusy" @click="openCreate"><el-icon><Plus /></el-icon>新增</el-button>
+          <el-button v-if="canDelete" type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="batchDelete"><el-icon><Delete /></el-icon>删除 ({{ selectedIds.length }})</el-button>
         </template>
       </UiToolbar>
 
@@ -783,18 +855,88 @@ watch(scopeProjectId, () => {
       </template>
     </UiFormDrawer>
 
-    <!-- 导入 -->
-    <el-dialog v-model="importVisible" title="批量上传表结构" width="520px" align-center>
-      <el-alert class="tt-subsystem-alert" type="info" :closable="false" show-icon
-        :title="`仅导入到当前项目：${scopeProjectName || '未选择项目'}`"
-        sub-title="模板中「所属项目编码」与当前项目不一致的行将按行失败，不会写入其他项目。" />
-      <el-upload drag :auto-upload="false" :limit="1" :on-change="(f: any) => importFile = f.raw" accept=".xlsx,.xls">
-        <el-icon class="el-icon--upload"><Upload /></el-icon>
-        <div>将 Excel 拖到此处，或点击选择（模板列：所属项目编码/系统编号/表英文名称/表中文名称/表含义/字段…）</div>
-      </el-upload>
+    <!-- 导入对话框 -->
+    <el-dialog
+      v-model="importDialogOpen"
+      class="dm-import-dialog"
+      :title="`批量导入${title}`"
+      width="min(720px, calc(100vw - 24px))"
+      destroy-on-close
+      :close-on-click-modal="!actionBusy"
+      :close-on-press-escape="!actionBusy"
+      :show-close="!actionBusy"
+      :before-close="beforeImportDialogClose"
+      @closed="resetImportDialog"
+    >
+      <div class="dm-import-dialog-body">
+        <el-alert title="导入数据将按当前全局项目上下文校验" type="info" :closable="false" show-icon>
+          <template #sub-title>模板中「所属项目编码」与当前项目不一致的行将按行失败，不会写入其他项目。</template>
+        </el-alert>
+
+        <div class="dm-import-template-row">
+          <span>使用表结构模板填写数据，包含项目编码、系统编号、表信息及字段明细。</span>
+          <el-button :disabled="actionBusy" @click="downloadTemplate"><el-icon><Document /></el-icon>下载模板</el-button>
+        </div>
+
+        <el-upload
+          ref="importUploadRef"
+          class="dm-upload-dropzone"
+          drag
+          :auto-upload="false"
+          :limit="1"
+          accept=".xlsx,.xls"
+          :show-file-list="false"
+          :disabled="actionBusy"
+          :on-change="onImportFileChange"
+          :on-exceed="onImportFileExceed"
+          :on-remove="onImportFileRemove"
+        >
+          <el-icon class="dm-upload-icon"><UploadFilled /></el-icon>
+          <div class="el-upload__text">将 Excel 文件拖到此处，或 <em>点击选择</em></div>
+          <template #tip><div class="dm-upload-hint">支持 .xlsx、.xls，单次选择一个文件</div></template>
+        </el-upload>
+
+        <div v-if="pendingImportFile" class="dm-attachment-section">
+          <div class="dm-attachment-section-title">已选择文件</div>
+          <div class="dm-attachment-list">
+            <div class="dm-attachment-item is-pending">
+              <span class="dm-attachment-icon is-pending"><el-icon><Document /></el-icon></span>
+              <div class="dm-attachment-info">
+                <div class="dm-attachment-name" :title="pendingImportFile.name">{{ pendingImportFile.name }}</div>
+                <div class="dm-attachment-meta">Excel 文件 · 待导入</div>
+              </div>
+              <div class="dm-attachment-actions">
+                <el-button circle plain type="danger" :disabled="actionBusy" title="移除文件" aria-label="移除文件" @click="clearImportFile">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <el-alert v-if="importError" class="dm-import-result" type="error" :closable="false" show-icon title="导入请求失败">
+          <template #default><div class="dm-import-message">{{ importError }}</div></template>
+        </el-alert>
+        <el-alert
+          v-if="importResult"
+          class="dm-import-result"
+          :type="importResult.failed > 0 ? 'warning' : 'success'"
+          :closable="false"
+          show-icon
+          :title="`导入完成：成功 ${importResult.accepted} 条，失败 ${importResult.failed} 条`"
+        >
+          <template v-if="importResult.errors?.length" #default>
+            <ul class="dm-import-errors">
+              <li v-for="(item, index) in importResult.errors.slice(0, 20)" :key="index">{{ item }}</li>
+              <li v-if="importResult.errors.length > 20">剩余 {{ importResult.errors.length - 20 }} 条错误未展示</li>
+            </ul>
+          </template>
+        </el-alert>
+      </div>
+
       <template #footer>
-        <el-button @click="importVisible = false">取消</el-button>
-        <el-button type="primary" :loading="importLoading" @click="submitImport">开始导入</el-button>
+        <el-button :disabled="actionBusy" @click="closeImportDialog">取消</el-button>
+        <el-button type="primary" :loading="actionBusy" :disabled="!canSubmitImport" @click="submitImport">确认导入</el-button>
       </template>
     </el-dialog>
   </main>
@@ -810,6 +952,13 @@ watch(scopeProjectId, () => {
 .tt-create-field { padding: 8px 0; }
 .tt-field-toolbar { margin: 8px 0; }
 .tt-field-edit { padding: 8px 16px; }
+.dm-import-dialog-body { min-width: 0; max-height: min(60vh, 520px); padding-right: 2px; overflow-x: hidden; overflow-y: auto; }
+.dm-import-template-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+.dm-import-template-row span { min-width: 0; overflow-wrap: anywhere; }
+.dm-import-result { margin: 14px 0 0; }
+.dm-import-message { word-break: break-word; }
+.dm-import-errors { margin: 6px 0 0; padding-left: 18px; }
+.dm-import-errors li { margin: 2px 0; word-break: break-word; }
 
 @media (max-width: 760px) {
   .tt-page .ui-toolbar__filters, .tt-page .ui-toolbar__actions { width: 100%; }
