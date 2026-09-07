@@ -1,11 +1,11 @@
 {
   "schema_version": 5,
-  "revision": 31,
+  "revision": 45,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T01:40:38+00:00",
+  "updated_at": "2026-09-07T02:28:12+00:00",
   "mode": "high-assurance",
   "workflow": "full",
-  "phase": "observing",
+  "phase": "executing",
   "phase_history": [
     {
       "from": null,
@@ -78,6 +78,48 @@
       "to": "observing",
       "evidence": "T1移交保护输出已提交观测，待综合和浏览器验收",
       "recorded_at": "2026-09-07T01:40:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "执行已批准整体需求",
+      "recorded_at": "2026-09-07T01:49:20+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "补精确路径及依赖验收边界",
+      "recorded_at": "2026-09-07T01:49:34+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "实施整体需求",
+      "recorded_at": "2026-09-07T01:49:34+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "补真实选项和任务工单发起入口精确路径",
+      "recorded_at": "2026-09-07T02:01:04+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "继续全链路实施",
+      "recorded_at": "2026-09-07T02:01:04+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "补齐R7实际入口和现有回归测试装配的精确范围，不改变业务授权边界",
+      "recorded_at": "2026-09-07T02:23:36+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "继续已批准业务实现和回归",
+      "recorded_at": "2026-09-07T02:28:12+00:00"
     }
   ],
   "stage_artifacts": {
@@ -2667,6 +2709,2046 @@
           ],
           "plan_status": "ready"
         }
+      },
+      {
+        "revision": 4,
+        "evidence": "既有T1测试作为实现依赖，综合验收保留",
+        "recorded_at": "2026-09-07T01:49:34+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "系统参与关系与统一资格契约",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "既有系统负责人字段、平台公开用户/项目能力",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "负责人变更由SubsystemPublicationService事务发布，接入参与服务移交守卫；平台成员退出守卫当前是单实例注入，不能直接增加第二个Bean，另行受控实现。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+                "web/src/modules/architecture/api.ts",
+                "web/src/modules/architecture/types.ts",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/SubsystemParticipationController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移；仅调整已审批的退出守卫聚合装配，公共接口保持兼容"
+              ],
+              "interface_contracts": [
+                "候选 ParticipationView(ownerUserId, explicitParticipantUserIds, effectiveParticipantUserIds, rowVersion)",
+                "候选 requireSystemParticipant(actor, projectId, subsystemId)；后续任务只调用统一资格服务",
+                "既有ProjectMemberRemovalGuard接口保持不变，平台汇总全部实现，任一待办/未完成任务/未解决阻塞拒绝成员退出；架构实现只查询arch_表。"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+                "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。",
+                "成员停用和删除均运行所有退出守卫；保留工作流守卫；任务与阻塞检查按tenant/project/user隔离。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "任务展开默认负责人、参与人及独立分派",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1 ParticipationView及requireSystemParticipant",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "T1后端基础32项及平台106项测试通过，作为实现依赖；T1及全链路浏览器与组合并发最终验收统一由T6覆盖，不提前宣称整体通过。",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+                "web/src/modules/architecture/PlanListPage.vue",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanParticipationService.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "生成预览：模板任务+目标类型+目标ID稳定键、ownerUserId、participantUserIds",
+                "生成提交和分派更新：校验有效系统人员；负责人原子加入任务参与人"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+                "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+                "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "任务执行授权及个人/管理读取闭环",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1统一系统资格",
+                "T2任务分工",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanEngine.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanTimeService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "个人查询 view=mine 与有管理资格的 view=management",
+                "服务端对象 canView/canManage/canExecute；管理员不豁免requireTaskExecutor"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+                "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+                "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "资源申请及关联业务权限闭环",
+              "requirement_ids": [
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1统一系统资格",
+                "T3任务可见与执行能力",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkParticipationTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/InstanceListPage.vue",
+                "web/src/modules/architecture/DeploymentUnitPage.vue",
+                "web/src/modules/architecture/NetworkAccessPage.vue"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "资源申请目标筛选与逐项实体授权",
+                "通知及关联工单目标授权；流程办理不依赖申请人参与身份"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+                "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+                "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+                "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "替换当前搭建计划原有看板及分工交互",
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T3个人/管理读取和对象能力",
+                "T2分工预览及更新接口",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/components/PersonalTaskBoard.vue",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts",
+                "web/src/modules/architecture/architecture.css",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "当前计划原有看板原位替换为四列敏捷看板，固定planId，不新增跨计划筛选",
+                "同一看板内授权管理者切换当前计划全部任务，手机状态页签和单列任务卡片"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+                "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+                "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "存量迁移、端到端权限回归与交付验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1-T5契约与迁移",
+                "原始系统负责人及既有任务人员",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "权限矩阵证据、迁移差异报告、浏览器验收和上线/安全回退清单"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+                "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+                "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T5",
+              "to": "T6",
+              "reason": "共享资格与数据契约串行接入"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ],
+            [
+              "T6"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+                "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+                "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+                "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+                "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+                "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+                "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+                "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+                "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+                "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+                "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T6"
+              ],
+              "checks": [
+                "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+                "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+                "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ]
+            },
+            {
+              "label": "T2观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R8"
+              ]
+            },
+            {
+              "label": "T3观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R7"
+              ]
+            },
+            {
+              "label": "T4观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "T5观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R8"
+              ]
+            },
+            {
+              "label": "T6观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T4",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "资源网络控制器事务协调与选项过滤",
+        "recorded_at": "2026-09-07T02:01:04+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "系统参与关系与统一资格契约",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "既有系统负责人字段、平台公开用户/项目能力",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "负责人变更由SubsystemPublicationService事务发布，接入参与服务移交守卫；平台成员退出守卫当前是单实例注入，不能直接增加第二个Bean，另行受控实现。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+                "web/src/modules/architecture/api.ts",
+                "web/src/modules/architecture/types.ts",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/SubsystemParticipationController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移；仅调整已审批的退出守卫聚合装配，公共接口保持兼容"
+              ],
+              "interface_contracts": [
+                "候选 ParticipationView(ownerUserId, explicitParticipantUserIds, effectiveParticipantUserIds, rowVersion)",
+                "候选 requireSystemParticipant(actor, projectId, subsystemId)；后续任务只调用统一资格服务",
+                "既有ProjectMemberRemovalGuard接口保持不变，平台汇总全部实现，任一待办/未完成任务/未解决阻塞拒绝成员退出；架构实现只查询arch_表。"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+                "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。",
+                "成员停用和删除均运行所有退出守卫；保留工作流守卫；任务与阻塞检查按tenant/project/user隔离。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "任务展开默认负责人、参与人及独立分派",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1 ParticipationView及requireSystemParticipant",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "T1后端基础32项及平台106项测试通过，作为实现依赖；T1及全链路浏览器与组合并发最终验收统一由T6覆盖，不提前宣称整体通过。",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+                "web/src/modules/architecture/PlanListPage.vue",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanParticipationService.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "生成预览：模板任务+目标类型+目标ID稳定键、ownerUserId、participantUserIds",
+                "生成提交和分派更新：校验有效系统人员；负责人原子加入任务参与人"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+                "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+                "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "任务执行授权及个人/管理读取闭环",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1统一系统资格",
+                "T2任务分工",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanEngine.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanTimeService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "个人查询 view=mine 与有管理资格的 view=management",
+                "服务端对象 canView/canManage/canExecute；管理员不豁免requireTaskExecutor"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+                "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+                "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "资源申请及关联业务权限闭环",
+              "requirement_ids": [
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1统一系统资格",
+                "T3任务可见与执行能力",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。",
+                "真实任务发起入口位于资源和网络Controller，需事务协调避免先创建后失败留下孤立工单；网络工单载荷没有系统ID，独立申请不虚构系统关联，任务发起由任务资格控制。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkParticipationTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/InstanceListPage.vue",
+                "web/src/modules/architecture/DeploymentUnitPage.vue",
+                "web/src/modules/architecture/NetworkAccessPage.vue",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkWorkOrderController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "资源申请目标筛选与逐项实体授权",
+                "通知及关联工单目标授权；流程办理不依赖申请人参与身份"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+                "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+                "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+                "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "替换当前搭建计划原有看板及分工交互",
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T3个人/管理读取和对象能力",
+                "T2分工预览及更新接口",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/components/PersonalTaskBoard.vue",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts",
+                "web/src/modules/architecture/architecture.css",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "当前计划原有看板原位替换为四列敏捷看板，固定planId，不新增跨计划筛选",
+                "同一看板内授权管理者切换当前计划全部任务，手机状态页签和单列任务卡片"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+                "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+                "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "存量迁移、端到端权限回归与交付验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1-T5契约与迁移",
+                "原始系统负责人及既有任务人员",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "权限矩阵证据、迁移差异报告、浏览器验收和上线/安全回退清单"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+                "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+                "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T5",
+              "to": "T6",
+              "reason": "共享资格与数据契约串行接入"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ],
+            [
+              "T6"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+                "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+                "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+                "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+                "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+                "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+                "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+                "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+                "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+                "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+                "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T6"
+              ],
+              "checks": [
+                "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+                "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+                "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ]
+            },
+            {
+              "label": "T2观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R8"
+              ]
+            },
+            {
+              "label": "T3观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R7"
+              ]
+            },
+            {
+              "label": "T4观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "T5观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R8"
+              ]
+            },
+            {
+              "label": "T6观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T4",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 6,
+        "evidence": "补齐R7实际入口与原测试装配的精确范围",
+        "recorded_at": "2026-09-07T02:28:12+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "系统参与关系与统一资格契约",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "既有系统负责人字段、平台公开用户/项目能力",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "负责人变更由SubsystemPublicationService事务发布，接入参与服务移交守卫；平台成员退出守卫当前是单实例注入，不能直接增加第二个Bean，另行受控实现。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+                "web/src/modules/architecture/api.ts",
+                "web/src/modules/architecture/types.ts",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/SubsystemParticipationController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移；仅调整已审批的退出守卫聚合装配，公共接口保持兼容"
+              ],
+              "interface_contracts": [
+                "候选 ParticipationView(ownerUserId, explicitParticipantUserIds, effectiveParticipantUserIds, rowVersion)",
+                "候选 requireSystemParticipant(actor, projectId, subsystemId)；后续任务只调用统一资格服务",
+                "既有ProjectMemberRemovalGuard接口保持不变，平台汇总全部实现，任一待办/未完成任务/未解决阻塞拒绝成员退出；架构实现只查询arch_表。"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+                "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。",
+                "成员停用和删除均运行所有退出守卫；保留工作流守卫；任务与阻塞检查按tenant/project/user隔离。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "任务展开默认负责人、参与人及独立分派",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1 ParticipationView及requireSystemParticipant",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "T1后端基础32项及平台106项测试通过，作为实现依赖；T1及全链路浏览器与组合并发最终验收统一由T6覆盖，不提前宣称整体通过。",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+                "web/src/modules/architecture/PlanListPage.vue",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanParticipationService.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "生成预览：模板任务+目标类型+目标ID稳定键、ownerUserId、participantUserIds",
+                "生成提交和分派更新：校验有效系统人员；负责人原子加入任务参与人"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+                "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+                "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "任务执行授权及个人/管理读取闭环",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1统一系统资格",
+                "T2任务分工",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanEngine.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanTimeService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "个人查询 view=mine 与有管理资格的 view=management",
+                "服务端对象 canView/canManage/canExecute；管理员不豁免requireTaskExecutor"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+                "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+                "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "资源申请及关联业务权限闭环",
+              "requirement_ids": [
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1统一系统资格",
+                "T3任务可见与执行能力",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。",
+                "真实任务发起入口位于资源和网络Controller，需事务协调避免先创建后失败留下孤立工单；网络工单载荷没有系统ID，独立申请不虚构系统关联，任务发起由任务资格控制。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkParticipationTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/InstanceListPage.vue",
+                "web/src/modules/architecture/DeploymentUnitPage.vue",
+                "web/src/modules/architecture/NetworkAccessPage.vue",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkWorkOrderController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessLifecycleServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicyTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicy.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "资源申请目标筛选与逐项实体授权",
+                "通知及关联工单目标授权；流程办理不依赖申请人参与身份"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+                "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+                "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+                "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "替换当前搭建计划原有看板及分工交互",
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T3个人/管理读取和对象能力",
+                "T2分工预览及更新接口",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/components/PersonalTaskBoard.vue",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java",
+                "web/src/modules/architecture/PlanDetailPage.vue",
+                "web/src/modules/architecture/planApi.ts",
+                "web/src/modules/architecture/architecture.css",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "当前计划原有看板原位替换为四列敏捷看板，固定planId，不新增跨计划筛选",
+                "同一看板内授权管理者切换当前计划全部任务，手机状态页签和单列任务卡片"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+                "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+                "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "存量迁移、端到端权限回归与交付验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T1-T5契约与迁移",
+                "原始系统负责人及既有任务人员",
+                "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+                "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
+              ],
+              "invariants": [
+                "租户/项目/实体授权",
+                "不修改历史迁移与公共实现"
+              ],
+              "interface_contracts": [
+                "权限矩阵证据、迁移差异报告、浏览器验收和上线/安全回退清单"
+              ],
+              "non_goals": [
+                "不新增跨计划看板或公共能力"
+              ],
+              "action_bounds": [
+                "仅任务精确路径；新增路径先修订scope和计划"
+              ],
+              "acceptance_checks": [
+                "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+                "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+                "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+              ],
+              "evidence_required": [
+                "测试命令退出码",
+                "实际diff与验证盲区"
+              ],
+              "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+              "stop_conditions": [
+                "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+              ],
+              "escalation_conditions": [
+                "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "共享资格与数据契约串行接入"
+            },
+            {
+              "from": "T5",
+              "to": "T6",
+              "reason": "共享资格与数据契约串行接入"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ],
+            [
+              "T6"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+                "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+                "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+                "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+                "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+                "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+                "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+                "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+                "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+                "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+                "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T6"
+              ],
+              "checks": [
+                "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+                "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+                "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R8"
+              ]
+            },
+            {
+              "label": "T2观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R8"
+              ]
+            },
+            {
+              "label": "T3观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R7"
+              ]
+            },
+            {
+              "label": "T4观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "T5观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5",
+                "R8"
+              ]
+            },
+            {
+              "label": "T6观测",
+              "trigger": "执行报告完成",
+              "observer": "独立运行传感器及上线前非作者专项复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T4",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T5",
+                "T6"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready",
+          "plan_revision": "plan-6"
+        }
       }
     ],
     "executing": [
@@ -4750,7 +6832,7 @@
           "text": "T1代码切片已有可复验输出；32项聚焦与106项模块回归通过，尚不标记verified"
         }
       ],
-      "updated_at": "2026-09-07T01:40:38+00:00"
+      "updated_at": "2026-09-07T02:28:12+00:00"
     },
     {
       "id": "T2",
@@ -4760,12 +6842,12 @@
         "R3",
         "R8"
       ],
-      "prerequisites": [
-        "T1"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1 ParticipationView及requireSystemParticipant",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "T1后端基础32项及平台106项测试通过，作为实现依赖；T1及全链路浏览器与组合并发最终验收统一由T6覆盖，不提前宣称整体通过。",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java",
@@ -4774,7 +6856,9 @@
         "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
         "web/src/modules/architecture/PlanListPage.vue",
         "web/src/modules/architecture/PlanDetailPage.vue",
-        "web/src/modules/architecture/planApi.ts"
+        "web/src/modules/architecture/planApi.ts",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanParticipationService.java"
       ],
       "invariants": [
         "租户/项目/实体授权",
@@ -4807,8 +6891,13 @@
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
       "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-07T01:28:29+00:00"
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T01:49:20+00:00",
+          "text": "开始逐任务默认分工及分派契约"
+        }
+      ],
+      "updated_at": "2026-09-07T02:28:12+00:00"
     },
     {
       "id": "T3",
@@ -4818,13 +6907,12 @@
         "R4",
         "R7"
       ],
-      "prerequisites": [
-        "T2"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1统一系统资格",
         "T2任务分工",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
@@ -4869,9 +6957,14 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-07T01:28:29+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T02:01:04+00:00",
+          "text": "已接入实现，正在逐入口验证"
+        }
+      ],
+      "updated_at": "2026-09-07T02:28:12+00:00"
     },
     {
       "id": "T4",
@@ -4880,13 +6973,13 @@
         "R6",
         "R7"
       ],
-      "prerequisites": [
-        "T3"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1统一系统资格",
         "T3任务可见与执行能力",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。",
+        "真实任务发起入口位于资源和网络Controller，需事务协调避免先创建后失败留下孤立工单；网络工单载荷没有系统ID，独立申请不虚构系统关联，任务发起由任务资格控制。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
@@ -4901,7 +6994,20 @@
         "web/src/modules/architecture/ResourceRequestPage.vue",
         "web/src/modules/architecture/InstanceListPage.vue",
         "web/src/modules/architecture/DeploymentUnitPage.vue",
-        "web/src/modules/architecture/NetworkAccessPage.vue"
+        "web/src/modules/architecture/NetworkAccessPage.vue",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkWorkOrderController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessLifecycleServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicyTest.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicy.java"
       ],
       "invariants": [
         "租户/项目/实体授权",
@@ -4935,8 +7041,13 @@
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
       "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-07T01:28:29+00:00"
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T02:01:05+00:00",
+          "text": "已接入实现，正在逐入口验证"
+        }
+      ],
+      "updated_at": "2026-09-07T02:28:12+00:00"
     },
     {
       "id": "T5",
@@ -4947,13 +7058,12 @@
         "R5",
         "R8"
       ],
-      "prerequisites": [
-        "T4"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T3个人/管理读取和对象能力",
         "T2分工预览及更新接口",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "web/src/modules/architecture/components/PersonalTaskBoard.vue",
@@ -4994,9 +7104,14 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-07T01:28:29+00:00"
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T02:01:05+00:00",
+          "text": "已接入实现，正在逐入口验证"
+        }
+      ],
+      "updated_at": "2026-09-07T02:28:12+00:00"
     },
     {
       "id": "T6",
@@ -5011,13 +7126,12 @@
         "R7",
         "R8"
       ],
-      "prerequisites": [
-        "T5"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1-T5契约与迁移",
         "原始系统负责人及既有任务人员",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
@@ -5053,7 +7167,7 @@
       ],
       "status": "planned",
       "evidence": [],
-      "updated_at": "2026-09-07T01:28:29+00:00"
+      "updated_at": "2026-09-07T02:28:12+00:00"
     }
   ],
   "feedback": [

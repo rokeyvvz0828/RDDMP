@@ -74,12 +74,12 @@
         "R3",
         "R8"
       ],
-      "prerequisites": [
-        "T1"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1 ParticipationView及requireSystemParticipant",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "T1后端基础32项及平台106项测试通过，作为实现依赖；T1及全链路浏览器与组合并发最终验收统一由T6覆盖，不提前宣称整体通过。",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java",
@@ -88,7 +88,9 @@
         "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
         "web/src/modules/architecture/PlanListPage.vue",
         "web/src/modules/architecture/PlanDetailPage.vue",
-        "web/src/modules/architecture/planApi.ts"
+        "web/src/modules/architecture/planApi.ts",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanParticipationService.java"
       ],
       "invariants": [
         "租户/项目/实体授权",
@@ -129,13 +131,12 @@
         "R4",
         "R7"
       ],
-      "prerequisites": [
-        "T2"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1统一系统资格",
         "T2任务分工",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
@@ -188,13 +189,13 @@
         "R6",
         "R7"
       ],
-      "prerequisites": [
-        "T3"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1统一系统资格",
         "T3任务可见与执行能力",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。",
+        "真实任务发起入口位于资源和网络Controller，需事务协调避免先创建后失败留下孤立工单；网络工单载荷没有系统ID，独立申请不虚构系统关联，任务发起由任务资格控制。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
@@ -209,7 +210,20 @@
         "web/src/modules/architecture/ResourceRequestPage.vue",
         "web/src/modules/architecture/InstanceListPage.vue",
         "web/src/modules/architecture/DeploymentUnitPage.vue",
-        "web/src/modules/architecture/NetworkAccessPage.vue"
+        "web/src/modules/architecture/NetworkAccessPage.vue",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkWorkOrderController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessLifecycleServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicyTest.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicy.java"
       ],
       "invariants": [
         "租户/项目/实体授权",
@@ -252,13 +266,12 @@
         "R5",
         "R8"
       ],
-      "prerequisites": [
-        "T4"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T3个人/管理读取和对象能力",
         "T2分工预览及更新接口",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "web/src/modules/architecture/components/PersonalTaskBoard.vue",
@@ -313,13 +326,12 @@
         "R7",
         "R8"
       ],
-      "prerequisites": [
-        "T5"
-      ],
+      "prerequisites": [],
       "input_facts": [
         "T1-T5契约与迁移",
         "原始系统负责人及既有任务人员",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "按T2至T6顺序实施，复用前序已验证接口；全部任务的整体验收由T6收口。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
@@ -666,5 +678,6 @@
       ]
     }
   ],
-  "plan_status": "ready"
+  "plan_status": "ready",
+  "plan_revision": "plan-6"
 }
