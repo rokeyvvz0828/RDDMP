@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-07",
+  "source": "用户：可以，上一个和这一个问题一起修复",
+  "phase": "observing",
+  "scope": "architecture计划创建、分派、进度展示及既有聚焦测试",
+  "design": [
+    "零任务创建保留未开始，沿用模板环节后补任务",
+    "公共任务候选取有效项目成员与有效用户交集，默认负责人须在交集中",
+    "预览成功空结果与失败区分，创建核验空分派快照",
+    "部分目标无专属任务提示但不把公共任务强制拆分；进度明确为已配置任务进度",
+    "后补任务提供负责人/参与人选择，目标切换时重新获取分工；负责人自动参与",
+    "公共任务生成使用与预览相同的空目标类型，确保显式分派不被默认值覆盖"
+  ],
+  "reuse": "复用交付示范中心的提示、空态和主次操作模式以及现有el-alert/el-select/Ui组件；不改公共组件，无新增专用样式",
+  "layout": "保留向导正文局部滚动、固定底部操作；移动端表单单列，提示换行",
+  "impact": "仅architecture业务只读候选接口与既有创建路径，不扩大执行权限；沿用现有创建/分派审计，无迁移",
+  "tests": [
+    "后端分派候选、默认资格、零任务创建、空计划重算、陈旧空预览拒绝",
+    "前端构建与本地浏览器桌面/手机验证"
+  ],
+  "rollback": "按本轮提交回退，无数据迁移",
+  "interface_contract": "GET /api/architecture/plans/{id}/new-task-assignment?projectRef&targetId(可选)：管理权限+项目解析+计划负责人/管理者+可调整状态+当前计划有效目标校验；返回ownerUserId、participantUserIds、candidates；越界目标403",
+  "verification": "observation-plan-creation.json"
+}

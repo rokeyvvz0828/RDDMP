@@ -127,6 +127,13 @@ const createSaving = ref(false)
 const wizard = ref(0)
 const previewTasks = ref<import('./planApi').PreviewTask[]>([])
 const previewLoading = ref(false)
+const previewReady = ref(false)
+const uncoveredTargets = computed(() => [
+  ...createForm.physicalSubsystemIds.filter(id => !previewTasks.value.some(t => t.targetType === 'PHYSICAL_SUBSYSTEM' && t.targetId === id))
+    .map(id => physicalOptions.value.find(p => p.id === id)?.name || '所选系统'),
+  ...createForm.deploymentUnitIds.filter(id => !previewTasks.value.some(t => t.targetType === 'DEPLOYMENT_UNIT' && t.targetId === id))
+    .map(id => deploymentUnitOptions.value.find(p => p.id === id)?.name || '所选部署单元')
+])
 const createForm = reactive({
   environmentId: null as number | null,
   templateId: null as number | null,
@@ -145,6 +152,8 @@ const ownerOptions = ref<{ id: number; displayName: string }[]>([])
 
 async function openCreate() {
   wizard.value = 0
+  previewReady.value = false
+  previewTasks.value = []
   Object.assign(createForm, {
     environmentId: null, templateId: null, name: '', planOwnerUserId: null,
     participantUserIds: [], physicalSubsystemIds: [], deploymentUnitIds: [],
@@ -181,10 +190,13 @@ async function loadPreview() {
     ElMessage.warning('请先选择环境、模板和计划负责人')
     return
   }
+  previewReady.value = false
+  previewTasks.value = []
   previewLoading.value = true
   try {
     previewTasks.value = await previewPlan({ ...createForm, environmentId: createForm.environmentId,
       templateId: createForm.templateId, planOwnerUserId: createForm.planOwnerUserId })
+    previewReady.value = true
     wizard.value = 3
   } catch (error) { ElMessage.error(apiErrorMessage(error, '任务分工预览失败')) }
   finally { previewLoading.value = false }
@@ -194,6 +206,7 @@ function changePreviewOwner(task: import('./planApi').PreviewTask) {
 }
 
 async function createPlanSubmit() {
+  if (createSaving.value || !previewReady.value) return
   if (!createForm.environmentId || !createForm.templateId || !createForm.planOwnerUserId) {
     ElMessage.warning('请完成环境、模板与计划责任人选择')
     return
@@ -326,10 +339,10 @@ function formatDateTime(value: string | null | undefined) {
             <UiStatusTag :value="scope.row.status" :labels="statusLabels" :tone="statusTones[scope.row.status as PlanStatus]" />
           </template>
         </el-table-column>
-        <el-table-column label="进度" width="150">
+        <el-table-column label="任务进度" width="150">
           <template #default="scope">
             <el-progress :percentage="scope.row.progress ?? 0" :stroke-width="10" :show-text="false" />
-            <span class="plan-progress-text">{{ scope.row.progress ?? 0 }}%</span>
+            <span class="plan-progress-text">{{ scope.row.taskCount === 0 ? '待补充任务' : (scope.row.progress == null ? '暂无可统计检查项' : scope.row.progress + '%') }}</span>
           </template>
         </el-table-column>
         <el-table-column label="标识" min-width="150">
@@ -364,7 +377,7 @@ function formatDateTime(value: string | null | undefined) {
             <UiStatusTag :value="row.status" :labels="statusLabels" :tone="statusTones[row.status as PlanStatus]" />
           </header>
           <dl>
-            <div><dt>进度</dt><dd>{{ row.progress ?? 0 }}%（{{ row.taskCount }} 个任务）</dd></div>
+            <div><dt>任务进度</dt><dd>{{ row.taskCount === 0 ? '待补充任务' : (row.progress == null ? '暂无可统计检查项' : row.progress + '%') }}（{{ row.taskCount }} 个任务）</dd></div>
             <div><dt>计划结束</dt><dd>{{ formatDateTime(row.plannedEnd) }}</dd></div>
             <div><dt>标识</dt><dd>{{ [row.hasBlocked ? '阻塞' : '', row.hasOverdue ? '逾期' : '', row.hasWaived ? '豁免' : ''].filter(Boolean).join('、') || '—' }}</dd></div>
           </dl>
@@ -445,10 +458,13 @@ function formatDateTime(value: string | null | undefined) {
       </el-form>
 
       <section v-if="wizard === 3" class="plan-assignment-preview">
-        <el-alert title="系统任务默认带出系统负责人及参与人员；可逐任务修改，不影响系统和其他任务。负责人自动参与，旧负责人默认保留。" type="info" :closable="false" />
-        <el-empty v-if="previewTasks.length === 0" description="所选目标未展开任务，请返回调整目标或模板" />
+        <el-alert title="系统及部署单元任务继承系统分工；公共任务默认由具备项目成员资格的计划负责人负责。可逐任务修改，负责人自动参与，旧负责人默认保留。" type="info" :closable="false" />
+        <el-alert v-if="previewTasks.length === 0" title="待补充任务：本次模板任务未匹配到所选目标" description="例如模板要求部署单元，但本次仅选择了系统。可以返回检查模板与目标，也可以先创建计划，之后在执行明细的环节中新增任务。无任务时计划保持未开始。" type="warning" :closable="false" />
+        <el-alert v-else-if="uncoveredTargets.length" :title="`以下目标没有专属任务：${uncoveredTargets.join('、')}`" description="公共任务不会按目标复制。请确认公共任务是否覆盖这些目标，或创建后补充专属任务；任务进度仅统计已配置的工作。" type="warning" :closable="false" />
         <article v-for="task in previewTasks" :key="task.key" class="plan-assignment-preview__task">
           <h4>{{ task.stageName }} · {{ task.name }}</h4><p>{{ task.targetName }}</p>
+          <el-alert v-if="!task.ownerUserId" :title="task.targetId == null ? '计划负责人不在有效项目成员范围内，请指定公共任务负责人' : '请指定具备系统参与资格的任务负责人'" type="warning" :closable="false" />
+          <el-alert v-if="!task.candidates.length" title="暂无符合资格的人员，请先完善项目或系统参与人员，再返回重新预览" type="warning" :closable="false" />
           <el-form label-position="top">
             <el-form-item label="任务负责人" required>
               <el-select v-model="task.ownerUserId" filterable style="width:100%" @change="changePreviewOwner(task)">
@@ -467,7 +483,7 @@ function formatDateTime(value: string | null | undefined) {
         <el-button v-if="wizard > 0" @click="wizard--">上一步</el-button>
         <el-button v-if="wizard < 2" type="primary" @click="wizard === 0 ? (loadTargets(), wizard++) : wizard++">下一步</el-button>
         <el-button v-else-if="wizard === 2" type="primary" :loading="previewLoading" @click="loadPreview">预览任务分工</el-button>
-        <el-button v-else type="primary" :disabled="!previewTasks.length" :loading="createSaving" @click="createPlanSubmit">创建计划</el-button>
+        <el-button v-else type="primary" :disabled="!previewReady || previewTasks.some(t => !t.ownerUserId)" :loading="createSaving" @click="createPlanSubmit">{{ previewTasks.length ? '创建计划' : '先创建，稍后补充任务' }}</el-button>
       </template>
     </el-dialog>
   </main>

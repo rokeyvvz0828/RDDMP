@@ -31,6 +31,30 @@ class PlanParticipationAuthorizationTest {
         when(systems.assignmentScope(eq(actor),any(),eq(100L))).thenReturn(scope(10L,List.of(10L,20L)));
     }
     @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+    @Test void 公共任务继承合格计划负责人且用用户姓名而非成员占位编号() {
+        when(members.findActiveMembers(actor,70)).thenReturn(List.of(new ProjectMemberReference(1,1007,"1007","owner")));
+        when(users.findUser(actor,1007,true)).thenReturn(Optional.of(new SystemUserReference(1007,"演示负责人","owner",null,true)));
+        var result = service.defaults(actor,70,null,null,1007L);
+        assertThat(result.ownerUserId()).isEqualTo(1007L);
+        assertThat(result.participantUserIds()).containsExactly(1007L);
+        assertThat(result.candidates()).extracting(Candidate::displayName).containsExactly("演示负责人");
+    }
+    @Test void 公共任务不自动分派给非项目成员也不扩大管理员资格() {
+        var result = service.defaults(actor,70,null,null,1007L);
+        assertThat(result.ownerUserId()).isNull();
+        assertThat(result.participantUserIds()).isEmpty();
+        assertThatThrownBy(() -> service.validate(actor,70,null,null,1007L,List.of()))
+                .isInstanceOf(BusinessException.class);
+    }
+    @Test void 公共任务过滤失效用户并允许改派有效成员() {
+        when(members.findActiveMembers(actor,70)).thenReturn(List.of(
+                new ProjectMemberReference(1,1007,"旧姓名","owner"),new ProjectMemberReference(2,20,"旧姓名","member")));
+        when(users.findUser(actor,20,true)).thenReturn(Optional.of(new SystemUserReference(20,"参与人","member",null,true)));
+        var result = service.defaults(actor,70,null,null,1007L);
+        assertThat(result.ownerUserId()).isNull();
+        assertThat(result.candidates()).extracting(Candidate::userId).containsExactly(20L);
+        assertThat(service.validate(actor,70,null,null,20L,List.of()).participantUserIds()).containsExactly(20L);
+    }
     @Test void 系统任务带出负责人和有效参与名单() {
         var value=service.defaults(actor,70,TargetType.PHYSICAL_SUBSYSTEM,100L,99L);
         assertThat(value.ownerUserId()).isEqualTo(10L);

@@ -83,7 +83,7 @@ class PlanParticipationControllerTest {
         verifyNoInteractions(context.getBean(ProjectAccessService.class));
     }
     @ParameterizedTest
-    @ValueSource(strings = {"assign", "cancelPlan", "cancelTask", "cancelCheckItem", "restoreCheckItem", "acceptSuggestion", "rejectSuggestion", "updatePlanSchedule", "updateStageSchedule", "correctEvent"})
+    @ValueSource(strings = {"newTaskAssignment", "assign", "cancelPlan", "cancelTask", "cancelCheckItem", "restoreCheckItem", "acceptSuggestion", "rejectSuggestion", "updatePlanSchedule", "updateStageSchedule", "correctEvent"})
     void 普通参与角色不能获得计划管理权限(String method) {
         login("architecture:plan:view");
         assertThatThrownBy(() -> invoke(method)).isInstanceOf(AccessDeniedException.class);

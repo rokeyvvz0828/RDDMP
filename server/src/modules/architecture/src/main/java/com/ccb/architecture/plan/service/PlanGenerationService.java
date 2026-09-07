@@ -103,7 +103,7 @@ public class PlanGenerationService {
         for (Long participant : participants) {
             requireUser(actor, participant, "任务参与人");
         }
-        if (cmd.taskAssignments() != null && !cmd.taskAssignments().isEmpty()) {
+        if (cmd.taskAssignments() != null) {
             var validKeys = preview(actor, projectId, cmd).stream().map(PreviewTask::key).collect(java.util.stream.Collectors.toSet());
             var receivedKeys = new java.util.HashSet<String>();
             for (var assignment : cmd.taskAssignments()) {
@@ -279,7 +279,7 @@ public class PlanGenerationService {
     }
 
     private PlanTarget nullTarget(long planId) {
-        return new PlanTarget(-1L, planId, TargetType.PHYSICAL_SUBSYSTEM, -1L, null, null, false, null);
+        return new PlanTarget(-1L, planId, null, -1L, null, null, false, null);
     }
 
     /** 增加计划目标（使用计划自身模板版本快照生成任务）。 */
@@ -633,6 +633,20 @@ public class PlanGenerationService {
             }
         }
         return result;
+    }
+
+    /** 后补任务也使用与创建预览相同的默认分工和实时资格边界。 */
+    public PlanParticipationService.Assignment newTaskAssignment(AuthUser actor, long projectId, long planId,
+            Long targetId, boolean manager) {
+        Plan plan = engine.requirePlan(actor, projectId, planId);
+        engine.requirePlanOwner(actor, plan, manager);
+        requireAdjustable(plan);
+        if (targetId == null) return engine.participation().defaults(actor, projectId, null, null, plan.planOwnerUserId());
+        PlanTarget target = store.findTarget(actor.tenantId(), projectId, planId, TargetType.PHYSICAL_SUBSYSTEM, targetId)
+                .or(() -> store.findTarget(actor.tenantId(), projectId, planId, TargetType.DEPLOYMENT_UNIT, targetId))
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN, "目标不在计划范围内"));
+        if (target.removed()) throw new BusinessException(ErrorCode.CONFLICT, "目标已移出计划，请重新选择");
+        return engine.participation().defaults(actor, projectId, target.targetType(), target.targetId(), plan.planOwnerUserId());
     }
 
     public PlanParticipationService.Assignment assignment(AuthUser actor, long projectId, long taskId, boolean manager) {

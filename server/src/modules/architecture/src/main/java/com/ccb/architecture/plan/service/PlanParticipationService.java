@@ -48,9 +48,11 @@ public class PlanParticipationService {
             return new Assignment(owner, view.effectiveParticipantUserIds(), candidates);
         }
         candidates = members.findActiveMembers(actor, projectId).stream()
-                .filter(m -> users.findUser(actor, m.userId(), true).isPresent())
-                .map(m -> new SubsystemParticipationService.Candidate(m.userId(), m.displayName())).toList();
-        owner = commonOwner;
+                .flatMap(m -> users.findUser(actor, m.userId(), true).stream())
+                .map(u -> new SubsystemParticipationService.Candidate(u.id(),
+                        u.displayName() == null || u.displayName().isBlank() ? u.username() : u.displayName())).toList();
+        // 默认分派不能超出执行资格，也不能把没有姓名选项的用户 ID 填入选择器。
+        owner = candidates.stream().anyMatch(c -> Objects.equals(c.userId(), commonOwner)) ? commonOwner : null;
         return new Assignment(owner, owner == null ? List.of() : List.of(owner), candidates);
     }
 

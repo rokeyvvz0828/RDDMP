@@ -114,7 +114,7 @@ public final class PlanModels {
                 List<Long> physicalSubsystemIds, List<Long> deploymentUnitIds, List<Long> participantUserIds,
                 LocalDateTime plannedStart, LocalDateTime plannedEnd) {
             this(environmentId, templateId, name, planOwnerUserId, physicalSubsystemIds, deploymentUnitIds,
-                    participantUserIds, plannedStart, plannedEnd, List.of());
+                    participantUserIds, plannedStart, plannedEnd, null);
         }
     }
 

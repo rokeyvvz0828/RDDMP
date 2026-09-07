@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 144,
+  "revision": 145,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T08:52:11+00:00",
+  "updated_at": "2026-09-07T09:53:51+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -7779,6 +7779,78 @@
           "coverage_gaps": [
             "本轮无后端改动，未重跑后端测试",
             "既有整体上线复核缺口保留"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 14,
+        "evidence": "两处用户反馈修复：82项聚焦测试、构建、本地HTTP及浏览器复验；独立复核和已列缺口保留",
+        "recorded_at": "2026-09-07T09:53:51+00:00",
+        "data": {
+          "sample_label": "plan-creation-and-common-assignment-recheck",
+          "task_ids": [
+            "T2",
+            "T6"
+          ],
+          "baseline_revision": "用户2026-09-07批准两处问题合并修复",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "Maven聚焦测试",
+              "result": "pass",
+              "raw_evidence": "82项，0失败/错误/跳过；TEMP/rddmp-066-plan-creation-tests-final.log；覆盖空计划、陈旧空预览、有效用户姓名、公共任务显式分派、后补同计划目标授权。",
+              "limitation": [
+                "mock服务测试与控制器授权测试；未跑全仓测试"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "本地HTTP与真实浏览器",
+              "result": "pass",
+              "raw_evidence": "公共任务姓名回归计划1788773103944796显示演示投产负责人；空计划1788773233451483通过手机创建并成功后补公共及系统任务；系统默认带5人，可改为演示研发工程师保存；计划负责人无项目资格时1788774503818224预览留空，改选后保存公共任务负责人910000000000004；后补界面留空禁用，选演示测试负责人后保存；最终空计划1788774666898131为NOT_STARTED/progress=null/0任务/1环节；越界targetId=999返回403。",
+              "limitation": [
+                "仅本地合成数据；未经非作者独立复核"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "真实浏览器",
+              "result": "pass",
+              "raw_evidence": "最终空计划详情显示待补充任务、暂无可统计检查项；敏捷看板四列均0，不显示完成。",
+              "limitation": [
+                "本轮未重复全部执行权限角色矩阵"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "构建与截图/DOM",
+              "result": "pass",
+              "raw_evidence": "npm --prefix web run build成功27.05s，TEMP/rddmp-066-plan-creation-build-final.log；1440x900、375x812、390x844、430x932浅色，1440x900与375x812深色表单检查；页面无横向溢出，保存取消可达；新验收页console error=[]。",
+              "limitation": [
+                "未重复390/430深色完整矩阵；深色禁用人员标签仍沿用公共组件现有浅底样式；预览网络失败未故障注入"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "测试初次失败为mock缺失及异常类型断言不匹配，已修正后82项通过",
+            "真实HTTP发现公共任务预览与生成key类型不一致导致重新分派未采用，已统一空目标类型并回归",
+            "越界目标曾返回500，改为业务FORBIDDEN后真实HTTP403",
+            "旧Vite会话有热更新LoginView循环初始化错误，新页面未复现；直达详情首次出现操作失败，点击重试恢复，原因本轮未定位"
+          ],
+          "coverage_gaps": [
+            "不宣称整体converged：上线非作者权限/数据库专项复核仍缺失",
+            "全仓治理受既有REQ061非JSON兼容YAML阻塞；模块/skill/准入检查先行通过，未越界改治理文件",
+            "本轮未执行全仓mvn test、未重新执行Flyway检查",
+            "完整四视口明暗组合及网络失败注入未全部重复",
+            "直达详情初次加载失败需重试的问题仍待独立定位"
           ],
           "error_counts": {
             "P0": 0,

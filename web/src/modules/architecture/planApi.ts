@@ -469,6 +469,11 @@ export interface PreviewTask extends Omit<TaskAssignmentView, 'rowVersion'> {
 export async function previewPlan(payload: Parameters<typeof createPlan>[0]) {
   return (await projectHttp.post<ApiResponse<PreviewTask[]>>('/architecture/plans/preview', payload)).data.data
 }
+export async function getNewTaskAssignment(id: number, targetId: number | null) {
+  return (await projectHttp.get<ApiResponse<Omit<TaskAssignmentView, 'rowVersion'>>>(`/architecture/plans/${id}/new-task-assignment`, {
+    params: targetId == null ? {} : { targetId }
+  })).data.data
+}
 export async function getTaskAssignment(id: number) {
   return (await projectHttp.get<ApiResponse<TaskAssignmentView>>(`/architecture/tasks/${id}/assignment`)).data.data
 }

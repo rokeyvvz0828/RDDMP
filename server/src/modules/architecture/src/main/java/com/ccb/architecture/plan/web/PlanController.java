@@ -23,6 +23,7 @@ import com.ccb.architecture.plan.service.PlanDependencyService;
 import com.ccb.architecture.plan.service.PlanEngine;
 import com.ccb.architecture.plan.service.PlanExecutionService;
 import com.ccb.architecture.plan.service.PlanGenerationService;
+import com.ccb.architecture.plan.service.PlanParticipationService;
 import com.ccb.architecture.plan.service.PlanQueryService;
 import com.ccb.architecture.plan.service.PlanTimeService;
 import com.ccb.architecture.plan.service.PlanWorkOrderService;
@@ -289,6 +290,15 @@ public class PlanController {
                         request.ownerUserId(), request.plannedStart(), request.plannedEnd()),
                         isAdmin(authentication)));
         return success(toStageView(stage));
+    }
+
+    @GetMapping("/plans/{id}/new-task-assignment")
+    @PreAuthorize(MANAGE_AUTHORITY)
+    public ApiResponse<PlanParticipationService.Assignment> newTaskAssignment(@PathVariable long id,
+            @RequestParam String projectRef, @RequestParam(required = false) Long targetId,
+            @AuthenticationPrincipal AuthUser actor, Authentication authentication) {
+        return success(generationService.newTaskAssignment(actor, projectId(projectRef, actor), id, targetId,
+                isAdmin(authentication)));
     }
 
     @PostMapping("/plans/{id}/tasks")
