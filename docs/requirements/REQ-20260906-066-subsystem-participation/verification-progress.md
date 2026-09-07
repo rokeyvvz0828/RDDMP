@@ -102,3 +102,12 @@
 - 唯一失败为 `ArchitectureOptionsControllerTest.eachKnownContext兼容旧读取权限并纳入新三级权限`：physicalUsers精确断言仍为旧权限表达式；physicalParameters也仍使用旧期望，首次断言失败后未继续执行。应仅同步这两条期望，保留organizations/businessComponents限制及真实方法安全代理测试，不删除、不跳过测试。
 - 这是本次修复遗漏的关联测试同步，不归因于既有治理问题。日志：本地TEMP/rddmp-066-full-options-denial.log，22605起；对应结构化记录observation-full-regression.json。
 - `server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitectureOptionsControllerTest.java` 未纳入当前scope精确可写列表；未擅自修改或扩写scope。T5记录为blocked，phase保持observing，等待该单文件范围确认后同步断言、重跑聚焦和全仓。
+
+### 2026-09-07 15:24 最终回归通过（闭合旧权限断言遗漏）
+
+- 用户明确同意单测试文件纳入scope，授权记录见implementation-admission.md；提交9f71fa7只同步physicalUsers和physicalParameters两条精确期望，未删除或跳过测试，组织和业务组件选项断言保持原限制。
+- 聚焦测试3类19项通过，退出0，日志TEMP/rddmp-066-options-contract-green.log。
+- 最新 `mvn test` 于2026-09-07 15:24:28结束，耗时37:09，退出0。131类717项，失败0、错误0、跳过0，包含ccb-test-management与ccb-boot，全部模块SUCCESS。日志TEMP/rddmp-066-full-contract-final.log。
+- 上述结果闭合前次全仓失败及测试文件范围缺口；前次失败记录保留用于追踪。本轮仅测试和文档变更，上一轮生产构建与本地UI/API证据仍适用，但未冒称本轮重测浏览器。
+- 仍不宣称converged或已准予上线：既有治理/Flyway命名门禁、非作者权限/数据库专项复核及已披露未逐项执行的跨项目部署单元/附件UI路径仍须分别处理。当前控制phase为observing。
+- 回退本轮只需回退测试提交及对应范围文档，不涉及数据或生产行为；业务权限修复不应为迁就旧断言而撤销。
