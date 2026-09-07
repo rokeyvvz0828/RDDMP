@@ -1,6 +1,6 @@
 package com.ccb.architecture.plan.service;
 
-import com.ccb.architecture.plan.model.PlanModels.AddCheckItemCommand;
+import com.ccb.architecture.plan.model.PlanModels.*;
 import com.ccb.architecture.plan.model.PlanModels.AddStageCommand;
 import com.ccb.architecture.plan.model.PlanModels.AddTargetCommand;
 import com.ccb.architecture.plan.model.PlanModels.AddTaskCommand;
@@ -74,7 +74,8 @@ public class PlanGenerationService {
     /** 从已发布模板创建计划：固化模板版本、目标快照与结构快照，按维度生成任务与检查项。 */
     @Transactional
     public Plan createPlan(AuthUser actor, long projectId, CreatePlanCommand cmd) {
-        String name = requireText(cmd == null ? null : cmd.name(), "计划名称", 300);
+        Objects.requireNonNull(cmd, "计划命令不能为空");
+        String name = cmd.name() == null || cmd.name().isBlank() ? null : requireText(cmd.name(), "计划名称", 300);
         EnvironmentRef environment = store.envReference(actor.tenantId(), projectId, cmd.environmentId())
                 .orElseThrow(() -> new ArchitectureNotFoundException("具体环境不存在"));
         if (!"ACTIVE".equals(environment.status())) {
@@ -102,7 +103,18 @@ public class PlanGenerationService {
         for (Long participant : participants) {
             requireUser(actor, participant, "任务参与人");
         }
+        if (cmd.taskAssignments() != null && !cmd.taskAssignments().isEmpty()) {
+            var validKeys = preview(actor, projectId, cmd).stream().map(PreviewTask::key).collect(java.util.stream.Collectors.toSet());
+            var receivedKeys = new java.util.HashSet<String>();
+            for (var assignment : cmd.taskAssignments()) {
+                if (assignment == null || !validKeys.contains(assignment.key()) || !receivedKeys.add(assignment.key())) {
+                    throw new BusinessException(ErrorCode.CONFLICT, "任务预览已变化或分派重复，请重新预览");
+                }
+            }
+            if (!receivedKeys.equals(validKeys)) throw new BusinessException(ErrorCode.CONFLICT, "任务预览已变化，请重新预览后创建");
+        }
         long planId = nextId();
+        if (name == null) name = environment.name() + "搭建计划-" + planId;
         Plan plan = new Plan(planId, projectId, "SP" + planId, name, cmd.environmentId(), PlanStatus.NOT_STARTED,
                 cmd.templateId(), template.template().latestVersionNo(), cmd.planOwnerUserId(),
                 cmd.plannedStart(), cmd.plannedEnd(), null, null, false, null, null, null, 0);
@@ -119,22 +131,24 @@ public class PlanGenerationService {
         }
         // 结构生成
         generateFromSnapshot(actor, plan, template, physicals, units, participants, cmd.plannedStart(),
-                cmd.plannedEnd());
+                cmd.plannedEnd(), cmd.taskAssignments());
         // 生成后立即重算：按依赖/阻塞/检查项推导任务与环节状态（如前置未完成 → WAITING_PRECEDING）
         engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
         store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "PLAN", planId, "PLAN_CREATED",
                 actor.id(), null, toJson(Map.of("environment", environment.name(),
                         "template", template.template().name(),
                         "templateVersion", template.template().latestVersionNo())), null);
-        notificationService.notifyTaskAssigned(actor.tenantId(), plan.planNo(), plan.name(),
-                List.of(cmd.planOwnerUserId()));
+        for (Task assigned : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            notificationService.notifyTaskAssigned(actor.tenantId(), plan.planNo(), assigned.name(),
+                    engine.participation().recipients(actor, projectId, assigned));
+        }
         return refreshPlan(actor, projectId, planId);
     }
 
     private void generateFromSnapshot(AuthUser actor, Plan plan, PlanTemplateDetail template,
                                       List<TargetRef> physicals, List<TargetRef> units,
                                       List<Long> participants, LocalDateTime plannedStart,
-                                      LocalDateTime plannedEnd) {
+                                      LocalDateTime plannedEnd, List<TaskAssignment> overrides) {
         List<SnapshotStage> snapshot = templateService.parseSnapshot(
                 template.versions().get(0).contentJson());
         Map<Long, Long> stageIdByTemplateStageId = new LinkedHashMap<>();
@@ -169,6 +183,9 @@ public class PlanGenerationService {
                                     ref.id(), ref.code(), ref.name(), false, null)));
                 }
                 for (PlanTarget target : targets) {
+                    var assignment = resolveAssignment(actor, plan.projectId(), target.targetType(),
+                            target.targetId() < 0 ? null : target.targetId(), plan.planOwnerUserId(),
+                            assignmentKey(stageNo - 1, taskSnapshot.taskTemplateId(), target.targetType(), target.targetId()), overrides);
                     long taskId = nextId();
                     store.insertTask(actor.tenantId(), plan.projectId(), new Task(taskId, plan.id(), stageId, taskNo++,
                             taskSnapshot.name(),
@@ -180,7 +197,7 @@ public class PlanGenerationService {
                             taskSnapshot.taskTemplateId(), taskSnapshot.taskTemplateVersionNo(),
                             taskSnapshot.dimension().name(), toJson(Map.of("name", taskSnapshot.name(),
                                     "checkItems", taskSnapshot.checkItems())),
-                            plan.planOwnerUserId(), stageStart, stageEnd, null, null,
+                            assignment.ownerUserId(), stageStart, stageEnd, null, null,
                             TaskStatus.NOT_STARTED, false, false, null, null, null, 0));
                     TaskHandle handle = new TaskHandle(taskId,
                             target.targetType() == null ? null : target.targetType(),
@@ -196,7 +213,7 @@ public class PlanGenerationService {
                                 com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.PENDING,
                                 null, null, null, false, null, null, null, 0, actor.id()));
                     }
-                    for (Long participant : participants) {
+                    for (Long participant : assignment.participantUserIds()) {
                         store.insertParticipant(actor.tenantId(), plan.projectId(), nextId(), taskId, participant,
                                 actor.id());
                     }
@@ -341,6 +358,8 @@ public class PlanGenerationService {
                     continue;
                 }
                 for (PlanTarget target : newTargets) {
+                    var assignment = resolveAssignment(actor, projectId, target.targetType(), target.targetId(),
+                            stage.ownerUserId(), "", List.of());
                     int taskNo = store.findTasks(actor.tenantId(), projectId, planId, stage.id()).size() + 1;
                     long taskId = nextId();
                     store.insertTask(actor.tenantId(), projectId, new Task(taskId, planId, stage.id(), taskNo,
@@ -349,8 +368,11 @@ public class PlanGenerationService {
                             taskSnapshot.taskTemplateVersionNo(), taskSnapshot.dimension().name(),
                             toJson(Map.of("name", taskSnapshot.name(), "checkItems",
                                     taskSnapshot.checkItems())),
-                            stage.ownerUserId(), stage.plannedStart(), stage.plannedEnd(), null, null,
+                            assignment.ownerUserId(), stage.plannedStart(), stage.plannedEnd(), null, null,
                             TaskStatus.NOT_STARTED, false, false, null, null, null, 0));
+                    for (long user : assignment.participantUserIds()) {
+                        store.insertParticipant(actor.tenantId(), projectId, nextId(), taskId, user, actor.id());
+                    }
                     int checkNo = 1;
                     for (CheckItemDraft checkItem : taskSnapshot.checkItems()) {
                         store.insertCheckItem(actor.tenantId(), projectId, new CheckItem(nextId(), taskId,
@@ -464,6 +486,8 @@ public class PlanGenerationService {
         if (targetType == null) {
             targetType = TargetType.PHYSICAL_SUBSYSTEM;
         }
+        var assignment = engine.participation().validate(actor, projectId, targetType, targetId,
+                cmd.ownerUserId(), cmd.participantUserIds());
         int taskNo = store.findTasks(actor.tenantId(), projectId, planId, stage.id()).size() + 1;
         long taskId = nextId();
         store.insertTask(actor.tenantId(), projectId, new Task(taskId, planId, stage.id(), taskNo, name,
@@ -477,14 +501,14 @@ public class PlanGenerationService {
                     com.ccb.architecture.plan.model.PlanModels.CheckItemStatus.PENDING,
                     null, null, null, false, null, null, null, 0, actor.id()));
         }
-        for (Long participant : distinctIds(cmd.participantUserIds())) {
+        for (Long participant : assignment.participantUserIds()) {
             requireUser(actor, participant, "任务参与人");
             store.insertParticipant(actor.tenantId(), projectId, nextId(), taskId, participant, actor.id());
         }
         store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", planId, "TASK", taskId,
                 "TASK_ADDED", actor.id(), null, null, toJson(Map.of("name", name, "stage", stage.name())));
         notificationService.notifyTaskAssigned(actor.tenantId(), plan.planNo(), name,
-                List.of(cmd.ownerUserId()));
+                engine.participation().recipients(actor, projectId, requireFreshTask(actor, projectId, taskId)));
         engine.recompute(actor.tenantId(), projectId, planId, LocalDateTime.now());
         return requireFreshTask(actor, projectId, taskId);
     }
@@ -563,6 +587,90 @@ public class PlanGenerationService {
                 checkItemId, "CHECK_ITEM_DELETED", actor.id(), deleteReason,
                 toJson(Map.of("name", item.name())), null);
         engine.recompute(actor.tenantId(), projectId, task.planId(), LocalDateTime.now());
+    }
+
+    public record PreviewTask(String key, String stageName, String name, TargetType targetType,
+                              Long targetId, String targetName, Long ownerUserId,
+                              List<Long> participantUserIds,
+                              List<com.ccb.architecture.service.SubsystemParticipationService.Candidate> candidates) {}
+
+    private static String assignmentKey(int stageNo, Long templateId, TargetType type, Long targetId) {
+        return stageNo + ":" + templateId + ":" + type + ":" + targetId;
+    }
+
+    private PlanParticipationService.Assignment resolveAssignment(AuthUser actor, long projectId,
+            TargetType type, Long targetId, Long commonOwner, String key, List<TaskAssignment> overrides) {
+        var defaults = engine.participation().defaults(actor, projectId, type, targetId, commonOwner);
+        var override = overrides == null ? null : overrides.stream().filter(a -> key.equals(a.key())).findFirst().orElse(null);
+        return engine.participation().validate(actor, projectId, type, targetId,
+                override == null ? defaults.ownerUserId() : override.ownerUserId(),
+                override == null ? defaults.participantUserIds() : override.participantUserIds());
+    }
+
+    public List<PreviewTask> preview(AuthUser actor, long projectId, CreatePlanCommand cmd) {
+        var template = templateService.detailForGeneration(actor.tenantId(), cmd.templateId());
+        var physicals = store.listPhysicalSubsystemRefs(actor.tenantId(), projectId, distinctIds(cmd.physicalSubsystemIds()));
+        var units = store.listDeploymentUnitRefs(actor.tenantId(), projectId, distinctIds(cmd.deploymentUnitIds()));
+        List<PreviewTask> result = new ArrayList<>();
+        int stageNo = 0;
+        for (var stage : templateService.parseSnapshot(template.versions().get(0).contentJson())) {
+            stageNo++;
+            for (var task : stage.tasks()) {
+                TargetType type = switch (task.dimension()) {
+                    case NONE -> null;
+                    case PHYSICAL_SUBSYSTEM -> TargetType.PHYSICAL_SUBSYSTEM;
+                    case DEPLOYMENT_UNIT -> TargetType.DEPLOYMENT_UNIT;
+                };
+                var targets = type == null ? List.of(new TargetRef(-1, "", "公共任务", "ACTIVE"))
+                        : type == TargetType.PHYSICAL_SUBSYSTEM ? physicals : units;
+                for (var target : targets) {
+                    var defaults = engine.participation().defaults(actor, projectId, type,
+                            target.id() < 0 ? null : target.id(), cmd.planOwnerUserId() > 0 ? cmd.planOwnerUserId() : null);
+                    result.add(new PreviewTask(assignmentKey(stageNo, task.taskTemplateId(), type, target.id()),
+                            stage.stageName(), task.name(), type, target.id() < 0 ? null : target.id(), target.name(),
+                            defaults.ownerUserId(), defaults.participantUserIds(), defaults.candidates()));
+                }
+            }
+        }
+        return result;
+    }
+
+    public PlanParticipationService.Assignment assignment(AuthUser actor, long projectId, long taskId, boolean manager) {
+        Task task = engine.requireTask(actor, projectId, taskId);
+        engine.requirePlanOwner(actor, engine.requirePlan(actor, projectId, task.planId()), manager);
+        var defaults = engine.participation().defaults(actor, projectId, task.targetType(), task.targetId(), task.ownerUserId());
+        var ids = new java.util.LinkedHashSet<>(store.findParticipantUserIds(actor.tenantId(), projectId, taskId));
+        ids.add(task.ownerUserId());
+        return new PlanParticipationService.Assignment(task.ownerUserId(), List.copyOf(ids), defaults.candidates());
+    }
+
+    @Transactional
+    public Task assign(AuthUser actor, long projectId, long taskId, AssignmentCommand cmd, boolean manager) {
+        Task task = engine.requireTask(actor, projectId, taskId);
+        engine.requirePlanOwner(actor, engine.requirePlan(actor, projectId, task.planId()), manager);
+        String reason = requireText(cmd.reason(), "分派原因", 1000);
+        var assignment = engine.participation().validate(actor, projectId, task.targetType(), task.targetId(),
+                cmd.ownerUserId(), cmd.participantUserIds());
+        Task current = store.lockTask(actor.tenantId(), projectId, taskId).orElseThrow();
+        if (!current.equals(task)) throw new BusinessException(ErrorCode.CONFLICT, "任务已更新，请刷新后重新分派");
+        if (store.lockBlocks(actor.tenantId(), projectId, taskId).stream()
+                .anyMatch(block -> !block.resolved() && !assignment.participantUserIds().contains(block.ownerUserId()))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "请先移交退出人员的未解决阻塞责任");
+        }
+        if (cmd.rowVersion() == null || !store.updateTaskAssignment(actor.tenantId(), projectId, taskId,
+                assignment.ownerUserId(), cmd.rowVersion(), actor.id())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "任务已更新，请刷新后重新分派");
+        }
+        var before = store.findParticipantUserIds(actor.tenantId(), projectId, taskId);
+        store.deleteParticipants(actor.tenantId(), projectId, taskId);
+        for (long user : assignment.participantUserIds()) store.insertParticipant(actor.tenantId(), projectId, nextId(), taskId, user, actor.id());
+        store.insertActivity(actor.tenantId(), projectId, nextId(), "PLAN", task.planId(), "TASK", taskId,
+                "TASK_ASSIGNED", actor.id(), reason,
+                toJson(Map.of("ownerUserId", task.ownerUserId(), "participantUserIds", before)), toJson(assignment));
+        Task assigned = requireFreshTask(actor, projectId, taskId);
+        notificationService.notifyTaskAssigned(actor.tenantId(), engine.requirePlan(actor, projectId, task.planId()).planNo(),
+                assigned.name(), engine.participation().recipients(actor, projectId, assigned));
+        return assigned;
     }
 
     public Plan refreshPlan(AuthUser actor, long projectId, long planId) {

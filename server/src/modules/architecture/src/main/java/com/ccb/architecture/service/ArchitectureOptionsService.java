@@ -26,6 +26,27 @@ import java.util.Set;
 
 @Service
 public class ArchitectureOptionsService {
+    private SubsystemParticipationService participation;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(SubsystemParticipationService participation) { this.participation = participation; }
+
+    public PageResult<PhysicalSubsystemOption> participatingPhysicals(AuthUser actor, ProjectAccess project,
+            PageQuery page, String code, String name) {
+        requireActor(actor);
+        var allowed = participation.participatingSystemIds(actor, project);
+        if (allowed.isEmpty()) return new PageResult<>(List.of(), 0, page.page(), page.size());
+        List<PhysicalSubsystemOption> visible = new ArrayList<>();
+        long current = 1;
+        PageResult<PhysicalSubsystemOption> batch;
+        do {
+            batch = physicalSubsystems(actor, project, new PageQuery(current++, 100), code, name);
+            for (var item : batch.records()) {
+                if (allowed.contains(item.id())) visible.add(item);
+            }
+        } while ((current - 1) * 100 < batch.total());
+        return new PageResult<>(visible.stream().skip((page.page()-1)*page.size()).limit(page.size()).toList(), visible.size(), page.page(), page.size());
+    }
+
     public static final String PHYSICAL_RESOURCE = "physical-subsystem";
     public static final String BUSINESS_COMPONENT_CATEGORY = "ARCH_BUSINESS_COMPONENT";
 

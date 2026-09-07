@@ -50,27 +50,21 @@ public class PlanQueryService {
     }
 
     public PageResult<PlanRow> list(AuthUser actor, long projectId, PlanFilter filter, long page, long size) {
-        List<PlanListRow> rows = store.searchPlans(actor.tenantId(), projectId, filter.environmentId(),
-                filter.status(),
-                filter.ownerUserId(), filter.hasBlocked(), filter.hasOverdue(), filter.hasWaived(),
-                filter.keyword(), filter.targetType(), filter.targetId(), (int) size, (int) ((page - 1) * size));
-        LocalDateTime now = LocalDateTime.now();
-        List<PlanRow> views = new ArrayList<>();
-        for (PlanListRow row : rows) {
-            boolean overdue = filter.hasOverdue()
-                    || planHasOverdueTask(actor, projectId, row.plan().id(), now);
-            views.add(new PlanRow(row.plan().id(), row.plan().planNo(), row.plan().name(),
-                    row.environmentCode(), row.environmentName(), row.plan().status(),
-                    PlanStatusCalculator.progressPercent((int) row.completedCheckItems(),
-                            (int) row.totalCheckItems(), (int) row.cancelledCheckItems()),
-                    row.taskCount(), row.openBlocks() > 0, overdue,
-                    row.cancelledCheckItems() > 0 || hasWaived(actor, projectId, row.plan().id(), row),
-                    row.plan().plannedEnd(), row.plan().planOwnerUserId(), null));
-        }
-        long total = store.countPlans(actor.tenantId(), projectId, filter.environmentId(), filter.status(),
-                filter.ownerUserId(), filter.hasBlocked(), filter.hasOverdue(), filter.hasWaived(),
-                filter.keyword(), filter.targetType(), filter.targetId());
-        return new PageResult<>(views, total, page, size);
+        long safePage = Math.max(1, page);
+        int safeSize = (int) Math.max(1, Math.min(100, size));
+        var result = store.searchVisiblePlans(actor.tenantId(), projectId, actor.id(),
+                engine.participation().administrator(actor), engine.participation().activeMember(actor, projectId),
+                filter.environmentId(), filter.status(), filter.ownerUserId(), filter.hasBlocked(), filter.hasOverdue(),
+                filter.hasWaived(), filter.keyword(), filter.targetType(), filter.targetId(), safeSize, (safePage - 1) * safeSize);
+        var views = result.rows().stream().map(visible -> {
+            var row = visible.row();
+            return new PlanRow(row.plan().id(), row.plan().planNo(), row.plan().name(), row.environmentCode(),
+                    row.environmentName(), row.plan().status(),
+                    PlanStatusCalculator.progressPercent((int) row.completedCheckItems(), (int) row.totalCheckItems(),
+                            (int) row.cancelledCheckItems()), row.taskCount(), row.openBlocks() > 0,
+                    visible.overdue(), visible.waived(), row.plan().plannedEnd(), row.plan().planOwnerUserId(), null);
+        }).toList();
+        return new PageResult<>(views, result.total(), safePage, safeSize);
     }
 
     public record TargetView(long id, TargetType targetType, long targetId, String targetNo,
@@ -91,7 +85,7 @@ public class PlanQueryService {
                            LocalDateTime actualStart, LocalDateTime actualEnd, boolean cancelled,
                            String cancelReason, List<Long> participantUserIds,
                            List<Dependency> dependencies, List<Block> blocks, List<TaskWorkOrder> workOrders,
-                           List<CheckItemView> checkItems, List<PlanEventView> events) {
+                           List<CheckItemView> checkItems, List<PlanEventView> events, boolean canExecute) {
     }
 
     public record StageView(long id, int stageNo, String name, String status, boolean cancelled,
@@ -113,16 +107,24 @@ public class PlanQueryService {
     }
 
     public PlanDetailView detail(AuthUser actor, long projectId, long planId) {
+        return detail(actor, projectId, planId, engine.participation().readScope(actor, projectId, planId));
+    }
+
+    private PlanDetailView detail(AuthUser actor, long projectId, long planId, PlanParticipationService.ReadScope scope) {
         Plan plan = engine.requirePlan(actor, projectId, planId);
-        // 惰性重算（幂等）：查看时按依赖/阻塞/检查项推导最新状态，
-        // 同时自动修复历史数据（如生成时未重算导致的前置未完成却为 NOT_STARTED）
-        engine.recompute(actor.tenantId(), projectId, planId, java.time.LocalDateTime.now());
         EnvironmentRef environment = store.envReference(actor.tenantId(), projectId, plan.environmentId())
                 .orElse(new EnvironmentRef(0L, "", "", ""));
         List<TargetView> targets = new ArrayList<>();
         Map<Long, String> currentPhysicalNames = new HashMap<>();
         Map<Long, String> currentUnitNames = new HashMap<>();
+        var visibleTasks = store.findTasks(actor.tenantId(), projectId, planId, null).stream()
+                .filter(t -> (scope.manager() || scope.related(t))).toList();
+        if (visibleTasks.isEmpty() && !scope.manager()) {
+            throw new com.ccb.architecture.web.ArchitectureNotFoundException("搭建计划不存在或无权访问");
+        }
         for (PlanTarget target : store.findTargets(actor.tenantId(), projectId, planId, true)) {
+            if (!scope.manager() && visibleTasks.stream()
+                    .noneMatch(t -> t.targetType() == target.targetType() && java.util.Objects.equals(t.targetId(), target.targetId()))) continue;
             if (target.targetType() == TargetType.PHYSICAL_SUBSYSTEM) {
                 currentPhysicalNames.putIfAbsent(target.targetId(), currentName(actor, projectId,
                         TargetType.PHYSICAL_SUBSYSTEM, target.targetId()));
@@ -148,6 +150,7 @@ public class PlanQueryService {
         for (Stage stage : store.findStages(actor.tenantId(), projectId, planId)) {
             List<TaskView> taskViews = new ArrayList<>();
             for (Task task : store.findTasks(actor.tenantId(), projectId, planId, stage.id())) {
+                if (!(scope.manager() || scope.related(task))) continue;
                 List<CheckItem> items = store.findCheckItems(actor.tenantId(), projectId, task.id());
                 String targetName = TaskTargetName.of(task);
                 List<CheckItemView> itemViews = items.stream()
@@ -187,24 +190,25 @@ public class PlanQueryService {
                         task.status().name(), progress, task.waivedAll(), overdue, taskBlocked,
                         openWorkOrder, task.ownerUserId(), task.plannedStart(), task.plannedEnd(),
                         task.actualStart(), task.actualEnd(), task.cancelled(), task.cancelReason(),
-                        store.findParticipantUserIds(actor.tenantId(), projectId, task.id()),
-                        activeDependencies, blocks, workOrders, itemViews,
+                        scope.participants(task.id()),
+                        activeDependencies.stream().filter(d -> visibleTasks.stream().anyMatch(t -> t.id() == d.predecessorId())).toList(), blocks, workOrders.stream().filter(w -> engine.participation().workOrderVisible(actor, projectId, w.workOrderType(), w.workOrderId())).toList(), itemViews,
                         store.findEvents(actor.tenantId(), projectId, planId, "TASK", task.id()).stream()
-                                .map(PlanQueryService::toEventView).toList()));
+                                .map(PlanQueryService::toEventView).toList(), scope.related(task)));
             }
             boolean stageWaived = taskViews.stream()
                     .anyMatch(t -> t.waivedAll() || t.cancelled()
                             || (t.checkItems() != null && t.checkItems().stream()
                                     .anyMatch(CheckItemView::cancelled)));
+            if (taskViews.isEmpty() && !scope.manager()) continue;
             stages.add(new StageView(stage.id(), stage.stageNo(), stage.name(), stage.status().name(),
                     stage.cancelled(), stage.cancelReason(), stage.ownerUserId(),
                     stage.plannedStart(), stage.plannedEnd(), stage.actualStart(), stage.actualEnd(),
                     stageProgress(taskViews), stageWaived, taskViews));
         }
         Long planProgress = PlanStatusCalculator.progressPercent(doneCounter, totalCounter, cancelledCounter);
-        long pendingSuggestions = store.findPendingSuggestions(actor.tenantId(), projectId, 0L).stream()
+        long pendingSuggestions = !scope.manager() ? 0 : store.findPendingSuggestions(actor.tenantId(), projectId, 0L).stream()
                 .filter(s -> planContains(actor, projectId, planId, s.checkItemId())).count();
-        List<PlanEventView> events = store.findEvents(actor.tenantId(), projectId, planId,
+        List<PlanEventView> events = !scope.manager() ? List.of() : store.findEvents(actor.tenantId(), projectId, planId,
                 "PLAN", planId).stream()
                 .map(PlanQueryService::toEventView).toList();
         boolean uncompletable = !plan.cancelled()
@@ -212,7 +216,7 @@ public class PlanQueryService {
                 .noneMatch(s -> !s.cancelled());
         return new PlanDetailView(plan, environment.code(), environment.name(), targets, stages,
                 planProgress, hasBlocked, hasOverdue, hasWaived, uncompletable, pendingSuggestions,
-                store.findStageDependencies(actor.tenantId(), projectId, planId), events);
+                store.findStageDependencies(actor.tenantId(), projectId, planId).stream().filter(d -> stages.stream().anyMatch(st -> st.id() == d[0]) && stages.stream().anyMatch(st -> st.id() == d[1])).toList(), events);
     }
 
     public record DashboardStage(long id, int stageNo, String name, String status, Long progress,
@@ -220,7 +224,9 @@ public class PlanQueryService {
     }
 
     public record DashboardTask(long id, String name, String status, Long progress, boolean waivedAll,
-                                 boolean overdue, boolean hasBlocked, String targetName) {
+                                 boolean overdue, boolean hasBlocked, String targetName, long ownerUserId,
+                                String ownerName, long completedChecks, long totalChecks, LocalDateTime plannedEnd,
+                                boolean assignmentNeedsAttention) {
     }
 
     public record DashboardView(long planId, String planNo, String name, String environmentName,
@@ -229,15 +235,38 @@ public class PlanQueryService {
     }
 
     public DashboardView dashboard(AuthUser actor, long projectId, long planId) {
-        PlanDetailView detail = detail(actor, projectId, planId);
+        return dashboard(actor, projectId, planId, false);
+    }
+
+    public DashboardView dashboard(AuthUser actor, long projectId, long planId, boolean all) {
+        var scope = engine.participation().readScope(actor, projectId, planId);
+        if (all && !scope.manager()) {
+            throw new com.ccb.common.exception.BusinessException(com.ccb.common.exception.ErrorCode.FORBIDDEN, "仅计划管理者可查看全部任务");
+        }
+        PlanDetailView detail = detail(actor, projectId, planId, scope);
+        var relatedIds = store.findTasks(actor.tenantId(), projectId, planId, null).stream()
+                .filter(t -> all || scope.related(t)).map(Task::id).toList();
         List<DashboardStage> stages = detail.stages().stream().map(stage -> new DashboardStage(
                 stage.id(), stage.stageNo(), stage.name(), stage.status(), stage.progress(),
-                stage.hasWaived(), stage.tasks().stream().map(task -> new DashboardTask(task.id(),
+                false, stage.tasks().stream().filter(t -> !t.cancelled() && relatedIds.contains(t.id())).map(task -> new DashboardTask(task.id(),
                 task.name(), task.status(), task.progress(), task.waivedAll(), task.overdue(),
-                task.hasBlocked(), task.targetName())).toList())).toList();
+                task.hasBlocked(), task.targetName(), task.ownerUserId(),
+                scope.name(task.ownerUserId()),
+                task.checkItems().stream().filter(c -> !c.cancelled() && "COMPLETED".equals(c.status())).count(),
+                task.checkItems().stream().filter(c -> !c.cancelled()).count(), task.plannedEnd(),
+                scope.attention(
+                    task.targetType() == null ? null : TargetType.valueOf(task.targetType()), task.targetId(),
+                    task.ownerUserId(), task.participantUserIds()))).toList())).toList();
+        var tasks = stages.stream().flatMap(stage -> stage.tasks().stream()).toList();
+        var filteredStages = stages.stream().filter(stage -> !stage.tasks().isEmpty()).map(stage -> new DashboardStage(
+                stage.id(), stage.stageNo(), stage.name(), stage.status(),
+                (long) stage.tasks().stream().mapToLong(t -> t.progress() == null ? 0 : t.progress()).average().orElse(0),
+                stage.tasks().stream().anyMatch(DashboardTask::waivedAll), stage.tasks())).toList();
         return new DashboardView(detail.plan().id(), detail.plan().planNo(), detail.plan().name(),
-                detail.environmentName(), detail.plan().status(), detail.progress(), detail.hasBlocked(),
-                detail.hasOverdue(), detail.hasWaived(), stages);
+                detail.environmentName(), detail.plan().status(),
+                (long) tasks.stream().mapToLong(t -> t.progress() == null ? 0 : t.progress()).average().orElse(0),
+                tasks.stream().anyMatch(t -> t.hasBlocked() || "WAITING_PRECEDING".equals(t.status())),
+                tasks.stream().anyMatch(DashboardTask::overdue), tasks.stream().anyMatch(DashboardTask::waivedAll), filteredStages);
     }
 
     public record TimelineRow(long id, String name, String type, long parentId, String status,
@@ -251,15 +280,23 @@ public class PlanQueryService {
 
     public TimelineView timeline(AuthUser actor, long projectId, long planId) {
         Plan plan = engine.requirePlan(actor, projectId, planId);
+        if (!engine.participation().manager(actor, projectId, planId)
+                && store.findTasks(actor.tenantId(), projectId, planId, null).stream()
+                    .noneMatch(task -> engine.participation().related(actor, projectId, task))) {
+            throw new com.ccb.architecture.web.ArchitectureNotFoundException("搭建计划不存在或无权访问");
+        }
         List<TimelineRow> rows = new ArrayList<>();
         rows.add(new TimelineRow(plan.id(), plan.name(), "PLAN", 0, plan.status().name(),
                 plan.plannedStart(), plan.plannedEnd(), plan.actualStart(), plan.actualEnd(), null,
                 false, null));
         for (Stage stage : store.findStages(actor.tenantId(), projectId, planId)) {
+            if (!engine.participation().manager(actor, projectId, planId) && store.findTasks(actor.tenantId(), projectId, planId, stage.id()).stream()
+                    .noneMatch(t -> engine.participation().visible(actor, projectId, t))) continue;
             rows.add(new TimelineRow(stage.id(), stage.name(), "STAGE", stage.planId(),
                     stage.status().name(), stage.plannedStart(), stage.plannedEnd(),
                     stage.actualStart(), stage.actualEnd(), null, false, null));
             for (Task task : store.findTasks(actor.tenantId(), projectId, planId, stage.id())) {
+                if (!engine.participation().visible(actor, projectId, task)) continue;
                 boolean overdue = !task.cancelled() && task.status() != TaskStatus.COMPLETED
                         && task.plannedEnd() != null
                         && LocalDateTime.now().isAfter(task.plannedEnd());
@@ -275,6 +312,7 @@ public class PlanQueryService {
     public List<CancelSuggestion> pendingSuggestions(AuthUser actor, long projectId, long planId) {
         Map<Long, Long> checkToTask = new HashMap<>();
         for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            if (!engine.participation().visible(actor, projectId, task)) continue;
             for (CheckItem item : store.findCheckItems(actor.tenantId(), projectId, task.id())) {
                 checkToTask.put(item.id(), task.id());
             }
@@ -287,7 +325,7 @@ public class PlanQueryService {
     }
 
     public ReportView report(AuthUser actor, long projectId, long planId) {
-        return new ReportView(detail(actor, projectId, planId), dashboard(actor, projectId, planId),
+        return new ReportView(detail(actor, projectId, planId), dashboard(actor, projectId, planId, engine.participation().manager(actor, projectId, planId)),
                 timeline(actor, projectId, planId));
     }
 
@@ -318,6 +356,7 @@ public class PlanQueryService {
 
     private boolean planContains(AuthUser actor, long projectId, long planId, long checkItemId) {
         for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            if (!engine.participation().visible(actor, projectId, task)) continue;
             if (store.findCheckItems(actor.tenantId(), projectId, task.id()).stream()
                     .anyMatch(item -> item.id() == checkItemId)) {
                 return true;
@@ -328,6 +367,7 @@ public class PlanQueryService {
 
     private boolean planHasOverdueTask(AuthUser actor, long projectId, long planId, LocalDateTime now) {
         for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            if (!engine.participation().visible(actor, projectId, task)) continue;
             if (!task.cancelled() && task.status() != TaskStatus.COMPLETED
                     && task.plannedEnd() != null && now.isAfter(task.plannedEnd())) {
                 return true;
@@ -343,6 +383,7 @@ public class PlanQueryService {
             return true;
         }
         for (Task task : store.findTasks(actor.tenantId(), projectId, planId, null)) {
+            if (!engine.participation().visible(actor, projectId, task)) continue;
             if (store.findCheckItems(actor.tenantId(), projectId, task.id()).stream()
                     .anyMatch(CheckItem::cancelled)) {
                 return true;

@@ -82,6 +82,15 @@ public class ArchitectureOptionsController {
                 new PageQuery(page, size), code, name));
     }
 
+    @GetMapping("/resource-request/physical-subsystems")
+    @PreAuthorize("hasAnyAuthority('architecture:resource-request:apply','architecture:resource-request:manage','architecture:apply','architecture:manage')")
+    public ApiResponse<PageResult<PhysicalSubsystemOption>> participatingPhysicals(
+            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "100") long size,
+            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @RequestParam String projectRef, @AuthenticationPrincipal AuthUser actor) {
+        return success(service.participatingPhysicals(actor, project(projectRef, actor), new PageQuery(page, size), code, name));
+    }
+
     @GetMapping("/{resource}/organizations")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> unknownOrganizations(@PathVariable String resource) {

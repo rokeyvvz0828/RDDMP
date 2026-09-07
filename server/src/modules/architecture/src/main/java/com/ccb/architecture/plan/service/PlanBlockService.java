@@ -47,12 +47,16 @@ public class PlanBlockService {
 
     @Transactional
     public Block addBlock(AuthUser actor, long projectId, long taskId, BlockCommand cmd, boolean isAdmin) {
+        if (cmd == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "阻塞信息不能为空");
         Task task = engine.requireTask(actor, projectId, taskId);
-        if (!isAdmin && actor.id() != task.ownerUserId()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅任务责任人可以登记阻塞");
-        }
+        engine.requireTaskExecutor(actor, projectId, task, false);
         if (task.cancelled() || task.status() == TaskStatus.COMPLETED) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "任务已取消或已完成，不能登记阻塞");
+        }
+        engine.participation().validate(actor, projectId, task.targetType(), task.targetId(), cmd.ownerUserId(), List.of());
+        if (cmd.ownerUserId() != task.ownerUserId()
+                && !store.findParticipantUserIds(actor.tenantId(), projectId, task.id()).contains(cmd.ownerUserId())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请先将阻塞负责人加入任务参与人员");
         }
         String description = requireText(cmd == null ? null : cmd.description(), "阻塞描述", 2000);
         String impact = trimToNull(cmd == null ? null : cmd.impact(), 2000);
@@ -71,13 +75,26 @@ public class PlanBlockService {
     @Transactional
     public Block updateBlock(AuthUser actor, long projectId, long blockId, BlockCommand cmd,
                              boolean isAdmin) {
+        if (cmd == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "阻塞信息不能为空");
         Block block = requireBlock(actor, projectId, blockId);
         Task task = engine.requireTask(actor, projectId, block.taskId());
-        if (!isAdmin && actor.id() != task.ownerUserId()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅任务责任人可以修改阻塞");
+        if (!engine.participation().manager(actor, projectId, task.planId()))
+            engine.requireTaskExecutor(actor, projectId, task, false);
+        else {
+            // 先锁系统资格，再锁任务，与执行和分派命令保持一致。
+            engine.participation().validate(actor, projectId, task.targetType(), task.targetId(), cmd.ownerUserId(), List.of());
+            Task current = store.lockTask(actor.tenantId(), projectId, task.id())
+                    .orElseThrow(() -> new ArchitectureNotFoundException("任务不存在"));
+            if (!current.equals(task)) throw new BusinessException(ErrorCode.CONFLICT, "任务已更新，请刷新后重试");
         }
+        block = lockBlock(actor, projectId, blockId);
         if (block.resolved()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "阻塞已解除，不能修改");
+        }
+        engine.participation().validate(actor, projectId, task.targetType(), task.targetId(), cmd.ownerUserId(), List.of());
+        if (cmd.ownerUserId() != task.ownerUserId()
+                && !store.findParticipantUserIds(actor.tenantId(), projectId, task.id()).contains(cmd.ownerUserId())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请先将阻塞负责人加入任务参与人员");
         }
         String description = requireText(cmd == null ? null : cmd.description(), "阻塞描述", 2000);
         String impact = trimToNull(cmd == null ? null : cmd.impact(), 2000);
@@ -94,9 +111,8 @@ public class PlanBlockService {
     public Block resolveBlock(AuthUser actor, long projectId, long blockId, String note, boolean isAdmin) {
         Block block = requireBlock(actor, projectId, blockId);
         Task task = engine.requireTask(actor, projectId, block.taskId());
-        if (!isAdmin && actor.id() != task.ownerUserId()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅任务责任人可以解除阻塞");
-        }
+        engine.requireTaskExecutor(actor, projectId, task, false);
+        block = lockBlock(actor, projectId, blockId);
         if (block.resolved()) {
             throw new BusinessException(ErrorCode.CONFLICT, "阻塞已解除");
         }
@@ -111,7 +127,13 @@ public class PlanBlockService {
 
     public List<Block> listBlocks(AuthUser actor, long projectId, long taskId) {
         engine.requireTask(actor, projectId, taskId);
+        engine.participation().requireVisible(actor, projectId, engine.requireTask(actor, projectId, taskId));
         return store.findBlocks(actor.tenantId(), projectId, taskId);
+    }
+
+    private Block lockBlock(AuthUser actor, long projectId, long blockId) {
+        return store.lockBlock(actor.tenantId(), projectId, blockId)
+                .orElseThrow(() -> new ArchitectureNotFoundException("阻塞记录不存在"));
     }
 
     private Block requireBlock(AuthUser actor, long projectId, long blockId) {
@@ -120,10 +142,7 @@ public class PlanBlockService {
     }
 
     private List<Long> recipients(AuthUser actor, long projectId, Task task) {
-        List<Long> recipients = new java.util.ArrayList<>(store.findParticipantUserIds(actor.tenantId(),
-                projectId, task.id()));
-        recipients.add(task.ownerUserId());
-        return recipients;
+        return engine.participation().recipients(actor, projectId, task);
     }
 
     private String planNo(AuthUser actor, long projectId, long planId) {

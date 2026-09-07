@@ -24,11 +24,14 @@ public class PlanNotificationService {
 
     private final SystemNotificationPublisher publisher;
     private final PlanStore store;
+    private final com.ccb.system.capability.ProjectMemberReferenceQuery members;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public PlanNotificationService(SystemNotificationPublisher publisher, PlanStore store) {
+    public PlanNotificationService(SystemNotificationPublisher publisher, PlanStore store,
+                                   com.ccb.system.capability.ProjectMemberReferenceQuery members) {
         this.publisher = publisher;
         this.store = store;
+        this.members = members;
     }
 
     public void notifyTaskAssigned(long tenantId, String planNo, String taskName,
@@ -81,6 +84,11 @@ public class PlanNotificationService {
     public void scanOverdueAlerts() {
         for (PlanStore.AlertPlan alert : store.planIdsNeedingAlert()) {
             try {
+                // 调度无用户会话，仅以租户范围查询有效成员，失效负责人不接收摘要。
+                var recipient = new com.ccb.security.model.AuthUser(alert.planOwnerUserId(), alert.tenantId(),
+                        "plan-alert", "", "计划提醒", 0L, true);
+                if (members.findActiveMembers(recipient, alert.projectId()).stream()
+                        .noneMatch(member -> member.userId() == alert.planOwnerUserId())) continue;
                 long overdueCount = store.countOverdueTasks(alert.tenantId(), alert.projectId(), alert.planId(),
                         java.time.LocalDateTime.now());
                 if (overdueCount > 0) {

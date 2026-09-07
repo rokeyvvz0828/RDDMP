@@ -36,6 +36,15 @@ import java.util.Objects;
 @Service
 public class PlanEngine {
     private final PlanStore store;
+    private PlanParticipationService participation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(PlanParticipationService participation) {
+        this.participation = java.util.Objects.requireNonNull(participation);
+    }
+
+    public PlanParticipationService participation() { return java.util.Objects.requireNonNull(participation); }
+
 
     @org.springframework.beans.factory.annotation.Autowired
     public PlanEngine(PlanStore store) {
@@ -335,11 +344,7 @@ public class PlanEngine {
     }
 
     public void requireTaskExecutor(AuthUser actor, long projectId, Task task, boolean isAdmin) {
-        if (isAdmin || actor.id() == task.ownerUserId()
-                || store.findParticipantUserIds(actor.tenantId(), projectId, task.id()).contains(actor.id())) {
-            return;
-        }
-        throw new BusinessException(ErrorCode.FORBIDDEN, "仅任务责任人、参与人或管理员可以执行该操作");
+        participation().requireExecutor(actor, projectId, task);
     }
 
     public Plan requirePlan(AuthUser actor, long projectId, long planId) {

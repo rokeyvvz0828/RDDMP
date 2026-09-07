@@ -289,6 +289,18 @@ public class PlanStore {
                 task.status().name(), task.rowVersion(), task.ownerUserId(), task.ownerUserId());
     }
 
+    public Optional<Long> unitSystemId(long tenantId, long projectId, long unitId) {
+        return jdbc.query("SELECT physical_subsystem_id FROM arch_deployment_unit WHERE tenant_id=? AND project_id=? AND id=?",
+                (rs, n) -> rs.getLong(1), tenantId, projectId, unitId).stream().findFirst();
+    }
+
+    public boolean updateTaskAssignment(long tenantId, long projectId, long taskId, long owner,
+                                        long version, long actorId) {
+        requireTransaction();
+        return jdbc.update("UPDATE arch_plan_task SET owner_user_id=?, row_version=row_version+1, updated_by=? WHERE tenant_id=? AND project_id=? AND id=? AND row_version=?",
+                owner, actorId, tenantId, projectId, taskId, version) == 1;
+    }
+
     public Optional<Task> findTask(long tenantId, long projectId, long taskId) {
         return jdbc.query(taskSelect("WHERE task.tenant_id = ? AND task.project_id = ? AND task.id = ?"),
                 TASK_MAPPER, tenantId, projectId, taskId).stream().findFirst();
@@ -393,7 +405,18 @@ public class PlanStore {
                        completed_at, cancelled, cancel_reason, cancelled_by, cancelled_at, row_version,
                        created_by
                 FROM arch_plan_check_item WHERE tenant_id = ? AND project_id = ? AND id = ?
-                """, CHECK_ITEM_MAPPER, tenantId, projectId, checkItemId).stream().findFirst();
+                """,
+                CHECK_ITEM_MAPPER, tenantId, projectId, checkItemId).stream().findFirst();
+    }
+
+    public Optional<CheckItem> lockCheckItem(long tenantId, long projectId, long checkItemId) {
+        return jdbc.query("""
+                SELECT id, task_id, check_no, name, guide, sort_no, status, remark, completed_by,
+                       completed_at, cancelled, cancel_reason, cancelled_by, cancelled_at, row_version,
+                       created_by
+                FROM arch_plan_check_item WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE
+                """,
+                CHECK_ITEM_MAPPER, tenantId, projectId, checkItemId).stream().findFirst();
     }
 
     public void updateCheckItemCompletion(long tenantId, long projectId, long checkItemId, CheckItemStatus status,
@@ -436,12 +459,25 @@ public class PlanStore {
                 """, id, tenantId, projectId, taskId, userId, createdBy, createdBy);
     }
 
+    /** 单次读取计划内分工快照，避免每张卡片单独查人员关系。 */
+    public Map<Long, List<Long>> findPlanParticipants(long tenantId, long projectId, long planId) {
+        Map<Long, List<Long>> result = new java.util.HashMap<>();
+        jdbc.query("""
+                SELECT p.task_id, p.user_id FROM arch_plan_task_participant p
+                JOIN arch_plan_task t ON t.tenant_id = p.tenant_id AND t.project_id = p.project_id AND t.id = p.task_id
+                WHERE t.tenant_id = ? AND t.project_id = ? AND t.plan_id = ? ORDER BY p.id
+                """, (org.springframework.jdbc.core.RowCallbackHandler) rs ->
+                result.computeIfAbsent(rs.getLong("task_id"), id -> new ArrayList<>()).add(rs.getLong("user_id")),
+                tenantId, projectId, planId);
+        return result;
+    }
+
     public List<Long> findParticipantUserIds(long tenantId, long projectId, long taskId) {
         return jdbc.query("""
                 SELECT user_id FROM arch_plan_task_participant
                 WHERE tenant_id = ? AND project_id = ? AND task_id = ?
                 ORDER BY id ASC
-                """, (rs, rowNum) -> rs.getLong("user_id"), tenantId, projectId, taskId);
+                """ + (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive() ? " FOR SHARE" : ""), (rs, rowNum) -> rs.getLong("user_id"), tenantId, projectId, taskId);
     }
 
     public void deleteParticipants(long tenantId, long projectId, long taskId) {
@@ -515,6 +551,16 @@ public class PlanStore {
                 block.createdBy());
     }
 
+    /** 分派前在系统、任务锁之后读取最新阻塞责任，避免旧事务快照漏掉移交约束。 */
+    public List<Block> lockBlocks(long tenantId, long projectId, long taskId) {
+        requireTransaction();
+        return jdbc.query("""
+                SELECT id, task_id, description, impact, owner_user_id, expected_resolve_at, status,
+                       resolved_note, resolved_by, resolved_at, created_by
+                FROM arch_plan_block WHERE tenant_id = ? AND project_id = ? AND task_id = ?
+                ORDER BY id ASC FOR UPDATE
+                """, BLOCK_MAPPER, tenantId, projectId, taskId);
+    }
     public List<Block> findBlocks(long tenantId, long projectId, long taskId) {
         return jdbc.query("""
                 SELECT id, task_id, description, impact, owner_user_id, expected_resolve_at, status,
@@ -529,6 +575,15 @@ public class PlanStore {
                 SELECT id, task_id, description, impact, owner_user_id, expected_resolve_at, status,
                        resolved_note, resolved_by, resolved_at, created_by
                 FROM arch_plan_block WHERE tenant_id = ? AND project_id = ? AND id = ?
+                """, BLOCK_MAPPER, tenantId, projectId, blockId).stream().findFirst();
+    }
+
+    public Optional<Block> lockBlock(long tenantId, long projectId, long blockId) {
+        requireTransaction();
+        return jdbc.query("""
+                SELECT id, task_id, description, impact, owner_user_id, expected_resolve_at, status,
+                       resolved_note, resolved_by, resolved_at, created_by
+                FROM arch_plan_block WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE
                 """, BLOCK_MAPPER, tenantId, projectId, blockId).stream().findFirst();
     }
 
@@ -662,6 +717,17 @@ public class PlanStore {
                 WorkOrderSource.valueOf(rs.getString("source")), false), tenantId, projectId, taskId);
     }
 
+    /** 解除关联时必须在任务锁之后读取当前关联状态。 */
+    public Optional<TaskWorkOrder> lockWorkOrder(long tenantId, long projectId, long workOrderId) {
+        requireTransaction();
+        return jdbc.query("""
+                SELECT id, task_id, plan_id, work_order_type, work_order_id, source, status
+                FROM arch_plan_work_order WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE
+                """, (rs, rowNum) -> new TaskWorkOrder(rs.getLong("id"), rs.getLong("task_id"),
+                rs.getLong("plan_id"), WorkOrderType.valueOf(rs.getString("work_order_type")),
+                rs.getLong("work_order_id"), WorkOrderSource.valueOf(rs.getString("source")),
+                "REMOVED".equals(rs.getString("status"))), tenantId, projectId, workOrderId).stream().findFirst();
+    }
     public Optional<TaskWorkOrder> findWorkOrder(long tenantId, long projectId, long workOrderId) {
         return jdbc.query("""
                 SELECT id, task_id, plan_id, work_order_type, work_order_id, source, status
@@ -707,10 +773,16 @@ public class PlanStore {
         args.add(projectId);
         args.addAll(workOrderIds);
         return jdbc.query("""
-                SELECT id, environment_id FROM arch_resource_request
+                SELECT id, environment_id, physical_subsystem_id FROM arch_resource_request
                 WHERE tenant_id = ? AND project_id = ? AND id IN (%s)
                 """.formatted(placeholders), (rs, rowNum) -> new long[]{rs.getLong("id"),
-                rs.getLong("environment_id")}, args.toArray());
+                rs.getLong("environment_id"), rs.getLong("physical_subsystem_id")}, args.toArray());
+    }
+
+    public Optional<Long> workOrderApplicant(long tenantId, long projectId, WorkOrderType type, long id) {
+        String table = type == WorkOrderType.RESOURCE_REQUEST ? "arch_resource_request" : "arch_network_work_order";
+        return jdbc.query("SELECT applicant_id FROM " + table + " WHERE tenant_id=? AND project_id=? AND id=?",
+                (rs, row) -> rs.getLong("applicant_id"), tenantId, projectId, id).stream().findFirst();
     }
 
     public boolean networkWorkOrderRefs(long tenantId, long projectId, List<Long> workOrderIds) {
@@ -750,6 +822,80 @@ public class PlanStore {
     public record PlanListRow(Plan plan, String environmentCode, String environmentName, long taskCount,
                               long totalCheckItems, long completedCheckItems, long cancelledCheckItems,
                               long openBlocks) {
+    }
+
+    public record VisiblePlanRow(PlanListRow row, boolean overdue, boolean waived) {}
+    public record VisiblePlanPage(List<VisiblePlanRow> rows, long total) {}
+
+    /** 任务数据范围先在数据库收敛，再聚合和分页；禁止读取全部计划详情后内存分页。 */
+    public VisiblePlanPage searchVisiblePlans(long tenantId, long projectId, long userId, boolean admin,
+            boolean activeMember, Long environmentId, PlanStatus status, Long ownerUserId,
+            boolean blocked, boolean overdue, boolean waived, String keyword, TargetType targetType,
+            Long targetId, int limit, long offset) {
+        String cte = """
+                WITH visible_tasks AS (
+                  SELECT t.* FROM arch_plan_task t
+                  JOIN arch_setup_plan p ON p.tenant_id=t.tenant_id AND p.project_id=t.project_id AND p.id=t.plan_id
+                  LEFT JOIN arch_deployment_unit u ON u.tenant_id=t.tenant_id AND u.project_id=t.project_id
+                    AND t.target_type='DEPLOYMENT_UNIT' AND u.id=t.target_id
+                  LEFT JOIN arch_physical_subsystem s ON s.tenant_id=t.tenant_id AND s.project_id=t.project_id
+                    AND s.id=CASE WHEN t.target_type='DEPLOYMENT_UNIT' THEN u.physical_subsystem_id ELSE t.target_id END
+                    AND s.deleted=0
+                  WHERE t.tenant_id=? AND t.project_id=? AND
+                    (? OR p.plan_owner_user_id=? OR (? AND
+                      (t.owner_user_id=? OR EXISTS (SELECT 1 FROM arch_plan_task_participant tp
+                        WHERE tp.tenant_id=t.tenant_id AND tp.project_id=t.project_id AND tp.task_id=t.id AND tp.user_id=?))
+                      AND (t.target_id IS NULL OR t.target_id<0 OR (s.id IS NOT NULL AND
+                        (s.owner_user_id=? OR EXISTS (SELECT 1 FROM arch_subsystem_participant sp
+                          WHERE sp.tenant_id=t.tenant_id AND sp.project_id=t.project_id AND sp.subsystem_id=s.id AND sp.user_id=?))))))
+                ), item_counts AS (
+                  SELECT ci.task_id,COUNT(*) total,SUM(ci.cancelled=1) cancelled,
+                    SUM(ci.cancelled=0 AND ci.status='COMPLETED') completed
+                  FROM arch_plan_check_item ci JOIN visible_tasks t ON t.tenant_id=ci.tenant_id
+                    AND t.project_id=ci.project_id AND t.id=ci.task_id GROUP BY ci.task_id
+                ), task_stats AS (
+                  SELECT t.plan_id, COUNT(*) visible_count,SUM(t.cancelled=0) task_count,
+                    SUM(IF(t.cancelled=0,COALESCE(c.total,0),0)) total_items,
+                    SUM(IF(t.cancelled=0,COALESCE(c.cancelled,0),0)) cancelled_items,
+                    SUM(IF(t.cancelled=0,COALESCE(c.completed,0),0)) completed_items,
+                    MAX(t.cancelled=0 AND (t.status IN ('BLOCKED','WAITING_PRECEDING') OR EXISTS
+                      (SELECT 1 FROM arch_plan_block b WHERE b.tenant_id=t.tenant_id AND b.project_id=t.project_id
+                        AND b.task_id=t.id AND b.status='OPEN'))) blocked,
+                    MAX(t.cancelled=0 AND t.status<>'COMPLETED' AND t.planned_end<NOW()) overdue,
+                    MAX(t.cancelled=1 OR t.waived_all=1 OR COALESCE(c.cancelled,0)>0) waived
+                  FROM visible_tasks t LEFT JOIN item_counts c ON c.task_id=t.id GROUP BY t.plan_id
+                )
+                """;
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, admin, userId, activeMember,
+                userId, userId, userId, userId));
+        String from = " FROM arch_setup_plan p JOIN arch_environment env ON env.tenant_id=p.tenant_id"
+                + " AND env.project_id=p.project_id AND env.id=p.environment_id"
+                + " LEFT JOIN task_stats a ON a.plan_id=p.id";
+        StringBuilder where = new StringBuilder(" WHERE p.tenant_id=? AND p.project_id=? AND (? OR p.plan_owner_user_id=? OR a.visible_count>0)");
+        args.add(tenantId); args.add(projectId); args.add(admin); args.add(userId);
+        if (environmentId != null) { where.append(" AND p.environment_id=?"); args.add(environmentId); }
+        if (status != null) { where.append(" AND p.status=?"); args.add(status.name()); }
+        if (ownerUserId != null) { where.append(" AND p.plan_owner_user_id=?"); args.add(ownerUserId); }
+        if (keyword != null && !keyword.isBlank()) {
+            where.append(" AND (p.name LIKE ? OR p.plan_no LIKE ?)");
+            args.add("%" + keyword.trim() + "%"); args.add("%" + keyword.trim() + "%");
+        }
+        if (blocked) where.append(" AND a.blocked=1");
+        if (overdue) where.append(" AND a.overdue=1");
+        if (waived) where.append(" AND a.waived=1");
+        if (targetType != null && targetId != null) {
+            where.append(" AND EXISTS (SELECT 1 FROM visible_tasks ft WHERE ft.plan_id=p.id AND ft.target_type=? AND ft.target_id=?)");
+            args.add(targetType.name()); args.add(targetId);
+        }
+        Long total = jdbc.queryForObject(cte + "SELECT COUNT(*)" + from + where, Long.class, args.toArray());
+        args.add(limit); args.add(offset);
+        List<VisiblePlanRow> rows = jdbc.query(cte + "SELECT " + PLAN_COLUMNS
+                + ",env.code environment_code,env.name environment_name,a.*" + from + where
+                + " ORDER BY p.updated_at DESC,p.id DESC LIMIT ? OFFSET ?", (rs,n) -> new VisiblePlanRow(
+                    new PlanListRow(PLAN_MAPPER.mapRow(rs,n),rs.getString("environment_code"),rs.getString("environment_name"),
+                        rs.getLong("task_count"),rs.getLong("total_items"),rs.getLong("completed_items"),
+                        rs.getLong("cancelled_items"),rs.getLong("blocked")),rs.getBoolean("overdue"),rs.getBoolean("waived")),args.toArray());
+        return new VisiblePlanPage(rows,total == null ? 0 : total);
     }
 
     public List<PlanListRow> searchPlans(long tenantId, long projectId, Long environmentId, PlanStatus status,

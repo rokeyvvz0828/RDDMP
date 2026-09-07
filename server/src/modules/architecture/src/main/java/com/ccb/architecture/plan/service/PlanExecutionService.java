@@ -92,6 +92,7 @@ public class PlanExecutionService {
         CheckItem item = engine.requireCheckItem(actor, projectId, checkItemId);
         Task task = engine.requireTask(actor, projectId, item.taskId());
         engine.requireTaskExecutor(actor, projectId, task, isAdmin);
+        item = store.lockCheckItem(actor.tenantId(), projectId, checkItemId).orElseThrow();
         if (task.cancelled() || task.status() == TaskStatus.COMPLETED) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "任务已取消或已完成，不能操作检查项");
         }
@@ -122,6 +123,7 @@ public class PlanExecutionService {
         CheckItem item = engine.requireCheckItem(actor, projectId, checkItemId);
         Task task = engine.requireTask(actor, projectId, item.taskId());
         engine.requireTaskExecutor(actor, projectId, task, isAdmin);
+        item = store.lockCheckItem(actor.tenantId(), projectId, checkItemId).orElseThrow();
         if (task.cancelled()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "任务已取消，不能重新打开检查项");
         }

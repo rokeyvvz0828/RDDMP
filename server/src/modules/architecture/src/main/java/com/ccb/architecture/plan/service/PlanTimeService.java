@@ -160,14 +160,15 @@ public class PlanTimeService {
     public List<PlanEvent> listEvents(AuthUser actor, long projectId, long planId, String objectType,
                                       long objectId) {
         engine.requirePlan(actor, projectId, planId);
-        return store.findEvents(actor.tenantId(), projectId, planId, objectType, objectId);
+        return listPlanEvents(actor, projectId, planId).stream()
+                .filter(event -> objectType.equals(event.objectType()) && event.objectId() == objectId).toList();
     }
 
     public List<PlanEvent> listPlanEvents(AuthUser actor, long projectId, long planId) {
         engine.requirePlan(actor, projectId, planId);
         List<PlanEvent> result = new java.util.ArrayList<>();
         for (long taskId : store.findTasks(actor.tenantId(), projectId, planId, null).stream()
-                .map(Task::id).toList()) {
+                .filter(task -> engine.participation().visible(actor, projectId, task)).map(Task::id).toList()) {
             result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "TASK", taskId));
             for (com.ccb.architecture.plan.model.PlanModels.CheckItem item
                     : store.findCheckItems(actor.tenantId(), projectId, taskId)) {
@@ -175,8 +176,12 @@ public class PlanTimeService {
                         "CHECK_ITEM", item.id()));
             }
         }
-        result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "STAGE", planId));
-        result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "PLAN", planId));
+        if (engine.participation().manager(actor, projectId, planId)) {
+            for (Stage stage : store.findStages(actor.tenantId(), projectId, planId)) {
+                result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "STAGE", stage.id()));
+            }
+            result.addAll(store.findEvents(actor.tenantId(), projectId, planId, "PLAN", planId));
+        }
         result.sort(java.util.Comparator.comparing(PlanEvent::occurredAt));
         return result;
     }

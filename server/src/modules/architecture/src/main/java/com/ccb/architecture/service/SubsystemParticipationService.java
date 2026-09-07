@@ -52,7 +52,8 @@ public class SubsystemParticipationService implements ProjectMemberRemovalGuard 
     /** 分派事务使用与撤销相同的父锁，但不要求管理者本人参与系统。 */
     public ParticipationView assignmentScope(AuthUser actor, ProjectAccess project, long systemId) {
         return view(actor, project, system(actor, project, systemId,
-                TransactionSynchronizationManager.isActualTransactionActive()), false);
+                TransactionSynchronizationManager.isActualTransactionActive()
+                        && !TransactionSynchronizationManager.isCurrentTransactionReadOnly()), false);
     }
 
     public List<Candidate> candidates(AuthUser actor, ProjectAccess project, long systemId, boolean manager) {
@@ -61,6 +62,12 @@ public class SubsystemParticipationService implements ProjectMemberRemovalGuard 
         return members.findActiveMembers(actor, project.id()).stream()
                 .filter(m -> users.findUser(actor, m.userId(), true).isPresent())
                 .map(m -> new Candidate(m.userId(), m.displayName())).toList();
+    }
+
+    public Set<Long> participatingSystemIds(AuthUser actor, ProjectAccess project) {
+        requireContext(actor, project);
+        if (!activeMember(actor, project)) return Set.of();
+        return Set.copyOf(store.participatingSystemIds(actor.tenantId(), project.id(), actor.id()));
     }
 
     public boolean activeMember(AuthUser actor, ProjectAccess project) {

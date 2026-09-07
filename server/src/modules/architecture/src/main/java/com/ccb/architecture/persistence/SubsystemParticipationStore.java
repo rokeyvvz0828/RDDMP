@@ -30,6 +30,18 @@ public class SubsystemParticipationStore {
                 """, (rs, n) -> rs.getLong(1), tenantId, projectId, unitId).stream().findFirst();
     }
 
+    /** 仅查询本模块的系统归属关系；有效项目成员校验由服务层公开契约完成。 */
+    public List<Long> participatingSystemIds(long tenantId, long projectId, long userId) {
+        return jdbc.query("""
+                SELECT s.id FROM arch_physical_subsystem s
+                WHERE s.tenant_id = ? AND s.project_id = ? AND s.deleted = 0
+                  AND (s.owner_user_id = ? OR EXISTS (
+                      SELECT 1 FROM arch_subsystem_participant p
+                      WHERE p.tenant_id = s.tenant_id AND p.project_id = s.project_id
+                        AND p.subsystem_id = s.id AND p.user_id = ?)) ORDER BY s.id
+                """, (rs, n) -> rs.getLong(1), tenantId, projectId, userId, userId);
+    }
+
     public List<Long> findExplicit(long tenantId, long projectId, long systemId) {
         return jdbc.query("""
                 SELECT user_id FROM arch_subsystem_participant

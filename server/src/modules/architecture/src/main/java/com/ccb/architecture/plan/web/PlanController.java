@@ -149,9 +149,9 @@ public class PlanController {
     @GetMapping("/plans/{id}/dashboard")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PlanQueryService.DashboardView> dashboard(@PathVariable long id,
-                                                                 @RequestParam String projectRef,
+                                                                 @RequestParam String projectRef, @RequestParam(defaultValue = "false") boolean all,
                                                                  @AuthenticationPrincipal AuthUser actor) {
-        return success(queryService.dashboard(actor, projectId(projectRef, actor), id));
+        return success(queryService.dashboard(actor, projectId(projectRef, actor), id, all));
     }
 
     @GetMapping("/plans/{id}/timeline")
@@ -182,8 +182,42 @@ public class PlanController {
                         request.environmentId(), request.templateId(), request.name(),
                         request.planOwnerUserId(), request.physicalSubsystemIds(),
                         request.deploymentUnitIds(), request.participantUserIds(),
-                        request.plannedStart(), request.plannedEnd())));
+                        request.plannedStart(), request.plannedEnd(), request.taskAssignments())));
         return success(toPlanView(plan));
+    }
+
+    @PostMapping("/plans/preview")
+    @PreAuthorize(MANAGE_AUTHORITY)
+    public ApiResponse<List<com.ccb.architecture.plan.service.PlanGenerationService.PreviewTask>> preview(
+            @RequestBody CreatePlanRequest request, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(generationService.preview(actor, projectId(projectRef, actor), new CreatePlanCommand(
+                request.environmentId() == null ? 0 : request.environmentId(), request.templateId(), request.name(),
+                request.planOwnerUserId() == null ? 0 : request.planOwnerUserId(), request.physicalSubsystemIds(),
+                request.deploymentUnitIds(), request.participantUserIds(), request.plannedStart(), request.plannedEnd())));
+    }
+
+    public record AssignmentView(Long ownerUserId, List<Long> participantUserIds,
+            List<com.ccb.architecture.service.SubsystemParticipationService.Candidate> candidates, long rowVersion) {}
+
+    @GetMapping("/tasks/{taskId}/assignment")
+    @PreAuthorize(MANAGE_AUTHORITY)
+    public ApiResponse<AssignmentView> assignment(@PathVariable long taskId, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor, Authentication authentication) {
+        long projectId = projectId(projectRef, actor);
+        var value = generationService.assignment(actor, projectId, taskId, isAdmin(authentication));
+        var task = engine.requireTask(actor, projectId, taskId);
+        return success(new AssignmentView(value.ownerUserId(), value.participantUserIds(), value.candidates(), task.rowVersion()));
+    }
+
+    @PutMapping("/tasks/{taskId}/assignment")
+    @PreAuthorize(MANAGE_AUTHORITY)
+    public ApiResponse<TaskView> assign(@PathVariable long taskId, @RequestParam String projectRef,
+            @RequestBody com.ccb.architecture.plan.model.PlanModels.AssignmentCommand command,
+            @AuthenticationPrincipal AuthUser actor, Authentication authentication) {
+        return success(toTaskView(audited(actor, "architecture.plan.task.assign", "PUT",
+                "/api/architecture/tasks/" + taskId + "/assignment", () -> generationService.assign(actor,
+                        projectId(projectRef, actor), taskId, command, isAdmin(authentication)))));
     }
 
     @PostMapping("/plans/{id}/cancel")
@@ -732,7 +766,7 @@ public class PlanController {
                         .toList(),
                 task.events().stream().map(event -> new EventView(event.id(), event.objectType(),
                         event.objectId(), event.eventType(), event.occurredAt(), event.operatorUserId(),
-                        event.reason(), event.correctOfEventId())).toList());
+                        event.reason(), event.correctOfEventId())).toList(), task.canExecute());
     }
 
     private static BlockView toBlockView(com.ccb.architecture.plan.model.PlanModels.Block block) {
@@ -871,7 +905,7 @@ public class PlanController {
                                  String cancelReason, List<Long> participantUserIds,
                                  List<DependencyView> dependencies, List<BlockView> blocks,
                                  List<WorkOrderLinkView> workOrders, List<CheckItemView> checkItems,
-                                 List<EventView> events) {
+                                 List<EventView> events, boolean canExecute) {
     }
 
     public record PlanDetailView(PlanView plan, String environmentCode, String environmentName,
@@ -910,7 +944,7 @@ public class PlanController {
     public record CreatePlanRequest(Long environmentId, Long templateId, String name, Long planOwnerUserId,
                                     List<Long> physicalSubsystemIds, List<Long> deploymentUnitIds,
                                     List<Long> participantUserIds, LocalDateTime plannedStart,
-                                    LocalDateTime plannedEnd) {
+                                    LocalDateTime plannedEnd, List<com.ccb.architecture.plan.model.PlanModels.TaskAssignment> taskAssignments) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
