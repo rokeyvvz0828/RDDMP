@@ -458,6 +458,10 @@ function openTask(task: TaskDetailView, stage: StageDetailView) {
 async function refreshCurrentTask() {
   const plan = await getPlan(planId)
   detail.value = plan
+  // 执行结果同时影响看板和时间视图，不能只更新抽屉留下旧卡片。
+  dashboard.value = await getPlanDashboard(planId, boardAll.value)
+  timeline.value = await getPlanTimeline(planId)
+  buildFlowchart()
   if (currentTask.value) {
     if (!plan.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
       currentTask.value = null

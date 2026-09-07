@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 79,
+  "revision": 91,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T05:41:37+00:00",
+  "updated_at": "2026-09-07T05:52:58+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -156,6 +156,24 @@
       "to": "observing",
       "evidence": "F-0002修正及聚焦回归完成",
       "recorded_at": "2026-09-07T05:41:37+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "F-0003已接受",
+      "recorded_at": "2026-09-07T05:45:52+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0003限定单文件修复",
+      "recorded_at": "2026-09-07T05:45:52+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "看板完成重开阻塞实测同步",
+      "recorded_at": "2026-09-07T05:52:35+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6488,6 +6506,58 @@
           ],
           "disturbances": []
         }
+      },
+      {
+        "revision": 10,
+        "evidence": "前端构建及普通用户四状态同步通过",
+        "recorded_at": "2026-09-07T05:52:34+00:00",
+        "data": {
+          "recommended_next": "observe",
+          "invariants_checked": [
+            {
+              "invariant": "不改布局和权限",
+              "evidence": "局部diff",
+              "result": "pass"
+            }
+          ],
+          "assumptions_falsified": [],
+          "status": "implemented",
+          "commands": [
+            {
+              "salient_output": "vue-tsc与Vite通过，rddmp-066-web-board.log",
+              "command": "npm --prefix web run build",
+              "exit_code": 0
+            }
+          ],
+          "unresolved_items": [
+            "资源申请选项加载失败待修",
+            "全仓回归运行中"
+          ],
+          "requirements_addressed": [
+            "R5"
+          ],
+          "local_checks": [
+            {
+              "evidence": "重开→已开始1，登记阻塞→阻塞1，解除→已开始1，完成→已完成1；均无手动刷新",
+              "limitations": [
+                "资源选项发现另一入口权限问题"
+              ],
+              "check": "普通执行人看板同步",
+              "result": "pass"
+            }
+          ],
+          "task_id": "T4",
+          "changed_surfaces": [
+            {
+              "purpose": "刷新抽屉时同步看板、时间视图和流程图",
+              "path_or_resource": "web/src/modules/architecture/PlanDetailPage.vue"
+            }
+          ],
+          "diff_summary": [
+            "单文件新增4行同步既有数据源"
+          ],
+          "disturbances": []
+        }
       }
     ],
     "observing": [
@@ -6806,6 +6876,56 @@
             "T3"
           ]
         }
+      },
+      {
+        "revision": 5,
+        "evidence": "普通角色完成检查后看板延迟，手动刷新恢复",
+        "recorded_at": "2026-09-07T05:45:52+00:00",
+        "data": {
+          "measurements": [
+            {
+              "raw_evidence": "普通人启动、完成成功，完成人正确；看板需手动刷新才由已开始变已完成",
+              "result": "partial",
+              "limitation": [
+                "尚未完成资源全路径和撤权旧页矩阵"
+              ],
+              "requirement_id": "R4",
+              "sensor": "六权限普通账号真实UI与Controller注解"
+            }
+          ],
+          "baseline_revision": "baseline-1",
+          "error_counts": {
+            "P3": 0,
+            "P0": 0,
+            "P1": 0,
+            "P2": 1
+          },
+          "coverage_gaps": [
+            "撤权旧页及资源全路径仍待测"
+          ],
+          "sample_label": "普通执行通过及看板数据不同步采样",
+          "feedback": [
+            {
+              "sensor_limit": "本地测试数据",
+              "classification": "deviation",
+              "observed": "看板仍0%，手动刷新才100%",
+              "evidence": "真实浏览器完成前后DOM",
+              "confidence": "high",
+              "severity": "P2",
+              "reproduction": "六权限账号点击SP1788753425059354开始",
+              "expected": "完成后看板同步",
+              "correction_check": "方法安全代理测试及真实UI",
+              "requirement_id": "R4",
+              "causal_hypothesis": "refreshCurrentTask未刷新dashboard"
+            }
+          ],
+          "disturbances": [],
+          "observation_status": "complete",
+          "task_ids": [
+            "T3",
+            "T4"
+          ]
+        }
       }
     ],
     "correcting": [
@@ -6845,6 +6965,45 @@
             "write_scope": [
               "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
               "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java"
+            ],
+            "gain": "medium"
+          },
+          "decision": "accept"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "只修任务操作后的数据同步，复用既有布局和API",
+        "recorded_at": "2026-09-07T05:45:52+00:00",
+        "data": {
+          "dynamic_pattern": "local",
+          "feedback_id": "F-0003",
+          "resolution": "open",
+          "residual_risk": [
+            "完整UI权限矩阵未闭合"
+          ],
+          "decision_reason": "任务抽屉刷新未同步看板",
+          "causal_assessment": {
+            "falsifier": "refreshCurrentTask已刷新dashboard",
+            "hypothesis": "refreshCurrentTask遗漏dashboard刷新",
+            "supporting_evidence": [
+              "完成后详情100%看板0%，手动刷新恢复"
+            ]
+          },
+          "control_action": {
+            "target": "PlanDetailPage任务刷新",
+            "correction_check": [
+              "普通人完成重开阻塞后看板立即同步",
+              "前端构建"
+            ],
+            "impact_limit": "任务操作后的页面数据同步",
+            "invariants": [
+              "复用现有API和看板组件，不改布局及权限"
+            ],
+            "rollback": "回退本纠偏提交，不扩大账号权限",
+            "route": "executing",
+            "write_scope": [
+              "web/src/modules/architecture/PlanDetailPage.vue"
             ],
             "gain": "medium"
           },
@@ -8748,9 +8907,17 @@
         {
           "recorded_at": "2026-09-07T04:31:00+00:00",
           "text": "提交观测，不以实现或构建替代完整验收"
+        },
+        {
+          "recorded_at": "2026-09-07T05:45:52+00:00",
+          "text": "修正任务抽屉操作后的看板同步"
+        },
+        {
+          "recorded_at": "2026-09-07T05:52:35+00:00",
+          "text": "看板同步修正完成"
         }
       ],
-      "updated_at": "2026-09-07T04:31:00+00:00"
+      "updated_at": "2026-09-07T05:52:35+00:00"
     },
     {
       "id": "T5",
@@ -8927,9 +9094,29 @@
       "decision": "accept",
       "decision_reason": "Controller管理门禁阻止有效普通参与人，违反R4且在T3原范围内可修复",
       "created_at": "2026-09-07T05:31:20+00:00",
-      "resolved_at": null,
-      "resolution_evidence": null,
+      "resolved_at": "2026-09-07T05:52:58+00:00",
+      "resolution_evidence": "31项真实方法安全代理通过，普通账号启动完成重开登记及解除阻塞真实UI成功",
       "decided_at": "2026-09-07T05:31:55+00:00"
+    },
+    {
+      "id": "F-0003",
+      "task": "T4",
+      "source": "普通用户真实浏览器",
+      "requirement": "R5",
+      "expected": "执行完成后看板自动移入已完成",
+      "observed": "详情100%但看板仍已开始0%，手动刷新恢复",
+      "evidence": "SP1788753425059354普通执行人完成检查及刷新前后DOM",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": "refreshCurrentTask只更新detail未更新dashboard",
+      "correction_check": "重开、完成、阻塞后看板无手动刷新同步",
+      "decision": "accept",
+      "decision_reason": "页面内两个独立数据源未同步，修复任务刷新函数",
+      "created_at": "2026-09-07T05:45:51+00:00",
+      "resolved_at": "2026-09-07T05:52:58+00:00",
+      "resolution_evidence": "同页重开、阻塞、解除、完成均自动移列，无手动刷新；前端构建通过",
+      "decided_at": "2026-09-07T05:45:51+00:00"
     }
   ],
   "samples": [

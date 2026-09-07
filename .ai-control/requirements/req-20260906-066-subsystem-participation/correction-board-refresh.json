@@ -1,0 +1,34 @@
+{
+  "dynamic_pattern": "local",
+  "feedback_id": "F-0003",
+  "resolution": "open",
+  "residual_risk": [
+    "完整UI权限矩阵未闭合"
+  ],
+  "decision_reason": "任务抽屉刷新未同步看板",
+  "causal_assessment": {
+    "falsifier": "refreshCurrentTask已刷新dashboard",
+    "hypothesis": "refreshCurrentTask遗漏dashboard刷新",
+    "supporting_evidence": [
+      "完成后详情100%看板0%，手动刷新恢复"
+    ]
+  },
+  "control_action": {
+    "target": "PlanDetailPage任务刷新",
+    "correction_check": [
+      "普通人完成重开阻塞后看板立即同步",
+      "前端构建"
+    ],
+    "impact_limit": "任务操作后的页面数据同步",
+    "invariants": [
+      "复用现有API和看板组件，不改布局及权限"
+    ],
+    "rollback": "回退本纠偏提交，不扩大账号权限",
+    "route": "executing",
+    "write_scope": [
+      "web/src/modules/architecture/PlanDetailPage.vue"
+    ],
+    "gain": "medium"
+  },
+  "decision": "accept"
+}
