@@ -1,11 +1,11 @@
 {
   "schema_version": 5,
-  "revision": 48,
+  "revision": 69,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T03:27:11+00:00",
+  "updated_at": "2026-09-07T04:32:00+00:00",
   "mode": "high-assurance",
   "workflow": "full",
-  "phase": "executing",
+  "phase": "observing",
   "phase_history": [
     {
       "from": null,
@@ -132,6 +132,12 @@
       "to": "executing",
       "evidence": "plan-7未扩大业务语义，沿用用户Owner审批和Issue豁免，范围检查64文件通过",
       "recorded_at": "2026-09-07T03:27:11+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T6执行产物齐备；684项测试与前端构建通过，角色浏览器和治理缺口需要如实观测",
+      "recorded_at": "2026-09-07T04:31:01+00:00"
     }
   ],
   "stage_artifacts": {
@@ -5746,6 +5752,655 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 3,
+        "evidence": "T1实际实现及最终回归，T6浏览器角色矩阵有明确缺口",
+        "recorded_at": "2026-09-07T04:30:59+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/SubsystemParticipationController.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/system/pom.xml"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectMemberReferenceQuery.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/capability/ProjectMemberReferenceLockMySqlTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/capability/ProjectMemberReferenceQueryTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "web/src/modules/architecture/api.ts"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue"
+            },
+            {
+              "purpose": "系统参与关系与统一资格契约",
+              "path_or_resource": "web/src/modules/architecture/types.ts"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R8"
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "salient_output": "full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，28:43",
+              "command": "mvn test"
+            },
+            {
+              "exit_code": 0,
+              "salient_output": "web-final12.log：vue-tsc及Vite通过，32.45秒",
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "TEMP/rddmp-066-full-final9.log，当前后端提交版本",
+              "limitations": [
+                "普通角色真实浏览器路径不由单元/集成测试替代"
+              ],
+              "check": "最终全仓回归",
+              "result": "pass"
+            }
+          ],
+          "diff_summary": [
+            "系统参与关系与统一资格契约",
+            "未修改其他需求或历史迁移；提交链及verification-progress.md可追溯"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "全仓包含PlanParticipationAuthorizationTest、项目隔离MySQL及资源网络权限测试",
+              "invariant": "认证、项目/系统/任务交集与管理不代执行",
+              "result": "pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "impact": "普通参与者执行、撤权旧页真实浏览器矩阵未完成",
+              "event": "公开本地演示账号登录返回账号或密码错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "公开演示账号可直接用于角色端到端验收的假设未成立"
+          ],
+          "unresolved_items": [
+            "普通角色浏览器矩阵待可用验收账号",
+            "治理基线REQ061 scope格式和历史V84_1命名故障",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T2实际实现及最终回归，T6浏览器角色矩阵有明确缺口",
+        "recorded_at": "2026-09-07T04:30:59+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/model/PlanModels.java"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanParticipationService.java"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "web/src/modules/architecture/PlanDetailPage.vue"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "web/src/modules/architecture/PlanListPage.vue"
+            },
+            {
+              "purpose": "任务展开默认负责人、参与人及独立分派",
+              "path_or_resource": "web/src/modules/architecture/planApi.ts"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R8"
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "salient_output": "full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，28:43",
+              "command": "mvn test"
+            },
+            {
+              "exit_code": 0,
+              "salient_output": "web-final12.log：vue-tsc及Vite通过，32.45秒",
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "TEMP/rddmp-066-full-final9.log，当前后端提交版本",
+              "limitations": [
+                "普通角色真实浏览器路径不由单元/集成测试替代"
+              ],
+              "check": "最终全仓回归",
+              "result": "pass"
+            }
+          ],
+          "diff_summary": [
+            "任务展开默认负责人、参与人及独立分派",
+            "未修改其他需求或历史迁移；提交链及verification-progress.md可追溯"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "全仓包含PlanParticipationAuthorizationTest、项目隔离MySQL及资源网络权限测试",
+              "invariant": "认证、项目/系统/任务交集与管理不代执行",
+              "result": "pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "impact": "普通参与者执行、撤权旧页真实浏览器矩阵未完成",
+              "event": "公开本地演示账号登录返回账号或密码错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "公开演示账号可直接用于角色端到端验收的假设未成立"
+          ],
+          "unresolved_items": [
+            "普通角色浏览器矩阵待可用验收账号",
+            "治理基线REQ061 scope格式和历史V84_1命名故障",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "T3实际实现及最终回归，T6浏览器角色矩阵有明确缺口",
+        "recorded_at": "2026-09-07T04:31:00+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanEngine.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanTimeService.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "web/src/modules/architecture/PlanDetailPage.vue"
+            },
+            {
+              "purpose": "任务执行授权及个人/管理读取闭环",
+              "path_or_resource": "web/src/modules/architecture/planApi.ts"
+            }
+          ],
+          "requirements_addressed": [
+            "R3",
+            "R4",
+            "R7"
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "salient_output": "full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，28:43",
+              "command": "mvn test"
+            },
+            {
+              "exit_code": 0,
+              "salient_output": "web-final12.log：vue-tsc及Vite通过，32.45秒",
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "TEMP/rddmp-066-full-final9.log，当前后端提交版本",
+              "limitations": [
+                "普通角色真实浏览器路径不由单元/集成测试替代"
+              ],
+              "check": "最终全仓回归",
+              "result": "pass"
+            }
+          ],
+          "diff_summary": [
+            "任务执行授权及个人/管理读取闭环",
+            "未修改其他需求或历史迁移；提交链及verification-progress.md可追溯"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "全仓包含PlanParticipationAuthorizationTest、项目隔离MySQL及资源网络权限测试",
+              "invariant": "认证、项目/系统/任务交集与管理不代执行",
+              "result": "pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "impact": "普通参与者执行、撤权旧页真实浏览器矩阵未完成",
+              "event": "公开本地演示账号登录返回账号或密码错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "公开演示账号可直接用于角色端到端验收的假设未成立"
+          ],
+          "unresolved_items": [
+            "普通角色浏览器矩阵待可用验收账号",
+            "治理基线REQ061 scope格式和历史V84_1命名故障",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 6,
+        "evidence": "T4实际实现及最终回归，T6浏览器角色矩阵有明确缺口",
+        "recorded_at": "2026-09-07T04:31:00+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/web/EnvironmentResourceController.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicy.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/web/NetworkWorkOrderController.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/EnvironmentResourceServiceTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkAttachmentAccessPolicyTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessDecisionServiceTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessLifecycleServiceTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkAccessServiceTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitServiceTest.java"
+            },
+            {
+              "purpose": "资源申请及关联业务权限闭环",
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue"
+            }
+          ],
+          "requirements_addressed": [
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "salient_output": "full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，28:43",
+              "command": "mvn test"
+            },
+            {
+              "exit_code": 0,
+              "salient_output": "web-final12.log：vue-tsc及Vite通过，32.45秒",
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "TEMP/rddmp-066-full-final9.log，当前后端提交版本",
+              "limitations": [
+                "普通角色真实浏览器路径不由单元/集成测试替代"
+              ],
+              "check": "最终全仓回归",
+              "result": "pass"
+            }
+          ],
+          "diff_summary": [
+            "资源申请及关联业务权限闭环",
+            "未修改其他需求或历史迁移；提交链及verification-progress.md可追溯"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "全仓包含PlanParticipationAuthorizationTest、项目隔离MySQL及资源网络权限测试",
+              "invariant": "认证、项目/系统/任务交集与管理不代执行",
+              "result": "pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "impact": "普通参与者执行、撤权旧页真实浏览器矩阵未完成",
+              "event": "公开本地演示账号登录返回账号或密码错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "公开演示账号可直接用于角色端到端验收的假设未成立"
+          ],
+          "unresolved_items": [
+            "普通角色浏览器矩阵待可用验收账号",
+            "治理基线REQ061 scope格式和历史V84_1命名故障",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 7,
+        "evidence": "T5实际实现及最终回归，T6浏览器角色矩阵有明确缺口",
+        "recorded_at": "2026-09-07T04:31:01+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "purpose": "替换当前搭建计划原有看板及分工交互",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java"
+            },
+            {
+              "purpose": "替换当前搭建计划原有看板及分工交互",
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+            },
+            {
+              "purpose": "替换当前搭建计划原有看板及分工交互",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java"
+            },
+            {
+              "purpose": "替换当前搭建计划原有看板及分工交互",
+              "path_or_resource": "web/src/modules/architecture/PlanDetailPage.vue"
+            },
+            {
+              "purpose": "替换当前搭建计划原有看板及分工交互",
+              "path_or_resource": "web/src/modules/architecture/components/PersonalTaskBoard.vue"
+            },
+            {
+              "purpose": "替换当前搭建计划原有看板及分工交互",
+              "path_or_resource": "web/src/modules/architecture/planApi.ts"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R4",
+            "R5",
+            "R8"
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "salient_output": "full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，28:43",
+              "command": "mvn test"
+            },
+            {
+              "exit_code": 0,
+              "salient_output": "web-final12.log：vue-tsc及Vite通过，32.45秒",
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "TEMP/rddmp-066-full-final9.log，当前后端提交版本",
+              "limitations": [
+                "普通角色真实浏览器路径不由单元/集成测试替代"
+              ],
+              "check": "最终全仓回归",
+              "result": "pass"
+            }
+          ],
+          "diff_summary": [
+            "替换当前搭建计划原有看板及分工交互",
+            "未修改其他需求或历史迁移；提交链及verification-progress.md可追溯"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "全仓包含PlanParticipationAuthorizationTest、项目隔离MySQL及资源网络权限测试",
+              "invariant": "认证、项目/系统/任务交集与管理不代执行",
+              "result": "pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "impact": "普通参与者执行、撤权旧页真实浏览器矩阵未完成",
+              "event": "公开本地演示账号登录返回账号或密码错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "公开演示账号可直接用于角色端到端验收的假设未成立"
+          ],
+          "unresolved_items": [
+            "普通角色浏览器矩阵待可用验收账号",
+            "治理基线REQ061 scope格式和历史V84_1命名故障",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 8,
+        "evidence": "T6实际实现及最终回归，T6浏览器角色矩阵有明确缺口",
+        "recorded_at": "2026-09-07T04:31:01+00:00",
+        "data": {
+          "task_id": "T6",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "purpose": "存量迁移、端到端权限回归与交付验收",
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "salient_output": "full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，28:43",
+              "command": "mvn test"
+            },
+            {
+              "exit_code": 0,
+              "salient_output": "web-final12.log：vue-tsc及Vite通过，32.45秒",
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "local_checks": [
+            {
+              "evidence": "TEMP/rddmp-066-full-final9.log，当前后端提交版本",
+              "limitations": [
+                "普通角色真实浏览器路径不由单元/集成测试替代"
+              ],
+              "check": "最终全仓回归",
+              "result": "pass"
+            }
+          ],
+          "diff_summary": [
+            "存量迁移、端到端权限回归与交付验收",
+            "未修改其他需求或历史迁移；提交链及verification-progress.md可追溯"
+          ],
+          "invariants_checked": [
+            {
+              "evidence": "全仓包含PlanParticipationAuthorizationTest、项目隔离MySQL及资源网络权限测试",
+              "invariant": "认证、项目/系统/任务交集与管理不代执行",
+              "result": "pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "impact": "普通参与者执行、撤权旧页真实浏览器矩阵未完成",
+              "event": "公开本地演示账号登录返回账号或密码错误"
+            }
+          ],
+          "assumptions_falsified": [
+            "公开演示账号可直接用于角色端到端验收的假设未成立"
+          ],
+          "unresolved_items": [
+            "普通角色浏览器矩阵待可用验收账号",
+            "治理基线REQ061 scope格式和历史V84_1命名故障",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -5895,6 +6550,125 @@
             "P3": 0
           },
           "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "最终684项回归和UI实测，R8及普通账号验收覆盖仍不足",
+        "recorded_at": "2026-09-07T04:32:00+00:00",
+        "data": {
+          "sample_label": "T1-T6最终全仓及浏览器采样",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "result": "pass",
+              "raw_evidence": "full-final9.log：SubsystemParticipationServiceTest、SubsystemParticipationStoreMySqlTest、ParticipationProjectIsolationMySqlTest通过",
+              "limitation": [
+                "本地MySQL8.4，不是生产抽样"
+              ],
+              "requirement_id": "R1",
+              "sensor": "MySQL关系约束/项目隔离与资格单元测试"
+            },
+            {
+              "result": "pass",
+              "raw_evidence": "PlanParticipationGenerationTest与PlanParticipationAuthorizationTest通过；SP1788753425059354创建前及创建后改负责人成功，旧负责人保留",
+              "limitation": [
+                "浏览器只实际创建系统维度，单元维度来自自动化"
+              ],
+              "requirement_id": "R2",
+              "sensor": "生成分派自动化与真实浏览器创建移交"
+            },
+            {
+              "result": "pass",
+              "raw_evidence": "full-final9.log：ProjectMemberReferenceLockMySqlTest、历史名单撤销及陈旧请求拒绝断言通过",
+              "limitation": [
+                "撤权旧页普通账号浏览器未执行"
+              ],
+              "requirement_id": "R3",
+              "sensor": "实时撤权和MySQL并发锁测试"
+            },
+            {
+              "result": "pass",
+              "raw_evidence": "管理员不能代执行断言通过；真实任务抽屉没有启动/完成/重开入口",
+              "limitation": [
+                "普通参与者浏览器登录失败"
+              ],
+              "requirement_id": "R4",
+              "sensor": "执行权限自动化与管理员只读浏览器"
+            },
+            {
+              "result": "pass",
+              "raw_evidence": "当前计划SQL可见性/状态/分页测试通过；真实mine0、all未开始1、四列与取消隐藏逻辑",
+              "limitation": [
+                "完成/阻塞状态来源已自动化测试，未以普通角色实操迁移"
+              ],
+              "requirement_id": "R5",
+              "sensor": "PersonalTaskBoardTest与原位看板真实浏览器"
+            },
+            {
+              "result": "pass",
+              "raw_evidence": "ResourceRequestParticipationTest及EnvironmentResourceServiceTest通过；真实非参与管理员新建候选无数据",
+              "limitation": [
+                "未逐一点击编辑复制提交批量路径"
+              ],
+              "requirement_id": "R6",
+              "sensor": "资源申请参与测试与管理员空候选UI"
+            },
+            {
+              "result": "pass",
+              "raw_evidence": "full-final9.log相关服务和Controller测试通过，99项最后补丁聚焦亦通过",
+              "limitation": [
+                "并非所有关联入口已由多角色真实浏览器覆盖"
+              ],
+              "requirement_id": "R7",
+              "sensor": "网络/附件/工单/通知/读取授权自动化"
+            },
+            {
+              "result": "partial",
+              "raw_evidence": "684项无失败跳过；scope12 67文件通过；web-final12构建退出0；四视口明暗看板及三手机两主题分工实测",
+              "limitation": [
+                "REQ061格式和V84_1历史命名使治理脚本失败",
+                "角色UI与全部移动交互状态矩阵未闭合",
+                "无上线专项独立复核"
+              ],
+              "requirement_id": "R8",
+              "sensor": "迁移集成、范围脚本、构建与视口截图"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "本地mock.engineer使用公开文档凭据无法登录",
+              "evidence": "页面账号或密码错误；未重置或读取敏感凭据",
+              "classification": "disturbance"
+            },
+            {
+              "event": "治理基线脚本失败",
+              "evidence": "governance12.log REQ061 JSON-compatible YAML；flyway12.log V84_1命名",
+              "classification": "sensor-fault"
+            }
+          ],
+          "coverage_gaps": [
+            "普通参与者真实启动完成与撤权旧页矩阵",
+            "全部资源创建/编辑/复制/批量的真实UI及手机状态",
+            "上线前独立非作者权限数据库复核"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P3": 0,
+            "P2": 0
+          },
+          "observation_status": "incomplete",
+          "note": "本次已覆盖采样未观察到阻塞性产品偏差；零误差不代表未覆盖矩阵通过。不转verifying/converged。"
         }
       }
     ],
@@ -7519,7 +8293,7 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "planned",
+      "status": "observing",
       "evidence": [
         {
           "recorded_at": "2026-09-06T08:43:20+00:00",
@@ -7540,9 +8314,17 @@
         {
           "recorded_at": "2026-09-07T01:40:38+00:00",
           "text": "T1代码切片已有可复验输出；32项聚焦与106项模块回归通过，尚不标记verified"
+        },
+        {
+          "recorded_at": "2026-09-07T04:30:59+00:00",
+          "text": "实现已提交，最新全仓684项及前端构建通过，补录完整执行产物"
+        },
+        {
+          "recorded_at": "2026-09-07T04:30:59+00:00",
+          "text": "提交观测，不以实现或构建替代完整验收"
         }
       ],
-      "updated_at": "2026-09-07T03:27:11+00:00"
+      "updated_at": "2026-09-07T04:30:59+00:00"
     },
     {
       "id": "T2",
@@ -7600,14 +8382,22 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "planned",
+      "status": "observing",
       "evidence": [
         {
           "recorded_at": "2026-09-07T01:49:20+00:00",
           "text": "开始逐任务默认分工及分派契约"
+        },
+        {
+          "recorded_at": "2026-09-07T04:30:59+00:00",
+          "text": "实现已提交，最新全仓684项及前端构建通过，补录完整执行产物"
+        },
+        {
+          "recorded_at": "2026-09-07T04:30:59+00:00",
+          "text": "提交观测，不以实现或构建替代完整验收"
         }
       ],
-      "updated_at": "2026-09-07T03:27:11+00:00"
+      "updated_at": "2026-09-07T04:30:59+00:00"
     },
     {
       "id": "T3",
@@ -7667,14 +8457,22 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "active",
+      "status": "observing",
       "evidence": [
         {
           "recorded_at": "2026-09-07T02:01:04+00:00",
           "text": "已接入实现，正在逐入口验证"
+        },
+        {
+          "recorded_at": "2026-09-07T04:30:59+00:00",
+          "text": "实现已提交，最新全仓684项及前端构建通过，补录完整执行产物"
+        },
+        {
+          "recorded_at": "2026-09-07T04:31:00+00:00",
+          "text": "提交观测，不以实现或构建替代完整验收"
         }
       ],
-      "updated_at": "2026-09-07T03:27:11+00:00"
+      "updated_at": "2026-09-07T04:31:00+00:00"
     },
     {
       "id": "T4",
@@ -7750,14 +8548,22 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "planned",
+      "status": "observing",
       "evidence": [
         {
           "recorded_at": "2026-09-07T02:01:05+00:00",
           "text": "已接入实现，正在逐入口验证"
+        },
+        {
+          "recorded_at": "2026-09-07T04:31:00+00:00",
+          "text": "实现已提交，最新全仓684项及前端构建通过，补录完整执行产物"
+        },
+        {
+          "recorded_at": "2026-09-07T04:31:00+00:00",
+          "text": "提交观测，不以实现或构建替代完整验收"
         }
       ],
-      "updated_at": "2026-09-07T03:27:11+00:00"
+      "updated_at": "2026-09-07T04:31:00+00:00"
     },
     {
       "id": "T5",
@@ -7814,14 +8620,22 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "active",
+      "status": "observing",
       "evidence": [
         {
           "recorded_at": "2026-09-07T02:01:05+00:00",
           "text": "已接入实现，正在逐入口验证"
+        },
+        {
+          "recorded_at": "2026-09-07T04:31:00+00:00",
+          "text": "实现已提交，最新全仓684项及前端构建通过，补录完整执行产物"
+        },
+        {
+          "recorded_at": "2026-09-07T04:31:01+00:00",
+          "text": "提交观测，不以实现或构建替代完整验收"
         }
       ],
-      "updated_at": "2026-09-07T03:27:11+00:00"
+      "updated_at": "2026-09-07T04:31:01+00:00"
     },
     {
       "id": "T6",
@@ -7875,9 +8689,18 @@
       "escalation_conditions": [
         "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-07T03:27:11+00:00"
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T04:31:01+00:00",
+          "text": "实现已提交，最新全仓684项及前端构建通过，补录完整执行产物"
+        },
+        {
+          "recorded_at": "2026-09-07T04:31:01+00:00",
+          "text": "提交观测，不以实现或构建替代完整验收"
+        }
+      ],
+      "updated_at": "2026-09-07T04:31:01+00:00"
     }
   ],
   "feedback": [
@@ -7928,6 +8751,19 @@
       "score": 0,
       "evidence": "32项聚焦、106项系统回归通过；本切片未观察到产品偏差，T2-T6和浏览器验收仍未覆盖",
       "recorded_at": "2026-09-07T01:40:14+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "最终684项与管理员浏览器采样（角色矩阵不完整）",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "observation-integration-final.json；未观察到已覆盖路径产品偏差，显式保留coverage_gaps，不等同converged",
+      "recorded_at": "2026-09-07T04:32:00+00:00"
     }
   ]
 }

@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | 最后后端补丁聚焦测试 | refinement-final8.log，12类99项，退出0 | 不是全仓回归 |
 | 上一轮 mvn test | full-final2.log，129类675项，退出0 | 不包含最后平台锁、空阻塞、备用实例与通知补丁 |
-| 最新 mvn test | full-final9.log，本报告下方最终结果补录 | 以最终退出码为准 |
+| 最新 mvn test | full-final9.log，130类684项，退出0 | 失败0、错误0、跳过0；含最后全部后端补丁 |
 | 后端 install -DskipTests | install-final8.log，退出0 | 只安装，不是测试 |
 | 最终 npm --prefix web run build | web-final12.log，退出0；vue-tsc及Vite32.45秒 | 既有大chunk与vueuse注释告警 |
 | scope --base 695e917 --working-tree | scope12.log，67文件通过 | 新增本轮控制产物后另复验 |
@@ -64,3 +64,10 @@
 独立CLB/DNS/CERT专项工单没有结构化系统/部署单元字段，不能猜名称授权；独立入口保留申请人/流程职责，从任务发起额外校验有效执行资格，创建关联同一事务。未来字段迁移须单独明确。
 
 仅追加V159迁移，保留历史分工及审计；上线前识别失效历史负责人并移交未完任务及未解阻塞。不自动扩权回填。权限故障优先暂停受影响写入口并前向修复，不简单回滚恢复旧宽权限，不删除新增关系及审计数据。未推送、合并或发布。
+
+## 最终结果补录（12:29）
+
+- 最新全仓 mvn test 退出0，full-final9.log：130类684项，失败0、错误0、跳过0；2026-09-07 12:29:38 BUILD SUCCESS，总28:43。覆盖最后平台锁、空阻塞、备用实例及通知补丁。
+- 最终前端 web-final12.log 对应本轮最后语义主题和映射修复，退出0。
+- 实现及UI修复提交 f17ab5d；T1-T6执行产物已补录，正式phase经脚本从executing进入observing。独立自动化观测与浏览器矩阵缺口记录在observation-integration-final.json。
+- 尚不进入verifying/converged；无产品失败证据不代表未采样场景通过。

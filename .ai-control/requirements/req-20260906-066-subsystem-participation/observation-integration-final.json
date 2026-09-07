@@ -1,0 +1,114 @@
+{
+  "sample_label": "T1-T6最终全仓及浏览器采样",
+  "task_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6"
+  ],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "result": "pass",
+      "raw_evidence": "full-final9.log：SubsystemParticipationServiceTest、SubsystemParticipationStoreMySqlTest、ParticipationProjectIsolationMySqlTest通过",
+      "limitation": [
+        "本地MySQL8.4，不是生产抽样"
+      ],
+      "requirement_id": "R1",
+      "sensor": "MySQL关系约束/项目隔离与资格单元测试"
+    },
+    {
+      "result": "pass",
+      "raw_evidence": "PlanParticipationGenerationTest与PlanParticipationAuthorizationTest通过；SP1788753425059354创建前及创建后改负责人成功，旧负责人保留",
+      "limitation": [
+        "浏览器只实际创建系统维度，单元维度来自自动化"
+      ],
+      "requirement_id": "R2",
+      "sensor": "生成分派自动化与真实浏览器创建移交"
+    },
+    {
+      "result": "pass",
+      "raw_evidence": "full-final9.log：ProjectMemberReferenceLockMySqlTest、历史名单撤销及陈旧请求拒绝断言通过",
+      "limitation": [
+        "撤权旧页普通账号浏览器未执行"
+      ],
+      "requirement_id": "R3",
+      "sensor": "实时撤权和MySQL并发锁测试"
+    },
+    {
+      "result": "pass",
+      "raw_evidence": "管理员不能代执行断言通过；真实任务抽屉没有启动/完成/重开入口",
+      "limitation": [
+        "普通参与者浏览器登录失败"
+      ],
+      "requirement_id": "R4",
+      "sensor": "执行权限自动化与管理员只读浏览器"
+    },
+    {
+      "result": "pass",
+      "raw_evidence": "当前计划SQL可见性/状态/分页测试通过；真实mine0、all未开始1、四列与取消隐藏逻辑",
+      "limitation": [
+        "完成/阻塞状态来源已自动化测试，未以普通角色实操迁移"
+      ],
+      "requirement_id": "R5",
+      "sensor": "PersonalTaskBoardTest与原位看板真实浏览器"
+    },
+    {
+      "result": "pass",
+      "raw_evidence": "ResourceRequestParticipationTest及EnvironmentResourceServiceTest通过；真实非参与管理员新建候选无数据",
+      "limitation": [
+        "未逐一点击编辑复制提交批量路径"
+      ],
+      "requirement_id": "R6",
+      "sensor": "资源申请参与测试与管理员空候选UI"
+    },
+    {
+      "result": "pass",
+      "raw_evidence": "full-final9.log相关服务和Controller测试通过，99项最后补丁聚焦亦通过",
+      "limitation": [
+        "并非所有关联入口已由多角色真实浏览器覆盖"
+      ],
+      "requirement_id": "R7",
+      "sensor": "网络/附件/工单/通知/读取授权自动化"
+    },
+    {
+      "result": "partial",
+      "raw_evidence": "684项无失败跳过；scope12 67文件通过；web-final12构建退出0；四视口明暗看板及三手机两主题分工实测",
+      "limitation": [
+        "REQ061格式和V84_1历史命名使治理脚本失败",
+        "角色UI与全部移动交互状态矩阵未闭合",
+        "无上线专项独立复核"
+      ],
+      "requirement_id": "R8",
+      "sensor": "迁移集成、范围脚本、构建与视口截图"
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "本地mock.engineer使用公开文档凭据无法登录",
+      "evidence": "页面账号或密码错误；未重置或读取敏感凭据",
+      "classification": "disturbance"
+    },
+    {
+      "event": "治理基线脚本失败",
+      "evidence": "governance12.log REQ061 JSON-compatible YAML；flyway12.log V84_1命名",
+      "classification": "sensor-fault"
+    }
+  ],
+  "coverage_gaps": [
+    "普通参与者真实启动完成与撤权旧页矩阵",
+    "全部资源创建/编辑/复制/批量的真实UI及手机状态",
+    "上线前独立非作者权限数据库复核"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P3": 0,
+    "P2": 0
+  },
+  "observation_status": "incomplete",
+  "note": "本次已覆盖采样未观察到阻塞性产品偏差；零误差不代表未覆盖矩阵通过。不转verifying/converged。"
+}
