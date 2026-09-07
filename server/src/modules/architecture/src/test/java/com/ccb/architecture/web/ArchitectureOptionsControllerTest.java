@@ -180,10 +180,10 @@ class ArchitectureOptionsControllerTest {
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class, String.class, AuthUser.class);
         assertPermission("physicalUsers", "architecture:physical:list",
-                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
+                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')",
                 long.class, long.class, String.class, String.class, AuthUser.class);
         assertPermission("physicalParameters", "architecture:physical:list",
-                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
+                "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')",
                 String.class, String.class, AuthUser.class);
         assertPermission("businessComponents", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
