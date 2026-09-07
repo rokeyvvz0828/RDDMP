@@ -51,6 +51,7 @@ class ProjectWorkflowMemberGuardTest {
         ProjectService service = new ProjectService(jdbc, null);
         java.util.concurrent.atomic.AtomicBoolean checked = new java.util.concurrent.atomic.AtomicBoolean();
         service.setMemberRemovalGuards(java.util.List.of((tenant, project, user) -> {
+            org.junit.jupiter.api.Assertions.assertTrue(jdbc.memberLocked);
             checked.set(true);
             throw new BusinessException(com.ccb.common.exception.ErrorCode.CONFLICT, "先移交阻塞");
         }));
@@ -81,10 +82,15 @@ class ProjectWorkflowMemberGuardTest {
 
     private static final class GuardJdbcTemplate extends JdbcTemplate {
         private int updateCount;
+        private boolean memberLocked;
 
         @Override
         @SuppressWarnings("unchecked")
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            if (sql.startsWith("SELECT user_id FROM pm_project_member")) {
+                org.junit.jupiter.api.Assertions.assertTrue(sql.contains("FOR UPDATE"), "退出前应先锁定成员再检查责任");
+                memberLocked = true;
+            }
             if (requiredType == Long.class) return (T) Long.valueOf(sql.contains("SELECT owner_id") ? 99L : 7L);
             return (T) Integer.valueOf(1);
         }

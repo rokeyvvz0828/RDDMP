@@ -854,7 +854,7 @@ public class ProjectService {
     @Transactional
     public void deleteMember(long projectId, long memberId, AuthUser user) {
         requireAction("member", "delete", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
-        Long memberUserId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, user.tenantId());
+        Long memberUserId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", Long.class, memberId, projectId, user.tenantId());
         Long ownerId = jdbc.queryForObject("SELECT owner_id FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Long.class, projectId, user.tenantId());
         if (memberUserId != null && memberUserId.equals(ownerId)) throw badRequest("项目负责人不能移出项目");
         if (memberUserId != null) requireNoPendingMemberResponsibilities(user.tenantId(), projectId, memberUserId);
@@ -863,7 +863,7 @@ public class ProjectService {
     }
 
     private long memberUserId(long memberId, long projectId, long tenantId) {
-        Long userId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, tenantId);
+        Long userId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", Long.class, memberId, projectId, tenantId);
         if (userId == null || userId <= 0) throw badRequest("项目成员不存在");
         return userId;
     }
