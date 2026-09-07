@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 69,
+  "revision": 79,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T04:32:00+00:00",
+  "updated_at": "2026-09-07T05:41:37+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -138,6 +138,24 @@
       "to": "observing",
       "evidence": "T1-T6执行产物齐备；684项测试与前端构建通过，角色浏览器和治理缺口需要如实观测",
       "recorded_at": "2026-09-07T04:31:01+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "普通执行RBAC采样完成并接受F-0002",
+      "recorded_at": "2026-09-07T05:32:18+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0002纠偏方案已登记",
+      "recorded_at": "2026-09-07T05:32:18+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "F-0002修正及聚焦回归完成",
+      "recorded_at": "2026-09-07T05:41:37+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6401,6 +6419,75 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 9,
+        "evidence": "83项聚焦通过；方法安全31项红绿回归",
+        "recorded_at": "2026-09-07T05:41:36+00:00",
+        "data": {
+          "recommended_next": "observe",
+          "invariants_checked": [
+            {
+              "invariant": "普通角色不能管理，管理角色仍受执行服务资格约束",
+              "result": "pass",
+              "evidence": "PlanParticipationControllerTest真实代理测试"
+            }
+          ],
+          "assumptions_falsified": [
+            "旧standalone Controller测试不能覆盖真实方法安全门禁"
+          ],
+          "status": "implemented",
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationControllerTest -Dsurefire.failIfNoSpecifiedTests=false（修正前）",
+              "exit_code": 1,
+              "salient_output": "31项，10失败，确认入口管理权限拦截"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationControllerTest,*Participation*Test,PlanTimeServiceTest,PlanBlockServiceTest,PlanWorkOrderServiceTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 0,
+              "salient_output": "83项，0失败0错误0跳过；rddmp-066-rbac-green.log"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base 695e917 --working-tree",
+              "exit_code": 0,
+              "salient_output": "77文件范围通过（产物写入前）"
+            }
+          ],
+          "unresolved_items": [
+            "完整浏览器权限矩阵与本版本全仓回归尚未完成",
+            "任务时间仍按既有服务责任人权限处理，不代表任意参与人可改时间"
+          ],
+          "requirements_addressed": [
+            "R4"
+          ],
+          "local_checks": [
+            {
+              "result": "pass",
+              "limitations": [
+                "尚待重启实际后端进行普通用户浏览器复验",
+                "本次glob仅执行匹配到的测试，不将未匹配类宣称为通过"
+              ],
+              "check": "方法安全及参与权限回归",
+              "evidence": "TEMP/rddmp-066-rbac-green.log"
+            }
+          ],
+          "task_id": "T3",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+              "purpose": "10个执行及责任人入口允许查看角色进入服务资格检查"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java",
+              "purpose": "真实方法安全代理31项回归"
+            }
+          ],
+          "diff_summary": [
+            "只改10处RBAC注解；未改服务授权、审计、数据库或账号权限"
+          ],
+          "disturbances": []
+        }
       }
     ],
     "observing": [
@@ -6670,9 +6757,101 @@
           "observation_status": "incomplete",
           "note": "本次已覆盖采样未观察到阻塞性产品偏差；零误差不代表未覆盖矩阵通过。不转verifying/converged。"
         }
+      },
+      {
+        "revision": 4,
+        "evidence": "最小权限账号执行失败与注解定位",
+        "recorded_at": "2026-09-07T05:32:18+00:00",
+        "data": {
+          "measurements": [
+            {
+              "raw_evidence": "req066.executor可以看到本人任务及开始按钮，但点击无状态迁移；Controller执行方法要求MANAGE_AUTHORITY",
+              "result": "fail",
+              "limitation": [
+                "尚未完成资源全路径和撤权旧页矩阵"
+              ],
+              "requirement_id": "R4",
+              "sensor": "六权限普通账号真实UI与Controller注解"
+            }
+          ],
+          "baseline_revision": "baseline-1",
+          "error_counts": {
+            "P3": 0,
+            "P0": 0,
+            "P1": 1,
+            "P2": 0
+          },
+          "coverage_gaps": [
+            "撤权旧页及资源全路径仍待测"
+          ],
+          "sample_label": "普通参与账号执行RBAC失败采样",
+          "feedback": [
+            {
+              "sensor_limit": "本地测试数据",
+              "classification": "deviation",
+              "observed": "执行接口要求管理权限",
+              "evidence": "PlanController.startTask及completeCheckItem注解",
+              "confidence": "high",
+              "severity": "P1",
+              "reproduction": "六权限账号点击SP1788753425059354开始",
+              "expected": "有效普通参与人可执行",
+              "correction_check": "方法安全代理测试及真实UI",
+              "requirement_id": "R4",
+              "causal_hypothesis": "Controller沿用旧管理门禁"
+            }
+          ],
+          "disturbances": [],
+          "observation_status": "complete",
+          "task_ids": [
+            "T3"
+          ]
+        }
       }
     ],
-    "correcting": [],
+    "correcting": [
+      {
+        "revision": 1,
+        "evidence": "T3原范围限幅纠偏，禁止通过授管理角色掩盖问题",
+        "recorded_at": "2026-09-07T05:32:18+00:00",
+        "data": {
+          "dynamic_pattern": "local",
+          "feedback_id": "F-0002",
+          "resolution": "open",
+          "residual_risk": [
+            "完整UI权限矩阵未闭合"
+          ],
+          "decision_reason": "参与人执行被旧管理RBAC拦截",
+          "causal_assessment": {
+            "falsifier": "真实方法安全代理允许view角色调用执行服务",
+            "hypothesis": "参与服务已限制资格，但Controller仍仅允许管理角色",
+            "supporting_evidence": [
+              "start/complete/reopen等注解MANAGE_AUTHORITY"
+            ]
+          },
+          "control_action": {
+            "target": "参与人执行Controller门禁",
+            "correction_check": [
+              "真实方法安全代理回归",
+              "普通用户UI启动完成重开阻塞",
+              "原服务授权测试"
+            ],
+            "impact_limit": "仅参与人可办理的执行、阻塞、任务时间和关联工单接口",
+            "invariants": [
+              "保留服务端实时参与校验、项目隔离和审计",
+              "管理操作仍要求MANAGE_AUTHORITY"
+            ],
+            "rollback": "回退本纠偏提交，不扩大账号权限",
+            "route": "executing",
+            "write_scope": [
+              "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+              "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java"
+            ],
+            "gain": "medium"
+          },
+          "decision": "accept"
+        }
+      }
+    ],
     "verifying": []
   },
   "objective": "系统参与资格与任务分工统一控制执行、个人看板和资源申请，管理者能监督但不能越权执行。",
@@ -8470,9 +8649,17 @@
         {
           "recorded_at": "2026-09-07T04:31:00+00:00",
           "text": "提交观测，不以实现或构建替代完整验收"
+        },
+        {
+          "recorded_at": "2026-09-07T05:39:59+00:00",
+          "text": "F-0002已批准纠偏；真实方法安全31项红测试10项失败，修正执行入口RBAC"
+        },
+        {
+          "recorded_at": "2026-09-07T05:41:36+00:00",
+          "text": "执行入口修正完成，准备实际后端复验"
         }
       ],
-      "updated_at": "2026-09-07T04:31:00+00:00"
+      "updated_at": "2026-09-07T05:41:36+00:00"
     },
     {
       "id": "T4",
@@ -8723,6 +8910,26 @@
       "resolved_at": "2026-09-07T01:22:37+00:00",
       "resolution_evidence": "2026-09-07 check-codex-scope --base HEAD --working-tree退出0，17文件范围检查通过",
       "decided_at": "2026-09-07T01:22:37+00:00"
+    },
+    {
+      "id": "F-0002",
+      "task": "T3",
+      "source": "普通角色浏览器与Controller注解检查",
+      "requirement": "R4",
+      "expected": "仅plan:view且具备有效参与资格的普通用户可以执行任务",
+      "observed": "普通参与人有开始按钮但状态不变；start/complete/reopen等Controller仍要求MANAGE_AUTHORITY",
+      "evidence": "req066.executor六项最小权限；SP1788753425059354；PlanController.startTask使用MANAGE_AUTHORITY",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": "真实方法安全代理测试及普通账号启动完成阻塞实测",
+      "decision": "accept",
+      "decision_reason": "Controller管理门禁阻止有效普通参与人，违反R4且在T3原范围内可修复",
+      "created_at": "2026-09-07T05:31:20+00:00",
+      "resolved_at": null,
+      "resolution_evidence": null,
+      "decided_at": "2026-09-07T05:31:55+00:00"
     }
   ],
   "samples": [

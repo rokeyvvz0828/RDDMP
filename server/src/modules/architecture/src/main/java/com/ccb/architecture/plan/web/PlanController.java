@@ -358,7 +358,7 @@ public class PlanController {
     // ---------- 执行与豁免 ----------
 
     @PostMapping("/tasks/{taskId}/start")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<TaskView> startTask(@PathVariable long taskId,
                                            @RequestParam String projectRef,
                                            @AuthenticationPrincipal AuthUser actor,
@@ -370,7 +370,7 @@ public class PlanController {
     }
 
     @PostMapping("/check-items/{checkItemId}/complete")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<CheckItemView> completeCheckItem(@PathVariable long checkItemId,
                                                         @RequestBody(required = false) CheckItemRequest request,
                                                         @RequestParam String projectRef,
@@ -384,7 +384,7 @@ public class PlanController {
     }
 
     @PostMapping("/check-items/{checkItemId}/reopen")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<CheckItemView> reopenCheckItem(@PathVariable long checkItemId,
                                                       @RequestBody ReasonRequest request,
                                                       @RequestParam String projectRef,
@@ -426,7 +426,7 @@ public class PlanController {
     }
 
     @PostMapping("/check-items/{checkItemId}/suggest-cancel")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<SuggestionView> suggestCancel(@PathVariable long checkItemId,
                                                      @RequestBody ReasonRequest request,
                                                      @RequestParam String projectRef,
@@ -567,7 +567,7 @@ public class PlanController {
     // ---------- 阻塞 ----------
 
     @PostMapping("/tasks/{taskId}/blocks")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<BlockView> addBlock(@PathVariable long taskId, @RequestBody BlockRequest request,
                                            @RequestParam String projectRef,
                                            @AuthenticationPrincipal AuthUser actor,
@@ -581,7 +581,7 @@ public class PlanController {
     }
 
     @PutMapping("/blocks/{blockId}")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<BlockView> updateBlock(@PathVariable long blockId, @RequestBody BlockRequest request,
                                               @RequestParam String projectRef,
                                               @AuthenticationPrincipal AuthUser actor,
@@ -595,7 +595,7 @@ public class PlanController {
     }
 
     @PostMapping("/blocks/{blockId}/resolve")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<BlockView> resolveBlock(@PathVariable long blockId,
                                                @RequestBody ReasonRequest request,
                                                @RequestParam String projectRef,
@@ -642,7 +642,7 @@ public class PlanController {
     }
 
     @PutMapping("/tasks/{taskId}/schedule")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<TaskView> updateTaskSchedule(@PathVariable long taskId,
                                                     @RequestBody ScheduleRequest request,
                                                     @RequestParam String projectRef,
@@ -687,7 +687,7 @@ public class PlanController {
     // ---------- 工单关联 ----------
 
     @PostMapping("/tasks/{taskId}/work-orders")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<WorkOrderLinkView>> attachWorkOrders(
             @PathVariable long taskId, @RequestBody WorkOrderRequest request,
             @RequestParam String projectRef,
@@ -703,7 +703,7 @@ public class PlanController {
     }
 
     @DeleteMapping("/work-orders/{workOrderRelationId}")
-    @PreAuthorize(MANAGE_AUTHORITY)
+    @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<Void> detachWorkOrder(@PathVariable long workOrderRelationId,
                                              @RequestBody ReasonRequest request,
                                              @RequestParam String projectRef,

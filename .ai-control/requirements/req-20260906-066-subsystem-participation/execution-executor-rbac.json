@@ -1,0 +1,64 @@
+{
+  "recommended_next": "observe",
+  "invariants_checked": [
+    {
+      "invariant": "普通角色不能管理，管理角色仍受执行服务资格约束",
+      "result": "pass",
+      "evidence": "PlanParticipationControllerTest真实代理测试"
+    }
+  ],
+  "assumptions_falsified": [
+    "旧standalone Controller测试不能覆盖真实方法安全门禁"
+  ],
+  "status": "implemented",
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationControllerTest -Dsurefire.failIfNoSpecifiedTests=false（修正前）",
+      "exit_code": 1,
+      "salient_output": "31项，10失败，确认入口管理权限拦截"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationControllerTest,*Participation*Test,PlanTimeServiceTest,PlanBlockServiceTest,PlanWorkOrderServiceTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "83项，0失败0错误0跳过；rddmp-066-rbac-green.log"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base 695e917 --working-tree",
+      "exit_code": 0,
+      "salient_output": "77文件范围通过（产物写入前）"
+    }
+  ],
+  "unresolved_items": [
+    "完整浏览器权限矩阵与本版本全仓回归尚未完成",
+    "任务时间仍按既有服务责任人权限处理，不代表任意参与人可改时间"
+  ],
+  "requirements_addressed": [
+    "R4"
+  ],
+  "local_checks": [
+    {
+      "result": "pass",
+      "limitations": [
+        "尚待重启实际后端进行普通用户浏览器复验",
+        "本次glob仅执行匹配到的测试，不将未匹配类宣称为通过"
+      ],
+      "check": "方法安全及参与权限回归",
+      "evidence": "TEMP/rddmp-066-rbac-green.log"
+    }
+  ],
+  "task_id": "T3",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+      "purpose": "10个执行及责任人入口允许查看角色进入服务资格检查"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java",
+      "purpose": "真实方法安全代理31项回归"
+    }
+  ],
+  "diff_summary": [
+    "只改10处RBAC注解；未改服务授权、审计、数据库或账号权限"
+  ],
+  "disturbances": []
+}
