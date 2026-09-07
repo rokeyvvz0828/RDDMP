@@ -1,0 +1,178 @@
+{
+  "baseline_revision": "baseline-revision-2",
+  "model_revision": "model-revision-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "迁移检核规则页形成符合已批准操作层级和全状态要求的页面头部与当前页批量导入对话框。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+      "prerequisites": [],
+      "input_facts": [
+        "ValidationRulesPage.vue 当前没有 UiPageHeader，模板下载、选择Excel、提交导入和新增位于 UiToolbar",
+        "现有状态为 pendingImportFile、importResult、actionBusy，submitImport 成功后清空文件并刷新列表",
+        "data-migration.css 已提供全宽 dm-upload-dropzone 和 dm-attachment-*",
+        "UiPageHeader 公共样式在760px以下转为纵向布局并允许 actions 换行",
+        "downloadRuleTemplate 与 importMigrationCheckRules({ projectId }, file) 签名已由源码确认",
+        "Chromium、Playwright、前端5173和后端健康端点在建模时可用"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-execution-T1.json"
+      ],
+      "invariants": [
+        "projectId 继续来自 useProjectScope",
+        "hasCreate 继续控制新增与导入入口",
+        "模板与导入 API 签名不变",
+        "Excel 行级目标类型、规则大类与系统解析不变",
+        "成功或部分成功刷新列表但保持对话框",
+        "请求失败保留文件",
+        "关闭或项目切换清理导入状态",
+        "不覆盖任务开始前已有修改"
+      ],
+      "interface_contracts": [
+        "UiPageHeader.actions 顺序为批量导入次要按钮、新增迁移检核规则 primary按钮",
+        "UiToolbar 只包含筛选、查询、重置、导出和批量删除",
+        "el-upload 从 UploadFile.raw 取得单个 .xlsx/.xls File，不自动上传",
+        "el-dialog 提交中禁止遮罩、Esc、关闭图标与footer取消关闭",
+        "RuleImportResult 在对话框展示 rows/accepted/failed 和最多20条 errors",
+        "downloadRuleTemplate() 与 importMigrationCheckRules({ projectId }, file) 保持原调用"
+      ],
+      "non_goals": [
+        "不新增路由或独立导入页",
+        "不增加预校验、预览、字段映射或历史",
+        "不修改 data-migration.css 或公共 UI",
+        "不修改 API、后端、数据库、权限或审计",
+        "不处理 REQ-061"
+      ],
+      "action_bounds": [
+        "只在 ValidationRulesPage.vue 增加 UiPageHeader import/模板、导入对话框状态函数与局部样式",
+        "从 UiToolbar 移除导入与新增入口并保留列表操作",
+        "使用 UploadFile/UploadInstance 管理自定义单文件状态并关闭默认文件列表",
+        "只调整 submitImport 的本地UI状态与项目watch清理，不改变请求参数和后端语义",
+        "若共享样式不足，停止而不是扩大到 data-migration.css"
+      ],
+      "acceptance_checks": [
+        "Node源码契约确认头部、对话框和导入状态存在，工具栏无模板下载/选择Excel/提交导入",
+        "npm --prefix web run build 退出码0",
+        "git diff --check -- ValidationRulesPage.vue 退出码0",
+        "git diff 审查确认只有批准的单文件产品行为变化",
+        "成功分支不清空文件或关闭对话框，请求失败写入错误并保留文件"
+      ],
+      "evidence_required": [
+        "T1开始前后源码契约扫描",
+        "ValidationRulesPage.vue 实际 diff",
+        "前端构建完整退出码与摘要",
+        "单文件 git diff --check 输出",
+        "发现的扰动、假设失效和未决动态验证"
+      ],
+      "rollback": "基于T1开始前局部diff，仅逆向恢复本任务加入的头部、导入状态、对话框和局部样式，保留该文件既有治理修改和控制证据。",
+      "stop_conditions": [
+        "需要修改 API、后端、公共 UI、路由或 data-migration.css",
+        "ValidationRulesPage.vue 同一区域出现无法安全合并的新用户修改",
+        "Element Plus 2.9.5 不支持已建模上传或关闭契约",
+        "构建失败根因需要范围外改动"
+      ],
+      "escalation_conditions": [
+        "用户要求预校验、字段映射、历史或独立页面",
+        "发现独立导入权限使 hasCreate 不适用",
+        "项目切换清理必须改变全局store",
+        "响应式验收只能修改公共或共享样式才能满足"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "以独立静态、构建、范围和真实浏览器证据验证 R1-R6，并准确分类环境与REQ-061扰动。",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+      "prerequisites": ["T1"],
+      "input_facts": [
+        "项目规定1280x800、375x812、390x844、430x932验收",
+        "Playwright和Chromium已在建模时验证可用",
+        "前后端健康端点在建模时返回HTTP200，但执行时必须复测",
+        "REQ-061非JSON-compatible YAML是已知范围外全仓治理扰动"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-observation-T1.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-convergence-report.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-state.json"
+      ],
+      "invariants": [
+        "观察阶段不修改产品实现",
+        "不使用生产数据、真实个人信息或敏感凭据",
+        "未执行的动态分支不得描述为通过",
+        "REQ-061不修改且不从输出中隐藏",
+        "只终止本次启动的临时服务"
+      ],
+      "interface_contracts": [
+        "S1源码契约与S2构建提供第一采样",
+        "S3浏览器DOM/路由/尺寸与S4范围检查提供第二采样",
+        "S5真实后端仅在非敏感测试数据可用时增强动态证据",
+        "四视口页面和对话框均满足scrollWidth<=clientWidth",
+        "浏览器截图与断言标注视口和导入状态"
+      ],
+      "non_goals": [
+        "不在观察任务中修复代码",
+        "不为取得证据修改认证或权限",
+        "不连接生产系统",
+        "不修复REQ-061"
+      ],
+      "action_bounds": [
+        "复跑源码契约、构建、diff与REQ-031范围检查",
+        "复测前后端健康并复用现有本地服务",
+        "使用Playwright在四视口测量头部、对话框、按钮、路由和溢出",
+        "可使用浏览器受控网络响应验证前端状态，但必须与真实后端证据区分",
+        "运行全仓治理并进行范围归因",
+        "发现偏差只记录feedback并转correcting，不直接修改产品"
+      ],
+      "acceptance_checks": [
+        "源码契约、前端构建和git diff --check通过",
+        "REQ-031定向范围检查通过",
+        "四视口头部顺序、主次、路由、按钮状态、滚动与footer可达通过",
+        "成功/部分失败/请求失败由真实后端或明确标记的受控响应验证",
+        "全仓治理结果准确区分REQ-061外部失败与本任务失败",
+        "所有开放反馈均被裁决并在收敛前关闭"
+      ],
+      "evidence_required": [
+        "独立命令、退出码和关键输出",
+        "四视口截图与DOM尺寸断言",
+        "导入状态网络摘要或未执行原因",
+        "REQ-061治理失败原始输出与归因",
+        "R1-R6证据映射和残余风险"
+      ],
+      "rollback": "T2不修改产品；删除仅由本次浏览器验收生成的临时文件并终止仅由本次启动的进程，保留控制证据。",
+      "stop_conditions": [
+        "REQ-031定向范围检查失败",
+        "构建失败且与T1相关",
+        "浏览器问题必须扩大产品写入范围才能修复",
+        "动态验收要求生产数据或敏感凭据"
+      ],
+      "escalation_conditions": [
+        "出现本任务P0/P1回归",
+        "必须修改公共UI、全局样式、API或后端",
+        "需要新的用户授权或外部环境",
+        "观测推翻hasCreate或单文件可控性假设"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "独立验证依赖稳定的单文件产品输出，且浏览器与构建资源必须串行使用"}
+  ],
+  "parallel_groups": [["T1"], ["T2"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["Node源码契约", "npm --prefix web run build", "git diff --check -- ValidationRulesPage.vue"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["REQ-031定向范围检查", "四视口真实浏览器验收", "R1-R6证据映射", "全仓治理扰动分类"]}
+  ],
+  "sampling_plan": [
+    {"label": "SP1-T1局部完成采样", "trigger": "T1执行报告完成", "observer": "observe-engineering-output 独立复跑", "sensors": ["S1", "S2", "S4"], "requirement_ids": ["R1", "R2", "R3", "R4", "R6"]},
+    {"label": "SP2-T2运行时与集成采样", "trigger": "静态构建和范围检查稳定", "observer": "observe-engineering-output 使用真实浏览器和可用后端", "sensors": ["S3", "S5", "S4"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"]},
+    {"label": "SP3-纠偏复验", "trigger": "存在accepted feedback并完成限幅纠正", "observer": "observe-engineering-output 仅复测受影响传感器并追加回归", "sensors": ["S1", "S2", "S3", "S4"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3", "S5"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S2", "S4", "S5"]}
+  ],
+  "plan_status": "ready"
+}

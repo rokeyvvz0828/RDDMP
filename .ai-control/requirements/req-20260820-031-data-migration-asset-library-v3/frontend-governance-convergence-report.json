@@ -1,0 +1,161 @@
+{
+  "baseline_revision": "frontend-governance-baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T4"],
+      "evidence": [
+        "需求文档按 T31-r1 消歧并登记 T47",
+        "项目字段静态扫描无命中",
+        "7 页面 x 4 视口无所属项目或项目名称可见文本"
+      ],
+      "limitations": ["真实详情记录由静态模板扫描补充空态浏览器数据的覆盖"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T3", "T4"],
+      "evidence": [
+        "共享 dm-upload-dropzone 同时约束 el-upload 和 el-upload-dragger 为 100% 宽",
+        "1280x800、375x812、390x844、430x932 的上传区边界与页面 scrollWidth 断言通过"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T3", "T4"],
+      "evidence": [
+        "共享 dm-upload-* 与 dm-attachment-* 样式覆盖目标页面",
+        "旧 attachment-* 页面类与局部样式扫描无命中",
+        "Meetings 与 Plans 的共享附件空态和上传操作区在四视口可见"
+      ],
+      "limitations": ["现有附件和待上传附件的数据态未连接真实后端"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T3", "T4"],
+      "evidence": [
+        "Reports 三处自定义预览上传均配置 show-file-list=false",
+        "四个视口选择测试文件后文件名出现次数均为 1"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T3", "T4"],
+      "evidence": [
+        "上传相关页面硬编码色和局部主题兜底扫描无命中",
+        "npm --prefix web run build 退出码 0",
+        "REQ-031 工作区范围检查退出码 0",
+        "REQ-061 解析失败被独立记录为范围外治理扰动"
+      ],
+      "limitations": ["全仓治理在 REQ-061 修正前仍退出 1"]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["需求冲突扫描无命中，T47 增量已登记"]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": ["项目字段扫描、projectId 差异审计和前端构建通过"]
+    },
+    {
+      "id": "T3",
+      "status": "verified",
+      "evidence": ["共享样式扫描、Reports 配置检查、前端构建和浏览器布局断言通过"]
+    },
+    {
+      "id": "T4",
+      "status": "verified",
+      "evidence": ["四视口 144/144 浏览器断言、REQ-031 范围检查和 diff 检查通过，外部治理失败已归因"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {
+      "check": "Vue TypeScript 与 Vite 生产构建",
+      "result": "pass",
+      "evidence": "npm --prefix web run build 退出码 0"
+    },
+    {
+      "check": "数据迁移项目字段与上传样式静态检查",
+      "result": "pass",
+      "evidence": "两组 rg 反向扫描均无违规命中"
+    },
+    {
+      "check": "REQ-031 写入范围",
+      "result": "pass",
+      "evidence": "check-codex-scope.mjs 报 24 个工作区变更文件均在范围内"
+    },
+    {
+      "check": "桌面和移动端运行布局",
+      "result": "pass",
+      "evidence": "Playwright 144/144 断言通过且四个视口无页面脚本错误"
+    },
+    {
+      "check": "全仓治理",
+      "result": "external-failure",
+      "evidence": "数据迁移相关前置检查通过，随后范围外 REQ-061 YAML 解析失败"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "projectId 继续来自顶部项目上下文并参与请求",
+      "result": "pass",
+      "evidence": "scopeProjectId 与请求逻辑未改，仅移除 projectName 展示依赖"
+    },
+    {
+      "invariant": "上传 API、权限、审计和后端契约不变",
+      "result": "pass",
+      "evidence": "最终 diff 无 API、store、server、数据库迁移或公共 UI 修改"
+    },
+    {
+      "invariant": "目标表模板所属项目编码说明保留",
+      "result": "pass",
+      "evidence": "文件契约提示文本仍保留"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "REQ-061 非 JSON-compatible YAML 阻断全仓治理",
+      "result": "isolated",
+      "evidence": "REQ-031 专项范围、构建、静态和浏览器检查独立通过；未修改 REQ-061"
+    },
+    {
+      "disturbance": "本地 8080 后端未运行",
+      "result": "degraded-but-observable",
+      "evidence": "使用 Playwright API 拦截提供脱敏空态数据，真实渲染前端并测量布局与交互 DOM"
+    }
+  ],
+  "residual_risks": [
+    "REQ-061 修正前仓库全量治理仍失败，不能作为本次通过项报告",
+    "真实后端文件上传/下载集成未在本地复验；本次差异未改变上传 API 和状态转换"
+  ],
+  "gate_result": "pass",
+  "route_reason": "五条 must 需求均由 verified 任务覆盖并有静态、构建、范围和四视口运行证据；三次采样 P0-P3 均为零，无开放反馈，范围和不变量通过，外部扰动已披露且未被误归因"
+}
