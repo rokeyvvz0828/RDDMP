@@ -1,0 +1,53 @@
+{
+  "status": "implemented",
+  "diff_summary": [
+    "不改授权条件，仅将不可见计划转换为平台标准拒绝异常"
+  ],
+  "recommended_next": "observe",
+  "disturbances": [
+    "首次聚焦测试误报容器注入交互；clearInvocations仅排除初始化交互，随后92项通过"
+  ],
+  "requirements_addressed": [
+    "R4",
+    "R5"
+  ],
+  "invariants_checked": [
+    {
+      "result": "pass",
+      "evidence": "local-role-api-matrix.json",
+      "invariant": "撤权即时失效"
+    }
+  ],
+  "commands": [
+    {
+      "exit_code": 0,
+      "command": "mvn -pl :ccb-architecture -am test '-Dtest=*Participation*Test,PersonalTaskBoardTest' '-Dsurefire.failIfNoSpecifiedTests=false'",
+      "salient_output": "8类92项通过，TEMP/rddmp-066-options-denial-green.log"
+    }
+  ],
+  "task_id": "T3",
+  "unresolved_items": [
+    "最新全仓回归仍运行，不能以715项旧版结果替代"
+  ],
+  "local_checks": [
+    {
+      "result": "pass",
+      "evidence": "detail/dashboard/timeline均403，code40300；finally恢复名单",
+      "limitations": [
+        "API会话测试，不冒充浏览器旧页面"
+      ],
+      "check": "同一API会话撤销系统资格后读计划"
+    }
+  ],
+  "assumptions_falsified": [],
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+      "purpose": "撤权读计划返回标准403而非500"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java",
+      "purpose": "断言detail/dashboard/timeline标准拒绝码"
+    }
+  ]
+}

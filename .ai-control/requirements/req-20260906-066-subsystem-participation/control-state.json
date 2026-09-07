@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 91,
+  "revision": 110,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T05:52:58+00:00",
+  "updated_at": "2026-09-07T06:33:30+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -174,6 +174,24 @@
       "to": "observing",
       "evidence": "看板完成重开阻塞实测同步",
       "recorded_at": "2026-09-07T05:52:35+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "F-0004已接受",
+      "recorded_at": "2026-09-07T05:53:47+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0004两接口和前端提示限幅",
+      "recorded_at": "2026-09-07T05:53:47+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "F4/F5执行产物已记录，转入运行复验和完整回归观测",
+      "recorded_at": "2026-09-07T06:33:29+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6558,6 +6576,130 @@
           ],
           "disturbances": []
         }
+      },
+      {
+        "revision": 11,
+        "evidence": "实际diff、92项聚焦测试和本地角色运行复验",
+        "recorded_at": "2026-09-07T06:32:44+00:00",
+        "data": {
+          "diff_summary": [
+            "不扩大角色权限，保留项目数据范围，非必要组织选项仍拒绝"
+          ],
+          "disturbances": [
+            "首次聚焦测试误报容器注入交互；clearInvocations仅排除初始化交互，随后92项通过"
+          ],
+          "status": "implemented",
+          "task_id": "T5",
+          "invariants_checked": [
+            {
+              "result": "pass",
+              "evidence": "organizations403，方法代理测试",
+              "invariant": "非必要权限不开放"
+            }
+          ],
+          "local_checks": [
+            {
+              "result": "pass",
+              "evidence": "真实浏览器保存草稿并编辑回填；必要选项200，organizations403",
+              "limitations": [
+                "本地合成数据"
+              ],
+              "check": "六权限普通角色资源新建编辑"
+            }
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+              "purpose": "仅开放资源表单必要用户和参数选项"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/ResourceRequestPage.vue",
+              "purpose": "显示选项加载失败"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+              "purpose": "资源选项方法安全代理测试"
+            }
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "command": "mvn -pl :ccb-architecture -am test '-Dtest=*Participation*Test,PersonalTaskBoardTest' '-Dsurefire.failIfNoSpecifiedTests=false'",
+              "salient_output": "8类92项通过，TEMP/rddmp-066-options-denial-green.log"
+            },
+            {
+              "exit_code": 0,
+              "command": "npm --prefix web run build",
+              "salient_output": "vue-tsc与Vite通过，TEMP/rddmp-066-web-options.log"
+            }
+          ],
+          "recommended_next": "observe",
+          "requirements_addressed": [
+            "R6"
+          ],
+          "unresolved_items": [
+            "最新全仓回归仍运行，不能以715项旧版结果替代"
+          ],
+          "assumptions_falsified": []
+        }
+      },
+      {
+        "revision": 12,
+        "evidence": "实际diff、92项聚焦测试和本地角色运行复验",
+        "recorded_at": "2026-09-07T06:32:44+00:00",
+        "data": {
+          "status": "implemented",
+          "diff_summary": [
+            "不改授权条件，仅将不可见计划转换为平台标准拒绝异常"
+          ],
+          "recommended_next": "observe",
+          "disturbances": [
+            "首次聚焦测试误报容器注入交互；clearInvocations仅排除初始化交互，随后92项通过"
+          ],
+          "requirements_addressed": [
+            "R4",
+            "R5"
+          ],
+          "invariants_checked": [
+            {
+              "result": "pass",
+              "evidence": "local-role-api-matrix.json",
+              "invariant": "撤权即时失效"
+            }
+          ],
+          "commands": [
+            {
+              "exit_code": 0,
+              "command": "mvn -pl :ccb-architecture -am test '-Dtest=*Participation*Test,PersonalTaskBoardTest' '-Dsurefire.failIfNoSpecifiedTests=false'",
+              "salient_output": "8类92项通过，TEMP/rddmp-066-options-denial-green.log"
+            }
+          ],
+          "task_id": "T3",
+          "unresolved_items": [
+            "最新全仓回归仍运行，不能以715项旧版结果替代"
+          ],
+          "local_checks": [
+            {
+              "result": "pass",
+              "evidence": "detail/dashboard/timeline均403，code40300；finally恢复名单",
+              "limitations": [
+                "API会话测试，不冒充浏览器旧页面"
+              ],
+              "check": "同一API会话撤销系统资格后读计划"
+            }
+          ],
+          "assumptions_falsified": [],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+              "purpose": "撤权读计划返回标准403而非500"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java",
+              "purpose": "断言detail/dashboard/timeline标准拒绝码"
+            }
+          ]
+        }
       }
     ],
     "observing": [
@@ -6926,6 +7068,105 @@
             "T4"
           ]
         }
+      },
+      {
+        "revision": 6,
+        "evidence": "新建资源表单普通角色空候选及入口注解",
+        "recorded_at": "2026-09-07T05:53:46+00:00",
+        "data": {
+          "measurements": [
+            {
+              "raw_evidence": "普通资源申请新建系统候选无数据；必要users/parameters接口不包含resource-request:apply",
+              "result": "fail",
+              "limitation": [
+                "尚未完成资源全路径和撤权旧页矩阵"
+              ],
+              "requirement_id": "R6",
+              "sensor": "六权限普通账号真实UI与Controller注解"
+            }
+          ],
+          "baseline_revision": "baseline-1",
+          "error_counts": {
+            "P3": 0,
+            "P0": 0,
+            "P1": 1,
+            "P2": 0
+          },
+          "coverage_gaps": [
+            "撤权旧页及资源全路径仍待测"
+          ],
+          "sample_label": "普通资源申请选项RBAC失败",
+          "feedback": [
+            {
+              "sensor_limit": "本地测试数据",
+              "classification": "deviation",
+              "observed": "选项静默空白",
+              "evidence": "真实浏览器完成前后DOM",
+              "confidence": "high",
+              "severity": "P1",
+              "reproduction": "六权限账号点击SP1788753425059354开始",
+              "expected": "申请人加载资源表单必要选项",
+              "correction_check": "方法安全代理测试及真实UI",
+              "requirement_id": "R6",
+              "causal_hypothesis": "资源页复用物理系统选项但未兼容资源权限"
+            }
+          ],
+          "disturbances": [],
+          "observation_status": "complete",
+          "task_ids": [
+            "T5"
+          ]
+        }
+      },
+      {
+        "revision": 7,
+        "evidence": "92项聚焦、真实普通角色UI/API及撤权重放",
+        "recorded_at": "2026-09-07T06:33:30+00:00",
+        "data": {
+          "disturbances": [
+            "既有REQ061治理格式失败及V84_1迁移命名失败，未改动其他需求"
+          ],
+          "sample_label": "F4/F5普通角色纠偏复验",
+          "task_ids": [
+            "T3",
+            "T5"
+          ],
+          "observation_status": "complete",
+          "measurements": [
+            {
+              "requirement_id": "R6",
+              "limitation": [
+                "截图仅会话证据，无伪造磁盘路径",
+                "跨项目真实部署单元和附件UI全路径未逐项覆盖"
+              ],
+              "sensor": "方法安全代理测试与真实普通角色资源UI/API",
+              "result": "pass",
+              "raw_evidence": "92项聚焦测试通过；users/parameters200，organizations403；本人新建编辑保存成功；375/390/430手机及桌面明暗主题表单已观察，操作区可达；控制台error=[]；RR1788761891729496已取消"
+            },
+            {
+              "requirement_id": "R4",
+              "limitation": [
+                "API会话不等价于浏览器旧页面"
+              ],
+              "sensor": "真实API旧会话撤权重放及聚焦测试",
+              "result": "pass",
+              "raw_evidence": "detail/dashboard/timeline全部403/40300；资源旧草稿edit/submit/copy/候选拒绝；管理员非参与执行403；名单恢复"
+            }
+          ],
+          "error_counts": {
+            "P1": 0,
+            "P2": 0,
+            "P0": 0,
+            "P3": 0
+          },
+          "baseline_revision": "baseline-1",
+          "feedback": [],
+          "coverage_gaps": [
+            "最新全仓回归尚未结束",
+            "非作者上线权限/数据库专项复核未取得",
+            "跨项目真实部署单元和附件UI全路径未逐项覆盖"
+          ]
+        }
       }
     ],
     "correcting": [
@@ -7004,6 +7245,50 @@
             "route": "executing",
             "write_scope": [
               "web/src/modules/architecture/PlanDetailPage.vue"
+            ],
+            "gain": "medium"
+          },
+          "decision": "accept"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "限定必要只读选项与错误提示",
+        "recorded_at": "2026-09-07T05:53:47+00:00",
+        "data": {
+          "dynamic_pattern": "local",
+          "feedback_id": "F-0004",
+          "resolution": "open",
+          "residual_risk": [
+            "完整UI权限矩阵未闭合"
+          ],
+          "decision_reason": "资源角色缺少必要只读选项兼容",
+          "causal_assessment": {
+            "falsifier": "refreshCurrentTask已刷新dashboard",
+            "hypothesis": "物理选项users/parameters不含资源角色",
+            "supporting_evidence": [
+              "ResourceRequestPage选项Promise.all，Controller门禁"
+            ]
+          },
+          "control_action": {
+            "target": "资源表单必要选项",
+            "correction_check": [
+              "真实方法代理仅资源apply可加载必要选项",
+              "普通用户资源UI表单有候选",
+              "无权限拒绝及项目隔离"
+            ],
+            "impact_limit": "任务操作后的页面数据同步",
+            "invariants": [
+              "只放开必要只读用户及参数选项，不放开物理系统维护",
+              "仍校验项目范围",
+              "不扩大系统申请候选"
+            ],
+            "rollback": "回退本纠偏提交，不扩大账号权限",
+            "route": "executing",
+            "write_scope": [
+              "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+              "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+              "web/src/modules/architecture/ResourceRequestPage.vue"
             ],
             "gain": "medium"
           },
@@ -8816,9 +9101,17 @@
         {
           "recorded_at": "2026-09-07T05:41:36+00:00",
           "text": "执行入口修正完成，准备实际后端复验"
+        },
+        {
+          "recorded_at": "2026-09-07T06:01:45+00:00",
+          "text": "F-0005已接受，本轮executing内合并有界错误语义纠偏"
+        },
+        {
+          "recorded_at": "2026-09-07T06:32:44+00:00",
+          "text": "F4/F5修复完成，复验记录已入账，全仓仍运行"
         }
       ],
-      "updated_at": "2026-09-07T05:41:36+00:00"
+      "updated_at": "2026-09-07T06:32:44+00:00"
     },
     {
       "id": "T4",
@@ -8987,9 +9280,17 @@
         {
           "recorded_at": "2026-09-07T04:31:01+00:00",
           "text": "提交观测，不以实现或构建替代完整验收"
+        },
+        {
+          "recorded_at": "2026-09-07T05:53:47+00:00",
+          "text": "资源选项权限兼容纠偏"
+        },
+        {
+          "recorded_at": "2026-09-07T06:32:45+00:00",
+          "text": "F4/F5修复完成，复验记录已入账，全仓仍运行"
         }
       ],
-      "updated_at": "2026-09-07T04:31:01+00:00"
+      "updated_at": "2026-09-07T06:32:45+00:00"
     },
     {
       "id": "T6",
@@ -9117,6 +9418,46 @@
       "resolved_at": "2026-09-07T05:52:58+00:00",
       "resolution_evidence": "同页重开、阻塞、解除、完成均自动移列，无手动刷新；前端构建通过",
       "decided_at": "2026-09-07T05:45:51+00:00"
+    },
+    {
+      "id": "F-0004",
+      "task": "T5",
+      "source": "普通申请角色UI与选项入口代码",
+      "requirement": "R6",
+      "expected": "仅本人资源申请权限可加载必要联系人和规格字典",
+      "observed": "无物理系统查看权限时必要选项被403拦截，Promise.all导致系统候选为空",
+      "evidence": "ResourceRequestPage.loadOptions与ArchitectureOptionsController.physicalUsers/physicalParameters",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": "仅resource-request:apply真实方法代理及UI候选加载",
+      "decision": "accept",
+      "decision_reason": "资源业务必要只读选项兼容申请角色，不能依赖额外物理系统管理权限",
+      "created_at": "2026-09-07T05:53:46+00:00",
+      "resolved_at": "2026-09-07T06:32:45+00:00",
+      "resolution_evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-options-denial-recheck.json：聚焦测试及真实API/UI复验通过",
+      "decided_at": "2026-09-07T05:53:46+00:00"
+    },
+    {
+      "id": "F-0005",
+      "task": "T3",
+      "source": "本地HTTP撤权旧会话实测",
+      "requirement": "R7",
+      "expected": "撤权后读取计划返回受控拒绝",
+      "observed": "读取返回500，写操作正确403，未泄露数据",
+      "evidence": "本地后台ArchitectureNotFoundException未被计划包异常处理接管",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": "撤权后计划详情/看板/时间视图403而非500",
+      "decision": "accept",
+      "decision_reason": "改用平台BusinessException(FORBIDDEN)保证受控HTTP错误，不改授权条件",
+      "created_at": "2026-09-07T06:01:45+00:00",
+      "resolved_at": "2026-09-07T06:32:45+00:00",
+      "resolution_evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-options-denial-recheck.json：聚焦测试及真实API/UI复验通过",
+      "decided_at": "2026-09-07T06:01:45+00:00"
     }
   ],
   "samples": [
@@ -9158,6 +9499,19 @@
       "score": 0,
       "evidence": "observation-integration-final.json；未观察到已覆盖路径产品偏差，显式保留coverage_gaps，不等同converged",
       "recorded_at": "2026-09-07T04:32:00+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "F4/F5纠偏复验",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-options-denial-recheck.json，覆盖缺口另列",
+      "recorded_at": "2026-09-07T06:32:45+00:00"
     }
   ]
 }
