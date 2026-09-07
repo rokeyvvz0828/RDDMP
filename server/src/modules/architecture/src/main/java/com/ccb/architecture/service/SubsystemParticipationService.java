@@ -49,12 +49,23 @@ public class SubsystemParticipationService implements ProjectMemberRemovalGuard 
         return view(actor, project, system, manager);
     }
 
+    /** 分派事务使用与撤销相同的父锁，但不要求管理者本人参与系统。 */
+    public ParticipationView assignmentScope(AuthUser actor, ProjectAccess project, long systemId) {
+        return view(actor, project, system(actor, project, systemId,
+                TransactionSynchronizationManager.isActualTransactionActive()), false);
+    }
+
     public List<Candidate> candidates(AuthUser actor, ProjectAccess project, long systemId, boolean manager) {
         SystemScope system = system(actor, project, systemId, false);
         requireMaintainer(actor, system, manager);
         return members.findActiveMembers(actor, project.id()).stream()
                 .filter(m -> users.findUser(actor, m.userId(), true).isPresent())
                 .map(m -> new Candidate(m.userId(), m.displayName())).toList();
+    }
+
+    public boolean activeMember(AuthUser actor, ProjectAccess project) {
+        return actor != null && actor.enabled() && users.findUser(actor, actor.id(), true).isPresent()
+                && members.findActiveMembers(actor, project.id()).stream().anyMatch(m -> m.userId() == actor.id());
     }
 
     public void requireSystemParticipant(AuthUser actor, ProjectAccess project, long systemId) {

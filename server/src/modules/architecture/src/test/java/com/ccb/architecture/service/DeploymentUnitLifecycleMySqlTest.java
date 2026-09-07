@@ -96,6 +96,7 @@ class DeploymentUnitLifecycleMySqlTest {
         service = new DeploymentUnitService(store, new DeploymentUnitReferenceGuard(List.of()),
                 mock(SystemReferenceQuery.class), mock(SystemOperationAudit.class),
                 transactions, idSupplier);
+        service.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
     }
 
     private static void prepareDefaultProject() {

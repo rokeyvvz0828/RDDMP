@@ -69,6 +69,18 @@ public class DeploymentUnitService {
     private final LongSupplier identifiers;
     private final NetworkAccessService networkAccessService;
 
+    private SubsystemParticipationService participation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(SubsystemParticipationService participation) {
+        this.participation = java.util.Objects.requireNonNull(participation);
+    }
+
+    private void requireUnitParticipation(AuthUser actor, ProjectAccess project, long id) {
+        DeploymentUnit unit = store.findUnit(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound(id));
+        participation.lockAndRequireSystemParticipant(actor, project, unit.physicalSubsystemId());
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public DeploymentUnitService(DeploymentUnitStore store,
                                  DeploymentUnitReferenceGuard referenceGuard,
@@ -204,6 +216,7 @@ public class DeploymentUnitService {
         PreparedCommand prepared = prepare(actor, project, command, id);
         try {
             transactions.executeWithoutResult(status -> {
+                requireUnitParticipation(actor, project, id);
                 DeploymentUnit locked = store.lockUnit(actor.tenantId(), project.id(), id)
                         .orElseThrow(() -> notFound(id));
                 if (locked.status().equals(DeploymentUnitStatus.INACTIVE.name())) {
@@ -281,6 +294,7 @@ public class DeploymentUnitService {
                             boolean referenceCheck, String operation, String method, String traceId) {
         try {
             transactions.executeWithoutResult(status -> {
+                requireUnitParticipation(actor, project, id);
                 DeploymentUnit locked = store.lockUnit(actor.tenantId(), project.id(), id)
                         .orElseThrow(() -> notFound(id));
                 if (from != null && !locked.status().equals(from.name())) {
@@ -322,6 +336,7 @@ public class DeploymentUnitService {
                         String defaultNetworkZoneName, String remark) {
         long tenantId = actor.tenantId();
         requireProject(project);
+        participation.lockAndRequireSystemParticipant(actor, project, physicalSubsystemId);
         PhysicalSubsystemRef physical = store.findPhysical(tenantId, project.id(), physicalSubsystemId)
                 .orElseThrow(() -> badRequest("物理子系统不存在或不属于当前项目"));
         if (physical.deleted()) {

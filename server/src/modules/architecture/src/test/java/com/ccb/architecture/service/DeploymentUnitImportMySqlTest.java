@@ -93,6 +93,7 @@ class DeploymentUnitImportMySqlTest {
         LongSupplier idSupplier = () -> identifiers.incrementAndGet();
         unitService = new DeploymentUnitService(store, new DeploymentUnitReferenceGuard(java.util.List.of()),
                 mock(SystemReferenceQuery.class), mock(SystemOperationAudit.class), transactions, idSupplier);
+        unitService.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
         importService = new DeploymentUnitImportService(store, unitService, mock(SystemReferenceQuery.class),
                 mock(SystemOperationAudit.class), transactions, new ObjectMapper());
     }

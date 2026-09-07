@@ -58,6 +58,7 @@ class DeploymentUnitServiceTest {
     void setUp() {
         service = new DeploymentUnitService(store, referenceGuard, referenceQuery, operationAudit,
                 new TransactionTemplate(new RecordingTransactionManager()), identifiers::incrementAndGet);
+        service.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
     }
 
     // ---------- 创建即发布版本 1 ----------
@@ -177,6 +178,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void updatePublishesNewVersionAndKeepsOldVersionImmutable() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.unitNameExists(TENANT_ID, PROJECT.id(), "ECIP_DB", 1_001L)).thenReturn(false);
@@ -198,6 +200,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void updateRejectsInactiveAndVoidedUnits() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 2)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 2)));
         assertThatThrownBy(() -> service.update(operator, PROJECT, 1_001L,
@@ -210,6 +213,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void updateRejectsStaleRowVersion() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.unitNameExists(TENANT_ID, PROJECT.id(), "NEW_AP", 1_001L)).thenReturn(false);
@@ -228,6 +232,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void deactivateTransitionsActiveToInactiveWithoutReferenceCheck() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.hasRelations(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(false);
@@ -245,6 +250,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void reactivateTransitionsInactiveToActive() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "INACTIVE", 1)));
         when(store.updateUnitStatus(TENANT_ID, PROJECT.id(), 1_001L, "INACTIVE", "ACTIVE", operator.id()))
@@ -259,6 +265,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void voidRejectsReferencedUnit() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         doThrow(new BusinessException(ErrorCode.CONFLICT, "环境部署实例仍引用该部署单元"))
@@ -273,6 +280,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void voidRejectsUnitWithDeploymentUnitRelations() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.hasRelations(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(true);
@@ -286,6 +294,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void voidFailsClosedWhenReferenceCheckIsIndeterminate() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         doThrow(new BusinessException(DeploymentUnitReferenceGuard.SERVICE_UNAVAILABLE, "外部引用检查暂不可用"))
@@ -301,6 +310,7 @@ class DeploymentUnitServiceTest {
 
     @Test
     void voidAllowsClearUnitAndKeepsNumberOccupied() {
+        org.mockito.Mockito.lenient().when(store.findUnit(TENANT_ID, PROJECT.id(), 1_001L)).thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.lockUnit(TENANT_ID, PROJECT.id(), 1_001L))
                 .thenReturn(Optional.of(unit(1_001L, "DW0001A001", "ACTIVE", 1)));
         when(store.updateUnitStatus(TENANT_ID, PROJECT.id(), 1_001L, "ACTIVE", "VOIDED", operator.id()))
