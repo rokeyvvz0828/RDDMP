@@ -440,7 +440,7 @@ async function loadOptions() {
     middlewares.value = middlewareRows
     operatingSystems.value = operatingSystemRows
   } catch (error) {
-    if (httpStatus(error) !== 403) ElMessage.warning(apiErrorMessage(error, '选项加载失败'))
+    ElMessage.warning(apiErrorMessage(error, '资源申请选项加载失败，请刷新重试或检查权限'))
   } finally {
     optionLoading.value = false
   }

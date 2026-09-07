@@ -45,7 +45,7 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/physical-subsystem/users")
-    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')")
     public ApiResponse<PageResult<UserOption>> physicalUsers(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword, @RequestParam String projectRef,
@@ -55,7 +55,7 @@ public class ArchitectureOptionsController {
     }
 
     @GetMapping("/physical-subsystem/parameters/{categoryCode}")
-    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')")
     public ApiResponse<List<ParameterOption>> physicalParameters(
             @PathVariable String categoryCode, @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
