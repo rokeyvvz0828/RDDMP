@@ -120,7 +120,7 @@ public class PlanQueryService {
         var visibleTasks = store.findTasks(actor.tenantId(), projectId, planId, null).stream()
                 .filter(t -> (scope.manager() || scope.related(t))).toList();
         if (visibleTasks.isEmpty() && !scope.manager()) {
-            throw new com.ccb.architecture.web.ArchitectureNotFoundException("搭建计划不存在或无权访问");
+            throw new com.ccb.common.exception.BusinessException(com.ccb.common.exception.ErrorCode.FORBIDDEN, "搭建计划不存在或无权访问");
         }
         for (PlanTarget target : store.findTargets(actor.tenantId(), projectId, planId, true)) {
             if (!scope.manager() && visibleTasks.stream()
@@ -283,7 +283,7 @@ public class PlanQueryService {
         if (!engine.participation().manager(actor, projectId, planId)
                 && store.findTasks(actor.tenantId(), projectId, planId, null).stream()
                     .noneMatch(task -> engine.participation().related(actor, projectId, task))) {
-            throw new com.ccb.architecture.web.ArchitectureNotFoundException("搭建计划不存在或无权访问");
+            throw new com.ccb.common.exception.BusinessException(com.ccb.common.exception.ErrorCode.FORBIDDEN, "搭建计划不存在或无权访问");
         }
         List<TimelineRow> rows = new ArrayList<>();
         rows.add(new TimelineRow(plan.id(), plan.name(), "PLAN", 0, plan.status().name(),

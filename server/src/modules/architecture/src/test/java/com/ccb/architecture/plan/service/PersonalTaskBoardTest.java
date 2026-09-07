@@ -58,8 +58,9 @@ class PersonalTaskBoardTest {
     }
     @Test void 已撤销系统资格后看板和时间视图都不返回历史任务() {
         when(systems.assignmentScope(eq(actor),any(),eq(100L))).thenReturn(PlanParticipationAuthorizationTest.scope(10L,List.of(10L)));
-        assertThatThrownBy(()->query.dashboard(actor,70,2)).isInstanceOf(com.ccb.architecture.web.ArchitectureNotFoundException.class);
-        assertThatThrownBy(()->query.timeline(actor,70,2)).isInstanceOf(com.ccb.architecture.web.ArchitectureNotFoundException.class);
+        assertThatThrownBy(()->query.detail(actor,70,2)).isInstanceOfSatisfying(BusinessException.class, error -> assertThat(error.code()).isEqualTo(com.ccb.common.exception.ErrorCode.FORBIDDEN));
+        assertThatThrownBy(()->query.dashboard(actor,70,2)).isInstanceOfSatisfying(BusinessException.class, error -> assertThat(error.code()).isEqualTo(com.ccb.common.exception.ErrorCode.FORBIDDEN));
+        assertThatThrownBy(()->query.timeline(actor,70,2)).isInstanceOfSatisfying(BusinessException.class, error -> assertThat(error.code()).isEqualTo(com.ccb.common.exception.ErrorCode.FORBIDDEN));
     }
     @Test void 看板按计划批量读取名单并在请求内复用同系统资格() {
         query.dashboard(actor,70,2);
