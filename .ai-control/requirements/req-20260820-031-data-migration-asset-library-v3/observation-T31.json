@@ -1,0 +1,34 @@
+{
+  "task_id": "T31",
+  "observed_at": "2026-09-02T23:20:00+08:00",
+  "sensor_basis": "静态与构建传感器（独立于实现者自述）：vue-tsc 类型检查 + Vite 生产构建、模块内正则扫描、逐文件结构断言、git 工作表面向比对、未认证 HTTP 探针",
+  "status": "partially_verified",
+  "findings": [
+    {"id": "F-T31-01", "requirement": "R4 取消所属项目筛选条件", "expectation": "数据迁移模块不存在任何可绑定/可选项目的表单控件", "measurement": "grep -rn 'v-model=\"[^\"]*[Pp]roject' web/src/modules/data-migration/ → 0 命中（NONE）", "result": "pass"},
+    {"id": "F-T31-02", "requirement": "R2 项目上下文唯一来源", "expectation": "8 个列数据页面/共用组件均从 useProjectScope 取项目，模块内不再有独立项目选择状态", "measurement": "逐文件计数：AssetListView/StructuredListView/ComponentsPage/TargetTablesPage/PlansPage/IssuesPage/MeetingsPage/ReportsPage 均为 gate(ProjectScopeState v-if)=1、ProjectScopeHint=2(import+使用)、watch(scopeProjectId)=1；grep 'projectId: scopeProjectId' 共 19 处请求参数携带", "result": "pass"},
+    {"id": "F-T31-03", "requirement": "R3 切换项目后不残留", "expectation": "项目变化时列表、筛选、分页、弹层与表单默认值被清空后重查", "measurement": "代码级核对 8 个 watch 回调：均先置空 rows/total/selected、复位分页、清空非项目筛选、关闭抽屉/弹窗，再触发 load；PlansPage/IssuesPage 额外调用 resetForm()，ReportsPage 逐字段清空 upload*/edit*，MeetingsPage 额外清空附件回收站与详情弹窗", "result": "pass"},
+    {"id": "F-T31-04", "requirement": "R6 异常与边界", "expectation": "解析不到当前项目时不发跨项目查询、不展示旧数据", "measurement": "loadList/load/loadRecycle/loadAttRecycle 首行 `if (scopeProjectId.value == null) { 清空; return }` 守卫 8/8 命中；ProjectScopeState 覆盖 loading/error/unavailable/unselected 四态并在非 ready 时隐藏新增/上传入口", "result": "pass"},
+    {"id": "F-T31-05", "requirement": "R5 新增与编辑表单", "expectation": "新增默认当前项目；编辑不可改归属；后端要求项目字段时自动提交当前值", "measurement": "新增抽屉项目下拉全部替换为 `<el-input :model-value=... disabled/>`；MeetingsPage/IssuesPage/PlansPage 提交 fv.projectId 来自 resetForm 的 scopeProjectId；StructuredListView/ReportsPage 编辑回传记录自身 project_id（防后端 SET project_id 改归属）", "result": "pass"},
+    {"id": "F-T31-06", "requirement": "R7 实现约束（模块边界与后端不变）", "expectation": "只改数据迁移前端，不动 stores/ui/后端/迁移/权限", "measurement": "git status --porcelain：仅 web/src/modules/data-migration/** 下 8 改 + 3 新增；无 server/、无 web/src/api/、无 web/src/stores/、无迁移脚本变更", "result": "pass"},
+    {"id": "F-T31-07", "requirement": "R8-6 构建门禁", "expectation": "vue-tsc + Vite 构建通过", "measurement": "npm --prefix web run build → EXIT=0（✓ built in 16.72s；ProjectScopeState 调整后复跑 EXIT=0）", "result": "pass"},
+    {"id": "F-T31-08", "requirement": "R8-1/2/5/6 运行时与浏览器取证", "expectation": "项目 A↔B 切换后接口请求携带对应 projectId，桌面/移动视口无遮挡与横向溢出", "measurement": "curl POST /api/auth/login 使用既有账本记录的本地 fixture 口令（admin/password、admin/admin）均 HTTP 401 code=40100，无法取得 JWT；未认证下 /api/actuator/health=401、前端 5173=200；SPA 路由受守卫保护，无法进入数据迁移页面", "result": "blocked", "gap": "缺可用本地登录凭据 → 验收标准 1/2/5 与 4 视口取证未执行，不得提升证据等级"},
+    {"id": "F-T31-09", "requirement": "R1 覆盖范围（回收站/看板）", "expectation": "所有出现所属项目的位置跟随当前项目", "measurement": "读 ContentRecycleBinController.list 形参（contentTypes/keyword/page/size + user），无 projectId；getDataMigrationDashboard 无项目参数；purgeAllIssues/purgeAllAttachments 无项目参数", "result": "out_of_bounds", "gap": "受 R7「不重构后端」约束，统一回收站与两个看板保持跨项目口径，已登记 requirement.md 边界与剩余项；若 Owner 要求项目口径，需追加后端契约任务"},
+    {"id": "F-T31-10", "requirement": "R8-3 无遮挡/溢出（静态可推断部分）", "expectation": "新增只读标识不破坏工具栏与移动布局", "measurement": "ProjectScopeHint 使用既有语义变量 --line/--panel-bg/--muted/--text（定义于 web/src/styles.css 明暗两套），32px 高对齐 Element 控件，<=760px width:100%；value 有 overflow:hidden + text-overflow:ellipsis，min-width:0/max-width:100% 防撑破 flex", "result": "pass_static_only", "gap": "真实视口渲染未取证（同 F-T31-08）"}
+  ],
+  "negative_feedback_closed": ["F-T31-01", "F-T31-02", "F-T31-03", "F-T31-04", "F-T31-05", "F-T31-06", "F-T31-07", "F-T31-10"],
+  "negative_feedback_open": ["F-T31-08", "F-T31-09"],
+  "regression_checks": [
+    {"name": "frontend", "command": "npm --prefix web run build", "result": "EXIT=0"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "result": "EXIT=1，失败项全部为其他需求前缀既有账本问题，清单不含 req-20260820-031；未新增治理失败"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "result": "EXIT=1，仅 .gitignore 与 2026-09-02 设计文档越界，由本分支既有提交 8b685b7/96b6bca 引入；本会话改动面均在 writable_paths 内"}
+  ],
+  "invariant_probe": "后端零改动（git status 无 server/ 路径）；Flyway 无新增；服务端 /api 前缀、统一响应结构、租户与 RBAC 由既有实现继续强制（未认证 /api/actuator/health 实测 401）；全局项目切换器行为未触碰",
+  "blind_spots": [
+    "无授权态 → 无法证明列表接口实际按 projectId 过滤返回（依赖服务端既有实现）",
+    "无演示数据环境可确认（dm_* 表数据量未知）",
+    "ProjectScopeHint/State 的明暗主题与长项目名截断未经真实渲染确认"
+  ],
+  "verdict": "实现层与静态传感器一致，8 个数据迁移页面/组件已全面改为以全局当前项目为唯一项目来源且移除页内所属项目筛选；因缺本地登录凭据，浏览器与运行时取证未完成，任务不得提升为 converged/verified，保持 observing 待补证据",
+  "escalation": "需 Owner/用户提供本地测试账号以完成 1280x800 与 375x812/390x844/430x932 验收；若要求统一回收站与看板按项目收窄，需另立带后端契约变更的授权任务",
+  "remote_updated": false
+}

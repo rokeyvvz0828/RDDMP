@@ -1,0 +1,14 @@
+{
+  "sample_label": "T4 前端资源端点与统一回收站切换观测",
+  "task_ids": ["T4"],
+  "measurements": [
+    {"requirement_id": "R3", "sensor": "vue-tsc --noEmit 类型检查 + vite build 产物生成", "result": "pass", "raw_evidence": "npm --prefix web run build exit=0，2451 modules transformed，无类型错误；AssetListView/StructuredListView/RecycleBinPage 调用点与新签名一致", "limitation": ["构建仅证明可生成产物与类型自洽，不证明运行期 HTTP 行为；接口层与浏览器验收由 T6 承接"]},
+    {"requirement_id": "R5", "sensor": "RecycleBinPage 统一回收站契约静态核对（内容类型下拉 9 类 + 按类型分发 restore/purge）", "result": "pass", "raw_evidence": "typeOptions 覆盖 PLAN/MAPPING_DOC/DEPENDENCY/SCRIPT/TOPIC/RELEASE_DRILL/RULE/PARAMETER/INTERMEDIATE_TABLE；runBatch 以 asset_type 分组调用 /recycle-bin/restore、/recycle-bin/purge body {type,ids}，与后端 ContentRecycleBinController 契约一致", "limitation": ["页面渲染、选择交互、无权限/空/失败态的真实表现需浏览器验收（T6）"]},
+    {"requirement_id": "契约一致性", "sensor": "前后端类型段/权限/参数交叉核对", "result": "pass", "raw_evidence": "前端资源段与后端 RESOURCE_TYPES/CONTENT_RESOURCES 一一对应；check-md5→/content/check-md5；上传 form 字段（projectId/assetCode/componentId/attachmentId/md5）与 ContentAssetController.upload @RequestParam 一致", "limitation": ["未发起真实跨端请求验证字段解析"]},
+    {"requirement_id": "无生产访问", "sensor": "变更面核对", "result": "pass", "evidence": "", "raw_evidence": "仅改前端 api 与三个视图组件，均在 writable_paths 内；无网络/凭据/生产数据引用", "limitation": []}
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "T4 前端切换在类型检查与构建层收敛，端点映射与统一回收站契约与后端对齐，破坏性变更前后台账一致；运行期 HTTP 与 11 菜单桌面/移动浏览器验收待 T5（删旧表）后由 T6 统一执行。前端切换（构建）部分收敛，进入 T5。"
+}

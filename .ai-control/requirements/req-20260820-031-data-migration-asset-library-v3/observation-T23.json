@@ -1,0 +1,14 @@
+{
+  "sample_label": "T23 recycle-bin extensibility (RecycleBinSource registry + REPORT ingestion) observation",
+  "task_ids": ["T23"],
+  "measurements": [
+    {"requirement_id": "R8", "sensor": "focused Maven test on data-migration module", "result": "pass", "raw_evidence": "mvn -pl :ccb-data-migration -am test exit 0 (BUILD SUCCESS); module 42 tests 0 failures; ContentRecycleBinRegistryTest 5/5; ReportServiceTest 5/5; ContentAssetMigrationMySqlTest 5/5", "limitation": ["Ran focused module tests, not the full-repo mvn test"]},
+    {"requirement_id": "R8", "sensor": "frontend production build", "result": "pass", "raw_evidence": "npm --prefix web run build exit 0; RecycleBinPage.vue REPORT label compiles and bundles", "limitation": ["Build proves artifacts only; not runtime rendering"]},
+    {"requirement_id": "R8", "sensor": "module-boundary / governance and task-scope checks", "result": "pass", "raw_evidence": "check-all-governance: 17 modules passed, skill and dev-entry passed; check-codex-scope passed for REQ-20260820-031 (89 changed files); no change introduces cross-module dependency", "limitation": ["check-all-governance overall exit 1 solely from pre-existing AI-control-layout violations in unrelated historical ledgers"]},
+    {"requirement_id": "R8", "sensor": "backward-compatibility inspection", "result": "pass", "raw_evidence": "/reports/recycle-bin controller and ReportService behavior untouched and still green; RecycleBinSource registry is an additive seam; ContentAssetRecycleBinSource preserves the prior 9-type dispatch exactly", "limitation": ["No live endpoint replay performed"]}
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "REPORT 纳入统一回收站与 RecycleBinSource 注册表改造在授权的本地代码范围内已实现并通过聚焦后端测试、前端构建、模块边界治理与任务范围检查，旧 /reports/recycle-bin 行为保留。运行期健康、浏览器多视口验收与全量 mvn test 未在本次执行，作为剩余风险登记；ISSUE/MEETING 接入与分页为后续演进。"
+}

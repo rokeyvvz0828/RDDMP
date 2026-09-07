@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260906-067-dm-param",
+  "phase": "verifying",
+  "task": "T3",
+  "status": "partially_verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260906-067-data-migration-parameter/**",
+      "purpose": "需求文档与 codex-task-scope.yaml（JSON 兼容）"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260906-067-dm-param/*.json",
+      "purpose": "控制账本：baseline、plan-T1、execution-T1/T2/T3、observation、convergence"
+    }
+  ],
+  "requirements_addressed": [
+    "R5",
+    "R6"
+  ],
+  "commands": [
+    "git diff --check -> exit=0",
+    "node scripts/check-all-governance.mjs -> 17 个模块治理通过；既有失败 REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 非 JSON 兼容（非本需求引入）",
+    "docs/requirements/REQ-20260906-067-data-migration-parameter/codex-task-scope.yaml JSON.parse -> OK"
+  ],
+  "observations": [
+    "治理检查其余全部通过；本次范围文件为 JSON 兼容格式",
+    "范围检查脚本因工作区含 031 未提交增量会大面积报越界，属用户选定的同工作区顺延基线所致，非本需求引入"
+  ],
+  "unresolved_issues": [
+    "浏览器真实路径验收未执行（需启动 MySQL/MinIO/后端/前端）",
+    "V197 在真实开发库/MySQL 上执行验证未完成"
+  ],
+  "risks": [],
+  "recorded_at": "2026-09-06T17:00:00+08:00"
+}

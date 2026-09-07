@@ -1,0 +1,16 @@
+{
+  "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "task_id": "system-options-unify",
+  "observation_date": "2026-09-06",
+  "evidence": [
+    "后端 test-compile 通过；安全/受影响 Service/模块注册定向测试通过。",
+    "前端 npm --prefix web run build 通过（vue-tsc + Vite）。",
+    "代码扫描：server 仅 DataMigrationSystemOptionsController 和 ProjectComponentService 保留 getSystemOptions；web/src 仅 data-migration.ts 定义 getSystemOptions 且 10 个页面统一引用。",
+    "grep 无遗留：issues/mappings/meetings/topics/release-drills/plans/programs/rules/target-tables 的 /options/systems 端点与取数函数均已下线。"
+  ],
+  "sensor_notes": [
+    "未做运行时浏览器/接口取证（本地桌面运行环境未启动本轮）；验证等级为 已实现+检查通过，未提升为 运行可达。",
+    "全量模块测试仍含本任务既有 4 个 MySQL 治理用例失败（sys_user_role/sys_role_permission BadSqlGrammar），与本次改动无关。",
+    "需求文档已补充统一入口；历史设计/快照文档中的旧端点仍为历史记录保留，未逐一改写。"
+  ]
+}

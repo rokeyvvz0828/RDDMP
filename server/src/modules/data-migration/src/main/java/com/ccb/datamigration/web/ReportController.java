@@ -59,9 +59,8 @@ public class ReportController {
             @RequestParam(required = false) String reportDate,
             @RequestParam String keywords,
             @RequestParam Long attachmentId,
-            @RequestParam(required = false) String checksumMd5,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(reportService.upload(projectId, reportPeriod, reportName, reportDate, keywords, attachmentId, checksumMd5, user), TraceId.getOrCreate());
+        return ApiResponse.success(reportService.upload(projectId, reportPeriod, reportName, reportDate, keywords, attachmentId, user), TraceId.getOrCreate());
     }
 
     /**
@@ -73,33 +72,31 @@ public class ReportController {
             @RequestParam long projectId,
             @RequestParam String reportPeriod,
             @RequestParam List<Long> attachmentIds,
-            @RequestParam List<String> checksumMd5s,
             @AuthenticationPrincipal AuthUser user) {
-        // 获取附件信息
         List<AttachmentItem> attachments = attachmentIds.stream()
             .map(id -> attachmentGateway.get(id, user))
             .toList();
         return ApiResponse.success(
-            reportService.batchUpload(projectId, reportPeriod, attachments, checksumMd5s, user),
+            reportService.batchUpload(projectId, reportPeriod, attachments, user),
             TraceId.getOrCreate());
     }
 
     /**
      * 4. 编辑汇报材料
+     *
+     * <p>T32 决策 D2：不再接受 {@code projectId} 入参，归属恒取库中记录；旧客户端多传该参数时被 Spring 忽略。
      */
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @PreAuthorize("hasAnyAuthority('data-migration:content:reports:update','data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> update(
             @PathVariable long id,
-            @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String reportPeriod,
             @RequestParam(required = false) String reportName,
             @RequestParam(required = false) String reportDate,
             @RequestParam(required = false) String keywords,
             @RequestParam(required = false) Long attachmentId,
-            @RequestParam(required = false) String checksumMd5,
             @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(reportService.update(id, projectId, reportPeriod, reportName, reportDate, keywords, attachmentId, checksumMd5, user), TraceId.getOrCreate());
+        return ApiResponse.success(reportService.update(id, reportPeriod, reportName, reportDate, keywords, attachmentId, user), TraceId.getOrCreate());
     }
 
     /**
@@ -117,7 +114,7 @@ public class ReportController {
     /**
      * 6. 下载汇报材料
      */
-    @GetMapping("/{id}/download")
+    @GetMapping("/{id:\\d+}/download")
     @PreAuthorize("hasAnyAuthority('data-migration:content:reports','data-migration:access','data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<String> download(
             @PathVariable long id,
@@ -126,57 +123,16 @@ public class ReportController {
     }
 
     /**
-     * 7. 回收站列表
+     * 回收站入口已收敛到统一回收站（{@code /api/data-migration/recycle-bin}）。
+     *
+     * <p>T26 下线旧前端入口：{@code GET /reports/recycle-bin}、{@code POST /reports/recycle-bin/restore}、
+     * {@code POST /reports/recycle-bin/purge}。内部 {@code ReportService#recycleBinList}
+     * 与 {@code restore}/{@code purge} 保留供 {@code ReportRecycleBinSource} SPI 调用，
+     * 业务规则（管理员校验、附件级联、审计）不变。
      */
-    @GetMapping("/recycle-bin")
-    @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<PageResult<Map<String, Object>>> recycleBinList(
-            @RequestParam(required = false) Long projectId,
-            @RequestParam(required = false) String reportPeriod,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(reportService.recycleBinList(projectId, reportPeriod, keyword, page, size, user), TraceId.getOrCreate());
-    }
 
     /**
-     * 8. 恢复汇报材料
-     */
-    @PostMapping("/recycle-bin/restore")
-    @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<Void> restore(
-            @RequestBody List<Long> ids,
-            @AuthenticationPrincipal AuthUser user) {
-        reportService.restore(ids, user);
-        return ApiResponse.success(null, TraceId.getOrCreate());
-    }
-
-    /**
-     * 9. 确认清理汇报材料
-     */
-    @PostMapping("/recycle-bin/purge")
-    @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
-    public ApiResponse<Void> purge(
-            @RequestBody List<Long> ids,
-            @AuthenticationPrincipal AuthUser user) {
-        reportService.purge(ids, user);
-        return ApiResponse.success(null, TraceId.getOrCreate());
-    }
-
-    /**
-     * 检查MD5是否可用
-     */
-    @GetMapping("/check-md5")
-    @PreAuthorize("hasAnyAuthority('data-migration:content:reports','data-migration:access','data-migration:write','data-migration:manage','system:admin')")
-    public ApiResponse<Map<String, Boolean>> checkMd5(
-            @RequestParam String md5,
-            @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(Map.of("available", reportService.isMd5Available(md5, user)), TraceId.getOrCreate());
-    }
-
-    /**
-     * 获取项目选项列表
+     * 获取项目选项列表（T32：仅返回当前用户可访问的项目）
      */
     @GetMapping("/project-options")
     @PreAuthorize("hasAnyAuthority('data-migration:content:reports','data-migration:access','data-migration:write','data-migration:manage','system:admin')")

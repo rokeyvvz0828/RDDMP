@@ -1,0 +1,394 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-release-drill",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-05-data-migration-release-drill-design.md",
+  "objective": "将数据迁移/数迁资产内容/投产及演练从通用文件资产薄页升级为参数管理码值、单文件、组件级单选系统、手填轮次、逻辑删除和统一回收站的专属域功能。",
+  "users": [
+    "数据迁移管理员：维护投产及演练资料并管理统一回收站",
+    "普通数据迁移人员：查看、下载、上传并维护本人资料"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "dm_release_drill 保存颗粒度、资料类型、所属轮次和资料名称，组件级必填一个物理子系统，新增必填一个源文件，轮次可手填可空。",
+      "acceptance": [
+        "缺少必填元数据返回400",
+        "项目级提交系统返回400",
+        "组件级缺系统返回400",
+        "所属轮次允许为空"
+      ],
+      "priority": "must",
+      "source": "用户功能说明与确认",
+      "counterexample": [
+        "只保存doc_name和system_code"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "颗粒度与资料类型统一由系统管理/参数管理维护，V184幂等初始化DM_RELEASE_DRILL_GRANULARITY和DM_RELEASE_DRILL_TYPE。",
+      "acceptance": [
+        "参数选项通过/api/data-migration/options/{category}读取",
+        "未知或停用编码不能写入",
+        "重复执行V184不覆盖管理员配置"
+      ],
+      "priority": "must",
+      "source": "用户确认Granularity指向参数管理",
+      "counterexample": [
+        "前端或服务端硬编码颗粒度/资料类型"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "列表展示涉及物理子系统（组件级显示系统编号-名称，项目级为空）和所属轮次。",
+      "acceptance": [
+        "列表返回system_code/system_name/drill_round",
+        "组件级系统名称经dm_component与arch_physical_subsystem投影"
+      ],
+      "priority": "must",
+      "source": "用户确认列表展示两列",
+      "counterexample": [
+        "仅编辑表单可见，列表不展示"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "一个资料记录只绑定一个源文件，新增必传文件，编辑可保留或重新上传替换。",
+      "acceptance": [
+        "新增无文件返回400",
+        "编辑不传新文件保留原附件",
+        "编辑传新文件替换主文件",
+        "文件不超过50MB"
+      ],
+      "priority": "must",
+      "source": "用户确认单文件",
+      "counterexample": [
+        "多条记录共用一个文件或一个记录绑多文件"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "列表支持颗粒度、资料类型、资料名称关键字组合筛选和服务端分页，前端覆盖加载/空/失败/无权限/提交中状态。",
+      "acceptance": [
+        "筛选改变回到第一页",
+        "分页支持20/50/100",
+        "项目切换后重置并重查"
+      ],
+      "priority": "must",
+      "source": "用户功能说明",
+      "counterexample": [
+        "筛选只在浏览器内存生效"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "上传、编辑、删除、下载、回收站纳入权限管控，写操作执行项目隔离、实体授权和审计。",
+      "acceptance": [
+        "省略projectId或跨项目请求被拒",
+        "普通用户只能维护本人记录",
+        "RELEASE_DRILL_*操作码写入dm_operation_log"
+      ],
+      "priority": "must",
+      "source": "REQ-031统一规则",
+      "counterexample": [
+        "仅前端隐藏按钮"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "RELEASE_DRILL由ReleaseDrillRecycleBinSource唯一认领，并从通用文件资产链路上摘除。",
+      "acceptance": [
+        "通用ContentAssetController不再包含release-drills",
+        "ContentFileAssetService.MANAGED_TYPES不再包含RELEASE_DRILL",
+        "统一回收站无重复或无来源"
+      ],
+      "priority": "must",
+      "source": "专题材料/迁移方案既有收敛模式",
+      "counterexample": [
+        "RELEASE_DRILL被通用来源和专用来源同时认领"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "邻接修改限定在数据迁移模块、V184追加迁移和数据迁移前端API/页面。",
+      "acceptance": [
+        "不跨投产模块读库",
+        "不改平台公共构件与全局项目切换器",
+        "范围检查和Maven/前端构建通过"
+      ],
+      "priority": "must",
+      "source": "REQ-031范围与用户确认",
+      "counterexample": [
+        "加入投产模块依赖或修改平台参数实现"
+      ]
+    }
+  ],
+  "invariants": [
+    "单租户且所有查询写入绑定当前项目与tenant_id",
+    "Flyway只追加；本功能使用V184",
+    "业务关联统一使用(project_id, system_code)",
+    "doc_code服务端生成且不可修改",
+    "参数项INSERT IGNORE不覆盖管理员配置"
+  ],
+  "constraints": [
+    "模块边界遵循governance/modules.yaml",
+    "不依赖投产模块表或服务",
+    "不修改system管理参数类私有实现",
+    "文件单个不超过50MB",
+    "页面遵循design-h5.md和共享UI组件"
+  ],
+  "non_goals": [
+    "轮次下拉来自投产模块或用参数管理维护轮次",
+    "多源文件、批量上传或多系统关联",
+    "新增独立dm_release_drill_type业务字典表",
+    "修改投产模块、全局项目切换器和公共附件/审计表结构"
+  ],
+  "selected_approach": {
+    "name": "专属服务+参数管理+单文件单系统+V184",
+    "reason": "与迁移方案/专题材料一致，字段、校验、附件和回收站边界清晰",
+    "alternatives": [
+      {
+        "name": "继续扩展通用AssetListView",
+        "rejected_because": "无法表达类型/颗粒度/轮次联动并弱化服务端校验和审计"
+      },
+      {
+        "name": "新建dm_release_drill_type业务字典表",
+        "rejected_because": "与系统管理/参数管理归属冲突"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "dm_release_drill字段调整",
+        "参数管理码值初始化",
+        "ReleaseDrillService/Controller/RecycleBinSource",
+        "数据迁移前端页面与API"
+      ],
+      "outside": [
+        "投产模块",
+        "platform/system参数实现",
+        "全局项目切换器",
+        "公共附件与审计表结构"
+      ]
+    },
+    "components": [
+      {
+        "name": "ReleaseDrillService",
+        "responsibility": "CRUD、组合筛选、参数与系统校验、单附件绑定、审计和回收站SPI",
+        "depends_on": [
+          "DataMigrationPermissionService",
+          "ContentAttachmentService",
+          "ContentFileAssetService",
+          "DataMigrationCodeValueService",
+          "ContentDocCodeGenerator"
+        ]
+      },
+      {
+        "name": "ReleaseDrillController",
+        "responsibility": "路由/api/data-migration/release-drills及权限声名",
+        "depends_on": ["ReleaseDrillService"]
+      },
+      {
+        "name": "ReleaseDrillRecycleBinSource",
+        "responsibility": "统一回收站认领RELEASE_DRILL",
+        "depends_on": ["ReleaseDrillService"]
+      },
+      {
+        "name": "ReleaseDrillsPage",
+        "responsibility": "列表、筛选、抽屉表单、上传、下载、删除",
+        "depends_on": ["data-migration.ts"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "GET /api/data-migration/release-drills",
+        "producer": "ReleaseDrillController",
+        "consumers": ["ReleaseDrillsPage"],
+        "contract": "分页列表接口，参数projectId/granularity/materialTypeCode/keyword/page/size"
+      },
+      {
+        "name": "POST/PUT/DELETE /api/data-migration/release-drills[/{id}]",
+        "producer": "ReleaseDrillController",
+        "consumers": ["ReleaseDrillsPage"],
+        "contract": "新增/编辑/批量逻辑删除，写操作校验RBAC项目归属和附件"
+      },
+      {
+        "name": "GET /api/data-migration/release-drills/options/systems",
+        "producer": "ReleaseDrillController",
+        "consumers": ["ReleaseDrillsPage"],
+        "contract": "按projectId返回dm_component启用组件选项，前端本地筛选"
+      },
+      {
+        "name": "GET /api/data-migration/options/{category}",
+        "producer": "DataMigrationParameterOptionsController",
+        "consumers": ["ReleaseDrillsPage"],
+        "contract": "读取DM_RELEASE_DRILL_GRANULARITY和DM_RELEASE_DRILL_TYPE选项"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "当前项目+颗粒度+类型+可选轮次+可选系统+单文件",
+        "transitions": [
+          "临时附件上传校验归属与大小",
+          "数据套校验参数与系统关系",
+          "生成doc_code并写入dm_release_drill",
+          "绑定dm_content_attachment",
+          "写dm_operation_log"
+        ],
+        "output": "详情/列表返回完整元数据"
+      },
+      {
+        "input": "列表筛选条件",
+        "transitions": [
+          "服务端项目隔离过滤",
+          "组合参数/类型/关键词/分页查询",
+          "系统名称投影"
+        ],
+        "output": "分页列表"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "必填缺失/组件级缺系统/项目级传系统",
+      "behavior": "返回400和中文错误",
+      "recovery": "前端标红并保持表单输入"
+    },
+    {
+      "condition": "参数未启用或未知编码",
+      "behavior": "写入拒绝返回400",
+      "recovery": "提示从系统管理参数启用后重试"
+    },
+    {
+      "condition": "附件为空/超限/非本人临时附件",
+      "behavior": "返回400，不写入业务行",
+      "recovery": "重新上传"
+    },
+    {
+      "condition": "越权或跨项目",
+      "behavior": "403或项目守卫拒绝",
+      "recovery": "切换项目后重试"
+    },
+    {
+      "condition": "回收站恢复doc_code冲突",
+      "behavior": "返回409",
+      "recovery": "刷新查看冲突记录"
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "认证+RBAC+DataMigrationPermissionService项目守卫",
+      "写操作实体归属校验与附件归属校验",
+      "RELEASE_DRILL_*审计"
+    ],
+    "performance": [
+      "系统选项按项目一次返回，前端本地筛选",
+      "列表服务端分页并复用项目/类型索引"
+    ],
+    "compatibility": [
+      "ContentAssetTables保留RELEASE_DRILL映射供看板/历史信封识别",
+      "通用链路与回收站不回退认领"
+    ],
+    "operations": [
+      "V184幂等追加",
+      "管理员参数INSERT IGNORE不覆盖"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R1", "R4", "R6"],
+      "signal": "ReleaseDrillService/Controller测试",
+      "method": "mvn -pl :ccb-data-migration -am -Dtest=ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest test"
+    },
+    {
+      "requirement_ids": ["R2"],
+      "signal": "码值服务和V184迁移测试",
+      "method": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationCodeValueServiceTest,ContentAssetMigrationMySqlTest test"
+    },
+    {
+      "requirement_ids": ["R7"],
+      "signal": "回收站注册测试",
+      "method": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ReleaseDrillRecycleBinSourceTest test"
+    },
+    {
+      "requirement_ids": ["R3", "R5"],
+      "signal": "前端构建与浏览器验收",
+      "method": "npm --prefix web run build + desktop/mobile viewport checks"
+    },
+    {
+      "requirement_ids": ["R8"],
+      "signal": "全量回归",
+      "method": "mvn -pl :ccb-data-migration -am test && node scripts/check-all-governance.mjs && npm --prefix web run build"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "dm_release_drill当前无业务存量行；V184仍按默认值回填以兼容低基线",
+      "basis": "REQ-031本地表行数为0",
+      "falsifier": "发现已有业务行且需要保留原语义"
+    },
+    {
+      "text": "组件级等价于项目内一个dm_component启用记录并沿用system_code",
+      "basis": "迁移方案与专题材料的既有系统口径",
+      "falsifier": "组件级需要引用其他系统模型"
+    },
+    {
+      "text": "单文件编辑不传新文件时保留原文件",
+      "basis": "专题/迁移方案附件策略",
+      "falsifier": "用户要求编辑必须重新上传"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "生产或测试库是否存在需要保留的旧投产及演练记录",
+      "impact": "若存在旧记录，V184默认值可能不符合历史语义",
+      "owner": "module-owner",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "所属轮次纯手工输入，不跨投产模块拉取",
+      "reason": "用户确认且避免跨模块边界",
+      "source": "用户消息"
+    },
+    {
+      "id": "D2",
+      "decision": "组件级单选物理子系统，项目级不填",
+      "reason": "参考迁移方案并保持最小范围",
+      "source": "用户消息"
+    },
+    {
+      "id": "D3",
+      "decision": "源文件单文件",
+      "reason": "一个资料编号对一份文档最清晰",
+      "source": "用户消息"
+    },
+    {
+      "id": "D4",
+      "decision": "granularity与资料类型指向系统管理/参数管理",
+      "reason": "用户确认并沿用V183模式",
+      "source": "用户消息"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "摘除通用RELEASE_DRILL链路导致看板或注册测试回归",
+      "impact": "回收站或页面不可用",
+      "mitigation": "与新增ReleaseDrillRecycleBinSource同批并运行注册测试"
+    },
+    {
+      "risk": "参数选项或V184缺项让页面为空",
+      "impact": "无法新增资料",
+      "mitigation": "V184幂等初始化并在迁移测试断言类别数/项数"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认方案并回复“确认”",
+    "confirmed_at": "2026-09-05T00:00:00+08:00"
+  }
+}

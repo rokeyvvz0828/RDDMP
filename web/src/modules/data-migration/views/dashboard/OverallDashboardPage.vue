@@ -1,15 +1,22 @@
 <!--
   用途：数迁整体看板页
-  说明：展示项目数、组件数、活动资产数三项核心统计指标；调用 getDataMigrationDashboard('overall')
+  说明：展示可访问项目数、当前项目组件数与活动资产数三项核心统计指标；调用 getDataMigrationDashboard('overall', projectId)
         拉取汇总数据，覆盖加载/空/失败/无权限状态，指标卡片使用语义主题变量，移动端单列排列。
+        T32：看板按项目隔离，组件/活动资产均为当前项目内实时计数；项目不可用时不取数。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import { apiErrorMessage } from '../../../../api/error'
 import { getDataMigrationDashboard } from '../../../../api/data-migration'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
+
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
 
 const loading = ref(false)
 const error = ref('')
@@ -21,11 +28,16 @@ function httpStatus(error: unknown) {
 }
 
 async function load() {
+  const projectId = scopeProjectId.value
+  if (projectId == null) {
+    metrics.value = {}
+    return
+  }
   loading.value = true
   error.value = ''
   forbidden.value = false
   try {
-    const data = (await getDataMigrationDashboard('overall')).data.data ?? {}
+    const data = (await getDataMigrationDashboard('overall', projectId)).data.data ?? {}
     metrics.value = Array.isArray(data) ? {} : data
   } catch (e) {
     if (httpStatus(e) === 403) forbidden.value = true
@@ -33,21 +45,30 @@ async function load() {
   } finally { loading.value = false }
 }
 
-onMounted(load)
+onMounted(() => { void scope.ensureLoaded() })
+
+// 全局项目变化：丢弃上一个项目的指标，按新项目重查。
+watch(scopeProjectId, () => {
+  metrics.value = {}
+  error.value = ''
+  forbidden.value = false
+  void load()
+}, { immediate: true })
 </script>
 
 <template>
   <main class="dm-page-root">
-    <UiPageHeader title="整体看板" description="按项目维度展示数据迁移资产核心统计指标。">
-      <template #actions><el-button :disabled="loading" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
+    <UiPageHeader title="整体看板" description="组件与活动资产按顶部项目切换器选中的当前项目统计；项目卡片展示当前账号可访问的项目数。">
+      <template #actions><el-button :disabled="loading || scopeState !== 'ready'" @click="load"><el-icon><Refresh /></el-icon>刷新</el-button></template>
     </UiPageHeader>
 
-    <section v-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无整体看板查看权限" sub-title="请向数据迁移管理员申请 data-migration:dashboard 权限。" /></section>
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无整体看板查看权限" sub-title="请向数据迁移管理员申请 data-migration:dashboard 权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" title="整体看板加载失败" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
     <section v-else v-loading="loading" class="dm-dashboard-grid">
-      <article class="dm-metric-card"><span>项目</span><strong>{{ metrics.projects ?? 0 }}</strong></article>
-      <article class="dm-metric-card"><span>组件</span><strong>{{ metrics.components ?? 0 }}</strong></article>
-      <article class="dm-metric-card"><span>活动资产</span><strong>{{ metrics.assets ?? 0 }}</strong></article>
+      <article class="dm-metric-card"><span>可访问项目</span><strong>{{ metrics.projects ?? 0 }}</strong></article>
+      <article class="dm-metric-card"><span>本项目组件</span><strong>{{ metrics.components ?? 0 }}</strong></article>
+      <article class="dm-metric-card"><span>本项目活动资产</span><strong>{{ metrics.assets ?? 0 }}</strong></article>
     </section>
   </main>
 </template>

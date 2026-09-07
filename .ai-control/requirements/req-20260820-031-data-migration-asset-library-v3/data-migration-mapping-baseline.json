@@ -1,0 +1,34 @@
+{
+  "objective": "用户能够在当前项目内安全管理一条绑定多个文件的迁移映射，并通过受控类型、系统筛选、下载和统一回收站获得可验证的一致结果。",
+  "requirements": [
+    {"id": "R1", "statement": "映射类型、系统编号和文件名称必填，文件名称最多200字符，文件编号由服务端生成且不可修改。", "acceptance": ["缺少必填或名称超长返回400", "成功记录包含不可编辑编号"], "priority": "must", "source": "用户需求和批准设计", "counterexample": ["缺少系统编号仍创建成功"]},
+    {"id": "R2", "statement": "映射类型来自启用的DM_MAPPING_TYPE参数，预置迁出程序和迁入程序，前端不硬编码。", "acceptance": ["选项接口只返回启用项", "停用或未知类型拒绝写入"], "priority": "must", "source": "用户需求和批准设计", "counterexample": ["停用类型仍保存成功"]},
+    {"id": "R3", "statement": "系统编号只能选择当前项目启用的dm_component系统。", "acceptance": ["项目外或停用系统被拒绝", "切换项目清空旧系统和业务状态"], "priority": "must", "source": "用户需求和批准设计", "counterexample": ["跨项目系统可提交"]},
+    {"id": "R4", "statement": "一条迁移映射记录绑定多个普通文件或压缩包，新增至少一个附件，每个附件不超过50MB且不解压。", "acceptance": ["一条记录可绑定多个附件", "无附件或超限附件被拒绝"], "priority": "must", "source": "用户明确确认", "counterexample": ["每个文件拆成一条记录"]},
+    {"id": "R5", "statement": "列表展示系统、映射类型、文件编号和文件名称，并按三项组合筛选及服务端分页。", "acceptance": ["筛选可组合且名称模糊匹配", "筛选回第一页并支持20/50/100"], "priority": "must", "source": "用户需求和批准设计", "counterexample": ["名称搜索扫描无关字段"]},
+    {"id": "R6", "statement": "编辑支持元数据和附件保留、追加、移除；下载支持指定附件和全部附件ZIP。", "acceptance": ["附件集合更新后详情下载一致", "单附件下载不可跨记录", "ZIP包含全部活动附件"], "priority": "must", "source": "批准设计", "counterexample": ["编辑导致未移除附件丢失"]},
+    {"id": "R7", "statement": "MAPPING_DOC由专属来源唯一接入统一回收站并保持业务记录、附件和审计一致。", "acceptance": ["删除项只出现一次", "恢复保留附件", "彻底清理业务和附件但保留审计"], "priority": "must", "source": "用户需求和批准设计", "counterexample": ["回收站重复认领"]},
+    {"id": "R8", "statement": "查看、下载、上传新增、编辑、删除和回收站管理执行服务端RBAC、租户、项目、实体和附件归属校验并审计成功写操作。", "acceptance": ["匿名无权跨项目非所有者请求被拒绝", "成功写操作有MAPPING审计"], "priority": "must", "source": "用户权限需求和批准设计", "counterexample": ["只靠前端按钮控制权限"]},
+    {"id": "R9", "statement": "页面覆盖全状态、多文件部分失败重试和响应式布局，并通过工程和真实浏览器验证。", "acceptance": ["失败文件可单独重试且成功项保留", "桌面和三个手机视口无页面级溢出", "工程检查有真实结果"], "priority": "must", "source": "RDDMP规则和批准设计", "counterexample": ["部分失败后丢失全部上传状态"]},
+    {"id": "R10", "statement": "当前dm_mapping_doc无历史数据，追加迁移不执行历史回填或兼容默认值。", "acceptance": ["V186无历史回填SQL", "新记录必须提供mapping_type"], "priority": "must", "source": "用户明确确认", "counterexample": ["历史行被默认回填为迁入程序"]}
+  ],
+  "invariants": ["租户操作者来自认证主体且访问绑定当前项目", "文件编号服务端生成且不可修改", "Flyway只追加", "业务表不保存对象键或凭据", "MAPPING_DOC只有一个回收站来源"],
+  "constraints": ["只写REQ-031授权路径", "不修改平台公共实现", "单附件上限52428800字节", "保护现有交叠修改", "不提交推送合并发布或访问生产"],
+  "non_goals": ["不解压压缩包", "不实现版本历史查重在线编辑", "不拆分多文件为多记录", "不重构其他内容菜单", "不迁移历史数据"],
+  "assumptions": [{"text": "当前无历史映射数据", "basis": "用户2026-09-06明确确认", "falsifier": "发现必须保留的旧行"}, {"text": "临时未绑定附件由平台生命周期清理", "basis": "现有附件契约", "falsifier": "运行检查发现未绑定附件永久残留"}],
+  "unknowns": [],
+  "decisions": [{"question": "多文件如何归属", "options": ["一条记录多附件", "每文件一条记录"], "selected": "一条记录多附件", "blocking": false, "source": "用户确认"}, {"question": "领域实现方式", "options": ["独立服务页面", "扩展通用链路"], "selected": "独立服务页面并复用公共能力", "blocking": false, "source": "用户确认"}, {"question": "历史数据处理", "options": ["不处理", "回填默认类型"], "selected": "不处理", "blocking": false, "source": "用户确认当前无历史数据"}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "400响应、名称边界和服务端编号", "candidate_sensor": "MappingServiceTest和HTTP"},
+    {"requirement_id": "R2", "observable": "参数选项及停用拒绝", "candidate_sensor": "MySQL迁移测试和服务测试"},
+    {"requirement_id": "R3", "observable": "项目系统选择和跨项目拒绝", "candidate_sensor": "服务测试和浏览器项目切换"},
+    {"requirement_id": "R4", "observable": "多附件绑定、无附件和50MB边界", "candidate_sensor": "服务测试和真实上传"},
+    {"requirement_id": "R5", "observable": "列表列、组合筛选、页码", "candidate_sensor": "SQL断言和浏览器请求DOM"},
+    {"requirement_id": "R6", "observable": "附件集合和单个/ZIP下载内容", "candidate_sensor": "服务测试和HTTP字节检查"},
+    {"requirement_id": "R7", "observable": "回收站唯一项和恢复清理结果", "candidate_sensor": "注册服务测试和数据库附件检查"},
+    {"requirement_id": "R8", "observable": "401/403、跨项目、所有者和审计行", "candidate_sensor": "安全服务测试和角色HTTP"},
+    {"requirement_id": "R9", "observable": "逐文件状态、失败重试、四视口溢出和控制台", "candidate_sensor": "Vue构建和Playwright"},
+    {"requirement_id": "R10", "observable": "迁移脚本无默认回填", "candidate_sensor": "静态扫描和MySQL迁移测试"}
+  ],
+  "baseline_status": "ready"
+}

@@ -45,7 +45,8 @@ public class AuthRepository {
 
     public List<String> findPermissions(long userId, long tenantId) {
         return jdbcTemplate.queryForList("""
-                SELECT DISTINCT p.permission_code FROM sys_menu_permission p
+                SELECT permission_code FROM (
+                SELECT DISTINCT p.permission_code AS permission_code FROM sys_menu_permission p
                 JOIN sys_role_permission rp ON rp.permission_id = p.id AND rp.tenant_id = p.tenant_id
                 JOIN sys_user_role ur ON ur.role_id = rp.role_id AND ur.tenant_id = rp.tenant_id
                 JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id
@@ -57,12 +58,39 @@ public class AuthRepository {
                 JOIN sys_role r ON r.id = rm.role_id AND r.tenant_id = rm.tenant_id
                 WHERE ur.user_id = ? AND m.tenant_id = ? AND m.status = 1 AND m.visible = 1 AND m.deleted = 0
                   AND r.status = 1 AND m.permission_code IS NOT NULL AND m.permission_code <> ''
+                UNION
+                SELECT 'system:access' AS permission_code WHERE EXISTS (
+                    SELECT 1 FROM pm_project p WHERE p.tenant_id = ? AND p.deleted = 0
+                      AND (p.owner_id = ? OR EXISTS (
+                        SELECT 1 FROM pm_project_member member
+                        JOIN pm_project_member_role mr ON mr.member_id = member.id AND mr.tenant_id = member.tenant_id
+                        JOIN pm_project_role pr ON pr.id = mr.role_id AND pr.tenant_id = mr.tenant_id
+                        WHERE member.project_id = p.id AND member.user_id = ? AND member.status = 1 AND member.deleted = 0
+                          AND pr.project_id = p.id AND pr.role_code = 'PM' AND pr.deleted = 0
+                      ))
+                )
+                UNION
+                SELECT 'system:audit:list' AS permission_code WHERE EXISTS (
+                    SELECT 1 FROM pm_project p WHERE p.tenant_id = ? AND p.deleted = 0
+                      AND (p.owner_id = ? OR EXISTS (
+                        SELECT 1 FROM pm_project_member member
+                        JOIN pm_project_member_role mr ON mr.member_id = member.id AND mr.tenant_id = member.tenant_id
+                        JOIN pm_project_role pr ON pr.id = mr.role_id AND pr.tenant_id = mr.tenant_id
+                        WHERE member.project_id = p.id AND member.user_id = ? AND member.status = 1 AND member.deleted = 0
+                          AND pr.project_id = p.id AND pr.role_code = 'PM' AND pr.deleted = 0
+                      ))
+                )
+                ) permissions
                 ORDER BY permission_code
-                """, String.class, userId, tenantId, userId, tenantId);
+                """, String.class, userId, tenantId, userId, tenantId,
+                tenantId, userId, userId, tenantId, userId, userId);
     }
 
     public List<RouteNode> findRoutes(long userId, long tenantId) {
         return jdbcTemplate.query("""
+                SELECT id, parent_id, menu_type, menu_name, route_name, route_path, component_path,
+                       permission_code, icon, sort_no
+                FROM (
                 SELECT DISTINCT m.id, m.parent_id, m.menu_type, m.menu_name, m.route_name,
                        m.route_path, m.component_path, m.permission_code, m.icon, m.sort_no
                 FROM sys_menu m
@@ -70,12 +98,30 @@ public class AuthRepository {
                 JOIN sys_user_role ur ON ur.role_id = rm.role_id AND ur.tenant_id = rm.tenant_id
                 JOIN sys_role r ON r.id = rm.role_id AND r.tenant_id = rm.tenant_id
                 WHERE ur.user_id = ? AND m.tenant_id = ? AND m.status = 1 AND m.visible = 1 AND m.deleted = 0
-                  AND r.status = 1 ORDER BY m.parent_id, m.sort_no, m.id
+                  AND r.status = 1
+                UNION
+                SELECT m.id, m.parent_id, m.menu_type, m.menu_name, m.route_name,
+                       m.route_path, m.component_path, m.permission_code, m.icon, m.sort_no
+                FROM sys_menu m
+                WHERE m.tenant_id = ? AND m.status = 1 AND m.visible = 1 AND m.deleted = 0
+                  AND (m.route_path = '/system' OR m.route_path = '/system/audit')
+                  AND EXISTS (
+                    SELECT 1 FROM pm_project p WHERE p.tenant_id = ? AND p.deleted = 0
+                      AND (p.owner_id = ? OR EXISTS (
+                        SELECT 1 FROM pm_project_member member
+                        JOIN pm_project_member_role mr ON mr.member_id = member.id AND mr.tenant_id = member.tenant_id
+                        JOIN pm_project_role pr ON pr.id = mr.role_id AND pr.tenant_id = mr.tenant_id
+                        WHERE member.project_id = p.id AND member.user_id = ? AND member.status = 1 AND member.deleted = 0
+                          AND pr.project_id = p.id AND pr.role_code = 'PM' AND pr.deleted = 0
+                      ))
+                  )
+                ) routes
+                ORDER BY parent_id, sort_no, id
                 """, (rs, rowNum) -> new RouteNode(rs.getLong("id"), rs.getLong("parent_id"),
                         rs.getString("menu_type"), rs.getString("menu_name"), rs.getString("route_name"),
                         rs.getString("route_path"), rs.getString("component_path"),
                         rs.getString("permission_code"), rs.getString("icon"), rs.getInt("sort_no"), List.of()),
-                userId, tenantId);
+                userId, tenantId, tenantId, tenantId, userId, userId);
     }
 
     public void recordLogin(String username, boolean success, String reason, String clientIp, String userAgent) {

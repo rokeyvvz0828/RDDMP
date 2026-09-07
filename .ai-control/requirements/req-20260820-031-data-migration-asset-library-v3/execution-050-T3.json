@@ -1,0 +1,46 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "trigger": "继续 REQ-20260831-050 执行：V99/V100 已收敛，本任务将后端读写从 dm_asset / dm_asset_relation / dm_meeting_attachment 切换到 10 张内容表 + 3 张关系表，并对齐控制器、下游服务与单元测试",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java", "purpose": "内容一菜单一表的表名登记与 SQL 生成器（md5UnionSql/activeCountUnionSql/typeCountUnionSql/tenantProjectCountUnionSql/correlatedCountSumSql）"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java", "purpose": "6 类文件内容（PLAN/MAPPING_DOC/DEPENDENCY/SCRIPT/TOPIC/RELEASE_DRILL）统一 CRUD、软删/恢复/清除、跨 10 表 MD5 查重、locateOwnerById 跨表定位 owner"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAttachmentService.java", "purpose": "dm_content_attachment 参数化（business_type）列表/回收站/整组替换/软删/恢复/清除/解绑"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java", "purpose": "统一回收站编排：文件 6 类 + 结构化 3 类聚合列表、按类型分发 restore/purge"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MeetingService.java", "purpose": "会议关系与附件全量切换：dm_meeting_system、dm_issue_relation(related_type='MEETING')、ContentAttachmentService；移除对 AttachmentGateway 的直接依赖"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "purpose": "报告改落 dm_report(doc_code/doc_name)，主/附件走 dm_content_attachment(MAIN)，MD5 委托 ContentFileAssetService，purge 用 unbindAndRemoveAll"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java", "purpose": "导入导出类型收窄为 RULE/PARAMETER/INTERMEDIATE_TABLE，按 table(type) 与 doc_code/doc_name 读写"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java", "purpose": "totalActiveAssets/assetsByType/组件占用改为跨内容表统计"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java", "purpose": "ASSET_TOTAL 快照改为跨内容表 UNION"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java", "purpose": "hasContentAssets 跨内容表占用检查替换旧 dm_asset 查询"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/integration/DataMigrationAssetAttachmentAccessPolicy.java", "purpose": "附件访问策略改用 ContentFileAssetService.BUSINESS_TYPE + locateOwnerById 鉴权"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java", "purpose": "新建 6 类文件资源端点（/plans /mappings /dependencies /programs /topics /release-drills）与 /content/check-md5，按 URI 首段解析类型"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentRecycleBinController.java", "purpose": "新建统一回收站 GET /recycle-bin、POST /recycle-bin/restore、/recycle-bin/purge（body {type, ids}），服务端 @PreAuthorize"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java", "purpose": "扩展 /rules、/parameters 内容端点，保留 /structured/{type}（INTERMEDIATE_TABLE 基础页）"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/AssetController.java", "purpose": "删除：旧通用 /assets 端点被资源型端点取代"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/AssetService.java", "purpose": "删除：旧 dm_asset 单一表服务被内容表服务族取代"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java", "purpose": "注册/契约断言改指新控制器与服务；issue JOIN 别名 r.related_id；meeting 断言指向 dm_content_attachment/contentAttachments"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java", "purpose": "移除 MinioStorageService 桩，注入真实 ContentAttachmentService/ContentFileAssetService，StubJdbcTemplate 改指 dm_report/dm_content_attachment"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueServiceTest.java", "purpose": "关系桩 SQL 由 dm_asset_relation 改 dm_issue_relation，修正 DELETE 分支优先级（dm_issue_relation 先于 dm_issue）"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java", "purpose": "prepareIsolatedSchema 增补 dm_issue_relation 建表（V94 基线不含该 V99 表，运行期依赖需补齐）"}
+  ],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test-compile -DskipTests", "exit_code": 0, "salient_output": "编译通过（修复 ContentAssetTables Stream.concat 后无错误输出）"},
+    {"command": "mvn -pl :ccb-data-migration test -Dtest=DataMigrationModuleRegistrationTest,ReportServiceTest,IssueServiceTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "Tests run: 26, Failures: 0, Errors: 0"},
+    {"command": "mvn -pl :ccb-data-migration test -Dtest=IssueMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "Tests run: 3, Failures: 0, Errors: 0（Testcontainers MySQL 8.4）"},
+    {"command": "mvn -pl :ccb-data-migration test -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "全模块 Tests run: 35, Failures: 0, Errors: 0, Skipped: 0, BUILD SUCCESS"}
+  ],
+  "invariants_checked": [
+    {"invariant": "后端主源码不再引用 dm_asset / dm_asset_relation / dm_meeting_attachment", "result": "pass", "evidence": "grep 主源码仅剩 1 处历史注释提及，无运行期 SQL 引用"},
+    {"invariant": "问题关联读写走 dm_issue_relation，会议↔问题反向归一同一行", "result": "pass", "evidence": "IssueServiceTest 8 用例 relationDeletes/relationInserts 计数符合（3/1/1）；IssueMigrationMySqlTest 真实库回滚用例通过"},
+    {"invariant": "跨内容表 MD5 查重与统一回收站可用", "result": "pass", "evidence": "ContentFileAssetService.md5UnionSql/locateOwnerById 与 ContentRecycleBinService 聚合通过注册测试与服务单测；ReportServiceTest 断言 MD5/绑定顺序"},
+    {"invariant": "受控写操作保留服务端鉴权与审计", "result": "pass", "evidence": "新控制器 @PreAuthorize manage/admin，服务层保留 DataMigrationPermissionService 与 dm_operation_log 写入（IssueServiceTest auditWrites 断言）"},
+    {"invariant": "无生产访问", "result": "pass", "evidence": "仅 Testcontainers 一次性 mysql:8.4 与内存桩，全部虚构数据"}
+  ],
+  "unresolved_items": [
+    "前端仍调用旧 /assets 契约，须由 T4 切换到资源型端点 + 统一 /recycle-bin，破坏性变更需与后端同版本发布",
+    "旧表 dm_asset/dm_asset_relation/dm_meeting_attachment 物理清理由 T5（V101）承接",
+    "真实浏览器路径验收（会议/问题关联、内容上传、回收站恢复）由 T6 承接"
+  ],
+  "recommended_next": "observe"
+}

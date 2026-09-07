@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ProgramsPage.vue", "purpose": "修复移动端分页导致页面级横向溢出，增加 program-pagination 局部响应式容器"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java", "purpose": "编辑附件解析区分已绑定附件与临时上传附件，修复编辑保存 403/500"}
+  ],
+  "requirements_addressed": ["R6", "R8", "R9", "R10"],
+  "commands": [
+    "node /tmp/program_acceptance_playwright.cjs -> 退出码 0，桌面 created/edited/deleted/restored/downloadsZip 全 true，无 console error 与 4xx/5xx",
+    "node /tmp/mobile_debug.cjs -> scrollWidth 390 / clientWidth 390，无页面级横向溢出",
+    "node /tmp/diag_put.cjs -> PUT /api/data-migration/programs/{id} 200，编辑抽屉自动关闭",
+    "npm --prefix web run build -> 退出码 0",
+    "后端数据迁移模块全量测试：28 个报告、129 用例、0 失败"
+  ],
+  "local_checks": [
+    "375x812、390x844、430x932 三视口 widthOk=true 且无 console 错误",
+    "桌面新增/编辑/删除/回收站恢复/详情/单附件与打包下载全流程通过",
+    "系统编号下拉仅使用当前项目 dm_component enabled=1 数据",
+    "程序类型来自系统管理/参数管理 DM_PROGRAM_TYPE"
+  ],
+  "diff_summary": [
+    "ProgramsPage.vue：局部修复移动端分页横向溢出，不改共享组件",
+    "ProgramService.java：参照 TopicService 已绑定附件复用模式，补齐编辑附件保留/替换"
+  ],
+  "invariants_checked": [
+    "未修改已发布 Flyway",
+    "未改动共享 web/src/components/ui/**",
+    "程序类型未在业务代码硬编码",
+    "涉及系统候选仅限当前项目启用组件"
+  ],
+  "disturbances": [],
+  "assumptions_falsified": ["编辑回传既有附件时不能按临时附件校验（已按已绑定附件复用修复）"],
+  "unresolved_items": [],
+  "recommended_next": "将 T5 证据写入观测/收敛文件并推进 verifying/converged"
+}

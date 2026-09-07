@@ -1,0 +1,89 @@
+{
+  "task_id": "T39",
+  "parent_task": "T38",
+  "trigger": "用户指令「目前为开发阶段，数据库不需要备份，开始实施」：按 T38 修订的 (project_id, system_code) 关联口径落地迁移、服务、前端与测试。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_system_code_association_implementation",
+  "decision_recorded": "新增 V166 条件式迁移下线 V159/V162 的系统 id 引用列：dm_plan.system_id -> system_code（项目级空串哨兵，重建 active_dimension_key 生成列、uk_dm_plan_active_dimension、idx_dm_plan_system）；dm_issue/dm_target_table 删 system_id 与 id 索引；dm_component 删 physical_subsystem_id 与索引；dm_meeting_system subsystem_id -> project_id + system_code（存量按 dm_meeting/arch code 回填，重建 uk 与 idx）。服务层不再解析/双写 arch_physical_subsystem.id，关联系统一律按项目内 dm_component 活动清单校验，系统名称经 dm_component 按编号投影；Plan/Meeting 前端契约由 systemId/systemIds 改为 systemCode/systemCodes。回退策略采纳用户确认：开发阶段免备份，以 system_code 数据为准。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V166__data_migration_system_code_association.sql（新增）",
+      "purpose": "下线 dm_plan/dm_issue/dm_target_table/dm_component/dm_meeting_system 的系统 id 引用列与索引，dm_plan 重建 system_code 维度键，dm_meeting_system 改存 project_id+system_code；information_schema 条件式、幂等。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/PlanService.java",
+      "purpose": "契约 systemId->systemCode；SYSTEM_JOIN/SELECT/RECYCLE 改经 dm_component 关联并投影名称；create/update/list/维度唯一性按 (project_id, system_code)；getSystemOptions value 改返回项目内编号。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/PlanController.java",
+      "purpose": "list 参数 systemId(Long) -> systemCode(String)。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java",
+      "purpose": "INSERT/UPDATE 移除 system_id 与 subsystemId 解析，仅写 system_code，校验仍为项目内 dm_component。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+      "purpose": "createTable 移除 system_id 双写与 subsystemId 解析；4 处名称投影改经 dm_component（项目内编号关联 arch code）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "purpose": "createComponent 移除 physical_subsystem_id 双写与 subsystemId 解析。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MeetingService.java",
+      "purpose": "契约 systemIds->systemCodes；saveSystemRelations 改存 (project_id, system_code)；baseSelect/filter/keyword 改经 dm_component 按编号投影与过滤；getSystemOptions value 改返回编号。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MeetingController.java",
+      "purpose": "list 参数 systemId(Long) -> systemCode(String)。"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "Plan/Meeting 类型契约 systemId/systemIds/system_ids -> systemCode/systemCodes/system_codes；PlanRecord.system_id -> system_code。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/PlansPage.vue",
+      "purpose": "筛选/表单/详情/提交改用 systemCode（选项 value 为项目内编号）。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/MeetingsPage.vue",
+      "purpose": "筛选/表单/详情/提交改用 systemCodes（字符串数组）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationGovernanceRemediationMySqlTest.java",
+      "purpose": "双写端到端改为 V166 语义（migrate 161->166，断言 id 列下线、服务只写 code、GHOST-CODE 越项目校验 400）；新增 v166MigratesPlanAndMeetingSystemToSystemCode 迁移专项（dm_plan 维度哨兵/唯一键/索引、dm_meeting_system 回填与重建键、五表 id 列与索引下线）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "issue INSERT 占位符 22->21，断言含 system_code、不含 system_id。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java",
+      "purpose": "夹具不再手工补 system_id 列（服务不再引用）。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      "purpose": "登记 V166 到 writable_paths 与 database.migration_files；compatibility_and_rollback 与 public_capability_change.note 补 T39 说明。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "DDL 基线 V164->V166，头部口径改为 V166 已下线 id 列；9.2 移除遗留 id 列治理项。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+      "purpose": "V159 迁移说明标注 system_id 已由 V166 下线。"
+    }
+  ],
+  "verification": [
+    "后端整体回归：mvn -pl :ccb-data-migration -am test 通过，79 tests / 0 errors / 0 failures（含 DataMigrationGovernanceRemediationMySqlTest 6 个用例，其中 V166 两个专项 + 服务层双写端到端）",
+    "V166 迁移（MySQL 8.4 实测）：第 5 段 dm_meeting_system 加表存在守卫（无该表时 5.1-5.4 整体跳过）；第 1 段在删 system_id 前显式 DROP INDEX idx_dm_plan_system，规避 MySQL 复合索引删列后保留索引名导致的 Duplicate key（生产同样会命中，属迁移本身缺陷，已修正）",
+    "迁移专项断言通过：dm_plan 重建为 system_code 维度键（项目级空串哨兵唯一、系统级同编号冲突、idx_dm_plan_system=(tenant_id,project_id,system_code,deleted)）；dm_meeting_system 回填 project_id/system_code 并重建 uk/idx；五表 id 引用列与 id 索引全部下线",
+    "服务层端到端通过：IssueService/TargetTableService/ProjectComponentService 只写 code 不再双写 id；GHOST-CODE 无 dm_component 活动记录时 BusinessException 拦截、不落库；dm_issue/dm_target_table/dm_component 无 system_id/physical_subsystem_id 列",
+    "前端构建：npm --prefix web run build 通过（vue-tsc + Vite，✓ built in 19.53s）；data-migration 模块 rg 复查无 systemId/systemIds/system_ids 残留",
+    "范围检查：node scripts/check-codex-scope.mjs --base origin/main --head HEAD --working-tree 仅剩其他任务 REQ-20260903-064 的既有越界项，本任务无新增越界",
+    "Java 主代码 rg 复查：server/src/modules/data-migration/main 无 system_id/physical_subsystem_id/subsystem_id/systemId/subsystemId 残留"
+  ],
+  "not_done": "未运行真实浏览器验收（本任务为后端契约+迁移+API/页面静态契约变更，web build 与静态扫描已覆盖）；未修改历史迁移 V159/V162 与历史设计记录；V159 专项测试保持对历史脚本的验证。",
+  "noted_risk": "dm_meeting_system 存量 subsystem_id 无法解析到 arch code 时回填为空串哨兵（dev 环境当前 0 行）；恢复冲突与项目级唯一仍由数据库唯一键兜底；V166 幂等重跑依赖 information_schema 条件式，第 5 段在无 dm_meeting_system 的低基线库整体跳过属预期（真实生产链 V153 已建表）。"
+}

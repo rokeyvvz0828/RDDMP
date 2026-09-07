@@ -1,0 +1,45 @@
+{
+ "task_id": "T35",
+ "observer": "independent verification pass（与 execution-T35 分离复算：重跑列数统计脚本、抽查迁移 DDL 与文档行比对）",
+ "observed_at": "2026-09-04T01:05:00+08:00",
+ "environment": "静态核对迁移 DDL 与文档；本地演示库；生产库未触碰",
+ "closes": [
+  "database-schema-and-relations.md §3「表结构不完整/需手工合并公共列」",
+  "§6.3 软删描述与真实列不一致（组件/目标表/字段误称记录删除人和时间）"
+ ],
+ "supersedes_baseline": "本观测针对 T35 的文档改写，不影响 T31-T34 代码与迁移结论",
+ "findings": [
+  {
+   "id": "F-T35-01",
+   "statement": "§3 覆盖全部 19 张 dm_ 表，每节列出一张表的完整列清单",
+   "requirement": "「每个表的表结构要完整」",
+   "method": "grep '^### 3.' 与 '^## 4.' 区间核对，统计每节列行数",
+   "observed": "3.2-3.20 共 19 节，每节列数 21/16/16/16/16/16/19/16/16/13/19/6/28/7/13/20/23/8/10，与 §2.1 列数完全一致",
+   "verdict": "pass"
+  },
+  {
+   "id": "F-T35-02",
+   "statement": "列集合与迁移 DDL 一致，无虚构或缺失列",
+   "requirement": "文档只描述当前模型",
+   "method": "对照 V84/V88/V147/V148/V149/V150/V152/V153/V157/V159/V161-164 的 CREATE/ALTER",
+   "observed": "dm_meeting 无 project_name/attachment_id/file_name 且含 meeting_code/active_meeting_code；dm_issue 含 system_id 且无 system_name；dm_target_table_field 无 table_code；组件/目标表/字段无 deleted_by/deleted_at；content 表公共列 15 列 + 专属列符合 16/19/21 口径",
+   "verdict": "pass"
+  },
+  {
+   "id": "F-T35-03",
+   "statement": "§6.3 软删描述与真实列结构一致",
+   "requirement": "文档一致性",
+   "method": "grep §6.3 与信息列集合比对",
+   "observed": "仅内容/问题/会议/附件关系记录删除人和时间；组件、目标表、字段仅 deleted 标记；关系表无软删除",
+   "verdict": "pass"
+  }
+ ],
+ "regression_checks": [],
+ "blind_spots": [
+  "未以 information_schema 逐列复核（本地库与 DDL 口径一致时结论成立；列序为逻辑序）",
+  "索引汇总以迁移脚本为准，未逐一与 information_schema.statistics 比对"
+ ],
+ "verdict": "converged",
+ "phase_recommendation": "保持 converged；后续若新增/改列，同步更新 §3 对应表节并复核 §2.1 列数",
+ "required_before_release": []
+}

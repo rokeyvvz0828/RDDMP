@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260904-064-platform-operation-audit",
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-04-platform-operation-audit-design.md",
+  "objective": "为关键平台操作、登录和敏感查询提供脱敏、可按项目授权并自动保留清理的统一审计能力。",
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-04 明确回复‘确认方案’，并授权后续不再重复确认、在新分支直接实施。",
+    "confirmed_at": "2026-09-04T15:55:18+08:00"
+  },
+  "selected_approach": "全局 MVC 拦截器、集中审计策略和请求级语义上下文组合；system 负责持久化、权限、查询和保留。",
+  "must_requirements": [
+    {"id":"R1","statement":"记录新增、修改、删除、审批、导入导出、登录及确认的敏感查询。"},
+    {"id":"R2","statement":"不记录普通列表、统计、健康检查、轮询和选项查询。"},
+    {"id":"R3","statement":"不保存请求响应正文、密码、Token、文件、签名 URL、审批意见和字段值。"},
+    {"id":"R4","statement":"同一 HTTP 请求只产生一条通用操作日志，非 HTTP 手工审计保持兼容。"},
+    {"id":"R5","statement":"超级管理员查看全量和登录日志，项目 owner/PM 仅查看其项目，普通用户无权限。"},
+    {"id":"R6","statement":"UI/API 限制最近 30 天，数据库保留 180 天并每日汇总清理。"},
+    {"id":"R7","statement":"提供桌面和移动端可用的审计日志页面。"},
+    {"id":"R8","statement":"只追加 V156 并完成聚焦、全量、治理和范围验证。"}
+  ],
+  "invariants": [
+    "服务端权限是唯一授权依据",
+    "项目归属未知时为空而非信任客户端请求头",
+    "审计写入失败不改变业务结果",
+    "领域专用审计表继续保留"
+  ],
+  "non_goals": ["外部日志平台", "消息队列或 outbox", "日志编辑删除导出", "替换领域审计"],
+  "risks": ["旧手工日志重复", "敏感信息误采集", "项目归属不足", "反向代理 IP", "清理边界错误"],
+  "verification": ["策略与上下文单元测试", "权限和保留 SQL 测试", "Flyway 检查", "模块与全量 Maven", "Vue 构建", "真实浏览器视口"]
+}

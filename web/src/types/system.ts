@@ -44,3 +44,48 @@ export interface RoleOption { id: number; role_code: string; role_name: string }
 export interface PermissionAction { id: number; action_code: string; permission_code: string; permission_name: string }
 
 export interface PermissionMenu { id: number; parent_id: number; menu_name: string; menu_type: string; route_path?: string; permission_code?: string; icon?: string; sort_no: number; actions: PermissionAction[]; children?: PermissionMenu[] }
+
+export interface OperationAuditRecord {
+  id: number
+  operatorId: number
+  operatorName?: string
+  operationCode: string
+  moduleCode?: string
+  moduleName?: string
+  operationType?: string
+  targetType?: string
+  targetId?: string
+  projectId?: number
+  projectName?: string
+  requestMethod?: string
+  requestPath?: string
+  success: boolean
+  httpStatus?: number
+  durationMs: number
+  errorMessage?: string
+  clientIp?: string
+  userAgent?: string
+  changedFields: string[]
+  traceId?: string
+  createdAt: string
+}
+
+export interface LoginAuditRecord {
+  id: number
+  username: string
+  success: boolean
+  failureReason?: string
+  clientIp?: string
+  userAgent?: string
+  createdAt: string
+}
+
+export interface AuditProjectOption {
+  id: number
+  projectCode: string
+  projectName: string
+}
+
+export interface AuditCapabilities {
+  loginAudit: boolean
+}

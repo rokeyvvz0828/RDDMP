@@ -1,0 +1,155 @@
+{
+  "task_id": "T32",
+  "parent_task": "T31-r1",
+  "trigger": "用户主指令：「数据迁移模块均要作项目隔离，新增时项目id从前端传给后端，修改等维护从后端获取项目id且不能变更。」该指令推翻 T31 的「不改后端」边界，要求把项目隔离从前端过滤升级为服务端强制约束。",
+  "status": "implemented_and_verified",
+  "scope_kind": "backend_and_frontend_contract_change",
+  "decision_recorded": "四项用户决策（AskUserQuestion 全选推荐项）：D1 隔离判定收在已被 8 个 service 注入的 DataMigrationPermissionService（requireProject/requireAccessible/requireStoredProject），口径=租户内项目未删 +（ADMIN/SUPER_ADMIN/DATA_MIGRATION_ADMIN 豁免 或 pm_project_member 活动成员行），只读 pm_project_member 并登记为需 Owner 复核的有边界让步；D2 所有 UPDATE 语句不含 project_id，维护类端点忽略入参、归属恒取库中值；D3 全量纳入（列表、详情、下载、批量删除、统一回收站 list/detail/restore/purge、purge-all、两看板、check-md5、导入）；D4 导入必须带 projectId 并通过 D1 校验，与模板项目编码不一致的行逐行失败并返回原因。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java",
+      "purpose": "新增三个隔离原语：requireProject(projectId)（必填 + 数字 + 租户内未删，否则 400）、requireAccessible(projectId)（叠加角色豁免或 pm_project_member 活动成员，否则 403）、requireStoredProject(id, table)（按记录库中 project_id 反查并校验归属）。全模块唯一判定入口，避免各 service 各写一套 SQL。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/{IssueService,MeetingService,PlanService,ReportService,ProjectComponentService,TargetTableService,StructuredAssetService,ContentFileAssetService}.java",
+      "purpose": "查询入口 projectId 必填并进入 SQL WHERE；按 id 的详情/下载/软删/恢复/彻底清理先 requireStoredProject 再动作；UPDATE 列集合去掉 project_id（D2）；MD5 查重域从 (tenant_id) 收敛为 (tenant_id, project_id)，读侧 check-md5 与写侧 assertMd5Available 同批（避免读写域不一致）；ensureProject 调用点收敛到守卫。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/{RecycleBinSource,ContentAssetRecycleBinSource,MeetingRecycleBinSource,PlanRecycleBinSource,ReportRecycleBinSource,ContentRecycleBinService}.java",
+      "purpose": "RecycleBinSource SPI 全链路追加 projectId（countDeleted/listDeletedPage/detail/restore/purge），统一回收站不再跨项目聚合；未知 contentTypes 仍 400（ISSUE 不在 SPI 内，保留专属端点）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+      "purpose": "overall/component 两端点 projectId 必填；计数由租户级快照读取改为项目内实时 COUNT（组件数/活动资产数/资产类型分布均限定 project_id），不再返回 snapshotDate；projects 卡片含义改为当前调用者可访问项目数。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAttachmentService.java",
+      "purpose": "删除租户级破坏性方法 purgeAllSoftDeleted()（收敛后无调用方），附件彻底清改由 MeetingService 按 JOIN dm_meeting ... AND m.project_id = ? 选行，从根上消除「全租户清空」路径。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+      "purpose": "Excel/文件导入必须携带 projectId 且逐行比对模板首列「所属项目编码」，不一致行返回失败原因，一致行归属强制为请求项目。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/{IssueController,MeetingController,ReportController,ContentAssetController,ContentRecycleBinController,StructuredAssetController,TargetTableController}.java",
+      "purpose": "@RequestParam projectId 改为 required=false + 服务端显式必填校验（保证错误语义为 400/40000 + 可读 message，而非 Spring 默认缺参 500）；purge-all 类端点追加 projectId。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DataMigrationExceptionAdvice.java（新增）",
+      "purpose": "模块级 @RestControllerAdvice（@Order(HIGHEST_PRECEDENCE) + basePackageClasses 限定作用域），把 projectId 非数字等类型转换失败映射为 400「参数 projectId 非法，必须为数字」，不再退化为 500，且不触碰平台只读全局异常处理器。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationPermissionServiceTest.java（新增 6 用例）与 web/DataMigrationExceptionAdviceTest.java（新增 3 用例）",
+      "purpose": "覆盖缺失/非数字/零/负数/未知项目的 400 语义、成员放行与豁免角色、非成员 403、以及 advice 的类型转换映射；ContentRecycleBinRegistryTest、IssueServiceTest、ReportServiceTest 随 SPI 与契约签名同步改造。"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "数据迁移项目级查询参数类型改为 projectId 必填；维护类 DTO 去项目字段（ReportUpdateParams 删 projectId，IssueUpdateData/MeetingUpdateData/PlanUpdateData 用 Omit<..., 'projectId'>）；修复 listDataMigrationRecycleBin 声明必填却在重拼 params 时丢弃 projectId 的真实缺陷。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/StructuredListView.vue 与 views/content/RecycleBinPage.vue、views/dashboard/{Overall,Component}DashboardPage.vue",
+      "purpose": "删除按 project_id 的前端过滤（改由服务端保证）；统一回收站页与两个看板页接入 useProjectScope，向服务端传当前项目。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/{base/ComponentsPage,base/TargetTablesPage,content/IssuesPage,content/MeetingsPage,content/PlansPage,content/ReportsPage}.vue",
+      "purpose": "编辑/维护路径不再回传项目字段（配合 D2），新增与查询继续携带当前项目 projectId。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/AssetListView.vue 与 views/content/PlansPage.vue",
+      "purpose": "浏览器取证暴露的移动端页面级横向溢出纠正：裸挂的 <UiPagination> 改套模块既有 .dm-table-footer + 「共 N 条」结构（与 ReportsPage 同构），不新增样式、不改 read_only 的 components/ui/UiPagination.vue。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md 与 codex-task-scope.yaml",
+      "purpose": "追加 T32 需求增量段、7 条验收标准、不变量与「执行期口径细化」1~12 条（含 MD5 查重域、看板实时计数、purge-all 项目化、回收站漏参缺陷、路由事实、溢出归属、传感器口径）；任务范围同步纳入后端 data-migration 可写路径与只读 pm_project_member 让步声明。"
+    }
+  ],
+  "requirements_addressed": [
+    "T32 增量验收标准 AC1~AC7（requirement.md「验收标准（T32）」）",
+    "R3（权限与数据范围：项目隔离叠加在租户隔离与 RBAC 之上）",
+    "R4/R5/R6/R7/R8（内容资产、结构化资产、回收站、看板、导入的读写范围）",
+    "AC2 按需求自身的替代条款取证（守卫单元测试 + 直连 API 反例），未做浏览器级 403 取证"
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit_code": 0,
+      "result": "BUILD SUCCESS（58.5s）。ccb-data-migration 59 tests / 0 failures / 0 errors / 0 skipped，含新增 DataMigrationPermissionServiceTest 6、DataMigrationExceptionAdviceTest 3、ContentRecycleBinRegistryTest 7、IssueServiceTest 8、ReportServiceTest 5。"
+    },
+    {
+      "command": "mvn test（全仓）",
+      "exit_code": 1,
+      "result": "ccb-common/infrastructure/file-preview/security/attachment/system/workflow/ai/release/data-migration(46.9s)/requirement 全部 SUCCESS；ccb-architecture FAILURE（Tests run: 348, Failures: 2, Errors: 2），ccb-test-management 与 ccb-boot 因 fail-fast 未执行（SKIPPED）。归因见 observation-T32。"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "vue-tsc + Vite 生产构建成功（✓ built in 16.40s），当前工作树复验。"
+    },
+    {
+      "command": "node /tmp/dmv/t32_api.mjs（直连 HTTP 取证 v4，双项目 A/B 全类型夹具）",
+      "exit_code": 0,
+      "result": "110 项断言 0 失败：P0/Z1 基线与残留清零；S1~S6 夹具与 MD5 项目域；A/A2 共 30 个端点缺 projectId → 400；B 共 9 个非法 projectId（非数字/0/负数/未知项目/路径 id 非数字）→ 400；C/C2 共 33 项「本项目行可见 + 他项目行不可见 + 标记互斥」；D1~D5 跨项目详情/下载归属；E1~E4 更新忽略外部 projectId；F1~F5 看板；G1~G3 导入；H1~H7 软删/回收站/恢复/彻底清理；I1~I2 purge-all 仅当前项目。"
+    },
+    {
+      "command": "node /tmp/dmv/t32_ui.mjs（Playwright 真实浏览器，admin，17 路由 × 1280x800/375x812/390x844/430x932）",
+      "exit_code": 0,
+      "result": "137 项检查 0 失败（结果 JSON 落 136 项，X1.no_fatal_script_error 在落盘后追加并打印于 stdout）。U1 51 项 A↔B 可见性双向断言；U2 请求级传感器 {total:36, missingGet:0, wrongPid:0, wrongBodyPid:0}；U3 浏览器内直连 API 反例 400/40000「projectId is required」与 400/40000「参数 projectId 非法，必须为数字」；U4 UI 新增会议纪要 payload.projectId=3001 且响应 project_id=3001、「新增成功」；U5 新增行在列表可见；U6 68 项四视口无页面级横向溢出、0 控制台错误、0 个 ≥400 响应；P0/Z1~Z4 运行前后 T32 夹具残留全为 0。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 0,
+      "result": "Codex scope check passed for REQ-20260820-031; 138 changed file(s)（全部落在 writable_paths 内，未触碰 read_only/forbidden）。"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs 与 node scripts/check-ai-control-layout.mjs",
+      "exit_code": 1,
+      "result": "EXIT=1，但输出中 grep -c '031-data-migration' = 0：全部红项属其他历史需求账本与前缀违规，本需求账本无违规；未虚报为通过。"
+    },
+    {
+      "command": "curl http://127.0.0.1:8080/actuator/health 与前端 :5173 探测",
+      "exit_code": 0,
+      "result": "后端 health UP（本会话内因环境被整体回收执行过 ./backend-dev.sh restart 与 ./frontend-dev.sh restart，09:00:19 启动完成），前端 200；随后所有取证均在重启后的环境复跑。"
+    }
+  ],
+  "local_checks": [
+    "服务端手写 SQL 的项目过滤断言（直连 HTTP 双项目夹具，非真空）",
+    "浏览器请求级传感器（逐条比对 /api/data-migration/** 是否携带上下文项目）",
+    "UI 新增 → 响应 project_id → 列表可见 的端到端链路",
+    "四视口 documentElement.scrollWidth + 越出视口且无 overflow-x 祖先收容的元素枚举",
+    "vue-tsc + Vite 构建、模块聚焦 Maven、全仓 Maven、治理与范围检查"
+  ],
+  "invariants_checked": [
+    "未改 server/src/platform/**（含 com.ccb.system.project、GlobalExceptionHandler）与 server/src/shared/**：git diff --name-only origin/main -- server/src/platform 仅 V147~V159（先前任务已提交的 data-migration 迁移），本任务零新增 Flyway",
+    "保持 com.ccb.* 包名、Maven artifact、/api 前缀、ApiResponse 信封、软删与 dm_operation_log 审计语义",
+    "租户隔离与既有 RBAC/实体授权未弱化，项目隔离为叠加条件（requireAccessible 在租户与角色校验之后）",
+    "web/src/stores/**、web/src/components/ui/**、views/AppLayout.vue 零改动，全局项目切换器行为不变",
+    "凭据仅本会话使用，未写入代码、需求、账本或记忆"
+  ],
+  "disturbances": [
+    "取证环境在会话中途被整体回收：/tmp/dmv 目录消失、8080/5173 连接为 000、前后端进程不存在，MySQL/MinIO/kkfileview 容器显示 Up 12 minutes（曾被重启）。处置：重启 dev 脚本、重建取证目录，并复跑直连 API 取证（110/0）与浏览器取证，未使用回收前的过期证据。",
+    "SearchReplace 一次批量替换出现「匹配失败的那条被跳过、其余仍落盘」的中间态，导致脚本短暂不一致；用 grep 复核真实文件内容后补编辑。教训：批量编辑后必须 grep 复验，不能相信工具返回的「成功」。",
+    "两次中文写入错误（「颗粒度」被写成「颗人度」、「一遍」被写成「一遇」），grep 检出后修正。",
+    "取证脚本首轮在 U4 崩溃（Playwright TimeoutError → 进程 exit 1），导致清理与结果落盘整段被跳过；补加非致命护栏（try 包住 U1~U6 + X1.no_fatal_script_error 断言）后，脚本崩溃不再吞掉清理与证据。",
+    "统一回收站页在 T32 后端下 100% 失败态（400 projectId is required），由浏览器请求级传感器发现，属真实产品缺陷而非测试噪声；修复后复验通过。"
+  ],
+  "assumptions_falsified": [
+    "假设「api 层类型声明 projectId 必填即可保证请求真的带上」被证伪：listDataMigrationRecycleBin 重拼 params 时丢弃该字段，类型检查与构建都无法发现，只有真实浏览器请求级传感器能发现。",
+    "假设「T31 的前端项目过滤在服务端补齐后可直接删掉而不影响页面」部分成立：回收站与看板确需接入 useProjectScope，但漏传参数说明「改契约」与「改调用点」必须成对取证。",
+    "假设「base/intermediate-tables 路由展示结构化中间表资产」被证伪：路由实际组件是 TargetTablesPage（meta.category=INTERMEDIATE），views/base/IntermediateTablesPage.vue 无任何引用；夹具按实际组件重建。",
+    "假设「移动端横向溢出是 T32 改动引入」被证伪：空态不复现，造数据后由 .el-pagination__jump 越出视口；UiPagination.vue 相对 origin/main 零改动，git log -S 定位到本分支早于 T32 的 9fec831。",
+    "假设「首轮 24 项 375/390/430 FAIL 全为真实布局回退」部分被证伪：其中 6 项由 el-tabs 触发，属传感器过宽（design-h5.md §5.4 允许页签/表格局部横向滚动），传感器口径已按手册收紧。"
+  ],
+  "unresolved_items": [
+    "AC2 的 403 分支未做浏览器取证：本地库 pm_project_member 全空且取证角色 admin 为 SUPER_ADMIN（豁免），无法构造非成员请求他项目的真实会话；按需求授权条款以 DataMigrationPermissionServiceTest（6 用例，含非成员 403）+ 直连 API 未知项目 400/403 反例代替，上线前需在真实成员数据下复核。",
+    "只读 pm_project_member 属有边界让步（成员判定 SQL 与平台侧口径重复），需 Owner 复核决定是否补 platform Port。",
+    "全仓 mvn test 仍 FAILURE（ccb-architecture 4 项）：结构上不可能由本任务引入（该模块相对 origin/main 零改动；两个失败用例的 Flyway target 为 103/105 与 122/123，本分支只追加 V147~V159，不在执行范围内），但未在 origin/main 干净工作树复跑确认，登记为需基线复验项。",
+    "ccb-test-management 与 ccb-boot 因 architecture 失败被 SKIPPED，本轮未取得其测试结论。",
+    "治理检查 EXIT=1（其他需求账本前缀违规）未修，不属本任务范围。",
+    "统一回收站不含 ISSUE 为既有设计（问题保留专属端点），如需并入需单独需求。"
+  ],
+  "recommended_next": "独立观测（observation-T32）逐项复核 AC1~AC7 与全仓 mvn test 归因；Owner 复核 pm_project_member 让步与 403 未取证项；如需将 data-migration 纳入 CI 全绿门禁，须先处理 ccb-architecture 的迁移测试排序规则问题（平台外，另立任务）。",
+  "rollback": "后端：revert 本任务在 server/src/modules/data-migration/** 的改动即回到 T31 行为（无 Flyway、无数据迁移、无权限种子变更，回收站与看板恢复租户级口径）。前端：revert web/src/api/data-migration.ts 与 web/src/modules/data-migration/**。数据库与生产系统未触碰，回滚不需 DB 操作。",
+  "external_access": "local services only (127.0.0.1:8080 / :5173 / MySQL :3306 / MinIO :9000)",
+  "remote_updated": false,
+  "evidence_level": "已实现 + 检查通过（focused mvn 59/0 BUILD SUCCESS、npm build EXIT=0、范围检查通过 138 文件；全仓 mvn test EXIT=1 已归因）+ 运行可达（重启后 health UP、:5173 200）+ 浏览器已验收（admin，17 路由 × 4 视口，137 项 0 失败 + 直连 API 110 项 0 失败；AC2 的 403 分支按需求授权以单元测试与 API 反例替代，未达浏览器级）"
+}

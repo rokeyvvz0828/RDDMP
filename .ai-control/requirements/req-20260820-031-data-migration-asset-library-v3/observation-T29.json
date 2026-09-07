@@ -1,0 +1,11 @@
+{
+  "sample_label":"T29 unified recycle-bin detail",
+  "task_ids":["T29"],
+  "purpose":"独立验证详情契约、错误语义、构建和本地服务可达性",
+  "independence":"代码实现完成后的独立命令/API采样；浏览器采样受环境依赖限制",
+  "database_assertions":[],
+  "runtime_probes":[{"endpoint":"GET /actuator/health","http":200,"actual":"UP"},{"endpoint":"GET /api/data-migration/recycle-bin?page=1&size=20","http":200,"actual":"返回分页信封"},{"endpoint":"GET /api/data-migration/recycle-bin/PLAN/1","http":400,"actual":"Asset not found in recycle bin"},{"endpoint":"GET /api/data-migration/recycle-bin/GHOST/1","http":400,"actual":"不支持的内容类型"},{"endpoint":"GET /api/data-migration/recycle-bin/PLAN/0","http":400,"actual":"无效的内容 ID"},{"endpoint":"GET /api/data-migration/recycle-bin/PLAN/1 (无认证)","http":401,"actual":"Authentication required"}],
+  "static_checks":{"focused_maven":"pass (11 recycle-bin tests)","frontend_build":"pass","diff_check":"pass","governance":"blocked by pre-existing unrelated ledger files","scope":"blocked by pre-existing .gitignore and ccb-architecture changes"},
+  "error_counts":{"P0":0,"P1":0,"P2":0,"P3":0},
+  "conclusion":"后端详情路由和前端抽屉代码已完成并可构建；本地 HTTP 错误边界符合设计。真实浏览器视觉验收尚未执行，原因是 Playwright Chromium 可执行文件缺失。"
+}

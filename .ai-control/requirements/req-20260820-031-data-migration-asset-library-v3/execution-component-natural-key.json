@@ -1,0 +1,36 @@
+{
+  "task_id": "component-natural-key",
+  "parent_task": "T43",
+  "trigger": "用户确认 dm_component 结构优化：id 物理删除、唯一键改为 (tenant_id, project_id, system_code)、physical_subsystem_code 更名为 system_code、逻辑删除改物理删除 + enabled 启停、迁移存量 deleted 语义转换。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_component_natural_key_enabled",
+  "decision_recorded": "A id 物理删除；B 自然键 (tenant_id, project_id, system_code)；C 存在映射/依赖/计划/专题/目标表等业务数据时拒绝物理删除；D enabled=0 的业务新增/编辑/下拉过滤、历史只读可显示名称；E 存量 deleted=1 转 enabled=0、deleted=0 转 enabled=1。不使用 V181，新增 V183__data_migration_component_natural_key_enabled.sql。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V183__data_migration_component_natural_key_enabled.sql（新增）",
+      "purpose": "dm_component 自然键与启停、下游 system_code 回填、删除 component_id 列、快照键迁移。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/** 若干 Service/Controller",
+      "purpose": "组件清单维护、映射/依赖/方案/专题/目标表等查询与写入改为 system_code + enabled，删除带业务占用校验。"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts、web/src/modules/data-migration/**",
+      "purpose": "组件清单、涉及系统选择、资产列表/详情、回收站等前端契约切换为 systemCode 与启停状态。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/**",
+      "purpose": "修复 V175/V176/V177/V178/dashboard 与 ContentFileAssetDocCodeGovernance 测试，使其符合 V182 后契约。"
+    }
+  ],
+  "verification": [
+    "V182 已在独立测试库 ccb_platform_v182test 应用成功，并在开发库 ccb_platform 通过 Flyway success=1。",
+    "后端主代码编译通过：mvn -q -pl :ccb-data-migration -am -Dmaven.test.skip=true -DskipTests compile。",
+    "前端构建通过：npm --prefix web run build。",
+    "全量模块测试通过：mvn -pl :ccb-data-migration -am test（99 tests，0 failures，0 errors）。",
+    "接口冒烟通过：组件列表、系统下拉、组件看板、启停、mappings/topics 均返回正常。",
+    "范围检查通过：node scripts/check-codex-scope.mjs --scope ...（245 changed files 全部落在允许范围内）。"
+  ],
+  "not_done": "未提交、未推送、未合并；未做生产部署。",
+  "noted_risk": "V182 是重结构迁移，环境升级前需先确认开发/测试库可回滚；用户已确认开发库直接应用，不涉及生产库。"
+}
