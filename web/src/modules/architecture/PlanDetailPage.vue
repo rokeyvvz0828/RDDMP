@@ -158,6 +158,7 @@ async function loadAll() {
   loadError.value = ''
   try {
     detail.value = await getPlan(planId)
+    void loadUserMap()
     if (currentTask.value && !detail.value.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
       currentTask.value = null
       taskDrawerVisible.value = false
@@ -184,7 +185,6 @@ async function loadAll() {
 }
 
 onMounted(() => {
-  loadUserMap()
   loadAll()
 })
 
@@ -1320,12 +1320,12 @@ function formatRange(start: string | null, end: string | null) {
 
     <!-- 任务抽屉 -->
     <el-dialog v-model="assignmentVisible" title="任务分工" width="min(520px, 96vw)" :close-on-click-modal="false" :close-on-press-escape="!assignmentSaving" :show-close="!assignmentSaving">
-      <el-alert title="负责人自动参与；更换负责人后旧负责人默认保留，可手工移除。失效人员需移交或移除。" type="info" :closable="false" />
+      <p role="status">负责人自动参与；更换负责人后旧负责人默认保留，可手工移除。失效人员需移交或移除。</p>
       <el-form label-position="top" :disabled="assignmentSaving">
         <el-form-item label="任务负责人" required><el-select v-model="assignmentForm.ownerUserId" filterable style="width:100%" @change="changeAssignmentOwner">
           <el-option v-for="person in assignmentCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" />
         </el-select></el-form-item>
-        <el-form-item label="参与人员"><el-select v-model="assignmentForm.participantUserIds" multiple filterable style="width:100%">
+        <el-form-item label="参与人员"><el-select v-model="assignmentForm.participantUserIds" class="plan-assignment-participants" multiple filterable style="width:100%">
           <el-option v-for="person in assignmentCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" :disabled="person.userId === assignmentForm.ownerUserId" />
         </el-select></el-form-item>
         <el-form-item label="分派原因" required><el-input v-model="assignmentForm.reason" type="textarea" maxlength="1000" /></el-form-item>
@@ -1335,6 +1335,7 @@ function formatRange(start: string | null, end: string | null) {
 
     <el-drawer v-model="taskDrawerVisible" size="min(760px, 96vw)" :title="currentTask ? `任务 · ${currentTask.name}` : ''" destroy-on-close>
       <template v-if="currentTask">
+        <p v-if="!isTaskExecutor(currentTask)" role="status">当前任务仅可查看或按管理权限维护；只有有效任务参与人员可以执行任务和检查项。</p>
         <el-descriptions :column="2" border size="small" class="plan-task-desc">
           <el-descriptions-item label="状态">
             <UiStatusTag :value="currentTask.status" :labels="taskStatusLabels" :tone="taskStatusTones[currentTask.status]" />
@@ -1343,7 +1344,7 @@ function formatRange(start: string | null, end: string | null) {
           </el-descriptions-item>
           <el-descriptions-item label="目标">{{ currentTask.targetName ?? '计划级' }}</el-descriptions-item>
           <el-descriptions-item label="进度">{{ currentTask.progress ?? 0 }}%</el-descriptions-item>
-          <el-descriptions-item label="责任人">{{ currentTask.ownerUserId }}</el-descriptions-item>
+          <el-descriptions-item label="责任人">{{ userName(currentTask.ownerUserId) }}</el-descriptions-item>
           <el-descriptions-item label="计划时间">{{ currentTask.plannedStart ?? '—' }} ~ {{ currentTask.plannedEnd ?? '—' }}</el-descriptions-item>
           <el-descriptions-item label="实际时间">{{ currentTask.actualStart ?? '—' }} ~ {{ currentTask.actualEnd ?? '—' }}</el-descriptions-item>
         </el-descriptions>
@@ -1505,6 +1506,12 @@ function formatRange(start: string | null, end: string | null) {
 </template>
 
 <style scoped>
+.plan-assignment-participants :deep(.el-tag) {
+  color: var(--text);
+  background: var(--panel-muted);
+  border-color: var(--line);
+}
+
 .plan-summary-panel {
   margin-bottom: 14px;
   overflow: hidden;
