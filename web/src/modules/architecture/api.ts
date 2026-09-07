@@ -422,6 +422,15 @@ export async function voidDeploymentUnit(id: number) {
   return (await projectHttp.post<ApiResponse<DeploymentUnit>>(`/architecture/deployment-units/${id}/void`)).data.data
 }
 
+export async function loadParticipatingPhysicalOptions() {
+  const result: PhysicalSubsystemOption[] = []
+  for (let page = 1; ; page++) {
+    const data = (await projectHttp.get<ApiResponse<PageResult<PhysicalSubsystemOption>>>('/architecture/options/resource-request/physical-subsystems', { params: { page, size: 100 } })).data.data
+    result.push(...data.records)
+    if (!data.records.length || result.length >= data.total) return result
+  }
+}
+
 export async function loadPhysicalSubsystemOptions(keyword = '', size = 50) {
   const filter = keyword && /^[A-Za-z0-9_-]+$/.test(keyword) ? { code: keyword } : { name: keyword }
   return (await projectHttp.get<ApiResponse<PageResult<PhysicalSubsystemOption>>>('/architecture/options/deployment-unit/physical-subsystems', {

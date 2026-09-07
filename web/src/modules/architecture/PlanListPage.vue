@@ -13,7 +13,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useProjectContextStore } from '../../stores/project-context'
 import { listEnvironments, loadPhysicalSubsystemOptions, loadResourceDeploymentUnitOptions } from './api'
 import type { DeploymentUnitOption, Environment, PhysicalSubsystemOption } from './types'
-import { cancelPlan, createPlan, listPlanTemplates, listPlans, loadPlanUserOptions, restorePlan } from './planApi'
+import { previewPlan, cancelPlan, createPlan, listPlanTemplates, listPlans, loadPlanUserOptions, restorePlan } from './planApi'
 import type { PlanRowView, PlanStatus, PlanTemplateView } from './planApi'
 import './architecture.css'
 
@@ -125,6 +125,8 @@ const statusTones: Record<PlanStatus, 'primary' | 'success' | 'warning' | 'dange
 const createVisible = ref(false)
 const createSaving = ref(false)
 const wizard = ref(0)
+const previewTasks = ref<import('./planApi').PreviewTask[]>([])
+const previewLoading = ref(false)
 const createForm = reactive({
   environmentId: null as number | null,
   templateId: null as number | null,
@@ -174,6 +176,23 @@ function onPhysicalSelect(ids: number[]) {
   }
 }
 
+async function loadPreview() {
+  if (!createForm.templateId || !createForm.planOwnerUserId || !createForm.environmentId) {
+    ElMessage.warning('请先选择环境、模板和计划负责人')
+    return
+  }
+  previewLoading.value = true
+  try {
+    previewTasks.value = await previewPlan({ ...createForm, environmentId: createForm.environmentId,
+      templateId: createForm.templateId, planOwnerUserId: createForm.planOwnerUserId })
+    wizard.value = 3
+  } catch (error) { ElMessage.error(apiErrorMessage(error, '任务分工预览失败')) }
+  finally { previewLoading.value = false }
+}
+function changePreviewOwner(task: import('./planApi').PreviewTask) {
+  if (task.ownerUserId && !task.participantUserIds.includes(task.ownerUserId)) task.participantUserIds.push(task.ownerUserId)
+}
+
 async function createPlanSubmit() {
   if (!createForm.environmentId || !createForm.templateId || !createForm.planOwnerUserId) {
     ElMessage.warning('请完成环境、模板与计划责任人选择')
@@ -183,6 +202,7 @@ async function createPlanSubmit() {
     ElMessage.warning('请至少选择一个目标（物理子系统或部署单元）')
     return
   }
+  if (previewTasks.value.some(t => !t.ownerUserId)) { ElMessage.warning('请补齐每个任务的负责人'); return }
   createSaving.value = true
   try {
     const plan = await createPlan({
@@ -192,7 +212,7 @@ async function createPlanSubmit() {
       planOwnerUserId: createForm.planOwnerUserId,
       physicalSubsystemIds: createForm.physicalSubsystemIds,
       deploymentUnitIds: createForm.deploymentUnitIds,
-      participantUserIds: createForm.participantUserIds,
+      taskAssignments: previewTasks.value.map(t => ({ key: t.key, ownerUserId: t.ownerUserId, participantUserIds: t.participantUserIds })),
       plannedStart: createForm.plannedRange?.[0] ?? null,
       plannedEnd: createForm.plannedRange?.[1] ?? null
     })
@@ -378,6 +398,7 @@ function formatDateTime(value: string | null | undefined) {
         <el-step title="环境与模板" />
         <el-step title="选择目标" />
         <el-step title="责任人与时间" />
+        <el-step title="逐任务分工" />
       </el-steps>
 
       <el-form v-if="wizard === 0" label-width="110px">
@@ -416,11 +437,6 @@ function formatDateTime(value: string | null | undefined) {
             <el-option v-for="user in ownerOptions" :key="user.id" :label="user.displayName" :value="user.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="任务参与人">
-          <el-select v-model="createForm.participantUserIds" multiple filterable placeholder="选择参与人（默认加入所有任务）" style="width: 100%">
-            <el-option v-for="user in ownerOptions" :key="user.id" :label="user.displayName" :value="user.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="计划时间">
           <el-date-picker v-model="createForm.plannedRange" type="datetimerange" range-separator="至"
                           start-placeholder="计划开始时间" end-placeholder="计划结束时间"
@@ -428,16 +444,39 @@ function formatDateTime(value: string | null | undefined) {
         </el-form-item>
       </el-form>
 
+      <section v-if="wizard === 3" class="plan-assignment-preview">
+        <el-alert title="系统任务默认带出系统负责人及参与人员；可逐任务修改，不影响系统和其他任务。负责人自动参与，旧负责人默认保留。" type="info" :closable="false" />
+        <el-empty v-if="previewTasks.length === 0" description="所选目标未展开任务，请返回调整目标或模板" />
+        <article v-for="task in previewTasks" :key="task.key" class="plan-assignment-preview__task">
+          <h4>{{ task.stageName }} · {{ task.name }}</h4><p>{{ task.targetName }}</p>
+          <el-form label-position="top">
+            <el-form-item label="任务负责人" required>
+              <el-select v-model="task.ownerUserId" filterable style="width:100%" @change="changePreviewOwner(task)">
+                <el-option v-for="person in task.candidates" :key="person.userId" :value="person.userId" :label="person.displayName" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="任务参与人员">
+              <el-select v-model="task.participantUserIds" multiple filterable style="width:100%">
+                <el-option v-for="person in task.candidates" :key="person.userId" :value="person.userId" :label="person.displayName" :disabled="person.userId === task.ownerUserId" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </article>
+      </section>
       <template #footer>
         <el-button v-if="wizard > 0" @click="wizard--">上一步</el-button>
         <el-button v-if="wizard < 2" type="primary" @click="wizard === 0 ? (loadTargets(), wizard++) : wizard++">下一步</el-button>
-        <el-button v-else type="primary" :loading="createSaving" @click="createPlanSubmit">创建计划</el-button>
+        <el-button v-else-if="wizard === 2" type="primary" :loading="previewLoading" @click="loadPreview">预览任务分工</el-button>
+        <el-button v-else type="primary" :disabled="!previewTasks.length" :loading="createSaving" @click="createPlanSubmit">创建计划</el-button>
       </template>
     </el-dialog>
   </main>
 </template>
 
 <style scoped>
+.plan-assignment-preview { max-height: 55dvh; overflow-y: auto; min-width: 0; }
+.plan-assignment-preview__task { padding: 12px 0; border-bottom: 1px solid var(--el-border-color); overflow-wrap: anywhere; }
+
 .plan-progress-text {
   margin-left: 8px;
   font-size: 12px;

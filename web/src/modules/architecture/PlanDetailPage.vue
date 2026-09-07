@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PersonalTaskBoard from './components/PersonalTaskBoard.vue'
+import { getTaskAssignment, assignTask } from './planApi'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ArrowLeft, Download, Plus, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -106,15 +108,64 @@ const workOrderTypeLabels: Record<WorkOrderType, string> = {
   NETWORK_CERT: '证书工单', CRYPTO_POOL: '加密机入池（预留）'
 }
 
+const boardAll = ref(false)
+const boardLoading = ref(false)
+async function changeBoardScope(all: boolean) {
+  boardLoading.value = true
+  try { dashboard.value = await getPlanDashboard(planId, all); boardAll.value = all }
+  catch (error) { ElMessage.error(apiErrorMessage(error, '看板加载失败')) }
+  finally { boardLoading.value = false }
+}
+function openBoardTask(id: number) {
+  const task = detail.value?.stages.flatMap(stage => stage.tasks).find(task => task.id === id)
+  if (task) { currentTask.value = task; taskDrawerVisible.value = true }
+}
+const assignmentVisible = ref(false)
+const assignmentSaving = ref(false)
+const assignmentLoading = ref(false)
+const assignmentForm = reactive({ ownerUserId: null as number | null, participantUserIds: [] as number[], rowVersion: 0, reason: '' })
+const assignmentCandidates = ref<{ userId: number; displayName: string }[]>([])
+async function openAssignment() {
+  if (!currentTask.value) return
+  assignmentLoading.value = true
+  try {
+    const value = await getTaskAssignment(currentTask.value.id)
+    Object.assign(assignmentForm, value, { reason: '' })
+    assignmentCandidates.value = value.candidates
+    assignmentVisible.value = true
+  } catch (error) { ElMessage.error(apiErrorMessage(error, '加载任务分工失败')) }
+  finally { assignmentLoading.value = false }
+}
+function changeAssignmentOwner() {
+  if (assignmentForm.ownerUserId && !assignmentForm.participantUserIds.includes(assignmentForm.ownerUserId)) assignmentForm.participantUserIds.push(assignmentForm.ownerUserId)
+}
+async function saveAssignment() {
+  if (!currentTask.value || !assignmentForm.ownerUserId || !assignmentForm.reason.trim()) { ElMessage.warning('负责人和分派原因必填'); return }
+  assignmentSaving.value = true
+  try {
+    await assignTask(currentTask.value.id, assignmentForm)
+    assignmentVisible.value = false
+    ElMessage.success('任务分工已更新')
+    await loadAll()
+    const task = detail.value?.stages.flatMap(s => s.tasks).find(t => t.id === currentTask.value?.id)
+    if (task) currentTask.value = task
+  } catch (error) { ElMessage.error(apiErrorMessage(error, '任务分派失败，请刷新后重试')) }
+  finally { assignmentSaving.value = false }
+}
+
 async function loadAll() {
   loading.value = true
   loadError.value = ''
   try {
     detail.value = await getPlan(planId)
+    if (currentTask.value && !detail.value.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
+      currentTask.value = null
+      taskDrawerVisible.value = false
+    }
     if (openStages.value.length === 0 && detail.value.stages.length > 0) {
       openStages.value = [String(detail.value.stages[0].id)]
     }
-    dashboard.value = await getPlanDashboard(planId)
+    dashboard.value = await getPlanDashboard(planId, boardAll.value)
     timeline.value = await getPlanTimeline(planId)
     suggestions.value = await listPlanSuggestions(planId).catch(() => [])
     buildFlowchart()
@@ -143,7 +194,7 @@ function isPlanOwner() {
 }
 
 function isTaskExecutor(task: TaskDetailView) {
-  return auth.user?.id === task.ownerUserId || task.participantUserIds.includes(auth.user?.id ?? -1) || auth.hasPermission('architecture:manage')
+  return task.canExecute === true
 }
 
 // ---------- 计划级操作 ----------
@@ -408,6 +459,11 @@ async function refreshCurrentTask() {
   const plan = await getPlan(planId)
   detail.value = plan
   if (currentTask.value) {
+    if (!plan.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
+      currentTask.value = null
+      taskDrawerVisible.value = false
+      return
+    }
     for (const stage of plan.stages) {
       const found = stage.tasks.find(task => task.id === currentTask.value?.id)
       if (found) {
@@ -1163,22 +1219,8 @@ function formatRange(start: string | null, end: string | null) {
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="看板" name="dashboard">
-          <div v-if="dashboard" class="plan-board">
-            <div v-for="stage in dashboard.stages" :key="stage.id" class="plan-board__stage">
-              <div class="plan-board__stage-header">
-                <span>{{ stage.name }}</span>
-                <span class="plan-board__stage-progress">{{ stage.progress ?? 0 }}%</span>
-              </div>
-              <div v-for="task in stage.tasks" :key="task.id" class="plan-board__task">
-                <div class="plan-board__task-name">{{ task.name }}</div>
-                <div class="plan-board__task-meta">
-                  <el-tag size="small" :type="task.hasBlocked ? 'danger' : task.overdue ? 'danger' : 'info'">{{ taskStatusLabels[task.status as TaskStatus] }}</el-tag>
-                  <span>{{ task.progress ?? 0 }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <el-tab-pane label="敏捷看板" name="dashboard">
+          <PersonalTaskBoard v-if="dashboard" :dashboard="dashboard" :all="boardAll" :manager="isPlanOwner()" :loading="boardLoading" @scope="changeBoardScope" @open="openBoardTask" />
         </el-tab-pane>
 
         <el-tab-pane label="时间视图" name="timeline">
@@ -1277,6 +1319,20 @@ function formatRange(start: string | null, end: string | null) {
     </el-dialog>
 
     <!-- 任务抽屉 -->
+    <el-dialog v-model="assignmentVisible" title="任务分工" width="min(520px, 96vw)" :close-on-click-modal="false" :close-on-press-escape="!assignmentSaving" :show-close="!assignmentSaving">
+      <el-alert title="负责人自动参与；更换负责人后旧负责人默认保留，可手工移除。失效人员需移交或移除。" type="info" :closable="false" />
+      <el-form label-position="top" :disabled="assignmentSaving">
+        <el-form-item label="任务负责人" required><el-select v-model="assignmentForm.ownerUserId" filterable style="width:100%" @change="changeAssignmentOwner">
+          <el-option v-for="person in assignmentCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" />
+        </el-select></el-form-item>
+        <el-form-item label="参与人员"><el-select v-model="assignmentForm.participantUserIds" multiple filterable style="width:100%">
+          <el-option v-for="person in assignmentCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" :disabled="person.userId === assignmentForm.ownerUserId" />
+        </el-select></el-form-item>
+        <el-form-item label="分派原因" required><el-input v-model="assignmentForm.reason" type="textarea" maxlength="1000" /></el-form-item>
+      </el-form>
+      <template #footer><el-button :disabled="assignmentSaving" @click="assignmentVisible=false">取消</el-button><el-button type="primary" :loading="assignmentSaving" @click="saveAssignment">保存分工</el-button></template>
+    </el-dialog>
+
     <el-drawer v-model="taskDrawerVisible" size="min(760px, 96vw)" :title="currentTask ? `任务 · ${currentTask.name}` : ''" destroy-on-close>
       <template v-if="currentTask">
         <el-descriptions :column="2" border size="small" class="plan-task-desc">
@@ -1299,6 +1355,7 @@ function formatRange(start: string | null, end: string | null) {
             <el-button v-if="isTaskExecutor(currentTask) && currentTask.status !== 'NOT_STARTED' && currentTask.status !== 'COMPLETED' && currentTask.status !== 'CANCELLED'" link type="primary" @click="openDependency">前置依赖</el-button>
             <el-button v-if="isTaskExecutor(currentTask) && currentTask.status !== 'COMPLETED' && currentTask.status !== 'CANCELLED'" link type="primary" @click="openBlock">登记阻塞</el-button>
             <el-button v-if="isTaskExecutor(currentTask)" link type="primary" @click="openWorkOrder">关联工单</el-button>
+            <el-button v-if="isPlanOwner()" link type="primary" :loading="assignmentLoading" @click="openAssignment">任务分工</el-button>
             <el-button v-if="isTaskExecutor(currentTask) || isPlanOwner()" link type="primary" @click="openTaskSchedule">任务时间</el-button>
           </span>
         </div>

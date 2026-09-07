@@ -26,6 +26,7 @@ import {
   listEnvironments,
   listResourceRequests,
   loadParameterOptions,
+  loadParticipatingPhysicalOptions,
   loadPhysicalSubsystemOptions,
   loadNetworkZoneOptions,
   loadResourceDeploymentUnitOptions,
@@ -94,6 +95,7 @@ const rows = ref<ResourceRequestSummary[]>([])
 const environments = ref<Environment[]>([])
 const users = ref<UserOption[]>([])
 const physicalOptions = ref<PhysicalSubsystemOption[]>([])
+const filterPhysicalOptions = ref<PhysicalSubsystemOption[]>([])
 const deploymentUnitOptions = ref<DeploymentUnitOption[]>([])
 const networkZoneOptions = ref<NetworkZoneOption[]>([])
 const serverTypes = ref<ParameterOption[]>([])
@@ -414,7 +416,7 @@ async function loadOptions() {
       operatingSystemRows
     ] = await Promise.all([
       listEnvironments({ limit: 200, offset: 0 }),
-      loadPhysicalSubsystemOptions('', 100),
+      loadParticipatingPhysicalOptions(),
       loadUserOptions('physical-subsystem', '', 100),
       loadParameterOptions('physical-subsystem', 'ARCH_SERVER_TYPE'),
       loadParameterOptions('physical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
@@ -427,6 +429,7 @@ async function loadOptions() {
     ])
     environments.value = environmentRows
     physicalOptions.value = physicalRows
+    filterPhysicalOptions.value = await loadPhysicalSubsystemOptions('', 100)
     users.value = userRows
     serverTypes.value = serverTypeRows
     deploymentPlatforms.value = platformRows
@@ -1250,7 +1253,7 @@ watch(deploymentUnitOptions, options => {
       <UiToolbar>
         <el-select v-model="filters.status" clearable placeholder="申请状态" class="architecture-filter-select"><el-option v-for="status in statusOptions" :key="status" :label="resourceRequestStatusLabels[status]" :value="status" /></el-select>
         <el-select v-model="filters.environmentId" clearable filterable placeholder="环境" class="architecture-filter-select"><el-option v-for="item in environments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" /></el-select>
-        <el-select v-model="filters.physicalSubsystemId" clearable filterable placeholder="物理子系统" class="architecture-filter-select"><el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select>
+        <el-select v-model="filters.physicalSubsystemId" clearable filterable placeholder="物理子系统" class="architecture-filter-select"><el-option v-for="item in filterPhysicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select>
         <el-button type="primary" @click="search"><el-icon><Search /></el-icon>查询</el-button><el-button @click="reset">重置</el-button>
         <template #actions><span class="architecture-muted">{{ scopeLabel }}</span><el-tooltip content="刷新列表"><el-button circle :loading="loading" aria-label="刷新资源申请列表" @click="refresh"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
       </UiToolbar>

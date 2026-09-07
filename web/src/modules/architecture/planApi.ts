@@ -170,6 +170,7 @@ export interface EventView {
 }
 
 export interface TaskDetailView {
+  canExecute: boolean
   id: number
   stageId: number
   taskNo: number
@@ -256,6 +257,12 @@ export interface DashboardView {
       waivedAll: boolean
       overdue: boolean
       hasBlocked: boolean
+      ownerUserId: number
+      ownerName: string
+      completedChecks: number
+      totalChecks: number
+      plannedEnd: string | null
+      assignmentNeedsAttention: boolean
       targetName: string | null
     }>
   }>
@@ -418,8 +425,8 @@ export async function getPlan(id: number) {
   return (await projectHttp.get<ApiResponse<PlanDetailView>>(`/architecture/plans/${id}`)).data.data
 }
 
-export async function getPlanDashboard(id: number) {
-  return (await projectHttp.get<ApiResponse<DashboardView>>(`/architecture/plans/${id}/dashboard`)).data.data
+export async function getPlanDashboard(id: number, all = false) {
+  return (await projectHttp.get<ApiResponse<DashboardView>>(`/architecture/plans/${id}/dashboard`, { params: { all } })).data.data
 }
 
 export async function getPlanTimeline(id: number) {
@@ -438,10 +445,35 @@ export async function createPlan(payload: {
   physicalSubsystemIds?: number[]
   deploymentUnitIds?: number[]
   participantUserIds?: number[]
+  taskAssignments?: { key: string; ownerUserId: number | null; participantUserIds: number[] }[]
   plannedStart?: string | null
   plannedEnd?: string | null
 }) {
   return (await projectHttp.post<ApiResponse<PlanView>>('/architecture/plans', payload)).data.data
+}
+
+export interface TaskAssignmentView {
+  ownerUserId: number | null
+  participantUserIds: number[]
+  candidates: { userId: number; displayName: string }[]
+  rowVersion: number
+}
+export interface PreviewTask extends Omit<TaskAssignmentView, 'rowVersion'> {
+  key: string
+  stageName: string
+  name: string
+  targetName: string
+  targetId: number | null
+  targetType: TargetType | null
+}
+export async function previewPlan(payload: Parameters<typeof createPlan>[0]) {
+  return (await projectHttp.post<ApiResponse<PreviewTask[]>>('/architecture/plans/preview', payload)).data.data
+}
+export async function getTaskAssignment(id: number) {
+  return (await projectHttp.get<ApiResponse<TaskAssignmentView>>(`/architecture/tasks/${id}/assignment`)).data.data
+}
+export async function assignTask(id: number, payload: Omit<TaskAssignmentView, 'candidates'> & { reason: string }) {
+  await projectHttp.put(`/architecture/tasks/${id}/assignment`, payload)
 }
 
 export async function cancelPlan(id: number, reason: string) {
