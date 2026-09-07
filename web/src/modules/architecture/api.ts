@@ -50,6 +50,9 @@ import type {
   PageResult,
   ParameterOption,
   PhysicalSubsystem,
+  SubsystemParticipation,
+  SubsystemParticipantCandidate,
+  SubsystemParticipationPayload,
   ProvisionPreviewResult,
   PublicationIntentView,
   RelatedDeploymentUnit,
@@ -818,4 +821,14 @@ export async function listAvailableStandbyInstances(deploymentUnitId: number, ex
   return (await projectHttp.get<ApiResponse<EnvironmentInstance[]>>('/architecture/instances/options/available-standbys', {
     params: compact({ deploymentUnitId, excludeInstanceId })
   })).data.data
+}
+
+export async function getSubsystemParticipation(id: number, projectRef: string) {
+  return (await http.get<ApiResponse<SubsystemParticipation>>(`/architecture/physical-subsystems/${id}/participants`, { params: { projectRef } })).data.data
+}
+export async function getSubsystemParticipantCandidates(id: number, projectRef: string) {
+  return (await http.get<ApiResponse<SubsystemParticipantCandidate[]>>(`/architecture/physical-subsystems/${id}/participants/candidates`, { params: { projectRef } })).data.data
+}
+export async function replaceSubsystemParticipation(id: number, projectRef: string, payload: SubsystemParticipationPayload) {
+  return (await http.put<ApiResponse<SubsystemParticipation>>(`/architecture/physical-subsystems/${id}/participants`, payload, { params: { projectRef } })).data.data
 }

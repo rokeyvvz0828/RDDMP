@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 7,
+  "revision": 20,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-06T08:43:20+00:00",
+  "updated_at": "2026-09-07T01:22:37+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "executing",
@@ -30,6 +30,24 @@
       "to": "executing",
       "evidence": "实施准入完成，先执行T1",
       "recorded_at": "2026-09-06T08:43:20+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1有可测部分输出，独立脚本检测到范围门禁与存量迁移传感器偏差",
+      "recorded_at": "2026-09-06T09:01:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "观测到审批门禁负反馈，需要升级处理；不能自行签Owner审批",
+      "recorded_at": "2026-09-06T09:02:43+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "用户审批豁免已记录，F-0001复验关闭，恢复已批准实现",
+      "recorded_at": "2026-09-07T01:22:37+00:00"
     }
   ],
   "stage_artifacts": {
@@ -1275,8 +1293,244 @@
         }
       }
     ],
-    "executing": [],
-    "observing": [],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1第一切片：15项测试和构建通过，平台迁移审批门禁未满足，报告partial",
+        "recorded_at": "2026-09-06T09:01:38+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/api.ts",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/types.ts",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/SubsystemParticipationController.java",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue",
+              "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest -Dsurefire.failIfNoSpecifiedTests=false（首次有效红灯）",
+              "exit_code": 1,
+              "salient_output": "测试编译失败：SubsystemParticipationService及SystemScope尚未实现"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 0,
+              "salient_output": "Tests run: 15, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS; MySQL 8.4 实际执行 V1至V157后升级至V159"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "built in 25.83s；存在大chunk警告"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误（未跟踪文件由后续暂存检查覆盖）"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 1,
+              "salient_output": "V84_1__seed_requirement_system_catalog.sql: expected V<number>__description.sql"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 1,
+              "salient_output": "public capability change requires issue, owner approval, compatibility and regression tests；未出现路径越界错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "聚焦业务、方法安全与真实MySQL测试",
+              "result": "pass",
+              "evidence": "15项全部通过",
+              "limitations": [
+                "未完成架构完整回归",
+                "数据库并发覆盖系统父锁和成员撤销，不覆盖项目资格退出或系统负责人变更工单竞争"
+              ]
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "退出码0",
+              "limitations": [
+                "尚未真实浏览器验收"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "新增独立参与人子资源，不更改负责人属性或旧任务名单",
+            "负责人隐含参与，有效项目成员/启用用户实时校验",
+            "父记录版本冲突及退出前未完任务/OPEN阻塞责任检查",
+            "新增V159复合外键关系和前后名单审计，未修改已发布迁移",
+            "复用UiFormDrawer与示范中心单列表单，从物理系统列表操作进入参与人员抽屉；尚未改造原看板"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "租户和项目隔离",
+              "result": "pass",
+              "evidence": "服务/方法权限/MySQL复合外键测试"
+            },
+            {
+              "invariant": "已授权路径且遵守平台门禁",
+              "result": "fail",
+              "evidence": "路径未越界，但V159平台迁移需专项Issue及Owner审批"
+            }
+          ],
+          "disturbances": [
+            "首次Maven命令未引号保护-Dsurefire参数导致PowerShell解析错误；修正参数后获得有效红灯和绿灯",
+            "存量V84_1命名不符合治理脚本，未修改历史迁移或治理检查器"
+          ],
+          "assumptions_falsified": [
+            "平台迁移不能只把Owner复核延期到上线前：当前scope校验已要求审批"
+          ],
+          "unresolved_items": [
+            "T1系统负责人变更工单的退出移交保护、项目成员退出保护尚未接入；所需新增路径须先修订任务范围",
+            "前端四视口、明暗主题和真实浏览器验收未执行",
+            "T2-T6尚未实施，不将统一服务存在等同于现有入口已授权收紧",
+            "完整架构与全仓回归未执行",
+            "补齐专项Issue和Owner审批，存量V84_1检查偏差另走授权治理任务"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "15项聚焦测试和构建通过；平台审批门禁失败；存量V84_1传感器偏差；未完覆盖显式记录",
+        "recorded_at": "2026-09-06T09:02:43+00:00",
+        "data": {
+          "sample_label": "T1第一切片观测",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "设计修订2",
+          "observer": "本代理调用的自动化测试与独立治理脚本；不代表非作者人工复核",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "服务与HTTP方法安全测试、真实MySQL关系约束",
+              "result": "pass",
+              "raw_evidence": "15项聚焦测试0失败0错误0跳过，V159复合外键拒绝跨项目关系",
+              "limitation": [
+                "未覆盖全部业务入口"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "服务移交保护测试与MySQL父锁并发测试",
+              "result": "partial",
+              "raw_evidence": "退出责任服务拒绝测试、撤销锁读并发测试通过",
+              "limitation": [
+                "项目成员退出与系统负责人变更链路未接入",
+                "T2-T4尚未使用资格服务"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "前端构建与治理脚本",
+              "result": "fail",
+              "raw_evidence": "前端构建退出0；scope与Flyway检查各退出1",
+              "limitation": [
+                "未做四视口、明暗主题真实浏览器测量",
+                "未跑完整回归"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R8",
+              "expected": "平台迁移具备专项Issue及Owner审批并通过范围门禁",
+              "observed": "V159命中平台变更检查，缺少Issue和Owner审批",
+              "reproduction": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "evidence": "public capability change requires issue, owner approval, compatibility and regression tests",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "不替代非作者权限/数据库人工复核",
+              "causal_hypothesis": "此前将Owner审批延期至上线前与实际门禁要求不一致",
+              "correction_check": "合法补齐审批和Issue后重新执行范围门禁",
+              "classification": "deviation"
+            },
+            {
+              "requirement_id": "R8",
+              "expected": "Flyway检查可验证本次追加迁移",
+              "observed": "存量V84_1命名导致全量格式检查失败，真实MySQL迁移成功",
+              "reproduction": "node scripts/check-flyway-migrations.mjs",
+              "evidence": "V84_1__seed_requirement_system_catalog.sql: expected V<number>__description.sql；git ls-tree HEAD确认历史已存在",
+              "severity": "P2",
+              "confidence": "high",
+              "sensor_limit": "格式传感器与既有迁移不兼容",
+              "causal_hypothesis": "既有小版本迁移未获格式脚本覆盖",
+              "correction_check": "经单独授权解决既有治理偏差后重跑，不改已发布SQL",
+              "classification": "sensor-fault"
+            }
+          ],
+          "disturbances": [],
+          "coverage_gaps": [
+            "T1尚未完成：负责人变更及项目退出保护、完整回归与真实浏览器未完成",
+            "T2-T6未实施",
+            "专项Issue和非作者Owner审批缺失"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
     "correcting": [],
     "verifying": []
   },
@@ -2891,9 +3145,21 @@
         {
           "recorded_at": "2026-09-06T08:43:20+00:00",
           "text": "开始系统参与关系与资格测试"
+        },
+        {
+          "recorded_at": "2026-09-06T09:01:38+00:00",
+          "text": "真实测试及治理反馈待记录；不声明T1完成"
+        },
+        {
+          "recorded_at": "2026-09-06T09:02:43+00:00",
+          "text": "保存partial实现与测试，平台迁移门禁缺少专项Issue与Owner审批，暂停依赖任务"
+        },
+        {
+          "recorded_at": "2026-09-07T01:22:37+00:00",
+          "text": "审批阻碍解除，继续T1移交保护；现有15项聚焦测试通过不代表全需求完成"
         }
       ],
-      "updated_at": "2026-09-06T08:43:20+00:00"
+      "updated_at": "2026-09-07T01:22:37+00:00"
     },
     {
       "id": "T2",
@@ -3199,6 +3465,41 @@
       "updated_at": "2026-09-06T08:43:20+00:00"
     }
   ],
-  "feedback": [],
-  "samples": []
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T1",
+      "source": "check-codex-scope",
+      "requirement": "R8",
+      "expected": "平台迁移获专项Issue与Owner审批",
+      "observed": "V159被平台门禁阻断，缺少Issue和Owner审批",
+      "evidence": "范围检查退出1，未出现路径越界错误",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": "取得真实审批和Issue后重跑范围检查",
+      "decision": "accept",
+      "decision_reason": "2026-09-07用户确认Owner已审批、Issue豁免，已真实记录授权",
+      "created_at": "2026-09-06T09:02:43+00:00",
+      "resolved_at": "2026-09-07T01:22:37+00:00",
+      "resolution_evidence": "2026-09-07 check-codex-scope --base HEAD --working-tree退出0，17文件范围检查通过",
+      "decided_at": "2026-09-07T01:22:37+00:00"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1第一切片",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "observation-T1.json；独立治理命令失败，不将测试通过等同于收敛",
+      "recorded_at": "2026-09-06T09:02:43+00:00"
+    }
+  ]
 }

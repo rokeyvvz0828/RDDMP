@@ -1,0 +1,150 @@
+{
+  "task_id": "T1",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/api.ts",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/types.ts",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/SubsystemParticipationController.java",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue",
+      "purpose": "T1参与关系存储、服务、接口、前端与验证或当前范围记录"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R3",
+    "R8"
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest -Dsurefire.failIfNoSpecifiedTests=false（首次有效红灯）",
+      "exit_code": 1,
+      "salient_output": "测试编译失败：SubsystemParticipationService及SystemScope尚未实现"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "Tests run: 15, Failures: 0, Errors: 0, Skipped: 0; BUILD SUCCESS; MySQL 8.4 实际执行 V1至V157后升级至V159"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "built in 25.83s；存在大chunk警告"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误（未跟踪文件由后续暂存检查覆盖）"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 1,
+      "salient_output": "V84_1__seed_requirement_system_catalog.sql: expected V<number>__description.sql"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "exit_code": 1,
+      "salient_output": "public capability change requires issue, owner approval, compatibility and regression tests；未出现路径越界错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "聚焦业务、方法安全与真实MySQL测试",
+      "result": "pass",
+      "evidence": "15项全部通过",
+      "limitations": [
+        "未完成架构完整回归",
+        "数据库并发覆盖系统父锁和成员撤销，不覆盖项目资格退出或系统负责人变更工单竞争"
+      ]
+    },
+    {
+      "check": "前端生产构建",
+      "result": "pass",
+      "evidence": "退出码0",
+      "limitations": [
+        "尚未真实浏览器验收"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "新增独立参与人子资源，不更改负责人属性或旧任务名单",
+    "负责人隐含参与，有效项目成员/启用用户实时校验",
+    "父记录版本冲突及退出前未完任务/OPEN阻塞责任检查",
+    "新增V159复合外键关系和前后名单审计，未修改已发布迁移",
+    "复用UiFormDrawer与示范中心单列表单，从物理系统列表操作进入参与人员抽屉；尚未改造原看板"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "租户和项目隔离",
+      "result": "pass",
+      "evidence": "服务/方法权限/MySQL复合外键测试"
+    },
+    {
+      "invariant": "已授权路径且遵守平台门禁",
+      "result": "fail",
+      "evidence": "路径未越界，但V159平台迁移需专项Issue及Owner审批"
+    }
+  ],
+  "disturbances": [
+    "首次Maven命令未引号保护-Dsurefire参数导致PowerShell解析错误；修正参数后获得有效红灯和绿灯",
+    "存量V84_1命名不符合治理脚本，未修改历史迁移或治理检查器"
+  ],
+  "assumptions_falsified": [
+    "平台迁移不能只把Owner复核延期到上线前：当前scope校验已要求审批"
+  ],
+  "unresolved_items": [
+    "T1系统负责人变更工单的退出移交保护、项目成员退出保护尚未接入；所需新增路径须先修订任务范围",
+    "前端四视口、明暗主题和真实浏览器验收未执行",
+    "T2-T6尚未实施，不将统一服务存在等同于现有入口已授权收紧",
+    "完整架构与全仓回归未执行",
+    "补齐专项Issue和Owner审批，存量V84_1检查偏差另走授权治理任务"
+  ],
+  "recommended_next": "observe",
+  "resumption": {
+    "date": "2026-09-07",
+    "authorization": "用户确认Owner审批及Issue豁免，见implementation-admission.md",
+    "scope_check": "退出0；17个文件",
+    "remaining": "T1移交保护及T2—T6仍未完成"
+  }
+}
