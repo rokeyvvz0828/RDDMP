@@ -67,7 +67,11 @@
       "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
       "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
       "web/src/modules/architecture/components/SubsystemParticipants.vue",
-      "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql"
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
     ],
     "read_only_paths": [
       "web/src/components/ui/**",
@@ -93,13 +97,15 @@
     "owner_approved": true,
     "old_behavior_preserved": true,
     "regression_tests": [
-      "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false"
+      "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "mvn -pl :ccb-system -am test -Dtest=ProjectWorkflowMemberGuardTest -Dsurefire.failIfNoSpecifiedTests=false"
     ],
     "issue_waiver": {
       "date": "2026-09-07",
       "source": "本任务用户明确确认：已获得Owner审批，Issue已获豁免，直接开始执行变更",
       "issue_number": null
-    }
+    },
+    "compatibility": "ProjectMemberRemovalGuard公开方法不变，ProjectService内部改为汇总全部守卫，保留工作流待办校验并接入架构任务责任校验；不引入平台对业务依赖。"
   },
   "database": {
     "changed": true,

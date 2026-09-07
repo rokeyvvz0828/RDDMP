@@ -6,6 +6,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectMemberRemovalGuard;
 import com.ccb.system.capability.ProjectMemberReferenceQuery;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.system.capability.SystemOperationAudit;
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
 
 /** 系统参与资格唯一入口：负责人隐含参与，项目退出及用户停用实时失权，无管理员执行豁免。 */
 @Service
-public class SubsystemParticipationService {
+public class SubsystemParticipationService implements ProjectMemberRemovalGuard {
     public record ReplaceCommand(List<Long> participantUserIds, Long rowVersion, String reason) { }
     public record Candidate(long userId, String displayName) { }
     public record ParticipationView(Long ownerUserId, List<Long> explicitParticipantUserIds,
@@ -125,6 +126,30 @@ public class SubsystemParticipationService {
             audit.recordFailure(new SystemOperationAuditCommand(actor, "architecture.subsystem.participants.update",
                     "PUT", path, ex.getMessage(), traceId));
             throw ex;
+        }
+    }
+
+    /** 平台成员停用或删除时调用；包含未绑定系统的公共任务责任。 */
+    @Override
+    public void requireNoPendingTasks(long tenantId, long projectId, long userId) {
+        if (store.hasProjectPendingResponsibility(tenantId, projectId, userId)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "该成员仍有搭建任务或未解决阻塞，请先移交责任");
+        }
+    }
+
+    /** 在变更工单发布事务内校验旧负责人退出，父锁与人员撤销使用同一锁序。 */
+    public void requireOwnerTransfer(long tenantId, long projectId, long systemId, Long nextOwnerUserId) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("负责人移交校验必须在发布事务内执行");
+        }
+        SystemScope current = store.findSystem(tenantId, projectId, systemId, true)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "系统不存在或已失效"));
+        Long previousOwner = current.ownerUserId();
+        if (previousOwner == null || Objects.equals(previousOwner, nextOwnerUserId)) return;
+        // 显式参与仍保留时并未退出系统，不要求无关的强制移交。
+        if (!store.findExplicit(tenantId, projectId, systemId).contains(previousOwner)
+                && store.hasPendingResponsibility(tenantId, projectId, systemId, previousOwner)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "请先移交原系统负责人的未完成任务或未解决阻塞责任");
         }
     }
 

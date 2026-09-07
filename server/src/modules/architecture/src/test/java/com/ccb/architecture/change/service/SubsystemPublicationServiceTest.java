@@ -12,6 +12,7 @@ import com.ccb.architecture.change.model.SubsystemChangeModels.TargetKind;
 import com.ccb.architecture.change.model.SubsystemChangeModels.TargetLock;
 import com.ccb.architecture.change.persistence.SubsystemChangeStore;
 import com.ccb.architecture.integration.ReferenceCheckRequest;
+import com.ccb.architecture.service.SubsystemParticipationService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
@@ -53,6 +54,8 @@ class SubsystemPublicationServiceTest {
     private SubsystemReferenceGuard referenceGuard;
     @Mock
     private TransactionTemplate transactions;
+    @Mock
+    private SubsystemParticipationService participation;
 
     private SubsystemPublicationService service;
 
@@ -63,7 +66,7 @@ class SubsystemPublicationServiceTest {
             return callback.doInTransaction(null);
         });
         AtomicLong ids = new AtomicLong(2_000L);
-        service = new SubsystemPublicationService(store, referenceGuard, transactions, ids::getAndIncrement);
+        service = new SubsystemPublicationService(store, referenceGuard, transactions, participation, ids::getAndIncrement);
     }
 
     @Test
@@ -102,6 +105,7 @@ class SubsystemPublicationServiceTest {
         SubsystemPublicationService.ApprovalResult result = service.approve(command(), OPERATOR);
 
         assertThat(result.physicalSubsystemIds()).containsExactly(targetId);
+        verify(participation).requireOwnerTransfer(TENANT_ID, PROJECT_ID, targetId, draft.ownerUserId());
         verify(store).updatePhysicalPublishedFields(TENANT_ID, PROJECT_ID, targetId, draft, 6L, OPERATOR.id());
         verify(store).deleteTargetLock(TENANT_ID, PROJECT_ID, TargetKind.PHYSICAL, targetId, APPLICATION_ID);
         verify(store, never()).insertPhysicalPublished(eq(targetId), anyLong(), anyLong(), any(), any(), anyLong(), anyLong());
@@ -148,6 +152,27 @@ class SubsystemPublicationServiceTest {
 
         verify(store, never()).findPhysicalDrafts(anyLong(), anyLong(), anyLong());
         verify(store, never()).compareAndSetApplicationStatus(anyLong(), anyLong(), anyLong(), any(), anyLong(), any(), anyLong());
+    }
+
+    @Test
+    void 原负责人责任未移交时禁止批准和发布() {
+        long targetId = 501L;
+        ChangeApplication application = application(ActionType.UPDATE, targetId, TargetKind.PHYSICAL);
+        PhysicalDraft draft = draft(application, "PHY_MALL", targetId, 6L, "submitted");
+        when(store.lockApplication(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(Optional.of(application));
+        when(store.findTargetLock(TENANT_ID, PROJECT_ID, TargetKind.PHYSICAL, targetId))
+                .thenReturn(Optional.of(targetLock(targetId)));
+        when(store.findPhysicalDrafts(TENANT_ID, PROJECT_ID, APPLICATION_ID)).thenReturn(List.of(draft));
+        when(store.lockPhysical(TENANT_ID, PROJECT_ID, targetId))
+                .thenReturn(Optional.of(physicalState(targetId, "PHY_MALL", PublishedStatus.ACTIVE, 6L)));
+        org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.CONFLICT, "请先移交"))
+                .when(participation).requireOwnerTransfer(TENANT_ID, PROJECT_ID, targetId, 30L);
+
+        assertThatThrownBy(() -> service.approve(command(), OPERATOR))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("移交");
+        verify(store, never()).compareAndSetApplicationStatus(anyLong(), anyLong(), anyLong(), any(),
+                anyLong(), any(), anyLong());
+        verify(store, never()).updatePhysicalPublishedFields(anyLong(), anyLong(), anyLong(), any(), anyLong(), anyLong());
     }
 
     private SubsystemPublicationService.ApprovalCommand command() {

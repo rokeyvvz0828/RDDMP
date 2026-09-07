@@ -97,4 +97,60 @@ class SubsystemParticipationServiceTest {
                 new SubsystemParticipationService.ReplaceCommand(List.of(9L), 3L, "调整分工"), false, "trace"))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("维护");
     }
+    @Test
+    void 负责人移交校验不能脱离事务() {
+        assertThatThrownBy(() -> service.requireOwnerTransfer(7, 70, 10, 20L))
+                .isInstanceOf(IllegalStateException.class);
+        verify(store, never()).findSystem(anyLong(), anyLong(), anyLong(), eq(true));
+    }
+
+    @Test
+    void 更换负责人会检查隐含参与退出及剩余责任() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            when(store.findSystem(7, 70, 10, true)).thenReturn(Optional.of(new SystemScope(10, 9L, 3)));
+            when(store.hasPendingResponsibility(7, 70, 10, 9)).thenReturn(true);
+            assertThatThrownBy(() -> service.requireOwnerTransfer(7, 70, 10, 20L))
+                    .isInstanceOf(BusinessException.class).hasMessageContaining("移交");
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+
+    @Test
+    void 负责人不变或仍为显式参与人不构成退出() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            when(store.findSystem(7, 70, 10, true)).thenReturn(Optional.of(new SystemScope(10, 9L, 3)));
+            service.requireOwnerTransfer(7, 70, 10, 9L);
+            when(store.findExplicit(7, 70, 10)).thenReturn(List.of(9L));
+            service.requireOwnerTransfer(7, 70, 10, 20L);
+            verify(store, never()).hasPendingResponsibility(anyLong(), anyLong(), anyLong(), anyLong());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+
+    @Test
+    void 无剩余责任时允许旧负责人退出() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            when(store.findSystem(7, 70, 10, true)).thenReturn(Optional.of(new SystemScope(10, 9L, 3)));
+            service.requireOwnerTransfer(7, 70, 10, 20L);
+            verify(store).hasPendingResponsibility(7, 70, 10, 9);
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+
+    @Test
+    void 退出项目必须移交本项目责任但不查询其他项目() {
+        when(store.hasProjectPendingResponsibility(7, 70, 9)).thenReturn(true);
+        assertThatThrownBy(() -> service.requireNoPendingTasks(7, 70, 9))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("移交");
+        service.requireNoPendingTasks(7, 71, 9);
+        verify(store).hasProjectPendingResponsibility(7, 70, 9);
+        verify(store).hasProjectPendingResponsibility(7, 71, 9);
+    }
+
 }

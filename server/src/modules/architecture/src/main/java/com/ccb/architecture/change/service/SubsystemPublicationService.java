@@ -12,6 +12,7 @@ import com.ccb.architecture.change.model.SubsystemChangeModels.TargetKind;
 import com.ccb.architecture.change.model.SubsystemChangeModels.TargetLock;
 import com.ccb.architecture.change.persistence.SubsystemChangeStore;
 import com.ccb.architecture.integration.ReferenceCheckRequest;
+import com.ccb.architecture.service.SubsystemParticipationService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
@@ -38,22 +39,26 @@ public class SubsystemPublicationService {
 
     private final SubsystemChangeStore store;
     private final SubsystemReferenceGuard referenceGuard;
+    private final SubsystemParticipationService participation;
     private final TransactionTemplate transactions;
     private final LongSupplier identifierSupplier;
 
     @Autowired
     public SubsystemPublicationService(SubsystemChangeStore store,
                                        SubsystemReferenceGuard referenceGuard,
-                                       TransactionTemplate transactions) {
-        this(store, referenceGuard, transactions, SubsystemPublicationService::nextGeneratedIdentifier);
+                                       TransactionTemplate transactions,
+                                       SubsystemParticipationService participation) {
+        this(store, referenceGuard, transactions, participation, SubsystemPublicationService::nextGeneratedIdentifier);
     }
 
     /** 仅供同包测试注入稳定标识；生产装配使用上方构造器。 */
     SubsystemPublicationService(SubsystemChangeStore store,
                                 SubsystemReferenceGuard referenceGuard,
                                 TransactionTemplate transactions,
+                                SubsystemParticipationService participation,
                                 LongSupplier identifierSupplier) {
         this.store = Objects.requireNonNull(store, "store 不能为空");
+        this.participation = Objects.requireNonNull(participation, "participation 不能为空");
         this.referenceGuard = Objects.requireNonNull(referenceGuard, "referenceGuard 不能为空");
         this.transactions = Objects.requireNonNull(transactions, "transactions 不能为空");
         this.identifierSupplier = Objects.requireNonNull(identifierSupplier, "identifierSupplier 不能为空");
@@ -137,6 +142,8 @@ public class SubsystemPublicationService {
         ExistingPhysicalContext context = lockExistingPhysical(application);
         requireMutableStatus(context.target().status(), "物理子系统");
         requireSameCode(context.draft(), context.target());
+        participation.requireOwnerTransfer(application.tenantId(), application.projectId(),
+                context.target().id(), context.draft().ownerUserId());
         ensurePermanentUnique(application, context.draft(), context.target().id());
         return new PreparedPublication(List.of(context.target().id()), () -> {
             if (!store.updatePhysicalPublishedFields(application.tenantId(), application.projectId(),
@@ -154,6 +161,8 @@ public class SubsystemPublicationService {
         ExistingPhysicalContext context = lockExistingPhysical(application);
         requireExactStatus(context.target().status(), requiredStatus, application.actionType(), "物理子系统");
         requireSameCode(context.draft(), context.target());
+        participation.requireOwnerTransfer(application.tenantId(), application.projectId(),
+                context.target().id(), context.draft().ownerUserId());
         if (guardOperation != null) {
             referenceGuard.requireClear(new ReferenceCheckRequest(application.tenantId(),
                     ReferenceCheckRequest.SubsystemKind.PHYSICAL, context.target().id(), guardOperation));

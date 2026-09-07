@@ -39,18 +39,42 @@ public class SubsystemParticipationStore {
     }
 
     public boolean hasPendingResponsibility(long tenantId, long projectId, long systemId, long userId) {
-        Integer count = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM arch_plan_task t
-                WHERE t.tenant_id = ? AND t.project_id = ?
+        String target = """
                   AND ((t.target_type = 'PHYSICAL_SUBSYSTEM' AND t.target_id = ?)
-                    OR (t.target_type = 'DEPLOYMENT_UNIT' AND EXISTS (
-                      SELECT 1 FROM arch_deployment_unit u WHERE u.tenant_id = t.tenant_id
-                        AND u.project_id = t.project_id AND u.id = t.target_id AND u.physical_subsystem_id = ?)))
-                  AND ((t.owner_user_id = ? AND t.cancelled = 0 AND t.status NOT IN ('COMPLETED','CANCELLED'))
-                    OR EXISTS (SELECT 1 FROM arch_plan_block b WHERE b.tenant_id = t.tenant_id
-                      AND b.project_id = t.project_id AND b.task_id = t.id AND b.owner_user_id = ? AND b.status = 'OPEN'))
-                """, Integer.class, tenantId, projectId, systemId, systemId, userId, userId);
-        return count != null && count > 0;
+                    OR (t.target_type = 'DEPLOYMENT_UNIT' AND u.physical_subsystem_id = ?))
+                """;
+        String lock = TransactionSynchronizationManager.isActualTransactionActive() ? " FOR UPDATE" : "";
+        // 守卫必须读取最新责任，而不是发布事务更早建立的一致性快照。
+        if (!jdbc.query("""
+                SELECT t.id FROM arch_plan_task t
+                LEFT JOIN arch_deployment_unit u ON t.target_type = 'DEPLOYMENT_UNIT'
+                  AND u.tenant_id = t.tenant_id AND u.project_id = t.project_id AND u.id = t.target_id
+                WHERE t.tenant_id = ? AND t.project_id = ? AND t.owner_user_id = ?
+                  AND t.cancelled = 0 AND t.status NOT IN ('COMPLETED','CANCELLED')
+                """ + target + " LIMIT 1" + lock, (rs, n) -> rs.getLong(1),
+                tenantId, projectId, userId, systemId, systemId).isEmpty()) return true;
+        return !jdbc.query("""
+                SELECT b.id FROM arch_plan_block b
+                JOIN arch_plan_task t ON t.tenant_id = b.tenant_id AND t.project_id = b.project_id AND t.id = b.task_id
+                LEFT JOIN arch_deployment_unit u ON t.target_type = 'DEPLOYMENT_UNIT'
+                  AND u.tenant_id = t.tenant_id AND u.project_id = t.project_id AND u.id = t.target_id
+                WHERE b.tenant_id = ? AND b.project_id = ? AND b.owner_user_id = ? AND b.status = 'OPEN'
+                """ + target + " LIMIT 1" + lock, (rs, n) -> rs.getLong(1),
+                tenantId, projectId, userId, systemId, systemId).isEmpty();
+    }
+
+    public boolean hasProjectPendingResponsibility(long tenantId, long projectId, long userId) {
+        String lock = TransactionSynchronizationManager.isActualTransactionActive() ? " FOR UPDATE" : "";
+        // 使用当前锁读，而非事务早先快照；完成/取消任务不阻止退出，OPEN阻塞独立校验。
+        if (!jdbc.query("""
+                SELECT id FROM arch_plan_task
+                WHERE tenant_id = ? AND project_id = ? AND owner_user_id = ?
+                  AND cancelled = 0 AND status NOT IN ('COMPLETED','CANCELLED') LIMIT 1
+                """ + lock, (rs, n) -> rs.getLong(1), tenantId, projectId, userId).isEmpty()) return true;
+        return !jdbc.query("""
+                SELECT id FROM arch_plan_block
+                WHERE tenant_id = ? AND project_id = ? AND owner_user_id = ? AND status = 'OPEN' LIMIT 1
+                """ + lock, (rs, n) -> rs.getLong(1), tenantId, projectId, userId).isEmpty();
     }
 
     public boolean advanceVersion(long tenantId, long projectId, long systemId, long version, long actorId) {

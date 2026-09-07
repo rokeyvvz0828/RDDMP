@@ -66,6 +66,10 @@ class SubsystemParticipationStoreMySqlTest {
     @BeforeEach
     void seed() {
         store = new SubsystemParticipationStore(jdbc);
+        for (String table : List.of("arch_plan_block", "arch_plan_task", "arch_plan_stage", "arch_setup_plan",
+                "arch_plan_template", "arch_environment", "arch_deployment_unit")) {
+            jdbc.update("DELETE FROM " + table + " WHERE tenant_id = 94");
+        }
         jdbc.update("DELETE FROM arch_subsystem_participant_audit WHERE tenant_id = 94");
         jdbc.update("DELETE FROM arch_subsystem_participant WHERE tenant_id = 94");
         jdbc.update("DELETE FROM arch_physical_subsystem WHERE tenant_id = 94");
@@ -133,6 +137,85 @@ class SubsystemParticipationStoreMySqlTest {
             assertThat(execution.get(10, TimeUnit.SECONDS)).isEmpty();
         } finally { release.countDown(); pool.shutdownNow(); }
     }
+    @Test
+    void 实际任务与阻塞按租户项目系统检查且公共任务也保护项目退出() {
+        seedResponsibility();
+        assertThat(store.hasPendingResponsibility(94, 70, 9401, 20)).isTrue();
+        assertThat(store.hasPendingResponsibility(94, 71, 9401, 20)).isFalse();
+        assertThat(store.hasPendingResponsibility(95, 70, 9401, 20)).isFalse();
+        assertThat(store.hasPendingResponsibility(94, 70, 9402, 20)).isFalse();
+        assertThat(store.hasProjectPendingResponsibility(94, 70, 20)).isTrue();
+        assertThat(store.hasProjectPendingResponsibility(94, 71, 20)).isFalse();
+        jdbc.update("UPDATE arch_plan_task SET status='COMPLETED' WHERE id=9494");
+        assertThat(store.hasPendingResponsibility(94, 70, 9401, 20)).isFalse();
+        assertThat(store.hasProjectPendingResponsibility(94, 70, 20)).isFalse();
+        jdbc.update("""
+                INSERT INTO arch_plan_block (id,tenant_id,project_id,task_id,description,owner_user_id,created_by,updated_by)
+                VALUES (9495,94,70,9494,'测试阻塞',20,9,9)
+                """);
+        assertThat(store.hasPendingResponsibility(94, 70, 9401, 20)).isTrue();
+        assertThat(store.hasProjectPendingResponsibility(94, 70, 20)).isTrue();
+        jdbc.update("UPDATE arch_plan_block SET status='RESOLVED' WHERE id=9495");
+        jdbc.update("UPDATE arch_plan_task SET target_type=NULL,target_id=NULL,status='NOT_STARTED' WHERE id=9494");
+        assertThat(store.hasPendingResponsibility(94, 70, 9401, 20)).isFalse();
+        assertThat(store.hasProjectPendingResponsibility(94, 70, 20)).isTrue();
+        jdbc.update("UPDATE arch_plan_task SET cancelled=1,status='CANCELLED' WHERE id=9494");
+        assertThat(store.hasProjectPendingResponsibility(94, 70, 20)).isFalse();
+    }
+
+    @Test
+    void 部署单元继承所属系统的退出责任保护() {
+        seedResponsibility();
+        jdbc.update("""
+                INSERT INTO arch_deployment_unit
+                  (id,tenant_id,project_id,physical_subsystem_id,code,name,kind,created_by,updated_by)
+                VALUES (9496,94,70,9401,'D00009496','D00009496_AP','APPLICATION',9,9)
+                """);
+        jdbc.update("UPDATE arch_plan_task SET target_type='DEPLOYMENT_UNIT',target_id=9496 WHERE id=9494");
+        assertThat(store.hasPendingResponsibility(94, 70, 9401, 20)).isTrue();
+        assertThat(store.hasPendingResponsibility(94, 70, 9402, 20)).isFalse();
+    }
+
+    @Test
+    void 已建立旧快照的事务仍读取最新任务责任() throws Exception {
+        seedResponsibility();
+        jdbc.update("UPDATE arch_plan_task SET status='COMPLETED' WHERE id=9494");
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            transactions.executeWithoutResult(tx -> {
+                assertThat(jdbc.queryForObject("SELECT status FROM arch_plan_task WHERE id=9494", String.class))
+                        .isEqualTo("COMPLETED");
+                try {
+                    pool.submit(() -> jdbc.update("UPDATE arch_plan_task SET status='NOT_STARTED' WHERE id=9494"))
+                            .get(10, TimeUnit.SECONDS);
+                } catch (Exception e) { throw new IllegalStateException(e); }
+                assertThat(store.hasPendingResponsibility(94, 70, 9401, 20)).isTrue();
+                assertThat(store.hasProjectPendingResponsibility(94, 70, 20)).isTrue();
+            });
+        } finally { pool.shutdownNow(); }
+    }
+
+    private void seedResponsibility() {
+        jdbc.update("INSERT INTO arch_environment (id,tenant_id,project_id,code,name,type_code,created_by,updated_by) "
+                + "VALUES (9491,94,70,'TEST','测试环境','architecture.environment-type.test',9,9)");
+        jdbc.update("INSERT INTO arch_plan_template (id,tenant_id,name,created_by,updated_by) "
+                + "VALUES (9492,94,'测试模板',9,9)");
+        jdbc.update("""
+                INSERT INTO arch_setup_plan (id,tenant_id,project_id,plan_no,name,environment_id,template_id,
+                    template_version_no,plan_owner_user_id,created_by,updated_by)
+                VALUES (9493,94,70,'SP9493','测试计划',9491,9492,1,9,9,9)
+                """);
+        jdbc.update("""
+                INSERT INTO arch_plan_stage (id,tenant_id,project_id,plan_id,stage_no,name,owner_user_id,created_by,updated_by)
+                VALUES (9493,94,70,9493,1,'测试环节',9,9,9)
+                """);
+        jdbc.update("""
+                INSERT INTO arch_plan_task (id,tenant_id,project_id,plan_id,stage_id,task_no,name,
+                    target_type,target_id,owner_user_id,created_by,updated_by)
+                VALUES (9494,94,70,9493,9493,1,'测试任务','PHYSICAL_SUBSYSTEM',9401,20,9,9)
+                """);
+    }
+
     private static String migrationDirectory() {
         Path cursor = Path.of("").toAbsolutePath();
         while (cursor != null) {

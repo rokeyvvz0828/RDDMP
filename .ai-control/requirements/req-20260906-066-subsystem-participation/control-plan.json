@@ -13,7 +13,8 @@
       "prerequisites": [],
       "input_facts": [
         "既有系统负责人字段、平台公开用户/项目能力",
-        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程"
+        "现有物理系统直接CRUD走变更工单；参与人员以独立子资源维护，不绕过负责人变更流程",
+        "负责人变更由SubsystemPublicationService事务发布，接入参与服务移交守卫；平台成员退出守卫当前是单实例注入，不能直接增加第二个Bean，另行受控实现。"
       ],
       "write_scope": [
         "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
@@ -27,15 +28,20 @@
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/SubsystemParticipationControllerTest.java",
         "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
         "web/src/modules/architecture/components/SubsystemParticipants.vue",
-        "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql"
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V159__subsystem_participation.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java"
       ],
       "invariants": [
         "租户/项目/实体授权",
-        "不修改历史迁移与公共实现"
+        "不修改历史迁移；仅调整已审批的退出守卫聚合装配，公共接口保持兼容"
       ],
       "interface_contracts": [
         "候选 ParticipationView(ownerUserId, explicitParticipantUserIds, effectiveParticipantUserIds, rowVersion)",
-        "候选 requireSystemParticipant(actor, projectId, subsystemId)；后续任务只调用统一资格服务"
+        "候选 requireSystemParticipant(actor, projectId, subsystemId)；后续任务只调用统一资格服务",
+        "既有ProjectMemberRemovalGuard接口保持不变，平台汇总全部实现，任一待办/未完成任务/未解决阻塞拒绝成员退出；架构实现只查询arch_表。"
       ],
       "non_goals": [
         "不新增跨计划看板或公共能力"
@@ -45,7 +51,8 @@
       ],
       "acceptance_checks": [
         "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
-        "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。"
+        "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。",
+        "成员停用和删除均运行所有退出守卫；保留工作流守卫；任务与阻塞检查按tenant/project/user隔离。"
       ],
       "evidence_required": [
         "测试命令退出码",

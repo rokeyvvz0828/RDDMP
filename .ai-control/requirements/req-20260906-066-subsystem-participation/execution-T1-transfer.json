@@ -1,0 +1,136 @@
+{
+  "task_id": "T1",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260906-066-subsystem-participation/control-plan.json",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260906-066-subsystem-participation/control-state.json",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260906-066-subsystem-participation/implementation-admission.md",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemPublicationService.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationStoreMySqlTest.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectWorkflowMemberGuardTest.java",
+      "purpose": "已批准T1负责人/项目退出责任保护及精确范围、验证记录"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R3",
+    "R8"
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am test '-Dtest=ProjectWorkflowMemberGuardTest,SubsystemParticipationServiceTest,SubsystemPublicationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest' '-Dsurefire.failIfNoSpecifiedTests=false'",
+      "exit_code": 0,
+      "salient_output": "32项，0失败/错误/跳过；含6项MySQL测试；TEMP/rddmp-066-t1-transfer-verified.log"
+    },
+    {
+      "command": "mvn -pl :ccb-system -am test",
+      "exit_code": 0,
+      "salient_output": "20个测试类，106项，0失败/错误/跳过；TEMP/rddmp-066-system-regression.log"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base 695e917 --working-tree",
+      "exit_code": 0,
+      "salient_output": "22文件检查通过（新增本报告前）"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "REQ-061既有scope非JSON兼容YAML；未修改其他需求或治理脚本"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 1,
+      "salient_output": "历史V84_1命名不符合检查器；MySQL真实迁移到V159成功"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "真实发布、项目退出守卫、Spring多实现装配、MySQL责任隔离与快照当前读",
+      "result": "pass",
+      "evidence": "32项聚焦测试及系统模块106项完整回归成功",
+      "limitations": [
+        "T2—T6尚未实现：逐任务分派、执行和读取权限接入、资源入口收紧、原位敏捷看板及综合验收",
+        "真实浏览器四视口与明暗主题尚未验收",
+        "未执行完整架构/全仓回归；系统模块及依赖完整测试已通过",
+        "项目退出与后续分派入口并发组合仍需T2/T3验证，不能将当前锁读测试当作全部并发场景通过"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "负责人变更发布事务接入旧负责人退出前移交校验，拒绝时不批准或更新主记录",
+    "平台汇总既有ProjectMemberRemovalGuard实现，审批与架构任务守卫并存；停用/删除都受保护",
+    "架构服务实现既有公开退出契约，只读取本模块arch_表",
+    "任务和OPEN阻塞独立当前锁读，避免事务旧快照漏掉最新责任；公共任务保护项目退出"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "保留既有审批保护、无平台对业务依赖、公开守卫接口不变",
+      "result": "pass",
+      "evidence": "Spring集合装配测试、平台完整回归与实际diff"
+    },
+    {
+      "invariant": "租户项目系统隔离及锁读",
+      "result": "pass",
+      "evidence": "6项真实MySQL测试，含部署单元继承和旧快照反例"
+    }
+  ],
+  "disturbances": [
+    "测试夹具最初引用已删除的环境类型表，首轮6个错误；纠正后发现计划模板为租户级而非项目级，第二轮3个错误；按真实迁移修正夹具后32项通过。未为测试改生产表或历史迁移。",
+    "其他需求scope格式及历史V84_1导致全仓治理检查不通过，本任务未修改对应文件。"
+  ],
+  "assumptions_falsified": [
+    "项目成员退出守卫为单实例注入，直接新增第二Bean会冲突，已受控改为兼容聚合。"
+  ],
+  "unresolved_items": [
+    "T2—T6尚未实现：逐任务分派、执行和读取权限接入、资源入口收紧、原位敏捷看板及综合验收",
+    "真实浏览器四视口与明暗主题尚未验收",
+    "未执行完整架构/全仓回归；系统模块及依赖完整测试已通过",
+    "项目退出与后续分派入口并发组合仍需T2/T3验证，不能将当前锁读测试当作全部并发场景通过"
+  ],
+  "recommended_next": "observe"
+}
