@@ -58,6 +58,13 @@ import java.util.function.LongSupplier;
 /** 具体环境和资源申请的业务规则（REQ-20260824-052 与 REQ-20260825-053）。 */
 @Service
 public class EnvironmentResourceService {
+    private com.ccb.architecture.service.SubsystemParticipationService participation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(com.ccb.architecture.service.SubsystemParticipationService participation) {
+        this.participation = java.util.Objects.requireNonNull(participation);
+    }
+
     public static final String ENVIRONMENT_TYPE_CATEGORY = "ARCH_ENVIRONMENT_TYPE";
     public static final String SERVER_TYPE_CATEGORY = "ARCH_SERVER_TYPE";
     public static final String JDK_VERSION_CATEGORY = "ARCH_JDK_VERSION";
@@ -221,6 +228,7 @@ public class EnvironmentResourceService {
 
     public List<DeploymentUnitRef> listDeploymentUnitOptions(AuthUser actor, ProjectAccess project, long physicalSubsystemId, int limit) {
         requireActor(actor);
+        participation.requireSystemParticipant(actor, project, physicalSubsystemId);
         PhysicalSubsystemRef physical = requireActivePhysical(actor.tenantId(), project.id(), physicalSubsystemId);
         return store.listDeploymentUnits(actor.tenantId(), project.id(), physical.id(), Math.min(Math.max(limit, 1), 200));
     }
@@ -229,6 +237,7 @@ public class EnvironmentResourceService {
                                               Long environmentId, Long physicalSubsystemId,
                                               int limit, int offset) {
         requireActor(actor);
+        if (scope == AccessScope.OWN && !participation.activeMember(actor, project)) return List.of();
         Long applicantId = scope == AccessScope.MANAGE ? null : actor.id();
         return decorateRequests(actor, store.listRequests(actor.tenantId(), project.id(), applicantId, status, environmentId,
                 physicalSubsystemId, limit, offset));
@@ -276,6 +285,11 @@ public class EnvironmentResourceService {
             throw conflict("当前状态不允许编辑资源申请");
         }
         long rowVersion = requiredRowVersion(command == null ? null : command.rowVersion());
+        // 固定父系统锁顺序，同时校验旧归属，避免撤权后借编辑迁移到另一个系统。
+        var systemIds = new java.util.TreeSet<Long>();
+        systemIds.add(current.physicalSubsystemId());
+        if (command != null && command.physicalSubsystemId() != null) systemIds.add(command.physicalSubsystemId());
+        for (long systemId : systemIds) participation.lockAndRequireSystemParticipant(actor, project, systemId);
         RequestInput input = validateRequestInput(actor, project.id(), command);
         if (!store.updateDraft(actor.tenantId(), project.id(), requestId, current.status(), rowVersion,
                 input.physical().id(), input.environment().id(), input.contactUserId(),
@@ -576,6 +590,7 @@ public class EnvironmentResourceService {
         RequestType requestType = Objects.requireNonNull(command.requestType(), "申请类型不能为空");
         PhysicalSubsystemRef physical = requireActivePhysical(actor.tenantId(), projectId, physicalSubsystemId);
         Environment environment = requireActiveEnvironment(actor.tenantId(), projectId, environmentId);
+        participation.lockAndRequireSystemParticipant(actor, new ProjectAccess(projectId, "", ""), physical.id());
         List<ItemInput> items = validateItems(actor, projectId, physical, command.items());
         return new RequestInput(physical, environment, requestType, trimToNull(command.reason()),
                 contactUserId, items);
@@ -596,6 +611,7 @@ public class EnvironmentResourceService {
     }
 
     private void validateStillActive(AuthUser actor, long projectId, ResourceRequest request, List<ResourceRequestItem> items) {
+        participation.lockAndRequireSystemParticipant(actor, new ProjectAccess(projectId, "", ""), request.physicalSubsystemId());
         requireActivePhysical(actor.tenantId(), projectId, request.physicalSubsystemId());
         requireActiveEnvironment(actor.tenantId(), projectId, request.environmentId());
         for (ResourceRequestItem item : items) {
@@ -793,6 +809,8 @@ public class EnvironmentResourceService {
         if (scope == AccessScope.OWN && request.applicantId() != actor.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能查看本人发起的资源申请");
         }
+        if (scope == AccessScope.OWN) participation.requireSystemParticipant(actor,
+                new ProjectAccess(projectId, "", ""), request.physicalSubsystemId());
         return request;
     }
 
@@ -1304,15 +1322,37 @@ public class EnvironmentResourceService {
                                                    Long deploymentUnitId, InstanceStatus status,
                                                    String keyword, int limit, int offset) {
         requireActor(actor);
+        boolean manager = instanceManager(actor);
+        if (!manager && !participation.activeMember(actor, project)) return List.of();
         return store.listInstances(actor.tenantId(), project.id(), environmentId, physicalSubsystemId, deploymentUnitId, status,
-                keyword, limit <= 0 ? 50 : Math.min(limit, 200), Math.max(0, offset));
+                keyword, limit <= 0 ? 50 : Math.min(limit, 200), Math.max(0, offset), manager ? null : actor.id());
+    }
+
+    private boolean canReadInstance(AuthUser actor, ProjectAccess project, long id) {
+        try { detailInstance(actor, project, id); return true; }
+        catch (ArchitectureNotFoundException ex) { return false; }
+        catch (BusinessException ex) {
+            if (ex.code() == ErrorCode.FORBIDDEN) return false;
+            throw ex;
+        }
+    }
+
+    private boolean instanceManager(AuthUser actor) {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return actor.enabled() && auth != null && auth.isAuthenticated()
+                && auth.getPrincipal() instanceof AuthUser principal && principal.id() == actor.id()
+                && principal.tenantId() == actor.tenantId() && auth.getAuthorities().stream().anyMatch(a ->
+                    java.util.Set.of("architecture:instance:manage", "architecture:resource-request:manage",
+                        "architecture:manage").contains(a.getAuthority()));
     }
 
     @Transactional(readOnly = true)
     public EnvironmentInstance detailInstance(AuthUser actor, ProjectAccess project, long instanceId) {
         requireActor(actor);
-        return store.findInstance(actor.tenantId(), project.id(), instanceId)
+        EnvironmentInstance instance = store.findInstance(actor.tenantId(), project.id(), instanceId)
                 .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
+        if (!instanceManager(actor)) participation.requireSystemParticipant(actor, project, instance.physicalSubsystemId());
+        return instance;
     }
 
     @Transactional
@@ -1342,15 +1382,16 @@ public class EnvironmentResourceService {
     @Transactional(readOnly = true)
     public List<InstanceDisasterRecovery> listInstanceDisasterRecoveries(AuthUser actor, ProjectAccess project, long instanceId) {
         requireActor(actor);
-        store.findInstance(actor.tenantId(), project.id(), instanceId)
-                .orElseThrow(() -> notFound("环境部署实例不存在：" + instanceId));
+        detailInstance(actor, project, instanceId);
         return store.listDisasterRecoveries(actor.tenantId(), project.id(), null, instanceId);
     }
 
     @Transactional(readOnly = true)
     public List<InstanceDisasterRecovery> listDisasterRecoveries(AuthUser actor, ProjectAccess project, Long deploymentUnitId, Long instanceId) {
         requireActor(actor);
-        return store.listDisasterRecoveries(actor.tenantId(), project.id(), deploymentUnitId, instanceId);
+        return store.listDisasterRecoveries(actor.tenantId(), project.id(), deploymentUnitId, instanceId).stream()
+                .filter(dr -> instanceManager(actor) || canReadInstance(actor, project, dr.primaryInstanceId())
+                    && canReadInstance(actor, project, dr.standbyInstanceId())).toList();
     }
 
     @Transactional
@@ -1430,7 +1471,8 @@ public class EnvironmentResourceService {
     @Transactional(readOnly = true)
     public List<EnvironmentInstance> listAvailableStandbyInstances(AuthUser actor, ProjectAccess project, long deploymentUnitId, Long excludeInstanceId) {
         requireActor(actor);
-        return store.listAvailableStandbyInstances(actor.tenantId(), project.id(), deploymentUnitId, excludeInstanceId);
+        return store.listAvailableStandbyInstances(actor.tenantId(), project.id(), deploymentUnitId, excludeInstanceId).stream()
+                .filter(instance -> instanceManager(actor) || canReadInstance(actor, project, instance.id())).toList();
     }
 
     private static BusinessException conflict(String message) {

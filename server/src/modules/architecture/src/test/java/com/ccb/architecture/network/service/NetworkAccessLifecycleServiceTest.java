@@ -54,6 +54,7 @@ class NetworkAccessLifecycleServiceTest {
     void setUp() {
         service = new NetworkAccessService(store, new ObjectMapper(), ids::incrementAndGet,
                 Clock.fixed(Instant.parse("2026-08-28T08:00:00Z"), ZoneOffset.UTC));
+        service.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
     }
 
     @Test

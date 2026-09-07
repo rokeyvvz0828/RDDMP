@@ -153,27 +153,18 @@ public class NetworkWorkOrderController {
         Kind kind = requiredKind(request == null ? null : request.kind());
         ActionType actionType = requiredAction(request == null ? null : request.actionType());
         ProjectAccess project = project(projectRef, actor);
+        WorkOrderType type = switch (kind) { case CLB -> WorkOrderType.NETWORK_CLB; case DNS -> WorkOrderType.NETWORK_DNS; case CERT -> WorkOrderType.NETWORK_CERT; };
         WorkOrderDetail detail = audited(actor, "architecture.network-work-order.create", "POST",
-                "/api/architecture/network-work-orders", () -> service.create(actor, project,
-                        new CreateCommand(kind, actionType, request.payload(), request.reason(),
-                                request.attachmentIds())));
-        registerCreatedFromTask(actor, project.id(), request, detail.workOrder().id());
+                "/api/architecture/network-work-orders", () -> request.planTaskId() == null
+                        ? service.create(actor, project, new CreateCommand(kind, actionType, request.payload(), request.reason(), request.attachmentIds()))
+                        : planWorkOrderService.createFromTask(actor, project.id(),
+                        request.planTaskId(), type, () -> service.create(actor, project,
+                                new CreateCommand(kind, actionType, request.payload(), request.reason(), request.attachmentIds())),
+                        value -> value.workOrder().id()));
         return success(toDetail(detail));
     }
 
-    private void registerCreatedFromTask(AuthUser actor, long projectId, CreateWorkOrderRequest request, long workOrderId) {
-        if (request == null || request.planTaskId() == null) {
-            return;
-        }
-        Kind kind = requiredKind(request == null ? null : request.kind());
-        WorkOrderType workOrderType = switch (kind) {
-            case CLB -> WorkOrderType.NETWORK_CLB;
-            case DNS -> WorkOrderType.NETWORK_DNS;
-            case CERT -> WorkOrderType.NETWORK_CERT;
-        };
-        planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), projectId, request.planTaskId(),
-                workOrderType, workOrderId);
-    }
+
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:network-work-order:apply',"

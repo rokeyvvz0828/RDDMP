@@ -228,14 +228,13 @@ public class EnvironmentResourceController {
             @RequestBody UpsertResourceRequestRequest request,
             @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
+        ProjectAccess project = project(projectRef, actor);
         ResourceRequestDetail detail = audited(actor, "architecture.resource-request.create", "POST",
-                "/api/architecture/resource-requests", () -> service.createRequest(actor, project(projectRef, actor),
-                        toRequestCommand(request, null)));
-        if (request != null && request.planTaskId() != null) {
-            planWorkOrderService.registerCreatedWorkOrder(actor.tenantId(), request.planTaskId(),
-                    com.ccb.architecture.plan.model.PlanModels.WorkOrderType.RESOURCE_REQUEST,
-                    detail.request().id());
-        }
+                "/api/architecture/resource-requests", () -> request.planTaskId() == null
+                        ? service.createRequest(actor, project, toRequestCommand(request, null))
+                        : planWorkOrderService.createFromTask(actor, project.id(),
+                        request.planTaskId(), com.ccb.architecture.plan.model.PlanModels.WorkOrderType.RESOURCE_REQUEST,
+                        () -> service.createRequest(actor, project, toRequestCommand(request, null)), value -> value.request().id()));
         return success(toRequestDetail(detail));
     }
 

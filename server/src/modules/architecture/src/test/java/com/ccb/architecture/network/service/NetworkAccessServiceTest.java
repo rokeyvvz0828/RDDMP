@@ -59,6 +59,36 @@ class NetworkAccessServiceTest {
     void setUp() {
         service = new NetworkAccessService(store, new ObjectMapper(), ids::incrementAndGet,
                 Clock.fixed(Instant.parse("2026-08-26T10:00:00Z"), ZoneOffset.UTC));
+        service.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
+    }
+
+    @Test
+    void 来源系统撤权后不能创建网络访问申请() {
+        var participation = org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class);
+        service.setParticipation(participation);
+        org.mockito.Mockito.doThrow(new BusinessException(com.ccb.common.exception.ErrorCode.FORBIDDEN, "来源无资格"))
+                .when(participation).lockAndRequireSystemParticipant(ACTOR, PROJECT, 100L);
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
+                .thenReturn(List.of(instance(11L, 300L, 800L, "vm-src", "10.10.1.1")));
+        when(store.findAddress(7L, PROJECT_ID, 50L)).thenReturn(Optional.of(activeAddress()));
+        assertThatThrownBy(() -> service.createApplication(ACTOR, PROJECT, new NetworkAccessService.NetworkAccessCommand(
+                managed(100L, 200L, 300L, List.of(11L)), external(50L), AccessProtocol.TCP, "443",
+                "测试申请", "测试", TIME, null, null))).isInstanceOf(BusinessException.class).hasMessageContaining("来源无资格");
+        verify(store, never()).insertApplication(any());
+    }
+
+    @Test
+    void 目标托管系统不要求参与来源为外部时保留网络申请职责() {
+        var participation = org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class);
+        service.setParticipation(participation);
+        when(store.listEndpointInstances(7L, PROJECT_ID, 100L, 200L, 300L, List.of(11L)))
+                .thenReturn(List.of(instance(11L, 300L, 800L, "vm-dst", "10.10.1.1")));
+        when(store.findAddress(7L, PROJECT_ID, 50L)).thenReturn(Optional.of(activeAddress()));
+        service.createApplication(ACTOR, PROJECT, new NetworkAccessService.NetworkAccessCommand(
+                external(50L), managed(100L, 200L, 300L, List.of(11L)), AccessProtocol.TCP, "443",
+                "测试申请", "测试", TIME, null, null));
+        org.mockito.Mockito.verifyNoInteractions(participation);
+        verify(store).insertApplication(any());
     }
 
     @Test

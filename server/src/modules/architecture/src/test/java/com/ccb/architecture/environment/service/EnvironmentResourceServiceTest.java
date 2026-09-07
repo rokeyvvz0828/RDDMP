@@ -77,6 +77,15 @@ class EnvironmentResourceServiceTest {
     private final AtomicLong ids = new AtomicLong(900000L);
     private EnvironmentResourceService service;
 
+    @Test
+    void 备用实例候选不能泄漏无权访问的实例() {
+        var instance = org.mockito.Mockito.mock(EnvironmentInstance.class);
+        when(instance.id()).thenReturn(900010L);
+        when(store.listAvailableStandbyInstances(7L,70L,300L,null)).thenReturn(List.of(instance));
+        when(store.findInstance(7L,70L,900010L)).thenReturn(Optional.empty());
+        assertThat(service.listAvailableStandbyInstances(ACTOR,PROJECT,300L,null)).isEmpty();
+        verify(store).findInstance(7L,70L,900010L);
+    }
     @BeforeEach
     void setUp() {
         lenient().when(referenceQuery.activeParameters(ACTOR, EnvironmentResourceService.ENVIRONMENT_TYPE_CATEGORY))
@@ -101,6 +110,34 @@ class EnvironmentResourceServiceTest {
         service = new EnvironmentResourceService(store, new ObjectMapper(), referenceQuery,
                 new MockAutomatedDeploymentProvider(), ids::incrementAndGet,
                 Clock.fixed(Instant.parse("2026-08-24T10:00:00Z"), ZoneOffset.UTC));
+        service.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
+    }
+
+    @Test
+    void 无系统资格时不能创建资源申请且不写入() {
+        var participation = org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class);
+        service.setParticipation(participation);
+        org.mockito.Mockito.doThrow(new BusinessException(com.ccb.common.exception.ErrorCode.FORBIDDEN, "无系统资格"))
+                .when(participation).lockAndRequireSystemParticipant(org.mockito.ArgumentMatchers.eq(ACTOR), any(), org.mockito.ArgumentMatchers.eq(100L));
+        when(store.findPhysical(7L, 70L, 100L)).thenReturn(Optional.of(activePhysical()));
+        when(store.findEnvironment(7L, 70L, 200L)).thenReturn(Optional.of(activeEnvironment()));
+        assertThatThrownBy(() -> service.createRequest(ACTOR, PROJECT, command(100L, 200L, 300L)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("无系统资格");
+        verify(store, org.mockito.Mockito.never()).insertResourceRequest(any());
+    }
+
+    @Test
+    void 撤销参与后旧草稿不能编辑或查看() {
+        var participation = org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class);
+        service.setParticipation(participation);
+        org.mockito.Mockito.doThrow(new BusinessException(com.ccb.common.exception.ErrorCode.FORBIDDEN, "无系统资格"))
+                .when(participation).requireSystemParticipant(org.mockito.ArgumentMatchers.eq(ACTOR), any(), org.mockito.ArgumentMatchers.eq(100L));
+        when(store.findRequest(7L, 70L, 900001L)).thenReturn(Optional.of(request(900001L, RequestStatus.DRAFT, ACTOR.id(), 0, false)));
+        assertThatThrownBy(() -> service.updateRequest(ACTOR, PROJECT, 900001L, command(100L, 200L, 300L)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("无系统资格");
+        assertThatThrownBy(() -> service.detailRequest(ACTOR, PROJECT, AccessScope.OWN, 900001L))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("无系统资格");
+        verify(store, org.mockito.Mockito.never()).replaceItems(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), any());
     }
 
     @Test
@@ -150,6 +187,7 @@ class EnvironmentResourceServiceTest {
         when(store.findEnvironment(7L, 70L, 200L)).thenReturn(Optional.of(activeEnvironment()));
         when(store.findDeploymentUnit(7L, 70L, 300L)).thenReturn(Optional.of(activeUnit(300L, 999L)));
 
+        when(store.findEnvironment(7L, 70L, 200L)).thenReturn(Optional.of(activeEnvironment()));
         assertThatThrownBy(() -> service.createRequest(ACTOR, PROJECT, command(100L, 200L, 300L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).code())
@@ -315,10 +353,12 @@ class EnvironmentResourceServiceTest {
     }
 
     private EnvironmentResourceService serviceWithNetworkAccess() {
-        return new EnvironmentResourceService(store, new ObjectMapper(), referenceQuery,
+        var result = new EnvironmentResourceService(store, new ObjectMapper(), referenceQuery,
                 new MockAutomatedDeploymentProvider(), ids::incrementAndGet,
                 Clock.fixed(Instant.parse("2026-08-24T10:00:00Z"), ZoneOffset.UTC),
                 networkAccessService);
+        result.setParticipation(org.mockito.Mockito.mock(com.ccb.architecture.service.SubsystemParticipationService.class));
+        return result;
     }
 
     private ResourceRequest request(long id, RequestStatus status, long applicantId,

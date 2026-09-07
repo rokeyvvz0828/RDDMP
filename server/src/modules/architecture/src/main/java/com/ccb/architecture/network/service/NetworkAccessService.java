@@ -128,6 +128,33 @@ public class NetworkAccessService {
     }
 
     private final NetworkAccessStore store;
+    private com.ccb.architecture.service.SubsystemParticipationService participation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(com.ccb.architecture.service.SubsystemParticipationService participation) {
+        this.participation = Objects.requireNonNull(participation);
+    }
+
+    /** 仅限制来源托管系统；外部源与目标端仍遵循原网络职责。历史关系从实例快照恢复来源系统。 */
+    private void requireSourceParticipant(AuthUser actor, ProjectAccess project, EndpointKind kind,
+                                          Long systemId, String snapshot) {
+        if (kind != EndpointKind.MANAGED) return;
+        var systems = new java.util.TreeSet<Long>();
+        if (systemId != null) systems.add(systemId);
+        try {
+            var nodes = objectMapper.readTree(snapshot);
+            if (nodes != null && nodes.isArray()) for (var node : nodes) {
+                long id = node.path("physicalSubsystemId").asLong(0);
+                if (id <= 0) throw badRequest("来源系统快照不完整，请重新选择来源实例");
+                systems.add(id);
+            }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+            throw badRequest("来源系统快照无效，请重新选择来源实例");
+        }
+        if (systems.isEmpty()) throw badRequest("来源系统快照不完整，请重新选择来源实例");
+        for (long id : systems) participation.lockAndRequireSystemParticipant(actor, project, id);
+    }
+
     private final ObjectMapper objectMapper;
     private final LongSupplier idSupplier;
     private final Clock clock;
@@ -535,6 +562,7 @@ public class NetworkAccessService {
                 targetRelation = requireActiveTargetRelation(actor, project.id(), command.targetRelationId(), actionType);
             }
         }
+        requireSourceParticipant(actor, project, source.kind(), source.physicalSubsystemId(), source.snapshotJson());
         String purpose = required(command.purpose(), "用途", 1000);
         String process = optional(command.processDescription(), "处理说明", 1000);
         Validity validity;
@@ -582,6 +610,7 @@ public class NetworkAccessService {
         requireProject(project);
         Objects.requireNonNull(workflowStarter, "工作流启动器不能为空");
         NetworkAccessApplication application = requireVisibleApplication(actor, project.id(), AccessScope.OWN, id);
+        requireSourceParticipant(actor, project, application.sourceKind(), application.sourcePhysicalSubsystemId(), application.sourceSnapshotJson());
         if (application.status() != ApplicationStatus.DRAFT && application.status() != ApplicationStatus.RETURNED) {
             throw conflict("只有草稿或退回的网络访问申请可以提交");
         }

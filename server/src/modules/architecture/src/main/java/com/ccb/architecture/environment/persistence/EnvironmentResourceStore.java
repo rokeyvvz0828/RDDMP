@@ -629,6 +629,7 @@ public class EnvironmentResourceStore {
         if (applicantId != null) {
             filter.append(" AND request.applicant_id = ?");
             args.add(applicantId);
+            appendParticipantFilter(filter, args, "request", applicantId);
         }
         if (status != null) {
             filter.append(" AND request.status = ?");
@@ -928,11 +929,19 @@ public class EnvironmentResourceStore {
     public List<EnvironmentInstance> listInstances(long tenantId, long projectId, Long environmentId, Long physicalSubsystemId,
                                                    Long deploymentUnitId, InstanceStatus status,
                                                    String keyword, int limit, int offset) {
+        return listInstances(tenantId, projectId, environmentId, physicalSubsystemId, deploymentUnitId,
+                status, keyword, limit, offset, null);
+    }
+
+    public List<EnvironmentInstance> listInstances(long tenantId, long projectId, Long environmentId, Long physicalSubsystemId,
+                                                   Long deploymentUnitId, InstanceStatus status,
+                                                   String keyword, int limit, int offset, Long participantId) {
         if (limit <= 0 || offset < 0) {
             throw new IllegalArgumentException("分页参数无效");
         }
         StringBuilder filter = new StringBuilder("WHERE instance.tenant_id = ? AND instance.project_id = ?");
         List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
+        if (participantId != null) appendParticipantFilter(filter, args, "instance", participantId);
         if (environmentId != null) {
             filter.append(" AND instance.environment_id = ?");
             args.add(environmentId);
@@ -960,6 +969,15 @@ public class EnvironmentResourceStore {
         args.add(limit);
         args.add(offset);
         return jdbc.query(instanceSelect(filter.toString()), INSTANCE_MAPPER, args.toArray());
+    }
+
+    private void appendParticipantFilter(StringBuilder filter, List<Object> args, String alias, long userId) {
+        filter.append(" AND EXISTS (SELECT 1 FROM arch_physical_subsystem ps WHERE ps.tenant_id=" + alias
+                + ".tenant_id AND ps.project_id=" + alias + ".project_id AND ps.id=" + alias
+                + ".physical_subsystem_id AND ps.deleted=0 AND (ps.owner_user_id=? OR EXISTS "
+                + "(SELECT 1 FROM arch_subsystem_participant sp WHERE sp.tenant_id=ps.tenant_id "
+                + "AND sp.project_id=ps.project_id AND sp.subsystem_id=ps.id AND sp.user_id=?)))");
+        args.add(userId); args.add(userId);
     }
 
     public boolean offlineInstance(long tenantId, long projectId, long id, long expectedRowVersion,
