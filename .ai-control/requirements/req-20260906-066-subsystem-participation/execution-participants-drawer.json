@@ -1,0 +1,74 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "requirements_addressed": [
+    "R1",
+    "R8"
+  ],
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue",
+      "purpose": "保留抽屉，负责人独立卡片、成员全量换行、原因选填、成功关闭刷新"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+      "purpose": "原因选填，空值规范化为空字符串，审计不变"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+      "purpose": "新增原因null/空/空白/正常与超长拒绝测试"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 1,
+      "salient_output": "红灯：18项中3项空原因被旧实现拒绝；TEMP/rddmp-066-drawer-red.log"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "30项，0失败0错误0跳过；TEMP/rddmp-066-drawer-green.log"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "最终26.65s；TEMP/rddmp-066-drawer-build-final.log；既有大chunk告警"
+    },
+    {
+      "command": "mvn -pl :ccb-boot -am install -DskipTests",
+      "exit_code": 0,
+      "salient_output": "18.079s；仅构建安装，用于本地新后端启动，不作为测试证据"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "当前改动范围与空白",
+      "result": "pass",
+      "evidence": "scope检查5文件通过；git diff --check通过",
+      "limitations": [
+        "最终证据落盘后需再次检查"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "仅业务组件局部语义样式，未改公共组件、账号、资格规则与数据库结构"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "变更原因选填不取消审计",
+      "result": "pass",
+      "evidence": "Mockito验证recordChange和recordSuccess；本地数据库最新审计reason长度0，操作人和时间非空，名单未改变"
+    }
+  ],
+  "disturbances": [
+    "数据库只读探针初次使用错误本地用户及数据库名失败；依项目dev脚本校准ccb_platform后成功"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "本轮未重跑全仓717项；此前结果不能代表新版本",
+    "未新增只读角色/网络失败注入浏览器验收；保留原保护代码，权限/失败路径由聚焦测试覆盖",
+    "上线非作者专项复核及此前整体缺口仍保留"
+  ],
+  "recommended_next": "observe"
+}

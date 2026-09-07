@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 132,
+  "revision": 136,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T07:56:39+00:00",
+  "updated_at": "2026-09-07T08:32:31+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -222,6 +222,18 @@
       "to": "observing",
       "evidence": "列宽修正完成，记录截图和几何边界观测",
       "recorded_at": "2026-09-07T07:56:38+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "用户批准抽屉整理及原因选填；有界计划见participants-drawer-refinement.md，延续T1",
+      "recorded_at": "2026-09-07T08:18:37+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "实施输出可测，进入本次抽屉与选填审计观测",
+      "recorded_at": "2026-09-07T08:31:18+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6833,6 +6845,85 @@
             }
           ]
         }
+      },
+      {
+        "revision": 15,
+        "evidence": "抽屉整理和原因选填已实现，聚焦30项及构建通过",
+        "recorded_at": "2026-09-07T08:31:18+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "requirements_addressed": [
+            "R1",
+            "R8"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue",
+              "purpose": "保留抽屉，负责人独立卡片、成员全量换行、原因选填、成功关闭刷新"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+              "purpose": "原因选填，空值规范化为空字符串，审计不变"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+              "purpose": "新增原因null/空/空白/正常与超长拒绝测试"
+            }
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 1,
+              "salient_output": "红灯：18项中3项空原因被旧实现拒绝；TEMP/rddmp-066-drawer-red.log"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest,SubsystemParticipationControllerTest,SubsystemParticipationStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 0,
+              "salient_output": "30项，0失败0错误0跳过；TEMP/rddmp-066-drawer-green.log"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "最终26.65s；TEMP/rddmp-066-drawer-build-final.log；既有大chunk告警"
+            },
+            {
+              "command": "mvn -pl :ccb-boot -am install -DskipTests",
+              "exit_code": 0,
+              "salient_output": "18.079s；仅构建安装，用于本地新后端启动，不作为测试证据"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "当前改动范围与空白",
+              "result": "pass",
+              "evidence": "scope检查5文件通过；git diff --check通过",
+              "limitations": [
+                "最终证据落盘后需再次检查"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "仅业务组件局部语义样式，未改公共组件、账号、资格规则与数据库结构"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "变更原因选填不取消审计",
+              "result": "pass",
+              "evidence": "Mockito验证recordChange和recordSuccess；本地数据库最新审计reason长度0，操作人和时间非空，名单未改变"
+            }
+          ],
+          "disturbances": [
+            "数据库只读探针初次使用错误本地用户及数据库名失败；依项目dev脚本校准ccb_platform后成功"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "本轮未重跑全仓717项；此前结果不能代表新版本",
+            "未新增只读角色/网络失败注入浏览器验收；保留原保护代码，权限/失败路径由聚焦测试覆盖",
+            "上线非作者专项复核及此前整体缺口仍保留"
+          ],
+          "recommended_next": "observe"
+        }
       }
     ],
     "observing": [
@@ -7495,6 +7586,74 @@
             }
           ],
           "disturbances": []
+        }
+      },
+      {
+        "revision": 12,
+        "evidence": "30项聚焦、最终构建、四视口明暗及空原因真实保存审计通过；整体既有缺口保留",
+        "recorded_at": "2026-09-07T08:32:31+00:00",
+        "data": {
+          "sample_label": "participants-drawer-final",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "approved_adjustment": "docs/requirements/REQ-20260906-066-subsystem-participation/participants-drawer-refinement.md",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Maven服务/Controller/MySQL聚焦",
+              "result": "pass",
+              "raw_evidence": "30项，0失败0错误0跳过；空原因新增用例先红后绿；TEMP/rddmp-066-drawer-green.log",
+              "limitation": [
+                "非全仓回归"
+              ]
+            },
+            {
+              "requirement_id": "R1",
+              "sensor": "本地admin浏览器与只读数据库探针",
+              "result": "pass",
+              "raw_evidence": "移动渠道系统原3人名单不变、原因0/500保存后关闭，重开仍3人；最新审计CHAR_LENGTH(reason)=0、actor_user_id IS NOT NULL=1、created_at IS NOT NULL=1、before_user_ids=after_user_ids=1",
+              "limitation": [
+                "仅本地合成数据",
+                "未通过浏览器增删后保存"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "内置浏览器截图/只读DOM/交互",
+              "result": "pass",
+              "raw_evidence": "1440×900、375×812、390×844、430×932明暗截图；负责人卡片独立、3名已选全量显示换行；桌面抽屉client/scroll=640/640，select=592/592，footer bottom=900；375选择器303/303；未保存弹框提供继续编辑/放弃修改；搜索演示命中候选，管理员无匹配；控制台error=[]",
+              "limitation": [
+                "截图在工具会话内，未伪造落盘文件",
+                "未造上千成员长名单或只读角色/网络失败场景"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "最终前端构建",
+              "result": "pass",
+              "raw_evidence": "vue-tsc/Vite成功，26.65s；TEMP/rddmp-066-drawer-build-final.log",
+              "limitation": [
+                "已有大chunk告警"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "全仓治理检查仍因REQ061非JSON兼容YAML失败；Flyway静态检查仍因既有V84_1命名失败，均未越界修复"
+          ],
+          "coverage_gaps": [
+            "未重跑修改后的全仓测试",
+            "非作者上线权限/数据库专项复核和原整体缺口仍未闭合"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
         }
       }
     ],

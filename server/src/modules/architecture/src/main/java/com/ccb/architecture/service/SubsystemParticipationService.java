@@ -109,9 +109,9 @@ public class SubsystemParticipationService implements ProjectMemberRemovalGuard 
                 SystemScope system = system(actor, project, systemId, true);
                 requireMaintainer(actor, system, manager);
                 if (command == null || command.rowVersion() == null || command.participantUserIds() == null
-                        || command.participantUserIds().size() > 1000 || command.reason() == null
-                        || command.reason().isBlank() || command.reason().trim().length() > 500) {
-                    throw new BusinessException(ErrorCode.BAD_REQUEST, "参与人员、版本及500字以内变更原因不能为空");
+                        || command.participantUserIds().size() > 1000
+                        || (command.reason() != null && command.reason().trim().length() > 500)) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "参与人员和版本不能为空，变更原因不能超过500字");
                 }
                 if (command.rowVersion() != system.rowVersion()) throw conflict();
                 LinkedHashSet<Long> requested = new LinkedHashSet<>(command.participantUserIds());
@@ -134,7 +134,7 @@ public class SubsystemParticipationService implements ProjectMemberRemovalGuard 
                 List<Long> after = new ArrayList<>(requested);
                 store.replace(actor.tenantId(), project.id(), systemId, after, actor.id());
                 store.recordChange(actor.tenantId(), project.id(), systemId, actor.id(), before, after,
-                        command.reason().trim(), traceId);
+                        command.reason() == null ? "" : command.reason().trim(), traceId);
                 return view(actor, project, new SystemScope(systemId, system.ownerUserId(), system.rowVersion() + 1), manager);
             });
             audit.recordSuccess(new SystemOperationAuditCommand(actor, "architecture.subsystem.participants.update",

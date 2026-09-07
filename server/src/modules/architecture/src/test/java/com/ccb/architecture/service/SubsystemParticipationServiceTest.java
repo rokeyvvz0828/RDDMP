@@ -7,6 +7,9 @@ import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +38,30 @@ class SubsystemParticipationServiceTest {
                 Optional.of(new SystemUserReference(i.getArgument(1), "人员", "user", null, true)));
         when(transactions.execute(any())).thenAnswer(i ->
                 ((org.springframework.transaction.support.TransactionCallback<?>) i.getArgument(0)).doInTransaction(null));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", " 调整分工 "})
+    void 变更原因选填且名单审计始终保留(String reason) {
+        when(store.findSystem(7, 70, 10, true)).thenReturn(Optional.of(new SystemScope(10, 9L, 3)));
+        when(store.advanceVersion(7, 70, 10, 3, 9)).thenReturn(true);
+        service.replace(actor, project, 10,
+                new SubsystemParticipationService.ReplaceCommand(List.of(20L), 3L, reason), false, "trace");
+        verify(store).replace(7, 70, 10, List.of(20L), 9);
+        verify(store).recordChange(7, 70, 10, 9, List.of(), List.of(20L),
+                reason == null ? "" : reason.trim(), "trace");
+        verify(audit).recordSuccess(any());
+    }
+
+    @Test
+    void 原因超过五百字符仍拒绝且不写名单() {
+        when(store.findSystem(7, 70, 10, true)).thenReturn(Optional.of(new SystemScope(10, 9L, 3)));
+        assertThatThrownBy(() -> service.replace(actor, project, 10,
+                new SubsystemParticipationService.ReplaceCommand(List.of(20L), 3L, "因".repeat(501)), false, "trace"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("500");
+        verify(store, never()).replace(anyLong(), anyLong(), anyLong(), anyList(), anyLong());
+        verify(audit).recordFailure(any());
     }
 
     @Test

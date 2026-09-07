@@ -1,0 +1,63 @@
+{
+  "sample_label": "participants-drawer-final",
+  "task_ids": [
+    "T1"
+  ],
+  "baseline_revision": "baseline-1",
+  "approved_adjustment": "docs/requirements/REQ-20260906-066-subsystem-participation/participants-drawer-refinement.md",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "Maven服务/Controller/MySQL聚焦",
+      "result": "pass",
+      "raw_evidence": "30项，0失败0错误0跳过；空原因新增用例先红后绿；TEMP/rddmp-066-drawer-green.log",
+      "limitation": [
+        "非全仓回归"
+      ]
+    },
+    {
+      "requirement_id": "R1",
+      "sensor": "本地admin浏览器与只读数据库探针",
+      "result": "pass",
+      "raw_evidence": "移动渠道系统原3人名单不变、原因0/500保存后关闭，重开仍3人；最新审计CHAR_LENGTH(reason)=0、actor_user_id IS NOT NULL=1、created_at IS NOT NULL=1、before_user_ids=after_user_ids=1",
+      "limitation": [
+        "仅本地合成数据",
+        "未通过浏览器增删后保存"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "内置浏览器截图/只读DOM/交互",
+      "result": "pass",
+      "raw_evidence": "1440×900、375×812、390×844、430×932明暗截图；负责人卡片独立、3名已选全量显示换行；桌面抽屉client/scroll=640/640，select=592/592，footer bottom=900；375选择器303/303；未保存弹框提供继续编辑/放弃修改；搜索演示命中候选，管理员无匹配；控制台error=[]",
+      "limitation": [
+        "截图在工具会话内，未伪造落盘文件",
+        "未造上千成员长名单或只读角色/网络失败场景"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "最终前端构建",
+      "result": "pass",
+      "raw_evidence": "vue-tsc/Vite成功，26.65s；TEMP/rddmp-066-drawer-build-final.log",
+      "limitation": [
+        "已有大chunk告警"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "全仓治理检查仍因REQ061非JSON兼容YAML失败；Flyway静态检查仍因既有V84_1命名失败，均未越界修复"
+  ],
+  "coverage_gaps": [
+    "未重跑修改后的全仓测试",
+    "非作者上线权限/数据库专项复核和原整体缺口仍未闭合"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}
