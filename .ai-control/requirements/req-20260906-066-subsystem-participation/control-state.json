@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 119,
+  "revision": 132,
   "created_at": "2026-09-06T08:04:00+00:00",
-  "updated_at": "2026-09-07T07:25:41+00:00",
+  "updated_at": "2026-09-07T07:56:39+00:00",
   "mode": "high-assurance",
   "workflow": "full",
   "phase": "observing",
@@ -204,6 +204,24 @@
       "to": "observing",
       "evidence": "测试修复完成，进入最终回归采样",
       "recorded_at": "2026-09-07T06:48:04+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "已复现操作列裁切，局部宽度缺陷",
+      "recorded_at": "2026-09-07T07:50:04+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "单行宽度纠偏已定界",
+      "recorded_at": "2026-09-07T07:50:04+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "列宽修正完成，记录截图和几何边界观测",
+      "recorded_at": "2026-09-07T07:56:38+00:00"
     }
   ],
   "stage_artifacts": {
@@ -6763,6 +6781,58 @@
           ],
           "recommended_next": "observe"
         }
+      },
+      {
+        "revision": 14,
+        "evidence": "单行diff、构建成功与原失败界面复验",
+        "recorded_at": "2026-09-07T07:56:38+00:00",
+        "data": {
+          "local_checks": [
+            {
+              "check": "同页浏览器复验",
+              "evidence": "1440及851桌面内容clientWidth/scrollWidth均235，全部按钮位于单元格内；刷新后仍通过",
+              "limitations": [
+                "未提交任何业务操作"
+              ],
+              "result": "pass"
+            }
+          ],
+          "status": "implemented",
+          "commands": [
+            {
+              "salient_output": "vue-tsc与Vite成功，35.05s；TEMP/rddmp-066-physical-actions-build.log，既有chunk告警",
+              "exit_code": 0,
+              "command": "npm --prefix web run build"
+            }
+          ],
+          "recommended_next": "observe",
+          "disturbances": [],
+          "invariants_checked": [
+            {
+              "invariant": "三个入口和手机卡片保留",
+              "evidence": "变更菜单和参与人员弹层均打开，关闭未保存；三个手机宽度明暗主题截图",
+              "result": "pass"
+            }
+          ],
+          "assumptions_falsified": [],
+          "requirements_addressed": [
+            "R1",
+            "R8"
+          ],
+          "task_id": "T1",
+          "diff_summary": [
+            "仅改页面一处列宽；不新增样式、不改权限条件"
+          ],
+          "unresolved_items": [
+            "此前全局验收缺口不在本次列宽修复范围"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+              "purpose": "操作列宽160改260容纳三个操作"
+            }
+          ]
+        }
       }
     ],
     "observing": [
@@ -7331,6 +7401,101 @@
             }
           ]
         }
+      },
+      {
+        "revision": 10,
+        "evidence": "用户截图与本地DOM实测裁切",
+        "recorded_at": "2026-09-07T07:50:04+00:00",
+        "data": {
+          "disturbances": [],
+          "coverage_gaps": [
+            "复验前尚未验证修复"
+          ],
+          "task_ids": [
+            "T1"
+          ],
+          "observation_status": "complete",
+          "measurements": [
+            {
+              "raw_evidence": "操作列width160，内容clientWidth135/scrollWidth200；变更按钮右边878.67超过单元格826.67；两行均复现",
+              "sensor": "用户截图、本地管理员浏览器截图与DOM边界",
+              "limitation": [
+                "本地浅色初始视口，尚未修复"
+              ],
+              "requirement_id": "R8",
+              "result": "fail"
+            }
+          ],
+          "feedback": [
+            {
+              "expected": "详情、参与人员、发起变更完整显示并可触达",
+              "observed": "发起变更被固定操作列裁切",
+              "reproduction": "本地管理员打开物理子系统列表，检查右侧三操作",
+              "evidence": "用户截图及浏览器DOM 135/200",
+              "requirement_id": "R8",
+              "correction_check": "增大本页操作列后复测按钮边界、变更菜单及手机卡片",
+              "classification": "deviation",
+              "sensor_limit": "仅当前列表",
+              "confidence": "high",
+              "severity": "P2",
+              "causal_hypothesis": "新增参与人员后操作列仍沿用160宽度，nowrap内容溢出"
+            }
+          ],
+          "sample_label": "用户截图与本地操作列裁切复现",
+          "error_counts": {
+            "P0": 0,
+            "P2": 1,
+            "P3": 0,
+            "P1": 0
+          },
+          "baseline_revision": "baseline-1"
+        }
+      },
+      {
+        "revision": 11,
+        "evidence": "原失败桌面刷新复验及四视口明暗主题检查",
+        "recorded_at": "2026-09-07T07:56:38+00:00",
+        "data": {
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "sample_label": "F6操作列裁切修复复验",
+          "task_ids": [
+            "T1"
+          ],
+          "coverage_gaps": [
+            "此前治理检查、非作者上线专项复核及其他已披露UI覆盖缺口仍保留"
+          ],
+          "observation_status": "complete",
+          "feedback": [],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R8",
+              "sensor": "浏览器截图、只读DOM测量及实际点击",
+              "raw_evidence": "修复前内容135/200且末按钮超出52px；修复后1440与851桌面235/235且每个按钮均在单元格内；刷新后仍通过。变更菜单包含更新/下线/作废/替换；参与人员弹层打开后取消，无业务写入。375x812、390x844、430x932及1440x900分别观察明暗主题，三个操作可见；浅色手机scrollWidth分别360/375/415，小于等于视口。控制台error=[]。",
+              "limitation": [
+                "截图保留于工具会话，未声称落盘",
+                "仅验证本列表与受影响入口，不替代其他页面验收"
+              ],
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "npm --prefix web run build",
+              "raw_evidence": "退出0，35.05s，TEMP/rddmp-066-physical-actions-build.log",
+              "limitation": [
+                "既有chunk体积告警保留",
+                "仅前端列宽变更，未重新运行后端717项"
+              ],
+              "result": "pass"
+            }
+          ],
+          "disturbances": []
+        }
       }
     ],
     "correcting": [
@@ -7456,6 +7621,49 @@
             ],
             "gain": "medium"
           },
+          "decision": "accept"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "原scope已覆盖页面；仅列宽修正，复用既有表格和手机卡片",
+        "recorded_at": "2026-09-07T07:50:04+00:00",
+        "data": {
+          "feedback_id": "F-0006",
+          "decision_reason": "本地复现并确认操作列内容宽度不足",
+          "dynamic_pattern": "local",
+          "resolution": "open",
+          "control_action": {
+            "route": "executing",
+            "target": "物理子系统操作列",
+            "impact_limit": "单页面一处列宽160改260，桌面横向滚动仍仅限表格；手机仍使用卡片，弹层不变",
+            "correction_check": [
+              "按钮边界不超出单元格",
+              "菜单与参与弹层可打开",
+              "375/390/430及桌面明暗主题",
+              "前端生产构建"
+            ],
+            "rollback": "回退本次单行列宽修改",
+            "gain": "low",
+            "invariants": [
+              "保留三个按钮及权限条件",
+              "复用UiDataTable、既有固定右列及手机卡片",
+              "不改公共样式和业务行为"
+            ],
+            "write_scope": [
+              "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+            ]
+          },
+          "causal_assessment": {
+            "hypothesis": "160列宽未适配第三个操作",
+            "falsifier": "扩大列宽后仍裁切则否定单一宽度根因",
+            "supporting_evidence": [
+              "clientWidth135/scrollWidth200"
+            ]
+          },
+          "residual_risk": [
+            "需实际浏览器复验"
+          ],
           "decision": "accept"
         }
       }
@@ -9109,9 +9317,17 @@
         {
           "recorded_at": "2026-09-07T04:30:59+00:00",
           "text": "提交观测，不以实现或构建替代完整验收"
+        },
+        {
+          "recorded_at": "2026-09-07T07:50:05+00:00",
+          "text": "修复物理子系统操作列裁切"
+        },
+        {
+          "recorded_at": "2026-09-07T07:56:38+00:00",
+          "text": "操作列宽修复并完成局部复验"
         }
       ],
-      "updated_at": "2026-09-07T04:30:59+00:00"
+      "updated_at": "2026-09-07T07:56:38+00:00"
     },
     {
       "id": "T2",
@@ -9634,6 +9850,26 @@
       "resolved_at": "2026-09-07T06:32:45+00:00",
       "resolution_evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-options-denial-recheck.json：聚焦测试及真实API/UI复验通过",
       "decided_at": "2026-09-07T06:01:45+00:00"
+    },
+    {
+      "id": "F-0006",
+      "task": "T1",
+      "source": "用户截图与本地浏览器",
+      "requirement": "R8",
+      "expected": "操作按钮完整可见可触达",
+      "observed": "160宽操作列裁切新增参与人员后的变更按钮",
+      "evidence": "内容宽135/scroll200，按钮右878.67超出单元格826.67",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": "桌面及三手机视口明暗主题和操作菜单",
+      "decision": "accept",
+      "decision_reason": "新增第三个操作未同步列宽，DOM证实裁切",
+      "created_at": "2026-09-07T07:50:04+00:00",
+      "resolved_at": "2026-09-07T07:56:38+00:00",
+      "resolution_evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-physical-actions-recheck.json：按钮均位于单元格内，变更菜单/参与弹层可打开",
+      "decided_at": "2026-09-07T07:50:04+00:00"
     }
   ],
   "samples": [
@@ -9701,6 +9937,19 @@
       "score": 0,
       "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-options-contract-final.json；其他验收缺口仍披露",
       "recorded_at": "2026-09-07T07:25:41+00:00"
+    },
+    {
+      "id": "S-0006",
+      "label": "F6操作列复验",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-physical-actions-recheck.json",
+      "recorded_at": "2026-09-07T07:56:39+00:00"
     }
   ]
 }

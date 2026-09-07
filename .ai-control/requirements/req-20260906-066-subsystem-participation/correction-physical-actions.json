@@ -1,0 +1,38 @@
+{
+  "feedback_id": "F-0006",
+  "decision_reason": "本地复现并确认操作列内容宽度不足",
+  "dynamic_pattern": "local",
+  "resolution": "open",
+  "control_action": {
+    "route": "executing",
+    "target": "物理子系统操作列",
+    "impact_limit": "单页面一处列宽160改260，桌面横向滚动仍仅限表格；手机仍使用卡片，弹层不变",
+    "correction_check": [
+      "按钮边界不超出单元格",
+      "菜单与参与弹层可打开",
+      "375/390/430及桌面明暗主题",
+      "前端生产构建"
+    ],
+    "rollback": "回退本次单行列宽修改",
+    "gain": "low",
+    "invariants": [
+      "保留三个按钮及权限条件",
+      "复用UiDataTable、既有固定右列及手机卡片",
+      "不改公共样式和业务行为"
+    ],
+    "write_scope": [
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+    ]
+  },
+  "causal_assessment": {
+    "hypothesis": "160列宽未适配第三个操作",
+    "falsifier": "扩大列宽后仍裁切则否定单一宽度根因",
+    "supporting_evidence": [
+      "clientWidth135/scrollWidth200"
+    ]
+  },
+  "residual_risk": [
+    "需实际浏览器复验"
+  ],
+  "decision": "accept"
+}
