@@ -1,0 +1,71 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+      "purpose": "fullscreen state, header, scoped styles and regression tests"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+      "purpose": "fullscreen state, header, scoped styles and regression tests"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+      "purpose": "fullscreen state, header, scoped styles and regression tests"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+      "purpose": "fullscreen state, header, scoped styles and regression tests"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/release-operations.css",
+      "purpose": "fullscreen state, header, scoped styles and regression tests"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "commands": [
+    {
+      "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase T1",
+      "exit_code": 0,
+      "salient_output": "PASS reactive fullscreen/reset/isolation; 2 drawers; original scripts, bindings, guards and dialogs preserved"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "2569 modules; built in 37.24s; existing PURE/chunk warnings"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "reactive and template assertions",
+      "result": "pass",
+      "evidence": "T1 test exit0",
+      "limitations": [
+        "no real browser geometry"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "two plan drawers wired; module helper/header/CSS added"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "original scripts and forms unchanged",
+      "result": "pass",
+      "evidence": "pre-edit SFC snapshot comparison"
+    }
+  ],
+  "disturbances": [
+    "browser inventory available but previous localhost authorization unresolved"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "browser visual and nested interaction checks"
+  ],
+  "recommended_next": "observe"
+}

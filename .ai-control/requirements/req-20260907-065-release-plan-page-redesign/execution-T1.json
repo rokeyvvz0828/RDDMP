@@ -1,0 +1,11 @@
+{
+  "task_id": "T1", "status": "implemented",
+  "changed_surfaces": [{"path_or_resource": "web/src/modules/release/components/ReleaseDrillPlanView.vue", "purpose": "Split workspace, shared header/status components and scoped page layout"}],
+  "requirements_addressed": ["R1", "R2", "R4", "R5"],
+  "commands": [{"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; existing CRLF notices"}, {"command": "npm --prefix web run build (sandbox)", "exit_code": 1, "salient_output": "esbuild spawn EPERM after type check"}, {"command": "npm --prefix web run build (approved local execution)", "exit_code": 0, "salient_output": "2562 modules transformed; built in 31.88s; existing PURE annotation and chunk warnings"}],
+  "local_checks": [{"check": "Desktop layout", "result": "pass", "evidence": "Live Edge 1912px viewport: directory=300px, detail=1280px, document scrollWidth=1912; screenshot inspected", "limitations": ["Mobile pending T2"]}, {"check": "Plan deletion cancellation and edit entry", "result": "pass", "evidence": "Cancelled delete dialog; plan remains; edit dialog shows original name, code, version, status and description fields", "limitations": ["No actual writes performed", "Network not yet observed"]}],
+  "diff_summary": ["Directory and detail proportions corrected", "Plan state/version surfaced", "Two timeline entry rows retain original bindings"],
+  "invariants_checked": [{"invariant": "Handlers unchanged", "result": "pass", "evidence": "Patch only adds imports/display labels and replaces page template/styles"}],
+  "disturbances": [{"event": "Sandbox blocks esbuild subprocess", "impact": "Build rerun with approved execution and passed"}],
+  "assumptions_falsified": [], "unresolved_items": ["Mobile and drawer integration next", "Independent review pending"], "recommended_next": "observe"
+}

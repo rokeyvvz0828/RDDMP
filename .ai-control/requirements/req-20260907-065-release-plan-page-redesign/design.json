@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260907-065-release-plan-page-redesign",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-07-release-plan-page-redesign-design.md",
+  "objective": "Redesign the release plan page without changing its existing business functions.",
+  "users": ["Project members viewing release plans", "Authorized release plan maintainers"],
+  "requirements": [
+    {"id": "R1", "statement": "Use a narrow plan directory and wide detail workspace on desktop.", "acceptance": ["At desktop width >=1280, directory is narrower than detail; selected plan name, code, version and status are visible."], "priority": "must", "source": "User-confirmed split layout", "counterexample": ["List occupies the majority of page width."]},
+    {"id": "R2", "statement": "Retain two distinct normal and rollback sequence entries.", "acceptance": ["Both entries show names and sequence/command counts and open the matching drawer."], "priority": "must", "source": "User-confirmed design", "counterexample": ["Both entries open the same sequence group."]},
+    {"id": "R3", "statement": "Retain horizontal P1/P2 sequences with multiple commands and all existing maintenance controls in drawers.", "acceptance": ["Sequence and command add/edit/delete controls remain available with existing handlers; no date timeline appears."], "priority": "must", "source": "User requires unchanged functionality", "counterexample": ["A sequence can display only one command."]},
+    {"id": "R4", "statement": "Provide readable responsive layouts with local sequence scrolling.", "acceptance": ["At 375x812, 390x844 and 430x932, there is no page-level horizontal overflow; drawer controls are reachable in both themes."], "priority": "must", "source": "Confirmed mobile design and design-h5.md", "counterexample": ["Toolbar overlaps the sequence title or the whole page scrolls sideways."]},
+    {"id": "R5", "statement": "Preserve project isolation, forms, permissions, cancellation and all existing asynchronous states.", "acceptance": ["API payloads and handlers remain unchanged; cancelling deletion shows no failure and sends no deletion request; switching projects clears previous project content."], "priority": "must", "source": "User requires unchanged functionality", "counterexample": ["Styling changes expose write controls to read-only users."]}
+  ],
+  "invariants": ["API, DTOs, projectId, rowVersion and permission checks unchanged", "Preserve existing menu rename worktree changes"],
+  "constraints": ["Only change the authorized Vue component and own task documents", "Reuse semantic theme tokens and shared UI", "Do not access production or .env", "No commit, push, branch switch or dependency changes"],
+  "non_goals": ["Backend or migration changes", "Shared component changes", "Statistics blocks, introductory copy, new filters or date timeline"],
+  "selected_approach": {"name": "Compact directory and wide detail", "reason": "Preserves context when switching plans and entering sequence maintenance.", "alternatives": [{"name": "Full list then separate detail page", "rejected_because": "Adds navigation steps and changes current browsing workflow."}]},
+  "architecture": {
+    "boundary": {"inside": ["ReleaseDrillPlanView.vue presentation and scoped styles"], "outside": ["API and backend", "Shared UI implementation", "Parent project switching", "Other release pages"]},
+    "components": [{"name": "ReleaseDrillPlanView", "responsibility": "Plan directory, detail and existing maintenance overlays", "depends_on": ["UiPageHeader", "UiStatusTag", "UiEmptyState", "Element Plus", "api/release.ts", "auth store"]}],
+    "interfaces": [{"name": "Existing release API functions", "producer": "web/src/api/release.ts", "consumers": ["ReleaseDrillPlanView"], "contract": "Preserve all parameters, DTOs, project scoping and optimistic locking."}],
+    "data_flows": [{"input": "projectId prop and list API results", "transitions": ["Select plan", "Open matching timeline drawer", "Use existing maintenance dialogs and handlers"], "output": "Current plan detail and sequence commands"}]
+  },
+  "error_handling": [{"condition": "Load failure or 403", "behavior": "Keep existing error or forbidden result", "recovery": "Existing reload action or administrator permission grant"}, {"condition": "Write failure or cancelled deletion", "behavior": "Retain current error feedback and cancel/close suppression", "recovery": "Retry with existing form or return to unchanged selection"}],
+  "quality_attributes": {"security": ["Preserve canManage and backend authorization"], "performance": ["No new requests or dependencies"], "compatibility": ["Scoped styles, existing Vue and Element Plus components"], "operations": ["Frontend-only local verification, no backend restart"]},
+  "verification_strategy": [{"requirement_ids": ["R1", "R2", "R3", "R4", "R5"], "signal": "Build passes and specified browser journeys retain correct context without overlap", "method": "Diff review, Vue build and desktop/mobile browser checks; report untested cases explicitly"}],
+  "assumptions": [{"text": "Existing local test services and session can be used for browser checks", "basis": "Prior task startup evidence", "falsifier": "Connection failure or expired session"}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "Use single-page split layout and existing drawers", "reason": "More room for details without altering behavior", "source": "User confirmation in this task"}],
+  "risks": [{"risk": "Global styles or teleported overlays interfere with local layout", "impact": "Overlap or missing styles", "mitigation": "Distinct scoped classes and multi-viewport browser checks"}],
+  "approval": {"status": "approved", "evidence": "User replied 'confirm' to the proposed split-layout implementation on 2026-09-07. Recorded at the timestamp below; no separate Owner approval is claimed.", "confirmed_at": "2026-09-07T10:16:26+08:00"}
+}

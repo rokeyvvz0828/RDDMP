@@ -1,0 +1,1764 @@
+{
+  "schema_version": 4,
+  "revision": 16,
+  "created_at": "2026-09-07T02:44:12+00:00",
+  "updated_at": "2026-09-07T03:38:26+00:00",
+  "mode": "standard",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User replied 'confirm' to the proposed split-layout implementation on 2026-09-07. Recorded at the timestamp below; no separate Owner approval is claimed.；计划确认=User explicitly confirmed the linked implementation plan in the latest message on 2026-09-07.",
+      "recorded_at": "2026-09-07T02:44:12+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Confirmed design and plan match R1-R5; no scope changes.",
+      "recorded_at": "2026-09-07T02:44:17+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Presentation boundary and sensors established",
+      "recorded_at": "2026-09-07T02:45:55+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Plan and scope gates passed",
+      "recorded_at": "2026-09-07T02:45:58+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "Both task outputs measurable; do not claim independent convergence",
+      "recorded_at": "2026-09-07T03:35:11+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User replied 'confirm' to the proposed split-layout implementation on 2026-09-07. Recorded at the timestamp below; no separate Owner approval is claimed.；计划确认=User explicitly confirmed the linked implementation plan in the latest message on 2026-09-07.",
+        "recorded_at": "2026-09-07T02:44:12+00:00",
+        "data": {
+          "objective": "Redesign the release plan page without changing its existing business functions.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Use a narrow plan directory and wide detail workspace on desktop.",
+              "acceptance": [
+                "At desktop width >=1280, directory is narrower than detail; selected plan name, code, version and status are visible."
+              ],
+              "priority": "must",
+              "source": "User-confirmed split layout",
+              "counterexample": [
+                "List occupies the majority of page width."
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Retain two distinct normal and rollback sequence entries.",
+              "acceptance": [
+                "Both entries show names and sequence/command counts and open the matching drawer."
+              ],
+              "priority": "must",
+              "source": "User-confirmed design",
+              "counterexample": [
+                "Both entries open the same sequence group."
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Retain horizontal P1/P2 sequences with multiple commands and all existing maintenance controls in drawers.",
+              "acceptance": [
+                "Sequence and command add/edit/delete controls remain available with existing handlers; no date timeline appears."
+              ],
+              "priority": "must",
+              "source": "User requires unchanged functionality",
+              "counterexample": [
+                "A sequence can display only one command."
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Provide readable responsive layouts with local sequence scrolling.",
+              "acceptance": [
+                "At 375x812, 390x844 and 430x932, there is no page-level horizontal overflow; drawer controls are reachable in both themes."
+              ],
+              "priority": "must",
+              "source": "Confirmed mobile design and design-h5.md",
+              "counterexample": [
+                "Toolbar overlaps the sequence title or the whole page scrolls sideways."
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Preserve project isolation, forms, permissions, cancellation and all existing asynchronous states.",
+              "acceptance": [
+                "API payloads and handlers remain unchanged; cancelling deletion shows no failure and sends no deletion request; switching projects clears previous project content."
+              ],
+              "priority": "must",
+              "source": "User requires unchanged functionality",
+              "counterexample": [
+                "Styling changes expose write controls to read-only users."
+              ]
+            }
+          ],
+          "invariants": [
+            "API, DTOs, projectId, rowVersion and permission checks unchanged",
+            "Preserve existing menu rename worktree changes"
+          ],
+          "constraints": [
+            "Only change the authorized Vue component and own task documents",
+            "Reuse semantic theme tokens and shared UI",
+            "Do not access production or .env",
+            "No commit, push, branch switch or dependency changes"
+          ],
+          "non_goals": [
+            "Backend or migration changes",
+            "Shared component changes",
+            "Statistics blocks, introductory copy, new filters or date timeline"
+          ],
+          "assumptions": [
+            {
+              "text": "Existing local test services and session can be used for browser checks",
+              "basis": "Prior task startup evidence",
+              "falsifier": "Connection failure or expired session"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use single-page split layout and existing drawers",
+              "reason": "More room for details without altering behavior",
+              "source": "User confirmation in this task"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "signal": "Build passes and specified browser journeys retain correct context without overlap",
+              "method": "Diff review, Vue build and desktop/mobile browser checks; report untested cases explicitly"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Component and live Edge baseline inspected",
+        "recorded_at": "2026-09-07T02:45:54+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ReleaseDrillPlanView.vue template and scoped styles"
+            ],
+            "environment": [
+              "Release API",
+              "Parent project context",
+              "Global theme and Element Plus",
+              "Local browser"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "selectedId",
+              "owner": "ReleaseDrillPlanView",
+              "valid_values": [
+                "Existing plan ID",
+                "undefined"
+              ]
+            },
+            {
+              "name": "timelineType",
+              "owner": "ReleaseDrillPlanView",
+              "valid_values": [
+                "NORMAL",
+                "ROLLBACK"
+              ]
+            },
+            {
+              "name": "canManage",
+              "owner": "auth store",
+              "valid_values": [
+                true,
+                false
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "plans and selectedId",
+              "transitions": [
+                "Render directory and selected detail using local grid"
+              ],
+              "outputs": [
+                "Narrow directory and wide detail"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Selected plan timelines",
+              "transitions": [
+                "Filter by itemType",
+                "Click original openTimeline handler"
+              ],
+              "outputs": [
+                "Correct group name and counts in drawer"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "timelineSequences sorted by seqNo",
+              "transitions": [
+                "Render P columns and each items array",
+                "Open original forms"
+              ],
+              "outputs": [
+                "Multiple commands and all maintenance controls"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Viewport, theme and text length",
+              "transitions": [
+                "Media queries reflow layout",
+                "Local horizontal scroll"
+              ],
+              "outputs": [
+                "Readable page without global overflow"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "Project context, permissions and async results",
+              "transitions": [
+                "Original handlers and template state branches"
+              ],
+              "outputs": [
+                "Existing isolation, cancellation and form semantics"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Existing release API",
+              "producers": [
+                "api/release.ts"
+              ],
+              "consumers": [
+                "ReleaseDrillPlanView"
+              ],
+              "invariant": "Parameters and response types unchanged"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1-R5 rendering and interaction",
+              "method": "Existing Edge test tab screenshot, DOM and UI actions",
+              "blind_spots": [
+                "Unavailable alternative roles and fault injection",
+                "Independent reviewer not available"
+              ],
+              "independence": "Runtime observation by same implementing context; not independent review"
+            },
+            {
+              "id": "S2",
+              "target": "Template and TypeScript compatibility",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "Runtime layout and API failures"
+              ],
+              "independence": "Compiler-based structural measurement"
+            },
+            {
+              "id": "S3",
+              "target": "Scope and unchanged business handlers",
+              "method": "Git diff and structural source comparison",
+              "blind_spots": [
+                "Runtime authorization"
+              ],
+              "independence": "Static comparison, not independent review"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Component presentation",
+              "action": "Replace template layout and add scoped styles",
+              "authority": "Confirmed requirement scope",
+              "impact_radius": "Release plan page only",
+              "rollback": "Reverse task hunks, preserve prior menu rename"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Global release styles",
+              "effect": "Old layout can override local presentation",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Browser capability and available roles",
+              "effect": "Some tests may be unavailable",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite and API",
+              "consequence": "Snapshot may precede new rendering",
+              "sampling_rule": "Wait for new DOM heading or loading completion"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Existing API functionality is retained by preserving handlers",
+              "evidence": "Component source contains existing CRUD handlers and live page shows synthetic project B data",
+              "falsifier": "Changed payload or regression during browser test"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Implement local grid"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Keep original group bindings"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Reorganize drawer only"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Use supported viewport capability; report unavailable measurements"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Preserve handlers and static permission branches; report untested roles and write scenarios"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Confirmed serial tasks bounded to component",
+        "recorded_at": "2026-09-07T02:45:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Compact directory and wider plan detail",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Old grid gives most width to list; confirmed via browser screenshot"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+              ],
+              "invariants": [
+                "Keep API and all handlers unchanged"
+              ],
+              "interface_contracts": [
+                "Original ReleasePlanDto and projectId"
+              ],
+              "non_goals": [
+                "Backend or other page changes"
+              ],
+              "action_bounds": [
+                "Change page template, display labels and scoped styles"
+              ],
+              "acceptance_checks": [
+                "Vue build passes",
+                "Directory narrower than detail",
+                "Both group entries and form controls retained"
+              ],
+              "evidence_required": [
+                "Diff",
+                "Build exit",
+                "Browser screenshot and cancellation results"
+              ],
+              "rollback": "Reverse only T1 hunks",
+              "stop_conditions": [
+                "Need shared or API changes"
+              ],
+              "escalation_conditions": [
+                "Out-of-scope defect"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Readable sequence drawer and responsive integration",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "Existing sorted P sequences contain arrays of commands"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+              ],
+              "invariants": [
+                "Keep handlers, payloads, permissions and merged datetime range"
+              ],
+              "interface_contracts": [
+                "Original ReleasePlanTimelineDto and ReleasePlanItemDto"
+              ],
+              "non_goals": [
+                "Date axis or new business fields"
+              ],
+              "action_bounds": [
+                "Change drawer presentation and local responsive styles only"
+              ],
+              "acceptance_checks": [
+                "Vue build passes",
+                "P columns show multiple commands",
+                "Drawer buttons do not overlap",
+                "Mobile local scrolling and cancellation verified or gaps disclosed"
+              ],
+              "evidence_required": [
+                "Diff",
+                "Build exit",
+                "Desktop/mobile browser results",
+                "Scope/governance results"
+              ],
+              "rollback": "Reverse only T2 hunks",
+              "stop_conditions": [
+                "Need backend or shared overlay changes"
+              ],
+              "escalation_conditions": [
+                "Critical verification gap"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Same component, serial changes"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "Frontend build",
+                "Browser journeys",
+                "Scope and governance"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1-output",
+              "trigger": "Page layout implemented",
+              "observer": "Implementer self-check, independent review pending",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "T2-integration",
+              "trigger": "Drawer implemented",
+              "observer": "Implementer self-check, independent review pending",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 build and live desktop checks",
+        "recorded_at": "2026-09-07T02:52:05+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+              "purpose": "Split workspace, shared header/status components and scoped page layout"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; existing CRLF notices"
+            },
+            {
+              "command": "npm --prefix web run build (sandbox)",
+              "exit_code": 1,
+              "salient_output": "esbuild spawn EPERM after type check"
+            },
+            {
+              "command": "npm --prefix web run build (approved local execution)",
+              "exit_code": 0,
+              "salient_output": "2562 modules transformed; built in 31.88s; existing PURE annotation and chunk warnings"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Desktop layout",
+              "result": "pass",
+              "evidence": "Live Edge 1912px viewport: directory=300px, detail=1280px, document scrollWidth=1912; screenshot inspected",
+              "limitations": [
+                "Mobile pending T2"
+              ]
+            },
+            {
+              "check": "Plan deletion cancellation and edit entry",
+              "result": "pass",
+              "evidence": "Cancelled delete dialog; plan remains; edit dialog shows original name, code, version, status and description fields",
+              "limitations": [
+                "No actual writes performed",
+                "Network not yet observed"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Directory and detail proportions corrected",
+            "Plan state/version surfaced",
+            "Two timeline entry rows retain original bindings"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Handlers unchanged",
+              "result": "pass",
+              "evidence": "Patch only adds imports/display labels and replaces page template/styles"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Sandbox blocks esbuild subprocess",
+              "impact": "Build rerun with approved execution and passed"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Mobile and drawer integration next",
+            "Independent review pending"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Final build, responsive UI self-check and unchanged handlers",
+        "recorded_at": "2026-09-07T03:35:08+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+              "purpose": "Sequence drawer toolbar, stable P columns, command rows, scoped responsive styles and icon tooltips"
+            }
+          ],
+          "requirements_addressed": [
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build (approved local execution, final)",
+              "exit_code": 0,
+              "salient_output": "2562 modules transformed; built in 28.22s; existing annotation and bundle-size warnings"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; CRLF notices only"
+            },
+            {
+              "command": "Read-only Node comparison of function minute through end of script against git show HEAD:component",
+              "exit_code": 0,
+              "salient_output": "PASS: all business handlers are byte-identical to HEAD"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "Module, skill and development entry checks passed; pre-existing REQ-20260904-061 scope is not JSON-compatible YAML"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-065-release-plan-page-redesign/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 1,
+              "salient_output": "Current licon branch does not match required branch naming pattern"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Normal and rollback group context",
+              "result": "pass",
+              "evidence": "Project B normal drawer has 4 sequences/4 commands; rollback has 3/3, with correct names and distinct semantic colors",
+              "limitations": [
+                "No writes"
+              ]
+            },
+            {
+              "check": "Multiple commands and empty sequence",
+              "result": "pass",
+              "evidence": "Project A normal P1 has 3 command rows; P2 has 0 with empty state; P3/P4/P5 each have 1",
+              "limitations": [
+                "Existing synthetic data only"
+              ]
+            },
+            {
+              "check": "Responsive layout",
+              "result": "pass",
+              "evidence": "1912px directory=300/detail=1280; 1280px directory=300/detail=633; page scrollWidth equals viewport at 375/390/430. At 390 drawer local scroll client=334/scroll=864; at 430 client=374/scroll=864/scrollLeft=440 and final sequence editor opened",
+              "limitations": [
+                "External browser viewport resizing introduced intermittent input timing issues; reset completed"
+              ]
+            },
+            {
+              "check": "Overlay entry and cancellation",
+              "result": "pass",
+              "evidence": "Plan edit, sequence add/edit and command add forms opened. Plan, sequence and command delete confirmations cancelled; records remained and no failure notification was observed. Mobile command drawer footer and combined datetime input inspected",
+              "limitations": [
+                "No network capture to prove absence of DELETE traffic",
+                "No actual saves or destructive operations",
+                "Command edit not independently exercised"
+              ]
+            },
+            {
+              "check": "Project and plan switching",
+              "result": "pass",
+              "evidence": "Confirmed B-to-A project switch: A shows 2 plans including test and LEGACY-942001; selecting second plan updates name/code and 5/6 normal plus 4/3 rollback counts",
+              "limitations": [
+                "Existing administrator session only"
+              ]
+            },
+            {
+              "check": "Light and dark themes",
+              "result": "pass",
+              "evidence": "Desktop page and normal drawer screenshots inspected in both themes; mobile screenshots inspected in light theme",
+              "limitations": [
+                "Dark mobile not separately sampled"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Replaced duplicate drawer title and explanatory copy with compact context",
+            "P columns remain horizontal with local scroll",
+            "Command titles, dates, status, owner and controls no longer compete for the same area",
+            "Used class-qualified global selectors only for teleported drawer internals after runtime revealed scoped selectors missed the overlay root"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Business handlers and API payloads unchanged",
+              "result": "pass",
+              "evidence": "Byte-identical handler comparison"
+            },
+            {
+              "invariant": "No shared CSS, router, backend or migration edits by this task",
+              "result": "pass",
+              "evidence": "Task patches limited to component and own metadata; prior router and V156 changes preserved"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Intermittent browser command/approval timeouts and viewport input delays",
+              "impact": "Retried only after inspecting current DOM; delayed UI measurements"
+            },
+            {
+              "event": "Existing governance format and branch naming failures",
+              "impact": "Repository-wide checks cannot pass within this approved scope"
+            }
+          ],
+          "assumptions_falsified": [
+            "Scoped parent selector alone does not style teleported Element Plus root; corrected with class-qualified global selector"
+          ],
+          "unresolved_items": [
+            "Actual write round-trips, read-only roles, network failures, 403 and exhaustive long-text cases not tested",
+            "Console and network logs not fully captured",
+            "Independent review pending",
+            "Existing governance failures remain"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Explicit non-independent self-check with remaining coverage gaps",
+        "recorded_at": "2026-09-07T03:35:13+00:00",
+        "data": {
+          "sample_label": "T1-T2-integrated-self-check",
+          "task_ids": [
+            "T1",
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "independent": false,
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S2",
+              "result": "pass",
+              "raw_evidence": "Two-column desktop screenshot and measured 300px directory versus 633px detail at 1280; final build exit 0",
+              "limitation": [
+                "Self-check only"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1/S3",
+              "result": "pass",
+              "raw_evidence": "Both original openTimeline bindings retained; correct normal/rollback drawers and counts observed",
+              "limitation": [
+                "Synthetic projects A/B"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1/S2/S3",
+              "result": "pass",
+              "raw_evidence": "Project A sequence command counts 3,0,1,1,1; original maintenance handlers unchanged; add/edit/cancel entry checks in execution-T2",
+              "limitation": [
+                "No write round-trip"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1",
+              "result": "partial",
+              "raw_evidence": "375/390/430 page scrollWidth equals viewport; local last-column edit reached; mobile form screenshots and desktop dark screenshots readable",
+              "limitation": [
+                "Dark mobile and exhaustive long strings not sampled"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1/S3",
+              "result": "partial",
+              "raw_evidence": "B-to-A and same-project plan switching verified, all business handlers byte-identical, three deletion confirmations cancelled without visible failure",
+              "limitation": [
+                "No network/console capture, alternate roles, failure injection or actual saves"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Browser timeout and viewport input latency",
+            "Pre-existing governance scope format error",
+            "Existing licon branch naming incompatible with scope checker"
+          ],
+          "coverage_gaps": [
+            "Independent review",
+            "Read-only/403/API failure/submitting-state runtime tests",
+            "Actual writes and network assertion",
+            "Dark mobile and extreme text fixtures"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "incomplete",
+          "conclusion": "No blocking product deviation observed in sampled paths. This is not independent acceptance or a convergence claim."
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Redesign the release plan page without changing its existing business functions.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Use a narrow plan directory and wide detail workspace on desktop.",
+      "acceptance": [
+        "At desktop width >=1280, directory is narrower than detail; selected plan name, code, version and status are visible."
+      ],
+      "priority": "must",
+      "source": "User-confirmed split layout",
+      "counterexample": [
+        "List occupies the majority of page width."
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Retain two distinct normal and rollback sequence entries.",
+      "acceptance": [
+        "Both entries show names and sequence/command counts and open the matching drawer."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design",
+      "counterexample": [
+        "Both entries open the same sequence group."
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Retain horizontal P1/P2 sequences with multiple commands and all existing maintenance controls in drawers.",
+      "acceptance": [
+        "Sequence and command add/edit/delete controls remain available with existing handlers; no date timeline appears."
+      ],
+      "priority": "must",
+      "source": "User requires unchanged functionality",
+      "counterexample": [
+        "A sequence can display only one command."
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Provide readable responsive layouts with local sequence scrolling.",
+      "acceptance": [
+        "At 375x812, 390x844 and 430x932, there is no page-level horizontal overflow; drawer controls are reachable in both themes."
+      ],
+      "priority": "must",
+      "source": "Confirmed mobile design and design-h5.md",
+      "counterexample": [
+        "Toolbar overlaps the sequence title or the whole page scrolls sideways."
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Preserve project isolation, forms, permissions, cancellation and all existing asynchronous states.",
+      "acceptance": [
+        "API payloads and handlers remain unchanged; cancelling deletion shows no failure and sends no deletion request; switching projects clears previous project content."
+      ],
+      "priority": "must",
+      "source": "User requires unchanged functionality",
+      "counterexample": [
+        "Styling changes expose write controls to read-only users."
+      ]
+    }
+  ],
+  "invariants": [
+    "API, DTOs, projectId, rowVersion and permission checks unchanged",
+    "Preserve existing menu rename worktree changes"
+  ],
+  "constraints": [
+    "Only change the authorized Vue component and own task documents",
+    "Reuse semantic theme tokens and shared UI",
+    "Do not access production or .env",
+    "No commit, push, branch switch or dependency changes"
+  ],
+  "non_goals": [
+    "Backend or migration changes",
+    "Shared component changes",
+    "Statistics blocks, introductory copy, new filters or date timeline"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260907-065-release-plan-page-redesign\\handoff.json",
+    "imported_at": "2026-09-07T02:44:12+00:00",
+    "topic": "req-20260907-065-release-plan-page-redesign",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260907-065-release-plan-page-redesign",
+      "handoff_status": "approved",
+      "created_at": "2026-09-07T10:16:26+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260907-065-release-plan-page-redesign",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-07-release-plan-page-redesign-design.md",
+        "objective": "Redesign the release plan page without changing its existing business functions.",
+        "users": [
+          "Project members viewing release plans",
+          "Authorized release plan maintainers"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Use a narrow plan directory and wide detail workspace on desktop.",
+            "acceptance": [
+              "At desktop width >=1280, directory is narrower than detail; selected plan name, code, version and status are visible."
+            ],
+            "priority": "must",
+            "source": "User-confirmed split layout",
+            "counterexample": [
+              "List occupies the majority of page width."
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Retain two distinct normal and rollback sequence entries.",
+            "acceptance": [
+              "Both entries show names and sequence/command counts and open the matching drawer."
+            ],
+            "priority": "must",
+            "source": "User-confirmed design",
+            "counterexample": [
+              "Both entries open the same sequence group."
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Retain horizontal P1/P2 sequences with multiple commands and all existing maintenance controls in drawers.",
+            "acceptance": [
+              "Sequence and command add/edit/delete controls remain available with existing handlers; no date timeline appears."
+            ],
+            "priority": "must",
+            "source": "User requires unchanged functionality",
+            "counterexample": [
+              "A sequence can display only one command."
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Provide readable responsive layouts with local sequence scrolling.",
+            "acceptance": [
+              "At 375x812, 390x844 and 430x932, there is no page-level horizontal overflow; drawer controls are reachable in both themes."
+            ],
+            "priority": "must",
+            "source": "Confirmed mobile design and design-h5.md",
+            "counterexample": [
+              "Toolbar overlaps the sequence title or the whole page scrolls sideways."
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Preserve project isolation, forms, permissions, cancellation and all existing asynchronous states.",
+            "acceptance": [
+              "API payloads and handlers remain unchanged; cancelling deletion shows no failure and sends no deletion request; switching projects clears previous project content."
+            ],
+            "priority": "must",
+            "source": "User requires unchanged functionality",
+            "counterexample": [
+              "Styling changes expose write controls to read-only users."
+            ]
+          }
+        ],
+        "invariants": [
+          "API, DTOs, projectId, rowVersion and permission checks unchanged",
+          "Preserve existing menu rename worktree changes"
+        ],
+        "constraints": [
+          "Only change the authorized Vue component and own task documents",
+          "Reuse semantic theme tokens and shared UI",
+          "Do not access production or .env",
+          "No commit, push, branch switch or dependency changes"
+        ],
+        "non_goals": [
+          "Backend or migration changes",
+          "Shared component changes",
+          "Statistics blocks, introductory copy, new filters or date timeline"
+        ],
+        "selected_approach": {
+          "name": "Compact directory and wide detail",
+          "reason": "Preserves context when switching plans and entering sequence maintenance.",
+          "alternatives": [
+            {
+              "name": "Full list then separate detail page",
+              "rejected_because": "Adds navigation steps and changes current browsing workflow."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "ReleaseDrillPlanView.vue presentation and scoped styles"
+            ],
+            "outside": [
+              "API and backend",
+              "Shared UI implementation",
+              "Parent project switching",
+              "Other release pages"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseDrillPlanView",
+              "responsibility": "Plan directory, detail and existing maintenance overlays",
+              "depends_on": [
+                "UiPageHeader",
+                "UiStatusTag",
+                "UiEmptyState",
+                "Element Plus",
+                "api/release.ts",
+                "auth store"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Existing release API functions",
+              "producer": "web/src/api/release.ts",
+              "consumers": [
+                "ReleaseDrillPlanView"
+              ],
+              "contract": "Preserve all parameters, DTOs, project scoping and optimistic locking."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "projectId prop and list API results",
+              "transitions": [
+                "Select plan",
+                "Open matching timeline drawer",
+                "Use existing maintenance dialogs and handlers"
+              ],
+              "output": "Current plan detail and sequence commands"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Load failure or 403",
+            "behavior": "Keep existing error or forbidden result",
+            "recovery": "Existing reload action or administrator permission grant"
+          },
+          {
+            "condition": "Write failure or cancelled deletion",
+            "behavior": "Retain current error feedback and cancel/close suppression",
+            "recovery": "Retry with existing form or return to unchanged selection"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Preserve canManage and backend authorization"
+          ],
+          "performance": [
+            "No new requests or dependencies"
+          ],
+          "compatibility": [
+            "Scoped styles, existing Vue and Element Plus components"
+          ],
+          "operations": [
+            "Frontend-only local verification, no backend restart"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "signal": "Build passes and specified browser journeys retain correct context without overlap",
+            "method": "Diff review, Vue build and desktop/mobile browser checks; report untested cases explicitly"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Existing local test services and session can be used for browser checks",
+            "basis": "Prior task startup evidence",
+            "falsifier": "Connection failure or expired session"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use single-page split layout and existing drawers",
+            "reason": "More room for details without altering behavior",
+            "source": "User confirmation in this task"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Global styles or teleported overlays interfere with local layout",
+            "impact": "Overlap or missing styles",
+            "mitigation": "Distinct scoped classes and multi-viewport browser checks"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User replied 'confirm' to the proposed split-layout implementation on 2026-09-07. Recorded at the timestamp below; no separate Owner approval is claimed.",
+          "confirmed_at": "2026-09-07T10:16:26+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-07-release-plan-page-redesign-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Presentation-only component change",
+          "Preserve all API contracts and existing handlers",
+          "Preserve unrelated worktree changes",
+          "No database, shared styles, dependencies, commits or service restarts"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+            "status": "existing",
+            "responsibility": "Plan directory, detail and maintenance overlays",
+            "evidence": "Component read and git status on 2026-09-07"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Compact plan directory and complete detail workspace",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Existing global grid uses 1fr/.44fr",
+              "Component already has plan CRUD and normal/rollback handlers"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+              ],
+              "test": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "ReleasePlanDto",
+                "selectedPlan",
+                "plans",
+                "canManage",
+                "openPlan",
+                "openTimeline",
+                "removePlan"
+              ],
+              "produces": []
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Record existing diff and old browser layout",
+                "command": "git diff -- web/src/modules/release/components/ReleaseDrillPlanView.vue",
+                "expected": "Identify existing menu rename hunks",
+                "evidence": "Execution baseline without sensitive data"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement split layout, shared header/status/empty components and scoped responsive styles",
+                "command": null,
+                "expected": "Narrow directory, wide detail, correct selected context and two timeline entries",
+                "evidence": "Component diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Verify whitespace",
+                "command": "git diff --check",
+                "expected": "Exit 0",
+                "evidence": "Exit code"
+              },
+              {
+                "id": "T1-S4",
+                "action": "Build frontend",
+                "command": "npm --prefix web run build",
+                "expected": "Exit 0",
+                "evidence": "Exit code and diagnostics"
+              },
+              {
+                "id": "T1-S5",
+                "action": "Verify plan switching, form entry points and deletion cancellation in local browser",
+                "command": null,
+                "expected": "Correct selected data; no deletion request or error on cancellation",
+                "evidence": "Execution-T1 browser checks and explicit gaps"
+              }
+            ],
+            "acceptance_checks": [
+              "Directory narrower than detail at desktop width",
+              "Two distinct sequence entries",
+              "Existing form and cancellation behavior preserved",
+              "Mobile stacking without page overflow"
+            ],
+            "risks": [
+              "Long plan names and global grid styles"
+            ],
+            "rollback": "Revert only T1 hunks; preserve existing menu rename.",
+            "stop_conditions": [
+              "Requires API or shared style changes"
+            ],
+            "escalation_conditions": [
+              "Unrelated functional defect discovered"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Readable sequence drawer and integrated responsive verification",
+            "requirement_ids": [
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "timelineSequences sorts by seqNo",
+              "Each sequence contains multiple items",
+              "Existing deletion handlers suppress cancel and close"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+              ],
+              "test": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "ReleasePlanTimelineDto",
+                "ReleasePlanItemDto",
+                "timelineName",
+                "timelineSequences",
+                "Existing sequence and item CRUD handlers"
+              ],
+              "produces": []
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Record P1/P2 baseline and teleported drawer DOM",
+                "command": null,
+                "expected": "Confirm existing sequence/command entry points",
+                "evidence": "Browser baseline"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Refine drawer toolbar, stable horizontal columns and non-overlapping command actions using scoped styles",
+                "command": null,
+                "expected": "All existing controls retained; no date timeline",
+                "evidence": "Component diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "Check normal/rollback drawers, nested editors, cancellation and project switching at desktop and three mobile viewports in both themes",
+                "command": null,
+                "expected": "Correct data, local scrolling, reachable controls, no page overflow or cancellation errors",
+                "evidence": "Execution-T2 browser results with unverified cases separated"
+              },
+              {
+                "id": "T2-S4",
+                "action": "Verify whitespace",
+                "command": "git diff --check",
+                "expected": "Exit 0",
+                "evidence": "Exit code"
+              },
+              {
+                "id": "T2-S5",
+                "action": "Build frontend",
+                "command": "npm --prefix web run build",
+                "expected": "Exit 0",
+                "evidence": "Exit code and diagnostics"
+              },
+              {
+                "id": "T2-S6",
+                "action": "Check governance",
+                "command": "node scripts/check-all-governance.mjs",
+                "expected": "Exit 0 or separately reported pre-existing failures",
+                "evidence": "Exact result"
+              },
+              {
+                "id": "T2-S7",
+                "action": "Audit task scope without broadening it for existing work",
+                "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-065-release-plan-page-redesign/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+                "expected": "New edits match scope; existing router/V156 changes reported separately",
+                "evidence": "Scope output and diff attribution"
+              }
+            ],
+            "acceptance_checks": [
+              "P1/P2 columns retain multiple command records and all CRUD entry points",
+              "375x812, 390x844, 430x932 and >=1280 desktop checked",
+              "Both themes, long text, loading, empty, error, forbidden, read-only and submitting states checked or recorded as gaps",
+              "No API/handler/permission changes"
+            ],
+            "risks": [
+              "Teleported styles",
+              "Unavailable role or fault-injection sessions",
+              "No independent reviewer in this context"
+            ],
+            "rollback": "Revert only T2 hunks; retain T1 and pre-existing unrelated changes.",
+            "stop_conditions": [
+              "Requires database, permission or shared overlay changes"
+            ],
+            "escalation_conditions": [
+              "Out-of-scope regression or critical verification gap"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Both tasks modify the same component; drawer styling builds on the page layout."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Exit 0; separate browser acceptance evidence also required"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User explicitly confirmed the linked implementation plan in the latest message on 2026-09-07.",
+          "confirmed_at": "2026-09-07T10:38:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "ReleaseDrillPlanView.vue template, display derivations and scoped styles"
+        ],
+        "state_variable_candidates": [
+          "projectId",
+          "selectedId",
+          "timelineType",
+          "drawer/dialog state",
+          "loading",
+          "canManage"
+        ],
+        "interface_candidates": [
+          "Existing release plan API and parent project key"
+        ],
+        "sensor_candidates": [
+          "Diff",
+          "Vue build",
+          "Browser viewport and request observations"
+        ],
+        "actuator_candidates": [
+          "Component-local template and styles"
+        ],
+        "disturbance_candidates": [
+          "Existing global styles",
+          "Long text",
+          "Project switch",
+          "Backend availability",
+          "Browser access"
+        ],
+        "delay_candidates": [
+          "Vite hot reload",
+          "API response time"
+        ],
+        "assumptions": [
+          {
+            "text": "Existing APIs and local test services support all retained functions",
+            "basis": "Current component handlers and prior service startup",
+            "falsifier": "Observed request errors or unavailable services"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Release API\", \"Parent project context\", \"Global theme and Element Plus\", \"Local browser\"], \"inside\": [\"ReleaseDrillPlanView.vue template and scoped styles\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Unavailable alternative roles and fault injection\", \"Independent reviewer not available\"], \"id\": \"S1\", \"independence\": \"Runtime observation by same implementing context; not independent review\", \"method\": \"Existing Edge test tab screenshot, DOM and UI actions\", \"target\": \"R1-R5 rendering and interaction\"}",
+      "{\"blind_spots\": [\"Runtime layout and API failures\"], \"id\": \"S2\", \"independence\": \"Compiler-based structural measurement\", \"method\": \"npm --prefix web run build\", \"target\": \"Template and TypeScript compatibility\"}",
+      "{\"blind_spots\": [\"Runtime authorization\"], \"id\": \"S3\", \"independence\": \"Static comparison, not independent review\", \"method\": \"Git diff and structural source comparison\", \"target\": \"Scope and unchanged business handlers\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Replace template layout and add scoped styles\", \"authority\": \"Confirmed requirement scope\", \"id\": \"A1\", \"impact_radius\": \"Release plan page only\", \"rollback\": \"Reverse task hunks, preserve prior menu rename\", \"target\": \"Component presentation\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Old layout can override local presentation\", \"source\": \"Global release styles\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Some tests may be unavailable\", \"source\": \"Browser capability and available roles\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"Component source contains existing CRUD handlers and live page shows synthetic project B data\", \"falsifier\": \"Changed payload or regression during browser test\", \"text\": \"Existing API functionality is retained by preserving handlers\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Compact directory and wider plan detail",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Old grid gives most width to list; confirmed via browser screenshot"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+      ],
+      "invariants": [
+        "Keep API and all handlers unchanged"
+      ],
+      "interface_contracts": [
+        "Original ReleasePlanDto and projectId"
+      ],
+      "non_goals": [
+        "Backend or other page changes"
+      ],
+      "action_bounds": [
+        "Change page template, display labels and scoped styles"
+      ],
+      "acceptance": [
+        "Vue build passes",
+        "Directory narrower than detail",
+        "Both group entries and form controls retained"
+      ],
+      "evidence_required": [
+        "Diff",
+        "Build exit",
+        "Browser screenshot and cancellation results"
+      ],
+      "rollback": "Reverse only T1 hunks",
+      "stop_conditions": [
+        "Need shared or API changes"
+      ],
+      "escalation_conditions": [
+        "Out-of-scope defect"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T02:49:38+00:00",
+          "text": "Page layout implementation sampled in live browser"
+        },
+        {
+          "recorded_at": "2026-09-07T02:52:07+00:00",
+          "text": "Implementation ready for integrated and independent review"
+        }
+      ],
+      "updated_at": "2026-09-07T02:52:07+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Readable sequence drawer and responsive integration",
+      "requirements": [
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Existing sorted P sequences contain arrays of commands"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillPlanView.vue"
+      ],
+      "invariants": [
+        "Keep handlers, payloads, permissions and merged datetime range"
+      ],
+      "interface_contracts": [
+        "Original ReleasePlanTimelineDto and ReleasePlanItemDto"
+      ],
+      "non_goals": [
+        "Date axis or new business fields"
+      ],
+      "action_bounds": [
+        "Change drawer presentation and local responsive styles only"
+      ],
+      "acceptance": [
+        "Vue build passes",
+        "P columns show multiple commands",
+        "Drawer buttons do not overlap",
+        "Mobile local scrolling and cancellation verified or gaps disclosed"
+      ],
+      "evidence_required": [
+        "Diff",
+        "Build exit",
+        "Desktop/mobile browser results",
+        "Scope/governance results"
+      ],
+      "rollback": "Reverse only T2 hunks",
+      "stop_conditions": [
+        "Need backend or shared overlay changes"
+      ],
+      "escalation_conditions": [
+        "Critical verification gap"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T02:52:12+00:00",
+          "text": "T1 build and local checks passed; serial drawer work begins"
+        },
+        {
+          "recorded_at": "2026-09-07T03:35:10+00:00",
+          "text": "Implemented; independent acceptance and recorded gaps remain"
+        }
+      ],
+      "updated_at": "2026-09-07T03:35:10+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1-desktop-self-check",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "execution-T1: build passed, directory 300/detail 1280, cancellation and edit form sampled; non-independent",
+      "recorded_at": "2026-09-07T03:38:24+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2-integrated-self-check",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "observation-T2: final build and sampled desktop/mobile paths passed; coverage gaps and governance failures remain; not independent acceptance",
+      "recorded_at": "2026-09-07T03:38:26+00:00"
+    }
+  ]
+}

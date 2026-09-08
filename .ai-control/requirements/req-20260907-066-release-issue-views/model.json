@@ -1,0 +1,282 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "Issue component query/display/drawer state"
+    ],
+    "environment": [
+      "release API DTOs",
+      "auth store",
+      "keyed project parent",
+      "Element Plus",
+      "global semantic themes"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "issues",
+      "owner": "ReleaseIssueTrackingView",
+      "valid_values": [
+        "Existing typed DTO or component-local state"
+      ]
+    },
+    {
+      "name": "query",
+      "owner": "ReleaseIssueTrackingView",
+      "valid_values": [
+        "Existing typed DTO or component-local state"
+      ]
+    },
+    {
+      "name": "pagination",
+      "owner": "ReleaseIssueTrackingView",
+      "valid_values": [
+        "Existing typed DTO or component-local state"
+      ]
+    },
+    {
+      "name": "drawer mode",
+      "owner": "ReleaseIssueTrackingView",
+      "valid_values": [
+        "Existing typed DTO or component-local state"
+      ]
+    },
+    {
+      "name": "copied form",
+      "owner": "ReleaseIssueTrackingView",
+      "valid_values": [
+        "Existing typed DTO or component-local state"
+      ]
+    },
+    {
+      "name": "saving",
+      "owner": "ReleaseIssueTrackingView",
+      "valid_values": [
+        "Existing typed DTO or component-local state"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "Read-only issue details are available from either view.",
+      "transitions": [
+        "User control event",
+        "Local state update or existing API",
+        "Vue render"
+      ],
+      "outputs": [
+        "Matching details / form / records / scoped actions"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "Create and edit issues in drawers with existing fields, validation and feedback.",
+      "transitions": [
+        "User control event",
+        "Local state update or existing API",
+        "Vue render"
+      ],
+      "outputs": [
+        "Matching details / form / records / scoped actions"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "Switch card/list presentation without losing query or pagination context.",
+      "transitions": [
+        "User control event",
+        "Local state update or existing API",
+        "Vue render"
+      ],
+      "outputs": [
+        "Matching details / form / records / scoped actions"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "Both views and drawers remain usable on desktop and mobile.",
+      "transitions": [
+        "User control event",
+        "Local state update or existing API",
+        "Vue render"
+      ],
+      "outputs": [
+        "Matching details / form / records / scoped actions"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "Preserve project isolation, service-side pagination and permission/error/cancel semantics.",
+      "transitions": [
+        "User control event",
+        "Local state update or existing API",
+        "Vue render"
+      ],
+      "outputs": [
+        "Matching details / form / records / scoped actions"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "ReleaseIssueDto/Write",
+      "producers": [
+        "api/release.ts"
+      ],
+      "consumers": [
+        "ReleaseIssueTrackingView"
+      ],
+      "invariant": "Keep projectId, rowVersion, fields, existing CRUD requests"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "Component contracts and state transitions",
+      "method": "Diff inspection and executable Node checks of Vue script with mocked existing APIs",
+      "blind_spots": [
+        "DOM layout",
+        "live authorization"
+      ],
+      "independence": "Assertions against approved behaviors"
+    },
+    {
+      "id": "S2",
+      "target": "Vue template/types",
+      "method": "npm --prefix web run build",
+      "blind_spots": [
+        "Runtime layouts",
+        "server writes"
+      ],
+      "independence": "Compiler diagnostics"
+    },
+    {
+      "id": "S3",
+      "target": "User journeys and responsive layout",
+      "method": "Browser DOM and screenshot acceptance when access available",
+      "blind_spots": [
+        "Currently browser authorization timed out twice"
+      ],
+      "independence": "Direct rendered output; unavailable now"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "Issue local state/template/styles",
+      "action": "Edit only component within T1/T2",
+      "authority": "Approved scope on licon",
+      "impact_radius": "Issue page only",
+      "rollback": "Reverse this task hunks only"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "Browser approval timeout",
+      "effect": "No live acceptance possible in this turn unless authorization restored",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "Existing dirty worktree/governance branch naming",
+      "effect": "Whole-tree checks may fail independently",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "API and drawer transition",
+      "consequence": "Stale sampling",
+      "sampling_rule": "Wait for completed request and render before runtime acceptance"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Full list DTO supplies details",
+      "evidence": "Read current DTO and list UI",
+      "falsifier": "Live values missing or truncated"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Implement and run state/compiler checks; retain observing until actual browser verification"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Implement and run state/compiler checks; retain observing until actual browser verification"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Implement and run state/compiler checks; retain observing until actual browser verification"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Implement and run state/compiler checks; retain observing until actual browser verification"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Implement and run state/compiler checks; retain observing until actual browser verification"
+    }
+  ],
+  "model_status": "ready"
+}

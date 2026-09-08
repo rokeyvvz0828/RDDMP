@@ -1,0 +1,108 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "ccb_platform_licon.rel_release_drill_round",
+      "purpose": "6 synthetic rounds for projects940001/940002"
+    },
+    {
+      "path_or_resource": "ccb_platform_licon.rel_release_drill_step",
+      "purpose": "36 synthetic steps,6 per round"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.sql",
+      "purpose": "Guarded insert-only transaction"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs",
+      "purpose": "Dry run,apply,verification and original-row fingerprints"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260907-068-release-drill-demo-data/fixtures.json",
+      "purpose": "Exact generated batch ID manifest"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2"
+  ],
+  "commands": [
+    {
+      "command": "node --check docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs",
+      "exit_code": 0,
+      "salient_output": "Syntax valid"
+    },
+    {
+      "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --dry-run",
+      "exit_code": 0,
+      "salient_output": "Would insert6 rounds36 steps; rolled back; batchRows0; original hashes unchanged"
+    },
+    {
+      "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --apply",
+      "exit_code": 0,
+      "salient_output": "Inserted6 rounds36 steps; fresh connection verifies references,step sequences,times and statuses"
+    },
+    {
+      "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --apply (second invocation)",
+      "exit_code": 0,
+      "salient_output": "Inserted0 rounds0 steps; original hashes unchanged"
+    },
+    {
+      "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --verify",
+      "exit_code": 0,
+      "salient_output": "6 rounds36 steps verified; A7/B6 active round totals"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors; prior source CRLF notices only"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Original database records",
+      "result": "pass",
+      "evidence": ".ai-control/requirements/req-20260907-068-release-drill-demo-data/database-evidence.json",
+      "limitations": [
+        "Digest covers both selected projects including deleted rows, not other modules"
+      ]
+    },
+    {
+      "check": "Persistence and idempotency",
+      "result": "pass",
+      "evidence": "Committed writes plus fresh connection and repeated apply",
+      "limitations": [
+        "Self-verification, no real browser or authenticated API verification"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "Only current requirement scripts/docs/ledger files",
+    "No source/schema/account/permission changes",
+    "Offline seed actor0, owners null, actual user not impersonated"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Existing data preserved",
+      "result": "pass",
+      "evidence": "10 original round rows and1 original step row have identical before/afterSHA256; 7 of10 rounds are active"
+    },
+    {
+      "invariant": "Project and tenant relationship",
+      "result": "pass",
+      "evidence": "SQL join checks and fresh assertions"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Documented mock.release login401",
+      "impact": "No API write, account reset or permission changes; authorized local DB seed used"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Independent human/database review and browser refresh acceptance not performed"
+  ],
+  "recommended_next": "observe"
+}

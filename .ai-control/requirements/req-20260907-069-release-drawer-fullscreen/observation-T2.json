@@ -1,0 +1,64 @@
+{
+  "sample_label": "T2",
+  "task_ids": [
+    "T1",
+    "T2"
+  ],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1/S2",
+      "result": "pass",
+      "raw_evidence": [
+        {
+          "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+          "exit_code": 0,
+          "salient_output": "PASS: reactive fullscreen/reset/isolation; 5 drawers; original scripts, bindings, guards and dialogs preserved"
+        },
+        {
+          "command": "npm --prefix web run build",
+          "exit_code": 0,
+          "salient_output": "2569 modules transformed; built in 35.21s; existing PURE annotations and large chunk warnings"
+        }
+      ],
+      "limitation": [
+        "five bindings and sizes measured synthetically, not actual browser geometry"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1",
+      "result": "pass",
+      "raw_evidence": "reactive/reset/isolation plus original script/events/forms/dialog AST assertions",
+      "limitation": [
+        "runtime network, nested focus and unsaved prompt interaction unmeasured"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1/S2/S3",
+      "result": "unobservable",
+      "raw_evidence": "CSS parsed: dedicated selector width/max-width100vw height/max-height100dvh; build0; browser inventory only",
+      "limitation": [
+        "desktop/mobile light/dark screenshots missing"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "REQ061 YAML baseline failure",
+    "licon branch baseline failure",
+    "browser access unresolved"
+  ],
+  "coverage_gaps": [
+    "No authorized real browser matrix or independent UI acceptance; do not mark converged"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

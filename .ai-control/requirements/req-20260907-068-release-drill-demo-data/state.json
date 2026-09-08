@@ -1,0 +1,779 @@
+{
+  "schema_version": 4,
+  "revision": 14,
+  "created_at": "2026-09-07T07:45:20+00:00",
+  "updated_at": "2026-09-07T07:52:45+00:00",
+  "mode": "standard",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-07T07:45:20+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "baseline-ready-local-targets-resolved",
+      "recorded_at": "2026-09-07T07:45:24+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "direct-db-sensors-available",
+      "recorded_at": "2026-09-07T07:46:46+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "plan-ready",
+      "recorded_at": "2026-09-07T07:46:51+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "measurable-db-output-ready",
+      "recorded_at": "2026-09-07T07:52:40+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "user-confirmed-current-db-projects-A-B",
+        "recorded_at": "2026-09-07T07:45:22+00:00",
+        "data": {
+          "objective": "Add identifiable drill test data for the two user-selected demonstration projects in the current local database",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Each specified project gains 3 identifiable rounds with 6 ordered steps each",
+              "acceptance": [
+                "A=940001 and B=940002 each have 3 new rounds and 18 new steps",
+                "Cover PLANNED/RUNNING/COMPLETED and meaningful synthetic descriptions/results"
+              ],
+              "priority": "must",
+              "source": "User confirmed 3 rounds, 5-8 steps and specified demonstration projects A/B in current database",
+              "counterexample": [
+                "Only frontend mock exists or wrong project is seeded"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Retain existing data and valid tenant/project/plan/environment relationships",
+              "acceptance": [
+                "All new rows tenant 1 and exactly project 940001 or 940002",
+                "Reuse their own existing plan/environment",
+                "No existing row updates/deletions",
+                "Rerun creates no duplicates"
+              ],
+              "priority": "must",
+              "source": "User scope and repository safety rules",
+              "counterexample": [
+                "Cross-project reference",
+                "Existing rows overwritten"
+              ]
+            }
+          ],
+          "invariants": [
+            "No production access",
+            "No credential disclosure",
+            "No application, schema, permission or account changes",
+            "Only release-owned round and step table inserts"
+          ],
+          "constraints": [
+            "Current local ccb_platform_licon only",
+            "Current licon workspace; no restart/commit/push",
+            "Owner IDs optional and left null; seed attribution created_by/updated_by=0 (offline fixture, not impersonated user)"
+          ],
+          "non_goals": [
+            "Create projects, plans, environments, issues, users",
+            "UI changes or login repair"
+          ],
+          "assumptions": [
+            {
+              "text": "Existing local schema supports current drill DTOs",
+              "basis": "SHOW COLUMNS and release store checked",
+              "falsifier": "Schema assertions or existing references fail"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "Target database and projects",
+              "options": [
+                "Current local database, demonstration projects A/B"
+              ],
+              "selected": "Current local database, demonstration projects A/B",
+              "blocking": false,
+              "source": "Latest user message"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Persisted counts, statuses, ordered times and synthetic fields",
+              "candidate_sensor": "Fresh MySQL read after committed transaction"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Original row fingerprint, references and rerun counts",
+              "candidate_sensor": "Before/after SQL snapshot and guarded idempotency rerun"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "mysql-schema-and-exact-projects-validated",
+        "recorded_at": "2026-09-07T07:46:45+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "Local ccb_platform_licon release drill rounds and steps for tenant1/projects940001,940002"
+            ],
+            "environment": [
+              "Existing localhost backend and MySQL8.4 container",
+              "UI reads current release store joins"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "seed_records",
+              "owner": "business/release",
+              "valid_values": [
+                "absent",
+                "partial",
+                "complete"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Identified synthetic batch",
+              "transitions": [
+                "Validate database, exact projects and own plan/environment",
+                "Transaction with ID collision assertions",
+                "Insert missing rounds and steps",
+                "Commit and fresh readback"
+              ],
+              "outputs": [
+                "6 rounds/36 steps with project scope; existing rows unchanged"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Identified synthetic batch",
+              "transitions": [
+                "Validate database, exact projects and own plan/environment",
+                "Transaction with ID collision assertions",
+                "Insert missing rounds and steps",
+                "Commit and fresh readback"
+              ],
+              "outputs": [
+                "6 rounds/36 steps with project scope; existing rows unchanged"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "ReleaseOperationsStore.findReleaseDrillRounds/findDrillSteps",
+              "producers": [
+                "rel_release_drill_round",
+                "rel_release_drill_step",
+                "rel_release_plan",
+                "rel_release_drill_environment"
+              ],
+              "consumers": [
+                "ReleaseDrillExecutionView"
+              ],
+              "invariant": "tenant/project relationships and deleted=0; optional owner null"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Fixture persistence and relationships",
+              "method": "Fresh MySQL connection count/join/field checks",
+              "blind_spots": [
+                "Rendered browser and HTTP auth"
+              ],
+              "independence": "Direct database readback separate from insert transaction"
+            },
+            {
+              "id": "S2",
+              "target": "Existing data preservation and idempotency",
+              "method": "Sorted original-row SHA256 snapshot before/after and second-run inserted row counts",
+              "blind_spots": [
+                "Concurrent legitimate edits may change snapshot"
+              ],
+              "independence": "Exact row digest, not based only on insert success"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Two release-owned tables",
+              "action": "Guarded insert-only fixture transaction",
+              "authority": "User explicitly requested test data for current DB projects A/B",
+              "impact_radius": "6 rounds36 steps only",
+              "rollback": "Transaction rollback on failure; exact batch IDs cleanup if unmodified and unreferenced"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Documented mock.release account returned401",
+              "effect": "No API write or browser acceptance via that account",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Concurrent project edits",
+              "effect": "Seed preconditions or preservation snapshot can change",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Database commit",
+              "consequence": "Other connection must read after commit",
+              "sampling_rule": "Verify using a fresh mysql process after commit"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Current localhost DB is intended test target",
+              "evidence": "User explicitly current DB; DB_URL loopback ccb_platform_licon; matching synthetic projects",
+              "falsifier": "Non-local configuration or exact project assertions fail"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Bounded fixture inserts then readback"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Bounded fixture inserts then readback"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "approved-targets-bounded-seed-plan",
+        "recorded_at": "2026-09-07T07:46:49+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Create and verify bounded synthetic drill data",
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "DB ccb_platform_licon MySQL8.4 local container",
+                "Projects940001/940002 tenant1; A4/B3 existing rounds",
+                "Own plans100942001/100943001 and environments200942001/200943001 exist"
+              ],
+              "write_scope": [
+                "docs/requirements/REQ-20260907-068-release-drill-demo-data/**",
+                ".ai-control/requirements/req-20260907-068-release-drill-demo-data/*.json",
+                "Local database: rel_release_drill_round and rel_release_drill_step fixture batch REQ068 only"
+              ],
+              "invariants": [
+                "No production access",
+                "No credential disclosure",
+                "No application, schema, permission or account changes",
+                "Only release-owned round and step table inserts"
+              ],
+              "interface_contracts": [
+                "Current ReleaseOperationsStore joins and optional owners"
+              ],
+              "non_goals": [
+                "Create projects, plans, environments, issues, users",
+                "UI changes or login repair"
+              ],
+              "action_bounds": [
+                "Write SQL and local runner in task directory",
+                "Assert IDs, names, tenant and references; serializable insert-only transaction",
+                "Use created_by=0 explicitly offline seed; no user impersonation or sys_audit writes",
+                "Run SQL then fresh readback and idempotency check"
+              ],
+              "acceptance_checks": [
+                "6 new rounds/36 steps across two projects",
+                "Existing row fingerprints unchanged",
+                "Second run0 inserts",
+                "No invalid dates or joins"
+              ],
+              "evidence_required": [
+                "SQL and runner",
+                "Command exits and sanitized JSON result",
+                "Original fingerprints and batch IDs"
+              ],
+              "rollback": "Only unmodified/unreferenced exact batch IDs; never pre-existing records",
+              "stop_conditions": [
+                "Wrong DB or missing project/reference",
+                "ID collision or duplicate round number",
+                "Any validation failure"
+              ],
+              "escalation_conditions": [
+                "Requires schema/account/permission change",
+                "Cannot validate local target"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Fresh connection readback and rerun"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "preflight",
+              "trigger": "Before seed",
+              "observer": "Main agent direct database check",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ]
+            },
+            {
+              "label": "postcommit",
+              "trigger": "After commit and repeat",
+              "observer": "Fresh MySQL process; self-verification clearly identified",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "committed-6-rounds-36-steps-and-idempotency-pass",
+        "recorded_at": "2026-09-07T07:52:35+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ccb_platform_licon.rel_release_drill_round",
+              "purpose": "6 synthetic rounds for projects940001/940002"
+            },
+            {
+              "path_or_resource": "ccb_platform_licon.rel_release_drill_step",
+              "purpose": "36 synthetic steps,6 per round"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.sql",
+              "purpose": "Guarded insert-only transaction"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs",
+              "purpose": "Dry run,apply,verification and original-row fingerprints"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-068-release-drill-demo-data/fixtures.json",
+              "purpose": "Exact generated batch ID manifest"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2"
+          ],
+          "commands": [
+            {
+              "command": "node --check docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs",
+              "exit_code": 0,
+              "salient_output": "Syntax valid"
+            },
+            {
+              "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --dry-run",
+              "exit_code": 0,
+              "salient_output": "Would insert6 rounds36 steps; rolled back; batchRows0; original hashes unchanged"
+            },
+            {
+              "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --apply",
+              "exit_code": 0,
+              "salient_output": "Inserted6 rounds36 steps; fresh connection verifies references,step sequences,times and statuses"
+            },
+            {
+              "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --apply (second invocation)",
+              "exit_code": 0,
+              "salient_output": "Inserted0 rounds0 steps; original hashes unchanged"
+            },
+            {
+              "command": "node docs/requirements/REQ-20260907-068-release-drill-demo-data/seed.mjs --verify",
+              "exit_code": 0,
+              "salient_output": "6 rounds36 steps verified; A7/B6 active round totals"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; prior source CRLF notices only"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Original database records",
+              "result": "pass",
+              "evidence": ".ai-control/requirements/req-20260907-068-release-drill-demo-data/database-evidence.json",
+              "limitations": [
+                "Digest covers both selected projects including deleted rows, not other modules"
+              ]
+            },
+            {
+              "check": "Persistence and idempotency",
+              "result": "pass",
+              "evidence": "Committed writes plus fresh connection and repeated apply",
+              "limitations": [
+                "Self-verification, no real browser or authenticated API verification"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Only current requirement scripts/docs/ledger files",
+            "No source/schema/account/permission changes",
+            "Offline seed actor0, owners null, actual user not impersonated"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Existing data preserved",
+              "result": "pass",
+              "evidence": "10 original round rows and1 original step row have identical before/afterSHA256; 7 of10 rounds are active"
+            },
+            {
+              "invariant": "Project and tenant relationship",
+              "result": "pass",
+              "evidence": "SQL join checks and fresh assertions"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Documented mock.release login401",
+              "impact": "No API write, account reset or permission changes; authorized local DB seed used"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Independent human/database review and browser refresh acceptance not performed"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "self-check-pass-live-database",
+        "recorded_at": "2026-09-07T07:52:43+00:00",
+        "data": {
+          "sample_label": "fresh-database-readback",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "observer": "Main agent self-verification with fresh mysql processes; not independent human review",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1",
+              "result": "pass",
+              "raw_evidence": "database-evidence.json verify:6 rounds36 steps, A roundNo5-7,B4-6;each6 steps with seq1-6, ordered datetime ranges and expected status",
+              "limitation": [
+                "Rendered UI not measured"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1/S2",
+              "result": "pass",
+              "raw_evidence": "before/after hashes identical for10 original rounds and1 original step; repeat inserts0; project/tenant/plan/environment joins pass",
+              "limitation": [
+                "Independent reviewer not available; current data remains editable by user"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Mock account401; no authenticated API verification"
+          ],
+          "coverage_gaps": [
+            "Browser refresh/select A/B not tested",
+            "Independent review pending",
+            "Maven/Vue builds not run: no product source changed"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete",
+          "conclusion": "No blocking deviation observed in persisted-data checks. Do not claim browser acceptance or independent convergence."
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Add identifiable drill test data for the two user-selected demonstration projects in the current local database",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Each specified project gains 3 identifiable rounds with 6 ordered steps each",
+      "acceptance": [
+        "A=940001 and B=940002 each have 3 new rounds and 18 new steps",
+        "Cover PLANNED/RUNNING/COMPLETED and meaningful synthetic descriptions/results"
+      ],
+      "priority": "must",
+      "source": "User confirmed 3 rounds, 5-8 steps and specified demonstration projects A/B in current database",
+      "counterexample": [
+        "Only frontend mock exists or wrong project is seeded"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Retain existing data and valid tenant/project/plan/environment relationships",
+      "acceptance": [
+        "All new rows tenant 1 and exactly project 940001 or 940002",
+        "Reuse their own existing plan/environment",
+        "No existing row updates/deletions",
+        "Rerun creates no duplicates"
+      ],
+      "priority": "must",
+      "source": "User scope and repository safety rules",
+      "counterexample": [
+        "Cross-project reference",
+        "Existing rows overwritten"
+      ]
+    }
+  ],
+  "invariants": [
+    "No production access",
+    "No credential disclosure",
+    "No application, schema, permission or account changes",
+    "Only release-owned round and step table inserts"
+  ],
+  "constraints": [
+    "Current local ccb_platform_licon only",
+    "Current licon workspace; no restart/commit/push",
+    "Owner IDs optional and left null; seed attribution created_by/updated_by=0 (offline fixture, not impersonated user)"
+  ],
+  "non_goals": [
+    "Create projects, plans, environments, issues, users",
+    "UI changes or login repair"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"Existing localhost backend and MySQL8.4 container\", \"UI reads current release store joins\"], \"inside\": [\"Local ccb_platform_licon release drill rounds and steps for tenant1/projects940001,940002\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Rendered browser and HTTP auth\"], \"id\": \"S1\", \"independence\": \"Direct database readback separate from insert transaction\", \"method\": \"Fresh MySQL connection count/join/field checks\", \"target\": \"Fixture persistence and relationships\"}",
+      "{\"blind_spots\": [\"Concurrent legitimate edits may change snapshot\"], \"id\": \"S2\", \"independence\": \"Exact row digest, not based only on insert success\", \"method\": \"Sorted original-row SHA256 snapshot before/after and second-run inserted row counts\", \"target\": \"Existing data preservation and idempotency\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Guarded insert-only fixture transaction\", \"authority\": \"User explicitly requested test data for current DB projects A/B\", \"id\": \"A1\", \"impact_radius\": \"6 rounds36 steps only\", \"rollback\": \"Transaction rollback on failure; exact batch IDs cleanup if unmodified and unreferenced\", \"target\": \"Two release-owned tables\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"No API write or browser acceptance via that account\", \"source\": \"Documented mock.release account returned401\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Seed preconditions or preservation snapshot can change\", \"source\": \"Concurrent project edits\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"User explicitly current DB; DB_URL loopback ccb_platform_licon; matching synthetic projects\", \"falsifier\": \"Non-local configuration or exact project assertions fail\", \"text\": \"Current localhost DB is intended test target\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Create and verify bounded synthetic drill data",
+      "requirements": [
+        "R1",
+        "R2"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "DB ccb_platform_licon MySQL8.4 local container",
+        "Projects940001/940002 tenant1; A4/B3 existing rounds",
+        "Own plans100942001/100943001 and environments200942001/200943001 exist"
+      ],
+      "write_scope": [
+        "docs/requirements/REQ-20260907-068-release-drill-demo-data/**",
+        ".ai-control/requirements/req-20260907-068-release-drill-demo-data/*.json",
+        "Local database: rel_release_drill_round and rel_release_drill_step fixture batch REQ068 only"
+      ],
+      "invariants": [
+        "No production access",
+        "No credential disclosure",
+        "No application, schema, permission or account changes",
+        "Only release-owned round and step table inserts"
+      ],
+      "interface_contracts": [
+        "Current ReleaseOperationsStore joins and optional owners"
+      ],
+      "non_goals": [
+        "Create projects, plans, environments, issues, users",
+        "UI changes or login repair"
+      ],
+      "action_bounds": [
+        "Write SQL and local runner in task directory",
+        "Assert IDs, names, tenant and references; serializable insert-only transaction",
+        "Use created_by=0 explicitly offline seed; no user impersonation or sys_audit writes",
+        "Run SQL then fresh readback and idempotency check"
+      ],
+      "acceptance": [
+        "6 new rounds/36 steps across two projects",
+        "Existing row fingerprints unchanged",
+        "Second run0 inserts",
+        "No invalid dates or joins"
+      ],
+      "evidence_required": [
+        "SQL and runner",
+        "Command exits and sanitized JSON result",
+        "Original fingerprints and batch IDs"
+      ],
+      "rollback": "Only unmodified/unreferenced exact batch IDs; never pre-existing records",
+      "stop_conditions": [
+        "Wrong DB or missing project/reference",
+        "ID collision or duplicate round number",
+        "Any validation failure"
+      ],
+      "escalation_conditions": [
+        "Requires schema/account/permission change",
+        "Cannot validate local target"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T07:46:53+00:00",
+          "text": "begin-seed-script-and-validation"
+        },
+        {
+          "recorded_at": "2026-09-07T07:52:37+00:00",
+          "text": "database-readback-pass-independent-review-pending"
+        }
+      ],
+      "updated_at": "2026-09-07T07:52:37+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "dry-run",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "rollback-batch-zero-original-hashes-unchanged",
+      "recorded_at": "2026-09-07T07:52:38+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "committed-readback",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "fresh-db-6-rounds-36-steps-rerun-zero-preservation-pass",
+      "recorded_at": "2026-09-07T07:52:45+00:00"
+    }
+  ]
+}

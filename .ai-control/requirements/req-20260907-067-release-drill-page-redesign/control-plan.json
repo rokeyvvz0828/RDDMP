@@ -1,0 +1,264 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "轮次导航、当前详情和步骤的响应式展示改版",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ReleaseDrillExecutionView.vue 当前无未提交修改，模板用共享 release-operations-grid 将左区设得比详情宽",
+        "rounds 与 selectedId 是单一数据/选择状态，selectedRound() 返回匹配项或首项",
+        "DTO 已返回 roundNo/roundName/status/resultContent/releasePlanName/environmentName/plannedAt/steps",
+        "父 ReleaseOperationsManagement.vue 使用 drills-projectRef key 重建页面；不修改父组件"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/*.json"
+      ],
+      "invariants": [
+        "轮次、步骤字段和增删改语义保持不变",
+        "投产方案和投产环境关联必填；成员、方案、环境选项来源不变",
+        "projectId、roundId、id、rowVersion 及原有服务端权限审计不变",
+        "轮次维护仍是弹窗，步骤维护仍是抽屉",
+        "保留已有其他页面与任务改动"
+      ],
+      "interface_contracts": [
+        "ReleaseDrillExecutionDto、ReleaseDrillStepDto",
+        "rounds、selectedId、selectedRound()、load()",
+        "openRound(round?)、removeRound(round)、openStep(step?)、removeStep(step)",
+        "canManage()、UiPageHeader、UiStatusTag、UiEmptyState"
+      ],
+      "non_goals": [
+        "新筛选、统计块、看板和视图切换能力",
+        "执行引擎、自动计算耗时、拖拽排序",
+        "将轮次弹窗改为抽屉",
+        "更改投产方案、环境、问题跟踪或组织页面"
+      ],
+      "action_bounds": [
+        "仅变更演练组件及本任务元数据",
+        "继续当前 licon 工作区，不提交、推送、切分支或重启服务",
+        "不修改共享 UI、共享 CSS、API、路由、后端、数据库或依赖",
+        "不读取 .env、敏感数据或生产环境",
+        "完成设计文档复核及实施计划批准后才实施"
+      ],
+      "acceptance_checks": [
+        "标题和操作只保留已确认结构，详情区大于导航区",
+        "轮次选择、刷新和步骤对应不变",
+        "所有摘要和步骤字段可读，手机纵向步骤",
+        "无共享CSS或API变更"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "Build exit code",
+        "Synthetic tests",
+        "Browser evidence or explicit gaps"
+      ],
+      "rollback": "只撤销T1在演练组件的展示和样式hunks及本任务记录；保留其他页面改动。",
+      "stop_conditions": [
+        "需要修改共享样式/父组件/API或未建模字段"
+      ],
+      "escalation_conditions": [
+        "新增展示需要后端字段或项目隔离契约变化"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "保留原轮次弹窗和步骤抽屉的分区表单及完整回归",
+      "requirement_ids": [
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "轮次维护使用 el-dialog，步骤使用 el-drawer，原字段和必填规则已逐项读取",
+        "roundForm 与 stepForm 由 openRound/openStep 赋值；saveStep 将 range 拆成 DTO 的 plannedStart/plannedEnd",
+        "原保存分别用 saving/stepSaving 防重复；删除忽略 cancel/close",
+        "web/package.json 只有 dev/build/preview，没有专用单测框架"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/*.json"
+      ],
+      "invariants": [
+        "轮次、步骤字段和增删改语义保持不变",
+        "投产方案和投产环境关联必填；成员、方案、环境选项来源不变",
+        "projectId、roundId、id、rowVersion 及原有服务端权限审计不变",
+        "轮次维护仍是弹窗，步骤维护仍是抽屉",
+        "保留已有其他页面与任务改动"
+      ],
+      "interface_contracts": [
+        "T1 原状态和局部模板",
+        "ReleaseDrillExecutionWrite、ReleaseDrillStepWrite",
+        "roundForm、stepForm、roundDialog、stepDrawer、editingRound、editingStep",
+        "create/update/deleteReleaseDrill 与 create/update/deleteReleaseDrillStep"
+      ],
+      "non_goals": [
+        "新筛选、统计块、看板和视图切换能力",
+        "执行引擎、自动计算耗时、拖拽排序",
+        "将轮次弹窗改为抽屉",
+        "更改投产方案、环境、问题跟踪或组织页面"
+      ],
+      "action_bounds": [
+        "仅变更演练组件及本任务元数据",
+        "继续当前 licon 工作区，不提交、推送、切分支或重启服务",
+        "不修改共享 UI、共享 CSS、API、路由、后端、数据库或依赖",
+        "不读取 .env、敏感数据或生产环境",
+        "完成设计文档复核及实施计划批准后才实施"
+      ],
+      "acceptance_checks": [
+        "轮次与步骤原字段和验证未变化",
+        "弹层正文滚动且页脚可达，取消与保存中行为正确",
+        "CRUD 参数、版本、权限与项目切换回归",
+        "运行证据与合成检查明确区分"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "Build exit code",
+        "Synthetic tests",
+        "Browser evidence or explicit gaps"
+      ],
+      "rollback": "只撤销T2弹层和状态保护专项hunks及本任务测试记录；不撤销T1或此前任务。",
+      "stop_conditions": [
+        "必须改变DTO、后端校验、状态枚举或共享UI才能继续"
+      ],
+      "escalation_conditions": [
+        "发现跨项目/轮次提交、权限回归或无法安全完成真实写入验收"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "同一组件串行；T2在T1布局上重排弹层并集成回归"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1",
+        "T2"
+      ],
+      "checks": [
+        "Build, Node state assertions, actual browser and original CRUD if authorized"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1-sample",
+      "trigger": "轮次导航、当前详情和步骤的响应式展示改版 implemented",
+      "observer": "Main agent local self-check; independent live acceptance separately",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ]
+    },
+    {
+      "label": "T2-sample",
+      "trigger": "保留原轮次弹窗和步骤抽屉的分区表单及完整回归 implemented",
+      "observer": "Main agent local self-check; independent live acceptance separately",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}
