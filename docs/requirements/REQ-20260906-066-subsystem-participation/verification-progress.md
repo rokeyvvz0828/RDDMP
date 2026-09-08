@@ -174,3 +174,8 @@
 - 当前需求范围检查受Windows CRLF误读ready影响，当前需求文档归一LF后通过；未改公共检查脚本。迭代中误插入回调的isCurrent检查已修正，最终类型检查及新页面无错误。
 - 本次为执行者自验，非作者Owner权限/数据库专项复核仍需外部完成。当前前缀req-20260906-066-subsystem-participation，phase保留observing，不把实现完成写成整体converged。
 - 用户明确要求合并回dev-ivanh，此前已本地快进至c201f29；本轮收尾小步提交在该分支，不操作main、PR合并或发布。回退只需回退本轮提交，无需回滚数据库或删除合成验收数据。
+
+## 2026-09-08 用户确认剩余验收
+用户确认治理问题移交其他人员、Owner许可及专项复核已完成、剩余手工验收通过。详见acceptance-confirmation-20260908.md。以上按用户提供证据记录，未伪造Codex独立执行记录；范围外静态检查仍失败，不绕过Required Checks。本轮只更新验收与账本，沿用85f023b最终代码的731项测试及构建证据。
+
+- 最终结构化报告convergence-final-20260908.json已登记，门禁PASS，T1-T6全部verified；经控制脚本转入converged（revision 156）。此结论仅为REQ066需求收敛，范围外检查失败及远端发布门禁不变。
