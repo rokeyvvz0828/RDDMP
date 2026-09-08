@@ -128,6 +128,16 @@ public class RequirementDifferenceService {
         security.requireDifferenceEditable(user, before);
         Map<String, Object> values = normalized(body);
         validate(values, user);
+        String existingReqNo = RequirementValues.text(before, "requirement_no");
+        String nextReqNo = RequirementValues.text(values, "requirement_no");
+        if (nextReqNo != null && !nextReqNo.equals(existingReqNo)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "需求编号创建后不可修改");
+        }
+        String existingSeqNo = before.get("seq_no") == null ? null : String.valueOf(before.get("seq_no")).trim();
+        String nextSeqNo = values.get("seq_no") == null ? null : String.valueOf(values.get("seq_no")).trim();
+        if (nextSeqNo != null && !nextSeqNo.equals(existingSeqNo)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "序号创建后不可修改");
+        }
         if (values.isEmpty()) {
             return before;
         }

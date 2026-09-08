@@ -6,7 +6,7 @@ import java.util.Map;
 
 /** 需求管理平台受控枚举（口径来自附件1 list sheet 与《需求管理基线-业务组填写》）。 */
 public final class RequirementEnums {
-    public static final List<String> PROJECT_TYPES = List.of("0~1 新建");
+    public static final List<String> PROJECT_TYPES = List.of("0~1 新建", "NEW", "CONTINUATION");
     public static final List<String> PROJECT_STATUSES = List.of("进行中", "已基线", "已关闭");
     public static final List<String> REVIEW_STATUSES = List.of("待评审", "评审中", "已评审", "已退回");
     public static final List<String> DEV_STATUSES = List.of("未开始", "开发中", "已完成", "已上线");
@@ -234,6 +234,13 @@ public final class RequirementEnums {
         labels.put("workload_change", "工作量需求变更记录");
         labels.put("current_flow_user_name", "当前流转处理人");
         labels.put("review_report_name", "评审报告信息文档");
+        labels.put("project_id", "所属项目");
+        labels.put("current_handler_user_id", "当前处理人 ID");
+        labels.put("current_handler_user_name", "当前处理人");
+        labels.put("can_edit", "是否可编辑");
+        labels.put("created_by", "创建人");
+        labels.put("reviewed_by", "评审人");
+        labels.put("workflow_instance_id", "审批流程实例");
         labels.put("current_stage", "当前阶段");
         labels.put("propose_stage_status", "需求提出阶段状态");
         labels.put("docking_stage_status", "需求对接阶段状态");

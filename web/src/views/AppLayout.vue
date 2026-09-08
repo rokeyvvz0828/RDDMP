@@ -10,7 +10,7 @@ import UiRouteMenuNode from '../components/ui/UiRouteMenuNode.vue'
 import UiUserIdentity from '../components/ui/UiUserIdentity.vue'
 import UiTabs from '../components/ui/UiTabs.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
-import { projectCreationTypeLabels } from '../types/project'
+import { projectCreationTypeLabels, type ProjectCreationType } from '../types/project'
 import { useTabsStore } from '../stores/tabs'
 import { useProjectContextStore } from '../stores/project-context'
 import ThemeSettingsDrawer from '../components/ui/ThemeSettingsDrawer.vue'
@@ -96,6 +96,24 @@ function findMenuTitle(nodes: RouteNode[], path: string): string | null {
 function routeMenuNodeClass(node: RouteNode): string {
   return node.routePath === '/test-management' ? 'app-menu-node--test-management' : ''
 }
+function filterRequirementMenuByProjectType(nodes: RouteNode[], creationType: ProjectCreationType): RouteNode[] {
+  const result: RouteNode[] = []
+  for (const node of nodes) {
+    if (node.routePath === '/requirements/legacy' && creationType === 'NEW') continue
+    if (node.routePath === '/requirements/new-project' && creationType === 'CONTINUATION') continue
+    if (node.children?.length) {
+      result.push({ ...node, children: filterRequirementMenuByProjectType(node.children, creationType) })
+    } else {
+      result.push(node)
+    }
+  }
+  return result
+}
+const visibleMenuRoutes = computed(() => {
+  const creationType = projectContext.current?.creationType
+  if (!creationType) return auth.routes
+  return filterRequirementMenuByProjectType(auth.routes, creationType)
+})
 const title = computed(() => String(route.meta.title || findMenuTitle(auth.routes, route.path) || fallbackTitles[String(route.params.section || route.name || 'dashboard')] || '系统模块'))
 const appTabPath = computed(() => {
   if (route.name === 'project-detail' && route.params.projectId) return route.path
@@ -240,7 +258,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
       </router-link>
       <el-menu :default-active="route.path" mode="horizontal" router class="app-top-menu">
         <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><span>工作台</span></el-menu-item>
-        <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
+        <UiRouteMenuNode v-for="item in visibleMenuRoutes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
       </el-menu>
       <el-button v-if="sideNavigationVisible && !mobileView" class="desktop-sidebar-trigger" text circle :title="theme.sidebarCollapsed ? '展开菜单' : '收起菜单'" @click="toggleSidebar"><el-icon :size="18"><Expand v-if="theme.sidebarCollapsed" /><Fold v-else /></el-icon></el-button>
       <el-select :key="projectSelectVersion" class="project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" :disabled="projectSwitching" placeholder="选择项目" :no-data-text="projectContext.error || '暂无可用项目'" @change="confirmProjectSwitch"><template #label="{ label }"><span class="project-creation-option"><span class="project-creation-option__name" :title="String(label)">{{ label }}</span><UiStatusTag v-if="projectContext.current" :value="projectContext.current.creationType" :labels="projectCreationTypeLabels" :tone="projectContext.current.creationType === 'CONTINUATION' ? 'warning' : 'info'" /></span></template><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref"><span class="project-creation-option"><span class="project-creation-option__name" :title="project.name">{{ project.name }}</span><UiStatusTag :value="project.creationType" :labels="projectCreationTypeLabels" :tone="project.creationType === 'CONTINUATION' ? 'warning' : 'info'" /></span></el-option><template #empty><div class="project-context-select__empty"><span>{{ projectContext.error || '暂无可用项目' }}</span><el-button v-if="projectContext.error" link type="primary" :loading="projectContext.loading" @click.stop="projectContext.retry"><el-icon><Refresh /></el-icon>重试</el-button></div></template></el-select>
@@ -255,7 +273,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
         </router-link>
         <el-menu :default-active="route.path" :collapse="sidebarCollapsed" router class="app-menu">
           <el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item>
-          <UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
+          <UiRouteMenuNode v-for="item in visibleMenuRoutes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" />
         </el-menu>
       </el-aside>
       <el-container>
@@ -271,7 +289,7 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
     <el-drawer v-if="mobileNavigationVisible" v-model="mobileMenuOpen" direction="ltr" size="280px" :with-header="false" class="mobile-menu-drawer">
       <div class="mobile-menu-drawer__header"><router-link to="/dashboard" class="app-logo" aria-label="工程交付平台工作台"><span class="brand-mark" aria-hidden="true">EP</span><span class="app-logo__text"><strong>工程交付平台</strong><small>ENGINEERING DELIVERY</small></span></router-link></div>
       <el-select :key="projectSelectVersion" class="project-context-select mobile-project-context-select" :model-value="projectContext.currentRef" :loading="projectContext.loading" :disabled="projectSwitching" placeholder="选择项目" :no-data-text="projectContext.error || '暂无可用项目'" @change="confirmProjectSwitch"><template #label="{ label }"><span class="project-creation-option"><span class="project-creation-option__name" :title="String(label)">{{ label }}</span><UiStatusTag v-if="projectContext.current" :value="projectContext.current.creationType" :labels="projectCreationTypeLabels" :tone="projectContext.current.creationType === 'CONTINUATION' ? 'warning' : 'info'" /></span></template><el-option v-for="project in projectContext.projects" :key="project.ref" :label="project.name" :value="project.ref"><span class="project-creation-option"><span class="project-creation-option__name" :title="project.name">{{ project.name }}</span><UiStatusTag :value="project.creationType" :labels="projectCreationTypeLabels" :tone="project.creationType === 'CONTINUATION' ? 'warning' : 'info'" /></span></el-option><template #empty><div class="project-context-select__empty"><span>{{ projectContext.error || '暂无可用项目' }}</span><el-button v-if="projectContext.error" link type="primary" :loading="projectContext.loading" @click.stop="projectContext.retry"><el-icon><Refresh /></el-icon>重试</el-button></div></template></el-select>
-      <el-menu :default-active="route.path" router class="app-menu mobile-menu-drawer__menu" @select="mobileMenuOpen = false"><el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item><UiRouteMenuNode v-for="item in auth.routes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" /></el-menu>
+      <el-menu :default-active="route.path" router class="app-menu mobile-menu-drawer__menu" @select="mobileMenuOpen = false"><el-menu-item index="/dashboard"><el-icon><DataBoard /></el-icon><template #title>工作台</template></el-menu-item><UiRouteMenuNode v-for="item in visibleMenuRoutes" :key="item.id" :node="item" :class="routeMenuNodeClass(item)" /></el-menu>
     </el-drawer>
     <ThemeSettingsDrawer v-model="settingsOpen" />
     <el-dialog v-model="avatarDialogOpen" title="更换头像" width="430px" class="avatar-dialog" :close-on-click-modal="false" destroy-on-close @closed="resetAvatarForm">

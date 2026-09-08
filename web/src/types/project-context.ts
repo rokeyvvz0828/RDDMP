@@ -1,6 +1,7 @@
 import type { ProjectStatus, ProjectCreationType } from './project'
 
 export interface ProjectContextItem {
+  id: number
   ref: string
   name: string
   shortName: string

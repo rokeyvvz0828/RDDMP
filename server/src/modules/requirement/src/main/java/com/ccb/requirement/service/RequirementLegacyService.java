@@ -159,6 +159,9 @@ public class RequirementLegacyService {
         values.putIfAbsent("source", "ONLINE");
         values.putIfAbsent("version_no", "1.0");
         values.put("created_by", user.id());
+        // 谁创建谁就是初始处理人
+        values.put("current_flow_user_id", user.id());
+        values.put("current_flow_user_name", user.displayName());
         values.put("deleted", 0);
         RequirementSql.insert(jdbc, "req_legacy_requirement", values);
         saveSystemItems(id, body, user);
@@ -349,9 +352,10 @@ public class RequirementLegacyService {
     public List<Map<String, Object>> systemItems(long id, AuthUser user) {
         requireAccessById(id, user);
         List<Map<String, Object>> items = jdbc.queryForList("""
-                SELECT id, system_role, system_code, system_name, owner_user_id, owner_user_name, remark, created_at
+                SELECT id, system_role, system_code, system_name, owner_user_id, owner_user_name,
+                       start_date, end_date, status, description, remark, created_at
                 FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
-                ORDER BY FIELD(system_role, '主责', '协同'), id
+                ORDER BY FIELD(system_role, '主责', '改造', '测试'), id
                 """, user.tenantId(), id);
         if (!items.isEmpty()) {
             Map<Long, List<Map<String, Object>>> membersByItem = loadMembersByItems(items, user.tenantId());
@@ -377,7 +381,8 @@ public class RequirementLegacyService {
         }
         in.append(")");
         List<Map<String, Object>> items = jdbc.queryForList("""
-                SELECT requirement_id, system_role, system_code, system_name, owner_user_id, owner_user_name
+                SELECT requirement_id, system_role, system_code, system_name, owner_user_id, owner_user_name,
+                       start_date, end_date, status, description
                 FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id IN
                 """ + in + " AND deleted = 0 ORDER BY id", params.toArray());
         for (Map<String, Object> item : items) {
@@ -424,7 +429,7 @@ public class RequirementLegacyService {
                 WHERE tenant_id = ? AND system_item_id IN (
                     SELECT id FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id = ?)
                 """, user.tenantId(), user.tenantId(), requirementId);
-        boolean hasOwner = false;
+        int mainCount = 0;
         for (Object o : list) {
             if (!(o instanceof Map<?, ?> m)) {
                 continue;
@@ -432,30 +437,51 @@ public class RequirementLegacyService {
             @SuppressWarnings("unchecked")
             Map<String, Object> item = (Map<String, Object>) m;
             String role = RequirementValues.text(item, "system_role");
-            if (!"主责".equals(role)) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统子表行仅支持主责，不支持协同");
+            boolean main = "主责".equals(role);
+            boolean coordType = RequirementEnums.COORD_TYPES.contains(role);
+            if (!main && !coordType) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        "系统事项类型仅支持：主责/改造/测试");
+            }
+            if (main) {
+                mainCount++;
+                if (mainCount > 1) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "一个需求只能有一个主责系统");
+                }
             }
             String code = RequirementValues.text(item, "system_code");
             String name = RequirementValues.text(item, "system_name");
             if (code == null && name == null) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统子表行缺少系统编号或名称");
-            }
-            if ("主责".equals(role)) {
-                hasOwner = true;
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统事项行缺少系统编号或名称");
             }
             Object ownerIdRaw = item.get("owner_user_id");
             Long ownerUserId = ownerIdRaw == null || String.valueOf(ownerIdRaw).isBlank()
                     ? null : Long.parseLong(String.valueOf(ownerIdRaw));
+            String status = RequirementValues.text(item, "status");
+            if (status == null) {
+                status = "未开始";
+            }
+            if (!main && !RequirementEnums.COORD_STATUSES.contains(status)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "事项状态不在受控枚举内：" + status);
+            }
             long itemId = RequirementIds.next();
             jdbc.update("""
-                    INSERT INTO req_legacy_system_item (id, tenant_id, requirement_id, system_role, system_code, system_name, owner_user_id, owner_user_name, remark, created_by, deleted)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    INSERT INTO req_legacy_system_item
+                    (id, tenant_id, requirement_id, system_role, system_code, system_name, owner_user_id,
+                     owner_user_name, start_date, end_date, status, description, remark, created_by, deleted)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     """, itemId, user.tenantId(), requirementId, role, code, name,
                     ownerUserId, RequirementValues.text(item, "owner_user_name"),
+                    main ? null : RequirementValues.date(item.get("start_date")),
+                    main ? null : RequirementValues.date(item.get("end_date")),
+                    status,
+                    main ? null : RequirementValues.text(item, "description"),
                     RequirementValues.text(item, "remark"), user.id());
-            saveSystemMembers(itemId, item.get("members"), user);
+            if (main) {
+                saveSystemMembers(itemId, item.get("members"), user);
+            }
         }
-        if (!hasOwner) {
+        if (mainCount == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "至少需要一个主责系统");
         }
     }
