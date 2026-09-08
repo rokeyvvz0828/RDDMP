@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PersonalTaskBoard from './components/PersonalTaskBoard.vue'
 import { getTaskAssignment, assignTask } from './planApi'
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowLeft, Download, Plus, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -10,6 +10,7 @@ import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import { loadPhysicalSubsystemOptions, loadResourceDeploymentUnitOptions } from './api'
 import * as XLSX from 'xlsx'
 import { computed as vueComputed, markRaw, onBeforeUnmount, ref as vueRef, shallowRef } from 'vue'
@@ -78,6 +79,7 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const planId = Number(route.params.id)
 const canManage = computed(() => auth.hasPermission('architecture:plan:manage') || auth.hasPermission('architecture:manage'))
 
@@ -160,11 +162,18 @@ async function saveAssignment() {
   finally { assignmentSaving.value = false }
 }
 
+let loadSequence = 0
 async function loadAll() {
+  if (!projectContext.currentRef) return
+  const sequence = ++loadSequence
+  const projectRef = projectContext.currentRef
+  const isCurrent = () => sequence === loadSequence && projectRef === projectContext.currentRef
   loading.value = true
   loadError.value = ''
   try {
-    detail.value = await getPlan(planId)
+    const loadedDetail = await getPlan(planId)
+    if (!isCurrent()) return
+    detail.value = loadedDetail
     void loadUserMap()
     if (currentTask.value && !detail.value.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
       currentTask.value = null
@@ -173,26 +182,46 @@ async function loadAll() {
     if (openStages.value.length === 0 && detail.value.stages.length > 0) {
       openStages.value = [String(detail.value.stages[0].id)]
     }
-    dashboard.value = await getPlanDashboard(planId, boardAll.value)
-    timeline.value = await getPlanTimeline(planId)
-    suggestions.value = await listPlanSuggestions(planId).catch(() => [])
+    const loadedDashboard = await getPlanDashboard(planId, boardAll.value)
+    if (!isCurrent()) return
+    dashboard.value = loadedDashboard
+    const loadedTimeline = await getPlanTimeline(planId)
+    if (!isCurrent()) return
+    timeline.value = loadedTimeline
+    const loadedSuggestions = await listPlanSuggestions(planId).catch(() => [])
+    if (!isCurrent()) return
+    suggestions.value = loadedSuggestions
     buildFlowchart()
     void nextTick(() => {
+      if (!isCurrent()) return
       flowInitialized.value = true
       window.setTimeout(() => {
+        if (!isCurrent()) return
         const { fitView } = useVueFlow()
         void fitView({ padding: 0.15 })
       }, 150)
     })
   } catch (error) {
-    loadError.value = apiErrorMessage(error, "操作失败")
+    if (isCurrent()) loadError.value = apiErrorMessage(error, "操作失败")
   } finally {
-    loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 
 onMounted(() => {
-  loadAll()
+  // 直达详情时项目上下文仍在初始化，不能抢先发送缺少项目的请求。
+  watch(() => projectContext.currentRef, projectRef => {
+    ++loadSequence
+    loading.value = false
+    detail.value = null
+    dashboard.value = null
+    timeline.value = null
+    suggestions.value = []
+    currentTask.value = null
+    taskDrawerVisible.value = false
+    loadError.value = ''
+    if (projectRef) void loadAll()
+  }, { immediate: true })
 })
 
 function isPlanOwner() {
@@ -1077,7 +1106,9 @@ function formatRange(start: string | null, end: string | null) {
       </template>
     </UiPageHeader>
 
-    <div v-if="loadError" class="architecture-page__error">
+    <el-skeleton v-if="!detail && (loading || projectContext.loading)" :rows="6" animated />
+    <el-alert v-else-if="!projectContext.currentRef" :title="projectContext.error || '请先选择项目'" type="warning" :closable="false" />
+    <div v-else-if="loadError" class="architecture-page__error">
       <el-result icon="error" :title="loadError">
         <template #extra><el-button type="primary" @click="loadAll">重试</el-button></template>
       </el-result>

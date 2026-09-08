@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-08",
+  "source": "用户要求完成此需求；此前已明确合并回dev-ivanh",
+  "phase": "observing",
+  "scope": "仅计划详情页面、当前需求回归脚本和验收记录",
+  "cause": "详情onMounted早于项目异步初始化完成，projectConfig拒绝空projectRef",
+  "changes": [
+    "复用计划列表的项目就绪后加载机制",
+    "无项目提示、初始化骨架与失败重试分离",
+    "使用加载序号及项目引用防止旧响应和旧错误覆盖新页面"
+  ],
+  "reuse": "现有project-context、el-skeleton、el-alert，无新增样式或公共组件变更",
+  "impact": "无API、权限、审计、数据库迁移变更；不扩大可见数据范围",
+  "tests": [
+    "实际loadAll函数提取回归5项通过",
+    "本地admin合成数据：空计划及有任务计划新标签直达无需重试，最终控制台无error",
+    "390/430深色详情布局无页面横向溢出；不等同创建表单全矩阵"
+  ],
+  "rollback": "回退本次独立提交；不回滚此前参与关系迁移或删除测试数据",
+  "verification": "observation-final-20260908.json"
+}

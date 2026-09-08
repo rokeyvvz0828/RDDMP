@@ -1,0 +1,59 @@
+{
+  "sample_label": "最终代码回归与详情直达纠偏",
+  "task_ids": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6"
+  ],
+  "baseline_revision": "REQ066用户确认规则及2026-09-08完成指令",
+  "measurements": [
+    {
+      "result": "pass",
+      "requirement_id": "R2",
+      "sensor": "实际页面加载函数回归",
+      "raw_evidence": "docs/requirements/REQ-20260906-066-subsystem-participation/detail-load-regression.cjs：5项通过",
+      "limitation": [
+        "函数提取和mock，不替代Vue挂载测试"
+      ]
+    },
+    {
+      "result": "pass",
+      "requirement_id": "R8",
+      "sensor": "真实浏览器",
+      "raw_evidence": "本地admin，新tab15有任务计划1788773233451483和tab16空计划1788774666898131均无需重试自动加载；两页最终console error=[]；390x844和430x932深色详情布局无页面横向溢出",
+      "limitation": [
+        "仅本地合成数据；不等同创建表单深色全矩阵和预览网络故障注入"
+      ]
+    },
+    {
+      "result": "pass",
+      "requirement_id": "R8",
+      "sensor": "完整测试与生产构建",
+      "raw_evidence": "2026-09-08 mvn test退出0，731项0失败0错误0跳过，27:40；npm --prefix web run build退出0，vue-tsc通过，vite 34.48s；TEMP/rddmp-066-final-20260908-maven.log及-build.log",
+      "limitation": [
+        "既有chunk体积告警；构建不替代浏览器权限验收"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "迭代中发现isCurrent误插入另一回调，已移除；最终新标签控制台与类型检查通过",
+    "scope检查受本机CRLF影响误读ready，当前需求文档转LF后通过，未修改公共治理脚本"
+  ],
+  "coverage_gaps": [
+    "全仓治理检查退出1：REQ061 scope不是JSON兼容YAML",
+    "Flyway静态检查退出1：历史V84_1命名不符合V<number>；本轮完整MySQL迁移集成测试通过不替代该门禁",
+    "非作者Owner权限/数据库专项复核尚缺；本观测为执行者自验，不冒充独立验收",
+    "创建表单390/430深色和预览网络失败注入此前未全部重复；本次详情布局检查不抵销该缺口"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P2": 0,
+    "P3": 0,
+    "P1": 0
+  },
+  "observation_status": "complete"
+}
