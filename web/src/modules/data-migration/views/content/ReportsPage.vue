@@ -1005,10 +1005,11 @@ onMounted(() => {
           <el-upload
             v-if="uploadType === 'single'"
             ref="singleUploadRef"
+            class="dm-upload-dropzone"
             :auto-upload="false"
             :limit="1"
+            :show-file-list="false"
             drag
-            style="width: 100%"
             @change="onUploadFileChange"
             @exceed="onUploadExceed"
             @remove="onUploadRemove"
@@ -1016,8 +1017,8 @@ onMounted(() => {
             <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">拖拽文件到此处，或 <em>点击选择</em></div>
           </el-upload>
-          <div v-if="uploadFile" class="dm-upload-preview-action">
-            <span class="dm-upload-preview-name">{{ uploadFile.name }}</span>
+          <div v-if="uploadFile" class="dm-attachment-item dm-attachment-section">
+            <span class="dm-attachment-name dm-attachment-info">{{ uploadFile.name }}</span>
             <el-button
               link
               type="primary"
@@ -1029,18 +1030,19 @@ onMounted(() => {
           </div>
           <el-upload
             v-if="uploadType === 'batch'"
+            class="dm-upload-dropzone"
             :auto-upload="false"
             :multiple="true"
+            :show-file-list="false"
             drag
-            style="width: 100%"
             @change="(file: UploadFile) => onBatchFileChange([...uploadFiles, file.raw!].filter(Boolean) as File[])"
           >
             <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">拖拽文件到此处，或 <em>点击选择多个文件</em></div>
           </el-upload>
-          <div v-if="uploadType === 'batch' && uploadFiles.length" class="dm-upload-batch-files">
-            <div v-for="file in uploadFiles" :key="`${file.name}-${file.size}-${file.lastModified}`" class="dm-upload-preview-action">
-              <span class="dm-upload-preview-name">{{ file.name }}</span>
+          <div v-if="uploadType === 'batch' && uploadFiles.length" class="dm-attachment-list dm-attachment-section">
+            <div v-for="file in uploadFiles" :key="`${file.name}-${file.size}-${file.lastModified}`" class="dm-attachment-item">
+              <span class="dm-attachment-name dm-attachment-info">{{ file.name }}</span>
               <el-button
                 link
                 type="primary"
@@ -1120,10 +1122,11 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="重新上传文件">
           <el-upload
+            class="dm-upload-dropzone"
             :auto-upload="false"
             :limit="1"
+            :show-file-list="false"
             drag
-            style="width: 100%"
             @change="onEditFileChange"
             @remove="onEditFileRemove"
           >
@@ -1133,8 +1136,8 @@ onMounted(() => {
               <div class="el-upload__tip">不选择文件则保留当前附件</div>
             </template>
           </el-upload>
-          <div v-if="editFile" class="dm-upload-preview-action">
-            <span class="dm-upload-preview-name">{{ editFile.name }}</span>
+          <div v-if="editFile" class="dm-attachment-item dm-attachment-section">
+            <span class="dm-attachment-name dm-attachment-info">{{ editFile.name }}</span>
             <el-button
               link
               type="primary"
@@ -1239,26 +1242,4 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.dm-upload-preview-action {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-  margin-top: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 4px;
-}
-
-.dm-upload-preview-name {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.dm-upload-batch-files {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-}
 </style>

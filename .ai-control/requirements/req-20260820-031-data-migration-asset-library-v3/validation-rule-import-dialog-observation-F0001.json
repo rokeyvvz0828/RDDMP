@@ -1,0 +1,26 @@
+{
+  "sample_label": "SP3-F0001纠正复验",
+  "task_ids": ["T1", "T2"],
+  "baseline_revision": "baseline-revision-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1源码契约 + S3 Chromium回归", "result": "pass", "raw_evidence": "头部仍为批量导入在左、新增迁移检核规则primary在右", "limitation": ["低权限运行分支仍由源码条件覆盖"]},
+    {"requirement_id": "R2", "sensor": "S1 + S3", "result": "pass", "raw_evidence": "四视口仍在原路由打开dialog，toolbar无导入操作，dialog包含下载模板/上传/确认/结果", "limitation": []},
+    {"requirement_id": "R3", "sensor": "S3 Chromium受控部分失败 + 既有首次观察失败/重置分支", "result": "pass", "raw_evidence": "四视口部分失败汇总可见，20条错误加剩余计数，正文滚动；首次观察已证明busy关闭阻断、失败保留文件和关闭重置", "limitation": ["真实后端未写入测试导入数据"]},
+    {"requirement_id": "R4", "sensor": "S1源码契约", "result": "pass", "raw_evidence": "post-correction-source:pass；UiToolbar仍无模板下载/选择Excel/提交导入", "limitation": []},
+    {"requirement_id": "R5", "sensor": "S3原失败视口与截图", "result": "pass", "raw_evidence": "初始dialog高度：1280x800=389、375x812=463、390x844=463、430x932=444；原390视口由820降至463。结果态四视口page/dialog/body均scrollWidth=clientWidth，正文scrollHeight>clientHeight，footerBottom分别705/604/623/637且均小于视口高度。纠正截图人工复核无遮挡、裁切或底部空白。", "limitation": ["未覆盖手机软键盘弹出"]},
+    {"requirement_id": "R6", "sensor": "S1 + S2 + S4 + 真实模板GET", "result": "pass", "raw_evidence": "post-correction-source:pass；npm build退出码0；git diff-check退出码0；REQ-031 scope通过397个变更文件；真实模板下载文件名为迁移检核规则模板.xlsx", "limitation": ["范围内多数文件为当前分支既有变更"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"source": "浏览器打开动画", "effect": "首次读取移动端initial top=-8，结果态稳定为top=12；高度与内容测量不受影响", "classification": "measurement-delay"},
+    {"source": "Rollup既有大chunk警告", "effect": "构建退出码0，不属于本次单文件行为偏差", "classification": "baseline-warning"}
+  ],
+  "coverage_gaps": [
+    "未用独立低权限账号运行入口隐藏分支",
+    "未向真实后端写入测试Excel；前端成功/部分失败/请求失败状态由受控响应覆盖",
+    "未覆盖移动端软键盘弹出"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "summary": "F-0001原失败检查通过，未观察到阻塞性或非阻塞性新偏差。"
+}

@@ -32,7 +32,6 @@ const auth = useAuthStore()
 const scope = useProjectScope()
 const scopeState = scope.state
 const scopeProjectId = scope.projectId
-const scopeProjectName = scope.projectName
 
 const loading = ref(false), records = ref<IssueRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
 const fGranularity = ref(''), fSystem = ref(''), fSource = ref(''), fDefect = ref(''), fFreq = ref(''), fKeyword = ref('')
@@ -146,7 +145,7 @@ async function doRestore() { if (!recSelected.value.length) return; try { await 
 async function doRestoreOne(item: IssueRecord) { try { await ElMessageBox.confirm(`确认恢复"${item.asset_name}"？`, '恢复问题'); busy.value = true; await restoreIssues([item.id]); ElMessage.success('恢复成功'); loadRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doPurge() { if (!recSelected.value.length) return; try { await ElMessageBox.confirm(`确认彻底销毁选中的 ${recSelected.value.length} 条问题？此操作不可恢复。`, '彻底销毁', { type: 'error', confirmButtonText: '彻底销毁' }); busy.value = true; await purgeIssues(recSelected.value); ElMessage.success('清理完成'); loadRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doPurgeOne(item: IssueRecord) { try { await ElMessageBox.confirm(`确认彻底销毁"${item.asset_name}"？此操作不可恢复。`, '彻底销毁', { type: 'error', confirmButtonText: '彻底销毁' }); busy.value = true; await purgeIssues([item.id]); ElMessage.success('清理完成'); loadRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
-async function doPurgeAll() { const pid = scopeProjectId.value; if (!pid) { ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目'); return }; try { await ElMessageBox.confirm(`确认彻底销毁当前项目（${scopeProjectName.value || pid}）回收站内的全部问题？其他项目不受影响，此操作不可恢复。`, '清空当前项目回收站', { type: 'error', confirmButtonText: '清空' }); busy.value = true; await purgeAllIssues(pid); ElMessage.success('当前项目回收站已清空'); loadRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
+async function doPurgeAll() { const pid = scopeProjectId.value; if (!pid) { ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目'); return }; try { await ElMessageBox.confirm('确认彻底销毁当前项目回收站内的全部问题？其他项目不受影响，此操作不可恢复。', '清空当前项目回收站', { type: 'error', confirmButtonText: '清空' }); busy.value = true; await purgeAllIssues(pid); ElMessage.success('当前项目回收站已清空'); loadRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 function openImport() { importFile.value = null; importResult.value = null; importDlg.value = true }
 function handleImportFile(file: File) { importFile.value = file; importResult.value = null; return false }
 function handleImportRemove() { importFile.value = null; importResult.value = null }
@@ -424,10 +423,10 @@ watch(scopeProjectId, () => {
           <div>必填列：问题编号、问题名称、问题描述</div>
         </template>
       </el-alert>
-      <el-upload :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="(f: any) => handleImportFile(f.raw)" :on-remove="handleImportRemove" :show-file-list="true" drag>
-        <el-icon style="font-size:40px;color:#909399"><UploadFilled /></el-icon>
-        <div style="margin-top:8px">将 Excel 文件拖到此处，或<em>点击上传</em></div>
-        <template #tip><div style="color:#909399;font-size:12px">仅支持 .xlsx / .xls，文件不超过 50 MB，单次不超过 5000 行</div></template>
+      <el-upload class="dm-upload-dropzone" :auto-upload="false" :limit="1" accept=".xlsx,.xls" :on-change="(f: any) => handleImportFile(f.raw)" :on-remove="handleImportRemove" :show-file-list="true" drag>
+        <el-icon class="dm-upload-icon"><UploadFilled /></el-icon>
+        <div class="el-upload__text">将 Excel 文件拖到此处，或<em>点击上传</em></div>
+        <template #tip><div class="dm-upload-hint">仅支持 .xlsx / .xls，文件不超过 50 MB，单次不超过 5000 行</div></template>
       </el-upload>
       <div v-if="importResult" style="margin-top:12px">
         <el-alert :type="importResult.failureCount > 0 ? 'warning' : 'success'" :closable="false">
