@@ -32,6 +32,8 @@
 
 业务模块应通过 `com.ccb.workflow.integration.WorkflowBusinessGateway` 按稳定流程编码或已发布定义 ID 启动，不直接写工作流表。业务上下文必须显式包含稳定的业务板块编码和名称、业务类型、业务主键、标题、流程轮次、站内详情路由和规范化数据 SHA-256 摘要。项目业务必须传稳定的 `projectRef`；平台校验当前用户的项目访问权限，写入真实 `project_id`，并把项目编号和名称作为启动快照。无论按编码还是按定义 ID 启动，同一编码存在当前项目已发布流程时均优先选择项目流程；没有可用项目流程时，允许回退到历史平台流程以兼容存量业务绑定。全局模板不参与匹配。
 
+组合根的本地初始化器如需发布已配置流程，必须依赖 `com.ccb.workflow.integration.WorkflowDefinitionPublisher`，不得直接引用 `com.ccb.workflow.service.WorkflowService`。该接口只暴露按定义 ID 发布的受控动作，不向其他模块开放工作流内部服务。
+
 ## 项目范围与权限
 
 - 用户可管理的范围只有 `TEMPLATE` 和 `PROJECT`：`TEMPLATE` 表示不可执行的全局结构模板，`PROJECT` 表示单项目流程。

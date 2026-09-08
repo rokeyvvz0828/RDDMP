@@ -1,7 +1,7 @@
 package com.ccb.boot.workflow;
 
 import com.ccb.security.model.AuthUser;
-import com.ccb.workflow.service.WorkflowService;
+import com.ccb.workflow.integration.WorkflowDefinitionPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,7 +26,7 @@ class LocalSeededWorkflowPublisherTest {
     @Test
     void publishesDraftDefinitionsAndSkipsPublishedDefinitions() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        WorkflowService workflows = mock(WorkflowService.class);
+        WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
         when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT"),
@@ -41,7 +41,7 @@ class LocalSeededWorkflowPublisherTest {
     @Test
     void publishesBothDraftDefinitions() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        WorkflowService workflows = mock(WorkflowService.class);
+        WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
         when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT"),
@@ -55,7 +55,7 @@ class LocalSeededWorkflowPublisherTest {
     @Test
     void failsWhenARequiredDefinitionIsMissing() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        WorkflowService workflows = mock(WorkflowService.class);
+        WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
         when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT")));
@@ -68,7 +68,7 @@ class LocalSeededWorkflowPublisherTest {
         when(jdbc.queryForList(contains("FROM sys_user"), any(Object[].class))).thenReturn(List.of(OPERATOR));
     }
 
-    private LocalSeededWorkflowPublisher publisher(JdbcTemplate jdbc, WorkflowService workflows) {
+    private LocalSeededWorkflowPublisher publisher(JdbcTemplate jdbc, WorkflowDefinitionPublisher workflows) {
         return new LocalSeededWorkflowPublisher(jdbc, workflows, 1L, 1L,
                 "architecture.subsystem.change,architecture.resource-request");
     }
