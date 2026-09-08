@@ -1,0 +1,259 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+      "web/src/types/project.ts",
+      "web/src/types/project-context.ts",
+      "web/src/stores/project-context.ts",
+      "web/src/views/ProjectView.vue",
+      "web/src/views/AppLayout.vue",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+      "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs"
+    ],
+    "environment": [
+      "MySQL8.4 isolated test only",
+      "Vue/ElementPlus",
+      "JBR17 Maven"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "creation_type",
+      "owner": "pm_project/ProjectService",
+      "valid_values": [
+        "NEW",
+        "CONTINUATION"
+      ]
+    },
+    {
+      "name": "projects/currentRef/inflight list",
+      "owner": "project-context",
+      "valid_values": [
+        "loading",
+        "ready",
+        "error"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "create/update",
+      "transitions": [
+        "validate enum",
+        "SQL write",
+        "return DTO"
+      ],
+      "outputs": [
+        "新建和编辑项目可维护创建类型，仅新建/续建"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "missing field/legacy rows",
+      "transitions": [
+        "default NEW on create/migration",
+        "omit update assignment when absent"
+      ],
+      "outputs": [
+        "已有项目统一新建，之后可编辑为续建"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "save response/project selection",
+      "transitions": [
+        "map creation_type",
+        "sync saved metadata",
+        "render three label/option slots"
+      ],
+      "outputs": [
+        "顶部当前项目及下拉选项展示创建类型，保存后同步"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "unauthorized or small viewport",
+      "transitions": [
+        "retain auth/audit",
+        "responsive form and tag"
+      ],
+      "outputs": [
+        "保持原权限、审计、切换与响应式可用性"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "creation_type",
+      "producers": [
+        "ProjectService"
+      ],
+      "consumers": [
+        "ProjectView",
+        "project-context"
+      ],
+      "invariant": "two allowed values; missing update preserves"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "backend contract",
+      "method": "JUnit/Mockito SQL capture and authorization; baseline30passed JBR17",
+      "blind_spots": [
+        "real database"
+      ],
+      "independence": "service execution assertions"
+    },
+    {
+      "id": "S2",
+      "target": "frontend state/templates",
+      "method": "Node Vue/Pinia deferred promises and SFC parser",
+      "blind_spots": [
+        "real layout"
+      ],
+      "independence": "state execution"
+    },
+    {
+      "id": "S3",
+      "target": "integration",
+      "method": "isolated MySQL and authorized browser",
+      "blind_spots": [
+        "environment access not yet established"
+      ],
+      "independence": "real runtime"
+    },
+    {
+      "id": "S4",
+      "target": "build/regression",
+      "method": "Maven and Vite",
+      "blind_spots": [
+        "UI geometry"
+      ],
+      "independence": "compilers and existing tests"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "pm_project and ProjectService",
+      "action": "append column and localized field validation/read/write",
+      "authority": "user approved scope",
+      "impact_radius": "project APIs",
+      "rollback": "revert code hunks retain migrated data"
+    },
+    {
+      "id": "A2",
+      "target": "form/store/three selectors",
+      "action": "type metadata projection/sync and scoped UI",
+      "authority": "approved scope",
+      "impact_radius": "project selectors",
+      "rollback": "revert only task hunks"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "observable": "partial"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "default JDK25",
+      "effect": "Mockito initialization fails; corrected process JAVA_HOME JBR17 baseline pass",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "old list response",
+      "effect": "overwrite saved metadata",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "browser/isolated DB",
+      "effect": "may prevent real acceptance",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "list/save requests",
+      "consequence": "stale metadata overwrite",
+      "sampling_rule": "deferred promise race tests"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "new additive column backward compatible",
+      "evidence": "explicit SQL projections; optional Map update",
+      "falsifier": "isolated migration regression"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement bounded change; retain missing runtime evidence"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement bounded change; retain missing runtime evidence"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement bounded change; retain missing runtime evidence"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement bounded change; retain missing runtime evidence"
+    }
+  ],
+  "model_status": "ready"
+}
