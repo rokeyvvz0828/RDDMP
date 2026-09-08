@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "topic": "project-creation-type",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-07-project-creation-type-design.md",
+  "objective": "持久化项目创建类型并在顶部项目切换所有入口一致展示",
+  "users": [
+    "项目管理员维护类型",
+    "项目成员切换项目前识别类型"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "新建和编辑项目可维护创建类型，仅新建/续建",
+      "acceptance": [
+        "新建默认NEW，选择CONTINUATION后保存、详情读取、编辑回显一致",
+        "显式空值或非法值由服务端拒绝且不写库"
+      ],
+      "priority": "must",
+      "source": "用户请求及确认",
+      "counterexample": [
+        "仅前端显示，刷新丢失"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "已有项目统一新建，之后可编辑为续建",
+      "acceptance": [
+        "追加迁移使存量项目creation_type为NEW",
+        "旧客户端创建不传时默认NEW；更新不传时保留原值"
+      ],
+      "priority": "must",
+      "source": "用户确认已有项目默认规则",
+      "counterexample": [
+        "编辑无关字段将续建覆盖为新建"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "顶部当前项目及下拉选项展示创建类型，保存后同步",
+      "acceptance": [
+        "桌面侧栏/顶栏及移动三个选择入口均显示名称和类型标签",
+        "保存成功后当前项目标签同步；不改变选中项目、不触发切换确认或页面重载",
+        "刷新后保持正确标签"
+      ],
+      "priority": "must",
+      "source": "用户请求与已确认提案",
+      "counterexample": [
+        "只显示下拉选项，收起时无类型",
+        "需退出登录才刷新类型"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "保持原权限、审计、切换与响应式可用性",
+      "acceptance": [
+        "读写继续认证、RBAC、租户/实体权限与原审计",
+        "四种规定视口及明暗主题下标签可见、长名称不遮挡，表单提交/取消可达",
+        "加载、空、失败、无权限、提交中及取消切换行为保持"
+      ],
+      "priority": "must",
+      "source": "仓库规约及功能不变量",
+      "counterexample": [
+        "为显示标签更改项目选择值或绕过权限"
+      ]
+    }
+  ],
+  "invariants": [
+    "保留现有项目权限/数据范围/审计",
+    "不改变项目切换确认和选中引用",
+    "不覆盖其他未提交改动"
+  ],
+  "constraints": [
+    "只追加Flyway迁移；不直接修改现有库",
+    "涉及platform/system、迁移及应用壳的写入须经范围和Owner批准",
+    "不读取.env，不重启服务，不提交推送",
+    "设计批准后先编写实施计划，实施须通过计划批准及控制门禁"
+  ],
+  "non_goals": [
+    "类型字典维护",
+    "续建关联原项目或复制数据",
+    "按类型驱动计划/投产规则",
+    "项目列表改版、筛选和统计"
+  ],
+  "selected_approach": {
+    "name": "项目独立枚举字段",
+    "reason": "两种固定语义，已有Map API与SQL可增量扩展；刷新和跨页有一致数据源",
+    "alternatives": [
+      {
+        "name": "通用配置字典",
+        "rejected_because": "用户未要求可配置类型，增加无关维护入口和状态"
+      },
+      {
+        "name": "前端会话标记",
+        "rejected_because": "不能满足跨会话持久化和统一读取"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+        "web/src/types/project.ts",
+        "web/src/types/project-context.ts",
+        "web/src/stores/project-context.ts",
+        "web/src/views/ProjectView.vue",
+        "web/src/views/AppLayout.vue",
+        "候选追加Flyway迁移，版本在实施前检查唯一性",
+        "docs/requirements/REQ-20260907-070-project-creation-type",
+        ".ai-control/requirements/req-20260907-070-project-creation-type"
+      ],
+      "outside": [
+        "其他业务模块",
+        "公共UiStatusTag实现",
+        "已发布迁移",
+        "生产库与.env"
+      ]
+    },
+    "components": [
+      {
+        "name": "ProjectService/pm_project",
+        "responsibility": "类型校验、持久化、列表详情返回和原审计",
+        "depends_on": [
+          "原项目权限及JdbcTemplate"
+        ]
+      },
+      {
+        "name": "ProjectView",
+        "responsibility": "创建/编辑字段与保存成功同步元数据",
+        "depends_on": [
+          "原project API",
+          "project-context store",
+          "Element Plus"
+        ]
+      },
+      {
+        "name": "project-context/AppLayout",
+        "responsibility": "携带类型并呈现三个入口标签",
+        "depends_on": [
+          "workbench response",
+          "UiStatusTag"
+        ]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "creation_type",
+        "producer": "project API",
+        "consumers": [
+          "ProjectView",
+          "project-context"
+        ],
+        "contract": "NEW/CONTINUATION；创建缺失默认NEW，更新缺失保留；显式空或非法值400；列表详情包含字段"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "创建/编辑保存",
+        "transitions": [
+          "前端枚举选择",
+          "原服务端授权及类型校验",
+          "事务写入与原审计",
+          "响应更新业务页和顶部项目元数据"
+        ],
+        "output": "类型持久化且标签立即一致"
+      },
+      {
+        "input": "切换项目",
+        "transitions": [
+          "读取现有项目选项及类型",
+          "沿用原确认与select"
+        ],
+        "output": "新项目标签和内容一致"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "保存失败/非法类型",
+      "behavior": "保留表单和顶部原值，显示原错误反馈及字段校验",
+      "recovery": "修改后重试"
+    },
+    {
+      "condition": "顶部加载失败/空列表",
+      "behavior": "沿用加载、空及重试，不伪造项目",
+      "recovery": "原retry"
+    },
+    {
+      "condition": "旧响应缺少新增字段",
+      "behavior": "仅缺失值兼容NEW；不把非法类型静默解释为续建",
+      "recovery": "后端升级和刷新"
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "沿用requireAction/requireProjectAccess/tenant和audit；不新增权限"
+    ],
+    "performance": [
+      "类型取自原workbench，不为每个选项查询",
+      "元数据同步不重载页面、不重新选择项目"
+    ],
+    "compatibility": [
+      "创建字段缺省兼容，更新字段缺省不覆盖",
+      "项目类型与status独立"
+    ],
+    "operations": [
+      "先追加迁移再部署后端前端",
+      "迁移MySQL8.4，版本实施前检查",
+      "不在本设计阶段执行SQL"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "signal": "合法/非法/省略类型、存量默认、租户权限与审计",
+      "method": "ProjectService聚焦测试、隔离MySQL迁移检查、Maven全量回归"
+    },
+    {
+      "requirement_ids": [
+        "R3",
+        "R4"
+      ],
+      "signal": "三个入口标签与保存同步、不改变currentRef",
+      "method": "前端状态与模板测试、vue-tsc/Vite、真实浏览器四视口明暗主题"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "创建类型不触发额外业务流程",
+      "basis": "用户仅要求字段和顶部体现",
+      "falsifier": "新增续建复制/关联规则"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "平台及应用壳设计范围已由用户确认",
+      "impact": "本次范围获准，精确文件和高风险操作仍受实施计划门禁",
+      "owner": "rokeyvvz0828",
+      "blocking": false
+    },
+    {
+      "question": "真实浏览器访问授权与隔离数据库验证条件",
+      "impact": "执行前检查，缺失不可宣称验收",
+      "owner": "实施阶段",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "已有项目默认NEW且可改为CONTINUATION",
+      "reason": "用户确认",
+      "source": "本轮确认"
+    },
+    {
+      "id": "D2",
+      "decision": "保存后同步标签，不自动切换项目",
+      "reason": "保持现有选择行为",
+      "source": "上轮提案与用户确认"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "顶部缓存陈旧或请求乱序",
+      "impact": "标签显示旧值",
+      "mitigation": "复用服务端保存结果，同步元数据时保留选择，覆盖并发场景测试"
+    },
+    {
+      "risk": "手机名称挤压标签",
+      "impact": "类型不可见",
+      "mitigation": "名称可收缩省略并提供完整提示，类型标签不压缩；限定弹框宽高"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户在落盘设计修订1及后端、迁移、顶部栏范围复核请求后回复确认",
+    "confirmed_at": "2026-09-07"
+  }
+}

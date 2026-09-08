@@ -1,0 +1,67 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+      "purpose": "creation type persistence and tests"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "purpose": "creation type persistence and tests"
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+      "purpose": "creation type persistence and tests"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R4"
+  ],
+  "commands": [
+    {
+      "command": "JAVA_HOME=JBR17 mvn -q -pl :ccb-system -am test",
+      "exit_code": 0,
+      "salient_output": "ProjectServiceTest:42, failures0 errors0; reactor exit0"
+    },
+    {
+      "command": "pre-implementation new tests",
+      "exit_code": 1,
+      "salient_output": "42 tests,11 expected failures (missing persistence and validation)"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "service contract",
+      "result": "pass",
+      "evidence": "42 tests pass",
+      "limitations": [
+        "Mockito not real database"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "new V199 column/check",
+    "create/update enum validation and read projections"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "old tests, auth and audit retained",
+      "result": "pass",
+      "evidence": "30 baseline plus12 new cases pass"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "default Java25",
+      "impact": "resolved via process-local JBR17"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "isolated MySQL verification"
+  ],
+  "recommended_next": "observe"
+}

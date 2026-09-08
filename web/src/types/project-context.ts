@@ -1,10 +1,11 @@
-import type { ProjectStatus } from './project'
+import type { ProjectStatus, ProjectCreationType } from './project'
 
 export interface ProjectContextItem {
   ref: string
   name: string
   shortName: string
   status: ProjectStatus
+  creationType: ProjectCreationType
 }
 
 export interface ProjectContextProvider {

@@ -1,0 +1,197 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+      "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+      "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+      "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+      "web/src/modules/release/release-operations.css",
+      "候选新增：web/src/modules/release/components/ReleaseDrawerHeader.vue",
+      "候选新增：web/src/modules/release/composables/useReleaseDrawerFullscreen.ts"
+    ],
+    "environment": [
+      "Vue3",
+      "Element Plus",
+      "existing project-key remount"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "open/fullscreen/size",
+      "owner": "each drawer",
+      "valid_values": [
+        "closed",
+        "default",
+        "fullscreen"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "header toggle",
+      "transitions": [
+        "local ref toggles",
+        "computed size updates"
+      ],
+      "outputs": [
+        "投产管理范围内全部5处抽屉可切换页面内全屏与原尺寸"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "close/reopen or nested toggle",
+      "transitions": [
+        "independent watch resets on open",
+        "business refs unchanged"
+      ],
+      "outputs": [
+        "切换尺寸保留原表单、选中对象、嵌套抽屉和业务操作上下文"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "viewport change",
+      "transitions": [
+        "scoped full viewport CSS",
+        "body scroll and stable header/footer"
+      ],
+      "outputs": [
+        "全屏及普通抽屉在桌面手机和明暗主题均可操作"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "drawer header/size",
+      "producers": [
+        "module helper/header"
+      ],
+      "consumers": [
+        "five el-drawers"
+      ],
+      "invariant": "original events, forms, close control unchanged"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "state and five wiring points",
+      "method": "Node Vue reactive runtime and SFC AST assertions",
+      "blind_spots": [
+        "real layout"
+      ],
+      "independence": "runtime assertions and pre-edit fingerprints"
+    },
+    {
+      "id": "S2",
+      "target": "typing/bundling",
+      "method": "vue-tsc and Vite build; baseline exit0",
+      "blind_spots": [
+        "interaction"
+      ],
+      "independence": "compiler"
+    },
+    {
+      "id": "S3",
+      "target": "layout and interaction",
+      "method": "authorized browser viewport/interaction checks",
+      "blind_spots": [
+        "currently unavailable pending access"
+      ],
+      "independence": "actual rendered UI"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "five module drawers",
+      "action": "add local helper/header and dedicated CSS only",
+      "authority": "approved scope",
+      "impact_radius": "release operations frontend",
+      "rollback": "remove only added hunks"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "dirty business files",
+      "effect": "HEAD is not valid baseline",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "browser authorization",
+      "effect": "visual evidence unavailable",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "issue drawer max-width",
+      "effect": "limits fullscreen",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "delays": [
+    {
+      "source": "drawer closing animation",
+      "consequence": "premature reset shrinks closing drawer",
+      "sampling_rule": "reset on reopening synchronously"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "local size/CSS sufficient",
+      "evidence": "five existing size props; issue max-width located",
+      "falsifier": "browser geometry mismatch"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement with runtime/compiler checks; retain browser acceptance gap"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement with runtime/compiler checks; retain browser acceptance gap"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "implement with runtime/compiler checks; retain browser acceptance gap"
+    }
+  ],
+  "model_status": "ready"
+}

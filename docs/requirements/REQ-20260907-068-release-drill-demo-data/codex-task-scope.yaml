@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260907-068",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260907-068-release-drill-demo-data/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "licon",
+    "worktree": "D:/ai_project/ccb_rd"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": [
+      "local-shell",
+      "codex",
+      "local-mysql"
+    ]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260907-068-release-drill-demo-data/**",
+      ".ai-control/requirements/req-20260907-068-release-drill-demo-data/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/api/release.ts",
+      "server/src/modules/release/**",
+      "docs/integration/mock-data-contract.md",
+      "governance/modules.yaml",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [
+      "**/*.pem",
+      "**/*.key",
+      "server/src/platform/security/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": []
+  },
+  "database": {
+    "changed": true,
+    "schema_changed": false,
+    "migration_files": [],
+    "database_name": "ccb_platform_licon",
+    "project_ids": [
+      940001,
+      940002
+    ],
+    "tenant_id": 1,
+    "insert_tables": [
+      "rel_release_drill_round",
+      "rel_release_drill_step"
+    ],
+    "compatibility_and_rollback": "Insert-only local fixtures, deterministic batch IDs and transaction guards. Optional exact-ID cleanup after checking no subsequent edits/references; never touch pre-existing rows."
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [
+      "Local MySQL container ccb-platform-mysql"
+    ],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "readback",
+      "command": "Fresh SQL verifies 6 rounds, 36 steps and valid project references"
+    },
+    {
+      "name": "preservation",
+      "command": "Before/after hash of prior release round and step rows"
+    },
+    {
+      "name": "idempotency",
+      "command": "Repeat guarded SQL; 0 new rows"
+    }
+  ],
+  "risk": {
+    "level": "normal",
+    "items": [
+      "Local fixture DML only; strict ID and name assertions",
+      "No API audit event; offline fixture recorded in task evidence, created_by=0",
+      "No available synthetic API login; no authentication changes"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260907-068-release-drill-demo-data",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260907-068-release-drill-demo-data/execution-T1.json",
+      ".ai-control/requirements/req-20260907-068-release-drill-demo-data/observation-T1.json"
+    ],
+    "release_verification": [
+      "Select A/B in existing drill page and refresh; browser check not claimed by SQL verification"
+    ],
+    "rollback": "Guarded delete of this batch's 36 step IDs and 6 round IDs only, if unmodified and unreferenced"
+  },
+  "configuration_access": {
+    "purpose": "Local process may parse DB_URL from .env to validate loopback database; do not emit raw configuration or credentials",
+    "source": "Prior user permission to read .env and latest explicit current-database selection"
+  }
+}

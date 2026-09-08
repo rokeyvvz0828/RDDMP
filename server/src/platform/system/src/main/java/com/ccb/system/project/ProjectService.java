@@ -36,6 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /** 项目域服务：权限和项目可见范围都在服务端执行。 */
 @Service
 public class ProjectService {
+    private static final Set<String> PROJECT_CREATION_TYPES = Set.of("NEW", "CONTINUATION");
     private static final Set<String> PROJECT_STATUSES = Set.of("PLANNING", "RUNNING", "COMPLETED", "SUSPENDED");
     private static final Set<String> PLAN_STATUSES = Set.of("NOT_STARTED", "IN_PROGRESS", "COMPLETED", "BLOCKED");
     private static final Set<String> PLAN_PARTY_TYPES = Set.of("LEAD", "COOPERATING");
@@ -78,7 +79,7 @@ public class ProjectService {
     public List<Map<String, Object>> workbench(AuthUser user) {
         requireAction("project", "read", user);
         String scope = projectScope(user);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, project_code, project_name, description, status, plan_number_rule, child_plan_number_rule, next_plan_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE tenant_id = ? AND deleted = 0 AND " + scope + " ORDER BY updated_at DESC, id DESC", user.tenantId());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, project_code, project_name, description, status, creation_type, plan_number_rule, child_plan_number_rule, next_plan_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE tenant_id = ? AND deleted = 0 AND " + scope + " ORDER BY updated_at DESC, id DESC", user.tenantId());
         rows.forEach(row -> decorateProject(row, user.tenantId()));
         return rows;
     }
@@ -191,13 +192,16 @@ public class ProjectService {
         validateUser(ownerId, user.tenantId());
         String status = optional(input, "status", "PLANNING");
         validateStatus(status, PROJECT_STATUSES, "项目状态");
+        String creationType = input.containsKey("creation_type")
+                ? required(input, "creation_type", "创建类型", 16) : "NEW";
+        validateStatus(creationType, PROJECT_CREATION_TYPES, "创建类型");
         Date projectStart = date(input.get("planned_start_date"));
         Date projectEnd = date(input.get("planned_end_date"));
         validateDateRange(projectStart, projectEnd, "项目计划");
         Date actualEnd = date(input.get("actual_end_date"));
         validateDateRange(projectStart, actualEnd, "项目实际");
         long id = nextId();
-        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, description, status, owner_id, planned_start_date, planned_end_date, actual_end_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, name, optional(input, "description", null), status, ownerId, projectStart, projectEnd, actualEnd, user.id());
+        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, description, status, creation_type, owner_id, planned_start_date, planned_end_date, actual_end_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, name, optional(input, "description", null), status, creationType, ownerId, projectStart, projectEnd, actualEnd, user.id());
         initializeDefaultStages(id, user.tenantId());
         long roleId = nextId();
         jdbc.update("INSERT INTO pm_project_role (id, tenant_id, project_id, role_code, role_name, description) VALUES (?, ?, ?, 'PM', '项目负责人', '项目创建时自动初始化的项目负责人角色')", roleId, user.tenantId(), id);
@@ -215,6 +219,12 @@ public class ProjectService {
         List<Object> args = new ArrayList<>();
         if (input.containsKey("project_code")) { assignments.add("project_code = ?"); args.add(required(input, "project_code", "项目编号", 64)); }
         if (input.containsKey("project_name")) { assignments.add("project_name = ?"); args.add(required(input, "project_name", "项目名称", 128)); }
+        if (input.containsKey("creation_type")) {
+            String value = required(input, "creation_type", "创建类型", 16);
+            validateStatus(value, PROJECT_CREATION_TYPES, "创建类型");
+            assignments.add("creation_type = ?");
+            args.add(value);
+        }
         if (input.containsKey("description")) { assignments.add("description = ?"); args.add(optional(input, "description", null)); }
         if (input.containsKey("status")) { String value = optional(input, "status", "PLANNING"); validateStatus(value, PROJECT_STATUSES, "项目状态"); assignments.add("status = ?"); args.add(value); }
         if (input.containsKey("owner_id")) { long ownerId = longValue(input.get("owner_id"), 0); validateUser(ownerId, user.tenantId()); assignments.add("owner_id = ?"); args.add(ownerId); }
@@ -893,7 +903,7 @@ public class ProjectService {
         args.add(100); return jdbc.queryForList("SELECT u.id, u.username, u.display_name, u.org_id FROM sys_user u WHERE u.tenant_id = ? AND u.status = 1 AND u.deleted = 0" + filter + " ORDER BY u.display_name, u.id LIMIT ?", args.toArray());
     }
 
-     private Map<String, Object> project(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
+     private Map<String, Object> project(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, creation_type, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
      private Map<String, Object> projectForUpdate(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
     private List<Map<String, Object>> projectStages(long projectId, long tenantId) {
         ensureDefaultStages(projectId, tenantId);

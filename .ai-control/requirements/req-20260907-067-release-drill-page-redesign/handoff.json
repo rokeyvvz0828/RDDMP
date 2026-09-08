@@ -1,0 +1,749 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260907-067-release-drill-page-redesign",
+  "handoff_status": "approved",
+  "created_at": "2026-09-07T07:06:35.610Z",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260907-067-release-drill-page-redesign",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-07-release-drill-page-redesign-design.md",
+    "objective": "在不改变投产演练业务功能的前提下，让轮次导航、当前轮次信息和步骤维护在桌面及手机上更清晰可用。",
+    "users": [
+      "项目成员查看当前项目演练",
+      "有演练管理权限的人员维护轮次和步骤"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "桌面使用窄轮次导航和宽演练详情，保持轮次选择与刷新。",
+        "acceptance": [
+          "1280x800 及以上页面左侧轮次导航约 260px，详情占剩余宽度；标题、刷新与新增轮次集中在页头。",
+          "轮次显示名称、状态、步骤数；选择后右侧只展示该轮次；刷新保留仍存在的选择。"
+        ],
+        "counterexample": [
+          "继续让轮次列表比详情更宽，或选择轮次后步骤不对应。"
+        ],
+        "priority": "must",
+        "source": "用户请求重新设计且功能保持不变；用户确认推荐方案；现有组件和 design-h5.md"
+      },
+      {
+        "id": "R2",
+        "statement": "当前轮次的方案、环境、计划时间、状态和结果清晰分区，保留轮次维护弹窗及所有原字段。",
+        "acceptance": [
+          "轮次标题旁显示状态，方案、环境、计划时间和结果分区可读；编辑与删除集中在当前轮次操作区。",
+          "新增仍要求已有方案和环境；名称、方案与环境必填；计划时间、状态和结果仍可维护；保留新建后选中新轮次以及删除后回选行为。"
+        ],
+        "counterexample": [
+          "改版遗漏结果字段、改变必填规则、增加额外接口或无法删除轮次。"
+        ],
+        "priority": "must",
+        "source": "用户请求重新设计且功能保持不变；用户确认推荐方案；现有组件和 design-h5.md"
+      },
+      {
+        "id": "R3",
+        "statement": "步骤保持顺序展示和抽屉维护，桌面扩大节点空间，保留步骤原有功能。",
+        "acceptance": [
+          "按原序号含义展示步骤；节点内名称、时间范围、负责人、状态及结果分行可读，新增步骤位于步骤区标题行右侧。",
+          "序号、名称、负责人、计划时间范围、状态、执行结果和说明均可在原抽屉新增或编辑，删除仍需确认。",
+          "桌面多步骤仅在步骤区域横向滚动，节点不使用时间比例轴暗示实际耗时。"
+        ],
+        "counterexample": [
+          "省略步骤维护字段，将时间范围拆成两个选择器，或使用视觉位置冒充真实时间跨度。"
+        ],
+        "priority": "must",
+        "source": "用户请求重新设计且功能保持不变；用户确认推荐方案；现有组件和 design-h5.md"
+      },
+      {
+        "id": "R4",
+        "statement": "手机改为轮次选择器与纵向步骤，弹层和主题保持可用。",
+        "acceptance": [
+          "375x812、390x844、430x932 使用同一个 selectedId 的轮次选择器；步骤纵向，表单单列，页面无横向溢出。",
+          "轮次弹窗和步骤抽屉限制视口宽高，正文滚动且页脚始终可达；图标有提示及可访问名称。",
+          "桌面及三个手机视口浅深主题检查长名称、长说明、状态标签和操作均不重叠。"
+        ],
+        "counterexample": [
+          "手机须滚过整个轮次列表才能操作步骤，或保存按钮在视口外不可达。"
+        ],
+        "priority": "must",
+        "source": "用户请求重新设计且功能保持不变；用户确认推荐方案；现有组件和 design-h5.md"
+      },
+      {
+        "id": "R5",
+        "statement": "保留项目隔离、权限、CRUD 请求参数和全部原异常反馈。",
+        "acceptance": [
+          "继续由父级 project key 重建页面；切换项目不保留旧轮次及步骤编辑对象。",
+          "管理入口保持 release-operations:drill:manage 控制，CRUD 保持 projectId、roundId、id、rowVersion 和现有 DTO。",
+          "加载、空、缺少方案或环境、失败重试、403、保存中、保存失败保留输入和取消删除分别可验证。"
+        ],
+        "counterexample": [
+          "只读用户出现维护入口、取消删除报错、保存提交到其他轮次或改版写入其他项目。"
+        ],
+        "priority": "must",
+        "source": "用户请求重新设计且功能保持不变；用户确认推荐方案；现有组件和 design-h5.md"
+      }
+    ],
+    "invariants": [
+      "轮次、步骤字段和增删改语义保持不变",
+      "投产方案和投产环境关联必填；成员、方案、环境选项来源不变",
+      "projectId、roundId、id、rowVersion 及原有服务端权限审计不变",
+      "轮次维护仍是弹窗，步骤维护仍是抽屉",
+      "保留已有其他页面与任务改动"
+    ],
+    "constraints": [
+      "仅变更演练组件及本任务元数据",
+      "继续当前 licon 工作区，不提交、推送、切分支或重启服务",
+      "不修改共享 UI、共享 CSS、API、路由、后端、数据库或依赖",
+      "不读取 .env、敏感数据或生产环境",
+      "完成设计文档复核及实施计划批准后才实施"
+    ],
+    "non_goals": [
+      "新筛选、统计块、看板和视图切换能力",
+      "执行引擎、自动计算耗时、拖拽排序",
+      "将轮次弹窗改为抽屉",
+      "更改投产方案、环境、问题跟踪或组织页面"
+    ],
+    "selected_approach": {
+      "name": "窄轮次导航 + 宽演练详情",
+      "reason": "用户已确认；频繁切换轮次时保持上下文，同时让主要步骤内容占据更大空间。",
+      "alternatives": [
+        {
+          "name": "顶部轮次切换 + 全宽详情",
+          "rejected_because": "详情更宽，但多轮次状态不能同时扫描；用户选择侧边导航。"
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+          "当前任务需求、设计、后续计划及前缀账本"
+        ],
+        "outside": [
+          "api/release.ts",
+          "ReleaseOperationsManagement.vue",
+          "公共 UI、主题、其他投产页面",
+          "server 和数据库"
+        ]
+      },
+      "components": [
+        {
+          "name": "ReleaseDrillExecutionView",
+          "responsibility": "现有数据与弹层状态的唯一持有者；轮次导航、详情与步骤展示",
+          "depends_on": [
+            "现有 release API",
+            "auth store",
+            "Element Plus",
+            "UiPageHeader",
+            "UiStatusTag",
+            "UiEmptyState"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "ReleaseDrillExecutionDto/Write 与 ReleaseDrillStepDto/Write",
+          "producer": "web/src/api/release.ts",
+          "consumers": [
+            "ReleaseDrillExecutionView"
+          ],
+          "contract": "保留字段、状态、API 路由和现有写入参数；布局不引入新契约。"
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "当前项目",
+          "transitions": [
+            "父组件按 project key 挂载",
+            "读取轮次、方案、环境、成员",
+            "选择轮次",
+            "展示当前轮次与步骤"
+          ],
+          "output": "当前项目和当前轮次的展示"
+        },
+        {
+          "input": "新增或编辑轮次/步骤",
+          "transitions": [
+            "以原字段复制表单",
+            "原校验",
+            "原 CRUD 调用",
+            "成功更新当前记录或失败保留输入"
+          ],
+          "output": "原有维护结果与反馈"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "加载中/无数据",
+        "behavior": "保留加载和分区空态，不展示无效维护按钮",
+        "recovery": "加载完成或新增合法记录"
+      },
+      {
+        "condition": "缺少方案或环境",
+        "behavior": "新增轮次禁用并显示缺少的前置数据状态",
+        "recovery": "通过现有独立菜单维护，不增加新跳转或接口"
+      },
+      {
+        "condition": "加载失败/403",
+        "behavior": "保持错误重试与无权限状态",
+        "recovery": "重试或申请权限"
+      },
+      {
+        "condition": "保存中/保存失败/取消删除",
+        "behavior": "禁重复提交；失败保留输入；取消删除不写数据也不报失败",
+        "recovery": "修改或重试、返回原上下文"
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "权限及项目隔离不变；不渲染原始 HTML"
+      ],
+      "performance": [
+        "同一份 rounds 和 selectedId；切换纯展示不增加请求"
+      ],
+      "compatibility": [
+        "复用交付示范的页头、状态、表单分区和移动事实区模式",
+        "仅本组件增加约260px侧导航、横纵步骤布局样式；示范列表不能直接承载轮次-步骤主从关系"
+      ],
+      "operations": [
+        "不新增服务、迁移、依赖或自动提交；浏览器验收必须单独记录"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1"
+        ],
+        "signal": "1280x800 及以上页面左侧轮次导航约 260px，详情占剩余宽度；标题、刷新与新增轮次集中在页头。；轮次显示名称、状态、步骤数；选择后右侧只展示该轮次；刷新保留仍存在的选择。",
+        "method": "文件/DTO 差异检查、前端构建与当前项目下真实浏览器对应场景；写入使用独立虚构夹具，缺失证据明确列出。"
+      },
+      {
+        "requirement_ids": [
+          "R2"
+        ],
+        "signal": "轮次标题旁显示状态，方案、环境、计划时间和结果分区可读；编辑与删除集中在当前轮次操作区。；新增仍要求已有方案和环境；名称、方案与环境必填；计划时间、状态和结果仍可维护；保留新建后选中新轮次以及删除后回选行为。",
+        "method": "文件/DTO 差异检查、前端构建与当前项目下真实浏览器对应场景；写入使用独立虚构夹具，缺失证据明确列出。"
+      },
+      {
+        "requirement_ids": [
+          "R3"
+        ],
+        "signal": "按原序号含义展示步骤；节点内名称、时间范围、负责人、状态及结果分行可读，新增步骤位于步骤区标题行右侧。；序号、名称、负责人、计划时间范围、状态、执行结果和说明均可在原抽屉新增或编辑，删除仍需确认。；桌面多步骤仅在步骤区域横向滚动，节点不使用时间比例轴暗示实际耗时。",
+        "method": "文件/DTO 差异检查、前端构建与当前项目下真实浏览器对应场景；写入使用独立虚构夹具，缺失证据明确列出。"
+      },
+      {
+        "requirement_ids": [
+          "R4"
+        ],
+        "signal": "375x812、390x844、430x932 使用同一个 selectedId 的轮次选择器；步骤纵向，表单单列，页面无横向溢出。；轮次弹窗和步骤抽屉限制视口宽高，正文滚动且页脚始终可达；图标有提示及可访问名称。；桌面及三个手机视口浅深主题检查长名称、长说明、状态标签和操作均不重叠。",
+        "method": "文件/DTO 差异检查、前端构建与当前项目下真实浏览器对应场景；写入使用独立虚构夹具，缺失证据明确列出。"
+      },
+      {
+        "requirement_ids": [
+          "R5"
+        ],
+        "signal": "继续由父级 project key 重建页面；切换项目不保留旧轮次及步骤编辑对象。；管理入口保持 release-operations:drill:manage 控制，CRUD 保持 projectId、roundId、id、rowVersion 和现有 DTO。；加载、空、缺少方案或环境、失败重试、403、保存中、保存失败保留输入和取消删除分别可验证。",
+        "method": "文件/DTO 差异检查、前端构建与当前项目下真实浏览器对应场景；写入使用独立虚构夹具，缺失证据明确列出。"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "现有轮次 DTO 可以直接支撑新增的只读摘要呈现",
+        "basis": "DTO 已有方案环境名称、status、plannedAt 和 resultContent",
+        "falsifier": "真实列表返回缺字段或截断"
+      },
+      {
+        "text": "验收时能够获得本地测试会话与浏览器访问",
+        "basis": "之前任务存在本地服务，但最近两次浏览器授权超时",
+        "falsifier": "验收阶段权限或环境仍不可用"
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "实施时真实浏览器访问能否恢复",
+        "impact": "影响手机、主题和交互验收，不影响设计选择；未测不得宣称完成",
+        "owner": "本地运行环境和用户授权",
+        "blocking": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "采用窄轮次导航与宽详情",
+        "reason": "改善当前导航宽于主要内容的布局",
+        "source": "用户在推荐方案之后回复确认"
+      },
+      {
+        "id": "D2",
+        "decision": "保留轮次弹窗和步骤抽屉",
+        "reason": "用户要求功能保持不变，且上一轮提案明确保留",
+        "source": "用户确认的提案"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "共享样式影响或长内容撑宽",
+        "impact": "其他页面回归或手机溢出",
+        "mitigation": "组件专用类、语义颜色和多视口测量，不修改共享样式"
+      },
+      {
+        "risk": "改布局时混淆轮次与步骤上下文",
+        "impact": "向错误轮次提交",
+        "mitigation": "单一 selectedId，保存参数和项目切换回归"
+      },
+      {
+        "risk": "验收工具不可用",
+        "impact": "无法得到实际界面证据",
+        "mitigation": "如实保持待验收，禁止用构建替代浏览器结论"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户在上一轮收到设计修订1的文件链接及复核请求后回复“确认”。时间为批准记录时间，不声称消息精确发送时间；不代表实施计划或额外Owner批准。",
+      "confirmed_at": "2026-09-07T07:06:32.803Z"
+    },
+    "workflow_checklist": [
+      {
+        "task": "勘察组件、接口、示范与最近提交",
+        "status": "complete"
+      },
+      {
+        "task": "澄清保持功能不变并比较两个布局",
+        "status": "complete"
+      },
+      {
+        "task": "用户确认推荐方案",
+        "status": "complete"
+      },
+      {
+        "task": "人可读与机器可读设计落盘",
+        "status": "complete"
+      },
+      {
+        "task": "设计自检",
+        "status": "complete"
+      },
+      {
+        "task": "用户复核落盘设计",
+        "status": "complete"
+      },
+      {
+        "task": "writing-plans",
+        "status": "awaiting-user-approval"
+      }
+    ]
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-07-release-drill-page-redesign-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "仅变更演练组件及本任务元数据",
+      "继续当前 licon 工作区，不提交、推送、切分支或重启服务",
+      "不修改共享 UI、共享 CSS、API、路由、后端、数据库或依赖",
+      "不读取 .env、敏感数据或生产环境",
+      "完成设计文档复核及实施计划批准后才实施",
+      "Vue3/TypeScript/Element Plus现有依赖，不增加测试框架",
+      "页面结构复用交付示范；样式只作用本组件",
+      "不扩大其他投产页面、后端或数据库范围"
+    ],
+    "file_map": [
+      {
+        "path": "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        "status": "existing",
+        "responsibility": "演练状态、页面展示及轮次/步骤维护",
+        "evidence": "已完整读取；目标git diff为空"
+      },
+      {
+        "path": ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json",
+        "status": "candidate-new",
+        "responsibility": "本任务可重复的合成状态断言，仅供验证",
+        "evidence": "授权账本路径，计划新增，不冒充既有测试"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "轮次导航、当前详情和步骤的响应式展示改版",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "ReleaseDrillExecutionView.vue 当前无未提交修改，模板用共享 release-operations-grid 将左区设得比详情宽",
+          "rounds 与 selectedId 是单一数据/选择状态，selectedRound() 返回匹配项或首项",
+          "DTO 已返回 roundNo/roundName/status/resultContent/releasePlanName/environmentName/plannedAt/steps",
+          "父 ReleaseOperationsManagement.vue 使用 drills-projectRef key 重建页面；不修改父组件"
+        ],
+        "files": {
+          "create": [
+            ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json"
+          ],
+          "modify": [
+            "web/src/modules/release/components/ReleaseDrillExecutionView.vue"
+          ],
+          "test": [
+            ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json",
+            "web/src/modules/release/components/ReleaseDrillExecutionView.vue"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "ReleaseDrillExecutionDto、ReleaseDrillStepDto",
+            "rounds、selectedId、selectedRound()、load()",
+            "openRound(round?)、removeRound(round)、openStep(step?)、removeStep(step)",
+            "canManage()、UiPageHeader、UiStatusTag、UiEmptyState"
+          ],
+          "produces": [
+            "同一 selectedId 驱动桌面导航和手机选择器的模板",
+            "局部 .drill-page/.drill-layout/.drill-step-track 响应式样式"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "记录目标组件无改动基线及原功能入口、字段、状态和 payload 清单",
+            "command": "git diff -- web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+            "expected": "空 diff；既有其他文件改动仅记录不修改",
+            "evidence": "目标 diff、轮次和步骤原契约清单"
+          },
+          {
+            "id": "T1-S2",
+            "action": "建立独立虚构数据的组件脚本断言，不访问浏览器、网络或真实数据库；脚本保存为当前任务 state-test.json 的 script 字段",
+            "command": null,
+            "expected": "断言覆盖两个轮次的 selectedId 切换、刷新保留选中、无轮次回退、原 API projectId 参数；类型编译使用已有 Vue/TypeScript 包",
+            "evidence": "可重复 test JSON 和测试局限"
+          },
+          {
+            "id": "T1-S3",
+            "action": "运行基准脚本",
+            "command": "node -e \"eval(JSON.parse(require('fs').readFileSync('.ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json','utf8')).script)\"",
+            "expected": "原行为断言通过；新布局要求由之后的模板及浏览器采样证明，不将基准通过视为改版完成",
+            "evidence": "断言名称、退出码"
+          },
+          {
+            "id": "T1-S4",
+            "action": "引入 UiPageHeader，统一标题、刷新和新增轮次；去除英文装饰标题及重复描述，用约260px窄导航和可收缩详情替换大面板嵌套",
+            "command": null,
+            "expected": "原新增禁用条件与管理权限不变；左侧名称/状态/步骤数绑定原 DTO，右侧方案/环境/时间/结果分区",
+            "evidence": "模板差异和字段对应"
+          },
+          {
+            "id": "T1-S5",
+            "action": "重排步骤节点为桌面约260px横向顺序节点；手机<=760px用同一 selectedId 的轮次选择器和纵向节点",
+            "command": null,
+            "expected": "步骤名称、时间范围、负责人、状态、结果分行；横滚仅在桌面步骤区；无新时间比例、请求、筛选或统计",
+            "evidence": "专用CSS、DOM/截图及未测项"
+          },
+          {
+            "id": "T1-S6",
+            "action": "运行局部断言和模板编译",
+            "command": "node -e \"eval(JSON.parse(require('fs').readFileSync('.ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json','utf8')).script)\"",
+            "expected": "选择状态、刷新、字段和API不变量断言通过",
+            "evidence": "测试输出"
+          },
+          {
+            "id": "T1-S7",
+            "action": "检查差异空白",
+            "command": "git diff --check",
+            "expected": "退出0，CRLF提示单列",
+            "evidence": "命令退出码"
+          },
+          {
+            "id": "T1-S8",
+            "action": "执行前端类型及打包检查",
+            "command": "npm --prefix web run build",
+            "expected": "退出0；记录警告，不把打包成功等同布局验收",
+            "evidence": "vue-tsc与Vite结果"
+          },
+          {
+            "id": "T1-S9",
+            "action": "在可授权真实浏览器中测量桌面、手机的导航、步骤和当前轮次；保存 execution-T1 与 observation-T1",
+            "command": null,
+            "expected": "1280x800、375x812、390x844、430x932无页面溢出且选择一致；工具不可用则明确待验收",
+            "evidence": "实际视口、路由、截图/尺寸或覆盖缺口"
+          }
+        ],
+        "acceptance_checks": [
+          "标题和操作只保留已确认结构，详情区大于导航区",
+          "轮次选择、刷新和步骤对应不变",
+          "所有摘要和步骤字段可读，手机纵向步骤",
+          "无共享CSS或API变更"
+        ],
+        "risks": [
+          "共享CSS间接覆盖",
+          "浏览器授权不可用",
+          "长名称与结果"
+        ],
+        "rollback": "只撤销T1在演练组件的展示和样式hunks及本任务记录；保留其他页面改动。",
+        "stop_conditions": [
+          "需要修改共享样式/父组件/API或未建模字段"
+        ],
+        "escalation_conditions": [
+          "新增展示需要后端字段或项目隔离契约变化"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "保留原轮次弹窗和步骤抽屉的分区表单及完整回归",
+        "requirement_ids": [
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "轮次维护使用 el-dialog，步骤使用 el-drawer，原字段和必填规则已逐项读取",
+          "roundForm 与 stepForm 由 openRound/openStep 赋值；saveStep 将 range 拆成 DTO 的 plannedStart/plannedEnd",
+          "原保存分别用 saving/stepSaving 防重复；删除忽略 cancel/close",
+          "web/package.json 只有 dev/build/preview，没有专用单测框架"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+            ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json"
+          ],
+          "test": [
+            ".ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json",
+            "web/src/modules/release/components/ReleaseDrillExecutionView.vue"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1 原状态和局部模板",
+            "ReleaseDrillExecutionWrite、ReleaseDrillStepWrite",
+            "roundForm、stepForm、roundDialog、stepDrawer、editingRound、editingStep",
+            "create/update/deleteReleaseDrill 与 create/update/deleteReleaseDrillStep"
+          ],
+          "produces": []
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "保留轮次 el-dialog 和步骤 el-drawer；只按关联/基础、时间/执行、结果/说明分区，保留全部输入与原字符长度、状态选项及必填条件",
+            "command": null,
+            "expected": "没有丢失字段或增加必填；seqNo仍1-999；步骤仍用单个datetimerange；最多680px并受手机安全边距约束",
+            "evidence": "原字段逐项diff对照"
+          },
+          {
+            "id": "T2-S2",
+            "action": "给本组件弹层限定高度、独立正文滚动与可达页脚；为提交期关闭/取消入口和表单提供一致保护",
+            "command": null,
+            "expected": "保存中不能重复请求或关闭引起状态丢失；失败保留输入；原确认取消不写数据",
+            "evidence": "弹层模板、局部CSS及状态断言"
+          },
+          {
+            "id": "T2-S3",
+            "action": "扩展合成脚本覆盖轮次和步骤的原增改删除、校验、失败保留、取消删除、当前项目与轮次参数",
+            "command": null,
+            "expected": "两个虚构项目/轮次分别断言；创建后选中新轮次、删除后回选首轮、步骤保存按seqNo排序、关闭确认不DELETE；403与错误重试可区分",
+            "evidence": "state-test.json断言和局限，不伪造真实服务证据"
+          },
+          {
+            "id": "T2-S4",
+            "action": "运行合成状态检查",
+            "command": "node -e \"eval(JSON.parse(require('fs').readFileSync('.ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json','utf8')).script)\"",
+            "expected": "退出0；每项断言名称可追踪到R2/R3/R5",
+            "evidence": "测试原始输出"
+          },
+          {
+            "id": "T2-S5",
+            "action": "真实浏览器回归轮次弹窗和步骤抽屉、权限、项目切换、加载空态失败与长内容；只使用独立虚构记录做真实CRUD并删除本次夹具",
+            "command": null,
+            "expected": "原操作均可达，取消不报错、不更新数据库，保存值重读一致，四个视口明暗主题无遮挡；无安全测试条件就明确未测，不触碰既有记录",
+            "evidence": "角色、路由、实际动作/结果、网络/控制台/尺寸；缺口独立列出"
+          },
+          {
+            "id": "T2-S6",
+            "action": "检查差异空白",
+            "command": "git diff --check",
+            "expected": "退出0",
+            "evidence": "退出码"
+          },
+          {
+            "id": "T2-S7",
+            "action": "集成构建",
+            "command": "npm --prefix web run build",
+            "expected": "退出0，现有警告独立记录",
+            "evidence": "编译和打包输出"
+          },
+          {
+            "id": "T2-S8",
+            "action": "执行全仓治理",
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "如实记录结果；既有REQ061 YAML问题不属于本次修改，不绕过",
+            "evidence": "检查输出和归因"
+          },
+          {
+            "id": "T2-S9",
+            "action": "执行任务范围检查并手工归属当前diff",
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-067-release-drill-page-redesign/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+            "expected": "本次新增改动只在授权范围，现有licon命名和其他已有文件改动单列，不能擅自改分支",
+            "evidence": "脚本结果和实际差异清单"
+          },
+          {
+            "id": "T2-S10",
+            "action": "记录execution-T2/observation-T2及各任务采样，按control-engineering判断是否具备独立验收条件",
+            "command": null,
+            "expected": "未获浏览器及独立证据不得宣称converged；不提交、不推送、不重启",
+            "evidence": "任务前缀账本及真实剩余风险"
+          }
+        ],
+        "acceptance_checks": [
+          "轮次与步骤原字段和验证未变化",
+          "弹层正文滚动且页脚可达，取消与保存中行为正确",
+          "CRUD 参数、版本、权限与项目切换回归",
+          "运行证据与合成检查明确区分"
+        ],
+        "risks": [
+          "弹层Teleport样式未命中",
+          "保存时目标轮次变化",
+          "真实浏览器或只读角色缺失"
+        ],
+        "rollback": "只撤销T2弹层和状态保护专项hunks及本任务测试记录；不撤销T1或此前任务。",
+        "stop_conditions": [
+          "必须改变DTO、后端校验、状态枚举或共享UI才能继续"
+        ],
+        "escalation_conditions": [
+          "发现跨项目/轮次提交、权限回归或无法安全完成真实写入验收"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "同一组件串行；T2在T1布局上重排弹层并集成回归"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1"
+      ],
+      [
+        "T2"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1",
+          "T2"
+        ],
+        "command": "node -e \"eval(JSON.parse(require('fs').readFileSync('.ai-control/requirements/req-20260907-067-release-drill-page-redesign/state-test.json','utf8')).script)\"",
+        "expected": "全部合成状态与契约检查通过"
+      },
+      {
+        "after_tasks": [
+          "T1",
+          "T2"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "vue-tsc与Vite退出0；真实浏览器另行验收"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User replied 确认 after the written implementation-plan link and explicit approval request. Timestamp records approval, not exact message time.",
+      "confirmed_at": "2026-09-07T07:12:52.760Z"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "web/src/modules/release/components/ReleaseDrillExecutionView.vue"
+    ],
+    "state_variable_candidates": [
+      "projectId",
+      "rounds/plans/environments/members",
+      "selectedId",
+      "roundForm/stepForm",
+      "roundDialog/stepDrawer",
+      "saving/stepSaving",
+      "loading/error/forbidden"
+    ],
+    "interface_candidates": [
+      "现有演练轮次与步骤CRUD DTO和API",
+      "父级project key重建"
+    ],
+    "sensor_candidates": [
+      "Git diff与字段清单",
+      "Vue类型和构建",
+      "合成状态断言",
+      "真实浏览器DOM/截图/网络和控制台"
+    ],
+    "actuator_candidates": [
+      "组件局部模板、样式和必要的状态保护"
+    ],
+    "disturbance_candidates": [
+      "全局样式",
+      "长字段",
+      "浏览器权限和测试会话",
+      "历史治理问题",
+      "用户并行改动"
+    ],
+    "delay_candidates": [
+      "网络响应",
+      "Vue更新",
+      "弹层过渡"
+    ],
+    "assumptions": [
+      {
+        "text": "现有DTO支撑当前设计所有展示字段",
+        "basis": "已读取release.ts接口",
+        "falsifier": "真实返回字段缺失或截断"
+      },
+      {
+        "text": "仅局部样式即可完成所有视口适配",
+        "basis": "页面已有独立组件且共享组件可复用",
+        "falsifier": "全局壳层不可由局部边界收敛"
+      }
+    ]
+  }
+}

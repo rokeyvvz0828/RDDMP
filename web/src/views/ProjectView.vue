@@ -11,6 +11,8 @@ import type { Project, ProjectMember, ProjectOptions, ProjectOrganization, Proje
 import type { AttachmentCategory, ProjectAttachment } from '../types/attachments'
 import { formatDateOnly } from '../utils/date'
 import { useAuthStore } from '../stores/auth'
+import { useProjectContextStore } from '../stores/project-context'
+import { projectCreationTypeLabels } from '../types/project'
 import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
 import UiUserIdentity from '../components/ui/UiUserIdentity.vue'
@@ -19,6 +21,7 @@ import UiFilePreview from '../components/ui/UiFilePreview.vue'
 import UiPagination from '../components/ui/UiPagination.vue'
 
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const route = useRoute()
 const router = useRouter()
 const projects = ref<Project[]>([])
@@ -41,6 +44,7 @@ const saving = ref(false)
 const projectDialog = ref(false)
 const projectEditingId = ref<number | null>(null)
 const projectForm = reactive<Record<string, unknown>>({})
+const projectCreationTypeError = ref('')
 const projectDateRange = ref<string[]>([])
 const planDialog = ref(false)
 const planEditingId = ref<number | null>(null)
@@ -363,7 +367,7 @@ function monthAxisLabel(value: number) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月`
 }
 
-function resetProjectForm() { Object.keys(projectForm).forEach(key => delete projectForm[key]); Object.assign(projectForm, { project_code: '', project_name: '', description: '', status: 'PLANNING', owner_id: auth.user?.id || null, planned_start_date: '', planned_end_date: '', actual_end_date: '' }); projectDateRange.value = [] }
+function resetProjectForm() { projectCreationTypeError.value = ''; Object.keys(projectForm).forEach(key => delete projectForm[key]); Object.assign(projectForm, { project_code: '', project_name: '', description: '', status: 'PLANNING', creation_type: 'NEW', owner_id: auth.user?.id || null, planned_start_date: '', planned_end_date: '', actual_end_date: '' }); projectDateRange.value = [] }
 function resetPlanForm() { Object.keys(planForm).forEach(key => delete planForm[key]); Object.assign(planForm, { parent_id: 0, group_id: null, phase: '', plan_name: '', description: '', owner_id: null, lead_org_id: null, cooperating_org_ids: [], planned_start_date: '', planned_end_date: '', progress: 0, status: 'NOT_STARTED', sort_no: 0 }); planDateRange.value = [] }
 function resetRoleForm() { Object.keys(roleForm).forEach(key => delete roleForm[key]); Object.assign(roleForm, { role_code: '', role_name: '', description: '' }) }
 function resetProjectOrganizationForm(parentId = 0) { Object.keys(projectOrganizationForm).forEach(key => delete projectOrganizationForm[key]); Object.assign(projectOrganizationForm, { parent_id: parentId, org_code: '', org_name: '', sort_no: 0, status: 1 }) }
@@ -444,14 +448,14 @@ async function removeStage(stage: ProjectStage) {
   } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目阶段删除失败')) } finally { saving.value = false }
 }
 function openCreateProject() { projectEditingId.value = null; resetProjectForm(); projectDialog.value = true }
-async function openEditProject() { if (!selectedProject.value) return; await loadUsers(); addUserOption(selectedProject.value.owner_id, selectedProject.value.owner_name); projectEditingId.value = selectedProject.value.id; Object.assign(projectForm, { project_code: selectedProject.value.project_code, project_name: selectedProject.value.project_name, description: selectedProject.value.description || '', status: selectedProject.value.status, owner_id: selectedProject.value.owner_id, planned_start_date: selectedProject.value.planned_start_date || '', planned_end_date: selectedProject.value.planned_end_date || '', actual_end_date: selectedProject.value.actual_end_date || '' }); projectDateRange.value = selectedProject.value.planned_start_date && selectedProject.value.planned_end_date ? [selectedProject.value.planned_start_date, selectedProject.value.planned_end_date] : []; projectDialog.value = true }
+async function openEditProject() { if (!selectedProject.value) return; projectCreationTypeError.value = ''; await loadUsers(); addUserOption(selectedProject.value.owner_id, selectedProject.value.owner_name); projectEditingId.value = selectedProject.value.id; Object.assign(projectForm, { project_code: selectedProject.value.project_code, project_name: selectedProject.value.project_name, description: selectedProject.value.description || '', status: selectedProject.value.status, creation_type: selectedProject.value.creation_type ?? 'NEW', owner_id: selectedProject.value.owner_id, planned_start_date: selectedProject.value.planned_start_date || '', planned_end_date: selectedProject.value.planned_end_date || '', actual_end_date: selectedProject.value.actual_end_date || '' }); projectDateRange.value = selectedProject.value.planned_start_date && selectedProject.value.planned_end_date ? [selectedProject.value.planned_start_date, selectedProject.value.planned_end_date] : []; projectDialog.value = true }
 function validDateRange(start: unknown, end: unknown) { return !start || !end || String(end) >= String(start) }
 function onProjectDateRangeChange(value: unknown) {
   const values = Array.isArray(value) ? value.map(item => String(item || '')) : []
   projectForm.planned_start_date = values.length === 2 ? values[0] : ''
   projectForm.planned_end_date = values.length === 2 ? values[1] : ''
 }
-async function saveProject() { if (!String(projectForm.project_code || '').trim() || !String(projectForm.project_name || '').trim()) { ElMessage.warning('请填写项目编号和项目名称'); return }; if (!validDateRange(projectForm.planned_start_date, projectForm.planned_end_date) || !validDateRange(projectForm.planned_start_date, projectForm.actual_end_date)) { ElMessage.warning('项目结束日期必须大于等于开始日期'); return }; saving.value = true; try { const response = projectEditingId.value ? await updateProject(projectEditingId.value, projectForm) : await createProject(projectForm); selectedProject.value = response.data.data; ensureProjectUserOptions(selectedProject.value); resetSettingsForm(); projectDialog.value = false; await loadWorkbench(); await router.push({ name: 'project-detail', params: { projectId: String(selectedProject.value.id) } }); ElMessage.success(projectEditingId.value ? '项目已更新' : '项目已创建') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目保存失败')) } finally { saving.value = false } }
+async function saveProject() { if (saving.value) return; projectCreationTypeError.value = ['NEW', 'CONTINUATION'].includes(String(projectForm.creation_type)) ? '' : '请选择创建类型'; if (projectCreationTypeError.value) return; if (!String(projectForm.project_code || '').trim() || !String(projectForm.project_name || '').trim()) { ElMessage.warning('请填写项目编号和项目名称'); return }; if (!validDateRange(projectForm.planned_start_date, projectForm.planned_end_date) || !validDateRange(projectForm.planned_start_date, projectForm.actual_end_date)) { ElMessage.warning('项目结束日期必须大于等于开始日期'); return }; saving.value = true; try { const response = projectEditingId.value ? await updateProject(projectEditingId.value, projectForm) : await createProject(projectForm); selectedProject.value = response.data.data; projectContext.syncProject(response.data.data); ensureProjectUserOptions(selectedProject.value); resetSettingsForm(); projectDialog.value = false; await loadWorkbench(); await router.push({ name: 'project-detail', params: { projectId: String(selectedProject.value.id) } }); ElMessage.success(projectEditingId.value ? '项目已更新' : '项目已创建') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目保存失败')) } finally { saving.value = false } }
 async function removeProject() { if (!selectedProject.value) return; try { await ElMessageBox.confirm('删除项目后，项目计划、成员和角色也将不再显示，确认继续吗？', '删除确认', { type: 'warning' }); await deleteProject(selectedProject.value.id); selectedProject.value = null; await router.push({ name: 'projects' }); await loadWorkbench(); ElMessage.success('项目已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目删除失败')) } }
 function openCreatePlanForStageRow(row: PlanTimelineRow, phase: PlanTimelineStage) { planEditingId.value = null; planParentName.value = ''; resetPlanForm(); planForm.phase = phase.key === '__UNASSIGNED__' ? '' : phase.key; planForm.group_id = row.id; planDialog.value = true }
 function openCreateChildPlan(row: ProjectPlan) { planChildrenDialog.value = false; planEditingId.value = null; planParentName.value = row.plan_name; resetPlanForm(); planForm.parent_id = row.id; planForm.group_id = row.group_id || null; planForm.phase = row.phase || ''; planDialog.value = true }
@@ -845,7 +849,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer() })
     </div>
 
     <el-dialog v-model="stageDialog" :title="stageEditingId ? '编辑项目阶段' : '新增项目阶段'" width="440px" destroy-on-close><el-form label-position="top"><el-form-item label="阶段名称" required><el-input v-model="stageForm.stage_name" maxlength="128" show-word-limit /></el-form-item><el-form-item label="排序号"><el-input-number v-model="stageForm.sort_no" :min="0" :max="9999" controls-position="right" /></el-form-item></el-form><template #footer><el-button @click="stageDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveStage">保存</el-button></template></el-dialog>
-    <el-dialog v-model="projectDialog" :title="projectEditingId ? '编辑项目' : '新建项目'" width="600px" destroy-on-close><el-form label-position="top"><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目编号" required><el-input v-model="projectForm.project_code" /></el-form-item></el-col><el-col :span="12"><el-form-item label="项目名称" required><el-input v-model="projectForm.project_name" /></el-form-item></el-col></el-row><el-form-item label="项目描述"><el-input v-model="projectForm.description" type="textarea" :rows="3" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目状态"><el-select v-model="projectForm.status" style="width:100%"><el-option v-for="(label, value) in projectStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="负责人"><el-select v-model="projectForm.owner_id" filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="16"><el-form-item label="计划时间范围"><el-date-picker v-model="projectDateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable unlink-panels style="width:100%" @change="onProjectDateRangeChange" /></el-form-item></el-col><el-col :span="8"><el-form-item label="实际结束"><el-date-picker v-model="projectForm.actual_end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col></el-row></el-form><template #footer><el-button @click="projectDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveProject">保存</el-button></template></el-dialog>
+    <el-dialog v-model="projectDialog" :title="projectEditingId ? '编辑项目' : '新建项目'" width="min(600px, calc(100vw - 24px))" class="project-creation-dialog" destroy-on-close><el-form label-position="top" :disabled="saving"><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目编号" required><el-input v-model="projectForm.project_code" /></el-form-item></el-col><el-col :span="12"><el-form-item label="项目名称" required><el-input v-model="projectForm.project_name" /></el-form-item></el-col></el-row><el-form-item label="创建类型" required :error="projectCreationTypeError"><el-select v-model="projectForm.creation_type" aria-label="创建类型" style="width:100%" @change="projectCreationTypeError = ''"><el-option v-for="(label, value) in projectCreationTypeLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item><el-form-item label="项目描述"><el-input v-model="projectForm.description" type="textarea" :rows="3" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="项目状态"><el-select v-model="projectForm.status" style="width:100%"><el-option v-for="(label, value) in projectStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="负责人"><el-select v-model="projectForm.owner_id" filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="16"><el-form-item label="计划时间范围"><el-date-picker v-model="projectDateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable unlink-panels style="width:100%" @change="onProjectDateRangeChange" /></el-form-item></el-col><el-col :span="8"><el-form-item label="实际结束"><el-date-picker v-model="projectForm.actual_end_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col></el-row></el-form><template #footer><el-button @click="projectDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveProject">保存</el-button></template></el-dialog>
     <el-dialog v-model="planChildrenDialog" :title="selectedPlanForChildren ? selectedPlanForChildren.plan_name + ' · 子计划' : '子计划'" width="860px" destroy-on-close class="project-plan-children-dialog">
       <template v-if="selectedPlanForChildren">
         <div class="project-plan-children-dialog__summary">
@@ -910,3 +914,14 @@ onBeforeUnmount(() => { clearTabLoadingTimer() })
     <UiFilePreview v-model="attachmentPreviewVisible" :url="attachmentPreviewUrl" :file-name="attachmentPreviewName" />
   </section>
 </template>
+
+<style>
+.project-creation-dialog.el-dialog { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); margin-top: 24px; }
+.project-creation-dialog > .el-dialog__header,
+.project-creation-dialog > .el-dialog__footer { flex-shrink: 0; }
+.project-creation-dialog > .el-dialog__body { min-height: 0; overflow-y: auto; }
+@media (max-width: 760px) {
+  .project-creation-dialog .el-col { max-width: 100%; flex: 0 0 100%; }
+  .project-creation-dialog .el-date-editor { min-width: 0; }
+}
+</style>
