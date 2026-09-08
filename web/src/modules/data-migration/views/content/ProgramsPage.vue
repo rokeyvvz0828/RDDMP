@@ -312,15 +312,15 @@ onMounted(() => { void scope.ensureLoaded(); fetchList(); void loadSystemOptions
             <el-input v-model="fv.programDescription" type="textarea" :rows="3" placeholder="程序功能、执行逻辑、适用场景说明" maxlength="2000" show-word-limit />
           </el-form-item>
           <el-form-item label="源文件" :required="!editing">
-            <div class="attachment-list">
-              <div v-for="(att, idx) in existingAttachments" :key="`e-${att.attachmentId}`" class="attachment-item">
-                <div class="attachment-icon"><el-icon :size="18"><Document /></el-icon></div>
-                <div class="attachment-info"><div class="attachment-name">{{ att.fileName }}</div></div>
+            <div class="dm-attachment-list">
+              <div v-for="(att, idx) in existingAttachments" :key="`e-${att.attachmentId}`" class="dm-attachment-item">
+                <div class="dm-attachment-icon"><el-icon :size="18"><Document /></el-icon></div>
+                <div class="dm-attachment-info"><div class="dm-attachment-name">{{ att.fileName }}</div></div>
                 <el-button link type="danger" size="small" @click="removeExistingAtt(idx)">移除</el-button>
               </div>
-              <div v-for="(f, idx) in pendingFiles" :key="`p-${idx}`" class="attachment-item">
-                <div class="attachment-icon"><el-icon :size="18"><Document /></el-icon></div>
-                <div class="attachment-info"><div class="attachment-name">{{ f.name }}</div></div>
+              <div v-for="(f, idx) in pendingFiles" :key="`p-${idx}`" class="dm-attachment-item is-pending">
+                <div class="dm-attachment-icon is-pending"><el-icon :size="18"><Document /></el-icon></div>
+                <div class="dm-attachment-info"><div class="dm-attachment-name">{{ f.name }}</div></div>
                 <el-button link type="danger" size="small" @click="removePendingFile(idx)">移除</el-button>
               </div>
             </div>
@@ -342,12 +342,12 @@ onMounted(() => { void scope.ensureLoaded(); fetchList(); void loadSystemOptions
               <el-descriptions-item label="创建时间">{{ fmtDate(detailData.created_at) }}</el-descriptions-item>
               <el-descriptions-item label="更新时间">{{ fmtDate(detailData.updated_at) }}</el-descriptions-item>
             </el-descriptions>
-            <div v-if="detailData.attachments?.length" style="margin-top:16px">
-              <div style="font-weight:500;margin-bottom:8px">源文件</div>
-              <div class="attachment-list">
-                <div v-for="att in detailData.attachments" :key="att.attachmentId" class="attachment-item">
-                  <div class="attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
-                  <div class="attachment-info"><div class="attachment-name">{{ att.fileName }}</div></div>
+            <div v-if="detailData.attachments?.length" class="dm-attachment-section">
+              <div class="dm-attachment-section-title">源文件</div>
+              <div class="dm-attachment-list">
+                <div v-for="att in detailData.attachments" :key="att.attachmentId" class="dm-attachment-item">
+                  <div class="dm-attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
+                  <div class="dm-attachment-info"><div class="dm-attachment-name">{{ att.fileName }}</div></div>
                   <el-button link type="primary" size="small" @click="downloadSingle(detailData!, att.attachmentId)"><el-icon><Download /></el-icon>下载</el-button>
                 </div>
               </div>
@@ -364,11 +364,6 @@ onMounted(() => { void scope.ensureLoaded(); fetchList(); void loadSystemOptions
 </template>
 
 <style scoped>
-.attachment-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-.attachment-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--panel-bg, #f5f7fa); border: 1px solid var(--line, #e4e7ed); border-radius: 8px; }
-.attachment-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: var(--brand-light, #ecf5ff); border-radius: 8px; color: var(--brand, #409eff); flex-shrink: 0; }
-.attachment-info { flex: 1; min-width: 0; }
-.attachment-name { font-size: 14px; font-weight: 500; color: var(--text, #303133); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) {
   .dm-topic-toolbar :deep(.ui-toolbar__filters), .dm-topic-toolbar :deep(.ui-toolbar__actions) { width: 100%; flex-wrap: wrap; }
   .dm-topic-toolbar :deep(.el-input), .dm-topic-toolbar :deep(.el-select) { width: 100% !important; }

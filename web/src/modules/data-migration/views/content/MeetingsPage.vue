@@ -37,7 +37,6 @@ const auth = useAuthStore()
 const scope = useProjectScope()
 const scopeState = scope.state
 const scopeProjectId = scope.projectId
-const scopeProjectName = scope.projectName
 
 const loading = ref(false), records = ref<MeetingRecord[]>([]), total = ref(0), page = ref(1), size = ref(20), selectedIds = ref<number[]>([]), busy = ref(false)
 const fSource = ref(''), fGranularity = ref(''), fSystem = ref(''), fKeyword = ref('')
@@ -247,7 +246,7 @@ async function doRestoreAttBatch() { if (!attRecSelected.value.length) return; t
 async function doRestoreAttOne(item: MeetingAttachment & { meeting_id: number; meeting_title: string }) { try { await ElMessageBox.confirm(`确认恢复"${item.file_name}"？`, '恢复附件'); busy.value = true; await restoreAttachments([item.id]); ElMessage.success('恢复成功'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doPurgeAttBatch() { if (!attRecSelected.value.length) return; try { await ElMessageBox.confirm(`确认彻底销毁选中的 ${attRecSelected.value.length} 个附件？此操作不可恢复。`, '彻底销毁', { type: 'error', confirmButtonText: '彻底销毁' }); busy.value = true; await purgeAttachments(attRecSelected.value); ElMessage.success('清理完成'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 async function doPurgeAttOne(item: MeetingAttachment & { meeting_id: number; meeting_title: string }) { try { await ElMessageBox.confirm(`确认彻底销毁"${item.file_name}"？此操作不可恢复。`, '彻底销毁', { type: 'error', confirmButtonText: '彻底销毁' }); busy.value = true; await purgeAttachments([item.id]); ElMessage.success('清理完成'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
-async function doPurgeAllAtt() { const pid = scopeProjectId.value; if (!pid) { ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目'); return }; try { await ElMessageBox.confirm(`确认彻底销毁当前项目（${scopeProjectName.value || pid}）附件回收站内的全部附件？其他项目不受影响，此操作不可恢复。`, '清空当前项目附件回收站', { type: 'error', confirmButtonText: '清空' }); busy.value = true; await purgeAllAttachments(pid); ElMessage.success('当前项目附件回收站已清空'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
+async function doPurgeAllAtt() { const pid = scopeProjectId.value; if (!pid) { ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目'); return }; try { await ElMessageBox.confirm('确认彻底销毁当前项目附件回收站内的全部附件？其他项目不受影响，此操作不可恢复。', '清空当前项目附件回收站', { type: 'error', confirmButtonText: '清空' }); busy.value = true; await purgeAllAttachments(pid); ElMessage.success('当前项目附件回收站已清空'); loadAttRecycle() } catch (e) { if (!cancelled(e)) ElMessage.error(msg(e)) } finally { busy.value = false } }
 
 // 文件上传相关：暂存待上传文件，保存时才真正上传
 const uploadFile = ref<File | null>(null)
@@ -631,20 +630,20 @@ onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
           <el-col :span="24">
             <el-form-item label="附件文件">
               <!-- 已有附件列表 -->
-              <div v-if="fv.attachments.length" class="attachment-list">
+              <div v-if="fv.attachments.length" class="dm-attachment-list">
                 <div
                   v-for="(att, i) in fv.attachments"
                   :key="att.attachmentId"
-                  class="attachment-item"
+                  class="dm-attachment-item"
                 >
-                  <div class="attachment-icon">
+                  <div class="dm-attachment-icon">
                     <el-icon :size="20"><Document /></el-icon>
                   </div>
-                  <div class="attachment-info">
-                    <div class="attachment-name" :title="att.fileName">{{ att.fileName }}</div>
-                    <div class="attachment-meta">附件 #{{ att.attachmentId }}</div>
+                  <div class="dm-attachment-info">
+                    <div class="dm-attachment-name" :title="att.fileName">{{ att.fileName }}</div>
+                    <div class="dm-attachment-meta">附件 #{{ att.attachmentId }}</div>
                   </div>
-                  <div class="attachment-actions">
+                  <div class="dm-attachment-actions">
                     <el-button
                       link
                       type="primary"
@@ -665,21 +664,20 @@ onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
                 </div>
               </div>
               <!-- 待上传文件列表 -->
-              <div v-if="pendingFiles.length" class="attachment-list" style="margin-top:8px">
+              <div v-if="pendingFiles.length" class="dm-attachment-list dm-attachment-section">
                 <div
                   v-for="(file, i) in pendingFiles"
                   :key="i"
-                  class="attachment-item"
-                  style="border-style:dashed"
+                  class="dm-attachment-item is-pending"
                 >
-                  <div class="attachment-icon" style="background:#fdf6ec;color:#e6a23c">
+                  <div class="dm-attachment-icon is-pending">
                     <el-icon :size="20"><Document /></el-icon>
                   </div>
-                  <div class="attachment-info">
-                    <div class="attachment-name" :title="file.name">{{ file.name }}</div>
-                    <div class="attachment-meta">待上传 · {{ (file.size / 1024).toFixed(1) }} KB</div>
+                  <div class="dm-attachment-info">
+                    <div class="dm-attachment-name" :title="file.name">{{ file.name }}</div>
+                    <div class="dm-attachment-meta">待上传 · {{ (file.size / 1024).toFixed(1) }} KB</div>
                   </div>
-                  <div class="attachment-actions">
+                  <div class="dm-attachment-actions">
                     <el-button
                       link
                       type="danger"
@@ -691,16 +689,16 @@ onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
                   </div>
                 </div>
               </div>
-              <div v-if="!fv.attachments.length && !pendingFiles.length" class="attachment-empty">
+              <div v-if="!fv.attachments.length && !pendingFiles.length" class="dm-attachment-empty">
                 <el-icon :size="24"><FolderOpened /></el-icon>
                 <span>暂无附件</span>
               </div>
-              <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+              <div class="dm-upload-actions">
                 <el-upload :auto-upload="false" :on-change="(f: any) => handleFileUpload(f.raw)" :show-file-list="false">
                   <el-button type="primary" plain><el-icon><Plus /></el-icon>选择文件</el-button>
                 </el-upload>
               </div>
-              <div style="color:#909399;font-size:12px;margin-top:4px">选择文件后点击保存才会上传，取消不会产生冗余文件</div>
+              <div class="dm-upload-hint">选择文件后点击保存才会上传，取消不会产生冗余文件</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -713,17 +711,17 @@ onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
     <!-- 附件选择弹窗 -->
     <el-dialog v-model="attSelectDialogOpen" :title="attSelectMode === 'download' ? '选择要下载的附件' : '选择要预览的附件'" width="480px">
       <div v-loading="attSelectLoading" style="min-height:100px">
-        <div v-if="attSelectList.length === 0 && !attSelectLoading" style="text-align:center;color:#909399;padding:20px">暂无附件</div>
-        <div v-else class="attachment-select-list">
+        <div v-if="attSelectList.length === 0 && !attSelectLoading" class="dm-attachment-select-empty">暂无附件</div>
+        <div v-else class="dm-attachment-select-list">
           <div
             v-for="att in attSelectList"
             :key="att.attachment_id"
-            class="attachment-select-item"
+            class="dm-attachment-select-item"
             @click="doAttachmentSelectAction(att)"
           >
-            <el-icon :size="18" style="color:#409eff;margin-right:8px"><Document /></el-icon>
-            <span class="attachment-select-name" :title="att.file_name">{{ att.file_name }}</span>
-            <el-icon :size="14" style="color:#c0c4cc;margin-left:auto"><Download v-if="attSelectMode === 'download'" /><View v-else /></el-icon>
+            <el-icon class="dm-attachment-select-icon" :size="18"><Document /></el-icon>
+            <span class="dm-attachment-select-name" :title="att.file_name">{{ att.file_name }}</span>
+            <el-icon class="dm-attachment-select-icon is-action" :size="14"><Download v-if="attSelectMode === 'download'" /><View v-else /></el-icon>
           </div>
         </div>
       </div>
@@ -751,15 +749,15 @@ onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
             <el-descriptions-item label="上传人">{{ detailData.created_by_name ?? '—' }}</el-descriptions-item>
             <el-descriptions-item label="上传时间">{{ fmtDate(detailData.created_at) }}</el-descriptions-item>
           </el-descriptions>
-          <div v-if="detailData.attachments && detailData.attachments.length > 0" style="margin-top:16px">
-            <div style="font-weight:500;margin-bottom:8px">附件列表</div>
-            <div class="attachment-list">
-              <div v-for="att in detailData.attachments" :key="att.attachment_id" class="attachment-item">
-                <div class="attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
-                <div class="attachment-info">
-                  <div class="attachment-name" :title="att.file_name">{{ att.file_name }}</div>
+          <div v-if="detailData.attachments && detailData.attachments.length > 0" class="dm-attachment-section">
+            <div class="dm-attachment-section-title">附件列表</div>
+            <div class="dm-attachment-list">
+              <div v-for="att in detailData.attachments" :key="att.attachment_id" class="dm-attachment-item">
+                <div class="dm-attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
+                <div class="dm-attachment-info">
+                  <div class="dm-attachment-name" :title="att.file_name">{{ att.file_name }}</div>
                 </div>
-                <div class="attachment-actions">
+                <div class="dm-attachment-actions">
                   <el-button link type="primary" size="small" @click="doDownloadById(att.attachment_id)"><el-icon><Download /></el-icon>下载</el-button>
                   <el-button link type="primary" size="small" @click="doPreviewById(att.attachment_id, att.file_name)"><el-icon><View /></el-icon>预览</el-button>
                 </div>
@@ -775,109 +773,3 @@ onMounted(() => { void scope.ensureLoaded(); void loadCodeOptions() })
     </el-dialog>
   </section>
 </template>
-
-<style scoped>
-.attachment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.attachment-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--panel-bg, #f5f7fa);
-  border: 1px solid var(--line, #e4e7ed);
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.attachment-item:hover {
-  border-color: var(--brand, #409eff);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.attachment-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--brand-light, #ecf5ff);
-  border-radius: 8px;
-  color: var(--brand, #409eff);
-  flex-shrink: 0;
-}
-
-.attachment-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.attachment-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text, #303133);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.attachment-meta {
-  font-size: 12px;
-  color: var(--muted, #909399);
-  margin-top: 2px;
-}
-
-.attachment-actions {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.attachment-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px;
-  background: var(--panel-bg, #f5f7fa);
-  border: 1px dashed var(--line, #e4e7ed);
-  border-radius: 8px;
-  color: var(--muted, #909399);
-  font-size: 14px;
-}
-
-.attachment-select-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.attachment-select-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.attachment-select-item:hover {
-  background-color: var(--brand-light, #ecf5ff);
-}
-
-.attachment-select-name {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 14px;
-  color: var(--text, #303133);
-}
-</style>

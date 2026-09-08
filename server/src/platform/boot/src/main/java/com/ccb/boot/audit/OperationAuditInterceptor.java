@@ -2,8 +2,8 @@ package com.ccb.boot.audit;
 
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
-import com.ccb.system.audit.OperationAuditWriteCommand;
-import com.ccb.system.audit.OperationAuditWriter;
+import com.ccb.system.capability.SystemOperationLogCommand;
+import com.ccb.system.capability.SystemOperationLogWriter;
 import com.ccb.common.audit.OperationAuditContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,9 +25,9 @@ public class OperationAuditInterceptor implements HandlerInterceptor {
     private static final String DECISION = OperationAuditInterceptor.class.getName() + ".decision";
 
     private final OperationAuditPolicy policy;
-    private final OperationAuditWriter writer;
+    private final SystemOperationLogWriter writer;
 
-    public OperationAuditInterceptor(OperationAuditPolicy policy, OperationAuditWriter writer) {
+    public OperationAuditInterceptor(OperationAuditPolicy policy, SystemOperationLogWriter writer) {
         this.policy = policy;
         this.writer = writer;
     }
@@ -58,7 +58,7 @@ public class OperationAuditInterceptor implements HandlerInterceptor {
             OperationAuditContext.Snapshot context = OperationAuditContext.snapshot();
             int status = response.getStatus();
             boolean success = status < 400 && exception == null;
-            writer.record(new OperationAuditWriteCommand(
+            writer.record(new SystemOperationLogCommand(
                     actor,
                     first(context.operationCode(), decision.operationCode()),
                     decision.moduleCode(),

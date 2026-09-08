@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "topic": "validation-rule-import-dialog",
+  "handoff_status": "approved",
+  "created_at": "2026-09-07T13:51:14+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "validation-rule-import-dialog",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-07-data-migration-validation-rule-import-dialog-design.md",
+    "objective": "将迁移检核规则页面的批量导入与新增操作提升到页面头部，并在当前页面对话框内完成模板下载、Excel 选择、确认导入、结果查看和失败重试。",
+    "users": [
+      "具有迁移检核规则新增权限的数据迁移人员",
+      "只读或受限的数据迁移人员"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "页面使用 UiPageHeader，头部右侧按顺序展示次要操作批量导入和主操作新增迁移检核规则。",
+        "acceptance": ["UiPageHeader 标题为迁移检核规则", "批量导入位于新增迁移检核规则左侧", "新增迁移检核规则使用 primary 样式", "无新增权限时两个入口均不展示"],
+        "priority": "must",
+        "source": "用户确认的页面头部双按钮设计及 PlansPage.vue 参照。",
+        "counterexample": ["两个入口仍位于筛选工具栏", "批量导入成为唯一主操作", "无新增权限仍显示入口"]
+      },
+      {
+        "id": "R2",
+        "statement": "批量导入必须在当前列表页对话框内完成，模板下载、文件选择、确认导入和结果展示不得散落在工具栏。",
+        "acceptance": ["打开和关闭导入对话框不改变路由、筛选或分页", "模板下载、Excel 选择、确认导入和结果均在对话框内", "关闭后再次打开为干净初始状态"],
+        "priority": "must",
+        "source": "用户确认页面内打开。",
+        "counterexample": ["新增批量导入路由或独立页面", "工具栏仍保留导入相关按钮或结果", "关闭后保留上次文件或结果"]
+      },
+      {
+        "id": "R3",
+        "statement": "导入对话框覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+        "acceptance": ["无文件、项目不可用或提交中时确认按钮禁用", "提交中禁止关闭和重复提交", "成功或部分成功后刷新列表并保持对话框打开", "结果展示总数、成功数、失败数和最多20条错误", "请求失败保留文件供重试", "重新选择文件和关闭对话框会清理不再适用的状态"],
+        "priority": "must",
+        "source": "项目全状态设计要求与已确认导入交互。",
+        "counterexample": ["无文件仍发送导入请求", "提交中可以关闭或重复提交", "部分成功后结果立即消失", "请求失败强制重新选择文件"]
+      },
+      {
+        "id": "R4",
+        "statement": "UiToolbar 只保留列表筛选、查询、重置、导出和批量删除。",
+        "acceptance": ["工具栏无下载模板、选择Excel、提交导入和导入结果", "现有筛选、导出、选择行和批量删除行为保持"],
+        "priority": "must",
+        "source": "已确认页面操作层级。",
+        "counterexample": ["工具栏继续承担导入流程", "迁移导入入口时误删导出或批量删除"]
+      },
+      {
+        "id": "R5",
+        "statement": "桌面和规定手机视口中，导入对话框复用 dm-upload-dropzone 且无横向溢出，滚动边界和底部操作可达。",
+        "acceptance": ["1280x800、375x812、390x844、430x932 无页面级或对话框级横向溢出", "拖拽上传区占满正文可用宽度", "长文件名和长错误信息不撑破容器", "正文可纵向滚动且底部操作可达", "深浅主题下内容可辨识"],
+        "priority": "must",
+        "source": "AGENTS.md、design-h5.md 和数据迁移上传样式治理设计。",
+        "counterexample": ["页面复制独立上传颜色或间距", "移动端对话框宽于视口", "错误列表导致底部操作不可达"]
+      },
+      {
+        "id": "R6",
+        "statement": "导入 API、模板、RBAC、projectId、Excel 行级字段解析、后端和数据库契约保持不变。",
+        "acceptance": ["继续调用 downloadRuleTemplate 和 importMigrationCheckRules({ projectId }, file)", "projectId 继续来自 useProjectScope", "对话框不新增目标类型、规则大类或关联系统输入", "不修改公共 UI、后端或数据库"],
+        "priority": "must",
+        "source": "已确认设计边界与 REQ-031 范围。",
+        "counterexample": ["新增预校验 API 或批量导入路由", "允许对话框覆盖项目范围", "将 Excel 行级字段改为对话框级选择", "修改 web/src/components/ui 或服务端"]
+      }
+    ],
+    "invariants": [
+      "projectId 继续来自顶部全局项目上下文并参与请求",
+      "现有导入与模板 API 契约不变",
+      "现有新增权限判断继续控制批量导入和新增入口",
+      "导入 Excel 的目标类型、规则大类和系统字段仍按行解析",
+      "成功或部分成功后列表刷新但对话框保持打开",
+      "关闭或项目切换会清理待导入文件和结果"
+    ],
+    "constraints": [
+      "仅修改 REQ-031 writable_paths 覆盖的文件",
+      "产品代码只修改 ValidationRulesPage.vue",
+      "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和 dm-upload-dropzone",
+      "不得修改 web/src/components/ui、data-migration.css、路由、API、后端、数据库、权限或审计",
+      "不得覆盖当前工作区已有未关联改动"
+    ],
+    "non_goals": [
+      "不新增独立批量导入页或路由",
+      "不增加导入预览、预校验、字段映射或导入历史",
+      "不修改 Excel 模板和后端解析",
+      "不治理数据迁移以外模块",
+      "不处理范围外 REQ-061"
+    ],
+    "selected_approach": {
+      "name": "当前列表页内批量导入对话框",
+      "reason": "保持当前筛选和分页上下文，并将模板、文件、提交和结果集中在一个受控流程中。",
+      "alternatives": [
+        {"name": "独立批量导入页面", "rejected_because": "增加路由和返回成本，且用户已明确要求页面内打开。"},
+        {"name": "继续在列表工具栏分散导入步骤", "rejected_because": "操作层级混乱，模板、文件、提交与结果缺少完整状态边界。"}
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": ["ValidationRulesPage.vue 页面结构", "本地导入状态", "局部响应式样式", "REQ-031 当前主题控制记录"],
+        "outside": ["web/src/components/ui", "data-migration.css", "路由", "数据迁移 API", "服务端", "数据库", "REQ-061"]
+      },
+      "components": [
+        {"name": "UiPageHeader", "responsibility": "承载页面级批量导入和新增操作"},
+        {"name": "UiToolbar", "responsibility": "仅承载列表筛选与批量管理"},
+        {"name": "ImportDialog", "responsibility": "模板、文件、提交、结果与恢复状态"},
+        {"name": "ValidationRulesPage local state", "responsibility": "协调项目范围、导入请求与列表刷新"}
+      ],
+      "interfaces": ["downloadRuleTemplate(): Promise<Blob response>", "importMigrationCheckRules({ projectId }, file): Promise<RuleImportResult response>", "load(): Promise<void>", "el-upload UploadFile change/remove", "el-dialog before-close/closed"],
+      "data_flows": ["全局项目上下文 -> projectId -> 导入 API", "Excel UploadFile.raw -> pendingImportFile -> 确认导入", "RuleImportResult -> 对话框汇总与错误列表", "成功或部分成功 -> load() -> 列表刷新", "关闭或项目切换 -> 状态清理"]
+    },
+    "error_handling": [
+      "项目不可用或无文件时禁止确认且不发送请求",
+      "请求失败写入 importError 并保留文件供重试",
+      "部分失败显示 warning 汇总和最多20条错误",
+      "提交中禁止重复提交和关闭",
+      "关闭或项目切换清理文件、结果和错误"
+    ],
+    "quality_attributes": {
+      "security": ["权限判断、RBAC 与项目隔离契约不变"],
+      "performance": ["不增加预校验或额外网络请求"],
+      "compatibility": ["现有 API、模板和 Excel 行级字段解析保持"],
+      "operations": ["四视口验收", "REQ-061 外部失败单独记录"]
+    },
+    "verification_strategy": ["源码契约检查", "Vue/TypeScript/Vite 构建", "git diff --check", "REQ-031 定向范围检查", "四视口真实浏览器验收", "环境可用时验收成功、部分失败和请求失败"],
+    "assumptions": ["hasCreate 合法控制新增和导入", "共享 dm-upload-dropzone 与 dm-attachment 样式足够", "本地前端环境可用于浏览器验收"],
+    "unknowns": [],
+    "decisions": ["当前页面对话框，不新增路由", "批量导入为次要操作，新增为主操作", "成功或部分成功后刷新列表但保持对话框", "请求失败保留文件", "复用模块共享上传样式"],
+    "risks": ["actionBusy 与导出删除共享可能产生状态耦合", "工作区已有 ValidationRulesPage.vue 未提交治理修改", "本地后端不可用可能限制动态分支验收"],
+    "approval": {
+      "status": "approved",
+      "evidence": "2026-09-07 用户回复‘批准’。",
+      "confirmed_at": "2026-09-07T13:51:14+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-07-data-migration-validation-rule-import-dialog-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "仅修改 REQ-031 writable_paths",
+      "产品代码只修改 ValidationRulesPage.vue",
+      "不修改公共 UI、data-migration.css、路由、API、后端、数据库、权限或审计",
+      "保护已有工作区改动，不批量格式化",
+      "四视口真实浏览器验收",
+      "REQ-061 仅作为范围外扰动",
+      "不执行提交、推送、合并或发布"
+    ],
+    "file_map": [
+      {"path": "web/src/modules/data-migration/views/content/ValidationRulesPage.vue", "status": "existing", "responsibility": "页面头部、工具栏、导入对话框、本地状态和局部样式", "evidence": "源码包含现有导入、模板、列表与新增流程"},
+      {"path": "web/src/modules/data-migration/data-migration.css", "status": "existing", "responsibility": "只读提供共享上传和附件视觉", "evidence": "源码第15-46行定义 dm-upload-dropzone 与 dm-attachment-*"},
+      {"path": "web/src/modules/data-migration/views/content/PlansPage.vue", "status": "existing", "responsibility": "只读提供 UiPageHeader 主操作位置参照", "evidence": "源码第313-317行"},
+      {"path": "web/src/modules/test-management/casework/TestCasePage.vue", "status": "existing", "responsibility": "只读提供对话框导入结构参照", "evidence": "源码包含 importDialog、el-upload、结果汇总与 footer"},
+      {"path": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-state.json", "status": "candidate-new", "responsibility": "独立控制状态账本", "evidence": "当前主题不得复用已收敛 frontend-governance-state"}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "页面头部双操作和当前页批量导入对话框达到批准设计的完整状态行为。",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": [],
+        "input_facts": [
+          "ValidationRulesPage.vue 当前没有 UiPageHeader，导入和新增操作位于 UiToolbar",
+          "页面已有 pendingImportFile、importResult、actionBusy、downloadTemplate、submitImport 和项目切换 watch",
+          "data-migration.css 已提供 dm-upload-dropzone 与 dm-attachment-*",
+          "web/package.json 只提供 dev、build、preview，无单元测试脚本"
+        ],
+        "files": {
+          "create": [],
+          "modify": ["web/src/modules/data-migration/views/content/ValidationRulesPage.vue"],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["hasCreate", "scopeState", "scopeProjectId", "actionBusy", "load()", "downloadRuleTemplate()", "importMigrationCheckRules({ projectId }, file)", "UploadFile", "UploadInstance"],
+          "produces": ["openImportDialog()", "resetImportDialog()", "onImportFileChange(UploadFile)", "onImportFileRemove()", "beforeImportDialogClose(done)", "importDialogOpen", "importError", "importUploadRef", "canSubmitImport"]
+        },
+        "steps": [
+          {"id": "T1-S1", "action": "扫描当前头部、工具栏和导入结果结构，建立执行前偏差", "command": "rg -n \"UiPageHeader|模板下载|选择 Excel|提交导入|importResult\" web/src/modules/data-migration/views/content/ValidationRulesPage.vue", "expected": "不存在 UiPageHeader，导入操作和结果仍在工具栏/列表正文", "evidence": "命中行号"},
+          {"id": "T1-S2", "action": "增加对话框状态、Element Plus 上传类型和选择/移除/关闭重置函数", "command": null, "expected": "文件、结果、请求错误和关闭状态拥有单一清理路径，提交中 before-close 不执行 done", "evidence": "状态函数 diff 与 vue-tsc 输出"},
+          {"id": "T1-S3", "action": "修改 submitImport 的成功、部分失败和请求失败状态流", "command": null, "expected": "成功或部分成功保留文件和结果并刷新列表，请求失败保留文件并设置 importError", "evidence": "submitImport diff"},
+          {"id": "T1-S4", "action": "增加 UiPageHeader 双操作并从 UiToolbar 移除导入和新增入口", "command": null, "expected": "批量导入在左且为次要按钮，新增迁移检核规则在右且为 primary；工具栏只含列表操作", "evidence": "模板 diff 与源码契约"},
+          {"id": "T1-S5", "action": "增加当前页导入对话框并复用 dm-upload-dropzone 与 dm-attachment-*", "command": null, "expected": "模板、选文件、确认、请求错误和最多20条行错误集中在对话框，提交中不可关闭", "evidence": "对话框模板 diff"},
+          {"id": "T1-S6", "action": "在项目切换时清理导入状态并补充局部响应式滚动样式", "command": null, "expected": "旧项目文件不跨项目保留，长内容不导致横向溢出且 footer 可达", "evidence": "watch 与 scoped CSS diff"},
+          {"id": "T1-S7", "action": "运行源码契约、前端构建和单文件差异检查", "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/content/ValidationRulesPage.vue','utf8');const toolbar=s.match(/<UiToolbar>[\\s\\S]*?<\\/UiToolbar>/)?.[0]??'';for(const token of ['UiPageHeader','批量导入','新增迁移检核规则','dm-upload-dropzone','beforeImportDialogClose','importError'])if(!s.includes(token))throw new Error('missing '+token);for(const token of ['模板下载','选择 Excel','提交导入'])if(toolbar.includes(token))throw new Error('toolbar contains '+token);\" && npm --prefix web run build && git diff --check -- web/src/modules/data-migration/views/content/ValidationRulesPage.vue", "expected": "退出码0，源码契约、vue-tsc、Vite和空白检查均通过", "evidence": "命令输出与退出码"}
+        ],
+        "acceptance_checks": ["头部双按钮顺序、权限和主次正确", "当前路由内对话框包含完整导入流程", "七个导入状态可观察且可恢复", "工具栏仅保留列表职责", "共享上传样式和局部响应式布局无溢出", "API、projectId、权限与Excel解析契约不变"],
+        "risks": ["actionBusy 与其他页面动作共享", "同一文件存在此前未提交治理修改", "Element Plus 上传列表与自定义文件状态可能重复"],
+        "rollback": "只恢复 T1 在 ValidationRulesPage.vue 中新增的头部、导入状态、对话框和局部样式，保留 T1 开始前已有改动与全部控制证据。",
+        "stop_conditions": ["需要修改 API、后端、公共 UI、路由或 data-migration.css", "同一区域出现无法安全合并的新用户改动", "现有 Element Plus 不支持计划契约"],
+        "escalation_conditions": ["用户要求预校验、字段映射、导入历史或独立页面", "发现独立导入权限而 hasCreate 不适用", "需要改变全局项目 store"]
+      },
+      {
+        "id": "T2",
+        "goal": "自动化、REQ-031 范围和四视口真实浏览器证据足以判定 R1-R6。",
+        "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+        "prerequisites": ["T1"],
+        "input_facts": ["项目规定前端构建、范围检查和四视口验收", "本地前端可能运行而后端可能未运行", "REQ-061 是已知范围外全仓治理扰动"],
+        "files": {
+          "create": [
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-state.json",
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-baseline.json",
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-model.json",
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-control-plan.json",
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-execution-T1.json",
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-observation-T1.json",
+            ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-convergence-report.json"
+          ],
+          "modify": [],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["T1 ValidationRulesPage.vue output", "local Vite application", "existing authentication and project context"],
+          "produces": ["source contract evidence", "frontend build evidence", "REQ-031 scope evidence", "four viewport browser evidence", "external disturbance classification", "convergence decision"]
+        },
+        "steps": [
+          {"id": "T2-S1", "action": "独立复跑源码契约、前端构建和差异质量", "command": "npm --prefix web run build && git diff --check", "expected": "退出码0，无 TypeScript、Vue、Vite 或空白错误", "evidence": "完整命令、退出码和摘要"},
+          {"id": "T2-S2", "action": "执行 REQ-031 定向范围检查", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "expected": "退出码0，全部变更位于 writable_paths", "evidence": "范围检查输出"},
+          {"id": "T2-S3", "action": "探测前后端并按项目脚本启动缺失的本地验收服务", "command": "curl -fsS http://127.0.0.1:5173/ >/dev/null; curl -fsS http://127.0.0.1:8080/actuator/health", "expected": "记录服务真实状态和实际验收 URL；不把不可用后端视为通过", "evidence": "健康检查与服务启动记录"},
+          {"id": "T2-S4", "action": "在 1280x800、375x812、390x844、430x932 验收头部、对话框、禁用状态、长内容和溢出", "command": null, "expected": "四视口页面和对话框 scrollWidth <= clientWidth，路由不变，footer可达，按钮状态正确", "evidence": "截图、路由值与 DOM 尺寸断言"},
+          {"id": "T2-S5", "action": "环境允许时验收全部成功、部分失败和请求失败重试；否则登记未执行", "command": null, "expected": "成功或部分成功刷新列表并保持对话框，请求失败保留文件；未执行分支进入残余风险", "evidence": "网络摘要与状态截图或环境阻断记录"},
+          {"id": "T2-S6", "action": "运行全仓治理并对 REQ-061 做范围外归因", "command": "node scripts/check-all-governance.mjs", "expected": "本任务相关检查通过；REQ-061 若仍失败则保留非零退出码并标记范围外", "evidence": "治理输出、文件与归因"},
+          {"id": "T2-S7", "action": "逐项映射 R1-R6 证据并完成独立观测和收敛审计", "command": null, "expected": "无本任务开放 P0/P1/P2 偏差；动态未测分支明确记录；满足门禁后才进入 converged", "evidence": "observation 与 convergence report"}
+        ],
+        "acceptance_checks": ["源码契约、构建和 git diff --check 通过", "REQ-031 范围检查通过", "四视口无横向溢出且操作可达", "动态状态已验收或如实登记残余风险", "REQ-061 未修改且未误报全仓通过"],
+        "risks": ["后端、认证或测试数据不可用导致动态验收盲区", "已有工作区改动影响全量 diff 但仍在 REQ-031 范围"],
+        "rollback": "发现回归时回到 T1 单文件回滚点，保留失败证据和控制记录；仅终止本次启动的临时服务。",
+        "stop_conditions": ["REQ-031 范围检查失败", "本次修改导致构建失败", "四视口问题只能通过范围外公共组件修改解决", "动态验收需要生产数据或敏感凭据"],
+        "escalation_conditions": ["必须修改公共 UI、全局样式、API 或后端", "出现本任务导致的 P0/P1 回归", "需要新的用户授权或外部环境"]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "自动化和浏览器验收依赖稳定的页面实现"}
+    ],
+    "parallel_groups": [["T1"], ["T2"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "npm --prefix web run build && git diff --check -- web/src/modules/data-migration/views/content/ValidationRulesPage.vue", "expected": "退出码0"},
+      {"after_tasks": ["T2"], "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "expected": "退出码0"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1", "T2"]},
+      {"requirement_id": "R2", "task_ids": ["T1", "T2"]},
+      {"requirement_id": "R3", "task_ids": ["T1", "T2"]},
+      {"requirement_id": "R4", "task_ids": ["T1", "T2"]},
+      {"requirement_id": "R5", "task_ids": ["T1", "T2"]},
+      {"requirement_id": "R6", "task_ids": ["T1", "T2"]}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "2026-09-07 用户回复‘确认实施’。",
+      "confirmed_at": "2026-09-07T13:58:11+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["ValidationRulesPage.vue 页面头部", "UiToolbar", "本地导入状态", "批量导入对话框", "局部响应式样式"],
+    "state_variable_candidates": ["importDialogOpen", "pendingImportFile", "importError", "importResult", "actionBusy", "scopeProjectId", "records"],
+    "interface_candidates": ["downloadRuleTemplate()", "importMigrationCheckRules({ projectId }, file)", "load()", "el-upload change/remove", "el-dialog before-close/closed", "UiPageHeader actions"],
+    "sensor_candidates": ["rg/Node 源码契约检查", "vue-tsc 与 Vite 构建", "git diff --check", "REQ-031 scope check", "浏览器 DOM/路由/溢出断言", "导入网络响应"],
+    "actuator_candidates": ["Vue 状态函数", "头部与工具栏模板重组", "对话框属性", "上传事件", "局部响应式 CSS"],
+    "disturbance_candidates": ["工作区已有未提交治理改动", "本地后端不可用", "认证或测试数据缺失", "REQ-061 全仓治理失败"],
+    "delay_candidates": ["导入网络请求", "列表刷新", "Vite 首次构建", "浏览器启动"],
+    "assumptions": [
+      {"text": "hasCreate 合法控制单条新增和批量导入", "basis": "当前页面两个入口均使用 hasCreate", "falsifier": "后端或菜单存在独立导入权限"},
+      {"text": "dm-upload-dropzone 与 dm-attachment-* 足以承载导入对话框", "basis": "共享 CSS 已定义并被其他数据迁移页面使用", "falsifier": "四视口问题只能通过修改共享样式解决"},
+      {"text": "本地环境至少可完成前端结构和布局验收", "basis": "Vite 服务此前可能运行在 5173", "falsifier": "前端无法启动或认证入口不可用"}
+    ]
+  }
+}

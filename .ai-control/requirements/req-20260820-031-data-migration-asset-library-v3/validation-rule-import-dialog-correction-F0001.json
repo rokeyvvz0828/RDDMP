@@ -1,0 +1,45 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "Chromium在375/390/430三个手机视口稳定复现大面积底部空白；390x844计算样式显示对话框高820px而内容约447px，且只读CSS取证能解释align-center与全局移动端margin覆盖的组合因果。",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "本页el-dialog的align-center让overlay成为flex容器；全局移动端.el-dialog margin:12px auto!important覆盖Element Plus align-center的margin:auto后，子项按交叉轴stretch填满高度。",
+    "supporting_evidence": [
+      "Element Plus el-dialog.css定义.el-dialog.is-align-center{margin:auto}，overlay在align-center时display:flex",
+      "web/src/styles.css移动端定义.el-dialog margin:12px auto!important",
+      "浏览器计算样式显示overlay display:flex、dialog margin12px、height820px",
+      "截图显示footer下方大面积空白"
+    ],
+    "falsifier": "删除align-center后同一视口对话框仍保持接近视口满高，或计算样式显示高度由其他规则固定。"
+  },
+  "control_action": {
+    "gain": "low",
+    "target": "ValidationRulesPage.vue 批量导入 el-dialog 的纵向布局",
+    "write_scope": [
+      "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/validation-rule-import-dialog-execution-F0001.json"
+    ],
+    "invariants": [
+      "对话框宽度、内容、状态和API行为不变",
+      "桌面与移动端无横向溢出",
+      "正文最大高度和纵向滚动边界不变",
+      "footer可达",
+      "不修改全局或共享CSS"
+    ],
+    "impact_limit": "删除批量导入el-dialog上的单个align-center属性，不调整其他对话框或样式。",
+    "rollback": "恢复该el-dialog的align-center属性。",
+    "correction_check": [
+      "375x812、390x844、430x932初始态对话框高度接近header+body+footer自然内容高度且不超过视口",
+      "三个手机视口和1280x800仍满足page/dialog/body scrollWidth<=clientWidth",
+      "长错误列表正文滚动且footer可达",
+      "源码契约和npm build继续通过"
+    ],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": [
+    "未覆盖手机软键盘弹出",
+    "其他使用align-center的范围外页面可能存在相同全局样式问题，但不属于本任务"
+  ]
+}
