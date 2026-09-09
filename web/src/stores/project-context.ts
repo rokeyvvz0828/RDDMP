@@ -9,6 +9,7 @@ const STORAGE_KEY = 'ccb.current_project_ref'
 
 function projectContextItem(project: Project): ProjectContextItem {
   return {
+    id: project.id,
     ref: project.project_code,
     name: project.project_name,
     shortName: project.project_code,
