@@ -1767,8 +1767,8 @@ async function submitDiffFlow() {
 <template>
   <section class="requirements-page">
     <el-tabs :model-value="section" class="requirements-tabs" @tab-change="(name: string) => router.replace('/requirements/' + name)">
-      <el-tab-pane v-if="visibleSections.includes('new-project')" label="新建项目" name="new-project" />
-      <el-tab-pane v-if="visibleSections.includes('legacy')" label="存量项目" name="legacy" />
+      <el-tab-pane v-if="visibleSections.includes('new-project')" label="需求列表" name="new-project" />
+      <el-tab-pane v-if="visibleSections.includes('legacy')" label="需求列表" name="legacy" />
     </el-tabs>
 
     <!-- 新建项目 -->
