@@ -168,7 +168,9 @@ function buildDevEnvironment() {
     JWT_REFRESH_TTL_MILLIS: '604800000',
     MINIO_ACCESS_KEY,
     MINIO_SECRET_KEY,
-    MINIO_ENDPOINT: `http://${minioHost}:${MINIO_API_PORT}`,
+    // WSL宿主机走已发布端口；预览服务使用容器可达地址重新签名。
+    MINIO_ENDPOINT: `http://127.0.0.1:${MINIO_API_PORT}`,
+    MINIO_PREVIEW_ENDPOINT: `http://${minioHost}:${MINIO_API_PORT}`,
     MINIO_BUCKET: 'ccb-platform',
     MINIO_PRESIGNED_EXPIRY_SECONDS: '3600',
     FILE_PREVIEW_ENABLED: 'true',

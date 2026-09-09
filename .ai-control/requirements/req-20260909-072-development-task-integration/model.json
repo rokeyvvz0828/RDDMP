@@ -1,0 +1,648 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "远端3e87a09源码",
+      "开发模块及公开查询适配",
+      "脚本与本地Git分支"
+    ],
+    "environment": [
+      "原071只读工作树与UAT库",
+      "rddmp-dev标准本地容器",
+      "用户主工作区技能改动"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "integration",
+      "owner": "主代理",
+      "valid_values": [
+        "snapshot",
+        "ported",
+        "verified",
+        "running"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "提示带可展开待承接清单并直接创建任务。",
+        "返回恢复检索、分页和滚动位置。"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "来源类型、需求标识和物理系统唯一，叠加服务端租户及适用项目范围。",
+        "并发承接同一组合只产生一条任务，其他系统仍可承接。"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "无需求标识也可保存自主任务。",
+        "同一系统允许多条自主任务，跨系统创建仍执行授权。"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "服务端解析负责人默认值并验证受控人员选择。",
+        "已显式填写的人员不被页面刷新覆盖。"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "新任务工作项为零，仍可从任务列表进入。",
+        "新增实际工作项后出现在看板，不需先删除占位项。"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "承接、设计、实施、单元测试均在同一详情页内维护。",
+        "直接打开或刷新详情可恢复数据，业务字段修改留痕。"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "设计资料支持附件或路径，开发类提交完成须有代码走查附件，暂存允许缺资料。",
+        "纯测试可不适用设计/实施，不强制代码走查；所有任务均不因缺测试报告阻止保存或完成。"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "任务内固定 taskId，跨任务按权限及筛选查询，状态和数据一致。",
+        "卡片显示所属任务、系统、来源、人员、日期和异常标记。"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "阻塞必须记录原因且保留执行状态。",
+        "拖动和手机状态操作调用同一服务端动作及验收门禁，失败恢复确认状态。"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "偏差为实际与计划工作日差值除以计划工作日数。",
+        "日期不全或计划为零显示不可计算；不汇总并行工作项跨度冒充任务耗时。"
+      ]
+    },
+    {
+      "requirement_id": "R11",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "系统负责人仅管理所负责系统，任务负责人仅管理被指派任务，指定人员仅维护本人工作项。",
+        "列表、计数、详情、附件和修改记录应用相同范围，管理员仍受已授权范围限制。"
+      ]
+    },
+    {
+      "requirement_id": "R12",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "指定人员提交待验收，任务负责人或系统负责人确认或退回。",
+        "全部工作项完成不自动结束父任务。"
+      ]
+    },
+    {
+      "requirement_id": "R13",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "记录操作人、时间、前后值、动作和 trace。",
+        "资料替换保留历史，系统编号、登记时间和审计不接受客户端任意覆盖。"
+      ]
+    },
+    {
+      "requirement_id": "R14",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "375x812、390x844、430x932、1280x800 及明暗主题无整页横向溢出，局部编辑操作可达。",
+        "加载、空、失败、无权限、只读、提交中、未保存和冲突可区分，手机无需拖动也能改状态。"
+      ]
+    },
+    {
+      "requirement_id": "R15",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "同一需求系统角色归并，纯测试和混合角色正确区分。",
+        "创建时重验来源、映射、负责人和权限；缺失或歧义必须提示修正。"
+      ]
+    },
+    {
+      "requirement_id": "R16",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "并发创建编号不重复。",
+        "配置变更仅影响新任务，不重写已有编号。"
+      ]
+    },
+    {
+      "requirement_id": "R17",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "远端tip是整合结果祖先",
+        "不带入b22分叉独有的main功能",
+        "用户技能文件哈希不变",
+        "上游为origin/dev-ivanh"
+      ]
+    },
+    {
+      "requirement_id": "R18",
+      "input": "批准的远端基线与功能差异",
+      "transitions": [
+        "差异移植",
+        "项目契约适配",
+        "自动化与运行校验",
+        "本地分支切换"
+      ],
+      "outputs": [
+        "8080健康UP、5173前端200、管理员登录成功",
+        "V156-V159原脚本和checksum保持",
+        "新功能真实角色与浏览器复验"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "物理系统公开查询",
+      "producers": [
+        "architecture.integration"
+      ],
+      "consumers": [
+        "boot/development"
+      ],
+      "invariant": "project_id限定与租户/Owner范围同时生效"
+    },
+    {
+      "name": "默认dev runner",
+      "producers": [
+        "scripts/dev.sh/dev.mjs"
+      ],
+      "consumers": [
+        "本地UAT"
+      ],
+      "invariant": "不读取.env；保留数据卷，admin固定测试密码"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "源码与分支",
+      "method": "git diff/log、备份SHA和上游检查",
+      "blind_spots": [
+        "运行行为"
+      ],
+      "independence": "Git与文件内容原始观测"
+    },
+    {
+      "id": "S2",
+      "target": "功能与边界",
+      "method": "Maven测试、真实MySQL和SecurityFilterChain",
+      "blind_spots": [
+        "视觉"
+      ],
+      "independence": "实际断言与数据库"
+    },
+    {
+      "id": "S3",
+      "target": "前端与运行",
+      "method": "Vue构建、HTTP健康、独立真实浏览器",
+      "blind_spots": [
+        "未覆盖生产服务"
+      ],
+      "independence": "用户路径与HTTP响应"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "限定移植与兼容",
+      "action": "三方应用原功能补丁，按新项目边界修正直接消费者/测试，验证后本地切换分支和脚本启动",
+      "authority": "用户确认方案与本次精确scope",
+      "impact_radius": "本次开发及直接公开契约、本地开发环境",
+      "rollback": "新工作树、备份分支及文件/数据库备份"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R8",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R9",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R10",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R11",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R12",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R13",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R14",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R15",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R16",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R17",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R18",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "分叉迁移",
+      "effect": "直接合并会版本重复",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "用户并行改动",
+      "effect": "主工作区不能覆盖",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "delays": [
+    {
+      "source": "MySQL/应用启动",
+      "consequence": "即时HTTP可能不可达",
+      "sampling_rule": "等待健康UP后采样"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "标准容器为本地开发资源",
+      "evidence": "脚本明确rddmp-dev名称及固定虚构凭据，库历史与远端159一致",
+      "falsifier": "资源身份或历史不匹配即停止"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R8",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R9",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R10",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R11",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R12",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R13",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R14",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R15",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R16",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R17",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    },
+    {
+      "requirement_id": "R18",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "在批准文件和隔离资源内执行"
+    }
+  ],
+  "model_status": "ready"
+}

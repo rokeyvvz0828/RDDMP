@@ -147,6 +147,25 @@ const router = createRouter({
           component: DeliveryShowcaseModule,
           meta: { title: '交付示范中心' }
         },
+        { path: 'development', redirect: '/development/tasks' },
+        {
+          path: 'development/work-items/board',
+          name: 'development-work-item-board',
+          component: () => import('../modules/development/DevelopmentWorkItemBoardPage.vue'),
+          meta: { title: '工作项看板', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
+        {
+          path: 'development/tasks',
+          name: 'development-tasks',
+          component: () => import('../modules/development/DevelopmentTaskListPage.vue'),
+          meta: { title: '开发任务', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
+        {
+          path: 'development/tasks/:taskId',
+          name: 'development-task-detail',
+          component: () => import('../modules/development/DevelopmentTaskDetailPage.vue'),
+          meta: { title: '开发任务详情', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
         {
           path: 'release',
           name: 'release-root',

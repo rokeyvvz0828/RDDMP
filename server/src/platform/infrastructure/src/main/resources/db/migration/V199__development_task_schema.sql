@@ -1,0 +1,111 @@
+-- 开发任务首期结构。回退应用时保留任务、编号、来源绑定和审计，不删除已发布迁移。
+CREATE TABLE dev_task_number_sequence (
+    tenant_id BIGINT NOT NULL COMMENT '租户',
+    sequence_key VARCHAR(160) NOT NULL COMMENT '编号分组',
+    next_value BIGINT NOT NULL DEFAULT 1 COMMENT '下一个序号',
+    PRIMARY KEY (tenant_id, sequence_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='开发任务编号序列';
+
+CREATE TABLE dev_task (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务标识',
+    tenant_id BIGINT NOT NULL COMMENT '租户',
+    project_id BIGINT NOT NULL COMMENT '已授权平台项目标识',
+    project_ref VARCHAR(128) NOT NULL COMMENT '平台项目编码',
+    task_no VARCHAR(255) NOT NULL COMMENT '正式编号',
+    source_mode VARCHAR(16) NOT NULL COMMENT '关联或自主',
+    source_type VARCHAR(32) NULL COMMENT '来源类型',
+    source_requirement_id BIGINT NULL COMMENT '来源需求标识',
+    source_number VARCHAR(255) NULL COMMENT '来源编号快照',
+    source_revision VARCHAR(64) NULL COMMENT '来源版本摘要',
+    source_roles JSON NOT NULL COMMENT '归并角色快照',
+    source_system_codes JSON NOT NULL COMMENT '来源系统编码快照',
+    system_id BIGINT NOT NULL COMMENT '物理子系统标识',
+    owner_id BIGINT NOT NULL COMMENT '任务负责人',
+    title VARCHAR(200) NOT NULL COMMENT '任务名称',
+    description TEXT NOT NULL COMMENT '任务内容',
+    status VARCHAR(24) NOT NULL DEFAULT 'NOT_STARTED' COMMENT '任务状态',
+    row_version BIGINT NOT NULL DEFAULT 0 COMMENT '行版本',
+    development_plan_start DATE NULL COMMENT '开发计划开始',
+    development_plan_end DATE NULL COMMENT '开发计划结束',
+    test_plan_start DATE NULL COMMENT '测试计划开始',
+    test_plan_end DATE NULL COMMENT '测试计划结束',
+    request_id VARCHAR(64) NOT NULL COMMENT '创建请求幂等标识',
+    request_hash CHAR(64) NOT NULL COMMENT '创建请求摘要',
+    created_by BIGINT NOT NULL COMMENT '创建人',
+    updated_by BIGINT NOT NULL COMMENT '更新人',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '服务端登记时间',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '服务端更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_dev_task_tenant_id (tenant_id, id),
+    UNIQUE KEY uk_dev_task_source (tenant_id, source_type, source_requirement_id, system_id),
+    UNIQUE KEY uk_dev_task_number (tenant_id, task_no),
+    UNIQUE KEY uk_dev_task_request (tenant_id, created_by, request_id),
+    KEY idx_dev_task_project (tenant_id, project_id, status, id),
+    KEY idx_dev_task_owner (tenant_id, owner_id, project_id),
+    KEY idx_dev_task_system (tenant_id, system_id, project_id),
+    CONSTRAINT ck_dev_task_source CHECK ((source_mode='STANDALONE' AND source_type IS NULL AND source_requirement_id IS NULL)
+        OR (source_mode='LINKED' AND source_type='LEGACY' AND source_requirement_id IS NOT NULL)),
+    CONSTRAINT ck_dev_task_status CHECK (status IN ('NOT_STARTED','IN_PROGRESS','COMPLETED','CANCELLED')),
+    CONSTRAINT ck_dev_task_development_dates CHECK (development_plan_end >= development_plan_start),
+    CONSTRAINT ck_dev_task_test_dates CHECK (test_plan_end >= test_plan_start)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统级开发任务';
+
+CREATE TABLE dev_task_source_binding (
+    tenant_id BIGINT NOT NULL COMMENT '租户',
+    source_type VARCHAR(32) NOT NULL COMMENT '来源类型',
+    source_requirement_id BIGINT NOT NULL COMMENT '来源需求',
+    source_system_code VARCHAR(128) NOT NULL COMMENT '来源系统编码',
+    task_id BIGINT NOT NULL COMMENT '首次承接任务',
+    system_id BIGINT NOT NULL COMMENT '首次承接物理系统',
+    PRIMARY KEY (tenant_id, source_type, source_requirement_id, source_system_code),
+    KEY idx_dev_binding_task (tenant_id, task_id),
+    CONSTRAINT fk_dev_binding_task FOREIGN KEY (tenant_id, task_id) REFERENCES dev_task (tenant_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='不可重复承接的来源绑定';
+
+CREATE TABLE dev_work_item (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '工作项标识',
+    tenant_id BIGINT NOT NULL COMMENT '租户',
+    task_id BIGINT NOT NULL COMMENT '所属任务',
+    title VARCHAR(200) NOT NULL COMMENT '工作项名称',
+    description TEXT NOT NULL COMMENT '具体内容',
+    assignee_id BIGINT NOT NULL COMMENT '指定人员',
+    status VARCHAR(24) NOT NULL DEFAULT 'TODO' COMMENT '执行状态',
+    planned_start DATE NULL COMMENT '计划开始',
+    planned_end DATE NULL COMMENT '计划结束',
+    actual_start DATE NULL COMMENT '实际开始',
+    actual_end DATE NULL COMMENT '实际结束',
+    blocked BOOLEAN NOT NULL DEFAULT FALSE COMMENT '独立阻塞标记',
+    block_reason VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '阻塞原因',
+    row_version BIGINT NOT NULL DEFAULT 0 COMMENT '行版本',
+    created_by BIGINT NOT NULL COMMENT '创建人',
+    updated_by BIGINT NOT NULL COMMENT '更新人',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '登记时间',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_dev_item_tenant_id (tenant_id, id),
+    KEY idx_dev_item_task (tenant_id, task_id, status, id),
+    KEY idx_dev_item_assignee (tenant_id, assignee_id, task_id),
+    CONSTRAINT fk_dev_item_task FOREIGN KEY (tenant_id, task_id) REFERENCES dev_task (tenant_id, id),
+    CONSTRAINT ck_dev_item_status CHECK (status IN ('TODO','IN_PROGRESS','IN_REVIEW','DONE')),
+    CONSTRAINT ck_dev_item_block CHECK (blocked=FALSE OR CHAR_LENGTH(TRIM(block_reason))>0),
+    CONSTRAINT ck_dev_item_plan_dates CHECK (planned_end >= planned_start),
+    CONSTRAINT ck_dev_item_actual_dates CHECK (actual_end >= actual_start)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='开发工作项';
+
+CREATE TABLE dev_task_change (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '事件标识',
+    tenant_id BIGINT NOT NULL COMMENT '租户',
+    task_id BIGINT NOT NULL COMMENT '所属任务',
+    object_type VARCHAR(32) NOT NULL COMMENT '对象类型',
+    object_id BIGINT NOT NULL COMMENT '对象标识',
+    action VARCHAR(32) NOT NULL COMMENT '操作动作',
+    before_json JSON NULL COMMENT '白名单前值',
+    after_json JSON NULL COMMENT '白名单后值',
+    actor_id BIGINT NOT NULL COMMENT '操作者',
+    actor_name VARCHAR(128) NOT NULL COMMENT '操作者名称快照',
+    trace_id VARCHAR(64) NOT NULL COMMENT '追踪标识',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '操作时间',
+    PRIMARY KEY (id),
+    KEY idx_dev_change_task (tenant_id, task_id, id),
+    CONSTRAINT fk_dev_change_task FOREIGN KEY (tenant_id, task_id) REFERENCES dev_task (tenant_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='开发任务不可变业务变更记录';

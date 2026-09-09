@@ -1,8 +1,17 @@
 {
   "datasetKey": "rddmp-local-platform",
-  "datasetVersion": "2026.09.05.1",
+  "datasetVersion": "2026.09.09.1",
   "description": "RDDMP 本地研发演示数据。所有数据均为虚构内容，使用高位保留 ID。",
   "catalog": [
+    {
+      "module": "development",
+      "name": "开发任务管理",
+      "features": ["待承接需求", "自主任务", "双入口工作项看板", "阶段资料", "工作日耗时", "变更记录"],
+      "entry": "/development/tasks",
+      "dataStrategy": "database",
+      "tables": ["dev_task", "dev_task_source_binding", "dev_work_item", "dev_task_stage", "dev_calendar_snapshot", "dev_task_change"],
+      "note": "虚构演示项目 RDDMP-PLATFORM；mock.engineer 为门户系统负责人，mock.product 为任务负责人，mock.qa 为执行人，mock.release 为其他成员。无虚构附件占位，开发类完成须实际上传代码走查文件。"
+    },
     {
       "module": "system",
       "name": "系统管理",
@@ -687,6 +696,121 @@
         {"role_id": 910000000000102, "permission_id": 7207, "tenant_id": 1},
         {"role_id": 910000000000102, "permission_id": 7208, "tenant_id": 1},
         {"role_id": 910000000000102, "permission_id": 7209, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_role", "keyColumns": ["id"], "rows": [
+        {"id": 910000000000171, "tenant_id": 1, "role_code": "MOCK_DEV_OWNER", "role_name": "虚构系统负责人", "status": 1, "deleted": 0},
+        {"id": 910000000000172, "tenant_id": 1, "role_code": "MOCK_DEV_MANAGER", "role_name": "虚构任务负责人", "status": 1, "deleted": 0},
+        {"id": 910000000000173, "tenant_id": 1, "role_code": "MOCK_DEV_EXECUTOR", "role_name": "虚构执行人", "status": 1, "deleted": 0},
+        {"id": 910000000000174, "tenant_id": 1, "role_code": "MOCK_DEV_READER", "role_name": "虚构其他成员", "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_user_role", "keyColumns": ["user_id", "role_id"], "rows": [
+        {"user_id": 910000000000002, "role_id": 910000000000171, "tenant_id": 1},
+        {"user_id": 910000000000001, "role_id": 910000000000172, "tenant_id": 1},
+        {"user_id": 910000000000003, "role_id": 910000000000173, "tenant_id": 1},
+        {"user_id": 910000000000004, "role_id": 910000000000174, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_role_menu", "keyColumns": ["role_id", "menu_id"], "rows": [
+        {"role_id": 910000000000171, "menu_id": 910710, "tenant_id": 1},
+        {"role_id": 910000000000171, "menu_id": 910711, "tenant_id": 1},
+        {"role_id": 910000000000172, "menu_id": 910710, "tenant_id": 1},
+        {"role_id": 910000000000172, "menu_id": 910711, "tenant_id": 1},
+        {"role_id": 910000000000173, "menu_id": 910710, "tenant_id": 1},
+        {"role_id": 910000000000173, "menu_id": 910711, "tenant_id": 1},
+        {"role_id": 910000000000174, "menu_id": 910710, "tenant_id": 1},
+        {"role_id": 910000000000174, "menu_id": 910711, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "sys_role_permission", "keyColumns": ["role_id", "permission_id"], "rows": [
+        {"role_id": 910000000000171, "permission_id": 9107111, "tenant_id": 1},
+        {"role_id": 910000000000171, "permission_id": 9107112, "tenant_id": 1},
+        {"role_id": 910000000000171, "permission_id": 9107113, "tenant_id": 1},
+        {"role_id": 910000000000171, "permission_id": 9107114, "tenant_id": 1},
+        {"role_id": 910000000000171, "permission_id": 9107115, "tenant_id": 1},
+        {"role_id": 910000000000171, "permission_id": 9107116, "tenant_id": 1},
+        {"role_id": 910000000000172, "permission_id": 9107111, "tenant_id": 1},
+        {"role_id": 910000000000172, "permission_id": 9107112, "tenant_id": 1},
+        {"role_id": 910000000000172, "permission_id": 9107113, "tenant_id": 1},
+        {"role_id": 910000000000172, "permission_id": 9107114, "tenant_id": 1},
+        {"role_id": 910000000000172, "permission_id": 9107115, "tenant_id": 1},
+        {"role_id": 910000000000172, "permission_id": 9107116, "tenant_id": 1},
+        {"role_id": 910000000000173, "permission_id": 9107111, "tenant_id": 1},
+        {"role_id": 910000000000173, "permission_id": 9107114, "tenant_id": 1},
+        {"role_id": 910000000000174, "permission_id": 9107111, "tenant_id": 1}
+      ]
+    },
+    {
+      "table": "req_project", "keyColumns": ["id"], "rows": [
+        {"id": 930000000007101, "tenant_id": 1, "project_code": "RDDMP-PLATFORM", "project_name": "虚构开发联调需求项目", "status": "进行中", "description": "通过项目编码关联平台项目，需求项目使用独立主键。", "created_by": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_legacy_requirement", "keyColumns": ["id"], "rows": [
+        {"id": 930000000007201, "tenant_id": 1, "project_id": 930000000007101, "requirement_no": "MOCK-DEV-REQ-001", "requirement_name": "虚构门户批量查询改造", "content_summary": "主责与测试跨系统协作，门户系统尚待承接。", "business_group": "虚构开发组", "remark": "虚构演示数据", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000007202, "tenant_id": 1, "project_id": 930000000007101, "requirement_no": "MOCK-DEV-REQ-002", "requirement_name": "虚构门户交付验收改造", "content_summary": "主责和测试归并到同一系统，不豁免代码走查。", "business_group": "虚构开发组", "remark": "虚构演示数据", "created_by": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_legacy_system_item", "keyColumns": ["id"], "rows": [
+        {"id": 930000000007301, "tenant_id": 1, "requirement_id": 930000000007201, "system_role": "主责", "system_code": "MOCK-DEV-PORTAL", "system_name": "虚构门户来源系统", "owner_user_id": 910000000000001, "owner_user_name": "虚构建议负责人", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000007302, "tenant_id": 1, "requirement_id": 930000000007202, "system_role": "主责", "system_code": "MOCK-DEV-PORTAL", "system_name": "虚构门户来源系统", "owner_user_id": 910000000000001, "owner_user_name": "虚构建议负责人", "created_by": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "req_coordination_item", "keyColumns": ["id"], "rows": [
+        {"id": 930000000007401, "tenant_id": 1, "requirement_id": 930000000007201, "item_type": "测试", "system_code": "MOCK-DEV-OPS", "system_name": "虚构纯测试来源系统", "owner_user_id": 910000000000003, "owner_user_name": "演示测试负责人", "created_by": 910000000000001, "deleted": 0},
+        {"id": 930000000007402, "tenant_id": 1, "requirement_id": 930000000007202, "item_type": "测试", "system_code": "MOCK-DEV-PORTAL", "system_name": "虚构门户来源系统", "owner_user_id": 910000000000003, "owner_user_name": "演示测试负责人", "created_by": 910000000000001, "deleted": 0}
+      ]
+    },
+    {
+      "table": "sys_config", "keyColumns": ["id"], "rows": [
+        {"id": 910000000007501, "tenant_id": 1, "category_id": 910712, "config_key": "MOCK-DEV-PORTAL", "config_value": "910000000003101", "config_type": "string", "remark": "虚构门户来源映射", "status": 1, "deleted": 0},
+        {"id": 910000000007502, "tenant_id": 1, "category_id": 910712, "config_key": "MOCK-DEV-OPS", "config_value": "910000000003102", "config_type": "string", "remark": "虚构纯测试来源映射", "status": 1, "deleted": 0}
+      ]
+    },
+    {
+      "table": "dev_task", "keyColumns": ["id"], "rows": [
+        {"id": 940000000007101, "tenant_id": 1, "project_id": 910000000003001, "project_ref": "RDDMP-PLATFORM", "task_no": "MOCK-RW-071-001", "source_mode": "LINKED", "source_type": "LEGACY", "source_requirement_id": 930000000007202, "source_number": "MOCK-DEV-REQ-002", "source_revision": "mock-seeded-source", "source_roles": ["LEAD", "TEST"], "source_system_codes": ["MOCK-DEV-PORTAL"], "system_id": 910000000003101, "owner_id": 910000000000001, "title": "虚构门户交付验收开发", "description": "混合角色任务，含待办、执行、待验收工作项；完成前需上传真实本地走查记录。", "status": "IN_PROGRESS", "row_version": 1, "development_plan_start": "2026-09-07", "development_plan_end": "2026-09-11", "request_id": "mock-dev-071-001", "request_hash": "0000000000000000000000000000000000000000000000000000000000000000", "created_by": 910000000000002, "updated_by": 910000000000001},
+        {"id": 940000000007102, "tenant_id": 1, "project_id": 910000000003001, "project_ref": "RDDMP-PLATFORM", "task_no": "MOCK-RW-071-002", "source_mode": "STANDALONE", "source_roles": [], "source_system_codes": [], "system_id": 910000000003101, "owner_id": 910000000000002, "title": "虚构自主技术维护", "description": "无来源需求，尚未拆分工作项。", "status": "NOT_STARTED", "row_version": 0, "request_id": "mock-dev-071-002", "request_hash": "0000000000000000000000000000000000000000000000000000000000000000", "created_by": 910000000000002, "updated_by": 910000000000002},
+        {"id": 940000000007103, "tenant_id": 1, "project_id": 910000000003001, "project_ref": "RDDMP-PLATFORM", "task_no": "MOCK-RW-071-003", "source_mode": "LINKED", "source_type": "LEGACY", "source_requirement_id": 930000000007201, "source_number": "MOCK-DEV-REQ-001", "source_revision": "mock-seeded-source", "source_roles": ["TEST"], "source_system_codes": ["MOCK-DEV-OPS"], "system_id": 910000000003102, "owner_id": 910000000000001, "title": "虚构纯测试协作已完成", "description": "零工作项、无测试报告的纯测试完成场景；设计与实施不适用。", "status": "COMPLETED", "row_version": 1, "test_plan_start": "2026-09-07", "test_plan_end": "2026-09-11", "request_id": "mock-dev-071-003", "request_hash": "0000000000000000000000000000000000000000000000000000000000000000", "created_by": 1, "updated_by": 910000000000001}
+      ]
+    },
+    {
+      "table": "dev_task_source_binding", "keyColumns": ["tenant_id", "source_type", "source_requirement_id", "source_system_code"], "rows": [
+        {"tenant_id": 1, "source_type": "LEGACY", "source_requirement_id": 930000000007202, "source_system_code": "MOCK-DEV-PORTAL", "task_id": 940000000007101, "system_id": 910000000003101},
+        {"tenant_id": 1, "source_type": "LEGACY", "source_requirement_id": 930000000007201, "source_system_code": "MOCK-DEV-OPS", "task_id": 940000000007103, "system_id": 910000000003102}
+      ]
+    },
+    {
+      "table": "dev_work_item", "keyColumns": ["id"], "rows": [
+        {"id": 940000000007201, "tenant_id": 1, "task_id": 940000000007101, "title": "虚构批量查询接口", "description": "等待方案确认。", "assignee_id": 910000000000003, "status": "TODO", "planned_start": "2026-09-01", "planned_end": "2026-09-04", "blocked": true, "block_reason": "虚构外部依赖尚未确认", "row_version": 0, "created_by": 910000000000001, "updated_by": 910000000000001},
+        {"id": 940000000007202, "tenant_id": 1, "task_id": 940000000007101, "title": "虚构边界验证", "description": "当前执行人员可提交验收。", "assignee_id": 910000000000003, "status": "IN_PROGRESS", "planned_start": "2026-09-07", "planned_end": "2026-09-11", "actual_start": "2026-09-07", "row_version": 1, "created_by": 910000000000001, "updated_by": 910000000000003},
+        {"id": 940000000007203, "tenant_id": 1, "task_id": 940000000007101, "title": "虚构异常恢复验证", "description": "等待任务负责人验收，可退回并填写原因。", "assignee_id": 910000000000003, "status": "IN_REVIEW", "planned_start": "2026-09-07", "planned_end": "2026-09-11", "actual_start": "2026-09-07", "actual_end": "2026-09-08", "row_version": 2, "created_by": 910000000000001, "updated_by": 910000000000003},
+        {"id": 940000000007204, "tenant_id": 1, "task_id": 940000000007101, "title": "虚构历史已验收工作项", "description": "完成项保留日历快照，不自动完成父任务。", "assignee_id": 910000000000003, "status": "DONE", "planned_start": "2026-09-07", "planned_end": "2026-09-11", "actual_start": "2026-09-07", "actual_end": "2026-09-08", "row_version": 3, "created_by": 910000000000001, "updated_by": 910000000000001}
+      ]
+    },
+    {
+      "table": "dev_task_stage", "keyColumns": ["tenant_id", "task_id"], "rows": [
+        {"tenant_id": 1, "task_id": 940000000007101, "design_plan_start": "2026-09-07", "design_plan_end": "2026-09-08", "design_document_path": "虚构共享目录/门户设计说明.md", "implementation_actual_start": "2026-09-07", "row_version": 1, "updated_by": 910000000000001},
+        {"tenant_id": 1, "task_id": 940000000007103, "not_applicable_design": true, "not_applicable_implementation": true, "row_version": 1, "updated_by": 910000000000001}
+      ]
+    },
+    {
+      "table": "dev_calendar_snapshot", "keyColumns": ["id"], "rows": [
+        {"id": 940000000007301, "tenant_id": 1, "task_id": 940000000007101, "object_type": "WORK_ITEM", "object_id": 940000000007204, "object_version": 3, "calendar_version": "eb87f966a7711eb14562b1fd473da96a9bb9545943c3796d8cc58c45c39066e6", "calendar_json": {"weekdays": [1,2,3,4,5], "workingDates": [], "restDates": []}, "created_by": 910000000000001},
+        {"id": 940000000007302, "tenant_id": 1, "task_id": 940000000007103, "object_type": "TASK", "object_id": 940000000007103, "object_version": 1, "calendar_version": "eb87f966a7711eb14562b1fd473da96a9bb9545943c3796d8cc58c45c39066e6", "calendar_json": {"weekdays": [1,2,3,4,5], "workingDates": [], "restDates": []}, "created_by": 910000000000001}
+      ]
+    },
+    {
+      "table": "dev_task_change", "keyColumns": ["id"], "rows": [
+        {"id": 940000000007401, "tenant_id": 1, "task_id": 940000000007101, "object_type": "TASK", "object_id": 940000000007101, "action": "CREATE", "before_json": null, "after_json": {"title": "虚构门户交付验收开发", "status": "NOT_STARTED"}, "actor_id": 910000000000002, "actor_name": "演示研发工程师", "trace_id": "mock-dev-071-create"},
+        {"id": 940000000007402, "tenant_id": 1, "task_id": 940000000007103, "object_type": "TASK", "object_id": 940000000007103, "action": "COMPLETE", "before_json": {"status": "NOT_STARTED"}, "after_json": {"status": "COMPLETED"}, "actor_id": 910000000000001, "actor_name": "演示产品经理", "trace_id": "mock-dev-071-complete"}
       ]
     }
   ],

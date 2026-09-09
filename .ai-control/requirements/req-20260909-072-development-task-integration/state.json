@@ -1,0 +1,4322 @@
+{
+  "schema_version": 5,
+  "revision": 35,
+  "created_at": "2026-09-09T01:14:05+00:00",
+  "updated_at": "2026-09-09T01:56:49+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化 full 工作流",
+      "recorded_at": "2026-09-09T01:14:05+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "阶段产物齐备",
+      "recorded_at": "2026-09-09T01:14:05+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "阶段产物齐备",
+      "recorded_at": "2026-09-09T01:14:05+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "阶段产物齐备",
+      "recorded_at": "2026-09-09T01:14:05+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "可测量移植产物与原始测试结果齐备",
+      "recorded_at": "2026-09-09T01:44:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "继续T2回归与运行兼容",
+      "recorded_at": "2026-09-09T01:44:31+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "用户明确要求不要子代理、跳过全量回归直接UAT",
+      "recorded_at": "2026-09-09T01:56:49+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "按用户选择继续交付",
+      "recorded_at": "2026-09-09T01:56:49+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "已取得目标测试和配置探针结果",
+      "recorded_at": "2026-09-09T01:56:49+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "继续T3标准脚本UAT",
+      "recorded_at": "2026-09-09T01:56:49+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "用户批准远端移植方案，已核实工程事实和范围",
+        "recorded_at": "2026-09-09T01:14:05+00:00",
+        "data": {
+          "objective": "用户可在基于最新dev-ivanh的标准脚本环境验收开发任务管理，既有工作和数据保持可恢复。",
+          "requirements": [
+            {
+              "id": "R1",
+              "priority": "must",
+              "source": "U12",
+              "statement": "首页为待承接提示和已有任务列表，创建或点击任务进入独立详情。",
+              "acceptance": [
+                "提示带可展开待承接清单并直接创建任务。",
+                "返回恢复检索、分页和滚动位置。"
+              ],
+              "counterexample": [
+                "三个平级首页视图掩盖主次。",
+                "创建后丢失上下文。"
+              ]
+            },
+            {
+              "id": "R2",
+              "priority": "must",
+              "source": "U2",
+              "statement": "一个需求的一个物理系统最多一个关联开发任务。",
+              "acceptance": [
+                "来源类型、需求标识和物理系统唯一，叠加服务端租户及适用项目范围。",
+                "并发承接同一组合只产生一条任务，其他系统仍可承接。"
+              ],
+              "counterexample": [
+                "用不同关联行重复创建同一需求系统任务。",
+                "A 系统承接导致 B 系统待办消失。"
+              ]
+            },
+            {
+              "id": "R3",
+              "priority": "must",
+              "source": "U3、U11",
+              "statement": "系统负责人可为所负责系统创建多个不强制关联需求的自主任务。",
+              "acceptance": [
+                "无需求标识也可保存自主任务。",
+                "同一系统允许多条自主任务，跨系统创建仍执行授权。"
+              ],
+              "counterexample": [
+                "要求填写伪需求编号。",
+                "任意人员可为任意系统创建任务。"
+              ]
+            },
+            {
+              "id": "R4",
+              "priority": "must",
+              "source": "初始描述、U9、U11",
+              "statement": "任务负责人默认系统负责人，新工作项指定人员默认任务负责人。",
+              "acceptance": [
+                "服务端解析负责人默认值并验证受控人员选择。",
+                "已显式填写的人员不被页面刷新覆盖。"
+              ],
+              "counterexample": [
+                "默认当前登录人。",
+                "自由文本人员或需求负责人被当作系统管理者。"
+              ]
+            },
+            {
+              "id": "R5",
+              "priority": "must",
+              "source": "U7",
+              "statement": "任务不自动生成工作项，工作项按需拆分。",
+              "acceptance": [
+                "新任务工作项为零，仍可从任务列表进入。",
+                "新增实际工作项后出现在看板，不需先删除占位项。"
+              ],
+              "counterexample": [
+                "自动创建同名工作项。",
+                "未拆分任务从任务列表隐藏。"
+              ]
+            },
+            {
+              "id": "R6",
+              "priority": "must",
+              "source": "U1、U12",
+              "statement": "独立详情集中维护基本信息、工作项、四阶段和修改记录。",
+              "acceptance": [
+                "承接、设计、实施、单元测试均在同一详情页内维护。",
+                "直接打开或刷新详情可恢复数据，业务字段修改留痕。"
+              ],
+              "counterexample": [
+                "用弹层承载整个任务详情。",
+                "阶段另开不关联页面或静默修改历史。"
+              ]
+            },
+            {
+              "id": "R7",
+              "priority": "must",
+              "source": "U1、U4、U5",
+              "statement": "按开发类与纯测试区分资料门禁，测试报告本期可选。",
+              "acceptance": [
+                "设计资料支持附件或路径，开发类提交完成须有代码走查附件，暂存允许缺资料。",
+                "纯测试可不适用设计/实施，不强制代码走查；所有任务均不因缺测试报告阻止保存或完成。"
+              ],
+              "counterexample": [
+                "强制测试报告。",
+                "混合角色或空来源自动获得纯测试豁免。",
+                "文本路径冒充代码走查文件。"
+              ]
+            },
+            {
+              "id": "R8",
+              "priority": "must",
+              "source": "U6、U12",
+              "statement": "任务内和跨任务看板均展示同一领域工作项，列表是同域呈现模式。",
+              "acceptance": [
+                "任务内固定 taskId，跨任务按权限及筛选查询，状态和数据一致。",
+                "卡片显示所属任务、系统、来源、人员、日期和异常标记。"
+              ],
+              "counterexample": [
+                "工作项与看板维护两份数据。",
+                "跨任务看板以开发任务作为卡片。"
+              ]
+            },
+            {
+              "id": "R9",
+              "priority": "must",
+              "source": "U8、U9",
+              "statement": "工作项按待办、进行中、待验收、已完成执行，阻塞独立留痕。",
+              "acceptance": [
+                "阻塞必须记录原因且保留执行状态。",
+                "拖动和手机状态操作调用同一服务端动作及验收门禁，失败恢复确认状态。"
+              ],
+              "counterexample": [
+                "阻塞覆盖原状态。",
+                "拖动直接绕过验收。"
+              ]
+            },
+            {
+              "id": "R10",
+              "priority": "must",
+              "source": "U1、U10",
+              "statement": "开发、测试与工作项分别排期，以工作日跨度计算耗时偏差。",
+              "acceptance": [
+                "偏差为实际与计划工作日差值除以计划工作日数。",
+                "日期不全或计划为零显示不可计算；不汇总并行工作项跨度冒充任务耗时。"
+              ],
+              "counterexample": [
+                "把日期跨度称为人员投入工时。",
+                "以零偏差掩盖缺失日期或除零。"
+              ]
+            },
+            {
+              "id": "R11",
+              "priority": "must",
+              "source": "U9、U11、仓库规约",
+              "statement": "认证、RBAC、平台范围和实体授权同时生效，系统负责人取物理子系统 Owner。",
+              "acceptance": [
+                "系统负责人仅管理所负责系统，任务负责人仅管理被指派任务，指定人员仅维护本人工作项。",
+                "列表、计数、详情、附件和修改记录应用相同范围，管理员仍受已授权范围限制。"
+              ],
+              "counterexample": [
+                "前端显隐替代后端授权。",
+                "需求负责人取得整个系统权限。",
+                "看板计数泄露未授权任务。"
+              ]
+            },
+            {
+              "id": "R12",
+              "priority": "must",
+              "source": "U9",
+              "statement": "工作项由负责人验收，父任务由负责人单独确认完成。",
+              "acceptance": [
+                "指定人员提交待验收，任务负责人或系统负责人确认或退回。",
+                "全部工作项完成不自动结束父任务。"
+              ],
+              "counterexample": [
+                "无验收权限的执行人自验收。",
+                "最后一张卡完成自动关闭任务。"
+              ]
+            },
+            {
+              "id": "R13",
+              "priority": "must",
+              "source": "U1、U8、U9",
+              "statement": "修改业务字段、资料、人员、日期及状态必须留存不可篡改历史。",
+              "acceptance": [
+                "记录操作人、时间、前后值、动作和 trace。",
+                "资料替换保留历史，系统编号、登记时间和审计不接受客户端任意覆盖。"
+              ],
+              "counterexample": [
+                "替换附件抹掉历史。",
+                "伪造系统登记时间或删除审计。"
+              ]
+            },
+            {
+              "id": "R14",
+              "priority": "must",
+              "source": "design-h5.md、U12",
+              "statement": "桌面和手机具有一致业务规则、完整状态和可恢复操作。",
+              "acceptance": [
+                "375x812、390x844、430x932、1280x800 及明暗主题无整页横向溢出，局部编辑操作可达。",
+                "加载、空、失败、无权限、只读、提交中、未保存和冲突可区分，手机无需拖动也能改状态。"
+              ],
+              "counterexample": [
+                "失败显示为空数据。",
+                "长编号撑宽页面或按钮被弹层遮挡。"
+              ]
+            },
+            {
+              "id": "R15",
+              "priority": "must",
+              "source": "U2、U4、U11",
+              "statement": "待承接包含主责及协同改造/测试，并以明确系统映射和来源资格为依据。",
+              "acceptance": [
+                "同一需求系统角色归并，纯测试和混合角色正确区分。",
+                "创建时重验来源、映射、负责人和权限；缺失或歧义必须提示修正。"
+              ],
+              "counterexample": [
+                "按相似名称猜测物理系统。",
+                "漏掉测试来源或忽略源数据变化。"
+              ]
+            },
+            {
+              "id": "R16",
+              "priority": "must",
+              "source": "U1",
+              "statement": "任务编号由服务端唯一生成，关联任务默认 RW_需求编号_序号，模板可配置。",
+              "acceptance": [
+                "并发创建编号不重复。",
+                "配置变更仅影响新任务，不重写已有编号。"
+              ],
+              "counterexample": [
+                "浏览器自行生成正式编号。",
+                "改变模板后已有编号整体变化。"
+              ]
+            },
+            {
+              "id": "R17",
+              "statement": "本地dev-ivanh基于最新远端同名分支并完整保留原未提交工作与20个独有提交备份。",
+              "acceptance": [
+                "远端tip是整合结果祖先",
+                "不带入b22分叉独有的main功能",
+                "用户技能文件哈希不变",
+                "上游为origin/dev-ivanh"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-09确认的对齐方案",
+              "counterexample": [
+                "重置丢失原提交",
+                "复制整文件覆盖远端变更"
+              ]
+            },
+            {
+              "id": "R18",
+              "statement": "通过scripts/dev.sh启动含新功能的标准本地开发环境，使用admin/admin123并保留既有数据与迁移历史。",
+              "acceptance": [
+                "8080健康UP、5173前端200、管理员登录成功",
+                "V156-V159原脚本和checksum保持",
+                "新功能真实角色与浏览器复验"
+              ],
+              "priority": "must",
+              "source": "用户要求用项目脚本重启开展UAT",
+              "counterexample": [
+                "继续使用自定义15173环境冒充标准启动",
+                "删除数据库或修改Flyway已执行历史"
+              ]
+            }
+          ],
+          "invariants": [
+            "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+            "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+            "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+            "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+            "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+          ],
+          "constraints": [
+            "用户已确认远端基线移植方案，保留本地独有提交但不纳入本轮。",
+            "仅移植原功能文件与必要兼容修复；不移植原071旧账本。",
+            "工具链沿用Maven/npm/Java17；不新增运行时依赖。"
+          ],
+          "non_goals": [
+            "合并main分叉的数迁和平台审计功能",
+            "修改已发布迁移",
+            "生产发布或Git推送"
+          ],
+          "assumptions": [
+            {
+              "text": "公开平台能力可兼容移植后的开发模块",
+              "basis": "远端已有SystemOperationAudit和项目授权公开能力",
+              "falsifier": "编译或完整鉴权测试失败"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "冲突的迁移分支如何处理",
+              "options": [
+                "以远端为基线仅移植当前功能",
+                "合并全部分叉并另行设计历史迁移转换"
+              ],
+              "selected": "以远端为基线仅移植当前功能",
+              "blocking": false,
+              "source": "用户回复继续"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "提示带可展开待承接清单并直接创建任务。；返回恢复检索、分页和滚动位置。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "来源类型、需求标识和物理系统唯一，叠加服务端租户及适用项目范围。；并发承接同一组合只产生一条任务，其他系统仍可承接。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "无需求标识也可保存自主任务。；同一系统允许多条自主任务，跨系统创建仍执行授权。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "服务端解析负责人默认值并验证受控人员选择。；已显式填写的人员不被页面刷新覆盖。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "新任务工作项为零，仍可从任务列表进入。；新增实际工作项后出现在看板，不需先删除占位项。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "承接、设计、实施、单元测试均在同一详情页内维护。；直接打开或刷新详情可恢复数据，业务字段修改留痕。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "设计资料支持附件或路径，开发类提交完成须有代码走查附件，暂存允许缺资料。；纯测试可不适用设计/实施，不强制代码走查；所有任务均不因缺测试报告阻止保存或完成。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "任务内固定 taskId，跨任务按权限及筛选查询，状态和数据一致。；卡片显示所属任务、系统、来源、人员、日期和异常标记。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "阻塞必须记录原因且保留执行状态。；拖动和手机状态操作调用同一服务端动作及验收门禁，失败恢复确认状态。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "偏差为实际与计划工作日差值除以计划工作日数。；日期不全或计划为零显示不可计算；不汇总并行工作项跨度冒充任务耗时。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R11",
+              "observable": "系统负责人仅管理所负责系统，任务负责人仅管理被指派任务，指定人员仅维护本人工作项。；列表、计数、详情、附件和修改记录应用相同范围，管理员仍受已授权范围限制。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R12",
+              "observable": "指定人员提交待验收，任务负责人或系统负责人确认或退回。；全部工作项完成不自动结束父任务。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R13",
+              "observable": "记录操作人、时间、前后值、动作和 trace。；资料替换保留历史，系统编号、登记时间和审计不接受客户端任意覆盖。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R14",
+              "observable": "375x812、390x844、430x932、1280x800 及明暗主题无整页横向溢出，局部编辑操作可达。；加载、空、失败、无权限、只读、提交中、未保存和冲突可区分，手机无需拖动也能改状态。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R15",
+              "observable": "同一需求系统角色归并，纯测试和混合角色正确区分。；创建时重验来源、映射、负责人和权限；缺失或歧义必须提示修正。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R16",
+              "observable": "并发创建编号不重复。；配置变更仅影响新任务，不重写已有编号。",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R17",
+              "observable": "远端tip是整合结果祖先；不带入b22分叉独有的main功能；用户技能文件哈希不变；上游为origin/dev-ivanh",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            },
+            {
+              "requirement_id": "R18",
+              "observable": "8080健康UP、5173前端200、管理员登录成功；V156-V159原脚本和checksum保持；新功能真实角色与浏览器复验",
+              "candidate_sensor": "Git/文件哈希、Maven真实MySQL/鉴权、Vue构建、标准脚本和真实浏览器"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "用户批准远端移植方案，已核实工程事实和范围",
+        "recorded_at": "2026-09-09T01:14:05+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "远端3e87a09源码",
+              "开发模块及公开查询适配",
+              "脚本与本地Git分支"
+            ],
+            "environment": [
+              "原071只读工作树与UAT库",
+              "rddmp-dev标准本地容器",
+              "用户主工作区技能改动"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "integration",
+              "owner": "主代理",
+              "valid_values": [
+                "snapshot",
+                "ported",
+                "verified",
+                "running"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "提示带可展开待承接清单并直接创建任务。",
+                "返回恢复检索、分页和滚动位置。"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "来源类型、需求标识和物理系统唯一，叠加服务端租户及适用项目范围。",
+                "并发承接同一组合只产生一条任务，其他系统仍可承接。"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "无需求标识也可保存自主任务。",
+                "同一系统允许多条自主任务，跨系统创建仍执行授权。"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "服务端解析负责人默认值并验证受控人员选择。",
+                "已显式填写的人员不被页面刷新覆盖。"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "新任务工作项为零，仍可从任务列表进入。",
+                "新增实际工作项后出现在看板，不需先删除占位项。"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "承接、设计、实施、单元测试均在同一详情页内维护。",
+                "直接打开或刷新详情可恢复数据，业务字段修改留痕。"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "设计资料支持附件或路径，开发类提交完成须有代码走查附件，暂存允许缺资料。",
+                "纯测试可不适用设计/实施，不强制代码走查；所有任务均不因缺测试报告阻止保存或完成。"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "任务内固定 taskId，跨任务按权限及筛选查询，状态和数据一致。",
+                "卡片显示所属任务、系统、来源、人员、日期和异常标记。"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "阻塞必须记录原因且保留执行状态。",
+                "拖动和手机状态操作调用同一服务端动作及验收门禁，失败恢复确认状态。"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "偏差为实际与计划工作日差值除以计划工作日数。",
+                "日期不全或计划为零显示不可计算；不汇总并行工作项跨度冒充任务耗时。"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "系统负责人仅管理所负责系统，任务负责人仅管理被指派任务，指定人员仅维护本人工作项。",
+                "列表、计数、详情、附件和修改记录应用相同范围，管理员仍受已授权范围限制。"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "指定人员提交待验收，任务负责人或系统负责人确认或退回。",
+                "全部工作项完成不自动结束父任务。"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "记录操作人、时间、前后值、动作和 trace。",
+                "资料替换保留历史，系统编号、登记时间和审计不接受客户端任意覆盖。"
+              ]
+            },
+            {
+              "requirement_id": "R14",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "375x812、390x844、430x932、1280x800 及明暗主题无整页横向溢出，局部编辑操作可达。",
+                "加载、空、失败、无权限、只读、提交中、未保存和冲突可区分，手机无需拖动也能改状态。"
+              ]
+            },
+            {
+              "requirement_id": "R15",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "同一需求系统角色归并，纯测试和混合角色正确区分。",
+                "创建时重验来源、映射、负责人和权限；缺失或歧义必须提示修正。"
+              ]
+            },
+            {
+              "requirement_id": "R16",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "并发创建编号不重复。",
+                "配置变更仅影响新任务，不重写已有编号。"
+              ]
+            },
+            {
+              "requirement_id": "R17",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "远端tip是整合结果祖先",
+                "不带入b22分叉独有的main功能",
+                "用户技能文件哈希不变",
+                "上游为origin/dev-ivanh"
+              ]
+            },
+            {
+              "requirement_id": "R18",
+              "input": "批准的远端基线与功能差异",
+              "transitions": [
+                "差异移植",
+                "项目契约适配",
+                "自动化与运行校验",
+                "本地分支切换"
+              ],
+              "outputs": [
+                "8080健康UP、5173前端200、管理员登录成功",
+                "V156-V159原脚本和checksum保持",
+                "新功能真实角色与浏览器复验"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "物理系统公开查询",
+              "producers": [
+                "architecture.integration"
+              ],
+              "consumers": [
+                "boot/development"
+              ],
+              "invariant": "project_id限定与租户/Owner范围同时生效"
+            },
+            {
+              "name": "默认dev runner",
+              "producers": [
+                "scripts/dev.sh/dev.mjs"
+              ],
+              "consumers": [
+                "本地UAT"
+              ],
+              "invariant": "不读取.env；保留数据卷，admin固定测试密码"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "源码与分支",
+              "method": "git diff/log、备份SHA和上游检查",
+              "blind_spots": [
+                "运行行为"
+              ],
+              "independence": "Git与文件内容原始观测"
+            },
+            {
+              "id": "S2",
+              "target": "功能与边界",
+              "method": "Maven测试、真实MySQL和SecurityFilterChain",
+              "blind_spots": [
+                "视觉"
+              ],
+              "independence": "实际断言与数据库"
+            },
+            {
+              "id": "S3",
+              "target": "前端与运行",
+              "method": "Vue构建、HTTP健康、独立真实浏览器",
+              "blind_spots": [
+                "未覆盖生产服务"
+              ],
+              "independence": "用户路径与HTTP响应"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "限定移植与兼容",
+              "action": "三方应用原功能补丁，按新项目边界修正直接消费者/测试，验证后本地切换分支和脚本启动",
+              "authority": "用户确认方案与本次精确scope",
+              "impact_radius": "本次开发及直接公开契约、本地开发环境",
+              "rollback": "新工作树、备份分支及文件/数据库备份"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R9",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R10",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R11",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R12",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R13",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R14",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R15",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R16",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R17",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R18",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "分叉迁移",
+              "effect": "直接合并会版本重复",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "用户并行改动",
+              "effect": "主工作区不能覆盖",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "MySQL/应用启动",
+              "consequence": "即时HTTP可能不可达",
+              "sampling_rule": "等待健康UP后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "标准容器为本地开发资源",
+              "evidence": "脚本明确rddmp-dev名称及固定虚构凭据，库历史与远端159一致",
+              "falsifier": "资源身份或历史不匹配即停止"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R11",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R12",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R13",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R14",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R15",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R16",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R17",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            },
+            {
+              "requirement_id": "R18",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "在批准文件和隔离资源内执行"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "用户批准远端移植方案，已核实工程事实和范围",
+        "recorded_at": "2026-09-09T01:14:05+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "移植开发功能并适配远端项目边界",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+              ],
+              "write_scope": [
+                "server/src/modules/development/pom.xml",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+                "docs/integration/development-module-contract.md",
+                "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+                "governance/modules.yaml",
+                "docs/architecture/MODULES.md",
+                ".github/CODEOWNERS",
+                "pom.xml",
+                "server/src/platform/boot/pom.xml",
+                "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+                "web/src/modules/development/api.ts",
+                "web/src/modules/development/types.ts",
+                "web/src/modules/development/composables/useDevelopmentTasks.ts",
+                "web/src/modules/development/composables/useWorkItems.ts",
+                "web/src/modules/development/DevelopmentTaskListPage.vue",
+                "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+                "web/src/modules/development/components/PendingRequirementsPanel.vue",
+                "web/src/modules/development/components/TaskFormDrawer.vue",
+                "web/src/modules/development/components/WorkItemsView.vue",
+                "web/src/modules/development/components/WorkItemFormDrawer.vue",
+                "web/src/modules/development/components/TaskStagePanel.vue",
+                "web/src/modules/development/components/TaskChangeLog.vue",
+                "web/src/modules/development/development.css",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+                "web/src/router/index.ts",
+                "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+                "web/src/modules/development/components/WorkItemBoard.vue",
+                "web/src/modules/development/components/WorkItemCard.vue",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+                "mock/mock-data.json"
+              ],
+              "invariants": [
+                "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+                "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+                "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+                "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+                "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+              ],
+              "interface_contracts": [
+                "物理系统公开查询",
+                "默认dev runner"
+              ],
+              "non_goals": [
+                "合并main分叉的数迁和平台审计功能",
+                "修改已发布迁移",
+                "生产发布或Git推送"
+              ],
+              "action_bounds": [
+                "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+              ],
+              "acceptance_checks": [
+                "关联需求对应测试与范围审计通过",
+                "无新项目越权或迁移历史更改"
+              ],
+              "evidence_required": [
+                "实际diff、退出码与测试计数",
+                "独立复核和运行证据"
+              ],
+              "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+              "stop_conditions": [
+                "需修改已执行迁移",
+                "将覆盖用户未提交内容"
+              ],
+              "escalation_conditions": [
+                "出现新的产品需求或生产访问",
+                "需变更未授权公共能力"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "完成最终回归与独立观察",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+              ],
+              "write_scope": [
+                "server/src/modules/development/pom.xml",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+                "docs/integration/development-module-contract.md",
+                "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+                "governance/modules.yaml",
+                "docs/architecture/MODULES.md",
+                ".github/CODEOWNERS",
+                "pom.xml",
+                "server/src/platform/boot/pom.xml",
+                "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+                "web/src/modules/development/api.ts",
+                "web/src/modules/development/types.ts",
+                "web/src/modules/development/composables/useDevelopmentTasks.ts",
+                "web/src/modules/development/composables/useWorkItems.ts",
+                "web/src/modules/development/DevelopmentTaskListPage.vue",
+                "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+                "web/src/modules/development/components/PendingRequirementsPanel.vue",
+                "web/src/modules/development/components/TaskFormDrawer.vue",
+                "web/src/modules/development/components/WorkItemsView.vue",
+                "web/src/modules/development/components/WorkItemFormDrawer.vue",
+                "web/src/modules/development/components/TaskStagePanel.vue",
+                "web/src/modules/development/components/TaskChangeLog.vue",
+                "web/src/modules/development/development.css",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+                "web/src/router/index.ts",
+                "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+                "web/src/modules/development/components/WorkItemBoard.vue",
+                "web/src/modules/development/components/WorkItemCard.vue",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+                "mock/mock-data.json",
+                "scripts/dev.mjs",
+                "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+                "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+                ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+              ],
+              "invariants": [
+                "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+                "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+                "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+                "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+                "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+              ],
+              "interface_contracts": [
+                "物理系统公开查询",
+                "默认dev runner"
+              ],
+              "non_goals": [
+                "合并main分叉的数迁和平台审计功能",
+                "修改已发布迁移",
+                "生产发布或Git推送"
+              ],
+              "action_bounds": [
+                "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+              ],
+              "acceptance_checks": [
+                "关联需求对应测试与范围审计通过",
+                "无新项目越权或迁移历史更改"
+              ],
+              "evidence_required": [
+                "实际diff、退出码与测试计数",
+                "独立复核和运行证据"
+              ],
+              "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+              "stop_conditions": [
+                "需修改已执行迁移",
+                "将覆盖用户未提交内容"
+              ],
+              "escalation_conditions": [
+                "出现新的产品需求或生产访问",
+                "需变更未授权公共能力"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "切换本地分支并通过标准脚本交付UAT",
+              "requirement_ids": [
+                "R17",
+                "R18"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+              ],
+              "write_scope": [
+                "scripts/dev.mjs",
+                "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+                "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+                ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+              ],
+              "invariants": [
+                "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+                "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+                "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+                "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+                "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+              ],
+              "interface_contracts": [
+                "物理系统公开查询",
+                "默认dev runner"
+              ],
+              "non_goals": [
+                "合并main分叉的数迁和平台审计功能",
+                "修改已发布迁移",
+                "生产发布或Git推送"
+              ],
+              "action_bounds": [
+                "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+              ],
+              "acceptance_checks": [
+                "关联需求对应测试与范围审计通过",
+                "无新项目越权或迁移历史更改"
+              ],
+              "evidence_required": [
+                "实际diff、退出码与测试计数",
+                "独立复核和运行证据"
+              ],
+              "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+              "stop_conditions": [
+                "需修改已执行迁移",
+                "将覆盖用户未提交内容"
+              ],
+              "escalation_conditions": [
+                "出现新的产品需求或生产访问",
+                "需变更未授权公共能力"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "先完成移植"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "通过验证后切换当前工作区"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "真实权限和空库/159升级迁移"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "独立浏览器和主工作区保护"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "移植基线",
+              "trigger": "T1开始前",
+              "observer": "主代理",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ]
+            },
+            {
+              "label": "集成回归",
+              "trigger": "T2完成",
+              "observer": "独立上下文与主代理",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ]
+            },
+            {
+              "label": "标准脚本运行",
+              "trigger": "T3完成",
+              "observer": "主代理",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R17",
+                "R18"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R14",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R15",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R16",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R17",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R18",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "只改变验证策略，不变更业务要求、数据保护或远端基线",
+        "recorded_at": "2026-09-09T01:56:49+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "移植开发功能并适配远端项目边界",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+              ],
+              "write_scope": [
+                "server/src/modules/development/pom.xml",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+                "docs/integration/development-module-contract.md",
+                "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+                "governance/modules.yaml",
+                "docs/architecture/MODULES.md",
+                ".github/CODEOWNERS",
+                "pom.xml",
+                "server/src/platform/boot/pom.xml",
+                "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+                "web/src/modules/development/api.ts",
+                "web/src/modules/development/types.ts",
+                "web/src/modules/development/composables/useDevelopmentTasks.ts",
+                "web/src/modules/development/composables/useWorkItems.ts",
+                "web/src/modules/development/DevelopmentTaskListPage.vue",
+                "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+                "web/src/modules/development/components/PendingRequirementsPanel.vue",
+                "web/src/modules/development/components/TaskFormDrawer.vue",
+                "web/src/modules/development/components/WorkItemsView.vue",
+                "web/src/modules/development/components/WorkItemFormDrawer.vue",
+                "web/src/modules/development/components/TaskStagePanel.vue",
+                "web/src/modules/development/components/TaskChangeLog.vue",
+                "web/src/modules/development/development.css",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+                "web/src/router/index.ts",
+                "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+                "web/src/modules/development/components/WorkItemBoard.vue",
+                "web/src/modules/development/components/WorkItemCard.vue",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+                "mock/mock-data.json"
+              ],
+              "invariants": [
+                "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+                "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+                "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+                "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+                "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+              ],
+              "interface_contracts": [
+                "物理系统公开查询",
+                "默认dev runner"
+              ],
+              "non_goals": [
+                "合并main分叉的数迁和平台审计功能",
+                "修改已发布迁移",
+                "生产发布或Git推送"
+              ],
+              "action_bounds": [
+                "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+              ],
+              "acceptance_checks": [
+                "关联需求对应测试与范围审计通过",
+                "无新项目越权或迁移历史更改"
+              ],
+              "evidence_required": [
+                "实际diff、退出码与测试计数",
+                "独立复核和运行证据"
+              ],
+              "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+              "stop_conditions": [
+                "需修改已执行迁移",
+                "将覆盖用户未提交内容"
+              ],
+              "escalation_conditions": [
+                "出现新的产品需求或生产访问",
+                "需变更未授权公共能力"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "按用户选择完成目标回归及主代理自检，跳过全量并交付UAT",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+              ],
+              "write_scope": [
+                "server/src/modules/development/pom.xml",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+                "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+                "docs/integration/development-module-contract.md",
+                "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+                "governance/modules.yaml",
+                "docs/architecture/MODULES.md",
+                ".github/CODEOWNERS",
+                "pom.xml",
+                "server/src/platform/boot/pom.xml",
+                "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+                "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+                "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+                "web/src/modules/development/api.ts",
+                "web/src/modules/development/types.ts",
+                "web/src/modules/development/composables/useDevelopmentTasks.ts",
+                "web/src/modules/development/composables/useWorkItems.ts",
+                "web/src/modules/development/DevelopmentTaskListPage.vue",
+                "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+                "web/src/modules/development/components/PendingRequirementsPanel.vue",
+                "web/src/modules/development/components/TaskFormDrawer.vue",
+                "web/src/modules/development/components/WorkItemsView.vue",
+                "web/src/modules/development/components/WorkItemFormDrawer.vue",
+                "web/src/modules/development/components/TaskStagePanel.vue",
+                "web/src/modules/development/components/TaskChangeLog.vue",
+                "web/src/modules/development/development.css",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+                "web/src/router/index.ts",
+                "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+                "web/src/modules/development/components/WorkItemBoard.vue",
+                "web/src/modules/development/components/WorkItemCard.vue",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+                "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+                "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+                "mock/mock-data.json",
+                "scripts/dev.mjs",
+                "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+                "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+                ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+              ],
+              "invariants": [
+                "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+                "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+                "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+                "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+                "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+              ],
+              "interface_contracts": [
+                "物理系统公开查询",
+                "默认dev runner"
+              ],
+              "non_goals": [
+                "合并main分叉的数迁和平台审计功能",
+                "修改已发布迁移",
+                "生产发布或Git推送"
+              ],
+              "action_bounds": [
+                "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+              ],
+              "acceptance_checks": [
+                "目标130项和前端构建已通过",
+                "脚本端点探针由红到绿，语法检查通过",
+                "全量测试按用户要求终止，不声称通过；不再使用子代理"
+              ],
+              "evidence_required": [
+                "实际diff、退出码与测试计数",
+                "独立复核和运行证据"
+              ],
+              "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+              "stop_conditions": [
+                "需修改已执行迁移",
+                "将覆盖用户未提交内容"
+              ],
+              "escalation_conditions": [
+                "出现新的产品需求或生产访问",
+                "需变更未授权公共能力"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "切换本地分支并通过标准脚本交付UAT",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+              ],
+              "write_scope": [
+                "scripts/dev.mjs",
+                "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+                "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+                ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+              ],
+              "invariants": [
+                "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+                "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+                "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+                "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+                "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+              ],
+              "interface_contracts": [
+                "物理系统公开查询",
+                "默认dev runner"
+              ],
+              "non_goals": [
+                "合并main分叉的数迁和平台审计功能",
+                "修改已发布迁移",
+                "生产发布或Git推送"
+              ],
+              "action_bounds": [
+                "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+              ],
+              "acceptance_checks": [
+                "关联需求对应测试与范围审计通过",
+                "无新项目越权或迁移历史更改"
+              ],
+              "evidence_required": [
+                "实际diff、退出码与测试计数",
+                "独立复核和运行证据"
+              ],
+              "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+              "stop_conditions": [
+                "需修改已执行迁移",
+                "将覆盖用户未提交内容"
+              ],
+              "escalation_conditions": [
+                "出现新的产品需求或生产访问",
+                "需变更未授权公共能力"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "先完成移植"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "通过验证后切换当前工作区"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "真实权限和空库/159升级迁移"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "独立浏览器和主工作区保护"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "移植基线",
+              "trigger": "T1开始前",
+              "observer": "主代理",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ]
+            },
+            {
+              "label": "集成回归",
+              "trigger": "T2完成",
+              "observer": "独立上下文与主代理",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10",
+                "R11",
+                "R12",
+                "R13",
+                "R14",
+                "R15",
+                "R16",
+                "R17",
+                "R18"
+              ]
+            },
+            {
+              "label": "标准脚本运行",
+              "trigger": "T3完成",
+              "observer": "主代理",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R17",
+                "R18"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R14",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R15",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R16",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R17",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R18",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "限定移植完成，直接回归已实际通过",
+        "recorded_at": "2026-09-09T01:44:31+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/development/pom.xml",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "docs/integration/development-module-contract.md",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "governance/modules.yaml",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "docs/architecture/MODULES.md",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": ".github/CODEOWNERS",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "pom.xml",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/pom.xml",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/api.ts",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/types.ts",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/composables/useDevelopmentTasks.ts",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/composables/useWorkItems.ts",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/DevelopmentTaskListPage.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/PendingRequirementsPanel.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/TaskFormDrawer.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/WorkItemsView.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/WorkItemFormDrawer.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/TaskStagePanel.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/TaskChangeLog.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/development.css",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/router/index.ts",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/WorkItemBoard.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "web/src/modules/development/components/WorkItemCard.vue",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            },
+            {
+              "path_or_resource": "mock/mock-data.json",
+              "purpose": "仅移植开发功能和直接兼容修正"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8",
+            "R9",
+            "R10",
+            "R11",
+            "R12",
+            "R13",
+            "R14",
+            "R15",
+            "R16",
+            "R17",
+            "R18"
+          ],
+          "commands": [
+            {
+              "command": "mvn -B -q -pl :ccb-boot -am '-Dtest=Development*,JdbcPhysicalSystemDirectoryQueryTest,JdbcRequirementDevelopmentQueryTest,MockDataInitializerTest' -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "130项，失败/错误/跳过均0"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "前端类型检查与构建通过"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "旧脚本和原工作区保护",
+              "result": "pass",
+              "evidence": "V156-V159相对3e87a09无变动；三方应用功能差异；旧工作树和备份保留",
+              "limitations": [
+                "主工作区切换及标准脚本最终运行仍待T3"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "两处三方文本冲突已保留远端项目字段并合入开发新增项",
+            "系统查询贯穿已授权项目ID，拒绝其他项目同Owner或管理员的创建",
+            "Mock纯测试系统改为同项目，保留远端系统原行"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+              "result": "pass",
+              "evidence": "当前源差异、备份与130项目标回归"
+            },
+            {
+              "invariant": "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+              "result": "pass",
+              "evidence": "当前源差异、备份与130项目标回归"
+            },
+            {
+              "invariant": "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+              "result": "pass",
+              "evidence": "当前源差异、备份与130项目标回归"
+            },
+            {
+              "invariant": "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+              "result": "pass",
+              "evidence": "当前源差异、备份与130项目标回归"
+            },
+            {
+              "invariant": "不推送远端，不伪造Owner审批，不修改其他任务账本。",
+              "result": "pass",
+              "evidence": "当前源差异、备份与130项目标回归"
+            }
+          ],
+          "disturbances": [
+            "远端158需要唯一默认项目；测试从空库到155准备该项目，再迁移159，Spring只追加199-201并比较旧history/checksum"
+          ],
+          "assumptions_falsified": [
+            "原系统查询不能不带项目ID直接移植"
+          ],
+          "unresolved_items": [
+            "T2全量回归与脚本端点兼容",
+            "T3本地分支及标准UAT运行"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "如实记录用户跳过全量，目标验证与脚本纠偏有效",
+        "recorded_at": "2026-09-09T01:56:49+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "scripts/dev.mjs",
+              "purpose": "后端使用回环MinIO地址，预览使用容器地址重新签名"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260909-072-development-task-integration/control-plan-user-uat.json",
+              "purpose": "记录用户取消全量与停止子代理的选择"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8",
+            "R9",
+            "R10",
+            "R11",
+            "R12",
+            "R13",
+            "R14",
+            "R15",
+            "R16",
+            "R17",
+            "R18"
+          ],
+          "commands": [
+            {
+              "command": "目标Maven测试（Development*、两个生产者和Mock）",
+              "exit_code": 0,
+              "salient_output": "130项，失败/错误/跳过均0"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "类型和构建通过"
+            },
+            {
+              "command": "node /tmp/rddmp-072-runner-probe.cjs; node --check scripts/dev.mjs",
+              "exit_code": 0,
+              "salient_output": "端点配置探针及语法通过；修复前探针确实失败"
+            },
+            {
+              "command": "mvn -B test",
+              "exit_code": 143,
+              "salient_output": "用户明确要求跳过，已终止本任务进程树；不是测试通过或业务失败"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "目标与脚本兼容",
+              "result": "pass",
+              "evidence": "130目标、前端构建、AST脚本探针及宿主机MinIO200",
+              "limitations": [
+                "全量被用户取消",
+                "后续全部为主代理自检，不使用子代理"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "仅改标准脚本双端点配置，复用已有MINIO_PREVIEW_ENDPOINT契约"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+              "result": "pass",
+              "evidence": "限定差异和保护性备份"
+            },
+            {
+              "invariant": "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+              "result": "pass",
+              "evidence": "限定差异和保护性备份"
+            },
+            {
+              "invariant": "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+              "result": "pass",
+              "evidence": "限定差异和保护性备份"
+            },
+            {
+              "invariant": "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+              "result": "pass",
+              "evidence": "限定差异和保护性备份"
+            },
+            {
+              "invariant": "不推送远端，不伪造Owner审批，不修改其他任务账本。",
+              "result": "pass",
+              "evidence": "限定差异和保护性备份"
+            }
+          ],
+          "disturbances": [
+            "WSL无法访问Docker网关，但回环MinIO返回200"
+          ],
+          "assumptions_falsified": [
+            "不能把容器网关地址同时用于宿主机下载和预览"
+          ],
+          "unresolved_items": [
+            "最终标准脚本启动及用户UAT待T3"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "当前阶段两项确认偏差已修正；独立静态结果与主代理自动化等级分开",
+        "recorded_at": "2026-09-09T01:44:31+00:00",
+        "data": {
+          "sample_label": "限定移植及项目边界",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R14",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R15",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R16",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R17",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            },
+            {
+              "requirement_id": "R18",
+              "sensor": "Git/主代理实际自动化及此前独立只读复核",
+              "result": "pass",
+              "raw_evidence": "仅T1贡献：远端基线、限定功能文件、项目边界与Mock关联已复核，目标130项及前端构建退出0",
+              "limitation": [
+                "不把T1当作全部最终验收；主工作区与标准环境留待T3",
+                "用户要求不再用子代理，此后全部由主代理处理并如实标注自检"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "完整回归和标准脚本运行尚待后续任务"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "本阶段限定自检通过，保留已知验证缺口",
+        "recorded_at": "2026-09-09T01:56:49+00:00",
+        "data": {
+          "sample_label": "用户选择下的目标回归",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R12",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R13",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R14",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R15",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R16",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R17",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            },
+            {
+              "requirement_id": "R18",
+              "sensor": "主代理目标自动化与配置探针（非独立）",
+              "result": "pass",
+              "raw_evidence": "仅本阶段目标回归130项、前端构建与脚本配置检查；全量明确取消",
+              "limitation": [
+                "不代表全量回归通过；最终环境与用户验收仍T3"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "用户要求取消全量测试和后续子代理"
+          ],
+          "coverage_gaps": [
+            "全量回归未完成，用户选择直接UAT"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "用户可在基于最新dev-ivanh的标准脚本环境验收开发任务管理，既有工作和数据保持可恢复。",
+  "requirements": [
+    {
+      "id": "R1",
+      "priority": "must",
+      "source": "U12",
+      "statement": "首页为待承接提示和已有任务列表，创建或点击任务进入独立详情。",
+      "acceptance": [
+        "提示带可展开待承接清单并直接创建任务。",
+        "返回恢复检索、分页和滚动位置。"
+      ],
+      "counterexample": [
+        "三个平级首页视图掩盖主次。",
+        "创建后丢失上下文。"
+      ]
+    },
+    {
+      "id": "R2",
+      "priority": "must",
+      "source": "U2",
+      "statement": "一个需求的一个物理系统最多一个关联开发任务。",
+      "acceptance": [
+        "来源类型、需求标识和物理系统唯一，叠加服务端租户及适用项目范围。",
+        "并发承接同一组合只产生一条任务，其他系统仍可承接。"
+      ],
+      "counterexample": [
+        "用不同关联行重复创建同一需求系统任务。",
+        "A 系统承接导致 B 系统待办消失。"
+      ]
+    },
+    {
+      "id": "R3",
+      "priority": "must",
+      "source": "U3、U11",
+      "statement": "系统负责人可为所负责系统创建多个不强制关联需求的自主任务。",
+      "acceptance": [
+        "无需求标识也可保存自主任务。",
+        "同一系统允许多条自主任务，跨系统创建仍执行授权。"
+      ],
+      "counterexample": [
+        "要求填写伪需求编号。",
+        "任意人员可为任意系统创建任务。"
+      ]
+    },
+    {
+      "id": "R4",
+      "priority": "must",
+      "source": "初始描述、U9、U11",
+      "statement": "任务负责人默认系统负责人，新工作项指定人员默认任务负责人。",
+      "acceptance": [
+        "服务端解析负责人默认值并验证受控人员选择。",
+        "已显式填写的人员不被页面刷新覆盖。"
+      ],
+      "counterexample": [
+        "默认当前登录人。",
+        "自由文本人员或需求负责人被当作系统管理者。"
+      ]
+    },
+    {
+      "id": "R5",
+      "priority": "must",
+      "source": "U7",
+      "statement": "任务不自动生成工作项，工作项按需拆分。",
+      "acceptance": [
+        "新任务工作项为零，仍可从任务列表进入。",
+        "新增实际工作项后出现在看板，不需先删除占位项。"
+      ],
+      "counterexample": [
+        "自动创建同名工作项。",
+        "未拆分任务从任务列表隐藏。"
+      ]
+    },
+    {
+      "id": "R6",
+      "priority": "must",
+      "source": "U1、U12",
+      "statement": "独立详情集中维护基本信息、工作项、四阶段和修改记录。",
+      "acceptance": [
+        "承接、设计、实施、单元测试均在同一详情页内维护。",
+        "直接打开或刷新详情可恢复数据，业务字段修改留痕。"
+      ],
+      "counterexample": [
+        "用弹层承载整个任务详情。",
+        "阶段另开不关联页面或静默修改历史。"
+      ]
+    },
+    {
+      "id": "R7",
+      "priority": "must",
+      "source": "U1、U4、U5",
+      "statement": "按开发类与纯测试区分资料门禁，测试报告本期可选。",
+      "acceptance": [
+        "设计资料支持附件或路径，开发类提交完成须有代码走查附件，暂存允许缺资料。",
+        "纯测试可不适用设计/实施，不强制代码走查；所有任务均不因缺测试报告阻止保存或完成。"
+      ],
+      "counterexample": [
+        "强制测试报告。",
+        "混合角色或空来源自动获得纯测试豁免。",
+        "文本路径冒充代码走查文件。"
+      ]
+    },
+    {
+      "id": "R8",
+      "priority": "must",
+      "source": "U6、U12",
+      "statement": "任务内和跨任务看板均展示同一领域工作项，列表是同域呈现模式。",
+      "acceptance": [
+        "任务内固定 taskId，跨任务按权限及筛选查询，状态和数据一致。",
+        "卡片显示所属任务、系统、来源、人员、日期和异常标记。"
+      ],
+      "counterexample": [
+        "工作项与看板维护两份数据。",
+        "跨任务看板以开发任务作为卡片。"
+      ]
+    },
+    {
+      "id": "R9",
+      "priority": "must",
+      "source": "U8、U9",
+      "statement": "工作项按待办、进行中、待验收、已完成执行，阻塞独立留痕。",
+      "acceptance": [
+        "阻塞必须记录原因且保留执行状态。",
+        "拖动和手机状态操作调用同一服务端动作及验收门禁，失败恢复确认状态。"
+      ],
+      "counterexample": [
+        "阻塞覆盖原状态。",
+        "拖动直接绕过验收。"
+      ]
+    },
+    {
+      "id": "R10",
+      "priority": "must",
+      "source": "U1、U10",
+      "statement": "开发、测试与工作项分别排期，以工作日跨度计算耗时偏差。",
+      "acceptance": [
+        "偏差为实际与计划工作日差值除以计划工作日数。",
+        "日期不全或计划为零显示不可计算；不汇总并行工作项跨度冒充任务耗时。"
+      ],
+      "counterexample": [
+        "把日期跨度称为人员投入工时。",
+        "以零偏差掩盖缺失日期或除零。"
+      ]
+    },
+    {
+      "id": "R11",
+      "priority": "must",
+      "source": "U9、U11、仓库规约",
+      "statement": "认证、RBAC、平台范围和实体授权同时生效，系统负责人取物理子系统 Owner。",
+      "acceptance": [
+        "系统负责人仅管理所负责系统，任务负责人仅管理被指派任务，指定人员仅维护本人工作项。",
+        "列表、计数、详情、附件和修改记录应用相同范围，管理员仍受已授权范围限制。"
+      ],
+      "counterexample": [
+        "前端显隐替代后端授权。",
+        "需求负责人取得整个系统权限。",
+        "看板计数泄露未授权任务。"
+      ]
+    },
+    {
+      "id": "R12",
+      "priority": "must",
+      "source": "U9",
+      "statement": "工作项由负责人验收，父任务由负责人单独确认完成。",
+      "acceptance": [
+        "指定人员提交待验收，任务负责人或系统负责人确认或退回。",
+        "全部工作项完成不自动结束父任务。"
+      ],
+      "counterexample": [
+        "无验收权限的执行人自验收。",
+        "最后一张卡完成自动关闭任务。"
+      ]
+    },
+    {
+      "id": "R13",
+      "priority": "must",
+      "source": "U1、U8、U9",
+      "statement": "修改业务字段、资料、人员、日期及状态必须留存不可篡改历史。",
+      "acceptance": [
+        "记录操作人、时间、前后值、动作和 trace。",
+        "资料替换保留历史，系统编号、登记时间和审计不接受客户端任意覆盖。"
+      ],
+      "counterexample": [
+        "替换附件抹掉历史。",
+        "伪造系统登记时间或删除审计。"
+      ]
+    },
+    {
+      "id": "R14",
+      "priority": "must",
+      "source": "design-h5.md、U12",
+      "statement": "桌面和手机具有一致业务规则、完整状态和可恢复操作。",
+      "acceptance": [
+        "375x812、390x844、430x932、1280x800 及明暗主题无整页横向溢出，局部编辑操作可达。",
+        "加载、空、失败、无权限、只读、提交中、未保存和冲突可区分，手机无需拖动也能改状态。"
+      ],
+      "counterexample": [
+        "失败显示为空数据。",
+        "长编号撑宽页面或按钮被弹层遮挡。"
+      ]
+    },
+    {
+      "id": "R15",
+      "priority": "must",
+      "source": "U2、U4、U11",
+      "statement": "待承接包含主责及协同改造/测试，并以明确系统映射和来源资格为依据。",
+      "acceptance": [
+        "同一需求系统角色归并，纯测试和混合角色正确区分。",
+        "创建时重验来源、映射、负责人和权限；缺失或歧义必须提示修正。"
+      ],
+      "counterexample": [
+        "按相似名称猜测物理系统。",
+        "漏掉测试来源或忽略源数据变化。"
+      ]
+    },
+    {
+      "id": "R16",
+      "priority": "must",
+      "source": "U1",
+      "statement": "任务编号由服务端唯一生成，关联任务默认 RW_需求编号_序号，模板可配置。",
+      "acceptance": [
+        "并发创建编号不重复。",
+        "配置变更仅影响新任务，不重写已有编号。"
+      ],
+      "counterexample": [
+        "浏览器自行生成正式编号。",
+        "改变模板后已有编号整体变化。"
+      ]
+    },
+    {
+      "id": "R17",
+      "statement": "本地dev-ivanh基于最新远端同名分支并完整保留原未提交工作与20个独有提交备份。",
+      "acceptance": [
+        "远端tip是整合结果祖先",
+        "不带入b22分叉独有的main功能",
+        "用户技能文件哈希不变",
+        "上游为origin/dev-ivanh"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-09确认的对齐方案",
+      "counterexample": [
+        "重置丢失原提交",
+        "复制整文件覆盖远端变更"
+      ]
+    },
+    {
+      "id": "R18",
+      "statement": "通过scripts/dev.sh启动含新功能的标准本地开发环境，使用admin/admin123并保留既有数据与迁移历史。",
+      "acceptance": [
+        "8080健康UP、5173前端200、管理员登录成功",
+        "V156-V159原脚本和checksum保持",
+        "新功能真实角色与浏览器复验"
+      ],
+      "priority": "must",
+      "source": "用户要求用项目脚本重启开展UAT",
+      "counterexample": [
+        "继续使用自定义15173环境冒充标准启动",
+        "删除数据库或修改Flyway已执行历史"
+      ]
+    }
+  ],
+  "invariants": [
+    "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+    "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+    "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+    "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+    "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+  ],
+  "constraints": [
+    "用户已确认远端基线移植方案，保留本地独有提交但不纳入本轮。",
+    "仅移植原功能文件与必要兼容修复；不移植原071旧账本。",
+    "工具链沿用Maven/npm/Java17；不新增运行时依赖。"
+  ],
+  "non_goals": [
+    "合并main分叉的数迁和平台审计功能",
+    "修改已发布迁移",
+    "生产发布或Git推送"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"原071只读工作树与UAT库\", \"rddmp-dev标准本地容器\", \"用户主工作区技能改动\"], \"inside\": [\"远端3e87a09源码\", \"开发模块及公开查询适配\", \"脚本与本地Git分支\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"运行行为\"], \"id\": \"S1\", \"independence\": \"Git与文件内容原始观测\", \"method\": \"git diff/log、备份SHA和上游检查\", \"target\": \"源码与分支\"}",
+      "{\"blind_spots\": [\"视觉\"], \"id\": \"S2\", \"independence\": \"实际断言与数据库\", \"method\": \"Maven测试、真实MySQL和SecurityFilterChain\", \"target\": \"功能与边界\"}",
+      "{\"blind_spots\": [\"未覆盖生产服务\"], \"id\": \"S3\", \"independence\": \"用户路径与HTTP响应\", \"method\": \"Vue构建、HTTP健康、独立真实浏览器\", \"target\": \"前端与运行\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"三方应用原功能补丁，按新项目边界修正直接消费者/测试，验证后本地切换分支和脚本启动\", \"authority\": \"用户确认方案与本次精确scope\", \"id\": \"A1\", \"impact_radius\": \"本次开发及直接公开契约、本地开发环境\", \"rollback\": \"新工作树、备份分支及文件/数据库备份\", \"target\": \"限定移植与兼容\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"直接合并会版本重复\", \"source\": \"分叉迁移\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"主工作区不能覆盖\", \"source\": \"用户并行改动\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"脚本明确rddmp-dev名称及固定虚构凭据，库历史与远端159一致\", \"falsifier\": \"资源身份或历史不匹配即停止\", \"text\": \"标准容器为本地开发资源\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R9",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R10",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R11",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R12",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R13",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R14",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R15",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R16",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R17",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R18",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "移植开发功能并适配远端项目边界",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+      ],
+      "write_scope": [
+        "server/src/modules/development/pom.xml",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+        "docs/integration/development-module-contract.md",
+        "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".github/CODEOWNERS",
+        "pom.xml",
+        "server/src/platform/boot/pom.xml",
+        "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+        "web/src/modules/development/api.ts",
+        "web/src/modules/development/types.ts",
+        "web/src/modules/development/composables/useDevelopmentTasks.ts",
+        "web/src/modules/development/composables/useWorkItems.ts",
+        "web/src/modules/development/DevelopmentTaskListPage.vue",
+        "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+        "web/src/modules/development/components/PendingRequirementsPanel.vue",
+        "web/src/modules/development/components/TaskFormDrawer.vue",
+        "web/src/modules/development/components/WorkItemsView.vue",
+        "web/src/modules/development/components/WorkItemFormDrawer.vue",
+        "web/src/modules/development/components/TaskStagePanel.vue",
+        "web/src/modules/development/components/TaskChangeLog.vue",
+        "web/src/modules/development/development.css",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+        "web/src/router/index.ts",
+        "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+        "web/src/modules/development/components/WorkItemBoard.vue",
+        "web/src/modules/development/components/WorkItemCard.vue",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json"
+      ],
+      "invariants": [
+        "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+        "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+        "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+        "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+        "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+      ],
+      "interface_contracts": [
+        "物理系统公开查询",
+        "默认dev runner"
+      ],
+      "non_goals": [
+        "合并main分叉的数迁和平台审计功能",
+        "修改已发布迁移",
+        "生产发布或Git推送"
+      ],
+      "action_bounds": [
+        "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+      ],
+      "acceptance": [
+        "关联需求对应测试与范围审计通过",
+        "无新项目越权或迁移历史更改"
+      ],
+      "evidence_required": [
+        "实际diff、退出码与测试计数",
+        "独立复核和运行证据"
+      ],
+      "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+      "stop_conditions": [
+        "需修改已执行迁移",
+        "将覆盖用户未提交内容"
+      ],
+      "escalation_conditions": [
+        "出现新的产品需求或生产访问",
+        "需变更未授权公共能力"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T01:14:05+00:00",
+          "text": "远端基线目标测试退出0，开始限定移植"
+        },
+        {
+          "recorded_at": "2026-09-09T01:44:31+00:00",
+          "text": "核对当前阶段实际产物"
+        },
+        {
+          "recorded_at": "2026-09-09T01:44:31+00:00",
+          "text": "移植与项目边界验证通过，保留后续运行验收"
+        }
+      ],
+      "updated_at": "2026-09-09T01:56:49+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "按用户选择完成目标回归及主代理自检，跳过全量并交付UAT",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+      ],
+      "write_scope": [
+        "server/src/modules/development/pom.xml",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+        "docs/integration/development-module-contract.md",
+        "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".github/CODEOWNERS",
+        "pom.xml",
+        "server/src/platform/boot/pom.xml",
+        "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+        "web/src/modules/development/api.ts",
+        "web/src/modules/development/types.ts",
+        "web/src/modules/development/composables/useDevelopmentTasks.ts",
+        "web/src/modules/development/composables/useWorkItems.ts",
+        "web/src/modules/development/DevelopmentTaskListPage.vue",
+        "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+        "web/src/modules/development/components/PendingRequirementsPanel.vue",
+        "web/src/modules/development/components/TaskFormDrawer.vue",
+        "web/src/modules/development/components/WorkItemsView.vue",
+        "web/src/modules/development/components/WorkItemFormDrawer.vue",
+        "web/src/modules/development/components/TaskStagePanel.vue",
+        "web/src/modules/development/components/TaskChangeLog.vue",
+        "web/src/modules/development/development.css",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+        "web/src/router/index.ts",
+        "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+        "web/src/modules/development/components/WorkItemBoard.vue",
+        "web/src/modules/development/components/WorkItemCard.vue",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json",
+        "scripts/dev.mjs",
+        "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+        "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+        ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+      ],
+      "invariants": [
+        "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+        "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+        "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+        "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+        "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+      ],
+      "interface_contracts": [
+        "物理系统公开查询",
+        "默认dev runner"
+      ],
+      "non_goals": [
+        "合并main分叉的数迁和平台审计功能",
+        "修改已发布迁移",
+        "生产发布或Git推送"
+      ],
+      "action_bounds": [
+        "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+      ],
+      "acceptance": [
+        "目标130项和前端构建已通过",
+        "脚本端点探针由红到绿，语法检查通过",
+        "全量测试按用户要求终止，不声称通过；不再使用子代理"
+      ],
+      "evidence_required": [
+        "实际diff、退出码与测试计数",
+        "独立复核和运行证据"
+      ],
+      "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+      "stop_conditions": [
+        "需修改已执行迁移",
+        "将覆盖用户未提交内容"
+      ],
+      "escalation_conditions": [
+        "出现新的产品需求或生产访问",
+        "需变更未授权公共能力"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T01:44:31+00:00",
+          "text": "执行全量回归并纠正已观测的WSL MinIO端点问题"
+        },
+        {
+          "recorded_at": "2026-09-09T01:56:49+00:00",
+          "text": "保留目标测试与自检，跳过全量"
+        },
+        {
+          "recorded_at": "2026-09-09T01:56:49+00:00",
+          "text": "由主代理按用户要求自检"
+        },
+        {
+          "recorded_at": "2026-09-09T01:56:49+00:00",
+          "text": "用户已批准的缩小验证策略完成"
+        }
+      ],
+      "updated_at": "2026-09-09T01:56:49+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "切换本地分支并通过标准脚本交付UAT",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+      ],
+      "write_scope": [
+        "scripts/dev.mjs",
+        "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+        "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+        ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+      ],
+      "invariants": [
+        "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+        "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+        "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+        "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+        "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+      ],
+      "interface_contracts": [
+        "物理系统公开查询",
+        "默认dev runner"
+      ],
+      "non_goals": [
+        "合并main分叉的数迁和平台审计功能",
+        "修改已发布迁移",
+        "生产发布或Git推送"
+      ],
+      "action_bounds": [
+        "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+      ],
+      "acceptance": [
+        "关联需求对应测试与范围审计通过",
+        "无新项目越权或迁移历史更改"
+      ],
+      "evidence_required": [
+        "实际diff、退出码与测试计数",
+        "独立复核和运行证据"
+      ],
+      "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+      "stop_conditions": [
+        "需修改已执行迁移",
+        "将覆盖用户未提交内容"
+      ],
+      "escalation_conditions": [
+        "出现新的产品需求或生产访问",
+        "需变更未授权公共能力"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T01:56:49+00:00",
+          "text": "切换本地主分支与实际脚本启动，保留所有备份"
+        }
+      ],
+      "updated_at": "2026-09-09T01:56:49+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T1",
+      "source": "项目边界回归测试",
+      "requirement": "R11",
+      "expected": "物理系统列表及创建校验同时限定当前已授权项目",
+      "observed": "移植初稿查询缺少project_id，新断言失败",
+      "evidence": "/tmp/rddmp-072-project-red.log：4项测试中1项失败，系统选项必须限定当前项目",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": "生产查询显式projectId且真实HTTP拒绝跨项目Owner和管理员创建",
+      "decision": "accept",
+      "decision_reason": "使用远端已存在的物理系统project_id，在公开查询、boot适配和开发访问策略中贯穿已授权项目标识，不更改既有表或参与规则。",
+      "created_at": "2026-09-09T01:25:05+00:00",
+      "resolved_at": "2026-09-09T01:44:31+00:00",
+      "resolution_evidence": "公开查询显式projectId，API真实拒绝同Owner或开发管理员跨项目创建；130项退出0、失败/错误/跳过均0",
+      "decided_at": "2026-09-09T01:25:20+00:00"
+    },
+    {
+      "id": "F-0002",
+      "task": "T1",
+      "source": "此前独立只读复核与新增Mock测试",
+      "requirement": "R11",
+      "expected": "新增Mock任务和物理系统项目一致",
+      "observed": "纯测试示例引用远端另一个项目的系统",
+      "evidence": "16项Mock测试中1项明确因项目301/302不一致失败",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": null,
+      "decision": "accept",
+      "decision_reason": "只修正新增任务、绑定与映射为同项目既有移动系统，不改远端原系统行",
+      "created_at": "2026-09-09T01:44:30+00:00",
+      "resolved_at": "2026-09-09T01:44:31+00:00",
+      "resolution_evidence": "独立JSON复核已确认全部3个任务同项目；最终130项目标回归含16项Mock测试，零失败",
+      "decided_at": "2026-09-09T01:44:30+00:00"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "远端干净基线",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "公开项目/系统查询、物理系统与Mock目标测试退出0；新工作树HEAD为3e87a09，原工作区备份完成",
+      "recorded_at": "2026-09-09T01:14:05+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T1目标回归",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "130项，失败/错误/跳过均0；前端构建通过",
+      "recorded_at": "2026-09-09T01:44:31+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "目标验证与用户跳过全量",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "目标130项、前端及脚本探针通过；全量取消143，不计为通过",
+      "recorded_at": "2026-09-09T01:56:49+00:00"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "scripts/dev.mjs",
+      "purpose": "后端使用回环MinIO地址，预览使用容器地址重新签名"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260909-072-development-task-integration/control-plan-user-uat.json",
+      "purpose": "记录用户取消全量与停止子代理的选择"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "R12",
+    "R13",
+    "R14",
+    "R15",
+    "R16",
+    "R17",
+    "R18"
+  ],
+  "commands": [
+    {
+      "command": "目标Maven测试（Development*、两个生产者和Mock）",
+      "exit_code": 0,
+      "salient_output": "130项，失败/错误/跳过均0"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "类型和构建通过"
+    },
+    {
+      "command": "node /tmp/rddmp-072-runner-probe.cjs; node --check scripts/dev.mjs",
+      "exit_code": 0,
+      "salient_output": "端点配置探针及语法通过；修复前探针确实失败"
+    },
+    {
+      "command": "mvn -B test",
+      "exit_code": 143,
+      "salient_output": "用户明确要求跳过，已终止本任务进程树；不是测试通过或业务失败"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "目标与脚本兼容",
+      "result": "pass",
+      "evidence": "130目标、前端构建、AST脚本探针及宿主机MinIO200",
+      "limitations": [
+        "全量被用户取消",
+        "后续全部为主代理自检，不使用子代理"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "仅改标准脚本双端点配置，复用已有MINIO_PREVIEW_ENDPOINT契约"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+      "result": "pass",
+      "evidence": "限定差异和保护性备份"
+    },
+    {
+      "invariant": "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+      "result": "pass",
+      "evidence": "限定差异和保护性备份"
+    },
+    {
+      "invariant": "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+      "result": "pass",
+      "evidence": "限定差异和保护性备份"
+    },
+    {
+      "invariant": "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+      "result": "pass",
+      "evidence": "限定差异和保护性备份"
+    },
+    {
+      "invariant": "不推送远端，不伪造Owner审批，不修改其他任务账本。",
+      "result": "pass",
+      "evidence": "限定差异和保护性备份"
+    }
+  ],
+  "disturbances": [
+    "WSL无法访问Docker网关，但回环MinIO返回200"
+  ],
+  "assumptions_falsified": [
+    "不能把容器网关地址同时用于宿主机下载和预览"
+  ],
+  "unresolved_items": [
+    "最终标准脚本启动及用户UAT待T3"
+  ],
+  "recommended_next": "observe"
+}
