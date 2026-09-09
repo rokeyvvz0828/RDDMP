@@ -460,13 +460,13 @@ onMounted(() => { void scope.ensureLoaded() })
           <el-form-item label="系统编号" required><el-select v-model="form.systemCode" placeholder="输入系统编号或名称" filterable :loading="systemOptionsLoading"><el-option v-for="option in systemOptions" :key="option.value" :label="option.label" :value="option.value" /></el-select></el-form-item>
           <el-form-item label="文件名称" required><el-input v-model="form.fileName" placeholder="请输入文件名称" maxlength="200" show-word-limit /></el-form-item>
           <el-form-item label="源文件" required>
-            <div v-loading="attachmentsLoading" class="mapping-attachment-list">
-              <div v-for="(attachment, index) in existingAttachments" :key="`existing-${attachment.attachmentId}`" class="mapping-attachment-item">
-                <el-icon class="mapping-attachment-icon" :size="18"><Document /></el-icon><div class="mapping-attachment-info"><strong>{{ attachment.fileName }}</strong><span>已绑定</span></div><el-button link type="danger" :disabled="formBusy" @click="removeExistingAttachment(index)">移除</el-button>
+            <div v-loading="attachmentsLoading" class="mapping-attachment-list dm-attachment-list">
+              <div v-for="(attachment, index) in existingAttachments" :key="`existing-${attachment.attachmentId}`" class="mapping-attachment-item dm-attachment-item">
+                <el-icon class="mapping-attachment-icon dm-attachment-icon" :size="18"><Document /></el-icon><div class="mapping-attachment-info dm-attachment-info"><strong class="dm-attachment-name">{{ attachment.fileName }}</strong><span>已绑定</span></div><el-button link type="danger" :disabled="formBusy" @click="removeExistingAttachment(index)">移除</el-button>
               </div>
-              <div v-for="(entry, index) in pendingUploads" :key="entry.key" class="mapping-attachment-item">
-                <el-icon class="mapping-attachment-icon" :class="`is-${entry.status}`" :size="18"><CircleCheck v-if="entry.status === 'uploaded'" /><WarningFilled v-else-if="entry.status === 'error'" /><Document v-else /></el-icon>
-                <div class="mapping-attachment-info"><strong>{{ entry.file.name }}</strong><span>{{ fileSizeLabel(entry.file.size) }}</span><small v-if="entry.error">{{ entry.error }}</small></div>
+              <div v-for="(entry, index) in pendingUploads" :key="entry.key" class="mapping-attachment-item dm-attachment-item" :class="{ 'is-pending': entry.status === 'pending' || entry.status === 'uploading' }">
+                <el-icon class="mapping-attachment-icon dm-attachment-icon" :class="`is-${entry.status}`" :size="18"><CircleCheck v-if="entry.status === 'uploaded'" /><WarningFilled v-else-if="entry.status === 'error'" /><Document v-else /></el-icon>
+                <div class="mapping-attachment-info dm-attachment-info"><strong class="dm-attachment-name">{{ entry.file.name }}</strong><span>{{ fileSizeLabel(entry.file.size) }}</span><small v-if="entry.error">{{ entry.error }}</small></div>
                 <el-tag size="small" effect="plain" :type="uploadStatusType(entry.status)">{{ uploadStatusLabel(entry.status) }}</el-tag>
                 <el-button v-if="entry.status === 'error'" link type="primary" :icon="Refresh" :disabled="formBusy" @click="retryUpload(entry)">重试</el-button><el-button link type="danger" :disabled="formBusy" @click="removePendingUpload(index)">移除</el-button>
               </div>
@@ -494,22 +494,19 @@ onMounted(() => { void scope.ensureLoaded() })
 .mapping-row-actions { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .mapping-row-actions :deep(.el-button) { margin-left: 0; }
 .mapping-pagination { margin-top: 16px; }
-.mapping-attachment-list, .mapping-download-list { display: grid; width: 100%; min-height: 32px; gap: 8px; margin-bottom: 10px; }
-.mapping-attachment-item, .mapping-download-item { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-bg); }
-.mapping-attachment-icon { flex: 0 0 auto; color: var(--brand); }
-.mapping-attachment-icon.is-uploaded { color: var(--el-color-success); }
-.mapping-attachment-icon.is-error { color: var(--el-color-danger); }
+.mapping-download-list { display: grid; width: 100%; min-height: 32px; gap: 8px; margin-bottom: 10px; }
+.mapping-download-item { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-bg); }
+.mapping-attachment-icon.is-uploaded { color: var(--success); }
+.mapping-attachment-icon.is-error { color: var(--danger); }
 .mapping-attachment-info { display: grid; min-width: 0; flex: 1; gap: 2px; }
-.mapping-attachment-info strong, .mapping-download-item span { min-width: 0; overflow-wrap: anywhere; color: var(--text); font-size: 13px; font-weight: 500; }
+.mapping-download-item span { min-width: 0; overflow-wrap: anywhere; color: var(--text); font-size: 13px; font-weight: 500; }
 .mapping-attachment-info span { color: var(--muted); font-size: 11px; }
-.mapping-attachment-info small { overflow-wrap: anywhere; color: var(--el-color-danger); font-size: 11px; }
+.mapping-attachment-info small { overflow-wrap: anywhere; color: var(--danger); font-size: 11px; }
 .mapping-download-item span { flex: 1; }
 @media (max-width: 760px) {
   .mapping-toolbar :deep(.ui-toolbar__filters), .mapping-toolbar :deep(.ui-toolbar__actions) { width: 100%; flex-wrap: wrap; }
   .mapping-toolbar :deep(.ui-toolbar__filters > .el-select), .mapping-toolbar :deep(.ui-toolbar__filters > .el-input) { width: 100%; }
   .mapping-toolbar :deep(.ui-toolbar__actions > .el-button) { flex: 1 1 120px; margin-left: 0; }
-  .mapping-attachment-item { align-items: flex-start; flex-wrap: wrap; }
-  .mapping-attachment-info { flex-basis: calc(100% - 30px); }
   :deep(.mapping-download-dialog) { width: calc(100vw - 24px) !important; margin: 12px auto; }
 }
 </style>

@@ -1,7 +1,7 @@
 package com.ccb.boot.workflow;
 
 import com.ccb.security.model.AuthUser;
-import com.ccb.workflow.service.WorkflowService;
+import com.ccb.workflow.integration.WorkflowDefinitionPublisher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -30,12 +30,12 @@ public class LocalSeededWorkflowPublisher implements ApplicationRunner {
             """;
 
     private final JdbcTemplate jdbc;
-    private final WorkflowService workflows;
+    private final WorkflowDefinitionPublisher workflows;
     private final long tenantId;
     private final long operatorUserId;
     private final List<String> definitionCodes;
 
-    public LocalSeededWorkflowPublisher(JdbcTemplate jdbc, WorkflowService workflows,
+    public LocalSeededWorkflowPublisher(JdbcTemplate jdbc, WorkflowDefinitionPublisher workflows,
             @Value("${ccb.workflow.seeded-definition-publisher.tenant-id:1}") long tenantId,
             @Value("${ccb.workflow.seeded-definition-publisher.operator-user-id:1}") long operatorUserId,
             @Value("${ccb.workflow.seeded-definition-publisher.definition-codes:architecture.subsystem.change,architecture.resource-request}") String definitionCodes) {

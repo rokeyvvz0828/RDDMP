@@ -1,82 +1,88 @@
-schema_version: "1.0"
-requirement_id: "REQ-20260906-065"
-requirement_title: "数据迁移模块权限硬编码修复"
-status: "ready"
-created_at: "2026-09-06T10:00:00+08:00"
-
-# 开发环境
-# 注：本需求为 REQ-20260820-031 的子需求，统一在 REQ-031 分支交付。
-developer: "codex"
-branch: "feat/REQ-20260820-031-data-migration"
-owner: "rokeyvvz0828"
-risk_level: "important"
-
-# 目标模块
-target_modules:
-  - business/data-migration
-  - platform/infrastructure
-  - frontend/application
-
-# 路径授权
-writable_paths:
-  - "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java"
-  - "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java"
-  - "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java"
-  - "server/src/platform/infrastructure/src/main/resources/db/migration/V191__data_migration_permission_hardcode_fix.sql"
-  - "web/src/router/index.ts"
-  - "web/src/modules/data-migration/views/content/MappingsPage.vue"
-  - "web/src/modules/data-migration/components/AssetListView.vue"
-
-read_only_paths:
-  - "server/src/modules/data-migration/src/test/java/**"
-  - "web/src/modules/data-migration/**"
-  - "governance/modules.yaml"
-  - "docs/governance/**"
-
-forbidden_paths:
-  - "server/src/platform/security/**"
-  - ".ai-control/original/**"
-  - ".ai-control/requirements/req-20260806-001*/**"
-
-# 复用能力
-reuse_capabilities:
-  - "platform/security: RBAC 权限查询"
-  - "platform/system: ProjectWorkflowDirectoryService"
-  - "shared/common: 统一响应、异常处理"
-  - "web/src/components/ui: UiDataTable、UiFormDrawer、UiPageHeader 等"
-  - "web/src/stores/auth: hasPermission 方法"
-
-# 数据库影响
-database_impact:
-  type: "flyway_append_only"
-  new_migration: "V191__data_migration_permission_hardcode_fix.sql"
-  tables_affected:
-    - "sys_menu: 修复 permission_code 格式、新增 3 条菜单记录"
-    - "sys_menu_permission: 修复 permission_code 格式、新增 11 条权限节点"
-    - "sys_role_menu: 新增菜单-角色关联"
-    - "sys_role_permission: 新增权限-角色关联"
-  no_schema_change: true
-
-# 权限影响
-permission_impact:
-  - "sys_menu.permission_code: 格式修复（斜杠→冒号）"
-  - "新增权限码: data-migration:content:dependencies, data-migration:content:validation-rules, data-migration:content:parameters 及其 create/update/delete 变体"
-  - "DataMigrationPermissionService.isAdmin(): 查询逻辑变更"
-
-# 测试计划
-test_plan:
-  - "静态检查: grep 验证无残留角色硬编码"
-  - "后端测试: DataMigrationPermissionServiceTest"
-  - "构建验证: mvn test -pl :ccb-data-migration"
-  - "前端构建: npm --prefix web run build"
-  - "路由守卫: 验证 data-migration 路由均有 permission + menuPath"
-
-# 完成标准
-completion:
-  control_mode: "full"
-  control_prefix: "req-20260906-065-dm-perm"
-  verification_steps:
-    - "grep 确认无角色硬编码残留"
-    - "Maven 构建通过"
-    - "Vue 构建通过"
-    - "路由 meta 验证 17 条路由均有 permission + menuPath"
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260906-065",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260906-065-data-migration-permission-hardcode-fix/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-031-data-migration",
+    "worktree": "/home/song/workspace/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+      "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V191__data_migration_permission_hardcode_fix.sql",
+      "web/src/router/index.ts",
+      "web/src/modules/data-migration/views/content/MappingsPage.vue",
+      "web/src/modules/data-migration/components/AssetListView.vue",
+      "docs/requirements/REQ-20260906-065-data-migration-permission-hardcode-fix/**",
+      ".ai-control/requirements/req-20260906-065-dm-perm/*.json",
+      ".ai-control/requirements/req-20260906-065-dm-perm/*.md"
+    ],
+    "read_only_paths": [
+      "governance/modules.yaml",
+      "docs/governance/**"
+    ],
+    "forbidden_paths": [
+      "server/src/platform/security/**",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260806-001*/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260906-065",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["module-boundary", "maven-reactor", "dynamic-menu", "frontend-build"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V191__data_migration_permission_hardcode_fix.sql"],
+    "compatibility_and_rollback": "仅追加 V191 迁移，不修改已发布脚本；回退使用反向权限数据变更并回退本任务代码。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "unit", "command": "mvn -pl :ccb-data-migration -am test", "expected": "数据迁移模块测试通过"},
+    {"name": "api", "command": "验证数据迁移路由权限元数据和 MappingController 认证", "expected": "无权限请求被拦截，接口权限码一致"},
+    {"name": "permission", "command": "静态检查角色硬编码、权限码和菜单动作节点", "expected": "无角色硬编码残留且权限链完整"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "TypeScript/Vite 构建通过"},
+    {"name": "diff-check", "command": "git diff --check", "expected": "无空白错误"}
+  ],
+  "risk": {
+    "level": "important",
+    "items": [
+      "权限节点 ID 与既有数据冲突时 INSERT IGNORE 可能静默跳过",
+      "路由权限守卫收紧后，缺少权限码的用户将被重定向"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260906-065-dm-perm",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260906-065-dm-perm/execution-T7.json",
+      ".ai-control/requirements/req-20260906-065-dm-perm/observation-T7.json",
+      ".ai-control/requirements/req-20260906-065-dm-perm/observation-T8.json",
+      ".ai-control/requirements/req-20260906-065-dm-perm/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "回退本任务代码并执行对应的权限数据反向变更。"
+  }
+}

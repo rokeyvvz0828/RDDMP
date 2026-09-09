@@ -11,10 +11,11 @@
 import '../../data-migration.css'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Download, Edit, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
+import { Delete, Document, Download, Edit, Plus, Refresh, Search, UploadFilled, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
 import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
+import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../../../api/error'
 import { useAuthStore } from '../../../../stores/auth'
@@ -169,7 +170,7 @@ async function exportExcel() {
   }
 }
 
-/* ---------- 新增抽屉 ---------- */
+/* ---------- 批量新增抽屉 ---------- */
 interface SubsystemCandidate { code: string; shortName: string; name: string; businessGroupName?: string; description?: string; responsibleTeamDisplayName?: string }
 
 const createOpen = ref(false)
@@ -177,18 +178,91 @@ const createSaving = ref(false)
 const subsystemSearching = ref(false)
 const subsystemForbidden = ref(false)
 const subsystemCandidates = ref<SubsystemCandidate[]>([])
-const createForm = reactive<{
-  systemCode: string
-  totalCheck: number
-}>({ systemCode: '', totalCheck: 0 })
-
 const subsystemLoaded = ref(false)
-const selectedSubsystem = computed(() =>
-  subsystemCandidates.value.find(c => c.code === createForm.systemCode) ?? null)
+
+const filterBusinessGroup = ref('')
+const filterKeyword = ref('')
+
+// 已存在的系统编号集合，用于过滤可选列表
+const existingSystemCodes = computed(() => new Set(rows.value.map(r => r.system_code)))
+
+// 全部可选系统（不含已存在的）
+const availableSystems = computed(() =>
+  subsystemCandidates.value.filter(s => !existingSystemCodes.value.has(s.code))
+)
+
+// 事业群选项（从可选系统中提取）
+const businessGroupOptions = computed(() => {
+  const set = new Set<string>()
+  for (const s of availableSystems.value) {
+    if (s.businessGroupName) set.add(s.businessGroupName)
+  }
+  return Array.from(set).sort()
+})
+
+// 筛选后的列表
+const filteredSystems = computed(() => {
+  const bg = filterBusinessGroup.value.trim()
+  const kw = filterKeyword.value.trim().toLowerCase()
+  return availableSystems.value.filter(s => {
+    if (bg && s.businessGroupName !== bg) return false
+    if (kw) {
+      const matchCode = s.code.toLowerCase().includes(kw)
+      const matchName = s.name.toLowerCase().includes(kw)
+      const matchShort = (s.shortName || '').toLowerCase().includes(kw)
+      if (!matchCode && !matchName && !matchShort) return false
+    }
+    return true
+  })
+})
+
+// 选中的系统（用 Map 保存 code -> totalCheck）
+const selectedSystems = reactive(new Map<string, number>())
+
+const selectedCount = computed(() => selectedSystems.size)
+
+function isSelected(code: string) { return selectedSystems.has(code) }
+function getTotalCheck(code: string) { return selectedSystems.get(code) ?? 0 }
+
+function toggleSelect(system: SubsystemCandidate) {
+  if (selectedSystems.has(system.code)) {
+    selectedSystems.delete(system.code)
+  } else {
+    selectedSystems.set(system.code, 0)
+  }
+}
+
+function setSelectedTotalCheck(code: string, value: number) {
+  if (selectedSystems.has(code)) {
+    selectedSystems.set(code, value)
+  }
+}
+
+function setAllSelectedTotalCheck(value: number) {
+  for (const code of selectedSystems.keys()) {
+    selectedSystems.set(code, value)
+  }
+}
+
+// 全选当前筛选结果
+function selectAllFiltered() {
+  for (const s of filteredSystems.value) {
+    if (!selectedSystems.has(s.code)) {
+      selectedSystems.set(s.code, 0)
+    }
+  }
+}
+
+// 取消全选当前筛选结果
+function deselectAllFiltered() {
+  for (const s of filteredSystems.value) {
+    selectedSystems.delete(s.code)
+  }
+}
 
 function subsystemLabel(c: SubsystemCandidate) { return `${c.code} - ${c.shortName || c.name || ''}` }
 
-// 架构主数据系统约 500 条以内：首次打开新增抽屉时一次性全量加载，下拉本地随输随筛（编号/名称均可、不区分大小写），之后复用缓存。
+// 架构主数据系统约 500 条以内：首次打开批量新增抽屉时一次性全量加载，之后复用缓存。
 async function loadSubsystemOptions(force = false) {
   if (subsystemLoaded.value && !force) return
   subsystemSearching.value = true
@@ -218,7 +292,9 @@ async function loadSubsystemOptions(force = false) {
 }
 
 function openCreate() {
-  Object.assign(createForm, { systemCode: '', totalCheck: 0 })
+  selectedSystems.clear()
+  filterBusinessGroup.value = ''
+  filterKeyword.value = ''
   subsystemForbidden.value = false
   void loadSubsystemOptions()
   createOpen.value = true
@@ -226,19 +302,35 @@ function openCreate() {
 
 async function submitCreate() {
   if (scopeProjectId.value == null) return ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
-  if (!createForm.systemCode.trim()) return ElMessage.warning('请输入系统编号')
+  if (selectedSystems.size === 0) return ElMessage.warning('请先勾选要新增的系统')
   createSaving.value = true
+  let successCount = 0
+  let failCount = 0
+  const errors: string[] = []
   try {
-    await createDataMigrationComponent({
-      projectId: scopeProjectId.value,
-      systemCode: createForm.systemCode.trim(),
-      totalCheck: createForm.totalCheck
-    })
-    ElMessage.success('新增成功')
-    createOpen.value = false
+    for (const [code, totalCheck] of selectedSystems) {
+      try {
+        await createDataMigrationComponent({
+          projectId: scopeProjectId.value,
+          systemCode: code,
+          totalCheck
+        })
+        successCount++
+      } catch (e) {
+        failCount++
+        errors.push(`${code}：${apiErrorMessage(e, '新增失败')}`)
+        if (failCount >= 10) break
+      }
+    }
+    if (failCount === 0) {
+      ElMessage.success(`批量新增成功（${successCount} 个系统）`)
+      createOpen.value = false
+    } else {
+      ElMessage.warning(`批量新增完成：成功 ${successCount} 个，失败 ${failCount} 个`)
+    }
     await load()
   } catch (e) {
-    ElMessage.error(apiErrorMessage(e, '新增失败'))
+    ElMessage.error(apiErrorMessage(e, '批量新增失败'))
   } finally {
     createSaving.value = false
   }
@@ -340,6 +432,17 @@ watch(scopeProjectId, () => {
 
 <template>
   <main class="dm-page-root components-page">
+    <UiPageHeader title="系统/组件清单" description="列表、新增均固定属于顶部项目切换器选择的当前项目。">
+      <template #actions>
+        <el-tooltip content="批量导入功能开发中，敬请期待" placement="bottom">
+          <el-button disabled><el-icon><UploadFilled /></el-icon>批量导入</el-button>
+        </el-tooltip>
+        <el-button v-if="canManage && scopeState === 'ready' && !forbidden && !error" type="primary" :disabled="loading || actionBusy" @click="openCreate">
+          <el-icon><Plus /></el-icon>批量新增组件
+        </el-button>
+      </template>
+    </UiPageHeader>
+
     <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
     <section v-else-if="forbidden" class="dm-state-panel"><el-result icon="warning" title="暂无组件清单查看权限" sub-title="请向数据迁移管理员申请组件清单管理权限。" /></section>
     <section v-else-if="error" class="dm-state-panel"><el-result icon="error" title="组件清单加载失败" :sub-title="error"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
@@ -359,7 +462,6 @@ watch(scopeProjectId, () => {
           <el-button :disabled="loading || actionBusy" @click="search"><el-icon><Search /></el-icon>查询</el-button>
           <el-button :disabled="loading" @click="resetFilters">重置</el-button>
           <el-button :disabled="loading || actionBusy" @click="exportExcel"><el-icon><Download /></el-icon>导出 Excel</el-button>
-          <el-button v-if="canManage" type="primary" :disabled="loading || actionBusy" @click="openCreate"><el-icon><Plus /></el-icon>新增组件</el-button>
         </template>
       </UiToolbar>
 
@@ -443,33 +545,83 @@ watch(scopeProjectId, () => {
         </div>
       </div>
 
-      <UiEmptyState v-if="!loading && !rows.length" title="暂无组件数据" description="当前项目下没有组件记录，可通过「新增组件」录入，或调整筛选条件。" />
+      <UiEmptyState v-if="!loading && !rows.length" title="暂无组件数据" description="当前项目下没有组件记录，可通过「批量新增组件」录入，或调整筛选条件。" />
     </template>
 
-    <UiFormDrawer v-model="createOpen" title="新增组件" width="560px" :loading="createSaving" confirm-text="保存" @submit="submitCreate">
-      <el-form label-width="96px" label-position="left">
-        <el-form-item label="系统编号" required>
-          <el-select v-model="createForm.systemCode" filterable :loading="subsystemSearching"
-            placeholder="输入系统编号或名称搜索" style="width: 100%">
-            <el-option v-for="c in subsystemCandidates" :key="c.code" :label="subsystemLabel(c)" :value="c.code" />
-          </el-select>
-        </el-form-item>
-        <template v-if="selectedSubsystem">
-          <el-form-item label="所属事业群"><el-input :model-value="selectedSubsystem.businessGroupName ?? '-'" disabled /></el-form-item>
-          <el-form-item label="系统简称"><el-input :model-value="selectedSubsystem.shortName" disabled /></el-form-item>
-          <el-form-item label="系统名称"><el-input :model-value="selectedSubsystem.name" disabled /></el-form-item>
-          <el-form-item label="系统描述"><el-input :model-value="selectedSubsystem.description ?? '-'" disabled /></el-form-item>
-          <el-form-item label="负责团队"><el-input :model-value="selectedSubsystem.responsibleTeamDisplayName" disabled /></el-form-item>
-        </template>
-        <el-alert v-else-if="subsystemForbidden" type="warning" :closable="false" show-icon title="缺少物理子系统查询权限，无法联动带出系统信息，请先在权限管理中授权架构模块查询权限。" class="components-subsystem-alert" />
-        <el-alert v-else type="info" :closable="false" show-icon title="输入系统编号或名称搜索并选择系统，系统信息将自动带出（仅展示、不保存）。" class="components-subsystem-alert" />
-        <el-form-item label="总分核对" required>
-          <el-radio-group v-model="createForm.totalCheck">
-            <el-radio :value="0">否</el-radio>
-            <el-radio :value="1">是</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
+    <UiFormDrawer v-model="createOpen" title="批量新增组件" width="min(900px, 92vw)" :loading="createSaving || subsystemSearching" confirm-text="确认新增" @submit="submitCreate">
+      <el-alert type="info" :closable="false" show-icon
+        :title="`当前项目可新增 ${availableSystems.length} 个系统，已选 ${selectedCount} 个`"
+        sub-title="勾选要新增的系统，每个系统可单独设置是否涉及总分核对；系统信息从架构主数据联动带出，仅展示、不保存。" />
+
+      <div class="components-batch-filter">
+        <el-select v-model="filterBusinessGroup" clearable placeholder="所属事业群" style="width: 200px">
+          <el-option v-for="bg in businessGroupOptions" :key="bg" :label="bg" :value="bg" />
+        </el-select>
+        <el-input v-model="filterKeyword" clearable placeholder="子系统编号 / 名称（不区分大小写）" style="width: 320px">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <div class="components-batch-filter-actions">
+          <el-button link type="primary" :disabled="!filteredSystems.length" @click="selectAllFiltered">全选当前筛选</el-button>
+          <el-button link type="danger" :disabled="!filteredSystems.length" @click="deselectAllFiltered">取消全选</el-button>
+        </div>
+      </div>
+
+      <div class="components-batch-table-wrap">
+        <el-table
+          :data="filteredSystems"
+          :row-key="(row: SubsystemCandidate) => row.code"
+          border
+          size="small"
+          max-height="420px"
+          empty-text="没有匹配的系统"
+        >
+          <el-table-column type="selection" width="44" :selectable="() => true">
+            <template #header>
+              <el-checkbox
+                :model-value="filteredSystems.length > 0 && filteredSystems.every(s => isSelected(s.code))"
+                :indeterminate="filteredSystems.some(s => isSelected(s.code)) && !filteredSystems.every(s => isSelected(s.code))"
+                @change="(val: boolean) => val ? selectAllFiltered() : deselectAllFiltered()"
+              />
+            </template>
+            <template #default="{ row }">
+              <el-checkbox
+                :model-value="isSelected(row.code)"
+                @change="toggleSelect(row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="businessGroupName" label="所属事业群" min-width="120" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.businessGroupName || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="code" label="物理子系统编号" min-width="140" show-overflow-tooltip>
+            <template #default="{ row }"><span class="dm-system-code">{{ row.code }}</span></template>
+          </el-table-column>
+          <el-table-column label="物理子系统名称" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.shortName || row.name }}</template>
+          </el-table-column>
+          <el-table-column label="总分核对" width="140" align="center">
+            <template #default="{ row }">
+              <el-radio-group
+                :model-value="getTotalCheck(row.code)"
+                size="small"
+                :disabled="!isSelected(row.code)"
+                @change="(val: number) => setSelectedTotalCheck(row.code, val)"
+              >
+                <el-radio-button :value="0">否</el-radio-button>
+                <el-radio-button :value="1">是</el-radio-button>
+              </el-radio-group>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="components-batch-footer">
+        <span>已选 <b>{{ selectedCount }}</b> 个系统</span>
+        <el-radio-group size="small" :disabled="selectedCount === 0" @change="(val: number) => setAllSelectedTotalCheck(val)">
+          <el-radio-button :value="0">全部设为「否」</el-radio-button>
+          <el-radio-button :value="1">全部设为「是」</el-radio-button>
+        </el-radio-group>
+      </div>
     </UiFormDrawer>
 
     <UiFormDrawer v-model="editOpen" title="修改组件" width="560px" :loading="editSaving" confirm-text="保存" @submit="submitEdit">
@@ -522,6 +674,32 @@ watch(scopeProjectId, () => {
 .components-advanced-filter { margin: -6px 0 16px; padding: 14px 16px 0; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 .components-advanced-filter .el-form { display: flex; flex-wrap: wrap; gap: 0 14px; }
 .components-subsystem-alert { width: 100%; margin-bottom: 16px; }
+.components-batch-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.components-batch-filter-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.components-batch-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.components-batch-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.components-batch-footer b { color: var(--primary); font-weight: 600; }
+.dm-system-code { font-family: var(--mono-font, monospace); font-size: 12px; color: var(--primary); background: var(--primary-light); padding: 2px 6px; border-radius: 4px; }
 
 @media (max-width: 760px) {
   .components-page .ui-toolbar__filters, .components-page .ui-toolbar__actions { width: 100%; }

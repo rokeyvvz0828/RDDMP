@@ -220,7 +220,7 @@ onMounted(() => { void scope.ensureLoaded() })
     <UiFormDrawer v-model="drawerOpen" :title="replacingAsset ? `替换${pageTitle}文件` : `上传${pageTitle}`" :loading="saving" @submit="saveUpload">
       <el-form label-position="top">
         <el-form-item label="文件" required>
-          <el-upload :auto-upload="false" :limit="1" drag style="width: 100%" @change="onFileChange">
+          <el-upload class="dm-upload-dropzone" :auto-upload="false" :limit="1" drag @change="onFileChange">
             <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">拖拽文件到此处，或 <em>点击选择</em></div>
           </el-upload>

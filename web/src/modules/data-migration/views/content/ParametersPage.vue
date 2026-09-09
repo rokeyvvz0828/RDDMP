@@ -7,11 +7,12 @@
 <script setup lang="ts">
 import '../../data-migration.css'
 import { computed, onMounted, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, genFileId, type UploadFile, type UploadInstance, type UploadProps, type UploadRawFile } from 'element-plus'
 import { Delete, Document, Download, Edit, Plus, Refresh, Search, UploadFilled, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
 import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
+import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiPagination from '../../../../components/ui/UiPagination.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
 import { useAuthStore } from '../../../../stores/auth'
@@ -85,11 +86,15 @@ const detailLoading = ref(false)
 const detail = ref<ParameterRecord | null>(null)
 const detailError = ref('')
 
-const importInput = ref<HTMLInputElement | null>(null)
+const importDialogOpen = ref(false)
+const importUploadRef = ref<UploadInstance>()
 const pendingImportFile = ref<File | null>(null)
 const importResult = ref<ParameterImportResult | null>(null)
+const importError = ref('')
 
-const canImport = computed(() => hasCreate.value)
+const importReady = computed(() => Boolean(scopeProjectId.value))
+const canImport = computed(() => hasCreate.value && importReady.value)
+const canSubmitImport = computed(() => canImport.value && Boolean(pendingImportFile.value) && !actionBusy.value)
 const hasFilters = computed(() => Boolean(parameterType.value || parameterScope.value || systemCode.value || keyword.value.trim()))
 
 const messageOf = (cause: unknown, fallback = '操作失败，请稍后重试') => cause instanceof Error && cause.message ? cause.message : fallback
@@ -242,15 +247,49 @@ async function openDetail(item: ParameterRecord) {
   } finally { detailLoading.value = false }
 }
 
-// ============ Excel 批量导入 ============
-function chooseImportFile() { importInput.value?.click() }
-
-function onImportFileChange(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0] ?? null
-  pendingImportFile.value = file
+// ============ Excel 批量导入（当前页对话框） ============
+function resetImportDialog() {
+  pendingImportFile.value = null
   importResult.value = null
-  if (file) ElMessage.info(`已选择 ${file.name}，请点击“提交导入”`)
-  if (importInput.value) importInput.value.value = ''
+  importError.value = ''
+  importUploadRef.value?.clearFiles()
+}
+
+function openImportDialog() {
+  resetImportDialog()
+  importDialogOpen.value = true
+}
+
+function onImportFileChange(file: UploadFile) {
+  pendingImportFile.value = file.raw ?? null
+  importResult.value = null
+  importError.value = ''
+}
+
+const onImportFileExceed: UploadProps['onExceed'] = (files) => {
+  importUploadRef.value?.clearFiles()
+  const file = files[0] as UploadRawFile
+  file.uid = genFileId()
+  importUploadRef.value?.handleStart(file)
+}
+
+function onImportFileRemove() {
+  pendingImportFile.value = null
+  importResult.value = null
+  importError.value = ''
+}
+
+function clearImportFile() {
+  importUploadRef.value?.clearFiles()
+  onImportFileRemove()
+}
+
+function beforeImportDialogClose(done: () => void) {
+  if (!actionBusy.value) done()
+}
+
+function closeImportDialog() {
+  if (!actionBusy.value) importDialogOpen.value = false
 }
 
 async function submitImport() {
@@ -258,8 +297,10 @@ async function submitImport() {
   const file = pendingImportFile.value
   if (!pid) return void ElMessage.warning('当前项目不可用，请重新选择项目')
   if (!file) return void ElMessage.warning('请先选择 Excel 文件')
+  if (actionBusy.value) return
   actionBusy.value = true
   importResult.value = null
+  importError.value = ''
   try {
     const response = await importParameters({ projectId: pid }, file)
     const data = response.data.data
@@ -267,10 +308,10 @@ async function submitImport() {
     const text = `导入完成：共 ${data?.rows ?? 0} 行，成功 ${data?.accepted ?? 0} 行，失败 ${data?.failed ?? 0} 行`
     if (data?.errors?.length) ElMessage.warning(text)
     else ElMessage.success(text)
-    pendingImportFile.value = null
     await load()
   } catch (cause) {
-    ElMessage.error(messageOf(cause, '导入失败'))
+    importError.value = messageOf(cause, '导入失败')
+    ElMessage.error(importError.value)
   } finally { actionBusy.value = false }
 }
 
@@ -349,8 +390,8 @@ watch(scopeProjectId, () => {
   parameterScope.value = ''
   systemCode.value = ''
   keyword.value = ''
-  pendingImportFile.value = null
-  importResult.value = null
+  importDialogOpen.value = false
+  resetImportDialog()
   error.value = ''
   forbidden.value = false
   void loadSystems()
@@ -371,6 +412,17 @@ function systemLabel(value?: string) {
 
 <template>
   <main class="dm-page-root">
+    <UiPageHeader title="迁移参数" description="列表、新增与导入均固定属于顶部项目切换器选择的当前项目。">
+      <template #actions>
+        <el-button v-if="hasCreate && scopeState === 'ready' && !forbidden && !error" :disabled="loading || actionBusy" @click="openImportDialog">
+          <el-icon><UploadFilled /></el-icon>批量导入
+        </el-button>
+        <el-button v-if="hasCreate && scopeState === 'ready' && !forbidden && !error" type="primary" :disabled="loading || actionBusy" @click="openCreate">
+          <el-icon><Plus /></el-icon>新增迁移参数
+        </el-button>
+      </template>
+    </UiPageHeader>
+
     <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
     <section v-else-if="forbidden" class="dm-state-panel">
       <el-result icon="warning" :title="'暂无迁移参数查看权限'" sub-title="请向数据迁移管理员申请 data-migration:content:parameters 权限。" />
@@ -397,24 +449,13 @@ function systemLabel(value?: string) {
         <template #actions>
           <el-button :disabled="loading || actionBusy" @click="search"><el-icon><Search /></el-icon>查询</el-button>
           <el-button :disabled="!hasFilters" @click="resetFilters"><el-icon><Refresh /></el-icon>重置</el-button>
-          <el-button v-if="hasCreate" :disabled="actionBusy" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新增参数</el-button>
-          <el-button :disabled="actionBusy" @click="downloadTemplate"><el-icon><Document /></el-icon>下载模板</el-button>
-          <input ref="importInput" class="dm-hidden" type="file" accept=".xlsx" @change="onImportFileChange">
-          <el-button v-if="hasCreate" :disabled="actionBusy" @click="chooseImportFile"><el-icon><UploadFilled /></el-icon>批量导入</el-button>
-          <el-button v-if="pendingImportFile" :disabled="actionBusy" type="primary" plain @click="submitImport">提交导入</el-button>
           <el-button :disabled="actionBusy" @click="exportData"><el-icon><Download /></el-icon>导出</el-button>
           <el-button v-if="hasDelete" type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="removeSelected"><el-icon><Delete /></el-icon>删除 ({{ selectedIds.length }})</el-button>
         </template>
       </UiToolbar>
 
-      <p v-if="importResult" class="dm-import-result" role="status">
-        导入完成：共 {{ importResult.rows }} 行，成功 {{ importResult.accepted }} 行，失败 {{ importResult.failed }} 行
-        <span v-if="importResult.errors?.length" class="dm-import-detail">（首个失败：{{ importResult.errors[0] }}）</span>
-      </p>
-
       <UiDataTable v-if="records.length || loading" :data="records" :loading="loading" row-key="id" border empty-text="暂无迁移参数" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="46" />
-        <el-table-column prop="project_name" label="项目名称" min-width="150" />
         <el-table-column label="参数类型" min-width="110">
           <template #default="scopeRow">{{ typeLabel(scopeRow.row.parameter_type_name || scopeRow.row.parameter_type) }}</template>
         </el-table-column>
@@ -468,11 +509,92 @@ function systemLabel(value?: string) {
       </el-form>
     </UiFormDrawer>
 
+    <el-dialog
+      v-model="importDialogOpen"
+      class="dm-import-dialog"
+      title="批量导入迁移参数"
+      width="min(720px, calc(100vw - 24px))"
+      destroy-on-close
+      :close-on-click-modal="!actionBusy"
+      :close-on-press-escape="!actionBusy"
+      :show-close="!actionBusy"
+      :before-close="beforeImportDialogClose"
+      @closed="resetImportDialog"
+    >
+      <div class="dm-import-dialog-body">
+        <el-alert title="请使用迁移参数模板填写数据，选择 Excel 文件后确认导入。" type="info" :closable="false" show-icon />
+
+        <div class="dm-import-template-row">
+          <span>模板包含参数类型、参数范围分类、关联系统、参数名称及参数说明。</span>
+          <el-button :disabled="actionBusy" @click="downloadTemplate"><el-icon><Document /></el-icon>下载模板</el-button>
+        </div>
+
+        <el-upload
+          ref="importUploadRef"
+          class="dm-upload-dropzone"
+          drag
+          :auto-upload="false"
+          :limit="1"
+          accept=".xlsx,.xls"
+          :show-file-list="false"
+          :disabled="actionBusy"
+          :on-change="onImportFileChange"
+          :on-exceed="onImportFileExceed"
+          :on-remove="onImportFileRemove"
+        >
+          <el-icon class="dm-upload-icon"><UploadFilled /></el-icon>
+          <div class="el-upload__text">将 Excel 文件拖到此处，或 <em>点击选择</em></div>
+          <template #tip><div class="dm-upload-hint">支持 .xlsx、.xls，单次选择一个文件</div></template>
+        </el-upload>
+
+        <div v-if="pendingImportFile" class="dm-attachment-section">
+          <div class="dm-attachment-section-title">已选择文件</div>
+          <div class="dm-attachment-list">
+            <div class="dm-attachment-item is-pending">
+              <span class="dm-attachment-icon is-pending"><el-icon><Document /></el-icon></span>
+              <div class="dm-attachment-info">
+                <div class="dm-attachment-name" :title="pendingImportFile.name">{{ pendingImportFile.name }}</div>
+                <div class="dm-attachment-meta">Excel 文件 · 待导入</div>
+              </div>
+              <div class="dm-attachment-actions">
+                <el-button circle plain type="danger" :disabled="actionBusy" title="移除文件" aria-label="移除文件" @click="clearImportFile">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <el-alert v-if="importError" class="dm-import-result" type="error" :closable="false" show-icon title="导入请求失败">
+          <template #default><div class="dm-import-message">{{ importError }}</div></template>
+        </el-alert>
+        <el-alert
+          v-if="importResult"
+          class="dm-import-result"
+          :type="importResult.failed > 0 ? 'warning' : 'success'"
+          :closable="false"
+          show-icon
+          :title="`导入完成：共 ${importResult.rows} 行，成功 ${importResult.accepted} 行，失败 ${importResult.failed} 行`"
+        >
+          <template v-if="importResult.errors?.length" #default>
+            <ul class="dm-import-errors">
+              <li v-for="(item, index) in importResult.errors.slice(0, 20)" :key="index">{{ item }}</li>
+              <li v-if="importResult.errors.length > 20">剩余 {{ importResult.errors.length - 20 }} 条错误未展示</li>
+            </ul>
+          </template>
+        </el-alert>
+      </div>
+
+      <template #footer>
+        <el-button :disabled="actionBusy" @click="closeImportDialog">取消</el-button>
+        <el-button type="primary" :loading="actionBusy" :disabled="!canSubmitImport" @click="submitImport">确认导入</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="detailOpen" title="迁移参数详情" width="520px">
       <div v-loading="detailLoading" style="min-height: 60px">
         <el-result v-if="detailError" icon="error" :title="detailError" />
         <el-descriptions v-else-if="detail" :column="1" border>
-          <el-descriptions-item label="所属项目">{{ detail.project_name ?? '—' }}</el-descriptions-item>
           <el-descriptions-item label="参数类型">{{ typeLabel(detail.parameter_type_name || detail.parameter_type) }}</el-descriptions-item>
           <el-descriptions-item label="参数范围分类">{{ scopeLabel(detail.parameter_scope_name || detail.parameter_scope) }}</el-descriptions-item>
           <el-descriptions-item label="系统编号">{{ detail.system_code ?? '—' }}</el-descriptions-item>
@@ -495,7 +617,11 @@ function systemLabel(value?: string) {
 </template>
 
 <style scoped>
-.dm-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.dm-import-result { margin: 0 0 12px; color: var(--success); font-size: 13px; }
-.dm-import-detail { color: var(--warning); }
+.dm-import-dialog-body { min-width: 0; max-height: min(60vh, 520px); padding-right: 2px; overflow-x: hidden; overflow-y: auto; }
+.dm-import-template-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+.dm-import-template-row span { min-width: 0; overflow-wrap: anywhere; }
+.dm-import-result { margin: 14px 0 0; }
+.dm-import-message { word-break: break-word; }
+.dm-import-errors { margin: 6px 0 0; padding-left: 18px; }
+.dm-import-errors li { margin: 2px 0; word-break: break-word; }
 </style>

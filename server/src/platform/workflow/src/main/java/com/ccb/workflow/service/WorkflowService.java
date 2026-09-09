@@ -14,6 +14,7 @@ import com.ccb.workflow.integration.WorkflowProjectRole;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowDefinitionReference;
 import com.ccb.workflow.integration.WorkflowDefinitionReferenceProvider;
+import com.ccb.workflow.integration.WorkflowDefinitionPublisher;
 import com.ccb.workflow.model.WorkflowActionPolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,7 +39,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
-public class WorkflowService implements WorkflowPendingTaskQuery {
+public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefinitionPublisher {
     private static final String APPROVE = "APPROVE";
     private static final String REJECT = "REJECT";
     private static final String RETURN = "RETURN";

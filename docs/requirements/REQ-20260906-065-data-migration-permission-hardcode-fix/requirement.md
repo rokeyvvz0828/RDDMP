@@ -1,3 +1,10 @@
+---
+id: REQ-20260906-065
+status: ready
+owner: rokeyvvz0828
+module: business/data-migration
+---
+
 # REQ-20260906-065: 数据迁移模块权限硬编码修复
 
 ## 状态

@@ -360,10 +360,10 @@ watch(scopeProjectId, () => {
         </template>
         <template v-if="attachmentList.length">
           <el-divider content-position="left">附件列表</el-divider>
-          <div class="attachment-list">
-            <div v-for="att in attachmentList" :key="att.attachmentId" class="attachment-item">
-              <div class="attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
-              <div class="attachment-info"><div class="attachment-name">{{ att.fileName }}</div></div>
+          <div class="dm-attachment-list">
+            <div v-for="att in attachmentList" :key="att.attachmentId" class="dm-attachment-item">
+              <div class="dm-attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
+              <div class="dm-attachment-info"><div class="dm-attachment-name">{{ att.fileName }}</div></div>
             </div>
           </div>
         </template>
@@ -375,11 +375,6 @@ watch(scopeProjectId, () => {
 <style scoped>
 .dm-detail-descriptions { margin-bottom: 16px; }
 .dm-detail-json { margin: 0; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.5; }
-.attachment-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.attachment-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--panel-bg, #f5f7fa); border: 1px solid var(--line, #e4e7ed); border-radius: 8px; }
-.attachment-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: var(--brand-light, #ecf5ff); border-radius: 8px; color: var(--brand, #409eff); flex-shrink: 0; }
-.attachment-info { flex: 1; min-width: 0; }
-.attachment-name { font-size: 14px; font-weight: 500; color: var(--text, #303133); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 600px) {
   :deep(.el-drawer__body) { padding: 16px; overflow-y: auto; }
 }
