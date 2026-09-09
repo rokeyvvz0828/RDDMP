@@ -1,0 +1,32 @@
+{
+  "objective": "数据迁移模块不再展示项目归属信息，并在桌面和移动端提供一致、响应式、主题兼容的文件上传体验。",
+  "requirements": [
+    {"id":"R1","statement":"数据迁移业务可见 UI 不得展示所属项目、项目名称或动态项目名称。","acceptance":["参数和检核规则列表及详情无项目字段","导入与清空确认文案不回显项目名称","projectId 请求归属保持不变"],"priority":"must","source":"REQ-031 T31-r1 与 2026-09-07 用户批准计划","counterexample":["列表存在项目名称列","确认框显示当前项目名称"]},
+    {"id":"R2","statement":"主要文件和 Excel 导入拖拽区必须占满父容器且不造成规定移动视口横向溢出。","acceptance":["el-upload 与 el-upload-dragger 宽度均为 100%","375x812、390x844、430x932 无页面级横向溢出"],"priority":"must","source":"design-h5.md 与用户批准计划","counterexample":["移动端弹框出现横向滚动"]},
+    {"id":"R3","statement":"数据迁移同类上传入口必须收敛为全宽拖拽区或附件按钮加统一文件列表两种形态。","acceptance":["共享 CSS 定义两种形态","页面不重复定义 attachment-list/item/icon/name"],"priority":"must","source":"用户批准计划","counterexample":["相同附件列表在多个页面维持不同间距和颜色"]},
+    {"id":"R4","statement":"自定义文件预览场景不得同时显示 Element Plus 默认文件列表。","acceptance":["ReportsPage 三处上传关闭默认列表","浏览器中文件名和操作仅呈现一次"],"priority":"must","source":"静态审查发现","counterexample":["同一文件同时出现在默认列表和自定义列表"]},
+    {"id":"R5","statement":"上传样式必须使用语义主题变量，并以分层检查完成数据迁移专项验收。","acceptance":["上传区域无内联十六进制颜色","前端构建与任务范围检查通过","REQ-061 仅记录为范围外治理扰动"],"priority":"must","source":"项目规范与用户批准计划","counterexample":["业务页保留 color:#909399","把 REQ-061 失败归因于本次变更"]}
+  ],
+  "invariants": ["projectId 继续来自顶部项目上下文并参与请求","上传 API、权限、审计和后端契约不变","目标表模板所属项目编码说明保留"],
+  "constraints": ["仅修改 REQ-031 可写路径","不修改公共 UI、全局 store、后端、数据库和 REQ-061","浏览器验收覆盖四个规定视口"],
+  "non_goals": ["不修复 REQ-061","不重构上传 API","不统一其他业务模块上传样式"],
+  "assumptions": [
+    {"text":"data-migration.css 已由所有目标页面加载","basis":"源码 import 扫描","falsifier":"构建产物或浏览器计算样式显示目标页未加载共享 CSS"},
+    {"text":"本地浏览器验收环境可启动","basis":"仓库已有 web/verify_ui.mjs 和历史验收记录","falsifier":"服务或测试依赖无法启动"}
+  ],
+  "unknowns": [
+    {"question":"真实浏览器环境是否仍具备可用测试账号和服务","impact":"可能限制运行态证据，但不影响静态实现","owner":"T4 执行阶段","blocking":false}
+  ],
+  "decisions": [
+    {"question":"REQ-061 是否纳入本次修复","options":["范围外记录","修改投产需求"],"selected":"范围外记录","blocking":false,"source":"2026-09-07 用户确认可忽略并批准计划"},
+    {"question":"后续规则域文字与 T31-r1 冲突时采用何者","options":["遵循模块级 T31-r1","重新展示项目列"],"selected":"遵循模块级 T31-r1","blocking":false,"source":"用户批准的执行计划"}
+  ],
+  "measurement_intents": [
+    {"requirement_id":"R1","observable":"运行时项目字段文本和请求 projectId","candidate_sensor":"静态模板扫描加浏览器文本断言"},
+    {"requirement_id":"R2","observable":"上传区计算宽度和页面 scrollWidth","candidate_sensor":"CSS 扫描加四视口 Playwright"},
+    {"requirement_id":"R3","observable":"共享类使用和重复页面样式数量","candidate_sensor":"rg 类名扫描加截图比较"},
+    {"requirement_id":"R4","observable":"单个已选文件的 DOM 列表数量","candidate_sensor":"模板配置扫描加浏览器 DOM 断言"},
+    {"requirement_id":"R5","observable":"颜色来源、构建退出码、治理退出原因","candidate_sensor":"rg、Vite build、范围与全量治理命令"}
+  ],
+  "baseline_status": "ready"
+}

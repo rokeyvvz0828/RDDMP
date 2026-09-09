@@ -1,0 +1,126 @@
+{
+  "baseline_revision": "baseline-revision-2",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "最终源码契约检查退出码 0：UiPageHeader 存在，批量导入位于新增迁移检核规则之前，新增按钮为 primary",
+        "Chromium 在 1280x800、375x812、390x844、430x932 均确认两个头部操作顺序正确"
+      ],
+      "limitations": ["未使用独立低权限账号运行入口隐藏分支；权限条件由既有 hasCreate 源码契约覆盖"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "四视口打开批量导入前后路由均为 /data-migration/content/validation-rules",
+        "对话框内包含下载模板、Excel 选择、确认导入和结果反馈，工具栏无导入操作",
+        "浏览器验收确认关闭重置且列表查询上下文未改变"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "Chromium 受控响应确认初始禁用、选中文件可提交、提交中禁止关闭和重复提交、请求失败保留文件、关闭后重置",
+        "部分失败响应显示总数、成功数、失败数、20 条错误及剩余数量，成功或部分成功后刷新列表且对话框保持打开"
+      ],
+      "limitations": ["全部成功、部分失败和请求失败使用受控浏览器响应，未向真实后端写入测试 Excel 数据"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "最终源码契约检查确认 UiToolbar 不含模板下载、Excel 选择、提交导入或新增",
+        "浏览器验收确认查询、重置、导出和批量删除仍保留"
+      ],
+      "limitations": ["浏览器验收时无选中行，未触发真实批量删除"]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "对话框复用 dm-upload-dropzone 和 dm-attachment-*，未修改共享上传样式",
+        "F-0001 纠正后 390x844 对话框高度由 820px 降至 463px，并在 1280x800、375x812、390x844、430x932 复验",
+        "四视口页面、对话框和正文均无横向溢出；长错误列表正文可滚动且 footer 可达；截图人工复核无遮挡、裁切或无意义底部空白"
+      ],
+      "limitations": ["未覆盖手机软键盘弹出场景"]
+    },
+    {
+      "id": "R6",
+      "result": "pass",
+      "task_ids": ["T1", "T2"],
+      "evidence": [
+        "最终源码契约检查确认继续调用 downloadRuleTemplate() 与 importMigrationCheckRules({ projectId }, file)",
+        "真实模板 GET 下载文件名为迁移检核规则模板.xlsx",
+        "npm --prefix web run build 退出码 0；git diff --check 退出码 0；REQ-031 定向范围检查通过 398 个变更文件",
+        "本主题产品代码仅修改 ValidationRulesPage.vue，未修改公共 UI、共享 CSS、路由、API、后端或数据库"
+      ],
+      "limitations": ["398 个范围内变更文件多数属于当前分支既有工作，不全部归因于本主题"]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["实现及 F-0001 限幅纠正均通过最终源码、构建、范围和四视口浏览器复验"]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": ["独立静态、构建、范围、真实模板下载和 Chromium 四视口验收已完成"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 1,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 1, "P3": 0, "score": 5},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "最终前端构建", "result": "pass", "evidence": "npm --prefix web run build 退出码 0，2568 modules transformed，built in 16.95s；仅既有 chunk size 警告"},
+    {"check": "最终源码契约", "result": "pass", "evidence": "final-source-contract:pass"},
+    {"check": "目标文件空白检查", "result": "pass", "evidence": "git diff --check -- ValidationRulesPage.vue 退出码 0"},
+    {"check": "REQ-031 定向范围", "result": "pass", "evidence": "Codex scope check passed for REQ-20260820-031; 398 changed file(s)"},
+    {"check": "四视口交互与布局", "result": "pass", "evidence": "1280x800、375x812、390x844、430x932 页面、对话框和正文无横向溢出，正文滚动且 footer 可达"}
+  ],
+  "invariant_results": [
+    {"invariant": "projectId 始终来自顶部全局项目上下文并参与导入请求", "result": "pass", "evidence": "源码保持 useProjectScope 与 importMigrationCheckRules({ projectId }, file)"},
+    {"invariant": "hasCreate 继续控制单条新增与批量导入入口", "result": "pass", "evidence": "两个 UiPageHeader 操作均受 hasCreate 与项目 ready 状态控制"},
+    {"invariant": "模板和导入 API 签名不变", "result": "pass", "evidence": "最终源码契约与真实模板 GET 通过"},
+    {"invariant": "Excel 行级目标类型、规则大类和关联系统解析不变", "result": "pass", "evidence": "未修改 API、模板、后端或数据库，对话框未新增对应字段"},
+    {"invariant": "成功或部分成功刷新列表但保持对话框打开", "result": "pass", "evidence": "受控响应确认 submitImport 调用 load() 且不关闭对话框、不清空文件"},
+    {"invariant": "关闭或项目切换清理导入状态", "result": "pass", "evidence": "浏览器关闭重置通过；scopeProjectId watch 关闭并调用 resetImportDialog"},
+    {"invariant": "保护工作区中已有未提交修改", "result": "pass", "evidence": "保留 ValidationRulesPage.vue 既有项目名称治理 diff，未回退其他数据迁移文件"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "REQ-061 非 JSON-compatible YAML 导致全仓治理失败", "result": "pass", "evidence": "已分类为范围外外部扰动；REQ-031 定向范围检查独立通过，未修改 REQ-061"},
+    {"disturbance": "当前分支已有大量 REQ-031 范围内未提交工作", "result": "pass", "evidence": "产品改动限定 ValidationRulesPage.vue 并保留既有 diff；定向范围检查通过 398 个文件"},
+    {"disturbance": "Element Plus align-center 与移动端全局 dialog margin 组合拉伸", "result": "pass", "evidence": "F-0001 采用仅移除本对话框 align-center 的单属性纠正，原失败视口和桌面回归均通过"}
+  ],
+  "residual_risks": [
+    "低权限入口隐藏分支仅由源码契约验证，未使用独立低权限账号运行",
+    "前端成功、部分失败和请求失败状态由受控响应验证，未向真实后端写入测试 Excel",
+    "未覆盖移动端软键盘弹出时的弹层布局",
+    "全仓治理仍因范围外 REQ-061 YAML 格式失败，不能宣称全仓治理通过",
+    "构建保留既有 Rollup 大 chunk 警告"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R6 均由已验证的 T1/T2、最终产品修改和异质传感器覆盖；F-0001 已复验关闭；三次采样最终 P0/P1/P2/P3 均为 0；构建、范围、不变量与四视口回归通过，残余证据限制已披露。"
+}

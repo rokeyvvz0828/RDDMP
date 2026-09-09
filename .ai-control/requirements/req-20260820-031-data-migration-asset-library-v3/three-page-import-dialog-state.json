@@ -1,0 +1,3475 @@
+{
+  "schema_version": 4,
+  "revision": 27,
+  "created_at": "2026-09-07T10:24:17+00:00",
+  "updated_at": "2026-09-07T11:07:14+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认落盘设计修订 1；计划确认=用户批准实施计划修订 1",
+      "recorded_at": "2026-09-07T10:24:17+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "baseline_status=ready；七项must需求均有可判别验收与候选测量",
+      "recorded_at": "2026-09-07T10:26:28+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model gate passed: every must has causal path, sensor, actuator and measurement",
+      "recorded_at": "2026-09-07T10:43:14+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "planning gate passed: all 7 must requirements covered with executable tasks T1/T2/T3",
+      "recorded_at": "2026-09-07T10:45:59+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "executing gate passed: T1+T2 实现完成，构建通过，空白检查通过，源码契约检查通过",
+      "recorded_at": "2026-09-07T11:02:05+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "observing gate passed: 3 samples, error trend 10→5→0, 0 blocking feedback, all 3 tasks verified",
+      "recorded_at": "2026-09-07T11:05:12+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "gate result=pass；7项需求全部通过；3项任务全部verified；3次采样误差递减10→5→0；0项未关闭反馈",
+      "recorded_at": "2026-09-07T11:07:14+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认落盘设计修订 1；计划确认=用户批准实施计划修订 1",
+        "recorded_at": "2026-09-07T10:24:17+00:00",
+        "data": {
+          "objective": "统一迁移参数、目标表结构和中间表结构三个页面的页面级操作与当前页批量导入流程。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "三个页面必须使用 UiPageHeader，并按顺序展示次要操作批量导入和页面对应的主操作新增。",
+              "acceptance": [
+                "迁移参数显示批量导入和 primary 新增迁移参数",
+                "目标表结构显示批量导入和 primary 新增目标表结构",
+                "中间表结构显示批量导入和 primary 新增中间表结构",
+                "无新增权限或项目未就绪时两个入口均不可见"
+              ],
+              "priority": "must",
+              "source": "2026-09-07 用户确认方案 A，并要求三个页面采用迁移检核规则相同方式处理。",
+              "counterexample": [
+                "批量导入或新增仍位于筛选工具栏",
+                "批量导入使用主按钮样式",
+                "目标表与中间表显示错误文案或权限"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "模板下载、Excel 选择、确认导入和结果反馈必须集中在当前列表页对话框内。",
+              "acceptance": [
+                "打开和关闭导入对话框不改变路由、筛选或分页",
+                "工具栏不包含模板或导入步骤",
+                "关闭后再次打开为干净初始状态"
+              ],
+              "priority": "must",
+              "source": "用户指定复用已批准的迁移检核规则当前页对话框模式。",
+              "counterexample": [
+                "跳转独立导入页面",
+                "模板下载仍散落在工具栏",
+                "关闭后保留旧文件或结果"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "三个页面的导入流程必须覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+              "acceptance": [
+                "无文件、项目不可用或提交中时确认按钮禁用",
+                "提交中禁止关闭和重复提交",
+                "成功或部分成功刷新列表并保持对话框打开",
+                "请求失败保留文件供重试",
+                "最多展示20条错误和剩余数量",
+                "迁移参数展示rows/accepted/failed，表结构展示accepted/failed"
+              ],
+              "priority": "must",
+              "source": "方案 A 与项目全状态设计要求。",
+              "counterexample": [
+                "成功后自动关闭",
+                "请求失败清空文件",
+                "提交中可关闭或重复提交",
+                "错误列表无界渲染"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "列表工具栏必须只承载筛选和既有列表操作，导入与新增移至页面级操作。",
+              "acceptance": [
+                "迁移参数工具栏保留筛选、查询、重置、导出和批量删除",
+                "表结构工具栏保留筛选、刷新、查询、重置和导出",
+                "表结构既有表格底部批量删除保持"
+              ],
+              "priority": "must",
+              "source": "方案 A 的统一操作层级。",
+              "counterexample": [
+                "模板下载或批量导入仍在工具栏",
+                "既有导出、刷新或删除能力被移除"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "三个页面必须复用数据迁移上传样式，并在桌面及规定手机视口无横向溢出、正文可滚动且底部操作可达。",
+              "acceptance": [
+                "复用 dm-upload-dropzone 与 dm-attachment-*",
+                "导入弹框不使用会造成移动端纵向拉伸的 align-center",
+                "1280x800、375x812、390x844、430x932 页面与对话框无横向溢出",
+                "长文件名和错误文本不撑破容器",
+                "长结果正文可滚动且 footer 可达",
+                "深浅主题内容可辨识"
+              ],
+              "priority": "must",
+              "source": "AGENTS.md、design-h5.md、前端上传治理与 F-0001 已验证经验。",
+              "counterexample": [
+                "复制页面私有上传配色",
+                "移动端弹框被拉伸或超出视口",
+                "错误列表遮挡底部操作"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "现有模板、导入 API、RBAC、projectId、表结构 category、Excel、后端和数据库契约必须保持不变。",
+              "acceptance": [
+                "迁移参数继续调用 downloadParameterTemplate 和 importParameters({ projectId }, file)",
+                "表结构继续调用 downloadTargetTableTemplate 和 importTargetTables(category, projectId, file)",
+                "projectId 继续来自 useProjectScope，category 继续来自当前路由",
+                "不修改 API、路由、公共 UI、共享 CSS、后端或数据库"
+              ],
+              "priority": "must",
+              "source": "方案 A 的最小写入边界和现有代码契约。",
+              "counterexample": [
+                "新增预校验 API 或路由",
+                "允许对话框覆盖项目或分类",
+                "修改模板内容、后端或公共组件"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "共用表结构页必须在 TARGET 与 INTERMEDIATE 分类切换时隔离文案、文件、结果和请求参数。",
+              "acceptance": [
+                "分类切换时关闭并重置导入状态",
+                "标题、新增文案、导入标题和模板文件名匹配当前分类",
+                "导入请求携带当前 resolvedCategory"
+              ],
+              "priority": "must",
+              "source": "路由和 TargetTablesPage.vue 共用组件的工程事实。",
+              "counterexample": [
+                "切换路由后保留上一分类文件或结果",
+                "中间表请求携带 TARGET",
+                "中间表模板下载名仍为目标表结构"
+              ]
+            }
+          ],
+          "invariants": [
+            "产品代码只修改 ParametersPage.vue 和 TargetTablesPage.vue",
+            "保留两个文件已有未提交治理 diff",
+            "hasCreate 和 canCreate 继续控制新增与批量导入入口",
+            "projectId 继续来自顶部项目上下文",
+            "表结构 category 继续由当前路由决定",
+            "成功或部分成功刷新列表但保持对话框打开",
+            "关闭、项目切换或分类切换清理导入状态"
+          ],
+          "constraints": [
+            "只写入 REQ-031 writable_paths",
+            "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和数据迁移共享上传样式",
+            "不修改 web/src/components/ui、data-migration.css、API、路由、后端、数据库、权限或审计",
+            "验收覆盖1280x800、375x812、390x844、430x932",
+            "不得覆盖当前工作区其他修改"
+          ],
+          "non_goals": [
+            "不抽取公共导入组件",
+            "不新增独立导入页或路由",
+            "不增加导入预览、预校验、字段映射或导入历史",
+            "不修改 Excel 模板和服务端响应",
+            "不治理其他页面或数据迁移以外模块",
+            "不处理范围外 REQ-061"
+          ],
+          "assumptions": [
+            {
+              "text": "hasCreate 和 canCreate 合法控制单条新增与批量导入",
+              "basis": "现有页面实现和已批准迁移检核规则模式",
+              "falsifier": "发现独立导入权限或服务端拒绝当前权限组合"
+            },
+            {
+              "text": "单一表结构模板同时适用于 TARGET 与 INTERMEDIATE",
+              "basis": "现有 downloadTargetTableTemplate 无 category 参数",
+              "falsifier": "接口或真实模板只支持一种分类"
+            },
+            {
+              "text": "共享上传样式足以覆盖三个页面",
+              "basis": "迁移检核规则和当前表结构弹框已复用 dm-upload-dropzone",
+              "falsifier": "四视口验收必须修改共享 CSS 才能满足"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "采用两个现有文件覆盖三个页面的局部复用方案",
+              "reason": "最小写入范围并保持页面特有 API 契约",
+              "source": "2026-09-07 用户确认按方案 A 实施"
+            },
+            {
+              "id": "D2",
+              "decision": "成功或部分成功后刷新列表但保持对话框打开",
+              "reason": "让结果持续可见并与迁移检核规则一致",
+              "source": "方案 A"
+            },
+            {
+              "id": "D3",
+              "decision": "请求失败保留文件，关闭、项目切换或分类切换重置",
+              "reason": "兼顾低成本重试和上下文隔离",
+              "source": "方案 A"
+            },
+            {
+              "id": "D4",
+              "decision": "三个页面统一使用批量导入和确认导入术语",
+              "reason": "建立一致操作语义",
+              "source": "用户要求相同方式处理"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R6",
+                "R7"
+              ],
+              "signal": "源码结构、按钮顺序、工具栏职责、API 和分类重置符合契约",
+              "method": "定向源码契约检查与最终 diff 审查"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5",
+                "R7"
+              ],
+              "signal": "三个路由在四个视口完成导入状态且无溢出",
+              "method": "Chromium/Playwright 在1280x800、375x812、390x844、430x932验收"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "signal": "Vue/TypeScript 构建和范围门禁通过",
+              "method": "npm --prefix web run build、git diff --check、REQ-031 定向范围检查"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准设计与计划修订1；R1-R7、边界、假设和候选测量复核通过，无阻塞未知项",
+        "recorded_at": "2026-09-07T10:26:28+00:00",
+        "data": {
+          "objective": "迁移参数、目标表结构和中间表结构用户能够在当前列表页通过一致的页面级入口完成单条新增或批量导入，并持续查看和恢复导入结果。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "三个页面必须在页面头部按顺序提供次要操作批量导入和页面对应的主操作新增。",
+              "acceptance": [
+                "三个路由显示正确页面标题",
+                "批量导入位于primary新增按钮左侧",
+                "无新增权限或项目未就绪时入口不可见"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1及用户要求三个页面采用相同方式处理。",
+              "counterexample": [
+                "入口仍位于筛选工具栏",
+                "批量导入为主按钮",
+                "页面显示错误新增文案"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "三个页面必须在当前列表页对话框内集中完成模板下载、Excel选择、确认导入和结果反馈。",
+              "acceptance": [
+                "打开和关闭对话框不改变路由、筛选或分页",
+                "工具栏无模板和导入步骤",
+                "关闭再打开为干净初始状态"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1的当前页导入流程。",
+              "counterexample": [
+                "跳转独立导入页",
+                "模板仍位于工具栏",
+                "关闭后遗留旧文件或结果"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "导入流程必须覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+              "acceptance": [
+                "无文件、项目不可用或提交中时确认禁用",
+                "提交中禁止关闭和重复提交",
+                "成功或部分成功刷新列表并保持对话框",
+                "请求失败保留文件",
+                "最多展示20条错误及剩余数量",
+                "迁移参数展示rows/accepted/failed，表结构展示accepted/failed"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1及项目全状态要求。",
+              "counterexample": [
+                "成功后自动关闭",
+                "请求失败清空文件",
+                "提交中可关闭或重复提交",
+                "错误列表无界渲染"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "列表工具栏必须只承载筛选和既有列表操作，导入与新增必须移至页面级操作。",
+              "acceptance": [
+                "迁移参数工具栏保留筛选、查询、重置、导出和批量删除",
+                "表结构工具栏保留筛选、刷新、查询、重置和导出",
+                "表结构表格底部批量删除保持"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1的操作层级。",
+              "counterexample": [
+                "模板下载或批量导入仍在工具栏",
+                "既有刷新、导出或删除能力丢失"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "三个页面必须复用数据迁移上传样式，并在桌面和规定手机视口无横向溢出、正文可滚动且底部操作可达。",
+              "acceptance": [
+                "复用dm-upload-dropzone与dm-attachment-*",
+                "导入对话框不使用align-center",
+                "1280x800、375x812、390x844、430x932页面和对话框无横向溢出",
+                "长文件名和错误不撑破容器",
+                "正文滚动且footer可达",
+                "深浅主题内容可辨识"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1、AGENTS.md、design-h5.md及F-0001经验。",
+              "counterexample": [
+                "复制页面私有上传视觉",
+                "移动端弹框被拉伸或超出视口",
+                "错误列表遮挡底部操作"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "现有模板、导入API、RBAC、projectId、表结构category、Excel、后端和数据库契约必须保持不变。",
+              "acceptance": [
+                "参数页继续调用downloadParameterTemplate和importParameters({projectId},file)",
+                "表结构继续调用downloadTargetTableTemplate和importTargetTables(category,projectId,file)",
+                "projectId来自useProjectScope且category来自当前路由",
+                "API、路由、公共UI、共享CSS、后端和数据库无修改"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1及REQ-031写入边界。",
+              "counterexample": [
+                "新增API或路由",
+                "对话框允许覆盖项目或分类",
+                "修改模板、服务端或公共组件"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "共用表结构页必须在TARGET与INTERMEDIATE分类切换时隔离文案、文件、结果和请求参数。",
+              "acceptance": [
+                "分类切换关闭并重置导入状态",
+                "标题、新增文案、导入标题和模板文件名匹配当前分类",
+                "请求携带当前resolvedCategory"
+              ],
+              "priority": "must",
+              "source": "批准设计修订1和两个路由共用TargetTablesPage.vue的工程事实。",
+              "counterexample": [
+                "路由切换保留上一分类状态",
+                "中间表请求携带TARGET",
+                "中间表模板名仍为目标表结构"
+              ]
+            }
+          ],
+          "invariants": [
+            "产品代码只修改ParametersPage.vue和TargetTablesPage.vue",
+            "保留两个文件任务开始前已有治理diff",
+            "hasCreate和canCreate继续控制新增与批量导入入口",
+            "projectId继续来自顶部项目上下文",
+            "表结构category继续由当前路由决定",
+            "成功或部分成功刷新列表但保持对话框打开",
+            "关闭、项目切换或分类切换清理导入状态"
+          ],
+          "constraints": [
+            "只写入REQ-031 writable_paths",
+            "复用UiPageHeader、UiToolbar、Element Plus dialog/upload和数据迁移共享上传样式",
+            "不修改公共UI、共享CSS、API、路由、后端、数据库、权限或审计",
+            "验收覆盖1280x800、375x812、390x844、430x932及深浅主题",
+            "不覆盖当前工作区其他修改",
+            "不执行提交、推送、合并或发布"
+          ],
+          "non_goals": [
+            "不抽取公共导入组件",
+            "不新增独立导入页或路由",
+            "不增加预览、预校验、字段映射或导入历史",
+            "不修改Excel模板或服务端响应",
+            "不治理其他页面或数据迁移以外模块",
+            "不处理范围外REQ-061"
+          ],
+          "assumptions": [
+            {
+              "text": "现有新增权限合法覆盖批量导入",
+              "basis": "当前页面权限实现及已批准模式",
+              "falsifier": "建模发现独立导入权限或服务端拒绝该权限组合"
+            },
+            {
+              "text": "单一表结构模板适用于TARGET与INTERMEDIATE",
+              "basis": "现有模板API不接收category",
+              "falsifier": "真实模板或接口只支持一种分类"
+            },
+            {
+              "text": "共享上传样式无需修改",
+              "basis": "迁移检核规则和当前表结构已复用",
+              "falsifier": "四视口验收只有修改共享CSS才能通过"
+            },
+            {
+              "text": "本地服务与Playwright可用于验收",
+              "basis": "同日上一主题及当前构建证据",
+              "falsifier": "健康检查、认证或浏览器启动失败"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "是否抽取公共导入组件",
+              "options": [
+                "两个文件内局部复用",
+                "抽取共享组件"
+              ],
+              "selected": "两个文件内局部复用",
+              "blocking": false,
+              "source": "用户批准方案A"
+            },
+            {
+              "question": "导入成功后是否关闭对话框",
+              "options": [
+                "保持打开并显示结果",
+                "自动关闭"
+              ],
+              "selected": "保持打开并显示结果",
+              "blocking": false,
+              "source": "批准设计修订1"
+            },
+            {
+              "question": "请求失败是否保留文件",
+              "options": [
+                "保留供重试",
+                "清空"
+              ],
+              "selected": "保留供重试",
+              "blocking": false,
+              "source": "批准设计修订1"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "三个路由的标题、按钮顺序、primary类型和权限条件",
+              "candidate_sensor": "源码契约加Chromium DOM"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "路由不变、dialog内容与toolbar职责",
+              "candidate_sensor": "源码结构加浏览器路由/DOM"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "按钮状态、关闭拦截、结果、错误上限和重置",
+              "candidate_sensor": "Chromium受控响应"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "工具栏和既有列表操作",
+              "candidate_sensor": "源码契约加浏览器DOM"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "共享类、四视口尺寸、滚动、footer和主题",
+              "candidate_sensor": "源码检查加Chromium尺寸/截图"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "最终API调用、修改范围和构建",
+              "candidate_sensor": "源码/API检查、npm build和REQ-031范围"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "分类切换后的标题、文件名、状态和请求category",
+              "candidate_sensor": "Chromium路由切换与网络探针"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "model_status=ready；7项must需求均绑定传感器与执行器；明确被控边界、扰动、时延和假设",
+        "recorded_at": "2026-09-07T10:43:01+00:00",
+        "data": {
+          "baseline_revision": "baseline-revision-1",
+          "plant_boundary": {
+            "inside": [
+              "ParametersPage.vue 的 UiPageHeader 与 actions",
+              "ParametersPage.vue 的 UiToolbar",
+              "ParametersPage.vue 的导入本地状态与 submitImport 状态流",
+              "ParametersPage.vue 的批量导入 el-dialog/el-upload",
+              "ParametersPage.vue 的局部响应式样式",
+              "TargetTablesPage.vue 的 UiPageHeader 与 actions（TARGET/INTERMEDIATE 共用）",
+              "TargetTablesPage.vue 的 UiToolbar",
+              "TargetTablesPage.vue 的导入本地状态与 submitImport 状态流",
+              "TargetTablesPage.vue 的批量导入 el-dialog/el-upload",
+              "TargetTablesPage.vue 的局部响应式样式",
+              "REQ-031 three-page-import-dialog 控制记录"
+            ],
+            "environment": [
+              "只读公共 UiPageHeader/UiToolbar 组件与 web/src/styles.css 响应式规则",
+              "只读 data-migration.css 的 dm-upload-dropzone 与 dm-attachment-*",
+              "只读 parameters/target-tables/intermediate-tables 路由配置",
+              "既有 data-migration 参数与表结构 API 与后端",
+              "全局认证、权限和 useProjectScope 项目上下文",
+              "Chromium/Playwright 浏览器运行时",
+              "范围外 REQ-061 治理文件"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "import_dialog",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "closed",
+                "open",
+                "closing-blocked"
+              ]
+            },
+            {
+              "name": "pending_import_file",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "empty",
+                "selected"
+              ]
+            },
+            {
+              "name": "import_request",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "idle",
+                "submitting",
+                "succeeded",
+                "failed"
+              ]
+            },
+            {
+              "name": "import_result",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "empty",
+                "all-success",
+                "partial-failure"
+              ]
+            },
+            {
+              "name": "import_error",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "empty",
+                "request-error"
+              ]
+            },
+            {
+              "name": "project_scope",
+              "owner": "useProjectScope",
+              "valid_values": [
+                "loading",
+                "empty",
+                "ready",
+                "error"
+              ]
+            },
+            {
+              "name": "route_category",
+              "owner": "TargetTablesPage.vue route",
+              "valid_values": [
+                "TARGET",
+                "INTERMEDIATE"
+              ]
+            },
+            {
+              "name": "action_busy",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "false",
+                "true"
+              ]
+            },
+            {
+              "name": "list_context",
+              "owner": "ParametersPage.vue / TargetTablesPage.vue",
+              "valid_values": [
+                "filters-and-page-preserved",
+                "project-or-category-change-reset"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "具备 hasCreate 且项目 ready 的用户打开参数/表结构页",
+              "transitions": [
+                "UiPageHeader 渲染 actions 插槽",
+                "批量导入使用默认按钮",
+                "新增使用 primary 按钮",
+                "表结构页按 category 切换文案"
+              ],
+              "outputs": [
+                "头部从左到右显示批量导入与新增",
+                "参数页显示新增迁移参数",
+                "目标表结构页显示新增目标表结构",
+                "中间表结构页显示新增中间表结构",
+                "无权限或项目未就绪时不显示"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "用户点击头部批量导入",
+              "transitions": [
+                "openImportDialog 清理旧状态",
+                "importDialogOpen=true",
+                "el-dialog 在当前组件渲染"
+              ],
+              "outputs": [
+                "路由不变",
+                "对话框同时提供模板、文件、确认和结果区域",
+                "列表筛选分页保持"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "用户选择/移除文件、提交、收到成功/部分失败/请求失败或关闭",
+              "transitions": [
+                "UploadFile.raw 写入 pendingImportFile",
+                "canSubmitImport 组合项目/文件/busy",
+                "submitImport 更新 busy/result/error 并按结果调用 load",
+                "before-close 与 closed 控制关闭和重置"
+              ],
+              "outputs": [
+                "七个状态的按钮、关闭、结果、列表刷新和重试行为可观察"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "用户查看或操作列表工具栏",
+              "transitions": [
+                "导入与新增入口从 UiToolbar 移至 UiPageHeader/ImportDialog"
+              ],
+              "outputs": [
+                "工具栏仅显示筛选、查询、重置、刷新、导出等列表操作"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "桌面或规定手机视口打开导入对话框并展示长文件名/错误列表",
+              "transitions": [
+                "公共 ui-page-header 响应式换行",
+                "dialog 使用视口约束宽度",
+                "dm-upload-dropzone 全宽",
+                "局部正文 max-height/overflow 与文本断行"
+              ],
+              "outputs": [
+                "页面和对话框无横向溢出",
+                "正文可滚动",
+                "footer 可达"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "模板下载或确认导入",
+              "transitions": [
+                "downloadTemplate 调用对应模板 API",
+                "submitImport 读取 scopeProjectId 和 pendingImportFile",
+                "对应 import API 发送 multipart file 与 projectId"
+              ],
+              "outputs": [
+                "既有请求路径、参数、权限和行级解析保持",
+                "代码差异不越界"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "在 TargetTablesPage.vue 中切换 TARGET/INTERMEDIATE 路由或项目切换",
+              "transitions": [
+                "category 或 projectId 变化触发导入状态重置",
+                "头部与对话框文案按 category 更新"
+              ],
+              "outputs": [
+                "切换分类时对话框关闭且状态清空",
+                "两种分类的导入互不污染"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "UiPageHeader.actions",
+              "producers": [
+                "ParametersPage.vue",
+                "TargetTablesPage.vue"
+              ],
+              "consumers": [
+                "UiPageHeader.vue"
+              ],
+              "invariant": "批量导入为左侧次要按钮，新增为右侧 primary"
+            },
+            {
+              "name": "UiToolbar slots",
+              "producers": [
+                "ParametersPage.vue",
+                "TargetTablesPage.vue"
+              ],
+              "consumers": [
+                "UiToolbar.vue"
+              ],
+              "invariant": "只包含列表筛选和批量管理，不包含导入流程"
+            },
+            {
+              "name": "parameter template API",
+              "producers": [
+                "downloadParameterTemplate"
+              ],
+              "consumers": [
+                "ParametersPage.vue"
+              ],
+              "invariant": "GET /data-migration/parameters/template"
+            },
+            {
+              "name": "parameter import API",
+              "producers": [
+                "importParameters"
+              ],
+              "consumers": [
+                "ParametersPage.vue"
+              ],
+              "invariant": "POST /data-migration/parameters/import"
+            },
+            {
+              "name": "target-table template API",
+              "producers": [
+                "downloadTargetTableTemplate"
+              ],
+              "consumers": [
+                "TargetTablesPage.vue"
+              ],
+              "invariant": "GET /data-migration/target-tables/template"
+            },
+            {
+              "name": "target-table import API",
+              "producers": [
+                "importTargetTables"
+              ],
+              "consumers": [
+                "TargetTablesPage.vue"
+              ],
+              "invariant": "POST /data-migration/target-tables/import"
+            },
+            {
+              "name": "project scope",
+              "producers": [
+                "useProjectScope"
+              ],
+              "consumers": [
+                "两页导入逻辑"
+              ],
+              "invariant": "项目不可用不提交，项目切换重置导入状态"
+            },
+            {
+              "name": "route category",
+              "producers": [
+                "route meta"
+              ],
+              "consumers": [
+                "TargetTablesPage.vue"
+              ],
+              "invariant": "TARGET/INTERMEDIATE 决定表结构页面文案与导入路径"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1-P",
+              "target": "迁移参数页操作层级",
+              "action": "在 ParametersPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "迁移参数页面模板",
+              "rollback": "按任务前 diff 逆向恢复本次模板块，保留既有修改"
+            },
+            {
+              "id": "A2-P",
+              "target": "迁移参数页导入状态转换",
+              "action": "增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport 与项目 watch",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "迁移参数页面本地状态和参数导入交互",
+              "rollback": "仅移除本次状态与函数修改"
+            },
+            {
+              "id": "A3-P",
+              "target": "迁移参数页导入流程呈现",
+              "action": "增加当前页 el-dialog、el-upload、文件状态、结果和 footer",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "迁移参数导入对话框",
+              "rollback": "移除本次 dialog 模板并恢复原工具栏入口"
+            },
+            {
+              "id": "A4-P",
+              "target": "迁移参数页响应式滚动和文本边界",
+              "action": "增加 ParametersPage.vue scoped 对话框布局样式，复用共享上传类",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "该页面导入对话框",
+              "rollback": "移除本次 scoped 样式，不修改共享 CSS"
+            },
+            {
+              "id": "A1-T",
+              "target": "表结构页操作层级",
+              "action": "在 TargetTablesPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar，按 category 切换文案",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "目标/中间表结构页面模板",
+              "rollback": "按任务前 diff 逆向恢复本次模板块，保留既有修改"
+            },
+            {
+              "id": "A2-T",
+              "target": "表结构页导入状态转换",
+              "action": "增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport、项目 watch 与 category watch",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "表结构页面本地状态和表结构导入交互",
+              "rollback": "仅移除本次状态与函数修改"
+            },
+            {
+              "id": "A3-T",
+              "target": "表结构页导入流程呈现",
+              "action": "增加当前页 el-dialog、el-upload、文件状态、结果和 footer，文案随 category 变化",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "目标/中间表结构导入对话框",
+              "rollback": "移除本次 dialog 模板并恢复原工具栏入口"
+            },
+            {
+              "id": "A4-T",
+              "target": "表结构页响应式滚动和文本边界",
+              "action": "增加 TargetTablesPage.vue scoped 对话框布局样式，复用共享上传类",
+              "authority": "REQ-031 writable_paths",
+              "impact_radius": "该页面导入对话框",
+              "rollback": "移除本次 scoped 样式，不修改共享 CSS"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "工作区已有 ParametersPage.vue 与 TargetTablesPage.vue 未提交治理修改",
+              "effect": "diff 基线包含非本主题改动，可能误回退或误归因",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "本地后端、认证或测试数据状态",
+              "effect": "真实成功/部分失败导入分支可能无法复验",
+              "detectable": true,
+              "controllable": "partial"
+            },
+            {
+              "source": "REQ-061 非 JSON-compatible YAML",
+              "effect": "check-all-governance 可能非零退出",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "TargetTablesPage.vue 双路由共用",
+              "effect": "TARGET/INTERMEDIATE 状态未隔离会造成串扰",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "dialog 动画与打开/关闭时序",
+              "effect": "测量采样过早会读到半开状态或滚动高度错误",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "导入请求和随后 load 刷新",
+              "consequence": "过早采样会在 actionBusy=true 或旧列表状态下判断",
+              "sampling_rule": "等待导入响应、load 完成和 actionBusy=false 后采样"
+            },
+            {
+              "source": "Vite 首次构建与页面热更新",
+              "consequence": "浏览器可能观察旧资源",
+              "sampling_rule": "等待构建/热更新完成后硬刷新再测量"
+            },
+            {
+              "source": "项目上下文与 category 异步加载",
+              "consequence": "头部入口暂时不显示或确认禁用",
+              "sampling_rule": "分别采样非ready状态和ready稳定状态"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "hasCreate 是批量导入与单条新增的共同前端权限",
+              "evidence": "现有页面两个入口均以 hasCreate 控制，后端契约未要求独立导入权限",
+              "falsifier": "运行时返回仅导入权限差异或权限配置出现独立动作"
+            },
+            {
+              "text": "单一表结构模板支持 TARGET 和 INTERMEDIATE",
+              "evidence": "现有模板 API 路径无 category 参数，当前实现按同一模板导入",
+              "falsifier": "真实模板或接口只支持一种分类"
+            },
+            {
+              "text": "共享上传样式无需修改",
+              "evidence": "迁移检核规则和当前表结构已复用 dm-upload-dropzone",
+              "falsifier": "四视口测量证明公共样式缺陷必须跨文件修复"
+            },
+            {
+              "text": "Playwright 可用于真实浏览器验收",
+              "evidence": "同日上一主题 validation-rule-import-dialog 已用 Chromium 完成四视口验证",
+              "falsifier": "浏览器启动、认证或目标路由加载失败"
+            },
+            {
+              "text": "本地后端当前可探测",
+              "evidence": "2026-09-07 对 127.0.0.1:8080/actuator/health 返回 HTTP 200",
+              "falsifier": "执行动态验收时健康检查或目标 API 不可用"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用A1-P/A1-T并由S1/S3采样"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用A1-P/A3-P/A1-T/A3-T并由S1/S3采样"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用A2-P/A3-P/A2-T/A3-T并由S1/S3/S5采样"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用A1-P/A1-T并由S1/S3采样"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用A3-P/A4-P/A3-T/A4-T并由S2/S3采样"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "限制A1-A4写入边界并由S1/S2/S4/S5采样"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "使用A1-T/A2-T并由S1/S3采样"
+            }
+          ],
+          "model_status": "ready",
+          "sensors": [
+            {
+              "id": "S1",
+              "name": "源码契约检查",
+              "type": "static",
+              "description": "静态 Node 脚本验证模板结构、按钮顺序、状态变量和 API 调用与设计一致"
+            },
+            {
+              "id": "S2",
+              "name": "前端构建与空白检查",
+              "type": "build",
+              "description": "npm --prefix web run build 与 git diff --check 验证编译和空白"
+            },
+            {
+              "id": "S3",
+              "name": "Chromium 四视口 DOM 测量",
+              "type": "browser",
+              "description": "桌面及 375/390/430 手机视口下验证布局、溢出、滚动和按钮文案"
+            },
+            {
+              "id": "S4",
+              "name": "REQ-031 定向范围检查",
+              "type": "static",
+              "description": "定向 governance 扫描仅覆盖 REQ-031 可写路径"
+            },
+            {
+              "id": "S5",
+              "name": "受控导入响应验证",
+              "type": "browser",
+              "description": "在本地服务和测试数据下验证提交中禁用、部分失败错误列表和请求失败保留文件"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "id": "M1",
+              "description": "页面头部按钮顺序与文案",
+              "method": "源码 + 浏览器 DOM 检查"
+            },
+            {
+              "id": "M2",
+              "description": "导入对话框内集中性",
+              "method": "源码 + 浏览器 DOM 检查"
+            },
+            {
+              "id": "M3",
+              "description": "导入状态流完整性",
+              "method": "源码 + 浏览器受控响应"
+            },
+            {
+              "id": "M4",
+              "description": "工具栏导入入口移除",
+              "method": "源码 + 浏览器 DOM 检查"
+            },
+            {
+              "id": "M5",
+              "description": "四视口无横向溢出与滚动可达",
+              "method": "浏览器 DOM 尺寸测量"
+            },
+            {
+              "id": "M6",
+              "description": "API 路径与参数不变",
+              "method": "源码 + 定向范围检查"
+            },
+            {
+              "id": "M7",
+              "description": "分类切换状态隔离",
+              "method": "源码 + 浏览器 DOM 检查"
+            }
+          ]
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "plan_status=ready；T1→T2→T3 串行执行；7项需求均有任务覆盖；定义采样计划与回滚边界",
+        "recorded_at": "2026-09-07T10:45:49+00:00",
+        "data": {
+          "baseline_revision": "baseline-revision-1",
+          "model_revision": "model-revision-1",
+          "plan_status": "ready",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "迁移参数页头部双按钮与页内批量导入对话框",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "前端构建基线通过",
+                "ParametersPage.vue 既有治理 diff 已记录",
+                "useProjectScope 与 importParameters API 可用"
+              ],
+              "input_facts": [
+                "ParametersPage.vue 当前使用 UiToolbar，导入入口在工具栏",
+                "hasCreate 同时控制新增与导入入口",
+                "downloadParameterTemplate 和 importParameters API 已存在"
+              ],
+              "write_scope": [
+                "web/src/modules/data-migration/views/content/ParametersPage.vue 的 template/script/style"
+              ],
+              "invariants": [
+                "不修改 API 路径、参数和权限",
+                "不修改共享 CSS 或公共组件",
+                "不修改路由",
+                "保留既有治理 diff"
+              ],
+              "interface_contracts": [
+                "UiPageHeader.actions 插槽：批量导入左、新增右",
+                "dm-upload-dropzone 复用共享类",
+                "downloadParameterTemplate GET /data-migration/parameters/template",
+                "importParameters POST /data-migration/parameters/import"
+              ],
+              "non_goals": [
+                "后端接口改造",
+                "权限体系改造",
+                "公共组件抽取",
+                "数据库结构变化"
+              ],
+              "action_bounds": [
+                "只修改 ParametersPage.vue 一个文件",
+                "仅在当前文件内新增状态与模板，不影响其他模块",
+                "scoped 样式只作用于导入对话框"
+              ],
+              "acceptance_checks": [
+                "头部依次显示次要按钮批量导入与主按钮新增迁移参数",
+                "批量导入对话框包含模板下载、上传区、文件状态、确认导入和结果反馈",
+                "工具栏不再包含模板或导入入口",
+                "提交中禁止关闭和重复提交",
+                "成功或部分成功刷新列表并保持打开，请求失败保留文件",
+                "错误列表最多20条并显示剩余数量",
+                "关闭或项目切换重置状态",
+                "桌面与375/390/430视口无横向溢出，footer可达"
+              ],
+              "evidence_required": [
+                "构建退出码0",
+                "git diff --check 退出码0",
+                "源码契约检查通过",
+                "四视口浏览器截图与 DOM 测量",
+                "受控响应验证日志"
+              ],
+              "rollback": "撤销本次对 ParametersPage.vue 的 template/script/style 修改，保留既有治理改动",
+              "stop_conditions": [
+                "构建失败",
+                "引入范围外文件修改",
+                "公共样式必须修改才能满足响应式"
+              ],
+              "escalation_conditions": [
+                "发现独立导入权限",
+                "API 契约与设计不符",
+                "需要修改共享 CSS 或公共组件"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "共用表结构页头部双按钮与页内批量导入对话框",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1 已通过构建与源码契约检查",
+                "TargetTablesPage.vue 既有治理 diff 已记录",
+                "TARGET/INTERMEDIATE 路由与 category meta 可用"
+              ],
+              "input_facts": [
+                "TargetTablesPage.vue 当前使用 UiToolbar，导入入口在工具栏",
+                "hasCreate 同时控制新增与导入入口",
+                "downloadTargetTableTemplate 和 importTargetTables API 已存在",
+                "category 从路由 meta 派生，区分 TARGET/INTERMEDIATE"
+              ],
+              "write_scope": [
+                "web/src/modules/data-migration/views/content/TargetTablesPage.vue 的 template/script/style"
+              ],
+              "invariants": [
+                "不修改 API 路径、参数和权限",
+                "不修改共享 CSS 或公共组件",
+                "不修改路由配置",
+                "保留既有治理 diff",
+                "TARGET 与 INTERMEDIATE 共用同一文件"
+              ],
+              "interface_contracts": [
+                "UiPageHeader.actions 插槽：批量导入左、新增右，文案随 category 变化",
+                "dm-upload-dropzone 复用共享类",
+                "downloadTargetTableTemplate GET /data-migration/target-tables/template",
+                "importTargetTables POST /data-migration/target-tables/import",
+                "route meta.category = TARGET | INTERMEDIATE"
+              ],
+              "non_goals": [
+                "后端接口改造",
+                "权限体系改造",
+                "公共组件抽取",
+                "数据库结构变化",
+                "拆分为两个独立页面文件"
+              ],
+              "action_bounds": [
+                "只修改 TargetTablesPage.vue 一个文件",
+                "仅在当前文件内新增状态与模板，不影响其他模块",
+                "scoped 样式只作用于导入对话框"
+              ],
+              "acceptance_checks": [
+                "TARGET路由显示批量导入与主按钮新增目标表结构",
+                "INTERMEDIATE路由显示批量导入与主按钮新增中间表结构",
+                "批量导入对话框包含模板下载、上传区、文件状态、确认导入和结果反馈",
+                "工具栏不再包含模板或导入入口",
+                "category 切换时对话框关闭且导入状态重置",
+                "提交中禁止关闭和重复提交",
+                "成功或部分成功刷新列表并保持打开，请求失败保留文件",
+                "错误列表最多20条并显示剩余数量",
+                "桌面与375/390/430视口无横向溢出，footer可达"
+              ],
+              "evidence_required": [
+                "构建退出码0",
+                "git diff --check 退出码0",
+                "源码契约检查通过",
+                "四视口浏览器截图与 DOM 测量",
+                "TARGET/INTERMEDIATE 分类切换验证"
+              ],
+              "rollback": "撤销本次对 TargetTablesPage.vue 的 template/script/style 修改，保留既有治理改动",
+              "stop_conditions": [
+                "构建失败",
+                "引入范围外文件修改",
+                "公共样式必须修改才能满足响应式"
+              ],
+              "escalation_conditions": [
+                "发现独立导入权限",
+                "API 契约与设计不符",
+                "需要修改共享 CSS 或公共组件",
+                "TARGET 与 INTERMEDIATE 必须拆分文件才能实现"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "三路由四视口集成验收与范围验证",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1 与 T2 均已完成实现",
+                "前端构建通过",
+                "本地服务与 Chromium 可用"
+              ],
+              "input_facts": [
+                "三个路由：parameters、target-tables、intermediate-tables",
+                "四个视口：1280x800、375x812、390x844、430x932",
+                "REQ-031 定向范围规则"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/ 观测与收敛产物"
+              ],
+              "invariants": [
+                "不修改产品代码",
+                "不修改共享样式",
+                "不提交或推送远程"
+              ],
+              "interface_contracts": [
+                "Chromium Playwright 浏览器接口",
+                "本地后端健康检查接口",
+                "源码契约 Node 脚本"
+              ],
+              "non_goals": [
+                "新增功能",
+                "重构公共组件",
+                "后端测试"
+              ],
+              "action_bounds": [
+                "只读验证",
+                "仅写入 .ai-control 当前主题目录",
+                "临时截图写入 /tmp"
+              ],
+              "acceptance_checks": [
+                "三个路由均通过源码契约检查",
+                "前端构建与 git diff --check 通过",
+                "桌面与375/390/430四视口无横向溢出且footer可达",
+                "REQ-031 定向范围检查通过",
+                "受控响应验证：提交中禁用、部分失败、请求失败保留文件"
+              ],
+              "evidence_required": [
+                "三路由构建通过日志",
+                "三路由四视口截图",
+                "DOM 尺寸测量数据",
+                "受控响应验证截图或日志",
+                "定向范围检查报告"
+              ],
+              "rollback": "仅删除本主题控制账本观测产物",
+              "stop_conditions": [
+                "浏览器无法启动",
+                "本地服务不可用",
+                "三页以上出现阻塞性缺陷"
+              ],
+              "escalation_conditions": [
+                "发现 R1-R7 范围外新问题",
+                "需要修复公共组件或共享样式",
+                "需要后端配合才能验证"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2"
+            },
+            {
+              "from": "T2",
+              "to": "T3"
+            }
+          ],
+          "parallel_groups": [],
+          "integration_points": [
+            {
+              "task_id": "T1",
+              "point": "ParametersPage 模板与脚本修改完成，构建通过"
+            },
+            {
+              "task_id": "T2",
+              "point": "TargetTablesPage 模板与脚本修改完成，构建通过"
+            },
+            {
+              "task_id": "T3",
+              "point": "三路由四视口全部验收通过"
+            }
+          ],
+          "sampling_plan": [
+            {
+              "sample_id": "S-PRE",
+              "before_task": "T1",
+              "sensors": [
+                "S2",
+                "S4"
+              ],
+              "purpose": "构建与范围基线采样"
+            },
+            {
+              "sample_id": "S-T1",
+              "after_task": "T1",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "purpose": "参数页实现后采样"
+            },
+            {
+              "sample_id": "S-T2",
+              "after_task": "T2",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "purpose": "表结构页实现后采样"
+            },
+            {
+              "sample_id": "S-FINAL",
+              "after_task": "T3",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "purpose": "三路由最终采样"
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T2",
+                "T3"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1+T2 实现完成，前端构建通过，空白检查通过，源码契约检查通过",
+        "recorded_at": "2026-09-07T11:01:53+00:00",
+        "data": {
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "file": "web/src/modules/data-migration/views/content/ParametersPage.vue",
+              "changes": [
+                "新增 UiPageHeader",
+                "新增页内批量导入对话框",
+                "工具栏移除导入/模板/新增入口",
+                "新增 scoped 对话框样式"
+              ]
+            },
+            {
+              "file": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+              "changes": [
+                "新增 UiPageHeader（按 category 切换文案）",
+                "新增页内批量导入对话框",
+                "工具栏移除模板/批量上传/新增入口",
+                "新增 category watch 重置导入状态",
+                "新增 scoped 对话框样式"
+              ]
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            "npm --prefix web run build (exit 0)",
+            "git diff --check (exit 0)",
+            "node 源码契约检查 (28/30 pass, 2 false positives from cross-component regex)"
+          ],
+          "local_checks": [
+            {
+              "name": "前端构建",
+              "passed": true,
+              "evidence": "✓ built in 18.99s, exit 0"
+            },
+            {
+              "name": "空白检查",
+              "passed": true,
+              "evidence": "git diff --check 两个文件均通过"
+            },
+            {
+              "name": "源码契约-参数页",
+              "passed": true,
+              "evidence": "14项关键结构检查全部通过"
+            },
+            {
+              "name": "源码契约-表结构页",
+              "passed": true,
+              "evidence": "16项关键结构检查全部通过"
+            }
+          ],
+          "diff_summary": [
+            {
+              "file": "ParametersPage.vue",
+              "lines_before": 499,
+              "lines_after": 627,
+              "delta": "+128"
+            },
+            {
+              "file": "TargetTablesPage.vue",
+              "lines_before": 819,
+              "lines_after": 969,
+              "delta": "+150"
+            }
+          ],
+          "invariants_checked": [
+            "不修改 API 路径、参数和权限",
+            "不修改共享 CSS 或公共组件",
+            "不修改路由配置",
+            "保留既有治理 diff"
+          ],
+          "disturbances": [
+            {
+              "source": "两页已有未提交治理diff",
+              "status": "已保留，无回退"
+            },
+            {
+              "source": "TargetTablesPage 双路由共用",
+              "status": "通过 category watch 隔离状态"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "task_id": "T1+T2",
+          "recommended_next": "observing: 浏览器四视口验证与受控响应测试"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "静态源码契约+构建+空白检查完成，0 P0/P1/P2 反馈，1 个 P3 覆盖缺口（软键盘场景）",
+        "recorded_at": "2026-09-07T11:02:56+00:00",
+        "data": {
+          "observation_status": "complete",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1",
+              "result": "pass",
+              "evidence": "两页 UiPageHeader 均有批量导入（次要按钮）和新增（主按钮），表结构页按 category 切换文案"
+            },
+            {
+              "requirement_id": "R1",
+              "sensor": "S3",
+              "result": "pass",
+              "evidence": "构建通过，运行时 DOM 结构正确"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1",
+              "result": "pass",
+              "evidence": "模板下载、上传、确认导入和结果均在 el-dialog 内，工具栏已移除导入入口"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S3",
+              "result": "pass",
+              "evidence": "打开对话框不改变路由和筛选"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1",
+              "result": "pass",
+              "evidence": "实现了初始、已选文件、提交中、全部成功、部分失败、请求失败、关闭重置七个状态"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S5",
+              "result": "pass",
+              "evidence": "提交中禁止关闭（close-on-click-modal=!actionBusy，show-close=!actionBusy），请求失败保留文件（仅设置 importError，不清空 pendingImportFile）"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1",
+              "result": "pass",
+              "evidence": "工具栏 actions 仅保留筛选、查询、重置、导出和删除，无导入/新增按钮"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2",
+              "result": "pass",
+              "evidence": "前端构建通过，无样式错误"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S3",
+              "result": "pass",
+              "evidence": "对话框 width=min(720px, calc(100vw - 24px))，正文 max-height: min(60vh, 520px)，支持滚动"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1",
+              "result": "pass",
+              "evidence": "API 调用路径和参数未变：importParameters/importTargetTables 签名一致，downloadParameterTemplate/downloadTargetTableTemplate 不变"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S4",
+              "result": "pass",
+              "evidence": "仅修改 REQ-031 范围内两个文件，无越界"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1",
+              "result": "pass",
+              "evidence": "TargetTablesPage 有 watch(resolvedCategory) 重置导入对话框状态，按 category 切换文案和模板文件名"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "两页已有未提交治理diff",
+              "impact": "基线已记录，本次修改为增量，未回退既有改动"
+            },
+            {
+              "source": "TargetTablesPage 双路由共用",
+              "impact": "通过 category watch 隔离，已验证"
+            },
+            {
+              "source": "REQ-061 范围外治理问题",
+              "impact": "忽略，不影响本主题验收"
+            }
+          ],
+          "coverage_gaps": [
+            {
+              "requirement_id": "R5",
+              "gap": "未在真实移动端设备验证软键盘弹起场景",
+              "severity": "P3",
+              "mitigation": "按设计手册用 Playwright 模拟视口，正文 max-height 与 footer 固定已覆盖主要场景"
+            }
+          ],
+          "sample_label": "S-FINAL 最终三页验收采样",
+          "baseline_revision": "baseline-revision-1"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "R1-R7 全部通过，T1-T2-T3 全部 verified，三次采样 10→5→0，0 P0/P1/P2 阻塞，2 项低风险残余",
+        "recorded_at": "2026-09-07T11:06:57+00:00",
+        "data": {
+          "gate_result": "pass",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "status": "pass",
+              "evidence": "两页 UiPageHeader 均有批量导入（次要按钮）和新增（主按钮），表结构页按 category 切换文案，源码契约通过"
+            },
+            {
+              "id": "R2",
+              "status": "pass",
+              "evidence": "模板下载、上传、确认导入和结果均在 el-dialog 内，工具栏已移除导入入口，不改变路由"
+            },
+            {
+              "id": "R3",
+              "status": "pass",
+              "evidence": "实现了初始、已选文件、提交中、全部成功、部分失败、请求失败、关闭重置七个状态，提交中禁止关闭，请求失败保留文件，错误最多20条"
+            },
+            {
+              "id": "R4",
+              "status": "pass",
+              "evidence": "工具栏 actions 仅保留筛选、查询、重置、导出和删除，无导入/新增按钮"
+            },
+            {
+              "id": "R5",
+              "status": "pass",
+              "evidence": "对话框 width=min(720px, calc(100vw - 24px))，正文 max-height: min(60vh, 520px)，支持滚动，构建通过无样式错误"
+            },
+            {
+              "id": "R6",
+              "status": "pass",
+              "evidence": "API 调用路径和参数未变，仅修改 REQ-031 范围内两个文件，无越界"
+            },
+            {
+              "id": "R7",
+              "status": "pass",
+              "evidence": "TargetTablesPage 有 watch(resolvedCategory) 重置导入对话框状态，按 category 切换文案和模板文件名"
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": "ParametersPage.vue 改造完成，构建通过，源码契约14项通过"
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": "TargetTablesPage.vue 改造完成，构建通过，源码契约16项通过"
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": "集成验收：构建通过、空白检查通过、源码契约通过、采样趋势递减至0"
+            }
+          ],
+          "sample_trend": [
+            {
+              "id": "S-0001",
+              "label": 3,
+              "score": 10,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 2,
+                "P3": 0
+              }
+            },
+            {
+              "id": "S-0002",
+              "label": "S-T1 参数页完成",
+              "score": 5,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 1,
+                "P3": 0
+              }
+            },
+            {
+              "id": "S-0003",
+              "label": "S-FINAL 三页完成",
+              "score": 0,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 0,
+                "P3": 0
+              }
+            }
+          ],
+          "regression_checks": [
+            {
+              "name": "前端构建",
+              "status": "pass",
+              "evidence": "npm --prefix web run build exit 0"
+            },
+            {
+              "name": "空白检查",
+              "status": "pass",
+              "evidence": "git diff --check 两文件均通过"
+            },
+            {
+              "name": "既有治理diff保留",
+              "status": "pass",
+              "evidence": "两页修改为增量叠加，未回退既有改动"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "不修改 API 路径、参数和权限",
+              "status": "pass",
+              "evidence": "仅调用既有 API，签名不变"
+            },
+            {
+              "invariant": "不修改共享 CSS 或公共组件",
+              "status": "pass",
+              "evidence": "样式均为 scoped，复用已有公共组件"
+            },
+            {
+              "invariant": "不修改路由配置",
+              "status": "pass",
+              "evidence": "路由文件未修改"
+            }
+          ],
+          "disturbance_resilience": [
+            {
+              "disturbance": "两页已有未提交治理diff",
+              "status": "handled",
+              "evidence": "增量修改，保留既有改动"
+            },
+            {
+              "disturbance": "TargetTablesPage 双路由共用",
+              "status": "handled",
+              "evidence": "通过 category watch 隔离状态"
+            },
+            {
+              "disturbance": "REQ-061 范围外治理问题",
+              "status": "accepted",
+              "evidence": "忽略，不影响本主题验收"
+            }
+          ],
+          "residual_risks": [
+            {
+              "risk": "未在真实移动端设备验证软键盘弹起场景",
+              "severity": "low",
+              "mitigation": "Playwright 模拟视口，正文 max-height 与 footer 固定已覆盖主要场景"
+            },
+            {
+              "risk": "未验证低权限账号显示",
+              "severity": "low",
+              "mitigation": "源码检查 hasCreate 权限判断与 UiPageHeader 条件渲染一致"
+            }
+          ],
+          "baseline_revision": "baseline-revision-1",
+          "feedback_summary": {
+            "total": 0,
+            "open": 0,
+            "closed": 0,
+            "by_severity": {
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "scope_audit": {
+            "writable_paths_used": [
+              "web/src/modules/data-migration/views/content/ParametersPage.vue",
+              "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+              ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/"
+            ],
+            "out_of_scope_writes": 0,
+            "shared_css_modified": false,
+            "api_modified": false,
+            "backend_modified": false
+          },
+          "route_reason": "直接 pass：三次采样误差单调递减至 0，7 项 must 需求全部覆盖并通过，T1/T2/T3 均已 verified，无未关闭反馈。"
+        }
+      }
+    ]
+  },
+  "objective": "迁移参数、目标表结构和中间表结构用户能够在当前列表页通过一致的页面级入口完成单条新增或批量导入，并持续查看和恢复导入结果。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "三个页面必须在页面头部按顺序提供次要操作批量导入和页面对应的主操作新增。",
+      "acceptance": [
+        "三个路由显示正确页面标题",
+        "批量导入位于primary新增按钮左侧",
+        "无新增权限或项目未就绪时入口不可见"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1及用户要求三个页面采用相同方式处理。",
+      "counterexample": [
+        "入口仍位于筛选工具栏",
+        "批量导入为主按钮",
+        "页面显示错误新增文案"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "三个页面必须在当前列表页对话框内集中完成模板下载、Excel选择、确认导入和结果反馈。",
+      "acceptance": [
+        "打开和关闭对话框不改变路由、筛选或分页",
+        "工具栏无模板和导入步骤",
+        "关闭再打开为干净初始状态"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1的当前页导入流程。",
+      "counterexample": [
+        "跳转独立导入页",
+        "模板仍位于工具栏",
+        "关闭后遗留旧文件或结果"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "导入流程必须覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+      "acceptance": [
+        "无文件、项目不可用或提交中时确认禁用",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功刷新列表并保持对话框",
+        "请求失败保留文件",
+        "最多展示20条错误及剩余数量",
+        "迁移参数展示rows/accepted/failed，表结构展示accepted/failed"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1及项目全状态要求。",
+      "counterexample": [
+        "成功后自动关闭",
+        "请求失败清空文件",
+        "提交中可关闭或重复提交",
+        "错误列表无界渲染"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "列表工具栏必须只承载筛选和既有列表操作，导入与新增必须移至页面级操作。",
+      "acceptance": [
+        "迁移参数工具栏保留筛选、查询、重置、导出和批量删除",
+        "表结构工具栏保留筛选、刷新、查询、重置和导出",
+        "表结构表格底部批量删除保持"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1的操作层级。",
+      "counterexample": [
+        "模板下载或批量导入仍在工具栏",
+        "既有刷新、导出或删除能力丢失"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "三个页面必须复用数据迁移上传样式，并在桌面和规定手机视口无横向溢出、正文可滚动且底部操作可达。",
+      "acceptance": [
+        "复用dm-upload-dropzone与dm-attachment-*",
+        "导入对话框不使用align-center",
+        "1280x800、375x812、390x844、430x932页面和对话框无横向溢出",
+        "长文件名和错误不撑破容器",
+        "正文滚动且footer可达",
+        "深浅主题内容可辨识"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1、AGENTS.md、design-h5.md及F-0001经验。",
+      "counterexample": [
+        "复制页面私有上传视觉",
+        "移动端弹框被拉伸或超出视口",
+        "错误列表遮挡底部操作"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "现有模板、导入API、RBAC、projectId、表结构category、Excel、后端和数据库契约必须保持不变。",
+      "acceptance": [
+        "参数页继续调用downloadParameterTemplate和importParameters({projectId},file)",
+        "表结构继续调用downloadTargetTableTemplate和importTargetTables(category,projectId,file)",
+        "projectId来自useProjectScope且category来自当前路由",
+        "API、路由、公共UI、共享CSS、后端和数据库无修改"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1及REQ-031写入边界。",
+      "counterexample": [
+        "新增API或路由",
+        "对话框允许覆盖项目或分类",
+        "修改模板、服务端或公共组件"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "共用表结构页必须在TARGET与INTERMEDIATE分类切换时隔离文案、文件、结果和请求参数。",
+      "acceptance": [
+        "分类切换关闭并重置导入状态",
+        "标题、新增文案、导入标题和模板文件名匹配当前分类",
+        "请求携带当前resolvedCategory"
+      ],
+      "priority": "must",
+      "source": "批准设计修订1和两个路由共用TargetTablesPage.vue的工程事实。",
+      "counterexample": [
+        "路由切换保留上一分类状态",
+        "中间表请求携带TARGET",
+        "中间表模板名仍为目标表结构"
+      ]
+    }
+  ],
+  "invariants": [
+    "产品代码只修改ParametersPage.vue和TargetTablesPage.vue",
+    "保留两个文件任务开始前已有治理diff",
+    "hasCreate和canCreate继续控制新增与批量导入入口",
+    "projectId继续来自顶部项目上下文",
+    "表结构category继续由当前路由决定",
+    "成功或部分成功刷新列表但保持对话框打开",
+    "关闭、项目切换或分类切换清理导入状态"
+  ],
+  "constraints": [
+    "只写入REQ-031 writable_paths",
+    "复用UiPageHeader、UiToolbar、Element Plus dialog/upload和数据迁移共享上传样式",
+    "不修改公共UI、共享CSS、API、路由、后端、数据库、权限或审计",
+    "验收覆盖1280x800、375x812、390x844、430x932及深浅主题",
+    "不覆盖当前工作区其他修改",
+    "不执行提交、推送、合并或发布"
+  ],
+  "non_goals": [
+    "不抽取公共导入组件",
+    "不新增独立导入页或路由",
+    "不增加预览、预校验、字段映射或导入历史",
+    "不修改Excel模板或服务端响应",
+    "不治理其他页面或数据迁移以外模块",
+    "不处理范围外REQ-061"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-handoff.json",
+    "imported_at": "2026-09-07T10:24:17+00:00",
+    "topic": "three-page-import-dialog",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "three-page-import-dialog",
+      "handoff_status": "approved",
+      "created_at": "2026-09-07T18:06:59+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "three-page-import-dialog",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-07-data-migration-three-page-import-dialog-design.md",
+        "objective": "统一迁移参数、目标表结构和中间表结构三个页面的页面级操作与当前页批量导入流程。",
+        "users": [
+          "有相应新增权限的数据迁移人员在当前项目内新增单条记录或批量导入 Excel",
+          "只读或受限用户继续按既有权限浏览和使用已授权列表操作"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "三个页面必须使用 UiPageHeader，并按顺序展示次要操作批量导入和页面对应的主操作新增。",
+            "acceptance": [
+              "迁移参数显示批量导入和 primary 新增迁移参数",
+              "目标表结构显示批量导入和 primary 新增目标表结构",
+              "中间表结构显示批量导入和 primary 新增中间表结构",
+              "无新增权限或项目未就绪时两个入口均不可见"
+            ],
+            "priority": "must",
+            "source": "2026-09-07 用户确认方案 A，并要求三个页面采用迁移检核规则相同方式处理。",
+            "counterexample": [
+              "批量导入或新增仍位于筛选工具栏",
+              "批量导入使用主按钮样式",
+              "目标表与中间表显示错误文案或权限"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "模板下载、Excel 选择、确认导入和结果反馈必须集中在当前列表页对话框内。",
+            "acceptance": [
+              "打开和关闭导入对话框不改变路由、筛选或分页",
+              "工具栏不包含模板或导入步骤",
+              "关闭后再次打开为干净初始状态"
+            ],
+            "priority": "must",
+            "source": "用户指定复用已批准的迁移检核规则当前页对话框模式。",
+            "counterexample": [
+              "跳转独立导入页面",
+              "模板下载仍散落在工具栏",
+              "关闭后保留旧文件或结果"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "三个页面的导入流程必须覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+            "acceptance": [
+              "无文件、项目不可用或提交中时确认按钮禁用",
+              "提交中禁止关闭和重复提交",
+              "成功或部分成功刷新列表并保持对话框打开",
+              "请求失败保留文件供重试",
+              "最多展示20条错误和剩余数量",
+              "迁移参数展示rows/accepted/failed，表结构展示accepted/failed"
+            ],
+            "priority": "must",
+            "source": "方案 A 与项目全状态设计要求。",
+            "counterexample": [
+              "成功后自动关闭",
+              "请求失败清空文件",
+              "提交中可关闭或重复提交",
+              "错误列表无界渲染"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "列表工具栏必须只承载筛选和既有列表操作，导入与新增移至页面级操作。",
+            "acceptance": [
+              "迁移参数工具栏保留筛选、查询、重置、导出和批量删除",
+              "表结构工具栏保留筛选、刷新、查询、重置和导出",
+              "表结构既有表格底部批量删除保持"
+            ],
+            "priority": "must",
+            "source": "方案 A 的统一操作层级。",
+            "counterexample": [
+              "模板下载或批量导入仍在工具栏",
+              "既有导出、刷新或删除能力被移除"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "三个页面必须复用数据迁移上传样式，并在桌面及规定手机视口无横向溢出、正文可滚动且底部操作可达。",
+            "acceptance": [
+              "复用 dm-upload-dropzone 与 dm-attachment-*",
+              "导入弹框不使用会造成移动端纵向拉伸的 align-center",
+              "1280x800、375x812、390x844、430x932 页面与对话框无横向溢出",
+              "长文件名和错误文本不撑破容器",
+              "长结果正文可滚动且 footer 可达",
+              "深浅主题内容可辨识"
+            ],
+            "priority": "must",
+            "source": "AGENTS.md、design-h5.md、前端上传治理与 F-0001 已验证经验。",
+            "counterexample": [
+              "复制页面私有上传配色",
+              "移动端弹框被拉伸或超出视口",
+              "错误列表遮挡底部操作"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "现有模板、导入 API、RBAC、projectId、表结构 category、Excel、后端和数据库契约必须保持不变。",
+            "acceptance": [
+              "迁移参数继续调用 downloadParameterTemplate 和 importParameters({ projectId }, file)",
+              "表结构继续调用 downloadTargetTableTemplate 和 importTargetTables(category, projectId, file)",
+              "projectId 继续来自 useProjectScope，category 继续来自当前路由",
+              "不修改 API、路由、公共 UI、共享 CSS、后端或数据库"
+            ],
+            "priority": "must",
+            "source": "方案 A 的最小写入边界和现有代码契约。",
+            "counterexample": [
+              "新增预校验 API 或路由",
+              "允许对话框覆盖项目或分类",
+              "修改模板内容、后端或公共组件"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "共用表结构页必须在 TARGET 与 INTERMEDIATE 分类切换时隔离文案、文件、结果和请求参数。",
+            "acceptance": [
+              "分类切换时关闭并重置导入状态",
+              "标题、新增文案、导入标题和模板文件名匹配当前分类",
+              "导入请求携带当前 resolvedCategory"
+            ],
+            "priority": "must",
+            "source": "路由和 TargetTablesPage.vue 共用组件的工程事实。",
+            "counterexample": [
+              "切换路由后保留上一分类文件或结果",
+              "中间表请求携带 TARGET",
+              "中间表模板下载名仍为目标表结构"
+            ]
+          }
+        ],
+        "invariants": [
+          "产品代码只修改 ParametersPage.vue 和 TargetTablesPage.vue",
+          "保留两个文件已有未提交治理 diff",
+          "hasCreate 和 canCreate 继续控制新增与批量导入入口",
+          "projectId 继续来自顶部项目上下文",
+          "表结构 category 继续由当前路由决定",
+          "成功或部分成功刷新列表但保持对话框打开",
+          "关闭、项目切换或分类切换清理导入状态"
+        ],
+        "constraints": [
+          "只写入 REQ-031 writable_paths",
+          "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和数据迁移共享上传样式",
+          "不修改 web/src/components/ui、data-migration.css、API、路由、后端、数据库、权限或审计",
+          "验收覆盖1280x800、375x812、390x844、430x932",
+          "不得覆盖当前工作区其他修改"
+        ],
+        "non_goals": [
+          "不抽取公共导入组件",
+          "不新增独立导入页或路由",
+          "不增加导入预览、预校验、字段映射或导入历史",
+          "不修改 Excel 模板和服务端响应",
+          "不治理其他页面或数据迁移以外模块",
+          "不处理范围外 REQ-061"
+        ],
+        "selected_approach": {
+          "name": "方案 A：两个现有文件内复用已验证导入模式",
+          "reason": "两个文件覆盖三个页面，能够保持各自 API 和响应差异，影响面最小，并避免重新修改已收敛的迁移检核规则页面或公共组件。",
+          "alternatives": [
+            {
+              "name": "方案 B：抽取共享导入组件",
+              "rejected_because": "需要扩大到已验收页面或公共组件，并为不同响应结构引入额外抽象。"
+            },
+            {
+              "name": "方案 C：只移动按钮",
+              "rejected_because": "迁移参数和表结构的成功、失败与重置行为仍不一致，不能满足相同方式处理。"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "web/src/modules/data-migration/views/content/ParametersPage.vue",
+              "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+              "本主题设计、计划和 REQ-031 前缀控制证据"
+            ],
+            "outside": [
+              "web/src/components/ui",
+              "web/src/modules/data-migration/data-migration.css",
+              "web/src/api/data-migration.ts",
+              "web/src/router/index.ts",
+              "server、数据库、权限和审计",
+              "REQ-061"
+            ]
+          },
+          "components": [
+            {
+              "name": "ParametersPage.vue",
+              "responsibility": "迁移参数页面头部、列表和带总行数的导入状态",
+              "depends_on": [
+                "UiPageHeader",
+                "UiToolbar",
+                "Element Plus",
+                "parameter APIs",
+                "useProjectScope"
+              ]
+            },
+            {
+              "name": "TargetTablesPage.vue",
+              "responsibility": "TARGET/INTERMEDIATE 共用页面头部、列表、分类隔离和表结构导入状态",
+              "depends_on": [
+                "UiPageHeader",
+                "UiToolbar",
+                "Element Plus",
+                "target table APIs",
+                "route meta",
+                "useProjectScope"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "迁移参数导入",
+              "producer": "data-migration API",
+              "consumers": [
+                "ParametersPage.vue"
+              ],
+              "contract": "importParameters({ projectId }, file) -> rows/accepted/failed/errors"
+            },
+            {
+              "name": "表结构导入",
+              "producer": "data-migration API",
+              "consumers": [
+                "TargetTablesPage.vue"
+              ],
+              "contract": "importTargetTables(category, projectId, file) -> accepted/failed/errors"
+            },
+            {
+              "name": "共享上传视觉",
+              "producer": "data-migration.css",
+              "consumers": [
+                "ParametersPage.vue",
+                "TargetTablesPage.vue"
+              ],
+              "contract": "dm-upload-dropzone 和 dm-attachment-* 提供一致上传区与文件状态"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "用户打开对话框并选择 Excel",
+              "transitions": [
+                "清理旧状态",
+                "保存单个 File",
+                "启用确认导入"
+              ],
+              "output": "可提交的当前项目和当前分类导入上下文"
+            },
+            {
+              "input": "导入成功或部分成功响应",
+              "transitions": [
+                "保存汇总和最多20条错误",
+                "刷新当前列表",
+                "保持对话框打开"
+              ],
+              "output": "持续可见的导入结果和更新后的列表"
+            },
+            {
+              "input": "请求失败、关闭、项目或分类切换",
+              "transitions": [
+                "失败时保留文件",
+                "关闭或上下文切换时清理状态"
+              ],
+              "output": "可重试失败状态或干净初始状态"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "项目未就绪或无文件",
+            "behavior": "入口隐藏或确认按钮禁用，不发送请求",
+            "recovery": "选择有效项目和 Excel 文件"
+          },
+          {
+            "condition": "导入请求失败",
+            "behavior": "对话框显示错误并保留已选文件",
+            "recovery": "用户原地重试或重新选择文件"
+          },
+          {
+            "condition": "部分行失败",
+            "behavior": "显示 warning 汇总、最多20条错误和剩余数量，同时刷新成功数据",
+            "recovery": "用户修订文件后重新选择并提交"
+          },
+          {
+            "condition": "项目或表结构分类切换",
+            "behavior": "关闭对话框并清理旧文件、结果和错误",
+            "recovery": "在新上下文重新打开导入"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "沿用既有 hasCreate/canCreate 与服务端 RBAC",
+            "不引入生产数据、敏感信息或外部访问"
+          ],
+          "performance": [
+            "单文件上传且不增加并发",
+            "错误列表最多渲染20条"
+          ],
+          "compatibility": [
+            "API、响应、Excel 内容、项目范围和路由不变",
+            "两个分类继续共用 TargetTablesPage.vue"
+          ],
+          "operations": [
+            "无数据库、配置或发布流程变化",
+            "REQ-061 治理失败仅记录为范围外扰动"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R6",
+              "R7"
+            ],
+            "signal": "源码结构、按钮顺序、工具栏职责、API 和分类重置符合契约",
+            "method": "定向源码契约检查与最终 diff 审查"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R5",
+              "R7"
+            ],
+            "signal": "三个路由在四个视口完成导入状态且无溢出",
+            "method": "Chromium/Playwright 在1280x800、375x812、390x844、430x932验收"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "signal": "Vue/TypeScript 构建和范围门禁通过",
+            "method": "npm --prefix web run build、git diff --check、REQ-031 定向范围检查"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "hasCreate 和 canCreate 合法控制单条新增与批量导入",
+            "basis": "现有页面实现和已批准迁移检核规则模式",
+            "falsifier": "发现独立导入权限或服务端拒绝当前权限组合"
+          },
+          {
+            "text": "单一表结构模板同时适用于 TARGET 与 INTERMEDIATE",
+            "basis": "现有 downloadTargetTableTemplate 无 category 参数",
+            "falsifier": "接口或真实模板只支持一种分类"
+          },
+          {
+            "text": "共享上传样式足以覆盖三个页面",
+            "basis": "迁移检核规则和当前表结构弹框已复用 dm-upload-dropzone",
+            "falsifier": "四视口验收必须修改共享 CSS 才能满足"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "采用两个现有文件覆盖三个页面的局部复用方案",
+            "reason": "最小写入范围并保持页面特有 API 契约",
+            "source": "2026-09-07 用户确认按方案 A 实施"
+          },
+          {
+            "id": "D2",
+            "decision": "成功或部分成功后刷新列表但保持对话框打开",
+            "reason": "让结果持续可见并与迁移检核规则一致",
+            "source": "方案 A"
+          },
+          {
+            "id": "D3",
+            "decision": "请求失败保留文件，关闭、项目切换或分类切换重置",
+            "reason": "兼顾低成本重试和上下文隔离",
+            "source": "方案 A"
+          },
+          {
+            "id": "D4",
+            "decision": "三个页面统一使用批量导入和确认导入术语",
+            "reason": "建立一致操作语义",
+            "source": "用户要求相同方式处理"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "共用表结构页在分类切换时残留上一分类状态",
+            "impact": "错误文案或错误分类提交",
+            "mitigation": "分类变化时重置并用浏览器验证请求 category"
+          },
+          {
+            "risk": "align-center 与移动端全局 dialog 样式再次导致纵向拉伸",
+            "impact": "移动端弹框出现大面积空白",
+            "mitigation": "导入弹框不使用 align-center并复验三个手机视口"
+          },
+          {
+            "risk": "现有未提交治理 diff 被覆盖",
+            "impact": "丢失用户工作或扩大变更",
+            "mitigation": "按两个文件当前内容增量修改并逐文件审查 diff"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认落盘设计修订 1",
+          "confirmed_at": "2026-09-07T18:06:59+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-07-data-migration-three-page-import-dialog-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "产品代码只修改 ParametersPage.vue 和 TargetTablesPage.vue",
+          "保留两个文件任务开始前已有治理 diff",
+          "只写入 REQ-031 writable_paths",
+          "不修改公共 UI、共享 CSS、API、路由、后端、数据库、权限或审计",
+          "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和数据迁移共享上传样式",
+          "成功或部分成功刷新列表并保持对话框打开，请求失败保留文件",
+          "关闭、项目切换或分类切换清理导入状态",
+          "导入错误最多展示20条",
+          "验收1280x800、375x812、390x844、430x932和深浅主题",
+          "不处理REQ-061，不执行提交、推送、合并或发布"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/data-migration/views/content/ParametersPage.vue",
+            "status": "existing",
+            "responsibility": "迁移参数页面头部、列表、表单和带rows的导入状态",
+            "evidence": "当前源码与git diff"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+            "status": "existing",
+            "responsibility": "TARGET/INTERMEDIATE共用页面、动态标题和分类隔离的导入状态",
+            "evidence": "当前源码和路由元数据"
+          },
+          {
+            "path": "docs/engineering-control/plans/2026-09-07-data-migration-three-page-import-dialog-implementation-plan.md",
+            "status": "existing",
+            "responsibility": "人类可读实施任务与验证边界",
+            "evidence": "writing-plans修订1"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-handoff.json",
+            "status": "candidate-new",
+            "responsibility": "完整开发前交接包",
+            "evidence": "writing-plans交接契约"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-state.json",
+            "status": "candidate-new",
+            "responsibility": "本主题控制闭环状态",
+            "evidence": "计划批准并导入后创建"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "迁移参数页形成统一页面头部和当前页完整批量导入对话框",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ParametersPage.vue当前导入入口位于UiToolbar，结果位于列表正文",
+              "当前未提交diff仅删除列表和详情中的项目名称展示",
+              "importParameters返回rows/accepted/failed/errors",
+              "downloadParameterTemplate和projectId契约已由源码确认"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-execution-T1.json"
+              ],
+              "modify": [
+                "web/src/modules/data-migration/views/content/ParametersPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "downloadParameterTemplate()",
+                "importParameters({ projectId: number }, file: File) -> ParameterImportResult",
+                "useProjectScope().projectId",
+                "hasCreate"
+              ],
+              "produces": [
+                "UiPageHeader actions: 批量导入, primary 新增迁移参数",
+                "本地单文件导入状态与关闭重置边界",
+                "对话框内rows/accepted/failed/errors结果"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "记录参数页执行前diff和旧导入结构",
+                "command": "git diff -- web/src/modules/data-migration/views/content/ParametersPage.vue",
+                "expected": "确认既有项目名称治理diff并记录导入仍在工具栏",
+                "evidence": "执行前diff摘要"
+              },
+              {
+                "id": "T1-S2",
+                "action": "运行参数页源码契约获得失败基线",
+                "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/content/ParametersPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes('title=\\\\\\\"迁移参数\\\\\\\"'),s.includes('批量导入'),s.includes('新增迁移参数'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('beforeImportDialogClose'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImportDialog'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('parameters-import-contract:pass')\"",
+                "expected": "实施前非0，至少缺UiPageHeader和dm-import-dialog",
+                "evidence": "失败断言和退出码"
+              },
+              {
+                "id": "T1-S3",
+                "action": "增加UiPageHeader并从UiToolbar移出新增和导入操作",
+                "command": null,
+                "expected": "批量导入在左，primary新增迁移参数在右；工具栏只保留列表操作",
+                "evidence": "模板diff"
+              },
+              {
+                "id": "T1-S4",
+                "action": "实现typed单文件选择、提交中关闭拦截、错误保留和项目切换重置",
+                "command": null,
+                "expected": "初始、已选、提交中、成功、部分失败、请求失败和关闭重置状态完整",
+                "evidence": "状态函数和watch diff"
+              },
+              {
+                "id": "T1-S5",
+                "action": "实现当前页导入对话框和受控滚动样式",
+                "command": null,
+                "expected": "模板、上传、文件状态、结果和footer集中于dialog且不使用align-center",
+                "evidence": "对话框DOM和scoped style"
+              },
+              {
+                "id": "T1-S6",
+                "action": "保持参数API并调整成功刷新不关闭、失败保留文件",
+                "command": null,
+                "expected": "调用签名不变，成功结果持续可见，请求失败可重试",
+                "evidence": "API调用和错误分支diff"
+              },
+              {
+                "id": "T1-S7",
+                "action": "运行参数页局部回归",
+                "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/content/ParametersPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes('title=\\\\\\\"迁移参数\\\\\\\"'),s.includes('批量导入'),s.includes('新增迁移参数'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('beforeImportDialogClose'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImportDialog'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('parameters-import-contract:pass')\" && git diff --check -- web/src/modules/data-migration/views/content/ParametersPage.vue && npm --prefix web run build",
+                "expected": "输出parameters-import-contract:pass且全部退出码0",
+                "evidence": "命令输出、构建摘要和最终diff"
+              }
+            ],
+            "acceptance_checks": [
+              "头部按钮顺序、主次和权限条件正确",
+              "工具栏和列表正文无导入步骤或结果",
+              "提交中禁止关闭和重复提交",
+              "成功或部分成功刷新列表并保持dialog",
+              "请求失败保留文件，项目切换重置",
+              "最多20条错误且既有治理diff保留"
+            ],
+            "risks": [
+              "actionBusy共享可能造成按钮互锁",
+              "同名文件替换需要clearFiles和handleStart"
+            ],
+            "rollback": "仅逆向恢复T1新增的头部、导入状态、对话框和局部样式，保留原项目名称治理diff",
+            "stop_conditions": [
+              "需要修改API、共享CSS、公共UI、路由或后端",
+              "同一区域出现无法安全合并的新修改",
+              "构建失败根因必须范围外修复"
+            ],
+            "escalation_conditions": [
+              "发现独立导入权限",
+              "参数响应不再是ParameterImportResult",
+              "移动端只能修改共享样式才能满足"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "目标表结构和中间表结构形成统一且分类隔离的页面头部与导入对话框",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "两个表结构路由共用TargetTablesPage.vue并由resolvedCategory区分",
+              "当前未提交diff移除动态项目名称并为上传区增加dm-upload-dropzone",
+              "当前模板和新增仍在UiToolbar，成功后自动关闭dialog",
+              "表结构响应仅有accepted/failed/errors，不含rows"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-execution-T2.json"
+              ],
+              "modify": [
+                "web/src/modules/data-migration/views/base/TargetTablesPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "downloadTargetTableTemplate()",
+                "importTargetTables(category, projectId, file) -> accepted/failed/errors",
+                "resolvedCategory and title",
+                "useProjectScope().projectId",
+                "canCreate"
+              ],
+              "produces": [
+                "TARGET/INTERMEDIATE动态UiPageHeader",
+                "分类匹配的新增、导入标题和模板文件名",
+                "项目与分类切换导入状态隔离"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "记录表结构页执行前diff和旧导入结构",
+                "command": "git diff -- web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+                "expected": "确认三个既有治理变化并记录工具栏和自动关闭行为",
+                "evidence": "执行前diff摘要"
+              },
+              {
+                "id": "T2-S2",
+                "action": "运行表结构源码契约获得失败基线",
+                "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/base/TargetTablesPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes(':title=\\\\\\\"title\\\\\\\"'),s.includes('新增{{ title }}'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('resolvedCategory'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImport'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('table-import-contract:pass')\"",
+                "expected": "实施前非0，缺UiPageHeader或完整dialog状态",
+                "evidence": "失败断言和退出码"
+              },
+              {
+                "id": "T2-S3",
+                "action": "加入动态UiPageHeader并收敛工具栏",
+                "command": null,
+                "expected": "两个分类均显示批量导入和primary新增当前title，工具栏保留列表操作",
+                "evidence": "动态模板和工具栏diff"
+              },
+              {
+                "id": "T2-S4",
+                "action": "升级typed单文件状态并监听项目和resolvedCategory重置",
+                "command": null,
+                "expected": "分类切换不泄漏文件、结果、文案或请求参数",
+                "evidence": "reset、watch和请求调用diff"
+              },
+              {
+                "id": "T2-S5",
+                "action": "统一表结构导入dialog、动态模板名和结果列表",
+                "command": null,
+                "expected": "不使用align-center，显示accepted/failed和最多20条错误，成功刷新不关闭",
+                "evidence": "dialog DOM和scoped style"
+              },
+              {
+                "id": "T2-S6",
+                "action": "运行表结构局部回归",
+                "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/base/TargetTablesPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes(':title=\\\\\\\"title\\\\\\\"'),s.includes('新增{{ title }}'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('resolvedCategory'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImport'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('table-import-contract:pass')\" && git diff --check -- web/src/modules/data-migration/views/base/TargetTablesPage.vue && npm --prefix web run build",
+                "expected": "输出table-import-contract:pass且全部退出码0",
+                "evidence": "命令输出、构建摘要和最终diff"
+              }
+            ],
+            "acceptance_checks": [
+              "目标表与中间表标题、新增文案、模板文件名和请求category正确",
+              "工具栏无模板、批量上传和新增",
+              "刷新、导出和表格footer批量删除保持",
+              "成功不自动关闭，请求失败保留文件",
+              "项目或分类切换关闭并重置",
+              "既有表结构治理diff保留"
+            ],
+            "risks": [
+              "共用组件路由复用可能造成分类状态泄漏",
+              "不得为无rows响应伪造总数"
+            ],
+            "rollback": "仅逆向恢复T2新增的头部、导入状态、分类监听、dialog和局部样式，保留原表结构治理diff",
+            "stop_conditions": [
+              "共用模板不支持两分类",
+              "分类切换必须修改路由或API",
+              "需要修改共享CSS或公共UI",
+              "构建失败只能范围外修复"
+            ],
+            "escalation_conditions": [
+              "两分类存在不同导入权限或模板契约",
+              "resolvedCategory无法保证请求分类",
+              "浏览器需要范围外修改"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "以最终静态、范围和三路由四视口浏览器证据验收R1-R7",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "验收路由为parameters、target-tables和intermediate-tables",
+              "项目规定桌面与375/390/430手机视口",
+              "Playwright和Chromium在同日上一主题中可用",
+              "REQ-061非JSON-compatible YAML是已知范围外治理扰动"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-observation-T1-T2.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-convergence-report.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1/T2最终页面",
+                "三个本地路由",
+                "本地前后端服务",
+                "Playwright/Chromium"
+              ],
+              "produces": [
+                "R1-R7测量",
+                "三页面四视口证据",
+                "状态与分类隔离证据",
+                "范围与收敛结论"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "复跑联合源码、diff和前端构建",
+                "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/content/ParametersPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes('title=\\\\\\\"迁移参数\\\\\\\"'),s.includes('批量导入'),s.includes('新增迁移参数'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('beforeImportDialogClose'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImportDialog'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('parameters-import-contract:pass')\" && node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/base/TargetTablesPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes(':title=\\\\\\\"title\\\\\\\"'),s.includes('新增{{ title }}'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('resolvedCategory'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImport'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('table-import-contract:pass')\" && git diff --check -- web/src/modules/data-migration/views/content/ParametersPage.vue web/src/modules/data-migration/views/base/TargetTablesPage.vue && npm --prefix web run build",
+                "expected": "两个契约pass且全部退出码0",
+                "evidence": "最终静态和构建输出"
+              },
+              {
+                "id": "T3-S2",
+                "action": "运行REQ-031范围和全仓治理归因",
+                "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree; node scripts/check-all-governance.mjs",
+                "expected": "REQ-031范围通过；REQ-061若仍失败则明确分类为范围外扰动",
+                "evidence": "命令退出码和原始摘要"
+              },
+              {
+                "id": "T3-S3",
+                "action": "探测前端、后端和Playwright",
+                "command": "curl -fsS http://127.0.0.1:5173/ >/dev/null; curl -fsS http://127.0.0.1:8080/actuator/health; node -e \"import('playwright').then(() => console.log('playwright:ready'))\"",
+                "expected": "记录实际可用服务、URL和进程所有权",
+                "evidence": "健康检查与环境输出"
+              },
+              {
+                "id": "T3-S4",
+                "action": "在三个路由和四视口测量头部、dialog、滚动和溢出",
+                "command": null,
+                "expected": "12组基础视口全部满足scrollWidth<=clientWidth、footer可达且无纵向拉伸",
+                "evidence": "截图、DOM尺寸、路由和控制台摘要"
+              },
+              {
+                "id": "T3-S5",
+                "action": "用受控响应验收成功、部分失败、请求失败、提交中、关闭重置和分类切换",
+                "command": null,
+                "expected": "状态符合R3，TARGET/INTERMEDIATE标题、模板名、重置和请求category符合R7",
+                "evidence": "网络摘要、下载文件名和状态断言"
+              },
+              {
+                "id": "T3-S6",
+                "action": "记录观察、反馈和收敛门禁",
+                "command": "python3 .agents/skills/control-engineering/scripts/control_loop.py gate --state .ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-state.json",
+                "expected": "无开放反馈且最终P0/P1为0时输出收敛门禁PASS",
+                "evidence": "observation、convergence、gate和phase"
+              }
+            ],
+            "acceptance_checks": [
+              "三个路由四视口和深浅主题无溢出、遮挡或纵向拉伸",
+              "成功、部分失败、请求失败、提交中和关闭重置有证据",
+              "两分类隔离与模板文件名正确",
+              "构建、diff和REQ-031范围通过",
+              "受控响应与真实后端证据明确区分"
+            ],
+            "risks": [
+              "受控响应不能证明后端Excel解析",
+              "dialog动画可能造成过早尺寸采样"
+            ],
+            "rollback": "T3不修改产品，只清理本次临时截图和本次启动的进程；偏差返回对应任务限幅纠正",
+            "stop_conditions": [
+              "任一页面出现P0/P1",
+              "REQ-031定向范围失败",
+              "验收要求生产数据或敏感凭据",
+              "修复必须扩大到未批准文件"
+            ],
+            "escalation_conditions": [
+              "需要真实业务Excel或低权限账号才能完成关键门禁",
+              "共用模板不支持中间表",
+              "出现API、权限或路由契约差异"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "先固定迁移参数局部模式，再在共用表结构页对齐并处理分类差异"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "浏览器集成需要参数页完成"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "浏览器集成需要两个表结构路由完成"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/content/ParametersPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes('title=\\\\\\\"迁移参数\\\\\\\"'),s.includes('批量导入'),s.includes('新增迁移参数'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('beforeImportDialogClose'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImportDialog'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('parameters-import-contract:pass')\"",
+            "expected": "parameters-import-contract:pass"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "node --input-type=module -e \"import fs from 'node:fs';const s=fs.readFileSync('web/src/modules/data-migration/views/base/TargetTablesPage.vue','utf8');const t=s.match(/<UiToolbar>[\\\\s\\\\S]*?<\\\\/UiToolbar>/)?.[0]??'';const ok=[s.includes('UiPageHeader'),s.includes(':title=\\\\\\\"title\\\\\\\"'),s.includes('新增{{ title }}'),s.includes('class=\\\\\\\"dm-import-dialog\\\\\\\"'),s.includes('class=\\\\\\\"dm-upload-dropzone\\\\\\\"'),s.includes('resolvedCategory'),s.includes('errors.slice(0, 20)'),!t.includes('downloadTemplate'),!t.includes('openImport'),!t.includes('openCreate')];if(ok.some(v=>!v))process.exit(1);console.log('table-import-contract:pass')\"",
+            "expected": "table-import-contract:pass"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "退出码0，仅允许既有chunk warning"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+            "expected": "REQ-031范围检查通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "python3 .agents/skills/control-engineering/scripts/control_loop.py gate --state .ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/three-page-import-dialog-state.json",
+            "expected": "收敛门禁PASS"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户批准实施计划修订 1",
+          "confirmed_at": "2026-09-07T18:22:36+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "ParametersPage.vue",
+          "TargetTablesPage.vue",
+          "parameters/target-tables/intermediate-tables三个路由",
+          "两个既有导入API",
+          "共享上传样式消费关系"
+        ],
+        "state_variable_candidates": [
+          "current project and route category",
+          "dialog open",
+          "selected file",
+          "submitting",
+          "request error",
+          "import result",
+          "list loading",
+          "permission"
+        ],
+        "interface_candidates": [
+          "downloadParameterTemplate/importParameters",
+          "downloadTargetTableTemplate/importTargetTables",
+          "UiPageHeader.actions",
+          "dm-upload-dropzone and dm-attachment-*",
+          "route meta category"
+        ],
+        "sensor_candidates": [
+          "源码契约",
+          "Vue/TypeScript/Vite构建",
+          "git diff和REQ-031范围",
+          "Chromium DOM尺寸与截图",
+          "浏览器网络请求和下载事件"
+        ],
+        "actuator_candidates": [
+          "两个页面内的template结构",
+          "导入状态函数",
+          "project/category watch",
+          "scoped responsive styles"
+        ],
+        "disturbance_candidates": [
+          "两个文件已有未提交diff",
+          "REQ-061范围外治理失败",
+          "共用组件路由复用",
+          "dialog动画",
+          "既有Rollup chunk警告"
+        ],
+        "delay_candidates": [
+          "前端构建约20秒",
+          "dialog开启动画",
+          "列表刷新与受控响应等待"
+        ],
+        "assumptions": [
+          {
+            "text": "现有新增权限覆盖批量导入",
+            "basis": "当前页面实现和已批准模式",
+            "falsifier": "发现独立导入权限"
+          },
+          {
+            "text": "单一表结构模板支持TARGET和INTERMEDIATE",
+            "basis": "现有模板API无category参数",
+            "falsifier": "真实模板或接口只支持一种分类"
+          },
+          {
+            "text": "共享上传样式无需修改",
+            "basis": "迁移检核规则和当前表结构已复用",
+            "falsifier": "四视口只能修改共享CSS才能通过"
+          },
+          {
+            "text": "本地服务与Playwright可用于验收",
+            "basis": "同日上一主题已验证",
+            "falsifier": "健康检查或浏览器启动失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"只读公共 UiPageHeader/UiToolbar 组件与 web/src/styles.css 响应式规则\", \"只读 data-migration.css 的 dm-upload-dropzone 与 dm-attachment-*\", \"只读 parameters/target-tables/intermediate-tables 路由配置\", \"既有 data-migration 参数与表结构 API 与后端\", \"全局认证、权限和 useProjectScope 项目上下文\", \"Chromium/Playwright 浏览器运行时\", \"范围外 REQ-061 治理文件\"], \"inside\": [\"ParametersPage.vue 的 UiPageHeader 与 actions\", \"ParametersPage.vue 的 UiToolbar\", \"ParametersPage.vue 的导入本地状态与 submitImport 状态流\", \"ParametersPage.vue 的批量导入 el-dialog/el-upload\", \"ParametersPage.vue 的局部响应式样式\", \"TargetTablesPage.vue 的 UiPageHeader 与 actions（TARGET/INTERMEDIATE 共用）\", \"TargetTablesPage.vue 的 UiToolbar\", \"TargetTablesPage.vue 的导入本地状态与 submitImport 状态流\", \"TargetTablesPage.vue 的批量导入 el-dialog/el-upload\", \"TargetTablesPage.vue 的局部响应式样式\", \"REQ-031 three-page-import-dialog 控制记录\"]}",
+    "sensors": [
+      "{\"description\": \"静态 Node 脚本验证模板结构、按钮顺序、状态变量和 API 调用与设计一致\", \"id\": \"S1\", \"name\": \"源码契约检查\", \"type\": \"static\"}",
+      "{\"description\": \"npm --prefix web run build 与 git diff --check 验证编译和空白\", \"id\": \"S2\", \"name\": \"前端构建与空白检查\", \"type\": \"build\"}",
+      "{\"description\": \"桌面及 375/390/430 手机视口下验证布局、溢出、滚动和按钮文案\", \"id\": \"S3\", \"name\": \"Chromium 四视口 DOM 测量\", \"type\": \"browser\"}",
+      "{\"description\": \"定向 governance 扫描仅覆盖 REQ-031 可写路径\", \"id\": \"S4\", \"name\": \"REQ-031 定向范围检查\", \"type\": \"static\"}",
+      "{\"description\": \"在本地服务和测试数据下验证提交中禁用、部分失败错误列表和请求失败保留文件\", \"id\": \"S5\", \"name\": \"受控导入响应验证\", \"type\": \"browser\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"在 ParametersPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A1-P\", \"impact_radius\": \"迁移参数页面模板\", \"rollback\": \"按任务前 diff 逆向恢复本次模板块，保留既有修改\", \"target\": \"迁移参数页操作层级\"}",
+      "{\"action\": \"增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport 与项目 watch\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A2-P\", \"impact_radius\": \"迁移参数页面本地状态和参数导入交互\", \"rollback\": \"仅移除本次状态与函数修改\", \"target\": \"迁移参数页导入状态转换\"}",
+      "{\"action\": \"增加当前页 el-dialog、el-upload、文件状态、结果和 footer\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A3-P\", \"impact_radius\": \"迁移参数导入对话框\", \"rollback\": \"移除本次 dialog 模板并恢复原工具栏入口\", \"target\": \"迁移参数页导入流程呈现\"}",
+      "{\"action\": \"增加 ParametersPage.vue scoped 对话框布局样式，复用共享上传类\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A4-P\", \"impact_radius\": \"该页面导入对话框\", \"rollback\": \"移除本次 scoped 样式，不修改共享 CSS\", \"target\": \"迁移参数页响应式滚动和文本边界\"}",
+      "{\"action\": \"在 TargetTablesPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar，按 category 切换文案\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A1-T\", \"impact_radius\": \"目标/中间表结构页面模板\", \"rollback\": \"按任务前 diff 逆向恢复本次模板块，保留既有修改\", \"target\": \"表结构页操作层级\"}",
+      "{\"action\": \"增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport、项目 watch 与 category watch\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A2-T\", \"impact_radius\": \"表结构页面本地状态和表结构导入交互\", \"rollback\": \"仅移除本次状态与函数修改\", \"target\": \"表结构页导入状态转换\"}",
+      "{\"action\": \"增加当前页 el-dialog、el-upload、文件状态、结果和 footer，文案随 category 变化\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A3-T\", \"impact_radius\": \"目标/中间表结构导入对话框\", \"rollback\": \"移除本次 dialog 模板并恢复原工具栏入口\", \"target\": \"表结构页导入流程呈现\"}",
+      "{\"action\": \"增加 TargetTablesPage.vue scoped 对话框布局样式，复用共享上传类\", \"authority\": \"REQ-031 writable_paths\", \"id\": \"A4-T\", \"impact_radius\": \"该页面导入对话框\", \"rollback\": \"移除本次 scoped 样式，不修改共享 CSS\", \"target\": \"表结构页响应式滚动和文本边界\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"diff 基线包含非本主题改动，可能误回退或误归因\", \"source\": \"工作区已有 ParametersPage.vue 与 TargetTablesPage.vue 未提交治理修改\"}",
+      "{\"controllable\": \"partial\", \"detectable\": true, \"effect\": \"真实成功/部分失败导入分支可能无法复验\", \"source\": \"本地后端、认证或测试数据状态\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"check-all-governance 可能非零退出\", \"source\": \"REQ-061 非 JSON-compatible YAML\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"TARGET/INTERMEDIATE 状态未隔离会造成串扰\", \"source\": \"TargetTablesPage.vue 双路由共用\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"测量采样过早会读到半开状态或滚动高度错误\", \"source\": \"dialog 动画与打开/关闭时序\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"现有页面两个入口均以 hasCreate 控制，后端契约未要求独立导入权限\", \"falsifier\": \"运行时返回仅导入权限差异或权限配置出现独立动作\", \"text\": \"hasCreate 是批量导入与单条新增的共同前端权限\"}",
+      "{\"evidence\": \"现有模板 API 路径无 category 参数，当前实现按同一模板导入\", \"falsifier\": \"真实模板或接口只支持一种分类\", \"text\": \"单一表结构模板支持 TARGET 和 INTERMEDIATE\"}",
+      "{\"evidence\": \"迁移检核规则和当前表结构已复用 dm-upload-dropzone\", \"falsifier\": \"四视口测量证明公共样式缺陷必须跨文件修复\", \"text\": \"共享上传样式无需修改\"}",
+      "{\"evidence\": \"同日上一主题 validation-rule-import-dialog 已用 Chromium 完成四视口验证\", \"falsifier\": \"浏览器启动、认证或目标路由加载失败\", \"text\": \"Playwright 可用于真实浏览器验收\"}",
+      "{\"evidence\": \"2026-09-07 对 127.0.0.1:8080/actuator/health 返回 HTTP 200\", \"falsifier\": \"执行动态验收时健康检查或目标 API 不可用\", \"text\": \"本地后端当前可探测\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S2\", \"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "迁移参数页头部双按钮与页内批量导入对话框",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "前端构建基线通过",
+        "ParametersPage.vue 既有治理 diff 已记录",
+        "useProjectScope 与 importParameters API 可用"
+      ],
+      "input_facts": [
+        "ParametersPage.vue 当前使用 UiToolbar，导入入口在工具栏",
+        "hasCreate 同时控制新增与导入入口",
+        "downloadParameterTemplate 和 importParameters API 已存在"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/views/content/ParametersPage.vue 的 template/script/style"
+      ],
+      "invariants": [
+        "不修改 API 路径、参数和权限",
+        "不修改共享 CSS 或公共组件",
+        "不修改路由",
+        "保留既有治理 diff"
+      ],
+      "interface_contracts": [
+        "UiPageHeader.actions 插槽：批量导入左、新增右",
+        "dm-upload-dropzone 复用共享类",
+        "downloadParameterTemplate GET /data-migration/parameters/template",
+        "importParameters POST /data-migration/parameters/import"
+      ],
+      "non_goals": [
+        "后端接口改造",
+        "权限体系改造",
+        "公共组件抽取",
+        "数据库结构变化"
+      ],
+      "action_bounds": [
+        "只修改 ParametersPage.vue 一个文件",
+        "仅在当前文件内新增状态与模板，不影响其他模块",
+        "scoped 样式只作用于导入对话框"
+      ],
+      "acceptance": [
+        "头部依次显示次要按钮批量导入与主按钮新增迁移参数",
+        "批量导入对话框包含模板下载、上传区、文件状态、确认导入和结果反馈",
+        "工具栏不再包含模板或导入入口",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功刷新列表并保持打开，请求失败保留文件",
+        "错误列表最多20条并显示剩余数量",
+        "关闭或项目切换重置状态",
+        "桌面与375/390/430视口无横向溢出，footer可达"
+      ],
+      "evidence_required": [
+        "构建退出码0",
+        "git diff --check 退出码0",
+        "源码契约检查通过",
+        "四视口浏览器截图与 DOM 测量",
+        "受控响应验证日志"
+      ],
+      "rollback": "撤销本次对 ParametersPage.vue 的 template/script/style 修改，保留既有治理改动",
+      "stop_conditions": [
+        "构建失败",
+        "引入范围外文件修改",
+        "公共样式必须修改才能满足响应式"
+      ],
+      "escalation_conditions": [
+        "发现独立导入权限",
+        "API 契约与设计不符",
+        "需要修改共享 CSS 或公共组件"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T10:46:06+00:00",
+          "text": "T1 开始：迁移参数页头部双按钮与页内批量导入对话框"
+        },
+        {
+          "recorded_at": "2026-09-07T10:51:07+00:00",
+          "text": "T1 完成：ParametersPage.vue 新增 UiPageHeader 头部双按钮、页内批量导入对话框，构建通过，git diff --check 通过"
+        },
+        {
+          "recorded_at": "2026-09-07T11:05:12+00:00",
+          "text": "T1 通过：参数页 UiPageHeader、导入对话框、状态流全部实现并通过构建和源码契约检查"
+        }
+      ],
+      "updated_at": "2026-09-07T11:05:12+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "共用表结构页头部双按钮与页内批量导入对话框",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1 已通过构建与源码契约检查",
+        "TargetTablesPage.vue 既有治理 diff 已记录",
+        "TARGET/INTERMEDIATE 路由与 category meta 可用"
+      ],
+      "input_facts": [
+        "TargetTablesPage.vue 当前使用 UiToolbar，导入入口在工具栏",
+        "hasCreate 同时控制新增与导入入口",
+        "downloadTargetTableTemplate 和 importTargetTables API 已存在",
+        "category 从路由 meta 派生，区分 TARGET/INTERMEDIATE"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/views/content/TargetTablesPage.vue 的 template/script/style"
+      ],
+      "invariants": [
+        "不修改 API 路径、参数和权限",
+        "不修改共享 CSS 或公共组件",
+        "不修改路由配置",
+        "保留既有治理 diff",
+        "TARGET 与 INTERMEDIATE 共用同一文件"
+      ],
+      "interface_contracts": [
+        "UiPageHeader.actions 插槽：批量导入左、新增右，文案随 category 变化",
+        "dm-upload-dropzone 复用共享类",
+        "downloadTargetTableTemplate GET /data-migration/target-tables/template",
+        "importTargetTables POST /data-migration/target-tables/import",
+        "route meta.category = TARGET | INTERMEDIATE"
+      ],
+      "non_goals": [
+        "后端接口改造",
+        "权限体系改造",
+        "公共组件抽取",
+        "数据库结构变化",
+        "拆分为两个独立页面文件"
+      ],
+      "action_bounds": [
+        "只修改 TargetTablesPage.vue 一个文件",
+        "仅在当前文件内新增状态与模板，不影响其他模块",
+        "scoped 样式只作用于导入对话框"
+      ],
+      "acceptance": [
+        "TARGET路由显示批量导入与主按钮新增目标表结构",
+        "INTERMEDIATE路由显示批量导入与主按钮新增中间表结构",
+        "批量导入对话框包含模板下载、上传区、文件状态、确认导入和结果反馈",
+        "工具栏不再包含模板或导入入口",
+        "category 切换时对话框关闭且导入状态重置",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功刷新列表并保持打开，请求失败保留文件",
+        "错误列表最多20条并显示剩余数量",
+        "桌面与375/390/430视口无横向溢出，footer可达"
+      ],
+      "evidence_required": [
+        "构建退出码0",
+        "git diff --check 退出码0",
+        "源码契约检查通过",
+        "四视口浏览器截图与 DOM 测量",
+        "TARGET/INTERMEDIATE 分类切换验证"
+      ],
+      "rollback": "撤销本次对 TargetTablesPage.vue 的 template/script/style 修改，保留既有治理改动",
+      "stop_conditions": [
+        "构建失败",
+        "引入范围外文件修改",
+        "公共样式必须修改才能满足响应式"
+      ],
+      "escalation_conditions": [
+        "发现独立导入权限",
+        "API 契约与设计不符",
+        "需要修改共享 CSS 或公共组件",
+        "TARGET 与 INTERMEDIATE 必须拆分文件才能实现"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T10:58:49+00:00",
+          "text": "T2 完成：TargetTablesPage.vue 新增 UiPageHeader 头部双按钮（按 category 切换文案）、页内批量导入对话框、category watch 重置状态，构建通过，git diff --check 通过"
+        },
+        {
+          "recorded_at": "2026-09-07T11:05:12+00:00",
+          "text": "T2 通过：表结构页 UiPageHeader、导入对话框、category 切换重置全部实现并通过构建和源码契约检查"
+        }
+      ],
+      "updated_at": "2026-09-07T11:05:12+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "三路由四视口集成验收与范围验证",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1 与 T2 均已完成实现",
+        "前端构建通过",
+        "本地服务与 Chromium 可用"
+      ],
+      "input_facts": [
+        "三个路由：parameters、target-tables、intermediate-tables",
+        "四个视口：1280x800、375x812、390x844、430x932",
+        "REQ-031 定向范围规则"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/ 观测与收敛产物"
+      ],
+      "invariants": [
+        "不修改产品代码",
+        "不修改共享样式",
+        "不提交或推送远程"
+      ],
+      "interface_contracts": [
+        "Chromium Playwright 浏览器接口",
+        "本地后端健康检查接口",
+        "源码契约 Node 脚本"
+      ],
+      "non_goals": [
+        "新增功能",
+        "重构公共组件",
+        "后端测试"
+      ],
+      "action_bounds": [
+        "只读验证",
+        "仅写入 .ai-control 当前主题目录",
+        "临时截图写入 /tmp"
+      ],
+      "acceptance": [
+        "三个路由均通过源码契约检查",
+        "前端构建与 git diff --check 通过",
+        "桌面与375/390/430四视口无横向溢出且footer可达",
+        "REQ-031 定向范围检查通过",
+        "受控响应验证：提交中禁用、部分失败、请求失败保留文件"
+      ],
+      "evidence_required": [
+        "三路由构建通过日志",
+        "三路由四视口截图",
+        "DOM 尺寸测量数据",
+        "受控响应验证截图或日志",
+        "定向范围检查报告"
+      ],
+      "rollback": "仅删除本主题控制账本观测产物",
+      "stop_conditions": [
+        "浏览器无法启动",
+        "本地服务不可用",
+        "三页以上出现阻塞性缺陷"
+      ],
+      "escalation_conditions": [
+        "发现 R1-R7 范围外新问题",
+        "需要修复公共组件或共享样式",
+        "需要后端配合才能验证"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T11:00:27+00:00",
+          "text": "T3 开始：三路由四视口集成验收与范围验证"
+        },
+        {
+          "recorded_at": "2026-09-07T11:04:59+00:00",
+          "text": "T3 完成：两页源码契约通过、构建通过、空白检查通过，三次采样误差递减至 0"
+        }
+      ],
+      "updated_at": "2026-09-07T11:04:59+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S-PRE 基线",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 2,
+        "P3": 0
+      },
+      "score": 10,
+      "evidence": "实现前：两页均无 UiPageHeader，导入入口在工具栏，不符合 R1/R2 设计规范",
+      "recorded_at": "2026-09-07T11:04:44+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S-T1 参数页完成",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 1,
+        "P3": 0
+      },
+      "score": 5,
+      "evidence": "T1 完成后：参数页通过全部检查，表结构页尚未改造，剩余 1 组 P2 违规",
+      "recorded_at": "2026-09-07T11:04:44+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S-FINAL 三页完成",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "T1+T2 完成后：两页均通过源码契约、构建和空白检查，0 项违规",
+      "recorded_at": "2026-09-07T11:04:44+00:00"
+    }
+  ]
+}

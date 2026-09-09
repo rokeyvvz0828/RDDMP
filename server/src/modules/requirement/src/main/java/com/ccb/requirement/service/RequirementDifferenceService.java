@@ -5,12 +5,19 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
-import com.ccb.workflow.service.WorkflowService;
+import com.ccb.workflow.integration.WorkflowBusinessContext;
+import com.ccb.workflow.integration.WorkflowBusinessGateway;
+import com.ccb.workflow.integration.WorkflowStartDefinitionCommand;
+import com.ccb.workflow.integration.WorkflowStartResult;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +25,6 @@ import java.util.Map;
 import com.ccb.requirement.support.RequirementIds;
 import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
-import com.ccb.requirement.support.WorkflowBizContextHelper;
 
 /** 新建项目需求差异清单：生命周期状态机（待评审→评审中→已评审/已退回）、数据范围与改动记录。 */
 @Service
@@ -46,17 +52,17 @@ public class RequirementDifferenceService {
     private final RequirementChangeLogService changeLog;
     private final RequirementSecurityService security;
     private final RequirementSystemService systemService;
-    private final WorkflowService workflowService;
+    private final WorkflowBusinessGateway workflowGateway;
 
     public RequirementDifferenceService(JdbcTemplate jdbc, RequirementChangeLogService changeLog,
                                         RequirementSecurityService security,
                                         RequirementSystemService systemService,
-                                        WorkflowService workflowService) {
+                                        WorkflowBusinessGateway workflowGateway) {
         this.jdbc = jdbc;
         this.changeLog = changeLog;
         this.security = security;
         this.systemService = systemService;
-        this.workflowService = workflowService;
+        this.workflowGateway = workflowGateway;
     }
 
     public PageResult<Map<String, Object>> list(long projectId, String reviewStatus, String devStatus,
@@ -162,7 +168,7 @@ public class RequirementDifferenceService {
      * 提交评审：待评审/已退回 → 评审中，并启动审批流（requirement.diff.review）。
      * <p>发起前会自动终结本差异遗留的同名 business_key（req-diff:{id}）RUNNING 实例，避免重提产生双实例脏数据。
      * 业务字段先改为"评审中"并锁定；审批人在工作流中心 APPROVE/REJECT 后，
-     * 由 RequirementWorkflowListener 接收 WorkflowInstanceCompletedEvent 幂等回写"已评审/已退回"。
+     * 由 RequirementWorkflowListener 消费持久化生命周期事件，幂等回写"已评审/已退回"。
      */
     @Transactional
     public Map<String, Object> submitReview(long id, List<Long> approverIds, String reportDocName, AuthUser user) {
@@ -186,11 +192,6 @@ public class RequirementDifferenceService {
         variables.put("submitterName", user.displayName());
         variables.put("approverIds", approverIds);
         variables.put("fromStatus", status);
-        Map<String, Object> instance = workflowService.start(definitionId, businessKey, variables, user);
-        long instanceId = ((Number) instance.get("id")).longValue();
-        // 补写工作流实例的业务上下文（代办列表的业务事项/详情跳转依赖 action_path、business_title）
-        // project_ref 使用需求模块 req_project.project_code，与前端 ProjectContextItem.ref（项目编号）格式对齐；
-        // 同时 project_name 兜底，避免跨模块 project_ref 语义不一时前端过滤误杀。
         Map<String, Object> project = jdbc.queryForMap(
                 "SELECT COALESCE(project_code, '') AS project_code, COALESCE(project_name, '') AS project_name FROM req_project WHERE tenant_id = ? AND id = ?",
                 user.tenantId(), ((Number) row.get("project_id")).longValue());
@@ -199,11 +200,12 @@ public class RequirementDifferenceService {
         String title = "差异评审 - " + (row.get("name") == null ? "" : String.valueOf(row.get("name")))
                 + "（" + (row.get("requirement_no") == null ? ("#" + id) : String.valueOf(row.get("requirement_no"))) + "）";
         String ref = (projectCode == null || projectCode.isBlank()) ? null : projectCode;
-        WorkflowBizContextHelper.fill(jdbc, instanceId, user.tenantId(),
-                "requirement", "需求管理", "requirement_diff_review",
-                title, 1,
-                ref, projectName,
-                "/requirements/new-project");
+        WorkflowBusinessContext context = new WorkflowBusinessContext(
+                "requirement", "需求管理", "requirement_diff_review", businessKey, title, 1,
+                ref, projectName, "/requirements/new-project", digest(businessKey + "|" + status + "|" + title));
+        WorkflowStartResult instance = workflowGateway.startByDefinitionId(
+                new WorkflowStartDefinitionCommand(definitionId, context, variables), user);
+        long instanceId = instance.instanceId();
         jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, review_report_name = ?, workflow_instance_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
                 reportDocName == null || reportDocName.isBlank() ? null : reportDocName.substring(0, Math.min(200, reportDocName.length())),
                 instanceId, user.id(), user.tenantId(), id);
@@ -319,6 +321,15 @@ public class RequirementDifferenceService {
             throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布：" + code);
         }
         return ((Number) rows.get(0).get("id")).longValue();
+    }
+
+    private String digest(String value) {
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
     }
 
     public List<Map<String, Object>> changes(long id, AuthUser user) {

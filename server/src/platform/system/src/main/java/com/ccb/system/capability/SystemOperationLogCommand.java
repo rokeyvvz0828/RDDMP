@@ -1,10 +1,11 @@
-package com.ccb.system.audit;
+package com.ccb.system.capability;
 
 import com.ccb.security.model.AuthUser;
 
 import java.util.Set;
 
-public record OperationAuditWriteCommand(
+/** 组合根采集并提交给 system 模块的完整 HTTP 操作日志。 */
+public record SystemOperationLogCommand(
         AuthUser actor,
         String operationCode,
         String moduleCode,

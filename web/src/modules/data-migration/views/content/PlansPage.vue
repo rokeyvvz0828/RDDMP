@@ -429,40 +429,40 @@ watch(scopeProjectId, () => {
         <el-row :gutter="16">
           <el-col :span="24">
             <el-form-item label="上传源文件（支持单文件/多文件，多文件归入同一方案）" :required="!editing">
-              <div v-if="existingAttachments.length" class="attachment-list">
-                <div v-for="(att, i) in existingAttachments" :key="att.attachmentId" class="attachment-item">
-                  <div class="attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
-                  <div class="attachment-info">
-                    <div class="attachment-name" :title="att.fileName">{{ att.fileName }}</div>
-                    <div class="attachment-meta">已绑定 · 附件 #{{ att.attachmentId }}</div>
+              <div v-if="existingAttachments.length" class="dm-attachment-list">
+                <div v-for="(att, i) in existingAttachments" :key="att.attachmentId" class="dm-attachment-item">
+                  <div class="dm-attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
+                  <div class="dm-attachment-info">
+                    <div class="dm-attachment-name" :title="att.fileName">{{ att.fileName }}</div>
+                    <div class="dm-attachment-meta">已绑定 · 附件 #{{ att.attachmentId }}</div>
                   </div>
-                  <div class="attachment-actions">
+                  <div class="dm-attachment-actions">
                     <el-button link type="primary" size="small" @click="doDownloadById(att.attachmentId)"><el-icon><Download /></el-icon></el-button>
                     <el-button link type="danger" size="small" @click="removeExistingAttachment(i)"><el-icon><Delete /></el-icon></el-button>
                   </div>
                 </div>
               </div>
-              <div v-if="pendingFiles.length" class="attachment-list" style="margin-top:8px">
-                <div v-for="(file, i) in pendingFiles" :key="i" class="attachment-item" style="border-style:dashed">
-                  <div class="attachment-icon" style="background:#fdf6ec;color:#e6a23c"><el-icon :size="20"><Document /></el-icon></div>
-                  <div class="attachment-info">
-                    <div class="attachment-name" :title="file.name">{{ file.name }}</div>
-                    <div class="attachment-meta">待上传 · {{ (file.size / 1024).toFixed(1) }} KB</div>
+              <div v-if="pendingFiles.length" class="dm-attachment-list dm-attachment-section">
+                <div v-for="(file, i) in pendingFiles" :key="i" class="dm-attachment-item is-pending">
+                  <div class="dm-attachment-icon is-pending"><el-icon :size="20"><Document /></el-icon></div>
+                  <div class="dm-attachment-info">
+                    <div class="dm-attachment-name" :title="file.name">{{ file.name }}</div>
+                    <div class="dm-attachment-meta">待上传 · {{ (file.size / 1024).toFixed(1) }} KB</div>
                   </div>
-                  <div class="attachment-actions">
+                  <div class="dm-attachment-actions">
                     <el-button link type="danger" size="small" @click="removePendingFile(i)"><el-icon><Delete /></el-icon></el-button>
                   </div>
                 </div>
               </div>
-              <div v-if="!existingAttachments.length && !pendingFiles.length" class="attachment-empty">
+              <div v-if="!existingAttachments.length && !pendingFiles.length" class="dm-attachment-empty">
                 <el-icon :size="24"><Document /></el-icon><span>暂无源文件</span>
               </div>
-              <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+              <div class="dm-upload-actions">
                 <el-upload :auto-upload="false" :multiple="true" :on-change="(f: any) => handleFilePick(f.raw)" :show-file-list="false">
                   <el-button type="primary" plain><el-icon><Plus /></el-icon>选择文件</el-button>
                 </el-upload>
               </div>
-              <div style="color:#909399;font-size:12px;margin-top:4px">选择文件后点击保存才会上传；单文件即单条上传，多文件即批量归入同一方案。同一「项目+颗粒度+方案类型+关联系统」仅允许一条。</div>
+              <div class="dm-upload-hint">选择文件后点击保存才会上传；单文件即单条上传，多文件即批量归入同一方案。同一「项目+颗粒度+方案类型+关联系统」仅允许一条。</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -485,13 +485,13 @@ watch(scopeProjectId, () => {
             <el-descriptions-item label="上传人">{{ sd(detailData).created_by_name ?? '—' }}</el-descriptions-item>
             <el-descriptions-item label="上传时间">{{ fmtDate(detailData.created_at) }}</el-descriptions-item>
           </el-descriptions>
-          <div v-if="detailData.attachments && detailData.attachments.length" style="margin-top:16px">
-            <div style="font-weight:500;margin-bottom:8px">源文件列表</div>
-            <div class="attachment-list">
-              <div v-for="att in detailData.attachments" :key="att.attachment_id" class="attachment-item">
-                <div class="attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
-                <div class="attachment-info"><div class="attachment-name" :title="att.file_name">{{ att.file_name }}</div></div>
-                <div class="attachment-actions">
+          <div v-if="detailData.attachments && detailData.attachments.length" class="dm-attachment-section">
+            <div class="dm-attachment-section-title">源文件列表</div>
+            <div class="dm-attachment-list">
+              <div v-for="att in detailData.attachments" :key="att.attachment_id" class="dm-attachment-item">
+                <div class="dm-attachment-icon"><el-icon :size="20"><Document /></el-icon></div>
+                <div class="dm-attachment-info"><div class="dm-attachment-name" :title="att.file_name">{{ att.file_name }}</div></div>
+                <div class="dm-attachment-actions">
                   <el-button link type="primary" size="small" @click="doDownloadById(att.attachment_id)"><el-icon><Download /></el-icon>下载</el-button>
                   <el-button link type="primary" size="small" @click="doPreviewById(att.attachment_id, att.file_name)"><el-icon><View /></el-icon>预览</el-button>
                 </div>
@@ -509,12 +509,12 @@ watch(scopeProjectId, () => {
     <!-- 附件选择弹窗 -->
     <el-dialog v-model="attSelectDialogOpen" :title="attSelectMode === 'download' ? '选择要下载的源文件' : '选择要预览的源文件'" width="480px">
       <div v-loading="attSelectLoading" style="min-height:100px">
-        <div v-if="attSelectList.length === 0 && !attSelectLoading" style="text-align:center;color:#909399;padding:20px">暂无源文件</div>
-        <div v-else class="attachment-select-list">
-          <div v-for="att in attSelectList" :key="att.attachment_id" class="attachment-select-item" @click="doAttachmentSelectAction(att)">
-            <el-icon :size="18" style="color:#409eff;margin-right:8px"><Document /></el-icon>
-            <span class="attachment-select-name" :title="att.file_name">{{ att.file_name }}</span>
-            <el-icon :size="14" style="color:#c0c4cc;margin-left:auto"><Download v-if="attSelectMode === 'download'" /><View v-else /></el-icon>
+        <div v-if="attSelectList.length === 0 && !attSelectLoading" class="dm-attachment-select-empty">暂无源文件</div>
+        <div v-else class="dm-attachment-select-list">
+          <div v-for="att in attSelectList" :key="att.attachment_id" class="dm-attachment-select-item" @click="doAttachmentSelectAction(att)">
+            <el-icon class="dm-attachment-select-icon" :size="18"><Document /></el-icon>
+            <span class="dm-attachment-select-name" :title="att.file_name">{{ att.file_name }}</span>
+            <el-icon class="dm-attachment-select-icon is-action" :size="14"><Download v-if="attSelectMode === 'download'" /><View v-else /></el-icon>
           </div>
         </div>
       </div>
@@ -524,19 +524,3 @@ watch(scopeProjectId, () => {
     <UiFilePreview v-model="previewDialogOpen" :url="previewResult?.previewUrl || null" :file-name="previewResult?.fileName || '文件预览'" />
   </section>
 </template>
-
-<style scoped>
-.attachment-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-.attachment-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--panel-bg, #f5f7fa); border: 1px solid var(--line, #e4e7ed); border-radius: 8px; transition: all 0.2s ease; }
-.attachment-item:hover { border-color: var(--brand, #409eff); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
-.attachment-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: var(--brand-light, #ecf5ff); border-radius: 8px; color: var(--brand, #409eff); flex-shrink: 0; }
-.attachment-info { flex: 1; min-width: 0; }
-.attachment-name { font-size: 14px; font-weight: 500; color: var(--text, #303133); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.attachment-meta { font-size: 12px; color: var(--muted, #909399); margin-top: 2px; }
-.attachment-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.attachment-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; background: var(--panel-bg, #f5f7fa); border: 1px dashed var(--line, #e4e7ed); border-radius: 8px; color: var(--muted, #909399); font-size: 14px; }
-.attachment-select-list { display: flex; flex-direction: column; gap: 4px; }
-.attachment-select-item { display: flex; align-items: center; padding: 12px 16px; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
-.attachment-select-item:hover { background-color: var(--brand-light, #ecf5ff); }
-.attachment-select-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; color: var(--text, #303133); }
-</style>

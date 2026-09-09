@@ -1,0 +1,99 @@
+{
+  "objective": "迁移检核规则用户能够在当前列表页通过清晰的页面级操作完成单条新增或批量导入，并在批量导入对话框中获得完整、可恢复的状态反馈。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "页面头部必须按顺序提供次要操作‘批量导入’和主操作‘新增迁移检核规则’，并沿用新增权限与项目可用性约束。",
+      "acceptance": ["头部显示批量导入在左、新增迁移检核规则在右", "新增按钮使用 primary 样式", "无新增权限或项目未就绪时入口不展示"],
+      "priority": "must",
+      "source": "2026-09-07 用户确认并批准的设计 R1",
+      "counterexample": ["按钮仍在筛选工具栏", "批量导入被设置为主按钮", "无权限时入口可见"]
+    },
+    {
+      "id": "R2",
+      "statement": "批量导入必须在当前列表页对话框内完成模板下载、Excel 选择、确认导入和结果查看，不改变路由、筛选或分页。",
+      "acceptance": ["点击批量导入只打开当前页对话框", "四个导入步骤均位于对话框", "关闭对话框不改变列表查询上下文且再次打开为初始状态"],
+      "priority": "must",
+      "source": "2026-09-07 用户确认并批准的设计 R2",
+      "counterexample": ["跳转独立导入路由", "模板或结果仍散落在工具栏/正文", "关闭后保留上次导入状态"]
+    },
+    {
+      "id": "R3",
+      "statement": "导入流程必须覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置，并按批准规则控制刷新、重试与关闭。",
+      "acceptance": ["无文件、项目不可用或提交中时确认禁用", "提交中不能关闭或重复提交", "成功或部分成功刷新列表且对话框保持打开", "结果展示总数、成功数、失败数和最多20条错误", "请求失败保留文件供重试", "重新选文件、关闭或项目切换清理不再适用状态"],
+      "priority": "must",
+      "source": "2026-09-07 用户批准设计 R3 与项目全状态要求",
+      "counterexample": ["无文件发送请求", "提交中可关闭或重复提交", "成功后立即关闭或清空结果", "请求失败强制重新选文件"]
+    },
+    {
+      "id": "R4",
+      "statement": "列表工具栏必须只承载筛选、查询、重置、导出和批量删除。",
+      "acceptance": ["工具栏不包含模板下载、Excel选择、提交导入、导入结果或新增", "筛选、导出、行选择和批量删除行为保留"],
+      "priority": "must",
+      "source": "2026-09-07 用户批准设计 R4",
+      "counterexample": ["导入步骤仍在工具栏", "重组时丢失导出或批量删除"]
+    },
+    {
+      "id": "R5",
+      "statement": "导入对话框必须复用数据迁移上传样式，并在桌面和三个规定手机视口无横向溢出、正文可滚动且底部操作可达。",
+      "acceptance": ["1280x800、375x812、390x844、430x932 的页面与对话框均无横向溢出", "拖拽区占满正文宽度", "长文件名和错误文本不撑破容器", "长内容时正文可纵向滚动且底部按钮可达", "语义主题下内容可辨识"],
+      "priority": "must",
+      "source": "批准设计 R5、AGENTS.md 与 design-h5.md",
+      "counterexample": ["新增页面私有上传视觉", "手机端对话框超宽", "错误列表使 footer 不可达"]
+    },
+    {
+      "id": "R6",
+      "statement": "模板与导入 API、RBAC、projectId 来源、Excel 行级字段解析、后端和数据库契约必须保持不变。",
+      "acceptance": ["仍调用 downloadRuleTemplate 与 importMigrationCheckRules({ projectId }, file)", "projectId 仍来自 useProjectScope", "对话框不新增项目、目标类型、规则大类或系统输入", "不修改公共 UI、共享 CSS、路由、API、后端或数据库"],
+      "priority": "must",
+      "source": "2026-09-07 用户批准设计 R6 与实施计划约束",
+      "counterexample": ["新增预校验 API 或路由", "对话框覆盖项目范围", "修改后端或公共组件"]
+    }
+  ],
+  "invariants": [
+    "projectId 始终来自顶部全局项目上下文并参与导入请求",
+    "现有 hasCreate 权限判断继续控制单条新增与批量导入入口",
+    "现有模板和导入 API 签名不变",
+    "Excel 中目标类型、规则大类和关联系统继续按行解析",
+    "成功或部分成功后刷新列表但保持对话框打开",
+    "关闭或项目切换清理待导入文件、请求错误和结果",
+    "保护工作区中已有未提交修改"
+  ],
+  "constraints": [
+    "产品代码只修改 web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+    "只写入 REQ-031 writable_paths",
+    "不修改 web/src/components/ui、data-migration.css、路由、API、后端、数据库、权限或审计",
+    "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和模块共享上传类",
+    "验收覆盖1280x800、375x812、390x844、430x932",
+    "不执行提交、推送、合并或发布"
+  ],
+  "non_goals": [
+    "不新增独立导入页面或路由",
+    "不增加导入预览、预校验、字段映射或导入历史",
+    "不修改 Excel 模板或后端解析",
+    "不治理数据迁移以外模块",
+    "不修复 REQ-061"
+  ],
+  "assumptions": [
+    {"text": "hasCreate 合法控制单条新增和批量导入", "basis": "当前页面两个入口均使用 hasCreate，批准设计要求沿用现有权限", "falsifier": "建模发现独立导入权限或服务端拒绝该权限组合"},
+    {"text": "模块共享上传类足以支持本对话框", "basis": "data-migration.css 已定义 dm-upload-dropzone 与 dm-attachment-*", "falsifier": "浏览器测量证明必须修改共享样式才能避免溢出或主题问题"},
+    {"text": "前端本地环境可完成结构和布局验收", "basis": "此前 Vite 服务可能运行于 5173", "falsifier": "执行时无法启动前端或无法进入目标路由"}
+  ],
+  "unknowns": [
+    {"question": "本地后端、认证和非敏感测试 Excel 是否足以覆盖全部成功、部分失败和请求失败分支？", "impact": "可能限制动态导入分支的运行证据，但不改变实现方向", "owner": "observing", "blocking": false}
+  ],
+  "decisions": [
+    {"question": "批量导入使用页面内对话框还是独立路由？", "options": ["页面内对话框", "独立路由"], "selected": "页面内对话框", "blocking": false, "source": "用户确认"},
+    {"question": "页面头部操作主次如何安排？", "options": ["批量导入次要、新增主操作", "批量导入主操作"], "selected": "批量导入次要、新增主操作", "blocking": false, "source": "用户批准设计"},
+    {"question": "导入完成后是否关闭对话框？", "options": ["保持打开并展示结果", "自动关闭"], "selected": "保持打开并展示结果", "blocking": false, "source": "用户批准设计"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "头部按钮顺序、样式、权限和项目状态可见性", "candidate_sensor": "源码契约检查与浏览器DOM检查"},
+    {"requirement_id": "R2", "observable": "点击前后路由、对话框内容和列表查询上下文", "candidate_sensor": "浏览器路由与交互检查"},
+    {"requirement_id": "R3", "observable": "七个状态下按钮、文件、结果、关闭和刷新行为", "candidate_sensor": "浏览器状态检查与网络响应"},
+    {"requirement_id": "R4", "observable": "UiToolbar 内操作集合", "candidate_sensor": "Node源码契约脚本与浏览器DOM检查"},
+    {"requirement_id": "R5", "observable": "四视口scrollWidth/clientWidth、正文滚动与footer可达性", "candidate_sensor": "真实浏览器尺寸断言与截图"},
+    {"requirement_id": "R6", "observable": "代码差异范围、API调用签名、projectId来源和构建结果", "candidate_sensor": "git diff、源码检查、REQ-031范围检查与前端构建"}
+  ],
+  "baseline_status": "ready"
+}

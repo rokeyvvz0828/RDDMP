@@ -1,5 +1,7 @@
 package com.ccb.system.audit;
 
+import com.ccb.system.capability.SystemOperationLogCommand;
+import com.ccb.system.capability.SystemOperationLogWriter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
-public class OperationAuditWriter {
+public class OperationAuditWriter implements SystemOperationLogWriter {
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
 
@@ -22,7 +24,8 @@ public class OperationAuditWriter {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void record(OperationAuditWriteCommand command) {
+    @Override
+    public void record(SystemOperationLogCommand command) {
         ProjectSnapshot project = findProject(command.actor().tenantId(), command.projectReference());
         jdbc.update("""
                         INSERT INTO sys_operation_log
@@ -64,7 +67,7 @@ public class OperationAuditWriter {
         return new ProjectSnapshot(((Number) row.get("id")).longValue(), truncate(String.valueOf(row.get("project_name")), 128));
     }
 
-    private String changedFields(OperationAuditWriteCommand command) {
+    private String changedFields(SystemOperationLogCommand command) {
         if (command.changedFields() == null || command.changedFields().isEmpty()) {
             return null;
         }
