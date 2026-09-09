@@ -126,7 +126,7 @@ class NotificationSseServiceTest {
     }
 
     @Test
-    void disconnectedEmitterIsRemovedWithoutErrorDispatch() throws Exception {
+    void disconnectedEmitterIsRemovedWithoutCompletingBrokenResponse() throws Exception {
         SseEmitter emitter = mock(SseEmitter.class);
         doNothing().doThrow(new IOException("broken pipe"))
                 .when(emitter).send(any(SseEmitter.SseEventBuilder.class));
@@ -139,7 +139,7 @@ class NotificationSseServiceTest {
         service.heartbeat();
 
         assertEquals(0, service.activeConnectionCount(1L, 7L));
-        verify(emitter).complete();
+        verify(emitter, never()).complete();
         verify(emitter, never()).completeWithError(any());
     }
 
