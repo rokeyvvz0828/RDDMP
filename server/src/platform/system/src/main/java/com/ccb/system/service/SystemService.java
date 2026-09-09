@@ -32,7 +32,7 @@ public class SystemService {
     private final MinioStorageService storage;
 
     private final Map<String, Spec> specs = Map.of(
-            "users", new Spec("sys_user", "id, username, display_name, mobile_phone, org_id, avatar_object_key, status, last_login_at, created_at", "id DESC", Set.of("username", "password", "display_name", "mobile_phone", "org_id", "status"), Set.of("display_name", "mobile_phone", "org_id", "status")),
+            "users", new Spec("sys_user", "id, username, display_name, mobile_phone, org_id, avatar_object_key, status, last_login_at, created_at", "id DESC", Set.of("username", "password", "display_name", "mobile_phone", "org_id", "status"), Set.of("password", "display_name", "mobile_phone", "org_id", "status")),
             "roles", new Spec("sys_role", "id, role_code, role_name, status, created_at", "id DESC", Set.of("role_code", "role_name", "status"), Set.of("role_name", "status")),
             "orgs", new Spec("sys_org", "id, parent_id, org_code, org_name, sort_no, status, created_at", "sort_no, id", Set.of("parent_id", "org_code", "org_name", "sort_no", "status"), Set.of("parent_id", "org_name", "sort_no", "status")),
             "menus", new Spec("sys_menu", "id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no, visible, status", "parent_id, sort_no, id", Set.of("parent_id", "menu_type", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "sort_no", "visible", "status"), Set.of("parent_id", "menu_name", "route_name", "route_path", "component_path", "permission_code", "icon", "sort_no", "visible", "status")),
@@ -84,9 +84,7 @@ public class SystemService {
         Spec spec = spec(resource);
         Map<String, Object> fields = allowedFields(spec.createFields(), input);
         validateOrganizationParent(resource, null, fields, user.tenantId());
-        if (resource.equals("users") && fields.containsKey("password")) {
-            fields.put("password_hash", passwordEncoder.encode(String.valueOf(fields.remove("password"))));
-        }
+        encodeUserPassword(resource, fields, false);
         fields.put("tenant_id", user.tenantId());
         fields.put("id", nextId());
         insert(spec.table(), fields);
@@ -99,6 +97,7 @@ public class SystemService {
         requireAction(resource, "update", user);
         Spec spec = spec(resource);
         Map<String, Object> fields = allowedFields(spec.updateFields(), input);
+        encodeUserPassword(resource, fields, true);
         validateOrganizationParent(resource, id, fields, user.tenantId());
         if (fields.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "No editable fields");
         List<Object> args = new ArrayList<>();
@@ -110,6 +109,13 @@ public class SystemService {
         if (changed == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Resource not found");
         audit(user, "system:" + resource + ":update");
         return findById(spec, id, user.tenantId(), resource);
+    }
+
+    private void encodeUserPassword(String resource, Map<String, Object> fields, boolean allowBlank) {
+        if (!resource.equals("users") || !fields.containsKey("password")) return;
+        String password = String.valueOf(fields.remove("password"));
+        if (allowBlank && password.isBlank()) return;
+        fields.put("password_hash", passwordEncoder.encode(password));
     }
 
     @Transactional

@@ -1375,17 +1375,33 @@ body,
   display: grid;
   grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   gap: 16px;
-  min-height: 520px;
+  height: clamp(520px, calc(100dvh - 210px), 760px);
+  min-height: 0;
 }
 
 .parameter-categories,
 .parameter-detail {
   min-width: 0;
+  height: 100%;
   background: var(--panel-bg);
   border-color: var(--line);
 }
 
+.parameter-categories {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.parameter-categories .el-card__header {
+  flex: 0 0 auto;
+}
+
 .parameter-categories .el-card__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   padding: 14px;
 }
 
@@ -1399,8 +1415,14 @@ body,
 
 .parameter-category-list {
   display: grid;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 6px;
+  min-height: 0;
   margin-top: 12px;
+  padding-right: 4px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .parameter-category {
@@ -1452,6 +1474,8 @@ body,
 }
 
 .parameter-detail {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -1469,6 +1493,8 @@ body,
 }
 
 .parameter-detail .ui-data-table {
+  flex: 1 1 auto;
+  min-height: 0;
   border: 0;
   box-shadow: none;
 }
@@ -1562,10 +1588,17 @@ body,
 @media (max-width: 860px) {
   .parameter-layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .parameter-categories {
+    height: auto;
+    max-height: 420px;
     min-height: 260px;
+  }
+
+  .parameter-category-list {
+    max-height: 320px;
   }
 
   .permission-tree-node {
