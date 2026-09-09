@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, CircleCheck, CircleCheckFilled, CircleCloseFilled, Delete, FolderAdd, InfoFilled, Refresh, RefreshLeft, Right, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { archiveNotification, archiveReadNotifications, getNotificationModules, getNotifications, getNotificationUnreadCount, markAllNotificationsRead, markNotificationRead, restoreNotification } from '../../api/notifications'
+import { archiveNotification, archiveReadNotifications, createNotificationStreamTicket, getNotificationModules, getNotifications, getNotificationUnreadCount, markAllNotificationsRead, markNotificationRead, restoreNotification } from '../../api/notifications'
 import { apiErrorMessage } from '../../api/error'
 import type { NotificationLevel, NotificationModuleSummary, NotificationView, SystemNotification } from '../../types/notification'
 import UiEmptyState from './UiEmptyState.vue'
@@ -25,17 +25,21 @@ const modulesFailed = ref(false)
 const markingAll = ref(false)
 const archivingRead = ref(false)
 const pendingNotificationId = ref<number | null>(null)
-let pollTimer: number | null = null
 let unreadCountRequest: Promise<UnreadRefreshResult> | null = null
-let pollingCycle: Promise<void> | null = null
+let streamRefreshRequest: Promise<void> | null = null
 let notifyCountFailure = false
-let pollFailureCount = 0
-let suppressPollingDrawerRefresh = 0
+let notificationStream: EventSource | null = null
+let reconnectTimer: number | null = null
+let fallbackPollTimer: number | null = null
+let connectingStream = false
+let streamFailureCount = 0
+let connectionGeneration = 0
+let suppressStreamDrawerRefresh = 0
 let disposed = false
 let listRequestVersion = 0
 let moduleRequestVersion = 0
-const POLL_INTERVAL_MS = 1_000
-const POLL_FAILURE_INTERVALS_MS = [2_000, 5_000, 15_000]
+const STREAM_RECONNECT_INTERVALS_MS = [1_000, 2_000, 5_000, 15_000, 30_000]
+const FALLBACK_POLL_INTERVAL_MS = 60_000
 
 interface UnreadRefreshResult {
   success: boolean
@@ -79,52 +83,114 @@ function refreshUnreadCount(silent = true) {
   return unreadCountRequest
 }
 
-function clearPollTimer() {
-  if (pollTimer === null) return
-  window.clearTimeout(pollTimer)
-  pollTimer = null
+function clearReconnectTimer() {
+  if (reconnectTimer === null) return
+  window.clearTimeout(reconnectTimer)
+  reconnectTimer = null
 }
 
-function schedulePoll(delay: number) {
-  clearPollTimer()
-  if (disposed || document.visibilityState !== 'visible') return
-  pollTimer = window.setTimeout(() => {
-    pollTimer = null
-    void runPollingCycle()
-  }, delay)
+function clearFallbackPollTimer() {
+  if (fallbackPollTimer === null) return
+  window.clearTimeout(fallbackPollTimer)
+  fallbackPollTimer = null
 }
 
-function failurePollDelay() {
-  return POLL_FAILURE_INTERVALS_MS[Math.min(Math.max(pollFailureCount - 1, 0), POLL_FAILURE_INTERVALS_MS.length - 1)]
+function closeNotificationStream() {
+  if (!notificationStream) return
+  notificationStream.close()
+  notificationStream = null
 }
 
-function runPollingCycle() {
-  if (disposed || document.visibilityState !== 'visible') return Promise.resolve()
-  clearPollTimer()
-  if (pollingCycle) return pollingCycle
-  pollingCycle = (async () => {
-    const result = await refreshUnreadCount()
+function refreshFromStreamEvent() {
+  if (streamRefreshRequest) return streamRefreshRequest
+  streamRefreshRequest = (async () => {
+    await refreshUnreadCount()
     if (disposed || document.visibilityState !== 'visible') return
-    if (result.success) {
-      pollFailureCount = 0
-      if (result.changed && open.value && activeView.value !== 'ARCHIVED' && suppressPollingDrawerRefresh === 0) {
-        await Promise.all([loadNotifications(), loadModules()])
-      }
-      schedulePoll(POLL_INTERVAL_MS)
-    } else {
-      pollFailureCount++
-      schedulePoll(failurePollDelay())
+    if (open.value && suppressStreamDrawerRefresh === 0) {
+      await Promise.all([loadNotifications(), loadModules()])
     }
   })().finally(() => {
-    pollingCycle = null
+    streamRefreshRequest = null
   })
-  return pollingCycle
+  return streamRefreshRequest
 }
 
-function restartPolling() {
-  pollFailureCount = 0
-  clearPollTimer()
-  return runPollingCycle()
+function reconnectDelay() {
+  return STREAM_RECONNECT_INTERVALS_MS[Math.min(
+    Math.max(streamFailureCount - 1, 0),
+    STREAM_RECONNECT_INTERVALS_MS.length - 1
+  )]
+}
+
+function scheduleFallbackPoll() {
+  clearFallbackPollTimer()
+  if (disposed || document.visibilityState !== 'visible' || streamFailureCount < STREAM_RECONNECT_INTERVALS_MS.length) return
+  fallbackPollTimer = window.setTimeout(async () => {
+    fallbackPollTimer = null
+    await refreshUnreadCount()
+    if (open.value && suppressStreamDrawerRefresh === 0) {
+      await Promise.all([loadNotifications(), loadModules()])
+    }
+    scheduleFallbackPoll()
+  }, FALLBACK_POLL_INTERVAL_MS)
+}
+
+function scheduleStreamReconnect() {
+  clearReconnectTimer()
+  if (disposed || document.visibilityState !== 'visible') return
+  reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = null
+    void connectNotificationStream()
+  }, reconnectDelay())
+}
+
+function registerStreamFailure(source?: EventSource) {
+  if (source && source !== notificationStream) return
+  closeNotificationStream()
+  streamFailureCount++
+  if (streamFailureCount >= STREAM_RECONNECT_INTERVALS_MS.length) scheduleFallbackPoll()
+  scheduleStreamReconnect()
+}
+
+async function connectNotificationStream() {
+  if (disposed || document.visibilityState !== 'visible' || connectingStream || notificationStream) return
+  const generation = connectionGeneration
+  connectingStream = true
+  try {
+    const ticket = (await createNotificationStreamTicket()).data.data.ticket
+    if (disposed || document.visibilityState !== 'visible' || generation !== connectionGeneration) return
+
+    const source = new EventSource(`/api/notifications/stream?ticket=${encodeURIComponent(ticket)}`)
+    notificationStream = source
+    source.onopen = () => {
+      if (source !== notificationStream) return
+      streamFailureCount = 0
+      clearReconnectTimer()
+      clearFallbackPollTimer()
+    }
+    source.addEventListener('notification', () => {
+      if (source === notificationStream) void refreshFromStreamEvent()
+    })
+    source.onerror = () => registerStreamFailure(source)
+  } catch {
+    if (generation === connectionGeneration) registerStreamFailure()
+  } finally {
+    if (generation === connectionGeneration) connectingStream = false
+  }
+}
+
+async function startNotificationUpdates() {
+  if (disposed || document.visibilityState !== 'visible') return
+  await refreshUnreadCount()
+  if (!disposed && document.visibilityState === 'visible') void connectNotificationStream()
+}
+
+function stopNotificationUpdates() {
+  connectionGeneration++
+  connectingStream = false
+  clearReconnectTimer()
+  clearFallbackPollTimer()
+  closeNotificationStream()
 }
 
 async function loadModules(silent = true) {
@@ -181,18 +247,12 @@ async function loadNotifications(reset = true) {
 
 async function showCenter() {
   open.value = true
-  pollFailureCount = 0
-  clearPollTimer()
-  suppressPollingDrawerRefresh++
-  const countRequest = refreshUnreadCount(false)
+  suppressStreamDrawerRefresh++
   try {
-    await Promise.all([loadNotifications(), countRequest, loadModules(false)])
+    await Promise.all([loadNotifications(), refreshUnreadCount(false), loadModules(false)])
   } finally {
-    suppressPollingDrawerRefresh--
+    suppressStreamDrawerRefresh--
   }
-  const countResult = await countRequest
-  pollFailureCount = countResult.success ? 0 : 1
-  schedulePoll(countResult.success ? POLL_INTERVAL_MS : failurePollDelay())
 }
 
 async function readNotification(item: SystemNotification) {
@@ -247,7 +307,7 @@ async function archiveOne(item: SystemNotification) {
     return
   }
   pendingNotificationId.value = item.id
-  suppressPollingDrawerRefresh++
+  suppressStreamDrawerRefresh++
   try {
     await archiveNotification(item.id)
     await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
@@ -255,7 +315,7 @@ async function archiveOne(item: SystemNotification) {
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '消息删除失败'))
   } finally {
-    suppressPollingDrawerRefresh--
+    suppressStreamDrawerRefresh--
     pendingNotificationId.value = null
   }
 }
@@ -263,7 +323,7 @@ async function archiveOne(item: SystemNotification) {
 async function restoreOne(item: SystemNotification) {
   if (archivingRead.value || pendingNotificationId.value !== null) return
   pendingNotificationId.value = item.id
-  suppressPollingDrawerRefresh++
+  suppressStreamDrawerRefresh++
   try {
     await restoreNotification(item.id)
     await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
@@ -271,7 +331,7 @@ async function restoreOne(item: SystemNotification) {
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '消息恢复失败'))
   } finally {
-    suppressPollingDrawerRefresh--
+    suppressStreamDrawerRefresh--
     pendingNotificationId.value = null
   }
 }
@@ -289,7 +349,7 @@ async function archiveAllRead() {
   }
 
   archivingRead.value = true
-  suppressPollingDrawerRefresh++
+  suppressStreamDrawerRefresh++
   try {
     const changed = (await archiveReadNotifications()).data.data.changed
     await Promise.all([loadNotifications(), loadModules(false), refreshUnreadCount()])
@@ -298,7 +358,7 @@ async function archiveAllRead() {
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '批量归档失败'))
   } finally {
-    suppressPollingDrawerRefresh--
+    suppressStreamDrawerRefresh--
     archivingRead.value = false
   }
 }
@@ -317,29 +377,23 @@ watch(selectedModuleCode, () => {
   if (open.value) void loadNotifications()
 })
 
-function refreshOnFocus() {
-  void restartPolling()
-}
-
 function refreshOnVisibilityChange() {
   if (document.visibilityState === 'hidden') {
-    clearPollTimer()
+    stopNotificationUpdates()
     return
   }
-  void restartPolling()
+  void startNotificationUpdates()
 }
 
 onMounted(() => {
   disposed = false
-  void restartPolling()
-  window.addEventListener('focus', refreshOnFocus)
+  void startNotificationUpdates()
   document.addEventListener('visibilitychange', refreshOnVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   disposed = true
-  clearPollTimer()
-  window.removeEventListener('focus', refreshOnFocus)
+  stopNotificationUpdates()
   document.removeEventListener('visibilitychange', refreshOnVisibilityChange)
 })
 </script>

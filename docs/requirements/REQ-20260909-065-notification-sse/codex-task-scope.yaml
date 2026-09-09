@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260909-065",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260909-065-notification-sse/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "platform/system",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260909-065-notification-sse",
+    "worktree": "/Users/zhangwei/Documents/技术相关/RDDMP-notification-sse"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/system/src/main/java/com/ccb/system/notification/NotificationStreamTicket.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/NotificationSseService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationStreamController.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/NotificationSseServiceTest.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/web/NotificationStreamControllerTest.java",
+      "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java",
+      "web/src/api/notifications.ts",
+      "web/src/components/ui/UiNotificationCenter.vue",
+      "deploy/nginx/default.conf.template",
+      "deploy/nginx/host-rddmp.conf",
+      "docs/integration/system-notification-contract.md",
+      "docs/engineering-control/designs/2026-09-09-notification-sse-design.md",
+      "docs/engineering-control/plans/2026-09-09-notification-sse-implementation-plan.md",
+      "docs/requirements/REQ-20260909-065-notification-sse/**",
+      ".ai-control/requirements/req-20260909-065-notification-sse/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/platform/boot/**",
+      "server/src/shared/common/**",
+      "web/src/api/http.ts",
+      "web/src/modules/delivery-showcase/**",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260909-065",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "compatibility": "现有通知 CRUD API 不变；新增票据和 SSE 端点，SSE 不可用时前端降级为 60 秒轮询。",
+    "regression_tests": ["mvn -pl :ccb-system,:ccb-security,:ccb-boot -am test", "npm --prefix web run build"]
+  },
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "not-applicable"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "NotificationSseServiceTest and local stream HTTP probe", "expected": "票据和 SSE 接口符合约定"},
+    {"name": "permission", "command": "ticket user binding tests and exact SecurityConfiguration matcher review", "expected": "仅票据签发需 JWT，流只能由单次票据恢复当前用户"},
+    {"name": "backend", "command": "mvn -pl :ccb-system,:ccb-security,:ccb-boot -am test", "expected": "SSE、票据、事务广播与安全回归通过"},
+    {"name": "frontend", "command": "npm --prefix web run build", "expected": "TypeScript 与 Vite 构建通过"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "全部治理检查通过"},
+    {"name": "browser", "command": "浏览器检查通知请求、SSE、隐藏恢复和抽屉刷新", "expected": "无每秒轮询且无控制台错误"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["一次性认证票据", "长连接资源清理", "事务提交后广播", "公共通知组件", "反向代理缓冲"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260909-065-notification-sse",
+    "control_justification": "涉及认证边界、公共 API、跨前后端长连接协议和部署代理配置，采用完整控制账本。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260909-065-notification-sse/state.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/execution-T1.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/execution-T2.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/execution-T3.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/observation-T1.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/observation-T2.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/observation-T3.json",
+      ".ai-control/requirements/req-20260909-065-notification-sse/convergence.json"
+    ],
+    "rollback": "回退 REQ-20260909-065 提交；无数据库补偿。"
+  }
+}

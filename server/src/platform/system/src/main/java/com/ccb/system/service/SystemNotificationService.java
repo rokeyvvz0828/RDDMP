@@ -35,9 +35,11 @@ public class SystemNotificationService implements SystemNotificationPublisher {
     private static final Pattern MODULE_CODE = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
 
     private final JdbcTemplate jdbc;
+    private final NotificationSseService notificationStreams;
 
-    public SystemNotificationService(JdbcTemplate jdbc) {
+    public SystemNotificationService(JdbcTemplate jdbc, NotificationSseService notificationStreams) {
         this.jdbc = jdbc;
+        this.notificationStreams = notificationStreams;
     }
 
     @Override
@@ -81,6 +83,7 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                     userId);
         }
         audit(notification, notificationId);
+        notificationStreams.notifyUsersAfterCommit(notification.tenantId(), notification.recipientUserIds());
         return notificationId;
     }
 
@@ -140,12 +143,13 @@ public class SystemNotificationService implements SystemNotificationPublisher {
 
     @Transactional
     public void markRead(long notificationId, AuthUser user) {
-        jdbc.update(
+        int changed = jdbc.update(
                 "UPDATE sys_user_notification SET is_read = 1, read_at = COALESCE(read_at, ?) WHERE tenant_id = ? AND user_id = ? AND notification_id = ? AND is_read = 0 AND archived_at IS NULL",
                 now(),
                 user.tenantId(),
                 user.id(),
                 notificationId);
+        if (changed > 0) notificationStreams.notifyUsersAfterCommit(user.tenantId(), List.of(user.id()));
     }
 
     @Transactional
@@ -155,12 +159,16 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                 now(),
                 user.tenantId(),
                 user.id());
+        if (changed > 0) notificationStreams.notifyUsersAfterCommit(user.tenantId(), List.of(user.id()));
         return new NotificationReadAllResult(changed);
     }
 
     @Transactional
     public void archive(long notificationId, AuthUser user) {
-        if (archiveReadNotification(notificationId, user) > 0) return;
+        if (archiveReadNotification(notificationId, user) > 0) {
+            notificationStreams.notifyUsersAfterCommit(user.tenantId(), List.of(user.id()));
+            return;
+        }
 
         Boolean read;
         try {
@@ -176,16 +184,19 @@ public class SystemNotificationService implements SystemNotificationPublisher {
         if (Boolean.FALSE.equals(read)) {
             throw new BusinessException(ErrorCode.CONFLICT, "请先阅读消息后再归档");
         }
-        archiveReadNotification(notificationId, user);
+        if (archiveReadNotification(notificationId, user) > 0) {
+            notificationStreams.notifyUsersAfterCommit(user.tenantId(), List.of(user.id()));
+        }
     }
 
     @Transactional
     public void restore(long notificationId, AuthUser user) {
-        jdbc.update(
+        int changed = jdbc.update(
                 "UPDATE sys_user_notification SET archived_at = NULL WHERE tenant_id = ? AND user_id = ? AND notification_id = ? AND archived_at IS NOT NULL",
                 user.tenantId(),
                 user.id(),
                 notificationId);
+        if (changed > 0) notificationStreams.notifyUsersAfterCommit(user.tenantId(), List.of(user.id()));
     }
 
     @Transactional
@@ -195,6 +206,7 @@ public class SystemNotificationService implements SystemNotificationPublisher {
                 now(),
                 user.tenantId(),
                 user.id());
+        if (changed > 0) notificationStreams.notifyUsersAfterCommit(user.tenantId(), List.of(user.id()));
         return new NotificationArchiveResult(changed);
     }
 

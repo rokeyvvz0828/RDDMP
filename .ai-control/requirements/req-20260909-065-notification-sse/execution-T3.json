@@ -1,0 +1,39 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "deploy/nginx/default.conf.template", "purpose": "容器 Nginx 精确 SSE 长连接配置"},
+    {"path_or_resource": "deploy/nginx/host-rddmp.conf", "purpose": "宿主 Nginx 精确 SSE 长连接配置"},
+    {"path_or_resource": "docs/integration/system-notification-contract.md", "purpose": "SSE 票据、事件、降级和单实例边界契约"}
+  ],
+  "requirements_addressed": ["R3", "R4"],
+  "commands": [
+    "node scripts/dev.mjs with existing local seeded-workflow fix",
+    "curl EventSource-compatible stream for 28 seconds",
+    "browser idle observation for more than 60 seconds",
+    "lsof connection count inspection"
+  ],
+  "local_checks": [
+    "后端健康状态 UP，前端 5173 可登录并进入工作台",
+    "流立即收到 connected，并连续收到 25 秒 heartbeat",
+    "复用和无效票据均返回 HTTP 401",
+    "浏览器空闲超过一分钟无控制台错误，Vite 到后端保持 1 条通知长连接"
+  ],
+  "diff_summary": [
+    "两层 Nginx 对精确通知流路径关闭 buffering/cache，使用 HTTP/1.1 和 1 小时读取超时",
+    "集成契约明确客户端和服务端行为及多副本限制"
+  ],
+  "invariants_checked": [
+    "长连接设置不影响其他 API 路径",
+    "页面正常显示且通知按钮可用",
+    "运行期间未出现反复连接"
+  ],
+  "disturbances": [
+    "基线启动器原值会发布已禁用的平台流程；运行验证临时采用 rokey 工作区已有的关闭演示发布器配置，验证后已恢复隔离工作树文件"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "远程 Nginx 配置需在后续部署时随应用发布，本次请求不包含远程部署"
+  ],
+  "recommended_next": "记录独立运行观测并执行最终收敛门禁"
+}
