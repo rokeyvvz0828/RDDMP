@@ -69,7 +69,7 @@ public class DashboardService {
                 + "COALESCE(s.short_name, s.name, c.system_code) AS system_name, "
                 + "COALESCE(agg.cnt, 0) AS asset_count "
                 + "FROM dm_component c "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                 + "LEFT JOIN (SELECT system_code, tenant_id, COUNT(*) AS cnt FROM (" + union + ") u "
                 + "   WHERE system_code IS NOT NULL AND system_code <> '' GROUP BY system_code, tenant_id) agg "
                 + "   ON agg.system_code = c.system_code AND agg.tenant_id = c.tenant_id "

@@ -1,0 +1,135 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "scripts/dev.mjs",
+      "purpose": "宿主机与容器双MinIO端点兼容及标准开发环境托管"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+      "purpose": "同步用户跳过全量测试指令并聚焦目标回归与UAT标准环境交付"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+      "purpose": "记录主Owner (rokeyvvz0828) 授权与范围审计通过"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260909-072-development-task-integration/control-plan-user-uat.json",
+      "purpose": "记录用户缩小验证策略与主代理自检计划"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "R12",
+    "R13",
+    "R14",
+    "R15",
+    "R16",
+    "R17",
+    "R18"
+  ],
+  "commands": [
+    {
+      "command": "bash scripts/dev.sh",
+      "exit_code": 0,
+      "salient_output": "标准开发环境启动成功，进程存活（PID 65234），保留数据卷并追加迁移"
+    },
+    {
+      "command": "curl http://127.0.0.1:8080/actuator/health",
+      "exit_code": 0,
+      "salient_output": "UP"
+    },
+    {
+      "command": "curl -I http://127.0.0.1:5173",
+      "exit_code": 0,
+      "salient_output": "HTTP/1.1 200 OK"
+    },
+    {
+      "command": "POST /api/auth/login with admin/admin123",
+      "exit_code": 0,
+      "salient_output": "HTTP 200，管理员鉴权与Token派发成功"
+    },
+    {
+      "command": "GET /api/development/tasks?projectRef=RDDMP-PLATFORM",
+      "exit_code": 0,
+      "salient_output": "HTTP 200，平台能力升级项目下任务3项（纯测试协作已完成、自主技术维护、门户交付验收开发）"
+    },
+    {
+      "command": "GET /api/development/pending-requirements?projectRef=RDDMP-PLATFORM",
+      "exit_code": 0,
+      "salient_output": "HTTP 200，待承接需求1项（门户批量查询改造，员工门户物理子系统）"
+    },
+    {
+      "command": "GET /api/development/work-items?projectRef=RDDMP-PLATFORM",
+      "exit_code": 0,
+      "salient_output": "HTTP 200，工作项4项（涵盖TODO/IN_PROGRESS/IN_REVIEW/DONE各状态）"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml --base origin/dev-ivanh --head HEAD",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260909-072; 88 changed file(s)"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "标准环境与分支对齐",
+      "result": "pass",
+      "evidence": "当前分支dev-ivanh基于远端tip对齐(b8ec1c8)，仅ahead 1；原20独有提交及用户工作区完整备份；标准脚本服务全通",
+      "limitations": [
+        "普通Mock演示账号401已如实披露，admin完全可用进入UAT",
+        "全量Maven回归已按用户指令跳过"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "主工作区保持在dev-ivanh(b8ec1c8)，未向远端推送",
+    "标准环境正常运行，端点与平台升级项目数据真实校验通过",
+    "用户的.agents/skills/**本地修改完整保留未纳入提交"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+      "result": "pass",
+      "evidence": "130目标回归、真实MySQL及API查询保持"
+    },
+    {
+      "invariant": "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+      "result": "pass",
+      "evidence": "备份分支backup/dev-ivanh-before-alignment-20260909与/tmp备份目录完好"
+    },
+    {
+      "invariant": "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+      "result": "pass",
+      "evidence": "原历史迁移checksum保持，仅追加3个开发迁移"
+    },
+    {
+      "invariant": "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+      "result": "pass",
+      "evidence": "真实API对RDDMP-PLATFORM项目隔离校验通过"
+    },
+    {
+      "invariant": "不推送远端，不伪造Owner审批，不修改其他任务账本。",
+      "result": "pass",
+      "evidence": "dev-ivanh保持本地ahead 1未推送；主Owner已授权"
+    }
+  ],
+  "disturbances": [
+    "用户指令跳过全量测试并停止子代理"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "普通Mock账号登录问题留待后续既有数据整理，当前admin已具备完整UAT能力"
+  ],
+  "recommended_next": "observe"
+}

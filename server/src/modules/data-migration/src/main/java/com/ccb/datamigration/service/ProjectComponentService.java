@@ -48,13 +48,13 @@ public class ProjectComponentService {
                         + "c.updated_at, u2.display_name AS updated_by_name "
                         + "FROM dm_component c "
                         + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                         + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
                         + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
                         + "WHERE c.tenant_id = ?";
         String countSql = "SELECT COUNT(*) FROM dm_component c "
                         + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                         + "WHERE c.tenant_id = ?";
         StringBuilder where = new StringBuilder(select);
         List<Object> args = new ArrayList<>();
@@ -79,7 +79,7 @@ public class ProjectComponentService {
         long scope = permissions.requireProject(projectId, user);
         String sql = "SELECT c.system_code AS value, CONCAT(c.system_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label "
                         + "FROM dm_component c "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                         + "WHERE c.tenant_id = ? AND c.project_id = ? AND c.enabled = 1 "
                         + "ORDER BY c.system_code";
         return jdbc.queryForList(sql, user.tenantId(), scope);
@@ -100,7 +100,7 @@ public class ProjectComponentService {
                         + "c.updated_at, u2.display_name AS updated_by_name "
                         + "FROM dm_component c "
                         + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                         + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
                         + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
                         + "WHERE c.tenant_id = ?");
@@ -221,7 +221,7 @@ public class ProjectComponentService {
                 + "c.updated_at, u2.display_name AS updated_by_name "
                 + "FROM dm_component c "
                 + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                 + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
                 + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
                 + "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ?", tenantId, projectId, systemCode);

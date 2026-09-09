@@ -22,6 +22,8 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.ccb.system.capability.SystemParameterReference;
@@ -68,13 +70,16 @@ public class ArchitectureDecisionController {
     private final ArchitectureDecisionService service;
     private final SystemReferenceQuery referenceQuery;
     private final SystemOperationAudit operationAudit;
+    private final ProjectAccessService projectAccessService;
 
     public ArchitectureDecisionController(ArchitectureDecisionService service,
                                           SystemReferenceQuery referenceQuery,
-                                          SystemOperationAudit operationAudit) {
+                                          SystemOperationAudit operationAudit,
+                                          ProjectAccessService projectAccessService) {
         this.service = service;
         this.referenceQuery = referenceQuery;
         this.operationAudit = operationAudit;
+        this.projectAccessService = projectAccessService;
     }
 
     // ---------- 查询 ----------
@@ -101,13 +106,14 @@ public class ArchitectureDecisionController {
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PageResult<MatterSummaryResponse>> list(
             @AuthenticationPrincipal AuthUser user,
+            @RequestParam String projectRef,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String typeCode,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Boolean firstHandlingOverdue) {
-        PageResult<DecisionMatter> result = service.list(user, new PageQuery(page, size),
+        PageResult<DecisionMatter> result = service.list(user, project(projectRef, user), new PageQuery(page, size),
                 new MatterQuery(keyword, typeCode, status, firstHandlingOverdue, null));
         return success(new PageResult<>(
                 result.records().stream().map(MatterSummaryResponse::from).toList(),
@@ -117,30 +123,34 @@ public class ArchitectureDecisionController {
     @GetMapping("/{id}")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<MatterDetailResponse> detail(@AuthenticationPrincipal AuthUser user,
+                                                    @RequestParam String projectRef,
                                                     @PathVariable long id) {
-        return success(MatterDetailResponse.from(service.detail(user, id)));
+        return success(MatterDetailResponse.from(service.detail(user, project(projectRef, user), id)));
     }
 
     @GetMapping("/{id}/materials")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<MaterialResponse>> materials(@AuthenticationPrincipal AuthUser user,
+                                                         @RequestParam String projectRef,
                                                          @PathVariable long id) {
-        return success(service.materials(user, id).stream().map(MaterialResponse::from).toList());
+        return success(service.materials(user, project(projectRef, user), id).stream().map(MaterialResponse::from).toList());
     }
 
     @GetMapping("/{id}/reviews")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<ReviewResponse>> reviews(@AuthenticationPrincipal AuthUser user,
+                                                     @RequestParam String projectRef,
                                                      @PathVariable long id) {
-        return success(service.reviews(user, id).stream().map(ReviewResponse::from).toList());
+        return success(service.reviews(user, project(projectRef, user), id).stream().map(ReviewResponse::from).toList());
     }
 
     @GetMapping("/{id}/reviews/{reviewId}/participants")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<ParticipantResponse>> reviewParticipants(@AuthenticationPrincipal AuthUser user,
+                                                                     @RequestParam String projectRef,
                                                                      @PathVariable long id,
                                                                      @PathVariable long reviewId) {
-        return success(service.reviewParticipants(user, id, reviewId).stream()
+        return success(service.reviewParticipants(user, project(projectRef, user), id, reviewId).stream()
                 .map(row -> new ParticipantResponse(((Number) row.get("user_id")).longValue(),
                         row.get("user_name") == null ? null : String.valueOf(row.get("user_name"))))
                 .toList());
@@ -149,9 +159,10 @@ public class ArchitectureDecisionController {
     @GetMapping("/{id}/reviews/{reviewId}/action-items")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<ActionItemResponse>> reviewActionItems(@AuthenticationPrincipal AuthUser user,
+                                                                   @RequestParam String projectRef,
                                                                    @PathVariable long id,
                                                                    @PathVariable long reviewId) {
-        return success(service.reviewActionItems(user, id, reviewId).stream()
+        return success(service.reviewActionItems(user, project(projectRef, user), id, reviewId).stream()
                 .map(ActionItemResponse::from).toList());
     }
 
@@ -159,18 +170,20 @@ public class ArchitectureDecisionController {
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<PageResult<ConclusionView>> conclusions(
             @AuthenticationPrincipal AuthUser user,
+            @RequestParam String projectRef,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String effectiveStatus) {
-        List<ConclusionView> views = service.conclusions(user, new PageQuery(page, size), effectiveStatus);
+        List<ConclusionView> views = service.conclusions(user, project(projectRef, user), new PageQuery(page, size), effectiveStatus);
         return success(new PageResult<>(views, views.size(), page, size));
     }
 
     @GetMapping("/conclusions/{conclusionId}/chain")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<ConclusionView> conclusionChain(@AuthenticationPrincipal AuthUser user,
+                                                       @RequestParam String projectRef,
                                                        @PathVariable long conclusionId) {
-        return success(service.conclusionChain(user, conclusionId));
+        return success(service.conclusionChain(user, project(projectRef, user), conclusionId));
     }
 
     // ---------- 提交与协作 ----------
@@ -178,21 +191,23 @@ public class ArchitectureDecisionController {
     @PostMapping
     @PreAuthorize(PROPOSE_AUTHORITY)
     public ApiResponse<MatterDetailResponse> create(@AuthenticationPrincipal AuthUser user,
+                                                    @RequestParam String projectRef,
                                                     @RequestBody MatterRequest request) {
         return success(MatterDetailResponse.from(
                 audited(user, "architecture.decision.create", "POST", "/api/architecture/decisions",
-                        () -> service.create(user, request.toCommand()))));
+                        () -> service.create(user, project(projectRef, user), request.toCommand()))));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize(PROPOSE_AUTHORITY)
     public ApiResponse<MatterDetailResponse> update(@AuthenticationPrincipal AuthUser user,
                                                     Authentication authentication,
+                                                    @RequestParam String projectRef,
                                                     @PathVariable long id,
                                                     @RequestBody MatterUpdateRequest request) {
         return success(MatterDetailResponse.from(
                 audited(user, "architecture.decision.update", "PUT", "/api/architecture/decisions/" + id,
-                        () -> service.update(user, accessLevel(authentication), id,
+                        () -> service.update(user, project(projectRef, user), accessLevel(authentication), id,
                                 request.rowVersion(), request.toCommand()))));
     }
 
@@ -200,27 +215,30 @@ public class ArchitectureDecisionController {
     @PreAuthorize(PROPOSE_AUTHORITY)
     public ApiResponse<MaterialResponse> addMaterial(@AuthenticationPrincipal AuthUser user,
                                                      Authentication authentication,
+                                                     @RequestParam String projectRef,
                                                      @PathVariable long id,
                                                      @RequestBody MaterialRequest request) {
         return success(MaterialResponse.from(
                 audited(user, "architecture.decision.material.add", "POST",
                         "/api/architecture/decisions/" + id + "/materials",
-                        () -> service.addMaterial(user, accessLevel(authentication), id, request.toCommand()))));
+                        () -> service.addMaterial(user, project(projectRef, user), accessLevel(authentication), id, request.toCommand()))));
     }
 
     @PostMapping("/{id}/type")
     @PreAuthorize(REVIEW_AUTHORITY)
     public ApiResponse<MatterDetailResponse> setType(@AuthenticationPrincipal AuthUser user,
                                                      Authentication authentication,
+                                                     @RequestParam String projectRef,
                                                      @PathVariable long id,
                                                      @RequestBody SetTypeRequest request) {
         return success(MatterDetailResponse.from(
                 audited(user, "architecture.decision.type.set", "POST",
                         "/api/architecture/decisions/" + id + "/type",
                         () -> {
-                            service.setMatterType(user, accessLevel(authentication), id,
+                            ProjectAccess project = project(projectRef, user);
+                            service.setMatterType(user, project, accessLevel(authentication), id,
                                     request.rowVersion(), request.typeCode());
-                            return service.detail(user, id);
+                            return service.detail(user, project, id);
                         })));
     }
 
@@ -229,12 +247,13 @@ public class ArchitectureDecisionController {
     @PostMapping("/{id}/first-handling")
     @PreAuthorize(REVIEW_AUTHORITY)
     public ApiResponse<MatterDetailResponse> firstHandling(@AuthenticationPrincipal AuthUser user,
+                                                           @RequestParam String projectRef,
                                                            @PathVariable long id,
                                                            @RequestBody FirstHandlingRequest request) {
         return success(MatterDetailResponse.from(
                 audited(user, "architecture.decision.first-handling", "POST",
                         "/api/architecture/decisions/" + id + "/first-handling",
-                        () -> service.firstHandling(user, AccessLevel.REVIEW, id,
+                        () -> service.firstHandling(user, project(projectRef, user), AccessLevel.REVIEW, id,
                                 request.rowVersion(), request.outcome(), request.comment(),
                                 request.reviewMode()))));
     }
@@ -243,42 +262,46 @@ public class ArchitectureDecisionController {
     @PreAuthorize(PROPOSE_AUTHORITY)
     public ApiResponse<MatterDetailResponse> resubmit(@AuthenticationPrincipal AuthUser user,
                                                       Authentication authentication,
+                                                      @RequestParam String projectRef,
                                                       @PathVariable long id,
                                                       @RequestBody RowVersionRequest request) {
         return success(MatterDetailResponse.from(
                 audited(user, "architecture.decision.resubmit", "POST",
                         "/api/architecture/decisions/" + id + "/resubmit",
-                        () -> service.resubmit(user, accessLevel(authentication), id,
+                        () -> service.resubmit(user, project(projectRef, user), accessLevel(authentication), id,
                                 request.rowVersion()))));
     }
 
     @PostMapping("/{id}/reviews")
     @PreAuthorize(REVIEW_AUTHORITY)
     public ApiResponse<ReviewResponse> recordReview(@AuthenticationPrincipal AuthUser user,
+                                                    @RequestParam String projectRef,
                                                     @PathVariable long id,
                                                     @RequestBody ReviewRequest request) {
         return success(ReviewResponse.from(
                 audited(user, "architecture.decision.review.record", "POST",
                         "/api/architecture/decisions/" + id + "/reviews",
-                        () -> service.recordReview(user, AccessLevel.REVIEW, id, request.toCommand()))));
+                        () -> service.recordReview(user, project(projectRef, user), AccessLevel.REVIEW, id, request.toCommand()))));
     }
 
     @PutMapping("/{id}/reviews/{reviewId}")
     @PreAuthorize(REVIEW_AUTHORITY)
     public ApiResponse<ReviewResponse> updateReview(@AuthenticationPrincipal AuthUser user,
+                                                    @RequestParam String projectRef,
                                                     @PathVariable long id,
                                                     @PathVariable long reviewId,
                                                     @RequestBody ReviewRequest request) {
         return success(ReviewResponse.from(
                 audited(user, "architecture.decision.review.update", "PUT",
                         "/api/architecture/decisions/" + id + "/reviews/" + reviewId,
-                        () -> service.updateReview(user, AccessLevel.REVIEW, id, reviewId,
+                        () -> service.updateReview(user, project(projectRef, user), AccessLevel.REVIEW, id, reviewId,
                                 request.toCommand()))));
     }
 
     @PostMapping("/{id}/reviews/{reviewId}/action-items/{actionItemId}/complete")
     @PreAuthorize(REVIEW_AUTHORITY)
     public ApiResponse<ActionItemResponse> completeActionItem(@AuthenticationPrincipal AuthUser user,
+                                                              @RequestParam String projectRef,
                                                               @PathVariable long id,
                                                               @PathVariable long reviewId,
                                                               @PathVariable long actionItemId) {
@@ -286,7 +309,7 @@ public class ArchitectureDecisionController {
                 audited(user, "architecture.decision.action-item.complete", "POST",
                         "/api/architecture/decisions/" + id + "/reviews/" + reviewId
                                 + "/action-items/" + actionItemId + "/complete",
-                        () -> service.completeActionItem(user, AccessLevel.REVIEW, id, reviewId,
+                        () -> service.completeActionItem(user, project(projectRef, user), AccessLevel.REVIEW, id, reviewId,
                                 actionItemId))));
     }
 
@@ -295,24 +318,26 @@ public class ArchitectureDecisionController {
     @PostMapping("/{id}/publication/prepare")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<PublicationIntentResponse> preparePublication(@AuthenticationPrincipal AuthUser user,
+                                                                     @RequestParam String projectRef,
                                                                      @PathVariable long id,
                                                                      @RequestBody PreparePublicationRequest request) {
         return success(PublicationIntentResponse.from(
                 audited(user, "architecture.decision.publication.prepare", "POST",
                         "/api/architecture/decisions/" + id + "/publication/prepare",
-                        () -> service.preparePublication(user, id, request.rowVersion(),
+                        () -> service.preparePublication(user, project(projectRef, user), id, request.rowVersion(),
                                 request.reviewId(), request.toTargets()))));
     }
 
     @PostMapping("/{id}/publication/start")
     @PreAuthorize(MANAGE_AUTHORITY)
     public ApiResponse<MatterDetailResponse> startPublication(@AuthenticationPrincipal AuthUser user,
+                                                              @RequestParam String projectRef,
                                                               @PathVariable long id,
                                                               @RequestBody RowVersionRequest request) {
         return success(MatterDetailResponse.from(
                 audited(user, "architecture.decision.publication.start", "POST",
                         "/api/architecture/decisions/" + id + "/publication/start",
-                        () -> service.startPublication(user, id, request.rowVersion()))));
+                        () -> service.startPublication(user, project(projectRef, user), id, request.rowVersion()))));
     }
 
     // ---------- 附件 ----------
@@ -320,20 +345,22 @@ public class ArchitectureDecisionController {
     @GetMapping("/{id}/attachments")
     @PreAuthorize(VIEW_AUTHORITY)
     public ApiResponse<List<AttachmentResponse>> attachments(@AuthenticationPrincipal AuthUser user,
+                                                             @RequestParam String projectRef,
                                                              @PathVariable long id) {
-        return success(service.attachments(user, id).stream()
+        return success(service.attachments(user, project(projectRef, user), id).stream()
                 .map(AttachmentResponse::from).toList());
     }
 
     @PostMapping("/{id}/attachments")
     @PreAuthorize(PROPOSE_AUTHORITY)
     public ApiResponse<Void> bindAttachment(@AuthenticationPrincipal AuthUser user,
+                                            @RequestParam String projectRef,
                                             @PathVariable long id,
                                             @RequestBody BindAttachmentRequest request) {
         audited(user, "architecture.decision.attachment.bind", "POST",
                 "/api/architecture/decisions/" + id + "/attachments",
                 () -> {
-                    service.bindAttachment(user, id, request.attachmentId());
+                    service.bindAttachment(user, project(projectRef, user), id, request.attachmentId());
                     return null;
                 });
         return success(null);
@@ -342,12 +369,13 @@ public class ArchitectureDecisionController {
     @DeleteMapping("/{id}/attachments/{attachmentId}")
     @PreAuthorize(PROPOSE_AUTHORITY)
     public ApiResponse<Void> deleteAttachment(@AuthenticationPrincipal AuthUser user,
+                                              @RequestParam String projectRef,
                                               @PathVariable long id,
                                               @PathVariable long attachmentId) {
         audited(user, "architecture.decision.attachment.delete", "DELETE",
                 "/api/architecture/decisions/" + id + "/attachments/" + attachmentId,
                 () -> {
-                    service.deleteAttachment(user, id, attachmentId);
+                    service.deleteAttachment(user, project(projectRef, user), id, attachmentId);
                     return null;
                 });
         return success(null);
@@ -367,6 +395,10 @@ public class ArchitectureDecisionController {
             return AccessLevel.REVIEW;
         }
         return AccessLevel.PROPOSE;
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 
     private <T> T audited(AuthUser actor, String operationCode, String method, String path,

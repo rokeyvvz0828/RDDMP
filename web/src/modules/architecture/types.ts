@@ -1035,3 +1035,22 @@ export interface DisasterRecoveryPayload {
   drMode: DisasterRecoveryMode
   description?: string
 }
+
+/** 系统显式分工与实时有效资格分开返回，失效名单不悄悄删除。 */
+export interface SubsystemParticipantCandidate {
+  userId: number
+  displayName: string
+}
+export interface SubsystemParticipation {
+  ownerUserId: number | null
+  explicitParticipantUserIds: number[]
+  effectiveParticipantUserIds: number[]
+  rowVersion: number
+  canManage: boolean
+  participants: SubsystemParticipantCandidate[]
+}
+export interface SubsystemParticipationPayload {
+  participantUserIds: number[]
+  rowVersion: number
+  reason: string
+}

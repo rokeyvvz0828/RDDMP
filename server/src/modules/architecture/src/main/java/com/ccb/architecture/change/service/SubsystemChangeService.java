@@ -17,6 +17,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemParameterReference;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemReferenceQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -88,70 +89,74 @@ public class SubsystemChangeService {
     }
 
     /** 创建物理子系统工单草稿；一个物理工单始终只有一行物理草稿。 */
-    public ApplicationDetail createPhysical(AuthUser actor, PhysicalApplicationCommand command) {
+    public ApplicationDetail createPhysical(AuthUser actor, ProjectAccess project, PhysicalApplicationCommand command) {
         requireActor(actor);
+        requireProject(project);
         PhysicalApplicationCommand normalized = normalizePhysicalCommand(actor, command);
         return inTransaction(() -> {
-            ChangeApplication application = newApplication(actor, TargetKind.PHYSICAL, normalized.actionType(),
+            ChangeApplication application = newApplication(actor, project, TargetKind.PHYSICAL, normalized.actionType(),
                     normalized.targetId(), normalized.reason());
             PhysicalDraft physicalDraft = newPhysicalDraft(application, normalized.physicalDraft(), null, null, 0);
             ChangeHistoryEvent history = history(application, actor.id(), EVENT_CREATED, null, ApplicationStatus.DRAFT,
                     "已创建物理子系统变更草稿");
 
             store.insertApplication(application);
-            store.replacePhysicalDrafts(application.tenantId(), application.id(), List.of(physicalDraft));
+            store.replacePhysicalDrafts(application.tenantId(), application.projectId(), application.id(), List.of(physicalDraft));
             store.insertHistory(history);
             return new ApplicationDetail(application, List.of(physicalDraft), List.of(history));
         });
     }
 
     /** 非管理范围只能读取本人申请；管理范围读取当前租户全部申请。 */
-    public List<ChangeApplication> list(AuthUser actor, AccessScope accessScope,
+    public List<ChangeApplication> list(AuthUser actor, ProjectAccess project, AccessScope accessScope,
                                         ApplicationStatus status, int limit, int offset) {
         requireActor(actor);
+        requireProject(project);
         AccessScope scope = requireScope(accessScope);
-        return List.copyOf(store.listApplications(actor.tenantId(),
+        return List.copyOf(store.listApplications(actor.tenantId(), project.id(),
                 scope == AccessScope.MANAGE ? null : actor.id(), status, limit, offset));
     }
 
     /** 详情读取始终以认证租户过滤，再执行本人/管理范围校验。 */
-    public ApplicationDetail detail(AuthUser actor, AccessScope accessScope, long applicationId) {
+    public ApplicationDetail detail(AuthUser actor, ProjectAccess project, AccessScope accessScope, long applicationId) {
         requireActor(actor);
+        requireProject(project);
         requirePositive(applicationId, "工单编号");
-        ChangeApplication application = loadAccessible(actor, requireScope(accessScope), applicationId);
+        ChangeApplication application = loadAccessible(actor, project, requireScope(accessScope), applicationId);
         return detailFor(application);
     }
 
     /** 仅申请人本人可更新 DRAFT/RETURNED 物理草稿。 */
-    public ApplicationDetail update(AuthUser actor, AccessScope accessScope, long applicationId,
+    public ApplicationDetail update(AuthUser actor, ProjectAccess project, AccessScope accessScope, long applicationId,
                                     long expectedRowVersion, DraftUpdateCommand command) {
         requireActor(actor);
+        requireProject(project);
         requirePositive(applicationId, "工单编号");
         requireNonNegative(expectedRowVersion, "工单行版本");
         requireScope(accessScope);
         DraftUpdateCommand normalized = normalizeUpdateCommand(actor, command);
 
         return inTransaction(() -> {
-            ChangeApplication application = lockOwned(actor, applicationId);
+            ChangeApplication application = lockOwned(actor, project, applicationId);
             requirePhysicalApplication(application, "逻辑子系统工单已退役，不能继续编辑");
             requireEditable(application);
             requireVersion(application, expectedRowVersion);
-            PhysicalDraft existing = store.findPhysicalDrafts(application.tenantId(), application.id()).stream()
+            PhysicalDraft existing = store.findPhysicalDrafts(application.tenantId(), application.projectId(), application.id()).stream()
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("物理工单缺少物理草稿"));
             PhysicalDraft physicalDraft = newPhysicalDraft(application, onlyPhysicalDraft(normalized),
                     existing, null, existing.draftRevision() + 1);
 
-            if (!store.compareAndSetApplicationReason(application.tenantId(), application.id(), application.status(),
+            if (!store.compareAndSetApplicationReason(application.tenantId(), application.projectId(), application.id(), application.status(),
                     application.rowVersion(), normalized.reason(), actor.id())) {
                 throw conflict("工单已被其他操作更新，请刷新后重试");
             }
             long updatedRowVersion = application.rowVersion() + 1;
             if (application.status() == ApplicationStatus.RETURNED) {
                 // 退回后编辑可能改变编号、名称或英文名，旧保留值不能继续阻塞本工单重提。
-                store.deleteValueReservations(application.tenantId(), application.id());
+                store.deleteValueReservations(application.tenantId(), application.projectId(), application.id());
             }
-            store.replacePhysicalDrafts(application.tenantId(), application.id(), List.of(physicalDraft));
+            store.replacePhysicalDrafts(application.tenantId(), application.projectId(), application.id(), List.of(physicalDraft));
             ChangeHistoryEvent history = history(application, actor.id(), EVENT_UPDATED,
                     application.status(), application.status(), "已更新物理子系统工单草稿");
             store.insertHistory(history);
@@ -165,29 +170,30 @@ public class SubsystemChangeService {
     /**
      * DRAFT/RETURNED 可立即取消。IN_REVIEW 不伪造取消完成，必须由工作流终止确认事件终态化。
      */
-    public ApplicationDetail cancel(AuthUser actor, AccessScope accessScope, long applicationId,
+    public ApplicationDetail cancel(AuthUser actor, ProjectAccess project, AccessScope accessScope, long applicationId,
                                     long expectedRowVersion) {
         requireActor(actor);
+        requireProject(project);
         requirePositive(applicationId, "工单编号");
         requireNonNegative(expectedRowVersion, "工单行版本");
         requireScope(accessScope);
 
         return inTransaction(() -> {
-            ChangeApplication application = lockOwned(actor, applicationId);
+            ChangeApplication application = lockOwned(actor, project, applicationId);
             requireVersion(application, expectedRowVersion);
             if (application.status() == ApplicationStatus.IN_REVIEW) {
                 throw conflict("工单正在审批中，需工作流终止确认后才能取消");
             }
             requireEditable(application);
-            if (!store.compareAndSetApplicationStatus(application.tenantId(), application.id(), application.status(),
+            if (!store.compareAndSetApplicationStatus(application.tenantId(), application.projectId(), application.id(), application.status(),
                     application.rowVersion(), ApplicationStatus.CANCELLED, actor.id())) {
                 throw conflict("工单已被其他操作更新，请刷新后重试");
             }
 
-            List<PhysicalDraft> physicalDrafts = store.findPhysicalDrafts(application.tenantId(), application.id());
-            store.deleteValueReservations(application.tenantId(), application.id());
+            List<PhysicalDraft> physicalDrafts = store.findPhysicalDrafts(application.tenantId(), application.projectId(), application.id());
+            store.deleteValueReservations(application.tenantId(), application.projectId(), application.id());
             if (application.targetId() != null) {
-                store.deleteTargetLock(application.tenantId(), application.targetKind(), application.targetId(),
+                store.deleteTargetLock(application.tenantId(), application.projectId(), application.targetKind(), application.targetId(),
                         application.id());
             }
             ChangeHistoryEvent history = history(application, actor.id(), EVENT_CANCELLED, application.status(),
@@ -202,17 +208,18 @@ public class SubsystemChangeService {
     /**
      * 在一个本地事务内准备提交并调用协调器。协调器抛出异常时整个事务回滚。
      */
-    public SubmissionPreparation coordinateSubmission(AuthUser actor, AccessScope accessScope,
+    public SubmissionPreparation coordinateSubmission(AuthUser actor, ProjectAccess project, AccessScope accessScope,
                                                        long applicationId, long expectedRowVersion,
                                                        SubmissionCoordinator coordinator) {
         requireActor(actor);
+        requireProject(project);
         requirePositive(applicationId, "工单编号");
         requireNonNegative(expectedRowVersion, "工单行版本");
         requireScope(accessScope);
         Objects.requireNonNull(coordinator, "coordinator 不能为空");
         return inTransaction(() -> {
             SubmissionPreparation preparation = prepareSubmissionInCurrentTransaction(
-                    actor, accessScope, applicationId, expectedRowVersion);
+                    actor, project, accessScope, applicationId, expectedRowVersion);
             coordinator.start(preparation);
             return preparation;
         });
@@ -221,12 +228,14 @@ public class SubsystemChangeService {
     /**
      * 仅供同包协调与测试使用；绝不自行开启或提交事务，避免形成无 workflow instance 的 IN_REVIEW。
      */
-    SubmissionPreparation prepareSubmissionInCurrentTransaction(AuthUser actor, AccessScope accessScope,
+    SubmissionPreparation prepareSubmissionInCurrentTransaction(AuthUser actor, ProjectAccess project,
+                                                                 AccessScope accessScope,
                                                                  long applicationId, long expectedRowVersion) {
         requireActualTransaction();
         requireActor(actor);
         requireScope(accessScope);
-        ChangeApplication application = lockOwned(actor, applicationId);
+        requireProject(project);
+        ChangeApplication application = lockOwned(actor, project, applicationId);
         requirePhysicalApplication(application, "逻辑子系统工单已退役，不能提交");
         requireEditable(application);
         requireVersion(application, expectedRowVersion);
@@ -239,9 +248,9 @@ public class SubsystemChangeService {
         String snapshot = submittedSnapshot(application, physicalDraft);
         String digest = sha256(snapshot);
         PhysicalDraft submittedPhysical = withSubmittedSnapshot(physicalDraft, snapshot);
-        store.replacePhysicalDrafts(application.tenantId(), application.id(), List.of(submittedPhysical));
+        store.replacePhysicalDrafts(application.tenantId(), application.projectId(), application.id(), List.of(submittedPhysical));
 
-        if (!store.compareAndSetApplicationStatus(application.tenantId(), application.id(), application.status(),
+        if (!store.compareAndSetApplicationStatus(application.tenantId(), application.projectId(), application.id(), application.status(),
                 application.rowVersion(), ApplicationStatus.IN_REVIEW, actor.id())) {
             throw conflict("工单已被其他操作更新，请刷新后重试");
         }
@@ -255,7 +264,7 @@ public class SubsystemChangeService {
     /**
      * 工作流事件的同事务协作入口。RETURNED 保留字段值保留；REJECTED 释放目标锁和值保留。
      */
-    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long applicationId,
+    public void applyReviewOutcomeInCurrentTransaction(long tenantId, long projectId, long applicationId,
                                                        long expectedRowVersion, long operatorId,
                                                        ReviewOutcome outcome) {
         requireActualTransaction();
@@ -264,7 +273,7 @@ public class SubsystemChangeService {
         requireNonNegative(expectedRowVersion, "工单行版本");
         requirePositive(operatorId, "操作人编号");
         Objects.requireNonNull(outcome, "outcome 不能为空");
-        ChangeApplication application = store.lockApplication(tenantId, applicationId)
+        ChangeApplication application = store.lockApplication(tenantId, projectId, applicationId)
                 .orElseThrow(() -> notFound(applicationId));
         if (application.status() != ApplicationStatus.IN_REVIEW) {
             throw conflict("只有 IN_REVIEW 工单可以接收退回或拒绝结果");
@@ -272,14 +281,14 @@ public class SubsystemChangeService {
         requireVersion(application, expectedRowVersion);
         ApplicationStatus nextStatus = outcome == ReviewOutcome.RETURNED
                 ? ApplicationStatus.RETURNED : ApplicationStatus.REJECTED;
-        if (!store.compareAndSetApplicationStatus(tenantId, applicationId, ApplicationStatus.IN_REVIEW,
+        if (!store.compareAndSetApplicationStatus(tenantId, projectId, applicationId, ApplicationStatus.IN_REVIEW,
                 application.rowVersion(), nextStatus, operatorId)) {
             throw conflict("工单已被其他操作更新，请刷新后重试");
         }
         if (outcome == ReviewOutcome.REJECTED) {
-            store.deleteValueReservations(tenantId, applicationId);
+            store.deleteValueReservations(tenantId, projectId, applicationId);
             if (application.targetId() != null) {
-                store.deleteTargetLock(tenantId, application.targetKind(), application.targetId(), applicationId);
+                store.deleteTargetLock(tenantId, projectId, application.targetKind(), application.targetId(), applicationId);
             }
         }
         store.insertHistory(history(application, operatorId,
@@ -291,15 +300,16 @@ public class SubsystemChangeService {
     /**
      * 审批中取消必须先登记取消请求，再在同一事务回调中调用 workflow terminate。
      */
-    public CancellationPreparation coordinateCancellation(AuthUser actor, long applicationId,
+    public CancellationPreparation coordinateCancellation(AuthUser actor, ProjectAccess project, long applicationId,
                                                            long expectedRowVersion,
                                                            CancellationCoordinator coordinator) {
         requireActor(actor);
+        requireProject(project);
         requirePositive(applicationId, "工单编号");
         requireNonNegative(expectedRowVersion, "工单行版本");
         Objects.requireNonNull(coordinator, "取消协调器不能为空");
         return inTransaction(() -> {
-            ChangeApplication application = lockOwned(actor, applicationId);
+            ChangeApplication application = lockOwned(actor, project, applicationId);
             requireVersion(application, expectedRowVersion);
             if (application.status() != ApplicationStatus.IN_REVIEW) {
                 throw conflict("只有 IN_REVIEW 工单需要终止审批流程");
@@ -313,7 +323,7 @@ public class SubsystemChangeService {
                     || application.currentPayloadDigest().isBlank()) {
                 throw conflict("工单缺少可终止的当前工作流上下文");
             }
-            if (!store.compareAndSetCancellationRequested(application.tenantId(), application.id(),
+            if (!store.compareAndSetCancellationRequested(application.tenantId(), application.projectId(), application.id(),
                     application.rowVersion(), application.currentWorkflowInstanceId(), actor.id())) {
                 throw conflict("工单或审批流程已变化，请刷新后重试");
             }
@@ -329,7 +339,7 @@ public class SubsystemChangeService {
     }
 
     /** 当前轮次 TERMINATED 事件的同事务确认入口；只有已登记取消请求才释放全部未发布资源。 */
-    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long applicationId,
+    public void applyCancellationConfirmationInCurrentTransaction(long tenantId, long projectId, long applicationId,
                                                                   long expectedRowVersion,
                                                                   long expectedWorkflowInstanceId,
                                                                   long operatorId) {
@@ -339,20 +349,20 @@ public class SubsystemChangeService {
         requireNonNegative(expectedRowVersion, "工单行版本");
         requirePositive(expectedWorkflowInstanceId, "工作流实例编号");
         requirePositive(operatorId, "操作人编号");
-        ChangeApplication application = store.lockApplication(tenantId, applicationId)
+        ChangeApplication application = store.lockApplication(tenantId, projectId, applicationId)
                 .orElseThrow(() -> notFound(applicationId));
         if (application.status() != ApplicationStatus.IN_REVIEW || !application.cancellationRequested()
                 || !Objects.equals(application.currentWorkflowInstanceId(), expectedWorkflowInstanceId)) {
             throw conflict("只有已登记取消请求的当前审批流程可以确认取消");
         }
         requireVersion(application, expectedRowVersion);
-        if (!store.compareAndSetApplicationStatus(tenantId, applicationId, ApplicationStatus.IN_REVIEW,
+        if (!store.compareAndSetApplicationStatus(tenantId, projectId, applicationId, ApplicationStatus.IN_REVIEW,
                 application.rowVersion(), ApplicationStatus.CANCELLED, operatorId)) {
             throw conflict("工单已被其他操作更新，请刷新后重试");
         }
-        store.deleteValueReservations(tenantId, applicationId);
+        store.deleteValueReservations(tenantId, projectId, applicationId);
         if (application.targetId() != null) {
-            store.deleteTargetLock(tenantId, application.targetKind(), application.targetId(), applicationId);
+            store.deleteTargetLock(tenantId, projectId, application.targetKind(), application.targetId(), applicationId);
         }
         store.insertHistory(history(application, operatorId, EVENT_CANCELLED_BY_WORKFLOW,
                 ApplicationStatus.IN_REVIEW, ApplicationStatus.CANCELLED,
@@ -514,7 +524,7 @@ public class SubsystemChangeService {
                                            int draftRevision) {
         Long sourceId = application.actionType() == ActionType.CREATE ? null : application.targetId();
         Long sourceVersion = existing == null ? input.sourceRowVersion() : existing.sourceRowVersion();
-        return new PhysicalDraft(application.id(), input.lineNo(), application.tenantId(), sourceId,
+        return new PhysicalDraft(application.id(), input.lineNo(), application.tenantId(), application.projectId(), sourceId,
                 input.code(), input.shortName(), input.name(), input.logicalSubsystemName(),
                 input.businessComponentCode(), input.englishName(), input.businessGroupName(),
                 input.deploymentPlatform(), input.disasterRecoveryMode(),
@@ -524,17 +534,18 @@ public class SubsystemChangeService {
                 existing == null ? now() : existing.createdAt(), now());
     }
 
-    private ChangeApplication newApplication(AuthUser actor, TargetKind targetKind, ActionType actionType,
+    private ChangeApplication newApplication(AuthUser actor, ProjectAccess project, TargetKind targetKind,
+                                             ActionType actionType,
                                              Long targetId, String reason) {
         LocalDateTime now = now();
-        return new ChangeApplication(nextId(), actor.tenantId(), targetKind, actionType, targetId, actor.id(), reason,
+        return new ChangeApplication(nextId(), actor.tenantId(), project.id(), targetKind, actionType, targetId, actor.id(), reason,
                 ApplicationStatus.DRAFT, 0, null, null, null, null, false, 0,
                 actor.id(), actor.id(), now, now);
     }
 
     private PhysicalDraft singlePhysicalDraft(ChangeApplication application) {
         List<PhysicalDraft> physicalDrafts = sortedPhysicalDrafts(
-                store.findPhysicalDrafts(application.tenantId(), application.id()));
+                store.findPhysicalDrafts(application.tenantId(), application.projectId(), application.id()));
         if (physicalDrafts.size() != 1) {
             throw new IllegalStateException("物理工单必须且只能包含一行物理草稿");
         }
@@ -551,8 +562,8 @@ public class SubsystemChangeService {
             return null;
         }
 
-        PhysicalPublishedState source = store.lockPhysical(application.tenantId(), application.targetId())
-                .orElseThrow(() -> conflict("物理子系统目标不存在或不属于当前租户"));
+        PhysicalPublishedState source = store.lockPhysical(application.tenantId(), application.projectId(), application.targetId())
+                .orElseThrow(() -> conflict("物理子系统目标不存在或不属于当前项目"));
         requirePhysicalSource(application, physicalDraft, source);
         validatePublishedAction(application.actionType(), source.status(), source.deleted());
         if (application.actionType() == ActionType.REPLACE) {
@@ -600,14 +611,14 @@ public class SubsystemChangeService {
     }
 
     private void ensurePermanentUnique(ChangeApplication application, PhysicalDraft draft, Long excludeId) {
-        if (store.physicalCodeExists(application.tenantId(), draft.code(), excludeId)) {
+        if (store.physicalCodeExists(application.tenantId(), application.projectId(), draft.code(), excludeId)) {
             throw conflict("物理子系统编号已存在，删除后的编号也不能复用");
         }
-        if (store.physicalNameExists(application.tenantId(), draft.name(), excludeId)) {
+        if (store.physicalNameExists(application.tenantId(), application.projectId(), draft.name(), excludeId)) {
             throw conflict("物理子系统名称已存在，删除后的名称也不能复用");
         }
         if (draft.englishName() != null
-                && store.physicalEnglishNameExists(application.tenantId(), draft.englishName(), excludeId)) {
+                && store.physicalEnglishNameExists(application.tenantId(), application.projectId(), draft.englishName(), excludeId)) {
             throw conflict("物理子系统英文名称已存在，删除后的英文名称也不能复用");
         }
     }
@@ -616,7 +627,7 @@ public class SubsystemChangeService {
         if (application.actionType() == ActionType.CREATE) {
             return;
         }
-        TargetLock current = store.findTargetLock(application.tenantId(), application.targetKind(),
+        TargetLock current = store.findTargetLock(application.tenantId(), application.projectId(), application.targetKind(),
                 application.targetId()).orElse(null);
         if (current != null) {
             if (current.applicationId() != application.id()) {
@@ -625,7 +636,7 @@ public class SubsystemChangeService {
             return;
         }
         try {
-            store.insertTargetLock(new TargetLock(application.tenantId(), application.targetKind(),
+            store.insertTargetLock(new TargetLock(application.tenantId(), application.projectId(), application.targetKind(),
                     application.targetId(), application.id(), now()));
         } catch (DuplicateKeyException exception) {
             throw conflict("目标物理子系统已被其他工单锁定");
@@ -646,7 +657,7 @@ public class SubsystemChangeService {
         if (normalized == null) {
             return;
         }
-        ValueReservation current = store.findValueReservation(application.tenantId(), scope, normalized).orElse(null);
+        ValueReservation current = store.findValueReservation(application.tenantId(), application.projectId(), scope, normalized).orElse(null);
         if (current != null) {
             if (current.applicationId() != application.id() || current.lineNo() != lineNo) {
                 throw conflict("字段值已被其他工单保留：" + scope);
@@ -654,7 +665,7 @@ public class SubsystemChangeService {
             return;
         }
         try {
-            store.insertValueReservation(new ValueReservation(application.tenantId(), scope, normalized,
+            store.insertValueReservation(new ValueReservation(application.tenantId(), application.projectId(), scope, normalized,
                     application.id(), lineNo, now()));
         } catch (DuplicateKeyException exception) {
             throw conflict("字段值已被其他工单保留：" + scope);
@@ -668,7 +679,7 @@ public class SubsystemChangeService {
     }
 
     private PhysicalDraft withSubmittedSnapshot(PhysicalDraft draft, String snapshot) {
-        return new PhysicalDraft(draft.applicationId(), draft.lineNo(), draft.tenantId(),
+        return new PhysicalDraft(draft.applicationId(), draft.lineNo(), draft.tenantId(), draft.projectId(),
                 draft.sourcePhysicalSubsystemId(), draft.code(), draft.shortName(), draft.name(),
                 draft.logicalSubsystemName(), draft.businessComponentCode(), draft.englishName(),
                 draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
@@ -686,6 +697,7 @@ public class SubsystemChangeService {
         StringBuilder canonical = new StringBuilder();
         appendCanonical(canonical, "applicationId", application.id());
         appendCanonical(canonical, "tenantId", application.tenantId());
+        appendCanonical(canonical, "projectId", application.projectId());
         appendCanonical(canonical, "targetKind", application.targetKind());
         appendCanonical(canonical, "actionType", application.actionType());
         appendCanonical(canonical, "targetId", application.targetId());
@@ -758,20 +770,21 @@ public class SubsystemChangeService {
 
     private ApplicationDetail detailFor(ChangeApplication application) {
         return new ApplicationDetail(application,
-                store.findPhysicalDrafts(application.tenantId(), application.id()),
-                store.listHistory(application.tenantId(), application.id()));
+                store.findPhysicalDrafts(application.tenantId(), application.projectId(), application.id()),
+                store.listHistory(application.tenantId(), application.projectId(), application.id()));
     }
 
-    private ChangeApplication loadAccessible(AuthUser actor, AccessScope scope, long applicationId) {
-        ChangeApplication application = store.findApplication(actor.tenantId(), applicationId)
+    private ChangeApplication loadAccessible(AuthUser actor, ProjectAccess project, AccessScope scope,
+                                             long applicationId) {
+        ChangeApplication application = store.findApplication(actor.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> notFound(applicationId));
         requireAccess(actor, scope, application);
         return application;
     }
 
     /** 编辑、提交和取消始终属于申请人本人；管理权限只扩大读取和工作流审批范围。 */
-    private ChangeApplication lockOwned(AuthUser actor, long applicationId) {
-        ChangeApplication application = store.lockApplication(actor.tenantId(), applicationId)
+    private ChangeApplication lockOwned(AuthUser actor, ProjectAccess project, long applicationId) {
+        ChangeApplication application = store.lockApplication(actor.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> notFound(applicationId));
         if (application.applicantId() != actor.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能维护本人发起的工单");
@@ -812,14 +825,14 @@ public class SubsystemChangeService {
     private ChangeHistoryEvent history(ChangeApplication application, long operatorId, String eventType,
                                        ApplicationStatus fromStatus, ApplicationStatus toStatus,
                                        int businessRound, String summary, String snapshot) {
-        return new ChangeHistoryEvent(nextId(), application.tenantId(), application.id(), eventType,
+        return new ChangeHistoryEvent(nextId(), application.tenantId(), application.projectId(), application.id(), eventType,
                 fromStatus, toStatus, businessRound, summary, snapshot, null,
                 operatorId, now());
     }
 
     private ChangeApplication withReasonAndRowVersion(ChangeApplication application, String reason,
                                                        long rowVersion, long updatedBy) {
-        return new ChangeApplication(application.id(), application.tenantId(), application.targetKind(),
+        return new ChangeApplication(application.id(), application.tenantId(), application.projectId(), application.targetKind(),
                 application.actionType(), application.targetId(), application.applicantId(), reason,
                 application.status(), application.currentBusinessRound(), application.currentWorkflowDefinitionId(),
                 application.currentWorkflowVersionId(), application.currentWorkflowInstanceId(),
@@ -829,7 +842,7 @@ public class SubsystemChangeService {
 
     private ChangeApplication withStatusAndRowVersion(ChangeApplication application, ApplicationStatus status,
                                                        long rowVersion, long updatedBy) {
-        return new ChangeApplication(application.id(), application.tenantId(), application.targetKind(),
+        return new ChangeApplication(application.id(), application.tenantId(), application.projectId(), application.targetKind(),
                 application.actionType(), application.targetId(), application.applicantId(), application.reason(),
                 status, application.currentBusinessRound(), application.currentWorkflowDefinitionId(),
                 application.currentWorkflowVersionId(), application.currentWorkflowInstanceId(),
@@ -919,6 +932,12 @@ public class SubsystemChangeService {
     private void requireActor(AuthUser actor) {
         if (actor == null || actor.id() <= 0 || actor.tenantId() <= 0) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "需要有效的认证用户和租户");
+        }
+    }
+
+    private void requireProject(ProjectAccess project) {
+        if (project == null || project.id() <= 0 || project.projectRef() == null || project.projectRef().isBlank()) {
+            throw badRequest("需要有效的项目访问上下文");
         }
     }
 

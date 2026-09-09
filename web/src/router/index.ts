@@ -153,6 +153,25 @@ const router = createRouter({
           component: DeliveryShowcaseModule,
           meta: { title: '交付示范中心' }
         },
+        { path: 'development', redirect: '/development/tasks' },
+        {
+          path: 'development/work-items/board',
+          name: 'development-work-item-board',
+          component: () => import('../modules/development/DevelopmentWorkItemBoardPage.vue'),
+          meta: { title: '工作项看板', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
+        {
+          path: 'development/tasks',
+          name: 'development-tasks',
+          component: () => import('../modules/development/DevelopmentTaskListPage.vue'),
+          meta: { title: '开发任务', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
+        {
+          path: 'development/tasks/:taskId',
+          name: 'development-task-detail',
+          component: () => import('../modules/development/DevelopmentTaskDetailPage.vue'),
+          meta: { title: '开发任务详情', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
         {
           path: 'release',
           name: 'release-root',
@@ -400,7 +419,7 @@ const router = createRouter({
         { path: 'architecture/decisions/:id', name: 'architecture-decision-detail', component: () => import('../modules/architecture/DecisionMatterDetailPage.vue'), meta: { title: '架构决策事项详情' } },
         { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
         { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
-        { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '具体环境' } },
+        { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '环境管理' } },
         { path: 'architecture/instances', name: 'architecture-instances', component: () => import('../modules/architecture/InstanceListPage.vue'), meta: { title: '环境部署实例' } },
         { path: 'architecture/plans', name: 'architecture-plans', component: () => import('../modules/architecture/PlanListPage.vue'), meta: { title: '环境搭建计划' } },
         { path: 'architecture/plans/:id', name: 'architecture-plan-detail', component: () => import('../modules/architecture/PlanDetailPage.vue'), meta: { title: '环境搭建计划详情', menuPath: '/architecture/plans' } },

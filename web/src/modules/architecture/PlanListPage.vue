@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Plus, Refresh, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -10,14 +10,16 @@ import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import { listEnvironments, loadPhysicalSubsystemOptions, loadResourceDeploymentUnitOptions } from './api'
 import type { DeploymentUnitOption, Environment, PhysicalSubsystemOption } from './types'
-import { cancelPlan, createPlan, listPlanTemplates, listPlans, loadPlanUserOptions, restorePlan } from './planApi'
+import { previewPlan, cancelPlan, createPlan, listPlanTemplates, listPlans, loadPlanUserOptions, restorePlan } from './planApi'
 import type { PlanRowView, PlanStatus, PlanTemplateView } from './planApi'
 import './architecture.css'
 
 const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const canView = computed(() => ['architecture:plan:view', 'architecture:plan:manage', 'architecture:view', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const canManage = computed(() => auth.hasPermission('architecture:plan:manage') || auth.hasPermission('architecture:manage'))
 
@@ -38,6 +40,7 @@ const filters = reactive({
 })
 
 async function load() {
+  if (!canView.value || !projectContext.currentRef) return
   loading.value = true
   loadError.value = ''
   forbidden.value = false
@@ -65,8 +68,6 @@ async function load() {
     loading.value = false
   }
 }
-
-onMounted(load)
 
 function search() {
   page.value = 1
@@ -99,9 +100,13 @@ function next() {
 const hasNext = computed(() => page.value * pageSize.value < total.value)
 
 const environments = ref<Environment[]>([])
-onMounted(async () => {
-  environments.value = await listEnvironments({}).catch(() => [])
-})
+watch(() => [canView.value, projectContext.currentRef] as const, async ([allowed, projectRef]) => {
+  if (!allowed || !projectRef) return
+  await Promise.all([
+    load(),
+    listEnvironments({}).then(items => { environments.value = items }).catch(() => { environments.value = [] })
+  ])
+}, { immediate: true })
 
 const statusLabels: Record<PlanStatus, string> = {
   NOT_STARTED: '未开始',
@@ -120,6 +125,15 @@ const statusTones: Record<PlanStatus, 'primary' | 'success' | 'warning' | 'dange
 const createVisible = ref(false)
 const createSaving = ref(false)
 const wizard = ref(0)
+const previewTasks = ref<import('./planApi').PreviewTask[]>([])
+const previewLoading = ref(false)
+const previewReady = ref(false)
+const uncoveredTargets = computed(() => [
+  ...createForm.physicalSubsystemIds.filter(id => !previewTasks.value.some(t => t.targetType === 'PHYSICAL_SUBSYSTEM' && t.targetId === id))
+    .map(id => physicalOptions.value.find(p => p.id === id)?.name || '所选系统'),
+  ...createForm.deploymentUnitIds.filter(id => !previewTasks.value.some(t => t.targetType === 'DEPLOYMENT_UNIT' && t.targetId === id))
+    .map(id => deploymentUnitOptions.value.find(p => p.id === id)?.name || '所选部署单元')
+])
 const createForm = reactive({
   environmentId: null as number | null,
   templateId: null as number | null,
@@ -138,6 +152,8 @@ const ownerOptions = ref<{ id: number; displayName: string }[]>([])
 
 async function openCreate() {
   wizard.value = 0
+  previewReady.value = false
+  previewTasks.value = []
   Object.assign(createForm, {
     environmentId: null, templateId: null, name: '', planOwnerUserId: null,
     participantUserIds: [], physicalSubsystemIds: [], deploymentUnitIds: [],
@@ -169,7 +185,28 @@ function onPhysicalSelect(ids: number[]) {
   }
 }
 
+async function loadPreview() {
+  if (!createForm.templateId || !createForm.planOwnerUserId || !createForm.environmentId) {
+    ElMessage.warning('请先选择环境、模板和计划负责人')
+    return
+  }
+  previewReady.value = false
+  previewTasks.value = []
+  previewLoading.value = true
+  try {
+    previewTasks.value = await previewPlan({ ...createForm, environmentId: createForm.environmentId,
+      templateId: createForm.templateId, planOwnerUserId: createForm.planOwnerUserId })
+    previewReady.value = true
+    wizard.value = 3
+  } catch (error) { ElMessage.error(apiErrorMessage(error, '任务分工预览失败')) }
+  finally { previewLoading.value = false }
+}
+function changePreviewOwner(task: import('./planApi').PreviewTask) {
+  if (task.ownerUserId && !task.participantUserIds.includes(task.ownerUserId)) task.participantUserIds.push(task.ownerUserId)
+}
+
 async function createPlanSubmit() {
+  if (createSaving.value || !previewReady.value) return
   if (!createForm.environmentId || !createForm.templateId || !createForm.planOwnerUserId) {
     ElMessage.warning('请完成环境、模板与计划责任人选择')
     return
@@ -178,6 +215,7 @@ async function createPlanSubmit() {
     ElMessage.warning('请至少选择一个目标（物理子系统或部署单元）')
     return
   }
+  if (previewTasks.value.some(t => !t.ownerUserId)) { ElMessage.warning('请补齐每个任务的负责人'); return }
   createSaving.value = true
   try {
     const plan = await createPlan({
@@ -187,7 +225,7 @@ async function createPlanSubmit() {
       planOwnerUserId: createForm.planOwnerUserId,
       physicalSubsystemIds: createForm.physicalSubsystemIds,
       deploymentUnitIds: createForm.deploymentUnitIds,
-      participantUserIds: createForm.participantUserIds,
+      taskAssignments: previewTasks.value.map(t => ({ key: t.key, ownerUserId: t.ownerUserId, participantUserIds: t.participantUserIds })),
       plannedStart: createForm.plannedRange?.[0] ?? null,
       plannedEnd: createForm.plannedRange?.[1] ?? null
     })
@@ -266,7 +304,7 @@ function formatDateTime(value: string | null | undefined) {
 
     <template v-else>
       <UiToolbar>
-        <el-select v-model="filters.environmentId" clearable filterable placeholder="具体环境" class="architecture-filter-select">
+        <el-select v-model="filters.environmentId" clearable filterable placeholder="环境" class="architecture-filter-select">
           <el-option v-for="env in environments" :key="env.id" :label="`${env.name}（${env.code}）`" :value="env.id" />
         </el-select>
         <el-select v-model="filters.status" clearable placeholder="状态" class="architecture-filter-select">
@@ -301,10 +339,10 @@ function formatDateTime(value: string | null | undefined) {
             <UiStatusTag :value="scope.row.status" :labels="statusLabels" :tone="statusTones[scope.row.status as PlanStatus]" />
           </template>
         </el-table-column>
-        <el-table-column label="进度" width="150">
+        <el-table-column label="任务进度" width="150">
           <template #default="scope">
             <el-progress :percentage="scope.row.progress ?? 0" :stroke-width="10" :show-text="false" />
-            <span class="plan-progress-text">{{ scope.row.progress ?? 0 }}%</span>
+            <span class="plan-progress-text">{{ scope.row.taskCount === 0 ? '待补充任务' : (scope.row.progress == null ? '暂无可统计检查项' : scope.row.progress + '%') }}</span>
           </template>
         </el-table-column>
         <el-table-column label="标识" min-width="150">
@@ -339,7 +377,7 @@ function formatDateTime(value: string | null | undefined) {
             <UiStatusTag :value="row.status" :labels="statusLabels" :tone="statusTones[row.status as PlanStatus]" />
           </header>
           <dl>
-            <div><dt>进度</dt><dd>{{ row.progress ?? 0 }}%（{{ row.taskCount }} 个任务）</dd></div>
+            <div><dt>任务进度</dt><dd>{{ row.taskCount === 0 ? '待补充任务' : (row.progress == null ? '暂无可统计检查项' : row.progress + '%') }}（{{ row.taskCount }} 个任务）</dd></div>
             <div><dt>计划结束</dt><dd>{{ formatDateTime(row.plannedEnd) }}</dd></div>
             <div><dt>标识</dt><dd>{{ [row.hasBlocked ? '阻塞' : '', row.hasOverdue ? '逾期' : '', row.hasWaived ? '豁免' : ''].filter(Boolean).join('、') || '—' }}</dd></div>
           </dl>
@@ -373,11 +411,12 @@ function formatDateTime(value: string | null | undefined) {
         <el-step title="环境与模板" />
         <el-step title="选择目标" />
         <el-step title="责任人与时间" />
+        <el-step title="逐任务分工" />
       </el-steps>
 
       <el-form v-if="wizard === 0" label-width="110px">
-        <el-form-item label="具体环境" required>
-          <el-select v-model="createForm.environmentId" placeholder="选择具体环境" filterable style="width: 100%">
+        <el-form-item label="环境" required>
+          <el-select v-model="createForm.environmentId" placeholder="选择环境" filterable style="width: 100%">
             <el-option v-for="env in environments" :key="env.id" :label="`${env.name}（${env.code}）`" :value="env.id" />
           </el-select>
         </el-form-item>
@@ -411,11 +450,6 @@ function formatDateTime(value: string | null | undefined) {
             <el-option v-for="user in ownerOptions" :key="user.id" :label="user.displayName" :value="user.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="任务参与人">
-          <el-select v-model="createForm.participantUserIds" multiple filterable placeholder="选择参与人（默认加入所有任务）" style="width: 100%">
-            <el-option v-for="user in ownerOptions" :key="user.id" :label="user.displayName" :value="user.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="计划时间">
           <el-date-picker v-model="createForm.plannedRange" type="datetimerange" range-separator="至"
                           start-placeholder="计划开始时间" end-placeholder="计划结束时间"
@@ -423,16 +457,42 @@ function formatDateTime(value: string | null | undefined) {
         </el-form-item>
       </el-form>
 
+      <section v-if="wizard === 3" class="plan-assignment-preview">
+        <el-alert title="系统及部署单元任务继承系统分工；公共任务默认由具备项目成员资格的计划负责人负责。可逐任务修改，负责人自动参与，旧负责人默认保留。" type="info" :closable="false" />
+        <el-alert v-if="previewTasks.length === 0" title="待补充任务：本次模板任务未匹配到所选目标" description="例如模板要求部署单元，但本次仅选择了系统。可以返回检查模板与目标，也可以先创建计划，之后在执行明细的环节中新增任务。无任务时计划保持未开始。" type="warning" :closable="false" />
+        <el-alert v-else-if="uncoveredTargets.length" :title="`以下目标没有专属任务：${uncoveredTargets.join('、')}`" description="公共任务不会按目标复制。请确认公共任务是否覆盖这些目标，或创建后补充专属任务；任务进度仅统计已配置的工作。" type="warning" :closable="false" />
+        <article v-for="task in previewTasks" :key="task.key" class="plan-assignment-preview__task">
+          <h4>{{ task.stageName }} · {{ task.name }}</h4><p>{{ task.targetName }}</p>
+          <el-alert v-if="!task.ownerUserId" :title="task.targetId == null ? '计划负责人不在有效项目成员范围内，请指定公共任务负责人' : '请指定具备系统参与资格的任务负责人'" type="warning" :closable="false" />
+          <el-alert v-if="!task.candidates.length" title="暂无符合资格的人员，请先完善项目或系统参与人员，再返回重新预览" type="warning" :closable="false" />
+          <el-form label-position="top">
+            <el-form-item label="任务负责人" required>
+              <el-select v-model="task.ownerUserId" filterable style="width:100%" @change="changePreviewOwner(task)">
+                <el-option v-for="person in task.candidates" :key="person.userId" :value="person.userId" :label="person.displayName" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="任务参与人员">
+              <el-select v-model="task.participantUserIds" multiple filterable style="width:100%">
+                <el-option v-for="person in task.candidates" :key="person.userId" :value="person.userId" :label="person.displayName" :disabled="person.userId === task.ownerUserId" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </article>
+      </section>
       <template #footer>
         <el-button v-if="wizard > 0" @click="wizard--">上一步</el-button>
         <el-button v-if="wizard < 2" type="primary" @click="wizard === 0 ? (loadTargets(), wizard++) : wizard++">下一步</el-button>
-        <el-button v-else type="primary" :loading="createSaving" @click="createPlanSubmit">创建计划</el-button>
+        <el-button v-else-if="wizard === 2" type="primary" :loading="previewLoading" @click="loadPreview">预览任务分工</el-button>
+        <el-button v-else type="primary" :disabled="!previewReady || previewTasks.some(t => !t.ownerUserId)" :loading="createSaving" @click="createPlanSubmit">{{ previewTasks.length ? '创建计划' : '先创建，稍后补充任务' }}</el-button>
       </template>
     </el-dialog>
   </main>
 </template>
 
 <style scoped>
+.plan-assignment-preview { max-height: 55dvh; overflow-y: auto; min-width: 0; }
+.plan-assignment-preview__task { padding: 12px 0; border-bottom: 1px solid var(--el-border-color); overflow-wrap: anywhere; }
+
 .plan-progress-text {
   margin-left: 8px;
   font-size: 12px;

@@ -66,6 +66,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
     private static DriverManagerDataSource dataSource;
     private static JdbcTemplate jdbc;
     private static TransactionTemplate transactions;
+    private static long projectId;
 
     private SubsystemChangeStore store;
 
@@ -79,11 +80,14 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("147"))
+                .target(MigrationVersion.fromVersion("156"))
                 .cleanDisabled(false)
                 .load();
         flyway.clean();
         assertThat(flyway.migrate().success).isTrue();
+        projectId = jdbc.queryForObject(
+                "SELECT id FROM pm_project WHERE tenant_id = 1 AND project_code = 'REL-DEMO-ALPHA' AND deleted = 0",
+                Long.class);
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     }
 
@@ -92,6 +96,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
         transactions = null;
         jdbc = null;
         dataSource = null;
+        projectId = 0;
     }
 
     @BeforeEach
@@ -216,16 +221,16 @@ class ArchitectureWorkflowIntegrationMySqlTest {
         inTransaction(() -> {
             store.insertApplication(application());
             store.insertPendingWorkflowRound(pendingRound());
-            assertThat(store.bindWorkflowRoundStarted(TENANT_ID, APPLICATION_ID, 1,
+            assertThat(store.bindWorkflowRoundStarted(TENANT_ID, projectId, APPLICATION_ID, 1,
                     DEFINITION_ID, VERSION_ID, WORKFLOW_INSTANCE_ID, PAYLOAD_DIGEST, STARTED_AT)).isTrue();
-            assertThat(store.compareAndSetApplicationWorkflowContext(TENANT_ID, APPLICATION_ID,
+            assertThat(store.compareAndSetApplicationWorkflowContext(TENANT_ID, projectId, APPLICATION_ID,
                     0, 0, 1, DEFINITION_ID, VERSION_ID, WORKFLOW_INSTANCE_ID, PAYLOAD_DIGEST, 1)).isTrue();
             assertThat(store.beginReceipt(receipt(RECEIPT_ID))).isTrue();
-            assertThat(store.completeReceipt(TENANT_ID, "event-88003", SUBSCRIBER_KEY,
+            assertThat(store.completeReceipt(TENANT_ID, projectId, "event-88003", SUBSCRIBER_KEY,
                     WorkflowReceiptStatus.PROCESSED, "已持久化工作流事件")).isTrue();
         });
 
-        ChangeApplication application = store.findApplication(TENANT_ID, APPLICATION_ID).orElseThrow();
+        ChangeApplication application = store.findApplication(TENANT_ID, projectId, APPLICATION_ID).orElseThrow();
         assertThat(application)
                 .extracting(ChangeApplication::status, ChangeApplication::currentBusinessRound,
                         ChangeApplication::currentWorkflowDefinitionId, ChangeApplication::currentWorkflowVersionId,
@@ -234,7 +239,7 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                 .containsExactly(ApplicationStatus.IN_REVIEW, 1, DEFINITION_ID, VERSION_ID,
                         WORKFLOW_INSTANCE_ID, PAYLOAD_DIGEST, 1L);
 
-        WorkflowRound round = store.findWorkflowRound(TENANT_ID, APPLICATION_ID, 1).orElseThrow();
+        WorkflowRound round = store.findWorkflowRound(TENANT_ID, projectId, APPLICATION_ID, 1).orElseThrow();
         assertThat(round)
                 .extracting(WorkflowRound::workflowDefinitionId, WorkflowRound::workflowVersionId,
                         WorkflowRound::workflowInstanceId, WorkflowRound::payloadDigest,
@@ -242,7 +247,8 @@ class ArchitectureWorkflowIntegrationMySqlTest {
                 .containsExactly(DEFINITION_ID, VERSION_ID, WORKFLOW_INSTANCE_ID, PAYLOAD_DIGEST,
                         WorkflowRoundStatus.STARTED, STARTED_AT);
 
-        WorkflowReceipt receipt = store.findReceipt(TENANT_ID, "event-88003", SUBSCRIBER_KEY).orElseThrow();
+        WorkflowReceipt receipt = store.findReceipt(
+                TENANT_ID, projectId, "event-88003", SUBSCRIBER_KEY).orElseThrow();
         assertThat(receipt)
                 .extracting(WorkflowReceipt::applicationId, WorkflowReceipt::roundNo,
                         WorkflowReceipt::workflowInstanceId, WorkflowReceipt::eventType,
@@ -252,25 +258,26 @@ class ArchitectureWorkflowIntegrationMySqlTest {
 
         assertThat(inTransaction(() -> store.beginReceipt(receipt(RECEIPT_ID + 1)))).isFalse();
         assertThat(count("SELECT COUNT(*) FROM arch_subsystem_workflow_receipt "
-                + "WHERE tenant_id = 1 AND event_id = 'event-88003' AND subscriber_key = '"
+                + "WHERE tenant_id = 1 AND project_id = " + projectId
+                + " AND event_id = 'event-88003' AND subscriber_key = '"
                 + SUBSCRIBER_KEY + "'"))
                 .isEqualTo(1L);
     }
 
     private ChangeApplication application() {
-        return new ChangeApplication(APPLICATION_ID, TENANT_ID, TargetKind.PHYSICAL, ActionType.CREATE,
+        return new ChangeApplication(APPLICATION_ID, TENANT_ID, projectId, TargetKind.PHYSICAL, ActionType.CREATE,
                 null, 1L, "验证工作流持久化", ApplicationStatus.IN_REVIEW, 0,
                 null, null, null, null, false, 0, 1L, 1L, null, null);
     }
 
     private WorkflowRound pendingRound() {
-        return new WorkflowRound(ROUND_ID, TENANT_ID, APPLICATION_ID, 1,
+        return new WorkflowRound(ROUND_ID, TENANT_ID, projectId, APPLICATION_ID, 1,
                 null, null, null, null, WorkflowRoundStatus.PENDING,
                 null, null, null, null);
     }
 
     private WorkflowReceiptStart receipt(long id) {
-        return new WorkflowReceiptStart(id, TENANT_ID, "event-88003", SUBSCRIBER_KEY,
+        return new WorkflowReceiptStart(id, TENANT_ID, projectId, "event-88003", SUBSCRIBER_KEY,
                 APPLICATION_ID, 1, WORKFLOW_INSTANCE_ID, "APPROVED");
     }
 

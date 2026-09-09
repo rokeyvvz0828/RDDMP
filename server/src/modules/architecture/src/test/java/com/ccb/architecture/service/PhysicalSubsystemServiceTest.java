@@ -9,6 +9,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemReferenceQuery;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PhysicalSubsystemServiceTest {
     private static final AuthUser ACTOR = new AuthUser(9, 7, "architect", "hash", "架构管理员", 11, true);
+    private static final ProjectAccess PROJECT = new ProjectAccess(70L, "PROJECT-A", "项目 A");
 
     @Mock
     private ArchitectureSubsystemRepository repository;
@@ -60,7 +62,7 @@ class PhysicalSubsystemServiceTest {
 
     @Test
     void 列表使用认证租户并返回状态和物理扩展字段() {
-        when(repository.pagePhysical(eq(7L), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
+        when(repository.pagePhysical(eq(7L), eq(70L), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
                 .thenReturn(new PageResult<>(List.of(physical("VOIDED")), 1, 1, 20));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12L, "平台研发团队", 1)));
         when(referenceQuery.activeParameters(ACTOR, "ARCH_BUSINESS_COMPONENT"))
@@ -70,7 +72,7 @@ class PhysicalSubsystemServiceTest {
         when(referenceQuery.findUser(ACTOR, 9L, false))
                 .thenReturn(Optional.of(new SystemUserReference(9L, "架构管理员", "architect", null, true)));
 
-        PageResult<PhysicalSubsystemView> result = service.list(ACTOR, new PageQuery(1, 20),
+        PageResult<PhysicalSubsystemView> result = service.list(ACTOR, PROJECT, new PageQuery(1, 20),
                 new PhysicalSubsystemQuery(" W0001 ", null, null, " 商城 ", "architecture.business-component.employee-portal",
                         " 渠道 ", 12L, " voided "));
 
@@ -83,7 +85,7 @@ class PhysicalSubsystemServiceTest {
             assertThat(view.rowVersion()).isEqualTo(4L);
         });
         ArgumentCaptor<PhysicalSubsystemQuery> query = ArgumentCaptor.forClass(PhysicalSubsystemQuery.class);
-        verify(repository).pagePhysical(eq(7L), any(PageQuery.class), query.capture());
+        verify(repository).pagePhysical(eq(7L), eq(70L), any(PageQuery.class), query.capture());
         assertThat(query.getValue()).isEqualTo(
                 new PhysicalSubsystemQuery("W0001", null, null, "商城",
                         "architecture.business-component.employee-portal", "渠道", 12L, "VOIDED"));
@@ -91,10 +93,10 @@ class PhysicalSubsystemServiceTest {
 
     @Test
     void 详情保留状态字段并在团队停用时使用快照名称() {
-        when(repository.findPhysical(7L, 201L)).thenReturn(Optional.of(physical("OFFLINE")));
+        when(repository.findPhysical(7L, 70L, 201L)).thenReturn(Optional.of(physical("OFFLINE")));
         when(organizationService.tree(ACTOR)).thenReturn(List.of(organization(12L, "已停用团队", 0)));
 
-        PhysicalSubsystemView view = service.detail(ACTOR, 201L);
+        PhysicalSubsystemView view = service.detail(ACTOR, PROJECT, 201L);
 
         assertThat(view.status()).isEqualTo("OFFLINE");
         assertThat(view.englishName()).isEqualTo("Mall Platform");
@@ -106,21 +108,21 @@ class PhysicalSubsystemServiceTest {
 
     @Test
     void 旧新增入口在认证后立即要求工单且无副作用() {
-        assertWorkOrderRequired(() -> service.create(ACTOR, null, "trace-create"));
+        assertWorkOrderRequired(() -> service.create(ACTOR, PROJECT, null, "trace-create"));
 
         verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
 
     @Test
     void 旧修改入口在认证后立即要求工单且无副作用() {
-        assertWorkOrderRequired(() -> service.update(ACTOR, -1L, null, "trace-update"));
+        assertWorkOrderRequired(() -> service.update(ACTOR, PROJECT, -1L, null, "trace-update"));
 
         verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
 
     @Test
     void 旧删除入口在认证后立即要求工单且无副作用() {
-        assertWorkOrderRequired(() -> service.delete(ACTOR, -1L, "trace-delete"));
+        assertWorkOrderRequired(() -> service.delete(ACTOR, PROJECT, -1L, "trace-delete"));
 
         verifyNoInteractions(repository, organizationService, referenceQuery, operationAudit, transactions);
     }
@@ -129,7 +131,7 @@ class PhysicalSubsystemServiceTest {
     void 无有效租户时仍在工单兼容判断前返回未认证() {
         AuthUser missingTenant = new AuthUser(9, 0, "architect", "hash", "架构管理员", 11, true);
 
-        assertThatThrownBy(() -> service.create(missingTenant, null, "trace-auth"))
+        assertThatThrownBy(() -> service.create(missingTenant, PROJECT, null, "trace-auth"))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.code()).isEqualTo(ErrorCode.UNAUTHORIZED));
 

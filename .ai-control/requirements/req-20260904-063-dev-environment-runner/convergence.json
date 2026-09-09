@@ -1,0 +1,155 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": [
+        "PowerShell 和 Bash 薄入口均调用同一 scripts/dev.mjs 并透传参数与退出码。",
+        "Node、PowerShell、Bash 语法检查通过，未知参数退出码 2，编排器无第三方 npm 依赖。"
+      ],
+      "limitations": ["macOS/Linux 仅完成 Bash 静态检查，未执行真实启动。"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1"],
+      "evidence": [
+        "启动器固定 loopback、本地端口、local profile 和 rddmp-dev 隔离资源，不读取或覆盖 .env。",
+        "Windows 空库和已有本地库均可使用 admin/admin123 登录；permission-check 返回 403，RBAC 仍由服务端执行。"
+      ],
+      "limitations": ["固定凭据只在隔离本地 Docker 数据中验证。"]
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": [
+        "基础设施就绪后启动后端，空库执行 143 个 Flyway 迁移至版本 148，已有库验证 143 个迁移并保持 148。",
+        "后端 Actuator 连续稳定 3 秒为 UP；Maven 15 模块 reactor BUILD SUCCESS。"
+      ],
+      "limitations": ["Flyway 真实启动传感器仅覆盖 Windows Docker Desktop。"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T1", "T2", "T3"],
+      "evidence": [
+        "前端以现有 Vite dev server 启动并持续 HTTP 200，前端生产构建通过。",
+        "源码变化后 reactor install 成功，Java PID 从 21820 切换为 55476，新后端 Flyway validate 并恢复 UP。"
+      ],
+      "limitations": ["未动态注入 Maven 编译失败；保留旧后端的失败分支通过状态机静态审计。"]
+    },
+    {
+      "id": "R5",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": [
+        "Ctrl+C 后 8080/5173 释放且基础设施容器保留；--down 后容器移除且两个数据卷保留。",
+        "AGENTS.md 已记录双平台命令、admin/admin123、热重载、Flyway、退出行为和 local-only 边界；最终范围检查通过。"
+      ],
+      "limitations": ["PTY 注入 Ctrl+C 时外层 PowerShell 返回 1，但脚本清理分支、端口和进程树均验证成功。"]
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": ["脚本/Compose 静态检查和 Windows 空库、已有库、登录、权限、退出、--down 全链路通过。"]
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": ["reactor install、Java PID 切换、Flyway 校验和健康恢复通过。"]
+    },
+    {
+      "id": "T3",
+      "status": "verified",
+      "evidence": ["Maven 15 模块、前端构建、Compose 实际环境解析、JSON、范围和 diff 检查通过；本任务无治理布局错误。"]
+    }
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {
+      "check": "Maven 全 reactor 测试",
+      "result": "pass",
+      "evidence": "15 个模块全部 SUCCESS，总耗时 15:33；架构模块 269 个测试、test-management 20 个、boot 8 个均零失败。"
+    },
+    {
+      "check": "前端类型与生产构建",
+      "result": "pass",
+      "evidence": "npm --prefix web run build 退出码 0。"
+    },
+    {
+      "check": "启动脚本和 Compose",
+      "result": "pass",
+      "evidence": "Node/PowerShell/Bash 语法、未知参数失败路径和按启动器实际固定环境执行的 docker compose config 均通过。"
+    },
+    {
+      "check": "治理、范围和差异完整性",
+      "result": "pass-with-disturbance",
+      "evidence": "研发入口、当前账本 JSON、codex scope 和 git diff --check 通过；check-all-governance 仅被其他历史需求账本问题阻塞，本任务不在错误列表。"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "不连接生产或共享环境，不覆盖用户 .env。",
+      "result": "pass",
+      "evidence": "启动器只注入固定 loopback 和 local profile，未读写 .env。"
+    },
+    {
+      "invariant": "Flyway 迁移只由 Spring Boot 执行且历史脚本不修改。",
+      "result": "pass",
+      "evidence": "差异不含 migration 文件，真实启动完成 migrate/validate。"
+    },
+    {
+      "invariant": "Ctrl+C 和 --down 不删除数据卷。",
+      "result": "pass",
+      "evidence": "两种退出路径后 rddmp-dev 命名卷均存在。"
+    },
+    {
+      "invariant": "修改位于批准范围并保持 Compose 原默认行为。",
+      "result": "pass",
+      "evidence": "working-tree 范围检查通过；Compose 参数均提供 ccb-platform 兼容默认值。"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "历史 ccb-platform 容器和卷可能含不同初始化密码。",
+      "result": "pass",
+      "evidence": "使用独立 rddmp-dev Compose 项目、容器、端口和卷，未接触历史资源。"
+    },
+    {
+      "disturbance": "仓库存在其他需求的无效 AI control 账本。",
+      "result": "controlled",
+      "evidence": "全量治理错误清单不包含本任务；模块治理、Skill、研发入口、JSON 和任务范围均独立通过。"
+    },
+    {
+      "disturbance": "架构集成测试大量重复创建 MySQL 并执行迁移。",
+      "result": "pass",
+      "evidence": "测试持续 15:33 后正常结束，15 个 reactor 模块全部成功。"
+    }
+  ],
+  "residual_risks": [
+    "macOS/Linux 尚未完成真实启动、进程组清理、fs.watch 和 Docker host-gateway 运行复核。",
+    "未动态注入后端编译失败以验证旧进程保持可用的分支。",
+    "其他历史需求账本问题继续使 node scripts/check-all-governance.mjs 总退出码为 1。",
+    "MySQL 8.4 测试日志包含 Flyway 支持版本和旧 SQL/字符集弃用警告，均为仓库既有警告。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "五项 must 需求均具备任务、实际修改和运行/静态传感器证据；T1-T3 全部 verified；两次 standard 采样误差为零；最终范围、不变量和回归检查满足门禁。"
+}

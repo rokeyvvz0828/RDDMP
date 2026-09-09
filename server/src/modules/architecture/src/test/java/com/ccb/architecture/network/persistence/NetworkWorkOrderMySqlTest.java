@@ -11,6 +11,7 @@ import com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowReceipt
 import com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowRound;
 import com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkflowRoundStatus;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Testcontainers
 class NetworkWorkOrderMySqlTest {
     private static final long TENANT_ID = 1L;
+    private static final long PROJECT_ID = 77000L;
     private static final long WORK_ORDER_ID = 77001L;
     private static final long HISTORY_ID = 77002L;
     private static final long ROUND_ID = 77003L;
@@ -66,14 +68,30 @@ class NetworkWorkOrderMySqlTest {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-        Flyway flyway = Flyway.configure()
+        Flyway v157 = Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .target(MigrationVersion.fromVersion("157"))
                 .cleanDisabled(false)
                 .load();
-        flyway.clean();
-        assertThat(flyway.migrate().success).isTrue();
+        v157.clean();
+        assertThat(v157.migrate().success).isTrue();
+        jdbc.update("DELETE FROM pm_project WHERE tenant_id = ? AND project_code = 'RDDMP-PLATFORM'",
+                TENANT_ID);
+        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, status, owner_id, "
+                        + "created_by, deleted) SELECT ?, ?, 'RDDMP-PLATFORM', '网络存储测试项目', "
+                        + "'RUNNING', 1, 1, 0 WHERE NOT EXISTS "
+                        + "(SELECT 1 FROM pm_project WHERE tenant_id = ? AND id = ?)",
+                PROJECT_ID, TENANT_ID, TENANT_ID, PROJECT_ID);
+        assertThat(Flyway.configure()
+                .dataSource(dataSource)
+                .locations("filesystem:" + migrationDirectory())
+                .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .target(MigrationVersion.fromVersion("158"))
+                .cleanDisabled(false)
+                .load()
+                .migrate().success).isTrue();
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     }
 
@@ -101,19 +119,21 @@ class NetworkWorkOrderMySqlTest {
                 + "'arch_network_workflow_receipt')", Integer.class, DATABASE)).isEqualTo(4);
         // 跨 kind 动作约束
         assertThatThrownBy(() -> jdbc.update("INSERT INTO arch_network_work_order "
-                + "(id, tenant_id, kind, action_type, subject, applicant_id, status, business_payload, "
-                + "created_by, updated_by) VALUES (99001, 1, 'CLB', 'ADD', 'x', 1, 'DRAFT', '{}', 1, 1)"))
+                + "(id, tenant_id, project_id, kind, action_type, subject, applicant_id, status, business_payload, "
+                + "created_by, updated_by) VALUES (99001, 1, " + PROJECT_ID
+                + ", 'CLB', 'ADD', 'x', 1, 'DRAFT', '{}', 1, 1)"))
                 .hasMessageContaining("chk_arch_network_work_order_action");
         // 状态约束
         assertThatThrownBy(() -> jdbc.update("INSERT INTO arch_network_work_order "
-                + "(id, tenant_id, kind, action_type, subject, applicant_id, status, business_payload, "
-                + "created_by, updated_by) VALUES (99002, 1, 'CLB', 'OPEN', 'x', 1, 'DONE', '{}', 1, 1)"))
+                + "(id, tenant_id, project_id, kind, action_type, subject, applicant_id, status, business_payload, "
+                + "created_by, updated_by) VALUES (99002, 1, " + PROJECT_ID
+                + ", 'CLB', 'OPEN', 'x', 1, 'DONE', '{}', 1, 1)"))
                 .hasMessageContaining("chk_arch_network_work_order_status");
         // 结果状态约束
         assertThatThrownBy(() -> jdbc.update("INSERT INTO arch_network_work_order "
-                + "(id, tenant_id, kind, action_type, subject, applicant_id, status, business_payload, "
-                + "result_status, created_by, updated_by) VALUES (99003, 1, 'DNS', 'ADD', 'x', 1, "
-                + "'DRAFT', '{}', 'PARTIAL', 1, 1)"))
+                + "(id, tenant_id, project_id, kind, action_type, subject, applicant_id, status, business_payload, "
+                + "result_status, created_by, updated_by) VALUES (99003, 1, " + PROJECT_ID
+                + ", 'DNS', 'ADD', 'x', 1, 'DRAFT', '{}', 'PARTIAL', 1, 1)"))
                 .hasMessageContaining("chk_arch_network_work_order_result");
     }
 
@@ -122,22 +142,22 @@ class NetworkWorkOrderMySqlTest {
         inTransaction(() -> store.insertWorkOrder(workOrder(WORK_ORDER_ID, 1L, "CLB-A")));
         inTransaction(() -> store.insertWorkOrder(workOrder(77011L, 2L, "DNS-B")));
 
-        assertThat(store.findWorkOrder(1L, WORK_ORDER_ID)).isPresent();
-        assertThat(store.findWorkOrder(2L, WORK_ORDER_ID)).isEmpty();
-        assertThat(store.listWorkOrders(1L, null, null, null, 20, 0)).hasSize(1);
-        assertThat(store.listWorkOrders(1L, 9L, Kind.CLB, null, 20, 0)).hasSize(1);
-        assertThat(store.listWorkOrders(1L, 9L, Kind.DNS, null, 20, 0)).isEmpty();
+        assertThat(store.findWorkOrder(1L, PROJECT_ID, WORK_ORDER_ID)).isPresent();
+        assertThat(store.findWorkOrder(2L, PROJECT_ID, WORK_ORDER_ID)).isEmpty();
+        assertThat(store.listWorkOrders(1L, PROJECT_ID, null, null, null, 20, 0)).hasSize(1);
+        assertThat(store.listWorkOrders(1L, PROJECT_ID, 9L, Kind.CLB, null, 20, 0)).hasSize(1);
+        assertThat(store.listWorkOrders(1L, PROJECT_ID, 9L, Kind.DNS, null, 20, 0)).isEmpty();
     }
 
     @Test
     void 草稿更新与行版本守卫() {
         inTransaction(() -> store.insertWorkOrder(workOrder(WORK_ORDER_ID, 1L, "CLB-A")));
-        assertThat(inTransaction(() -> store.updateDraft(1L, WORK_ORDER_ID, WorkOrderStatus.DRAFT, 0L,
+        assertThat(inTransaction(() -> store.updateDraft(1L, PROJECT_ID, WORK_ORDER_ID, WorkOrderStatus.DRAFT, 0L,
                 "新原因", "{\"clbName\":\"CLB-B\",\"purpose\":\"y\",\"description\":null}", "[1,2]", 9L))).isTrue();
-        assertThat(inTransaction(() -> store.updateDraft(1L, WORK_ORDER_ID, WorkOrderStatus.DRAFT, 0L,
+        assertThat(inTransaction(() -> store.updateDraft(1L, PROJECT_ID, WORK_ORDER_ID, WorkOrderStatus.DRAFT, 0L,
                 "x", "{}", "[]", 9L))).isFalse();
 
-        WorkOrder updated = store.findWorkOrder(1L, WORK_ORDER_ID).orElseThrow();
+        WorkOrder updated = store.findWorkOrder(1L, PROJECT_ID, WORK_ORDER_ID).orElseThrow();
         assertThat(updated.reason()).isEqualTo("新原因");
         assertThat(updated.rowVersion()).isEqualTo(1L);
     }
@@ -145,12 +165,12 @@ class NetworkWorkOrderMySqlTest {
     @Test
     void 状态与工作流上下文CAS() {
         inTransaction(() -> store.insertWorkOrder(workOrder(WORK_ORDER_ID, 1L, "CLB-A")));
-        assertThat(inTransaction(() -> store.compareAndSetStatus(1L, WORK_ORDER_ID,
+        assertThat(inTransaction(() -> store.compareAndSetStatus(1L, PROJECT_ID, WORK_ORDER_ID,
                 WorkOrderStatus.DRAFT, 0L, WorkOrderStatus.IN_REVIEW, 9L))).isTrue();
-        assertThat(inTransaction(() -> store.compareAndSetWorkflowContext(1L, WORK_ORDER_ID,
+        assertThat(inTransaction(() -> store.compareAndSetWorkflowContext(1L, PROJECT_ID, WORK_ORDER_ID,
                 0, 1L, 1, 900000000000032L, 1L, INSTANCE_ID, DIGEST, 9L))).isTrue();
 
-        WorkOrder review = store.findWorkOrder(1L, WORK_ORDER_ID).orElseThrow();
+        WorkOrder review = store.findWorkOrder(1L, PROJECT_ID, WORK_ORDER_ID).orElseThrow();
         assertThat(review.status()).isEqualTo(WorkOrderStatus.IN_REVIEW);
         assertThat(review.currentBusinessRound()).isEqualTo(1);
         assertThat(review.currentWorkflowInstanceId()).isEqualTo(INSTANCE_ID);
@@ -161,12 +181,12 @@ class NetworkWorkOrderMySqlTest {
     @Test
     void 办理结果登记不改变状态() {
         inTransaction(() -> store.insertWorkOrder(workOrder(WORK_ORDER_ID, 1L, "CLB-A")));
-        inTransaction(() -> store.compareAndSetStatus(1L, WORK_ORDER_ID,
+        inTransaction(() -> store.compareAndSetStatus(1L, PROJECT_ID, WORK_ORDER_ID,
                 WorkOrderStatus.DRAFT, 0L, WorkOrderStatus.IN_REVIEW, 9L));
-        assertThat(inTransaction(() -> store.updateHandlingResult(1L, WORK_ORDER_ID, 1L,
+        assertThat(inTransaction(() -> store.updateHandlingResult(1L, PROJECT_ID, WORK_ORDER_ID, 1L,
                 "SUCCESS", "外部配置完成", "[88]", 12L))).isTrue();
 
-        WorkOrder handled = store.findWorkOrder(1L, WORK_ORDER_ID).orElseThrow();
+        WorkOrder handled = store.findWorkOrder(1L, PROJECT_ID, WORK_ORDER_ID).orElseThrow();
         assertThat(handled.status()).isEqualTo(WorkOrderStatus.IN_REVIEW);
         assertThat(handled.resultStatus()).isEqualTo(
                 com.ccb.architecture.network.model.NetworkWorkOrderModels.HandlingResultStatus.SUCCESS);
@@ -178,33 +198,33 @@ class NetworkWorkOrderMySqlTest {
     void 历史事件与工作流轮次回执幂等() {
         inTransaction(() -> store.insertWorkOrder(workOrder(WORK_ORDER_ID, 1L, "CLB-A")));
         inTransaction(() -> {
-            store.insertHistory(new HistoryEvent(HISTORY_ID, 1L, WORK_ORDER_ID, "CREATED", null,
+            store.insertHistory(new HistoryEvent(HISTORY_ID, 1L, PROJECT_ID, WORK_ORDER_ID, "CREATED", null,
                     WorkOrderStatus.DRAFT, 0, "创建", "{}", null, 9L, TIME));
-            store.insertPendingWorkflowRound(new WorkflowRound(ROUND_ID, 1L, WORK_ORDER_ID, 1,
+            store.insertPendingWorkflowRound(new WorkflowRound(ROUND_ID, 1L, PROJECT_ID, WORK_ORDER_ID, 1,
                     null, null, null, null, WorkflowRoundStatus.PENDING, null, null, null, null));
-            assertThat(store.bindWorkflowRoundStarted(1L, WORK_ORDER_ID, 1,
+            assertThat(store.bindWorkflowRoundStarted(1L, PROJECT_ID, WORK_ORDER_ID, 1,
                     900000000000032L, 1L, INSTANCE_ID, DIGEST, TIME)).isTrue();
-            assertThat(store.beginReceipt(new WorkflowReceiptStart(RECEIPT_ID, 1L, "event-77001",
+            assertThat(store.beginReceipt(new WorkflowReceiptStart(RECEIPT_ID, 1L, PROJECT_ID, "event-77001",
                     SUBSCRIBER_KEY, WORK_ORDER_ID, 1, INSTANCE_ID, "APPROVED"))).isTrue();
-            assertThat(store.completeReceipt(1L, "event-77001", SUBSCRIBER_KEY,
+            assertThat(store.completeReceipt(1L, PROJECT_ID, "event-77001", SUBSCRIBER_KEY,
                     WorkflowReceiptStatus.PROCESSED, "已处理")).isTrue();
         });
 
-        assertThat(store.listHistory(1L, WORK_ORDER_ID)).hasSize(1);
-        WorkflowRound round = store.findWorkflowRound(1L, WORK_ORDER_ID, 1).orElseThrow();
+        assertThat(store.listHistory(1L, PROJECT_ID, WORK_ORDER_ID)).hasSize(1);
+        WorkflowRound round = store.findWorkflowRound(1L, PROJECT_ID, WORK_ORDER_ID, 1).orElseThrow();
         assertThat(round.status()).isEqualTo(WorkflowRoundStatus.STARTED);
         assertThat(round.workflowInstanceId()).isEqualTo(INSTANCE_ID);
         assertThat(round.payloadDigest()).isEqualTo(DIGEST);
 
         // 回执幂等：同 eventId+subscriberKey 第二次 begin 失败
         assertThat(inTransaction(() -> store.beginReceipt(new WorkflowReceiptStart(RECEIPT_ID + 1,
-                1L, "event-77001", SUBSCRIBER_KEY, WORK_ORDER_ID, 1, INSTANCE_ID, "APPROVED")))).isFalse();
-        WorkflowReceipt receipt = store.findReceipt(1L, "event-77001", SUBSCRIBER_KEY).orElseThrow();
+                1L, PROJECT_ID, "event-77001", SUBSCRIBER_KEY, WORK_ORDER_ID, 1, INSTANCE_ID, "APPROVED")))).isFalse();
+        WorkflowReceipt receipt = store.findReceipt(1L, PROJECT_ID, "event-77001", SUBSCRIBER_KEY).orElseThrow();
         assertThat(receipt.processingStatus()).isEqualTo(WorkflowReceiptStatus.PROCESSED);
     }
 
     private WorkOrder workOrder(long id, long tenantId, String subject) {
-        return new WorkOrder(id, tenantId, Kind.CLB, ActionType.OPEN, subject, 9L, "原因",
+        return new WorkOrder(id, tenantId, PROJECT_ID, Kind.CLB, ActionType.OPEN, subject, 9L, "原因",
                 WorkOrderStatus.DRAFT, "{\"clbName\":\"" + subject + "\",\"purpose\":\"流量接入\","
                 + "\"description\":null}", "[]", null, null, "[]", null, null,
                 0, null, null, null, null, false, 0, 9L, 9L, TIME, TIME);

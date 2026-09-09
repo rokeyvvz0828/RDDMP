@@ -23,6 +23,8 @@ import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,15 +64,18 @@ public class SubsystemChangeApplicationController {
     private final ArchitectureSubsystemSubmissionService workflowService;
     private final SubsystemSuggestionProvider suggestionProvider;
     private final SystemOperationAudit operationAudit;
+    private final ProjectAccessService projectAccessService;
 
     public SubsystemChangeApplicationController(SubsystemChangeService service,
                                                 ArchitectureSubsystemSubmissionService workflowService,
                                                 SubsystemSuggestionProvider suggestionProvider,
-                                                SystemOperationAudit operationAudit) {
+                                                SystemOperationAudit operationAudit,
+                                                ProjectAccessService projectAccessService) {
         this.service = service;
         this.workflowService = workflowService;
         this.suggestionProvider = suggestionProvider;
         this.operationAudit = operationAudit;
+        this.projectAccessService = projectAccessService;
     }
 
     /** 关键写操作统一审计：成功记录成功，业务失败记录失败；审计失败不阻断业务结果。 */
@@ -116,9 +121,11 @@ public class SubsystemChangeApplicationController {
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor,
             Authentication authentication) {
-        List<ApplicationSummaryResponse> applications = service.list(actor, accessScope(authentication), status, limit, offset)
+        List<ApplicationSummaryResponse> applications = service.list(actor, project(projectRef, actor),
+                        accessScope(authentication), status, limit, offset)
                 .stream()
                 .map(this::toSummary)
                 .toList();
@@ -128,9 +135,10 @@ public class SubsystemChangeApplicationController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:view','architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> detail(@PathVariable long id,
+                                                         @RequestParam String projectRef,
                                                          @AuthenticationPrincipal AuthUser actor,
                                                          Authentication authentication) {
-        return success(toDetail(service.detail(actor, accessScope(authentication), id)));
+        return success(toDetail(service.detail(actor, project(projectRef, actor), accessScope(authentication), id)));
     }
 
     /**
@@ -139,11 +147,12 @@ public class SubsystemChangeApplicationController {
     @PostMapping
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> create(@RequestBody CreateApplicationRequest request,
+                                                         @RequestParam String projectRef,
                                                          @AuthenticationPrincipal AuthUser actor) {
         requiredPhysicalTargetKind(request == null ? null : request.targetKind());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.create", "POST",
                 "/api/architecture/subsystem-change-applications", () ->
-                        service.createPhysical(actor, new PhysicalApplicationCommand(
+                        service.createPhysical(actor, project(projectRef, actor), new PhysicalApplicationCommand(
                                 request.actionType(), request.targetId(), request.reason(), request.physicalDraft())));
         return success(toDetail(detail));
     }
@@ -153,11 +162,12 @@ public class SubsystemChangeApplicationController {
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> update(@PathVariable long id,
                                                          @RequestBody UpdateApplicationRequest request,
+                                                         @RequestParam String projectRef,
                                                          @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.update", "PUT",
                 "/api/architecture/subsystem-change-applications/" + id, () ->
-                        service.update(actor, AccessScope.OWN, id, rowVersion,
+                        service.update(actor, project(projectRef, actor), AccessScope.OWN, id, rowVersion,
                                 new DraftUpdateCommand(request.reason(), request.physicalDrafts())));
         return success(toDetail(detail));
     }
@@ -166,11 +176,12 @@ public class SubsystemChangeApplicationController {
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> cancel(@PathVariable long id,
                                                          @RequestBody CancelApplicationRequest request,
+                                                         @RequestParam String projectRef,
                                                          @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.cancel", "POST",
                 "/api/architecture/subsystem-change-applications/" + id + "/cancel", () ->
-                        workflowService.cancel(actor, id, rowVersion));
+                        workflowService.cancel(actor, project(projectRef, actor), id, rowVersion));
         return success(toDetail(detail));
     }
 
@@ -179,11 +190,12 @@ public class SubsystemChangeApplicationController {
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<ApplicationDetailResponse> submit(@PathVariable long id,
                                                          @RequestBody SubmitApplicationRequest request,
+                                                         @RequestParam String projectRef,
                                                          @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = requiredRowVersion(request == null ? null : request.rowVersion());
         ApplicationDetail detail = audited(actor, "architecture.subsystem-change.submit", "POST",
                 "/api/architecture/subsystem-change-applications/" + id + "/submit", () ->
-                        workflowService.submit(actor, id, rowVersion));
+                        workflowService.submit(actor, project(projectRef, actor), id, rowVersion));
         return success(toDetail(detail));
     }
 
@@ -193,8 +205,10 @@ public class SubsystemChangeApplicationController {
     @PostMapping("/suggestions")
     @PreAuthorize("hasAnyAuthority('architecture:apply','architecture:manage')")
     public ApiResponse<List<Suggestion>> suggestions(@RequestBody SuggestionPayload request,
+                                                     @RequestParam String projectRef,
                                                      @AuthenticationPrincipal AuthUser actor) {
         requireActor(actor);
+        project(projectRef, actor);
         Map<String, String> fieldValues = request == null ? Map.of() : safeSuggestionFields(request.fieldValues());
         List<Suggestion> suggestions = suggestionProvider.suggest(new SuggestionRequest(fieldValues));
         return success(List.copyOf(suggestions == null ? List.of() : suggestions));
@@ -251,6 +265,10 @@ public class SubsystemChangeApplicationController {
         if (actor == null || actor.id() <= 0 || actor.tenantId() <= 0) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "需要有效的认证用户和租户");
         }
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 
     private BusinessException badRequest(String message) {

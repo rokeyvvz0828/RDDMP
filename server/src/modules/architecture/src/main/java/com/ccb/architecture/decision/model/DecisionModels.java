@@ -52,6 +52,7 @@ public final class DecisionModels {
     public record DecisionMatter(
             long id,
             long tenantId,
+            long projectId,
             String matterNo,
             String title,
             String problem,
@@ -105,6 +106,7 @@ public final class DecisionModels {
     public record MaterialRecord(
             long id,
             long tenantId,
+            long projectId,
             long matterId,
             MaterialKind kind,
             String content,
@@ -121,6 +123,7 @@ public final class DecisionModels {
     public record ReviewRecord(
             long id,
             long tenantId,
+            long projectId,
             long matterId,
             int reviewNo,
             ReviewMethod method,
@@ -156,6 +159,7 @@ public final class DecisionModels {
     public record ActionItem(
             long id,
             long tenantId,
+            long projectId,
             long reviewId,
             String content,
             Long ownerUserId,
@@ -172,6 +176,7 @@ public final class DecisionModels {
     public record Conclusion(
             long id,
             long tenantId,
+            long projectId,
             long matterId,
             long reviewId,
             String content,
@@ -192,6 +197,7 @@ public final class DecisionModels {
     public record Supersession(
             long id,
             long tenantId,
+            long projectId,
             long conclusionId,
             long supersededConclusionId,
             SupersessionKind kind,
@@ -203,6 +209,7 @@ public final class DecisionModels {
     public record PublicationIntent(
             long matterId,
             long tenantId,
+            long projectId,
             long reviewId,
             List<SupersessionTarget> targets,
             String payloadDigest,
@@ -219,6 +226,7 @@ public final class DecisionModels {
     public record WorkflowRound(
             long id,
             long tenantId,
+            long projectId,
             long matterId,
             int roundNo,
             Long workflowDefinitionId,
@@ -237,6 +245,7 @@ public final class DecisionModels {
     public record WorkflowReceiptStart(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             long matterId,

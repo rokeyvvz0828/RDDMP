@@ -9,6 +9,8 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,12 +50,16 @@ class PhysicalSubsystemControllerTest {
             "ARCHITECTURE_WORK_ORDER_REQUIRED：请通过架构子系统变更工单发起申请";
 
     private PhysicalSubsystemService service;
+    private ProjectAccessService projectAccessService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         service = mock(PhysicalSubsystemService.class);
-        mockMvc = MockMvcBuilders.standaloneSetup(new PhysicalSubsystemController(service))
+        projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible("PROJECT-A", ACTOR))
+                .thenReturn(new ProjectAccess(70L, "PROJECT-A", "项目 A"));
+        mockMvc = MockMvcBuilders.standaloneSetup(new PhysicalSubsystemController(service, projectAccessService))
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver(ACTOR))
                 .build();
@@ -66,10 +72,11 @@ class PhysicalSubsystemControllerTest {
 
     @Test
     void 列表保持路径分页并返回状态筛选和可选逻辑名称及业务组件() throws Exception {
-        when(service.list(eq(ACTOR), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
+        when(service.list(eq(ACTOR), any(ProjectAccess.class), any(PageQuery.class), any(PhysicalSubsystemQuery.class)))
                 .thenReturn(new PageResult<>(List.of(view()), 1L, 1L, 20L));
 
         mockMvc.perform(get("/api/architecture/physical-subsystems")
+                        .param("projectRef", "PROJECT-A")
                         .param("code", "W0001").param("businessGroupName", "渠道")
                         .param("responsibleTeamOrgId", "12").param("logicalSubsystemName", "商城")
                         .param("businessComponentCode", "architecture.business-component.employee-portal")
@@ -87,33 +94,39 @@ class PhysicalSubsystemControllerTest {
     @Test
     void 旧写路径返回工单冲突响应() throws Exception {
         BusinessException conflict = new BusinessException(ErrorCode.CONFLICT, WORK_ORDER_MESSAGE);
-        when(service.create(eq(ACTOR), any(PhysicalSubsystemCommand.class), any())).thenThrow(conflict);
-        when(service.update(eq(ACTOR), eq(201L), any(PhysicalSubsystemCommand.class), any())).thenThrow(conflict);
-        doThrow(conflict).when(service).delete(eq(ACTOR), eq(201L), any());
+        when(service.create(eq(ACTOR), any(ProjectAccess.class), any(PhysicalSubsystemCommand.class), any()))
+                .thenThrow(conflict);
+        when(service.update(eq(ACTOR), any(ProjectAccess.class), eq(201L),
+                any(PhysicalSubsystemCommand.class), any())).thenThrow(conflict);
+        doThrow(conflict).when(service).delete(eq(ACTOR), any(ProjectAccess.class), eq(201L), any());
 
         mockMvc.perform(post("/api/architecture/physical-subsystems")
+                        .param("projectRef", "PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT))
                 .andExpect(jsonPath("$.message", startsWith("ARCHITECTURE_WORK_ORDER_REQUIRED")));
         mockMvc.perform(put("/api/architecture/physical-subsystems/201")
+                        .param("projectRef", "PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message", startsWith("ARCHITECTURE_WORK_ORDER_REQUIRED")));
-        mockMvc.perform(delete("/api/architecture/physical-subsystems/201"))
+        mockMvc.perform(delete("/api/architecture/physical-subsystems/201").param("projectRef", "PROJECT-A"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message", startsWith("ARCHITECTURE_WORK_ORDER_REQUIRED")));
 
-        verify(service).create(eq(ACTOR), any(PhysicalSubsystemCommand.class), any());
-        verify(service).update(eq(ACTOR), eq(201L), any(PhysicalSubsystemCommand.class), any());
-        verify(service).delete(eq(ACTOR), eq(201L), any());
+        verify(service).create(eq(ACTOR), any(ProjectAccess.class), any(PhysicalSubsystemCommand.class), any());
+        verify(service).update(eq(ACTOR), any(ProjectAccess.class), eq(201L),
+                any(PhysicalSubsystemCommand.class), any());
+        verify(service).delete(eq(ACTOR), any(ProjectAccess.class), eq(201L), any());
     }
 
     @Test
     void 模块异常适配仍将未找到映射为40400() throws Exception {
-        when(service.detail(ACTOR, 404L)).thenThrow(new ArchitectureNotFoundException("物理子系统不存在"));
+        when(service.detail(eq(ACTOR), any(ProjectAccess.class), eq(404L)))
+                .thenThrow(new ArchitectureNotFoundException("物理子系统不存在"));
 
-        mockMvc.perform(get("/api/architecture/physical-subsystems/404"))
+        mockMvc.perform(get("/api/architecture/physical-subsystems/404").param("projectRef", "PROJECT-A"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ArchitectureExceptionAdvice.NOT_FOUND_CODE));
     }
@@ -124,19 +137,20 @@ class PhysicalSubsystemControllerTest {
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, long.class, String.class,
                 String.class, String.class, String.class, String.class, String.class, Long.class, String.class,
+                String.class,
                 AuthUser.class);
         assertPermission("detail", "architecture:physical:list",
                 "hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')",
-                long.class, AuthUser.class);
+                long.class, String.class, AuthUser.class);
         assertPermission("create", "architecture:physical:create",
                 "hasAnyAuthority('architecture:physical:create', 'architecture:apply', 'architecture:manage')",
-                PhysicalSubsystemCommand.class, AuthUser.class);
+                PhysicalSubsystemCommand.class, String.class, AuthUser.class);
         assertPermission("update", "architecture:physical:update",
                 "hasAnyAuthority('architecture:physical:update', 'architecture:apply', 'architecture:manage')",
-                long.class, PhysicalSubsystemCommand.class, AuthUser.class);
+                long.class, PhysicalSubsystemCommand.class, String.class, AuthUser.class);
         assertPermission("delete", "architecture:physical:delete",
                 "hasAnyAuthority('architecture:physical:delete', 'architecture:apply', 'architecture:manage')",
-                long.class, AuthUser.class);
+                long.class, String.class, AuthUser.class);
     }
 
     private void assertPermission(String methodName, String legacyAuthority, String expectedExpression,

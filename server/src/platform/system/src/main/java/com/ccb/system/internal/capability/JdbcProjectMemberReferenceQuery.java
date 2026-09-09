@@ -29,7 +29,7 @@ public class JdbcProjectMemberReferenceQuery implements ProjectMemberReferenceQu
                     AND u.deleted = 0 AND u.status = 1
                 WHERE m.tenant_id = ? AND m.project_id = ? AND m.status = 1 AND m.deleted = 0
                 ORDER BY u.display_name ASC, m.id ASC
-                """, (rs, rowNum) -> new ProjectMemberReference(
+                """ + transactionReadLock(), (rs, rowNum) -> new ProjectMemberReference(
                 rs.getLong("id"), rs.getLong("user_id"), rs.getString("display_name"), rs.getString("username")),
                 actor.tenantId(), projectId);
     }
@@ -45,8 +45,15 @@ public class JdbcProjectMemberReferenceQuery implements ProjectMemberReferenceQu
                     AND u.deleted = 0 AND u.status = 1
                 WHERE m.id = ? AND m.tenant_id = ? AND m.project_id = ?
                   AND m.status = 1 AND m.deleted = 0
-                """, (rs, rowNum) -> new ProjectMemberReference(
+                """ + transactionReadLock(), (rs, rowNum) -> new ProjectMemberReference(
                 rs.getLong("id"), rs.getLong("user_id"), rs.getString("display_name"), rs.getString("username")),
                 projectMemberId, actor.tenantId(), projectId).stream().findFirst();
     }
+    /** 事务内为资格校验提供当前锁读，与成员退出及用户停用串行化；普通页面查询不持锁。 */
+    private String transactionReadLock() {
+        return org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()
+                && !org.springframework.transaction.support.TransactionSynchronizationManager.isCurrentTransactionReadOnly()
+                ? " FOR SHARE" : "";
+    }
+
 }

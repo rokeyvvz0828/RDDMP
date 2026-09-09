@@ -1,0 +1,56 @@
+{
+  "sample_label": "跨平台开发环境启动器集成观测",
+  "task_ids": ["T1", "T2", "T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 Node/PowerShell/Bash 语法与 CLI 失败路径",
+      "result": "pass",
+      "raw_evidence": "三个入口语法通过；PowerShell 和 Bash 均只定位仓库根并透传给 dev.mjs；未知参数退出 2 且无环境副作用；Node 编排器只使用标准库。",
+      "limitation": ["Bash 入口未在 macOS/Linux 真实运行。"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 启动器环境静态审计加 S4 Windows 登录与 RBAC HTTP 探针",
+      "result": "pass",
+      "raw_evidence": "应用使用 loopback、local profile 和 rddmp-dev 隔离资源；空库和已有库均可用 admin/admin123 登录；permission-check 返回 403，服务端权限未被绕过。",
+      "limitation": ["仅验证本地虚构凭据，不涉及共享或生产环境。"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 Docker/MySQL/Flyway 日志加 S4 Actuator 健康探针",
+      "result": "pass",
+      "raw_evidence": "MySQL、MinIO、kkFileView 就绪后才启动后端；空库应用 143 个迁移至 148，已有库 validate 143 个迁移并保持 148；健康连续稳定 3 秒为 UP。",
+      "limitation": ["运行传感器为 Windows Docker Desktop。"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S5 Maven/PID/HTTP 重启探针加 Vite 进程连续性",
+      "result": "pass",
+      "raw_evidence": "reactor install 成功后 Java PID 21820 变为 55476，新后端 Flyway validate 并恢复 UP；前端持续 HTTP 200；全 Maven reactor 15 模块 BUILD SUCCESS。",
+      "limitation": ["未运行故意编译失败注入；失败保留旧进程分支仅完成静态状态机复核。"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S6 端口/容器/卷生命周期探针加 S7 AGENTS、范围和治理检查",
+      "result": "pass",
+      "raw_evidence": "Ctrl+C 后 8080/5173 释放且基础设施保留；--down 后容器移除而卷保留；AGENTS 提示准确；范围检查通过，本任务未出现在治理错误列表。",
+      "limitation": ["check-all-governance 因任务范围外历史账本问题总退出码为 1。"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "仓库既有多个历史 AI control 账本不符合当前布局检查。",
+      "classification": "disturbance",
+      "evidence": "check-all-governance 的失败清单不包含 req-20260904-063-dev-environment-runner；其他独立治理与范围检查通过。"
+    }
+  ],
+  "coverage_gaps": [
+    "macOS/Linux 仅有 Bash 静态检查，缺少真实进程组、fs.watch 和 host-gateway 运行采样。",
+    "未注入 Maven 编译失败以动态验证旧后端保留分支。"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

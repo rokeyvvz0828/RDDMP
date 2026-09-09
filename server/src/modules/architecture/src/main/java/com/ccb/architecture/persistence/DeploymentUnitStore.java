@@ -94,12 +94,14 @@ public class DeploymentUnitStore {
 
     // ---------- 部署单元主记录 ----------
 
-    public PageResult<DeploymentUnit> pageUnits(long tenantId, PageQuery page, DeploymentUnitQuery query) {
+    public PageResult<DeploymentUnit> pageUnits(long tenantId, long projectId, PageQuery page,
+                                                 DeploymentUnitQuery query) {
         PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
         DeploymentUnitQuery normalized = query == null ? DeploymentUnitQuery.empty() : query;
         StringBuilder filter = new StringBuilder();
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         addLike(filter, args, "code", normalized.code());
         addLike(filter, args, "name", normalized.name());
         if (normalized.physicalSubsystemId() != null) {
@@ -115,68 +117,70 @@ public class DeploymentUnitStore {
             args.add(normalized.status());
         }
         Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ?" + filter, Long.class, args.toArray());
+                "SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ? AND project_id = ?" + filter,
+                Long.class, args.toArray());
         List<Object> listArgs = new ArrayList<>(args);
         listArgs.add(normalizedPage.size());
         listArgs.add((normalizedPage.page() - 1) * normalizedPage.size());
         List<DeploymentUnit> records = jdbc.query(
-                "SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit WHERE tenant_id = ?" + filter
+                "SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit WHERE tenant_id = ? AND project_id = ?" + filter
                         + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 UNIT_MAPPER, listArgs.toArray());
         return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
     }
 
-    public Optional<DeploymentUnit> findUnit(long tenantId, long id) {
-        return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit WHERE tenant_id = ? AND id = ?",
-                UNIT_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<DeploymentUnit> findUnit(long tenantId, long projectId, long id) {
+        return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                UNIT_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
     /** 事务内锁读主记录，用于状态迁移与版本发布。 */
-    public Optional<DeploymentUnit> lockUnit(long tenantId, long id) {
+    public Optional<DeploymentUnit> lockUnit(long tenantId, long projectId, long id) {
         return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit "
-                        + "WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                UNIT_MAPPER, tenantId, id).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE",
+                UNIT_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<DeploymentUnit> findUnitByName(long tenantId, String name) {
+    public Optional<DeploymentUnit> findUnitByName(long tenantId, long projectId, String name) {
         return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit "
-                        + "WHERE tenant_id = ? AND name = ?",
-                UNIT_MAPPER, tenantId, name).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND name = ?",
+                UNIT_MAPPER, tenantId, projectId, name).stream().findFirst();
     }
 
-    public boolean unitNameExists(long tenantId, String name, Long excludeUnitId) {
+    public boolean unitNameExists(long tenantId, long projectId, String name, Long excludeUnitId) {
         String exclude = excludeUnitId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, name));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, name));
         if (excludeUnitId != null) {
             args.add(excludeUnitId);
         }
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ? AND name = ?" + exclude,
+                "SELECT COUNT(*) FROM arch_deployment_unit WHERE tenant_id = ? AND project_id = ? AND name = ?" + exclude,
                 Long.class, args.toArray());
         return count != null && count > 0;
     }
 
-    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId,
+    public void insertUnit(long id, long tenantId, long projectId, String code, long physicalSubsystemId,
                            String name, String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
                            String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit
-                    (id, tenant_id, code, physical_subsystem_id, name, kind, status,
+                    (id, tenant_id, project_id, code, physical_subsystem_id, name, kind, status,
                      current_version, default_network_zone_id, default_network_zone_name,
                      description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, code, physicalSubsystemId, name, kind,
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 1, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, projectId, code, physicalSubsystemId, name, kind,
                 defaultNetworkZoneId, defaultNetworkZoneName, description, remark, actorId, actorId);
     }
 
-    public void insertUnit(long id, long tenantId, String code, long physicalSubsystemId,
+    public void insertUnit(long id, long tenantId, long projectId, String code, long physicalSubsystemId,
                            String name, String kind, String description, String remark, long actorId) {
-        insertUnit(id, tenantId, code, physicalSubsystemId, name, kind,
+        insertUnit(id, tenantId, projectId, code, physicalSubsystemId, name, kind,
                 null, null, description, remark, actorId);
     }
 
     /** 乐观锁更新展示内容；返回 0 表示版本冲突或状态不允许。 */
-    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String name,
+    public int updateUnitContent(long tenantId, long projectId, long id, long expectedRowVersion, String name,
                                  String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
                                  String description, String remark, long actorId) {
         return jdbc.update("""
@@ -184,35 +188,46 @@ public class DeploymentUnitStore {
                 SET name = ?, kind = ?, default_network_zone_id = ?, default_network_zone_name = ?,
                     description = ?, remark = ?, updated_by = ?,
                     row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
                 """, name, kind,
                 defaultNetworkZoneId, defaultNetworkZoneName, description, remark, actorId,
-                tenantId, id, expectedRowVersion);
+                tenantId, projectId, id, expectedRowVersion);
     }
 
-    public int updateUnitContent(long tenantId, long id, long expectedRowVersion, String name,
+    public int updateUnitContent(long tenantId, long projectId, long id, long expectedRowVersion, String name,
                                  String kind, String description, String remark, long actorId) {
-        return updateUnitContent(tenantId, id, expectedRowVersion, name, kind,
+        return updateUnitContent(tenantId, projectId, id, expectedRowVersion, name, kind,
                 null, null, description, remark, actorId);
     }
 
     /** 状态迁移；返回 0 表示状态不允许或已变更。 */
-    public int updateUnitStatus(long tenantId, long id, String fromStatus, String toStatus, long actorId) {
+    public int updateUnitStatus(long tenantId, long projectId, long id, String fromStatus, String toStatus,
+                                long actorId) {
         return jdbc.update("""
                 UPDATE arch_deployment_unit
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ?
-                """, toStatus, actorId, tenantId, id, fromStatus);
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ?
+                """, toStatus, actorId, tenantId, projectId, id, fromStatus);
     }
 
-    public void updateUnitCurrentVersion(long tenantId, long id, int versionNo, long actorId) {
+    public void updateUnitCurrentVersion(long tenantId, long projectId, long id, int versionNo, long actorId) {
         jdbc.update("UPDATE arch_deployment_unit SET current_version = ?, updated_by = ? "
-                + "WHERE tenant_id = ? AND id = ?", versionNo, actorId, tenantId, id);
+                + "WHERE tenant_id = ? AND project_id = ? AND id = ?", versionNo, actorId,
+                tenantId, projectId, id);
     }
 
     // ---------- 编号分配 ----------
 
     /** 物理子系统投影（含 deleted，用于区分普通无效与并发删除）。 */
+    public Optional<PhysicalSubsystemRef> findPhysical(long tenantId, long projectId, long physicalSubsystemId) {
+        return jdbc.query("SELECT id, code, name, status, deleted FROM arch_physical_subsystem "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                (rs, rowNum) -> new PhysicalSubsystemRef(rs.getLong("id"), rs.getString("code"),
+                        rs.getString("name"), rs.getString("status"), rs.getBoolean("deleted")),
+                tenantId, projectId, physicalSubsystemId).stream().findFirst();
+    }
+
+    /** T4 环境资源链迁移前的兼容入口；部署单元链不得使用。 */
     public Optional<PhysicalSubsystemRef> findPhysical(long tenantId, long physicalSubsystemId) {
         return jdbc.query("SELECT id, code, name, status, deleted FROM arch_physical_subsystem "
                         + "WHERE tenant_id = ? AND id = ?",
@@ -221,12 +236,12 @@ public class DeploymentUnitStore {
                 tenantId, physicalSubsystemId).stream().findFirst();
     }
 
-    public Optional<PhysicalSubsystemRef> findPhysicalByCode(long tenantId, String code) {
+    public Optional<PhysicalSubsystemRef> findPhysicalByCode(long tenantId, long projectId, String code) {
         return jdbc.query("SELECT id, code, name, status, deleted FROM arch_physical_subsystem "
-                        + "WHERE tenant_id = ? AND code = ?",
+                        + "WHERE tenant_id = ? AND project_id = ? AND code = ?",
                 (rs, rowNum) -> new PhysicalSubsystemRef(rs.getLong("id"), rs.getString("code"),
                         rs.getString("name"), rs.getString("status"), rs.getBoolean("deleted")),
-                tenantId, code).stream().findFirst();
+                tenantId, projectId, code).stream().findFirst();
     }
 
     /**
@@ -236,8 +251,8 @@ public class DeploymentUnitStore {
      * 首行 INSERT 与 FOR UPDATE 的死锁；行锁与 code 唯一索引兜底。序号永久占用不回收，
      * 容量检查先于递增，避免 CHECK 约束被违反。</p>
      */
-    public String allocateNumber(long tenantId, long physicalSubsystemId, String physicalCode) {
-        String lockName = "du-alloc-" + tenantId + "-" + physicalSubsystemId;
+    public String allocateNumber(long tenantId, long projectId, long physicalSubsystemId, String physicalCode) {
+        String lockName = "du-alloc-" + tenantId + "-" + projectId + "-" + physicalSubsystemId;
         Integer acquired = jdbc.queryForObject("SELECT GET_LOCK(?, 10)", Integer.class, lockName);
         if (acquired == null || acquired != 1) {
             throw new IllegalStateException("部署单元编号分配繁忙，请重试");
@@ -246,13 +261,13 @@ public class DeploymentUnitStore {
             for (int attempt = 0; attempt < 3; attempt++) {
                 Integer next = jdbc.query(
                         "SELECT next_ordinal FROM arch_deployment_unit_number_seq "
-                                + "WHERE tenant_id = ? AND physical_subsystem_id = ? FOR UPDATE",
-                        (rs, rowNum) -> rs.getInt("next_ordinal"), tenantId, physicalSubsystemId)
+                                + "WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_id = ? FOR UPDATE",
+                        (rs, rowNum) -> rs.getInt("next_ordinal"), tenantId, projectId, physicalSubsystemId)
                         .stream().findFirst().orElse(null);
                 if (next == null) {
                     jdbc.update("INSERT INTO arch_deployment_unit_number_seq "
-                            + "(tenant_id, physical_subsystem_id, next_ordinal) VALUES (?, ?, 2)",
-                            tenantId, physicalSubsystemId);
+                            + "(tenant_id, project_id, physical_subsystem_id, next_ordinal) VALUES (?, ?, ?, 2)",
+                            tenantId, projectId, physicalSubsystemId);
                     return String.format(Locale.ROOT, "D%s%03d", physicalCode, 1);
                 }
                 if (next > MAX_ORDINAL_PER_PHYSICAL) {
@@ -261,8 +276,8 @@ public class DeploymentUnitStore {
                                     + MAX_ORDINAL_PER_PHYSICAL + " 个）");
                 }
                 int updated = jdbc.update("UPDATE arch_deployment_unit_number_seq SET next_ordinal = ? "
-                        + "WHERE tenant_id = ? AND physical_subsystem_id = ?",
-                        next + 1, tenantId, physicalSubsystemId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_id = ?",
+                        next + 1, tenantId, projectId, physicalSubsystemId);
                 if (updated == 1) {
                     return String.format(Locale.ROOT, "D%s%03d", physicalCode, next);
                 }
@@ -275,59 +290,63 @@ public class DeploymentUnitStore {
 
     // ---------- 版本 ----------
 
-    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String name,
+    public void insertVersion(long id, long tenantId, long projectId, long unitId, int versionNo, String name,
                               String kind, Long defaultNetworkZoneId, String defaultNetworkZoneName,
                               String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit_version
-                    (id, tenant_id, unit_id, version_no, name, kind,
+                    (id, tenant_id, project_id, unit_id, version_no, name, kind,
                      default_network_zone_id, default_network_zone_name,
                      description, remark, published_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, unitId, versionNo, name, kind,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, projectId, unitId, versionNo, name, kind,
                 defaultNetworkZoneId, defaultNetworkZoneName,
                 description, remark, actorId);
     }
 
-    public void insertVersion(long id, long tenantId, long unitId, int versionNo, String name,
+    public void insertVersion(long id, long tenantId, long projectId, long unitId, int versionNo, String name,
                               String kind, String description, String remark, long actorId) {
-        insertVersion(id, tenantId, unitId, versionNo, name, kind,
+        insertVersion(id, tenantId, projectId, unitId, versionNo, name, kind,
                 null, null, description, remark, actorId);
     }
 
-    public List<DeploymentUnitVersion> findVersions(long tenantId, long unitId) {
+    public List<DeploymentUnitVersion> findVersions(long tenantId, long projectId, long unitId) {
         return jdbc.query("SELECT " + VERSION_COLUMNS + " FROM arch_deployment_unit_version "
-                        + "WHERE tenant_id = ? AND unit_id = ? ORDER BY version_no ASC",
-                VERSION_MAPPER, tenantId, unitId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND unit_id = ? ORDER BY version_no ASC",
+                VERSION_MAPPER, tenantId, projectId, unitId);
     }
 
-    public int countVersions(long tenantId, long unitId) {
+    public int countVersions(long tenantId, long projectId, long unitId) {
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit_version "
-                + "WHERE tenant_id = ? AND unit_id = ?", Long.class, tenantId, unitId);
+                + "WHERE tenant_id = ? AND project_id = ? AND unit_id = ?", Long.class,
+                tenantId, projectId, unitId);
         return count == null ? 0 : count.intValue();
     }
 
     // ---------- 双向部署单元关系 ----------
 
-    public List<RelatedDeploymentUnitRow> findRelatedUnits(long tenantId, long unitId) {
+    public List<RelatedDeploymentUnitRow> findRelatedUnits(long tenantId, long projectId, long unitId) {
         return jdbc.query("""
                 SELECT other.id, other.code, other.name, other.kind, other.physical_subsystem_id,
                        physical.name AS physical_subsystem_name, other.status
                 FROM arch_deployment_unit_relation relation
                 JOIN arch_deployment_unit other
                   ON other.tenant_id = relation.tenant_id
+                 AND other.project_id = relation.project_id
                  AND other.id = CASE WHEN relation.unit_low_id = ? THEN relation.unit_high_id ELSE relation.unit_low_id END
                 JOIN arch_physical_subsystem physical
-                  ON physical.tenant_id = other.tenant_id AND physical.id = other.physical_subsystem_id
-                WHERE relation.tenant_id = ? AND (relation.unit_low_id = ? OR relation.unit_high_id = ?)
+                  ON physical.tenant_id = other.tenant_id AND physical.project_id = other.project_id
+                 AND physical.id = other.physical_subsystem_id
+                WHERE relation.tenant_id = ? AND relation.project_id = ?
+                  AND (relation.unit_low_id = ? OR relation.unit_high_id = ?)
                 ORDER BY other.name, other.id
                 """, (rs, rowNum) -> new RelatedDeploymentUnitRow(
                         rs.getLong("id"), rs.getString("code"), rs.getString("name"), rs.getString("kind"),
                         rs.getLong("physical_subsystem_id"), rs.getString("physical_subsystem_name"),
-                        rs.getString("status")), unitId, tenantId, unitId, unitId);
+                        rs.getString("status")), unitId, tenantId, projectId, unitId, unitId);
     }
 
-    public List<DeploymentUnit> lockActiveUnits(long tenantId, List<Long> ids) {
+    public List<DeploymentUnit> lockActiveUnits(long tenantId, long projectId, List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
@@ -335,27 +354,29 @@ public class DeploymentUnitStore {
         String placeholders = String.join(",", java.util.Collections.nCopies(sorted.size(), "?"));
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         args.addAll(sorted);
         return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_deployment_unit "
-                        + "WHERE tenant_id = ? AND status = 'ACTIVE' AND id IN (" + placeholders + ") "
+                        + "WHERE tenant_id = ? AND project_id = ? AND status = 'ACTIVE' AND id IN ("
+                        + placeholders + ") "
                         + "ORDER BY id FOR UPDATE",
                 UNIT_MAPPER, args.toArray());
     }
 
-    public void replaceRelations(long tenantId, long sourceUnitId, Set<Long> targetIds,
+    public void replaceRelations(long tenantId, long projectId, long sourceUnitId, Set<Long> targetIds,
                                  long actorId, int sourceVersionNo) {
         Set<Long> desired = targetIds == null ? Set.of() : new HashSet<>(targetIds);
         Set<Long> current = new HashSet<>();
         jdbc.query("""
                 SELECT unit_low_id, unit_high_id
                 FROM arch_deployment_unit_relation
-                WHERE tenant_id = ? AND (unit_low_id = ? OR unit_high_id = ?)
+                WHERE tenant_id = ? AND project_id = ? AND (unit_low_id = ? OR unit_high_id = ?)
                 FOR UPDATE
                 """, rs -> {
                     long low = rs.getLong("unit_low_id");
                     long high = rs.getLong("unit_high_id");
                     current.add(low == sourceUnitId ? high : low);
-                }, tenantId, sourceUnitId, sourceUnitId);
+                }, tenantId, projectId, sourceUnitId, sourceUnitId);
 
         Set<Long> additions = new HashSet<>(desired);
         additions.removeAll(current);
@@ -367,29 +388,29 @@ public class DeploymentUnitStore {
             long high = Math.max(sourceUnitId, targetId);
             jdbc.update("""
                     INSERT INTO arch_deployment_unit_relation
-                        (tenant_id, unit_low_id, unit_high_id, created_by)
-                    VALUES (?, ?, ?, ?)
-                    """, tenantId, low, high, actorId);
-            insertRelationHistory(tenantId, sourceUnitId, low, high, "LINK", actorId, sourceVersionNo);
+                        (tenant_id, project_id, unit_low_id, unit_high_id, created_by)
+                    VALUES (?, ?, ?, ?, ?)
+                    """, tenantId, projectId, low, high, actorId);
+            insertRelationHistory(tenantId, projectId, sourceUnitId, low, high, "LINK", actorId, sourceVersionNo);
         }
         for (Long targetId : removals.stream().sorted().toList()) {
             long low = Math.min(sourceUnitId, targetId);
             long high = Math.max(sourceUnitId, targetId);
             jdbc.update("DELETE FROM arch_deployment_unit_relation "
-                            + "WHERE tenant_id = ? AND unit_low_id = ? AND unit_high_id = ?",
-                    tenantId, low, high);
-            insertRelationHistory(tenantId, sourceUnitId, low, high, "UNLINK", actorId, sourceVersionNo);
+                            + "WHERE tenant_id = ? AND project_id = ? AND unit_low_id = ? AND unit_high_id = ?",
+                    tenantId, projectId, low, high);
+            insertRelationHistory(tenantId, projectId, sourceUnitId, low, high, "UNLINK", actorId, sourceVersionNo);
         }
     }
 
-    public boolean hasRelations(long tenantId, long unitId) {
+    public boolean hasRelations(long tenantId, long projectId, long unitId) {
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit_relation "
-                        + "WHERE tenant_id = ? AND (unit_low_id = ? OR unit_high_id = ?)",
-                Long.class, tenantId, unitId, unitId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND (unit_low_id = ? OR unit_high_id = ?)",
+                Long.class, tenantId, projectId, unitId, unitId);
         return count != null && count > 0;
     }
 
-    public PageResult<DeploymentUnit> searchActiveOptions(long tenantId, String keyword,
+    public PageResult<DeploymentUnit> searchActiveOptions(long tenantId, long projectId, String keyword,
                                                            Long excludeId, PageQuery page) {
         PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
@@ -397,98 +418,102 @@ public class DeploymentUnitStore {
         String exclude = excludeId == null ? "" : " AND unit.id <> ?";
         String filter = " AND (unit.name LIKE ? ESCAPE '\\\\' OR unit.code LIKE ? ESCAPE '\\\\'"
                 + " OR physical.name LIKE ? ESCAPE '\\\\' OR physical.code LIKE ? ESCAPE '\\\\')";
-        List<Object> args = new ArrayList<>(List.of(tenantId, escaped, escaped, escaped, escaped));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, escaped, escaped, escaped, escaped));
         if (excludeId != null) {
             args.add(excludeId);
         }
         Long total = jdbc.queryForObject("SELECT COUNT(*) FROM arch_deployment_unit unit "
                         + "JOIN arch_physical_subsystem physical ON physical.tenant_id = unit.tenant_id "
-                        + "AND physical.id = unit.physical_subsystem_id "
-                        + "WHERE unit.tenant_id = ? AND unit.status = 'ACTIVE'" + filter + exclude,
+                        + "AND physical.project_id = unit.project_id AND physical.id = unit.physical_subsystem_id "
+                        + "WHERE unit.tenant_id = ? AND unit.project_id = ? AND unit.status = 'ACTIVE'" + filter + exclude,
                 Long.class, args.toArray());
         List<Object> listArgs = new ArrayList<>(args);
         listArgs.add(normalizedPage.size());
         listArgs.add((normalizedPage.page() - 1) * normalizedPage.size());
         List<DeploymentUnit> records = jdbc.query("SELECT " + prefixColumns("unit", UNIT_COLUMNS)
                         + " FROM arch_deployment_unit unit JOIN arch_physical_subsystem physical "
-                        + "ON physical.tenant_id = unit.tenant_id AND physical.id = unit.physical_subsystem_id "
-                        + "WHERE unit.tenant_id = ? AND unit.status = 'ACTIVE'" + filter + exclude
+                        + "ON physical.tenant_id = unit.tenant_id AND physical.project_id = unit.project_id "
+                        + "AND physical.id = unit.physical_subsystem_id "
+                        + "WHERE unit.tenant_id = ? AND unit.project_id = ? AND unit.status = 'ACTIVE'" + filter + exclude
                         + " ORDER BY unit.name, unit.id LIMIT ? OFFSET ?",
                 UNIT_MAPPER, listArgs.toArray());
         return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
     }
 
-    private void insertRelationHistory(long tenantId, long sourceUnitId, long low, long high,
+    private void insertRelationHistory(long tenantId, long projectId, long sourceUnitId, long low, long high,
                                        String action, long actorId, int sourceVersionNo) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit_relation_history
-                    (tenant_id, source_unit_id, unit_low_id, unit_high_id, action, changed_by, source_version_no)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, tenantId, sourceUnitId, low, high, action, actorId, sourceVersionNo);
+                    (tenant_id, project_id, source_unit_id, unit_low_id, unit_high_id, action, changed_by, source_version_no)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, tenantId, projectId, sourceUnitId, low, high, action, actorId, sourceVersionNo);
     }
 
     // ---------- 导入批次与明细 ----------
 
-    public void insertBatch(long id, long tenantId, String fileName, long fileSize, int totalRows, int validRows,
+    public void insertBatch(long id, long tenantId, long projectId, String fileName, long fileSize,
+                            int totalRows, int validRows,
                             long actorId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit_import_batch
-                    (id, tenant_id, file_name, file_size, total_rows, valid_rows, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, 'PREVIEW', ?)
-                """, id, tenantId, fileName, fileSize, totalRows, validRows, actorId);
+                    (id, tenant_id, project_id, file_name, file_size, total_rows, valid_rows, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'PREVIEW', ?)
+                """, id, tenantId, projectId, fileName, fileSize, totalRows, validRows, actorId);
     }
 
-    public void insertItem(long id, long tenantId, long batchId, int lineNo, String rawJson, String rowStatus,
+    public void insertItem(long id, long tenantId, long projectId, long batchId, int lineNo, String rawJson,
+                           String rowStatus,
                            String errorMessage, String note, Long unitId) {
         jdbc.update("""
                 INSERT INTO arch_deployment_unit_import_item
-                    (id, tenant_id, batch_id, line_no, raw_json, row_status, error_message, note, unit_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, batchId, lineNo, rawJson, rowStatus, errorMessage, note, unitId);
+                    (id, tenant_id, project_id, batch_id, line_no, raw_json, row_status, error_message, note, unit_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, projectId, batchId, lineNo, rawJson, rowStatus, errorMessage, note, unitId);
     }
 
-    public void updateItemResult(long tenantId, long itemId, String rowStatus, String errorMessage, String note,
-                                 Long unitId) {
+    public void updateItemResult(long tenantId, long projectId, long itemId, String rowStatus,
+                                 String errorMessage, String note, Long unitId) {
         jdbc.update("""
                 UPDATE arch_deployment_unit_import_item
                 SET row_status = ?, error_message = ?, note = ?, unit_id = ?
-                WHERE tenant_id = ? AND id = ?
-                """, rowStatus, errorMessage, note, unitId, tenantId, itemId);
+                WHERE tenant_id = ? AND project_id = ? AND id = ?
+                """, rowStatus, errorMessage, note, unitId, tenantId, projectId, itemId);
     }
 
-    public void updateBatchResult(long tenantId, long batchId, String status, int successRows, int failedRows,
-                                  int skippedRows, String errorMessage) {
+    public void updateBatchResult(long tenantId, long projectId, long batchId, String status,
+                                  int successRows, int failedRows, int skippedRows, String errorMessage) {
         jdbc.update("""
                 UPDATE arch_deployment_unit_import_batch
                 SET status = ?, success_rows = ?, failed_rows = ?, skipped_rows = ?, error_message = ?,
                     completed_at = CURRENT_TIMESTAMP
-                WHERE tenant_id = ? AND id = ?
-                """, status, successRows, failedRows, skippedRows, errorMessage, tenantId, batchId);
+                WHERE tenant_id = ? AND project_id = ? AND id = ?
+                """, status, successRows, failedRows, skippedRows, errorMessage, tenantId, projectId, batchId);
     }
 
-    public Optional<DeploymentUnitImportBatch> findBatch(long tenantId, long batchId) {
+    public Optional<DeploymentUnitImportBatch> findBatch(long tenantId, long projectId, long batchId) {
         return jdbc.query("SELECT " + BATCH_COLUMNS + " FROM arch_deployment_unit_import_batch "
-                        + "WHERE tenant_id = ? AND id = ?",
-                BATCH_MAPPER, tenantId, batchId).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                BATCH_MAPPER, tenantId, projectId, batchId).stream().findFirst();
     }
 
-    public PageResult<DeploymentUnitImportBatch> pageBatches(long tenantId, PageQuery page) {
+    public PageResult<DeploymentUnitImportBatch> pageBatches(long tenantId, long projectId, PageQuery page) {
         PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
         Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_deployment_unit_import_batch WHERE tenant_id = ?",
-                Long.class, tenantId);
+                "SELECT COUNT(*) FROM arch_deployment_unit_import_batch WHERE tenant_id = ? AND project_id = ?",
+                Long.class, tenantId, projectId);
         List<DeploymentUnitImportBatch> records = jdbc.query(
-                "SELECT " + BATCH_COLUMNS + " FROM arch_deployment_unit_import_batch WHERE tenant_id = ? "
+                "SELECT " + BATCH_COLUMNS + " FROM arch_deployment_unit_import_batch "
+                        + "WHERE tenant_id = ? AND project_id = ? "
                         + "ORDER BY id DESC LIMIT ? OFFSET ?",
-                BATCH_MAPPER, tenantId, normalizedPage.size(),
+                BATCH_MAPPER, tenantId, projectId, normalizedPage.size(),
                 (normalizedPage.page() - 1) * normalizedPage.size());
         return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
     }
 
-    public List<DeploymentUnitImportItem> findItems(long tenantId, long batchId, int limit) {
+    public List<DeploymentUnitImportItem> findItems(long tenantId, long projectId, long batchId, int limit) {
         return jdbc.query("SELECT " + ITEM_COLUMNS + " FROM arch_deployment_unit_import_item "
-                        + "WHERE tenant_id = ? AND batch_id = ? ORDER BY line_no ASC LIMIT ?",
-                ITEM_MAPPER, tenantId, batchId, limit);
+                        + "WHERE tenant_id = ? AND project_id = ? AND batch_id = ? ORDER BY line_no ASC LIMIT ?",
+                ITEM_MAPPER, tenantId, projectId, batchId, limit);
     }
 
     // ---------- 通用 ----------

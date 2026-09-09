@@ -42,22 +42,22 @@ import java.util.Optional;
 @Repository
 public class NetworkAccessStore {
     private static final String ZONE_COLUMNS = """
-            zone.id, zone.tenant_id, zone.parent_id, parent.name AS parent_name,
+            zone.id, zone.tenant_id, zone.project_id, zone.parent_id, parent.name AS parent_name,
             zone.code, zone.name, zone.restriction_level, zone.status, zone.description, zone.remark,
             zone.row_version, zone.created_by, zone.updated_by, zone.created_at, zone.updated_at
             """;
     private static final String ADDRESS_COLUMNS = """
-            id, tenant_id, address_type, address_value, display_name, purpose, status, remark,
+            id, tenant_id, project_id, address_type, address_value, display_name, purpose, status, remark,
             row_version, created_by, updated_by, created_at, updated_at
             """;
     private static final String SUBNET_COLUMNS = """
-            subnet.id, subnet.tenant_id, subnet.network_zone_id,
+            subnet.id, subnet.tenant_id, subnet.project_id, subnet.network_zone_id,
             zone.code AS network_zone_code, zone.name AS network_zone_name,
             subnet.cidr_block, subnet.gateway_ip, subnet.purpose, subnet.status, subnet.remark,
             subnet.row_version, subnet.created_by, subnet.updated_by, subnet.created_at, subnet.updated_at
             """;
     private static final String APP_COLUMNS = """
-            id, tenant_id, application_no, applicant_id, action_type, target_relation_id,
+            id, tenant_id, project_id, application_no, applicant_id, action_type, target_relation_id,
             source_kind, source_physical_subsystem_id, source_environment_id,
             source_deployment_unit_id, source_external_address_id, source_snapshot_json,
             target_kind, target_physical_subsystem_id, target_environment_id, target_deployment_unit_id,
@@ -68,14 +68,14 @@ public class NetworkAccessStore {
             created_at, updated_at
             """;
     private static final String RELATION_COLUMNS = """
-            id, tenant_id, relation_no, application_id, replaces_relation_id, replaced_by_relation_id,
+            id, tenant_id, project_id, relation_no, application_id, replaces_relation_id, replaced_by_relation_id,
             closed_application_id, source_kind, source_snapshot_json, target_kind, target_snapshot_json,
             protocol, ports, purpose, process_description, valid_from, valid_until, validity_type,
             status, close_reason, close_type, closed_by, closed_at, row_version, created_by, updated_by,
             created_at, updated_at
             """;
     private static final String EXEMPTION_RULE_COLUMNS = """
-            rule.id, rule.tenant_id, rule.rule_code, rule.rule_name, rule.source_network_zone_id,
+            rule.id, rule.tenant_id, rule.project_id, rule.rule_code, rule.rule_name, rule.source_network_zone_id,
             source_zone.name AS source_network_zone_name, rule.target_network_zone_id,
             target_zone.name AS target_network_zone_name, rule.protocol, rule.ports, rule.valid_from,
             rule.valid_until, rule.validity_type, rule.status, rule.remark, rule.row_version,
@@ -85,6 +85,7 @@ public class NetworkAccessStore {
     private static final RowMapper<NetworkZone> ZONE_MAPPER = (rs, rowNum) -> new NetworkZone(
             rs.getLong("id"),
             rs.getLong("tenant_id"),
+            rs.getLong("project_id"),
             nullableLong(rs, "parent_id"),
             rs.getString("parent_name"),
             rs.getString("code"),
@@ -103,6 +104,7 @@ public class NetworkAccessStore {
             new ExternalNetworkAddress(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     AddressType.fromDatabase(rs.getString("address_type")),
                     rs.getString("address_value"),
                     rs.getString("display_name"),
@@ -119,6 +121,7 @@ public class NetworkAccessStore {
             new NetworkZoneSubnet(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("network_zone_id"),
                     rs.getString("network_zone_code"),
                     rs.getString("network_zone_name"),
@@ -155,6 +158,7 @@ public class NetworkAccessStore {
             new NetworkAccessApplication(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("application_no"),
                     rs.getLong("applicant_id"),
                     NetworkAccessActionType.fromDatabase(rs.getString("action_type")),
@@ -195,6 +199,7 @@ public class NetworkAccessStore {
             new NetworkAccessRelation(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("relation_no"),
                     rs.getLong("application_id"),
                     nullableLong(rs, "replaces_relation_id"),
@@ -229,6 +234,7 @@ public class NetworkAccessStore {
             new NetworkAccessExemptionRule(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("rule_code"),
                     rs.getString("rule_name"),
                     rs.getLong("source_network_zone_id"),
@@ -252,6 +258,7 @@ public class NetworkAccessStore {
             new NetworkAccessHistoryEvent(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("application_id"),
                     rs.getString("event_type"),
                     nullableStatus(rs, "from_status"),
@@ -267,6 +274,7 @@ public class NetworkAccessStore {
             new WorkflowRound(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("application_id"),
                     rs.getInt("round_no"),
                     nullableLong(rs, "workflow_definition_id"),
@@ -283,6 +291,7 @@ public class NetworkAccessStore {
             new WorkflowReceipt(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("event_id"),
                     rs.getString("subscriber_key"),
                     nullableLong(rs, "application_id"),
@@ -300,10 +309,11 @@ public class NetworkAccessStore {
         this.jdbc = Objects.requireNonNull(jdbc, "JdbcTemplate 不能为空");
     }
 
-    public List<NetworkZone> listZones(long tenantId, RecordStatus status, String keyword) {
-        StringBuilder filter = new StringBuilder("WHERE zone.tenant_id = ?");
+    public List<NetworkZone> listZones(long tenantId, long projectId, RecordStatus status, String keyword) {
+        StringBuilder filter = new StringBuilder("WHERE zone.tenant_id = ? AND zone.project_id = ?");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (status != null) {
             filter.append(" AND zone.status = ?");
             args.add(status.name());
@@ -318,24 +328,24 @@ public class NetworkAccessStore {
         return jdbc.query(zoneSelect(filter.toString()), ZONE_MAPPER, args.toArray());
     }
 
-    public Optional<NetworkZone> findZone(long tenantId, long id) {
-        return jdbc.query(zoneSelect("WHERE zone.tenant_id = ? AND zone.id = ?"),
-                ZONE_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<NetworkZone> findZone(long tenantId, long projectId, long id) {
+        return jdbc.query(zoneSelect("WHERE zone.tenant_id = ? AND zone.project_id = ? AND zone.id = ?"),
+                ZONE_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<NetworkZone> lockZone(long tenantId, long id) {
+    public Optional<NetworkZone> lockZone(long tenantId, long projectId, long id) {
         requireTransaction();
-        return jdbc.query(zoneSelect("WHERE zone.tenant_id = ? AND zone.id = ? FOR UPDATE"),
-                ZONE_MAPPER, tenantId, id).stream().findFirst();
+        return jdbc.query(zoneSelect("WHERE zone.tenant_id = ? AND zone.project_id = ? AND zone.id = ? FOR UPDATE"),
+                ZONE_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean zoneCodeExists(long tenantId, String code, Long excludeId) {
-        return exists("arch_network_zone", "code", tenantId, code, excludeId);
+    public boolean zoneCodeExists(long tenantId, long projectId, String code, Long excludeId) {
+        return exists("arch_network_zone", "code", tenantId, projectId, code, excludeId);
     }
 
-    public boolean zoneNameExists(long tenantId, Long parentId, String name, Long excludeId) {
+    public boolean zoneNameExists(long tenantId, long projectId, Long parentId, String name, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, name));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, name));
         String parentPredicate;
         if (parentId == null) {
             parentPredicate = " AND parent_id IS NULL";
@@ -347,21 +357,21 @@ public class NetworkAccessStore {
             args.add(excludeId);
         }
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_network_zone "
-                + "WHERE tenant_id = ? AND name = ?" + parentPredicate + exclude, Integer.class, args.toArray());
+                + "WHERE tenant_id = ? AND project_id = ? AND name = ?" + parentPredicate + exclude, Integer.class, args.toArray());
         return count != null && count > 0;
     }
 
-    public boolean hasActiveChildZones(long tenantId, long zoneId) {
+    public boolean hasActiveChildZones(long tenantId, long projectId, long zoneId) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_network_zone "
-                        + "WHERE tenant_id = ? AND parent_id = ? AND status = 'ACTIVE'",
-                Integer.class, tenantId, zoneId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND parent_id = ? AND status = 'ACTIVE'",
+                Integer.class, tenantId, projectId, zoneId);
         return count != null && count > 0;
     }
 
-    public boolean hasActiveSubnets(long tenantId, long zoneId) {
+    public boolean hasActiveSubnets(long tenantId, long projectId, long zoneId) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_network_zone_subnet "
-                        + "WHERE tenant_id = ? AND network_zone_id = ? AND status = 'ACTIVE'",
-                Integer.class, tenantId, zoneId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND network_zone_id = ? AND status = 'ACTIVE'",
+                Integer.class, tenantId, projectId, zoneId);
         return count != null && count > 0;
     }
 
@@ -369,39 +379,40 @@ public class NetworkAccessStore {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_zone
-                    (id, tenant_id, parent_id, code, name, restriction_level, status,
+                    (id, tenant_id, project_id, parent_id, code, name, restriction_level, status,
                      description, remark, row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, zone.id(), zone.tenantId(), zone.parentId(), zone.code(), zone.name(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, zone.id(), zone.tenantId(), zone.projectId(), zone.parentId(), zone.code(), zone.name(),
                 zone.restrictionLevel(), zone.status().name(), zone.description(), zone.remark(),
                 zone.rowVersion(), zone.createdBy(), zone.updatedBy());
     }
 
-    public boolean updateZone(long tenantId, long id, long rowVersion, Long parentId, String code, String name,
+    public boolean updateZone(long tenantId, long projectId, long id, long rowVersion, Long parentId, String code, String name,
                               int restrictionLevel, String description, String remark, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_zone
                 SET parent_id = ?, code = ?, name = ?, restriction_level = ?, description = ?,
                     remark = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
                 """, parentId, code, name, restrictionLevel, description, remark, actorId,
-                tenantId, id, rowVersion) == 1;
+                tenantId, projectId, id, rowVersion) == 1;
     }
 
-    public boolean updateZoneStatus(long tenantId, long id, RecordStatus from, RecordStatus to, long actorId) {
+    public boolean updateZoneStatus(long tenantId, long projectId, long id, RecordStatus from, RecordStatus to, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_zone
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ?
-                """, to.name(), actorId, tenantId, id, from.name()) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ?
+                """, to.name(), actorId, tenantId, projectId, id, from.name()) == 1;
     }
 
-    public List<NetworkZoneSubnet> listSubnets(long tenantId, Long zoneId, RecordStatus status) {
-        StringBuilder filter = new StringBuilder("WHERE subnet.tenant_id = ?");
+    public List<NetworkZoneSubnet> listSubnets(long tenantId, long projectId, Long zoneId, RecordStatus status) {
+        StringBuilder filter = new StringBuilder("WHERE subnet.tenant_id = ? AND subnet.project_id = ?");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (zoneId != null) {
             filter.append(" AND subnet.network_zone_id = ?");
             args.add(zoneId);
@@ -414,57 +425,58 @@ public class NetworkAccessStore {
         return jdbc.query(subnetSelect(filter.toString()), SUBNET_MAPPER, args.toArray());
     }
 
-    public Optional<NetworkZoneSubnet> findSubnet(long tenantId, long id) {
-        return jdbc.query(subnetSelect("WHERE subnet.tenant_id = ? AND subnet.id = ?"),
-                SUBNET_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<NetworkZoneSubnet> findSubnet(long tenantId, long projectId, long id) {
+        return jdbc.query(subnetSelect("WHERE subnet.tenant_id = ? AND subnet.project_id = ? AND subnet.id = ?"),
+                SUBNET_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<NetworkZoneSubnet> lockSubnet(long tenantId, long id) {
+    public Optional<NetworkZoneSubnet> lockSubnet(long tenantId, long projectId, long id) {
         requireTransaction();
-        return jdbc.query(subnetSelect("WHERE subnet.tenant_id = ? AND subnet.id = ? FOR UPDATE"),
-                SUBNET_MAPPER, tenantId, id).stream().findFirst();
+        return jdbc.query(subnetSelect("WHERE subnet.tenant_id = ? AND subnet.project_id = ? AND subnet.id = ? FOR UPDATE"),
+                SUBNET_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean subnetCidrExists(long tenantId, String cidrBlock, Long excludeId) {
-        return exists("arch_network_zone_subnet", "cidr_block", tenantId, cidrBlock, excludeId);
+    public boolean subnetCidrExists(long tenantId, long projectId, String cidrBlock, Long excludeId) {
+        return exists("arch_network_zone_subnet", "cidr_block", tenantId, projectId, cidrBlock, excludeId);
     }
 
     public void insertSubnet(NetworkZoneSubnet subnet) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_zone_subnet
-                    (id, tenant_id, network_zone_id, cidr_block, gateway_ip, purpose, status,
+                    (id, tenant_id, project_id, network_zone_id, cidr_block, gateway_ip, purpose, status,
                      remark, row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, subnet.id(), subnet.tenantId(), subnet.networkZoneId(), subnet.cidrBlock(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, subnet.id(), subnet.tenantId(), subnet.projectId(), subnet.networkZoneId(), subnet.cidrBlock(),
                 subnet.gatewayIp(), subnet.purpose(), subnet.status().name(), subnet.remark(),
                 subnet.rowVersion(), subnet.createdBy(), subnet.updatedBy());
     }
 
-    public boolean updateSubnet(long tenantId, long id, long rowVersion, String cidrBlock, String gatewayIp,
+    public boolean updateSubnet(long tenantId, long projectId, long id, long rowVersion, String cidrBlock, String gatewayIp,
                                 String purpose, String remark, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_zone_subnet
                 SET cidr_block = ?, gateway_ip = ?, purpose = ?, remark = ?,
                     updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
-                """, cidrBlock, gatewayIp, purpose, remark, actorId, tenantId, id, rowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                """, cidrBlock, gatewayIp, purpose, remark, actorId, tenantId, projectId, id, rowVersion) == 1;
     }
 
-    public boolean updateSubnetStatus(long tenantId, long id, RecordStatus from, RecordStatus to, long actorId) {
+    public boolean updateSubnetStatus(long tenantId, long projectId, long id, RecordStatus from, RecordStatus to, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_zone_subnet
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ?
-                """, to.name(), actorId, tenantId, id, from.name()) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ?
+                """, to.name(), actorId, tenantId, projectId, id, from.name()) == 1;
     }
 
-    public List<ExternalNetworkAddress> listAddresses(long tenantId, RecordStatus status, String keyword) {
-        StringBuilder filter = new StringBuilder("WHERE tenant_id = ?");
+    public List<ExternalNetworkAddress> listAddresses(long tenantId, long projectId, RecordStatus status, String keyword) {
+        StringBuilder filter = new StringBuilder("WHERE tenant_id = ? AND project_id = ?");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (status != null) {
             filter.append(" AND status = ?");
             args.add(status.name());
@@ -480,27 +492,27 @@ public class NetworkAccessStore {
                 ADDRESS_MAPPER, args.toArray());
     }
 
-    public Optional<ExternalNetworkAddress> findAddress(long tenantId, long id) {
+    public Optional<ExternalNetworkAddress> findAddress(long tenantId, long projectId, long id) {
         return jdbc.query("SELECT " + ADDRESS_COLUMNS
-                        + " FROM arch_external_network_address WHERE tenant_id = ? AND id = ?",
-                ADDRESS_MAPPER, tenantId, id).stream().findFirst();
+                        + " FROM arch_external_network_address WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                ADDRESS_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<ExternalNetworkAddress> lockAddress(long tenantId, long id) {
+    public Optional<ExternalNetworkAddress> lockAddress(long tenantId, long projectId, long id) {
         requireTransaction();
         return jdbc.query("SELECT " + ADDRESS_COLUMNS
-                        + " FROM arch_external_network_address WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                ADDRESS_MAPPER, tenantId, id).stream().findFirst();
+                        + " FROM arch_external_network_address WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE",
+                ADDRESS_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean addressExists(long tenantId, AddressType type, String value, Long excludeId) {
+    public boolean addressExists(long tenantId, long projectId, AddressType type, String value, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, type.name(), value));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, type.name(), value));
         if (excludeId != null) {
             args.add(excludeId);
         }
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_external_network_address "
-                        + "WHERE tenant_id = ? AND address_type = ? AND address_value = ?" + exclude,
+                        + "WHERE tenant_id = ? AND project_id = ? AND address_type = ? AND address_value = ?" + exclude,
                 Integer.class, args.toArray());
         return count != null && count > 0;
     }
@@ -509,40 +521,41 @@ public class NetworkAccessStore {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_external_network_address
-                    (id, tenant_id, address_type, address_value, display_name, purpose, status,
+                    (id, tenant_id, project_id, address_type, address_value, display_name, purpose, status,
                      remark, row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, address.id(), address.tenantId(), address.addressType().name(), address.addressValue(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, address.id(), address.tenantId(), address.projectId(), address.addressType().name(), address.addressValue(),
                 address.displayName(), address.purpose(), address.status().name(), address.remark(),
                 address.rowVersion(), address.createdBy(), address.updatedBy());
     }
 
-    public boolean updateAddress(long tenantId, long id, long rowVersion, AddressType type, String value,
+    public boolean updateAddress(long tenantId, long projectId, long id, long rowVersion, AddressType type, String value,
                                  String displayName, String purpose, String remark, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_external_network_address
                 SET address_type = ?, address_value = ?, display_name = ?, purpose = ?, remark = ?,
                     updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
-                """, type.name(), value, displayName, purpose, remark, actorId, tenantId, id, rowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                """, type.name(), value, displayName, purpose, remark, actorId, tenantId, projectId, id, rowVersion) == 1;
     }
 
-    public boolean updateAddressStatus(long tenantId, long id, RecordStatus from, RecordStatus to, long actorId) {
+    public boolean updateAddressStatus(long tenantId, long projectId, long id, RecordStatus from, RecordStatus to, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_external_network_address
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ?
-                """, to.name(), actorId, tenantId, id, from.name()) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ?
+                """, to.name(), actorId, tenantId, projectId, id, from.name()) == 1;
     }
 
-    public List<ManagedEndpointInstance> listEndpointInstances(long tenantId, Long physicalSubsystemId,
+    public List<ManagedEndpointInstance> listEndpointInstances(long tenantId, long projectId, Long physicalSubsystemId,
                                                                Long environmentId, Long deploymentUnitId,
                                                                List<Long> instanceIds) {
-        StringBuilder filter = new StringBuilder("WHERE instance.tenant_id = ? AND instance.status = 'ACTIVE'");
+        StringBuilder filter = new StringBuilder("WHERE instance.tenant_id = ? AND instance.project_id = ? AND instance.status = 'ACTIVE'");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (physicalSubsystemId != null) {
             filter.append(" AND instance.physical_subsystem_id = ?");
             args.add(physicalSubsystemId);
@@ -574,7 +587,7 @@ public class NetworkAccessStore {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_access_application
-                    (id, tenant_id, application_no, applicant_id, action_type, target_relation_id, source_kind,
+                    (id, tenant_id, project_id, application_no, applicant_id, action_type, target_relation_id, source_kind,
                      source_physical_subsystem_id, source_environment_id, source_deployment_unit_id,
                      source_external_address_id, source_snapshot_json, target_kind,
                      target_physical_subsystem_id, target_environment_id, target_deployment_unit_id,
@@ -583,8 +596,8 @@ public class NetworkAccessStore {
                      current_workflow_definition_id, current_workflow_version_id, current_workflow_instance_id,
                      current_payload_digest, cancellation_requested, row_version, created_by, updated_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, application.id(), application.tenantId(), application.applicationNo(), application.applicantId(),
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, application.id(), application.tenantId(), application.projectId(), application.applicationNo(), application.applicantId(),
                 application.actionType().name(), application.targetRelationId(), application.sourceKind().name(),
                 application.sourcePhysicalSubsystemId(), application.sourceEnvironmentId(),
                 application.sourceDeploymentUnitId(), application.sourceExternalAddressId(), application.sourceSnapshotJson(),
@@ -598,24 +611,25 @@ public class NetworkAccessStore {
                 application.rowVersion(), application.createdBy(), application.updatedBy());
     }
 
-    public Optional<NetworkAccessApplication> findApplication(long tenantId, long id) {
+    public Optional<NetworkAccessApplication> findApplication(long tenantId, long projectId, long id) {
         return jdbc.query("SELECT " + APP_COLUMNS
-                        + " FROM arch_network_access_application WHERE tenant_id = ? AND id = ?",
-                APP_MAPPER, tenantId, id).stream().findFirst();
+                        + " FROM arch_network_access_application WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                APP_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<NetworkAccessApplication> lockApplication(long tenantId, long id) {
+    public Optional<NetworkAccessApplication> lockApplication(long tenantId, long projectId, long id) {
         requireTransaction();
         return jdbc.query("SELECT " + APP_COLUMNS
-                        + " FROM arch_network_access_application WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                APP_MAPPER, tenantId, id).stream().findFirst();
+                        + " FROM arch_network_access_application WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE",
+                APP_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public List<NetworkAccessApplication> listApplications(long tenantId, Long applicantId,
+    public List<NetworkAccessApplication> listApplications(long tenantId, long projectId, Long applicantId,
                                                            ApplicationStatus status, int limit, int offset) {
-        StringBuilder filter = new StringBuilder("WHERE tenant_id = ?");
+        StringBuilder filter = new StringBuilder("WHERE tenant_id = ? AND project_id = ?");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (applicantId != null) {
             filter.append(" AND applicant_id = ?");
             args.add(applicantId);
@@ -631,17 +645,17 @@ public class NetworkAccessStore {
                 APP_MAPPER, args.toArray());
     }
 
-    public boolean updateApplicationStatus(long tenantId, long id, ApplicationStatus from,
+    public boolean updateApplicationStatus(long tenantId, long projectId, long id, ApplicationStatus from,
                                            long expectedRowVersion, ApplicationStatus to, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_access_application
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                """, to.name(), actorId, tenantId, id, from.name(), expectedRowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                """, to.name(), actorId, tenantId, projectId, id, from.name(), expectedRowVersion) == 1;
     }
 
-    public boolean compareAndSetApplicationWorkflowContext(long tenantId, long applicationId,
+    public boolean compareAndSetApplicationWorkflowContext(long tenantId, long projectId, long applicationId,
                                                            int expectedCurrentBusinessRound,
                                                            long expectedRowVersion,
                                                            int nextBusinessRound,
@@ -656,33 +670,33 @@ public class NetworkAccessStore {
                 SET current_business_round = ?, current_workflow_definition_id = ?,
                     current_workflow_version_id = ?, current_workflow_instance_id = ?,
                     current_payload_digest = ?, row_version = row_version + 1, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND current_business_round = ? AND row_version = ?
                   AND status = 'IN_REVIEW'
                 """, nextBusinessRound, workflowDefinitionId, workflowVersionId, workflowInstanceId,
-                payloadDigest, updatedBy, tenantId, applicationId, expectedCurrentBusinessRound,
+                payloadDigest, updatedBy, tenantId, projectId, applicationId, expectedCurrentBusinessRound,
                 expectedRowVersion) == 1;
     }
 
-    public boolean compareAndSetCancellationRequested(long tenantId, long applicationId,
+    public boolean compareAndSetCancellationRequested(long tenantId, long projectId, long applicationId,
                                                       long expectedRowVersion, boolean requested,
                                                       long updatedBy) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_access_application
                 SET cancellation_requested = ?, row_version = row_version + 1, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
-                """, requested, updatedBy, tenantId, applicationId, expectedRowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ? AND status = 'IN_REVIEW'
+                """, requested, updatedBy, tenantId, projectId, applicationId, expectedRowVersion) == 1;
     }
 
     public void insertRelation(NetworkAccessRelation relation) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_access_relation
-                    (id, tenant_id, relation_no, application_id, replaces_relation_id, source_kind, source_snapshot_json,
+                    (id, tenant_id, project_id, relation_no, application_id, replaces_relation_id, source_kind, source_snapshot_json,
                      target_kind, target_snapshot_json, protocol, ports, purpose, process_description,
                      valid_from, valid_until, validity_type, status, row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, relation.id(), relation.tenantId(), relation.relationNo(), relation.applicationId(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, relation.id(), relation.tenantId(), relation.projectId(), relation.relationNo(), relation.applicationId(),
                 relation.replacesRelationId(), relation.sourceKind().name(), relation.sourceSnapshotJson(),
                 relation.targetKind().name(),
                 relation.targetSnapshotJson(), relation.protocol().name(), relation.ports(), relation.purpose(),
@@ -691,16 +705,17 @@ public class NetworkAccessStore {
                 relation.createdBy(), relation.updatedBy());
     }
 
-    public Optional<NetworkAccessRelation> findRelation(long tenantId, long id) {
+    public Optional<NetworkAccessRelation> findRelation(long tenantId, long projectId, long id) {
         return jdbc.query("SELECT " + RELATION_COLUMNS
-                        + " FROM arch_network_access_relation WHERE tenant_id = ? AND id = ?",
-                RELATION_MAPPER, tenantId, id).stream().findFirst();
+                        + " FROM arch_network_access_relation WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                RELATION_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public List<NetworkAccessRelation> listRelations(long tenantId, RelationStatus status, int limit, int offset) {
-        StringBuilder filter = new StringBuilder("WHERE tenant_id = ?");
+    public List<NetworkAccessRelation> listRelations(long tenantId, long projectId, RelationStatus status, int limit, int offset) {
+        StringBuilder filter = new StringBuilder("WHERE tenant_id = ? AND project_id = ?");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (status != null) {
             filter.append(" AND status = ?");
             args.add(status.name());
@@ -712,14 +727,14 @@ public class NetworkAccessStore {
                 RELATION_MAPPER, args.toArray());
     }
 
-    public Optional<NetworkAccessRelation> lockRelation(long tenantId, long id) {
+    public Optional<NetworkAccessRelation> lockRelation(long tenantId, long projectId, long id) {
         requireTransaction();
         return jdbc.query("SELECT " + RELATION_COLUMNS
-                        + " FROM arch_network_access_relation WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                RELATION_MAPPER, tenantId, id).stream().findFirst();
+                        + " FROM arch_network_access_relation WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE",
+                RELATION_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean closeRelation(long tenantId, long id, long rowVersion, String reason,
+    public boolean closeRelation(long tenantId, long projectId, long id, long rowVersion, String reason,
                                  long actorId, LocalDateTime closedAt) {
         requireTransaction();
         return jdbc.update("""
@@ -727,11 +742,11 @@ public class NetworkAccessStore {
                 SET status = 'CLOSED', close_reason = ?, close_type = 'LEGACY_DIRECT',
                     closed_by = ?, closed_at = ?,
                     updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
-                """, reason, actorId, Timestamp.valueOf(closedAt), actorId, tenantId, id, rowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE' AND row_version = ?
+                """, reason, actorId, Timestamp.valueOf(closedAt), actorId, tenantId, projectId, id, rowVersion) == 1;
     }
 
-    public boolean closeRelationByApplication(long tenantId, long id, Long replacedByRelationId,
+    public boolean closeRelationByApplication(long tenantId, long projectId, long id, Long replacedByRelationId,
                                               long applicationId, RelationCloseType closeType,
                                               String reason, long actorId, LocalDateTime closedAt) {
         requireTransaction();
@@ -741,15 +756,16 @@ public class NetworkAccessStore {
                 SET status = 'CLOSED', close_reason = ?, close_type = ?, closed_application_id = ?,
                     replaced_by_relation_id = ?, closed_by = ?, closed_at = ?, updated_by = ?,
                     row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE'
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'ACTIVE'
                 """, reason, closeType.name(), applicationId, replacedByRelationId, actorId,
-                timestamp(closedAt), actorId, tenantId, id) == 1;
+                timestamp(closedAt), actorId, tenantId, projectId, id) == 1;
     }
 
-    public List<NetworkAccessExemptionRule> listExemptionRules(long tenantId, ExemptionRuleStatus status) {
-        StringBuilder filter = new StringBuilder("WHERE rule.tenant_id = ?");
+    public List<NetworkAccessExemptionRule> listExemptionRules(long tenantId, long projectId, ExemptionRuleStatus status) {
+        StringBuilder filter = new StringBuilder("WHERE rule.tenant_id = ? AND rule.project_id = ?");
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         if (status != null) {
             filter.append(" AND rule.status = ?");
             args.add(status.name());
@@ -758,36 +774,36 @@ public class NetworkAccessStore {
         return jdbc.query(exemptionRuleSelect(filter.toString()), EXEMPTION_RULE_MAPPER, args.toArray());
     }
 
-    public Optional<NetworkAccessExemptionRule> findExemptionRule(long tenantId, long id) {
-        return jdbc.query(exemptionRuleSelect("WHERE rule.tenant_id = ? AND rule.id = ?"),
-                EXEMPTION_RULE_MAPPER, tenantId, id).stream().findFirst();
+    public Optional<NetworkAccessExemptionRule> findExemptionRule(long tenantId, long projectId, long id) {
+        return jdbc.query(exemptionRuleSelect("WHERE rule.tenant_id = ? AND rule.project_id = ? AND rule.id = ?"),
+                EXEMPTION_RULE_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public Optional<NetworkAccessExemptionRule> lockExemptionRule(long tenantId, long id) {
+    public Optional<NetworkAccessExemptionRule> lockExemptionRule(long tenantId, long projectId, long id) {
         requireTransaction();
-        return jdbc.query(exemptionRuleSelect("WHERE rule.tenant_id = ? AND rule.id = ? FOR UPDATE"),
-                EXEMPTION_RULE_MAPPER, tenantId, id).stream().findFirst();
+        return jdbc.query(exemptionRuleSelect("WHERE rule.tenant_id = ? AND rule.project_id = ? AND rule.id = ? FOR UPDATE"),
+                EXEMPTION_RULE_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean exemptionRuleCodeExists(long tenantId, String ruleCode, Long excludeId) {
-        return exists("arch_network_access_exemption_rule", "rule_code", tenantId, ruleCode, excludeId);
+    public boolean exemptionRuleCodeExists(long tenantId, long projectId, String ruleCode, Long excludeId) {
+        return exists("arch_network_access_exemption_rule", "rule_code", tenantId, projectId, ruleCode, excludeId);
     }
 
     public void insertExemptionRule(NetworkAccessExemptionRule rule) {
         requireTransaction();
         jdbc.update("""
                 INSERT INTO arch_network_access_exemption_rule
-                    (id, tenant_id, rule_code, rule_name, source_network_zone_id, target_network_zone_id,
+                    (id, tenant_id, project_id, rule_code, rule_name, source_network_zone_id, target_network_zone_id,
                      protocol, ports, valid_from, valid_until, validity_type, status, remark,
                      row_version, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, rule.id(), rule.tenantId(), rule.ruleCode(), rule.ruleName(), rule.sourceNetworkZoneId(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, rule.id(), rule.tenantId(), rule.projectId(), rule.ruleCode(), rule.ruleName(), rule.sourceNetworkZoneId(),
                 rule.targetNetworkZoneId(), rule.protocol().name(), rule.ports(), timestamp(rule.validFrom()),
                 timestamp(rule.validUntil()), rule.validityType().name(), rule.status().name(), rule.remark(),
                 rule.rowVersion(), rule.createdBy(), rule.updatedBy());
     }
 
-    public boolean updateExemptionRule(long tenantId, long id, long rowVersion, String ruleCode, String ruleName,
+    public boolean updateExemptionRule(long tenantId, long projectId, long id, long rowVersion, String ruleCode, String ruleName,
                                        long sourceNetworkZoneId, long targetNetworkZoneId,
                                        AccessProtocol protocol, String ports, LocalDateTime validFrom,
                                        LocalDateTime validUntil, ValidityType validityType,
@@ -798,33 +814,34 @@ public class NetworkAccessStore {
                 SET rule_code = ?, rule_name = ?, source_network_zone_id = ?, target_network_zone_id = ?,
                     protocol = ?, ports = ?, valid_from = ?, valid_until = ?, validity_type = ?,
                     remark = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND row_version = ? AND status = 'ACTIVE'
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ? AND status = 'ACTIVE'
                 """, ruleCode, ruleName, sourceNetworkZoneId, targetNetworkZoneId, protocol.name(), ports,
                 timestamp(validFrom), timestamp(validUntil), validityType.name(), remark, actorId,
-                tenantId, id, rowVersion) == 1;
+                tenantId, projectId, id, rowVersion) == 1;
     }
 
-    public boolean updateExemptionRuleStatus(long tenantId, long id, long rowVersion,
+    public boolean updateExemptionRuleStatus(long tenantId, long projectId, long id, long rowVersion,
                                              ExemptionRuleStatus from, ExemptionRuleStatus to, long actorId) {
         requireTransaction();
         return jdbc.update("""
                 UPDATE arch_network_access_exemption_rule
                 SET status = ?, updated_by = ?, row_version = row_version + 1
-                WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                """, to.name(), actorId, tenantId, id, from.name(), rowVersion) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                """, to.name(), actorId, tenantId, projectId, id, from.name(), rowVersion) == 1;
     }
 
-    public List<EndpointInstanceStatus> listEndpointInstanceStatuses(long tenantId, List<Long> instanceIds) {
+    public List<EndpointInstanceStatus> listEndpointInstanceStatuses(long tenantId, long projectId, List<Long> instanceIds) {
         if (instanceIds == null || instanceIds.isEmpty()) {
             return List.of();
         }
         StringBuilder sql = new StringBuilder("""
                 SELECT id, machine_name, ip_address, status
                 FROM arch_environment_instance
-                WHERE tenant_id = ? AND id IN (
+                WHERE tenant_id = ? AND project_id = ? AND id IN (
                 """);
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        args.add(projectId);
         for (int i = 0; i < instanceIds.size(); i++) {
             if (i > 0) {
                 sql.append(", ");
@@ -843,10 +860,10 @@ public class NetworkAccessStore {
         Objects.requireNonNull(event, "历史事件不能为空");
         jdbc.update("""
                 INSERT INTO arch_network_access_application_history
-                    (id, tenant_id, application_id, event_type, from_status, to_status, business_round,
+                    (id, tenant_id, project_id, application_id, event_type, from_status, to_status, business_round,
                      summary, snapshot_json, diff_json, operator_id, occurred_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, event.id(), event.tenantId(), event.applicationId(), event.eventType(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, event.id(), event.tenantId(), event.projectId(), event.applicationId(), event.eventType(),
                 event.fromStatus() == null ? null : event.fromStatus().name(),
                 event.toStatus() == null ? null : event.toStatus().name(), event.businessRound(),
                 event.summary(), event.snapshotJson(), event.diffJson(), event.operatorId(),
@@ -858,32 +875,32 @@ public class NetworkAccessStore {
         Objects.requireNonNull(round, "工作流轮次不能为空");
         jdbc.update("""
                 INSERT INTO arch_network_access_workflow_round
-                    (id, tenant_id, application_id, round_no, workflow_definition_id,
+                    (id, tenant_id, project_id, application_id, round_no, workflow_definition_id,
                      workflow_version_id, workflow_instance_id, payload_digest, status, started_at, ended_at)
-                VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
-                """, round.id(), round.tenantId(), round.applicationId(), round.roundNo());
+                VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, 'PENDING', NULL, NULL)
+                """, round.id(), round.tenantId(), round.projectId(), round.applicationId(), round.roundNo());
     }
 
-    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long workflowInstanceId) {
+    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long projectId, long workflowInstanceId) {
         requireTransaction();
         return jdbc.query("""
-                SELECT id, tenant_id, application_id, round_no, workflow_definition_id,
+                SELECT id, tenant_id, project_id, application_id, round_no, workflow_definition_id,
                        workflow_version_id, workflow_instance_id, payload_digest, status,
                        started_at, ended_at, created_at, updated_at
                 FROM arch_network_access_workflow_round
-                WHERE tenant_id = ? AND workflow_instance_id = ? FOR UPDATE
-                """, WORKFLOW_ROUND_MAPPER, tenantId, workflowInstanceId).stream().findFirst();
+                WHERE tenant_id = ? AND project_id = ? AND workflow_instance_id = ? FOR UPDATE
+                """, WORKFLOW_ROUND_MAPPER, tenantId, projectId, workflowInstanceId).stream().findFirst();
     }
 
-    public boolean isLatestWorkflowRound(long tenantId, long applicationId, int roundNo) {
+    public boolean isLatestWorkflowRound(long tenantId, long projectId, long applicationId, int roundNo) {
         Integer latest = jdbc.queryForObject("""
                 SELECT MAX(round_no) FROM arch_network_access_workflow_round
-                WHERE tenant_id = ? AND application_id = ?
-                """, Integer.class, tenantId, applicationId);
+                WHERE tenant_id = ? AND project_id = ? AND application_id = ?
+                """, Integer.class, tenantId, projectId, applicationId);
         return latest != null && latest == roundNo;
     }
 
-    public boolean bindWorkflowRoundStarted(long tenantId, long applicationId, int roundNo,
+    public boolean bindWorkflowRoundStarted(long tenantId, long projectId, long applicationId, int roundNo,
                                             long workflowDefinitionId, long workflowVersionId,
                                             long workflowInstanceId, String payloadDigest,
                                             LocalDateTime startedAt) {
@@ -892,20 +909,20 @@ public class NetworkAccessStore {
                 UPDATE arch_network_access_workflow_round
                 SET workflow_definition_id = ?, workflow_version_id = ?, workflow_instance_id = ?,
                     payload_digest = ?, status = 'STARTED', started_at = ?
-                WHERE tenant_id = ? AND application_id = ? AND round_no = ? AND status = 'PENDING'
+                WHERE tenant_id = ? AND project_id = ? AND application_id = ? AND round_no = ? AND status = 'PENDING'
                 """, workflowDefinitionId, workflowVersionId, workflowInstanceId, payloadDigest,
-                timestamp(startedAt), tenantId, applicationId, roundNo) == 1;
+                timestamp(startedAt), tenantId, projectId, applicationId, roundNo) == 1;
     }
 
-    public boolean completeStartedWorkflowRound(long tenantId, long applicationId, int roundNo,
+    public boolean completeStartedWorkflowRound(long tenantId, long projectId, long applicationId, int roundNo,
                                                 WorkflowRoundStatus nextStatus, LocalDateTime endedAt) {
         requireTransaction();
         Objects.requireNonNull(nextStatus, "轮次目标状态不能为空");
         return jdbc.update("""
                 UPDATE arch_network_access_workflow_round
                 SET status = ?, ended_at = ?
-                WHERE tenant_id = ? AND application_id = ? AND round_no = ? AND status = 'STARTED'
-                """, nextStatus.name(), timestamp(endedAt), tenantId, applicationId, roundNo) == 1;
+                WHERE tenant_id = ? AND project_id = ? AND application_id = ? AND round_no = ? AND status = 'STARTED'
+                """, nextStatus.name(), timestamp(endedAt), tenantId, projectId, applicationId, roundNo) == 1;
     }
 
     public boolean beginReceipt(WorkflowReceiptStart receipt) {
@@ -913,46 +930,46 @@ public class NetworkAccessStore {
         Objects.requireNonNull(receipt, "工作流回执不能为空");
         return jdbc.update("""
                 INSERT IGNORE INTO arch_network_access_workflow_receipt
-                    (id, tenant_id, event_id, subscriber_key, application_id, round_no,
+                    (id, tenant_id, project_id, event_id, subscriber_key, application_id, round_no,
                      workflow_instance_id, event_type, processing_status, detail)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, receipt.id(), receipt.tenantId(), receipt.eventId(), receipt.subscriberKey(),
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, receipt.id(), receipt.tenantId(), receipt.projectId(), receipt.eventId(), receipt.subscriberKey(),
                 receipt.applicationId(), receipt.roundNo(), receipt.workflowInstanceId(), receipt.eventType(),
                 WorkflowReceiptStatus.FAILED.name(), "事务内事件尚未完成") == 1;
     }
 
-    public boolean completeReceipt(long tenantId, String eventId, String subscriberKey,
+    public boolean completeReceipt(long tenantId, long projectId, String eventId, String subscriberKey,
                                    WorkflowReceiptStatus status, String detail) {
         requireTransaction();
         Objects.requireNonNull(status, "回执状态不能为空");
         return jdbc.update("""
                 UPDATE arch_network_access_workflow_receipt
                 SET processing_status = ?, detail = ?, processed_at = CURRENT_TIMESTAMP
-                WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
+                WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
                   AND processing_status = 'FAILED'
-                """, status.name(), detail, tenantId, eventId, subscriberKey) == 1;
+                """, status.name(), detail, tenantId, projectId, eventId, subscriberKey) == 1;
     }
 
-    public Optional<WorkflowReceipt> findReceipt(long tenantId, String eventId, String subscriberKey) {
+    public Optional<WorkflowReceipt> findReceipt(long tenantId, long projectId, String eventId, String subscriberKey) {
         return jdbc.query("""
-                SELECT id, tenant_id, event_id, subscriber_key, application_id, round_no,
+                SELECT id, tenant_id, project_id, event_id, subscriber_key, application_id, round_no,
                        workflow_instance_id, event_type, processing_status, detail,
                        received_at, processed_at
                 FROM arch_network_access_workflow_receipt
-                WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
-                """, WORKFLOW_RECEIPT_MAPPER, tenantId, eventId, subscriberKey).stream().findFirst();
+                WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
+                """, WORKFLOW_RECEIPT_MAPPER, tenantId, projectId, eventId, subscriberKey).stream().findFirst();
     }
 
     private String zoneSelect(String filter) {
         return "SELECT " + ZONE_COLUMNS + " FROM arch_network_zone zone "
                 + "LEFT JOIN arch_network_zone parent ON parent.tenant_id = zone.tenant_id "
-                + "AND parent.id = zone.parent_id " + filter;
+                + "AND parent.project_id = zone.project_id AND parent.id = zone.parent_id " + filter;
     }
 
     private String subnetSelect(String filter) {
         return "SELECT " + SUBNET_COLUMNS + " FROM arch_network_zone_subnet subnet "
                 + "JOIN arch_network_zone zone ON zone.tenant_id = subnet.tenant_id "
-                + "AND zone.id = subnet.network_zone_id " + filter;
+                + "AND zone.project_id = subnet.project_id AND zone.id = subnet.network_zone_id " + filter;
     }
 
     private String instanceSelect(String filter) {
@@ -967,30 +984,33 @@ public class NetworkAccessStore {
                        instance.network_zone_id, COALESCE(instance.network_zone_name, instance.network_zone) AS network_zone_name
                 FROM arch_environment_instance instance
                 JOIN arch_physical_subsystem physical
-                  ON physical.tenant_id = instance.tenant_id AND physical.id = instance.physical_subsystem_id
+                  ON physical.tenant_id = instance.tenant_id AND physical.project_id = instance.project_id
+                 AND physical.id = instance.physical_subsystem_id
                 JOIN arch_environment environment
-                  ON environment.tenant_id = instance.tenant_id AND environment.id = instance.environment_id
+                  ON environment.tenant_id = instance.tenant_id AND environment.project_id = instance.project_id
+                 AND environment.id = instance.environment_id
                 JOIN arch_deployment_unit unit
-                  ON unit.tenant_id = instance.tenant_id AND unit.id = instance.deployment_unit_id
+                  ON unit.tenant_id = instance.tenant_id AND unit.project_id = instance.project_id
+                 AND unit.id = instance.deployment_unit_id
                 """ + filter;
     }
 
     private String exemptionRuleSelect(String filter) {
         return "SELECT " + EXEMPTION_RULE_COLUMNS + " FROM arch_network_access_exemption_rule rule "
                 + "JOIN arch_network_zone source_zone ON source_zone.tenant_id = rule.tenant_id "
-                + "AND source_zone.id = rule.source_network_zone_id "
+                + "AND source_zone.project_id = rule.project_id AND source_zone.id = rule.source_network_zone_id "
                 + "JOIN arch_network_zone target_zone ON target_zone.tenant_id = rule.tenant_id "
-                + "AND target_zone.id = rule.target_network_zone_id " + filter;
+                + "AND target_zone.project_id = rule.project_id AND target_zone.id = rule.target_network_zone_id " + filter;
     }
 
-    private boolean exists(String table, String column, long tenantId, String value, Long excludeId) {
+    private boolean exists(String table, String column, long tenantId, long projectId, String value, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, value));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, value));
         if (excludeId != null) {
             args.add(excludeId);
         }
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM " + table
-                + " WHERE tenant_id = ? AND " + column + " = ?" + exclude, Integer.class, args.toArray());
+                + " WHERE tenant_id = ? AND project_id = ? AND " + column + " = ?" + exclude, Integer.class, args.toArray());
         return count != null && count > 0;
     }
 

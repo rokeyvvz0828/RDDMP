@@ -22,6 +22,10 @@ import {
   getDecisionMatter,
   listDecisionAttachments,
   listDecisionConclusions,
+  listDecisionMaterials,
+  listDecisionReviewActionItems,
+  listDecisionReviewParticipants,
+  listDecisionReviews,
   listDecisionTypes,
   prepareDecisionPublication,
   recordDecisionReview,
@@ -135,8 +139,7 @@ async function load() {
 
 async function loadMaterials(detail: DecisionMatterDetail) {
   try {
-    const response = await fetch(`/api/architecture/decisions/${detail.id}/materials`, { headers: { Authorization: `Bearer ${auth.token || ''}` } })
-    materials.value = response.ok ? await response.json().then(body => body.data || []) : []
+    materials.value = await listDecisionMaterials(detail.id)
   } catch {
     materials.value = []
   }
@@ -144,16 +147,15 @@ async function loadMaterials(detail: DecisionMatterDetail) {
 
 async function loadReviews(detail: DecisionMatterDetail) {
   try {
-    const response = await fetch(`/api/architecture/decisions/${detail.id}/reviews`, { headers: { Authorization: `Bearer ${auth.token || ''}` } })
-    const list: DecisionReview[] = response.ok ? await response.json().then(body => body.data || []) : []
+    const list = await listDecisionReviews(detail.id)
     reviews.value = list
     for (const review of list) {
-      const [participantResponse, actionResponse] = await Promise.all([
-        fetch(`/api/architecture/decisions/${detail.id}/reviews/${review.id}/participants`, { headers: { Authorization: `Bearer ${auth.token || ''}` } }),
-        fetch(`/api/architecture/decisions/${detail.id}/reviews/${review.id}/action-items`, { headers: { Authorization: `Bearer ${auth.token || ''}` } })
+      const [reviewParticipants, reviewActionItems] = await Promise.all([
+        listDecisionReviewParticipants(detail.id, review.id),
+        listDecisionReviewActionItems(detail.id, review.id)
       ])
-      participants.value[review.id] = participantResponse.ok ? await participantResponse.json().then(body => body.data || []) : []
-      actionItems.value[review.id] = actionResponse.ok ? await actionResponse.json().then(body => body.data || []) : []
+      participants.value[review.id] = reviewParticipants
+      actionItems.value[review.id] = reviewActionItems
     }
   } catch {
     reviews.value = []
@@ -168,12 +170,7 @@ async function loadConclusions(detail: DecisionMatterDetail) {
   try {
     const result = await listDecisionConclusions({ page: 1, size: 100 })
     conclusions.value = result.records
-    const chainResult = await fetch(`/api/architecture/decisions/conclusions`, { headers: { Authorization: `Bearer ${auth.token || ''}` } })
-    if (chainResult.ok) {
-      const body = await chainResult.json()
-      const own = (body.data?.records || []).find((item: ConclusionView) => item.matterId === detail.id)
-      chain.value = own || null
-    }
+    chain.value = result.records.find(item => item.matterId === detail.id) || null
   } catch {
     conclusions.value = []
   }

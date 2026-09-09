@@ -33,4 +33,21 @@ class ProjectMemberReferenceQueryTest {
         org.junit.jupiter.api.Assertions.assertTrue(sql.getValue().contains("m.deleted = 0"));
         org.junit.jupiter.api.Assertions.assertTrue(sql.getValue().contains("u.deleted = 0"));
     }
+    @Test
+    void 只读查询不持资格锁而写事务采用当前共享锁读() {
+        for (boolean readOnly : List.of(true, false)) {
+            JdbcTemplate jdbc = mock(JdbcTemplate.class);
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+            org.springframework.transaction.support.TransactionSynchronizationManager.setCurrentTransactionReadOnly(readOnly);
+            try {
+                new JdbcProjectMemberReferenceQuery(jdbc).findActiveMembers(
+                        new AuthUser(7L,1L,"operator","","操作员",1L,true),9001L);
+                ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+                verify(jdbc).query(sql.capture(),any(org.springframework.jdbc.core.RowMapper.class),eq(1L),eq(9001L));
+                assertEquals(!readOnly,sql.getValue().contains("FOR SHARE"));
+            } finally {
+                org.springframework.transaction.support.TransactionSynchronizationManager.clear();
+            }
+        }
+    }
 }

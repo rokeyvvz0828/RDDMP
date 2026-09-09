@@ -10,6 +10,7 @@ import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   createEnvironment,
   deactivateEnvironment,
@@ -25,6 +26,7 @@ import { environmentStatusLabels, environmentStatusTone, formatDateTime, httpSta
 import './architecture.css'
 
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const router = useRouter()
 const loading = ref(false)
 const loadError = ref('')
@@ -66,7 +68,7 @@ const hasNext = computed(() => environments.value.length === pageSize.value)
 const environmentTypePlaceholder = computed(() => activeTypes.value.length ? '请选择' : '请先在系统字典维护环境类型')
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   const request = ++listSequence
   loading.value = true
   loadError.value = ''
@@ -88,7 +90,7 @@ async function load() {
   } catch (error) {
     if (request !== listSequence) return
     if (httpStatus(error) === 403) forbidden.value = true
-    else loadError.value = apiErrorMessage(error, '具体环境加载失败')
+    else loadError.value = apiErrorMessage(error, '环境加载失败')
   } finally {
     if (request === listSequence) loading.value = false
   }
@@ -127,7 +129,7 @@ async function showDetail(row: Environment) {
 
 function remindDictionaryBeforeEnvironment() {
   environmentFormOpen.value = false
-  ElMessage.warning('请先在系统字典维护 ARCH_ENVIRONMENT_TYPE 环境类型，再新增具体环境')
+  ElMessage.warning('请先在系统字典维护 ARCH_ENVIRONMENT_TYPE 环境类型，再新增环境')
 }
 
 function openEnvironmentCreate() {
@@ -172,16 +174,16 @@ async function submitEnvironmentForm() {
   try {
     if (environmentMode.value === 'create') {
       await createEnvironment({ ...environmentForm })
-      ElMessage.success('具体环境已创建')
+      ElMessage.success('环境已创建')
     } else if (editingEnvironmentId.value) {
       const updated = await updateEnvironment(editingEnvironmentId.value, { ...environmentForm })
       if (detail.value?.environment.id === updated.id) detail.value = { ...detail.value, environment: updated }
-      ElMessage.success('具体环境已更新')
+      ElMessage.success('环境已更新')
     }
     environmentFormOpen.value = false
     void load()
   } catch (error) {
-    environmentFormError.value = apiErrorMessage(error, '保存具体环境失败')
+    environmentFormError.value = apiErrorMessage(error, '保存环境失败')
   } finally {
     environmentSubmitting.value = false
   }
@@ -190,7 +192,7 @@ async function submitEnvironmentForm() {
 async function changeEnvironmentStatus(row: Environment, next: EnvironmentRecordStatus) {
   try {
     const action = next === 'ACTIVE' ? '重新启用' : '停用'
-    await ElMessageBox.confirm(`${action}「${row.name}」？`, action + '具体环境', { confirmButtonText: action, cancelButtonText: '取消', type: 'warning' })
+    await ElMessageBox.confirm(`${action}「${row.name}」？`, action + '环境', { confirmButtonText: action, cancelButtonText: '取消', type: 'warning' })
     if (next === 'ACTIVE') await reactivateEnvironment(row.id, row.rowVersion)
     else await deactivateEnvironment(row.id, row.rowVersion)
     ElMessage.success(action + '成功')
@@ -202,12 +204,12 @@ async function changeEnvironmentStatus(row: Environment, next: EnvironmentRecord
 
 async function removeEnvironment(row: Environment) {
   try {
-    await ElMessageBox.confirm(`删除「${row.name}」？`, '删除具体环境', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'error' })
+    await ElMessageBox.confirm(`删除「${row.name}」？`, '删除环境', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'error' })
     await deleteEnvironment(row.id, row.rowVersion)
-    ElMessage.success('具体环境已删除')
+    ElMessage.success('环境已删除')
     void load()
   } catch (error) {
-    if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '删除具体环境失败'))
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '删除环境失败'))
   }
 }
 
@@ -240,27 +242,27 @@ function emptySummary(environmentId: number) {
   }
 }
 
-watch(canView, allowed => {
-  if (allowed) void load()
+watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
+  if (allowed && projectRef) void load()
 }, { immediate: true })
 </script>
 
 <template>
   <main class="architecture-page architecture-environment-page">
-    <UiPageHeader title="具体环境" description="维护具体运行环境，环境类型由系统字典 ARCH_ENVIRONMENT_TYPE 维护。">
+    <UiPageHeader title="环境管理" description="维护具体运行环境，环境类型由系统字典 ARCH_ENVIRONMENT_TYPE 维护。">
       <template #actions>
         <div v-if="canManage" class="architecture-page__actions">
-          <el-button type="primary" @click="openEnvironmentCreate"><el-icon><Plus /></el-icon>具体环境</el-button>
+          <el-button type="primary" @click="openEnvironmentCreate"><el-icon><Plus /></el-icon>环境管理</el-button>
         </div>
       </template>
     </UiPageHeader>
 
     <section v-if="auth.token && !auth.user" v-loading="true" class="architecture-state-panel" aria-label="正在确认访问权限" />
     <section v-else-if="!canView || forbidden" class="architecture-state-panel">
-      <el-result icon="warning" title="暂无具体环境查看权限" sub-title="请申请 architecture:environment:view 权限。" />
+      <el-result icon="warning" title="暂无环境查看权限" sub-title="请申请 architecture:environment:view 权限。" />
     </section>
     <section v-else-if="loadError" class="architecture-state-panel">
-      <el-result icon="error" title="具体环境加载失败" :sub-title="loadError">
+      <el-result icon="error" title="环境加载失败" :sub-title="loadError">
         <template #extra><el-button type="primary" @click="load">重新加载</el-button></template>
       </el-result>
     </section>
@@ -271,7 +273,7 @@ watch(canView, allowed => {
         <el-select v-model="filters.status" clearable placeholder="状态" class="architecture-filter-select" @change="search"><el-option v-for="status in statusOptions" :key="status" :label="environmentStatusLabels[status]" :value="status" /></el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
-        <template #actions><el-tooltip content="刷新列表"><el-button circle :loading="loading" aria-label="刷新具体环境列表" @click="refresh"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
+        <template #actions><el-tooltip content="刷新列表"><el-button circle :loading="loading" aria-label="刷新环境列表" @click="refresh"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
       </UiToolbar>
 
       <UiDataTable v-if="environments.length || loading" class="architecture-desktop-table" :data="environments" :loading="loading" row-key="id" border>
@@ -311,14 +313,14 @@ watch(canView, allowed => {
           </footer>
         </article>
       </div>
-      <UiEmptyState v-if="!loading && !environments.length" title="暂无具体环境" :description="activeTypes.length ? '当前筛选下没有环境记录。' : '请在系统字典维护 ARCH_ENVIRONMENT_TYPE 后刷新。'"><template #action><el-button v-if="canManage && activeTypes.length" type="primary" @click="openEnvironmentCreate">新建具体环境</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
-      <nav v-if="environments.length || page > 1" class="architecture-change-pagination" aria-label="具体环境分页">
+      <UiEmptyState v-if="!loading && !environments.length" title="暂无环境" :description="activeTypes.length ? '当前筛选下没有环境记录。' : '请在系统字典维护 ARCH_ENVIRONMENT_TYPE 后刷新。'"><template #action><el-button v-if="canManage && activeTypes.length" type="primary" @click="openEnvironmentCreate">新建环境</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
+      <nav v-if="environments.length || page > 1" class="architecture-change-pagination" aria-label="环境分页">
         <span>第 {{ page }} 页</span>
         <div><el-button :disabled="page <= 1 || loading" @click="previous">上一页</el-button><el-button :disabled="!hasNext || loading" @click="next">下一页</el-button></div>
       </nav>
     </template>
 
-    <el-drawer v-model="detailOpen" size="min(560px, 94vw)" :title="detail?.environment.name || '具体环境详情'">
+    <el-drawer v-model="detailOpen" size="min(560px, 94vw)" :title="detail?.environment.name || '环境详情'">
       <div v-loading="detailLoading" class="architecture-drawer-body">
         <template v-if="detail">
           <div class="architecture-detail-heading"><strong>{{ detail.environment.name }}</strong><span>{{ detail.environment.code }} · {{ detail.environment.typeName }}</span></div>
@@ -353,7 +355,7 @@ watch(canView, allowed => {
       </div>
     </el-drawer>
 
-    <el-dialog v-model="environmentFormOpen" :title="environmentMode === 'create' ? '新建具体环境' : '编辑具体环境'" width="min(560px, 94vw)" destroy-on-close>
+    <el-dialog v-model="environmentFormOpen" :title="environmentMode === 'create' ? '新建环境' : '编辑环境'" width="min(560px, 94vw)" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="环境编码"><el-input v-model="environmentForm.code" maxlength="64" /></el-form-item>
         <el-form-item label="环境名称"><el-input v-model="environmentForm.name" maxlength="160" /></el-form-item>

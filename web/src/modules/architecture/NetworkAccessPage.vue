@@ -775,7 +775,7 @@ function buildEndpointPayload(
     return { kind: 'EXTERNAL', externalAddressId: endpoint.externalAddressId }
   }
   if (!endpoint.physicalSubsystemId || !endpoint.environmentId || !endpoint.deploymentUnitId) {
-    reportError(`${label}请选择物理子系统、具体环境和部署单元`)
+    reportError(`${label}请选择物理子系统、环境和部署单元`)
     return null
   }
   const instanceIds = normalizeInstanceIds(endpoint.instanceIds)
@@ -1814,7 +1814,7 @@ watch(() => ({
                   <el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="具体环境">
+              <el-form-item label="环境">
                 <el-select v-model="applicationForm.source.environmentId" filterable placeholder="请选择" @change="loadEndpointInstances(applicationForm.source, applicationForm.target)">
                   <el-option v-for="item in environments" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>
@@ -1853,7 +1853,7 @@ watch(() => ({
                   <el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="具体环境">
+              <el-form-item label="环境">
                 <el-select v-model="applicationForm.target.environmentId" filterable placeholder="请选择" @change="loadEndpointInstances(applicationForm.target, applicationForm.source)">
                   <el-option v-for="item in environments" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>

@@ -15,8 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.Map;
@@ -51,5 +53,17 @@ class TestConfigurationServiceTest {
 
         assertEquals("TESTER", result.get("role_code"));
         assertEquals("测试人员", result.get("role_name"));
+    }
+
+    @Test
+    void rejectsPhysicalSubsystemFromAnotherProjectBeforeWriting() {
+        TestConfigurationService service = new TestConfigurationService(jdbc, new ObjectMapper(), users);
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L, 0L);
+
+        assertThrows(BusinessException.class, () -> service.setSystem("user-testing", 200L, 300L,
+                Map.of("enabled", true), operator));
+
+        verify(jdbc).queryForObject(argThat(sql -> sql.contains("arch_physical_subsystem")
+                && sql.contains("project_id=?")), eq(Long.class), any(Object[].class));
     }
 }
