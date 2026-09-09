@@ -1,0 +1,504 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "实现后端13项单一指标定义、实时计数和同口径固定分页下钻",
+      "requirement_ids": [
+        "R1",
+        "R4",
+        "R5",
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "DashboardService现有项目校验和JdbcTemplate模式",
+        "当前Flyway和领域Service确认最终字段",
+        "PageResult是现有分页信封"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "DashboardMetricDefinition.require(String)是13项码唯一解析入口",
+        "metric返回metricCode/count/calculatedAt",
+        "drilldown固定20条并返回统一PageResult投影"
+      ],
+      "non_goals": [
+        "不移动现有CRUD SQL到DashboardService",
+        "不新增缓存、快照或数据库迁移"
+      ],
+      "action_bounds": [
+        "只新增静态定义和DashboardService只读方法",
+        "测试可根据当前测试设施拆分，但不得弱化租户/项目/删除/颗粒度断言"
+      ],
+      "acceptance_checks": [
+        "13项映射与未知码测试通过",
+        "SQL参数包含租户项目deleted条件",
+        "方案专题颗粒度正确",
+        "下钻计数和完整分页一致",
+        "MySQL查询计划受项目范围约束"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "聚焦JUnit退出码",
+        "MySQL查询计划与重复计时样本",
+        "发现的模式差异或扰动"
+      ],
+      "rollback": "删除候选定义/测试并回退DashboardService新增方法，保留兼容overall/component",
+      "stop_conditions": [
+        "指标口径无法由当前表确认",
+        "查询计划无项目范围约束",
+        "达标必须新增当前未授权Flyway迁移"
+      ],
+      "escalation_conditions": [
+        "需要改变指标口径、扩大迁移写入范围或放宽性能门槛"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "迁移专用看板HTTP契约并退役每日快照调度",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "看板路由当前位于StructuredAssetController",
+        "DashboardSnapshotScheduler是唯一模块内调度/快照写入命中"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DashboardController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "两个新GET端点使用T1服务方法",
+        "/dashboard/overall和/component(s)路由URL兼容",
+        "看板类级RBAC至少包含dashboard/access/manage/system:admin"
+      ],
+      "non_goals": [
+        "不删除dm_dashboard_snapshot表",
+        "不改变结构化资产Controller的其他路由",
+        "不改变组件看板数据契约"
+      ],
+      "action_bounds": [
+        "看板路由迁移到专用Controller",
+        "删除唯一DashboardSnapshotScheduler类",
+        "仅修改注册测试中与Controller/调度相关断言"
+      ],
+      "acceptance_checks": [
+        "新旧路由无重复且参数校验正确",
+        "看板权限声明测试通过",
+        "模块源码无Scheduled/EnableScheduling/dm_dashboard_snapshot命中"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "Controller与注册测试退出码",
+        "静态rg输出",
+        "兼容路由反射或MockMvc证据"
+      ],
+      "rollback": "恢复原Controller看板路由并删除专用Controller；必要时整体回退调度类，快照表无需迁移",
+      "stop_conditions": [
+        "发现其他代码依赖调度器公共职责",
+        "兼容路由无法无损迁移"
+      ],
+      "escalation_conditions": [
+        "需要改变组件看板消费者契约或恢复长期快照机制"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "实现高保真响应式实时看板、独立状态、4路队列和按需滚动下钻",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "当前页面用scopeProjectId watch驱动",
+        "前端已有Element Plus/ECharts/Axios且无单测脚本",
+        "批准的v3可视稿已在四个宽度和明暗主题检查"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "只消费T2固定新端点",
+        "metricCode使用闭合字符串联合",
+        "项目ID只来自useProjectScope",
+        "请求支持AbortSignal"
+      ],
+      "non_goals": [
+        "不修改公共UI和全局store",
+        "不引入依赖",
+        "不预取明细或增加轮询",
+        "不修改组件看板页面"
+      ],
+      "action_bounds": [
+        "页面内部实现最多4路队列和请求代次",
+        "页面内部实现ECharts生命周期和响应式布局",
+        "页面内部实现固定20条串行滚动抽屉"
+      ],
+      "acceptance_checks": [
+        "npm build通过",
+        "最多4路请求且独立状态",
+        "13项全成功前不显示完整总量",
+        "项目切换清空/取消/关闭",
+        "未点击无下钻且翻页不重复",
+        "四视口明暗主题无横向溢出"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "构建退出码",
+        "浏览器Network/Console记录",
+        "四视口截图和scrollWidth数值"
+      ],
+      "rollback": "回退两个前端文件到旧三卡页面，兼容overall接口继续可用",
+      "stop_conditions": [
+        "需要修改公共UI、全局store或引入新依赖",
+        "375px无法按确认设计保持两列可读",
+        "无法证明并发/分页互斥"
+      ],
+      "escalation_conditions": [
+        "必须改变视觉层级、移动布局、接口字段或页大小"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "完成组合、性能、浏览器、治理和闭环收敛验收",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3已提供可运行组合结果",
+        "目标环境真实最大项目规模为非阻塞未知项",
+        "已知REQ-061 scope错误属于任务外扰动"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T1.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T2.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T3.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-observation.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-verification.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-convergence.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-state.json"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "消费T1-T3运行结果，不修改产品契约",
+        "账本状态仅通过control_loop.py受控命令更新"
+      ],
+      "non_goals": [
+        "不以文档断言替代未执行验证",
+        "不修改任务外REQ-061文件",
+        "不自行合并、发布或推送"
+      ],
+      "action_bounds": [
+        "运行批准检查和真实浏览器验收",
+        "只记录实际证据和测量限制",
+        "发现偏差进入observing/correcting闭环"
+      ],
+      "acceptance_checks": [
+        "后端模块测试和前端构建通过",
+        "权限/隔离/计数分页反例通过",
+        "三项性能门槛或明确阻塞",
+        "四视口全状态通过",
+        "scope与diff检查通过",
+        "R1-R7证据齐全"
+      ],
+      "evidence_required": [
+        "全部命令退出码和关键输出",
+        "P95与EXPLAIN ANALYZE",
+        "浏览器截图/Network/Console",
+        "scope审计",
+        "执行/观测/验证账本"
+      ],
+      "rollback": "按T3、T2、T1逆序回退；无数据库反向迁移",
+      "stop_conditions": [
+        "任一must失败",
+        "性能不达标",
+        "出现越权或跨租户数据",
+        "页面横向溢出",
+        "出现冲突性未知工作区改动"
+      ],
+      "escalation_conditions": [
+        "环境缺失导致无法完成运行验收",
+        "性能修复需要平台迁移或公共能力授权"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "HTTP端点依赖稳定服务契约"
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "前端依赖最终HTTP路由和字段"
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "reason": "组合验收依赖完整前后端实现"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ],
+    [
+      "T3"
+    ],
+    [
+      "T4"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "checks": [
+        "聚焦service测试与MySQL口径/查询计划采样"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T2"
+      ],
+      "checks": [
+        "模块路由/权限/注册回归与快照静态审计"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T3"
+      ],
+      "checks": [
+        "前端生产构建和首次浏览器请求行为采样"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "checks": [
+        "完整模块测试、构建、性能、浏览器、治理和范围收敛门禁"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "后端契约采样",
+      "trigger": "T1与T2完成",
+      "observer": "主Agent使用独立测试/真实MySQL传感器",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4",
+        "R5",
+        "R7"
+      ]
+    },
+    {
+      "label": "前端集成采样",
+      "trigger": "T3完成",
+      "observer": "主Agent使用编译器和真实浏览器传感器",
+      "sensors": [
+        "S5",
+        "S6",
+        "S7"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "label": "最终收敛采样",
+      "trigger": "T4全部检查完成",
+      "observer": "主Agent以异质自动化与运行证据复核，标注非独立上下文限制",
+      "sensors": [
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S6"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S4",
+        "S6"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S5",
+        "S6"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S6"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S6"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T3",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S5",
+        "S7"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "task_ids": [
+        "T1",
+        "T4"
+      ],
+      "sensor_ids": [
+        "S2",
+        "S6"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

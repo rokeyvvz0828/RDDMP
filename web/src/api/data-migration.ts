@@ -309,6 +309,55 @@ export function getDataMigrationDashboard(view: 'overall' | 'component', project
   return http.get<ApiResponse<Record<string, unknown> | Array<Record<string, unknown>>>>(`/data-migration/dashboard/${view}`, { params: { projectId } })
 }
 
+export type DataMigrationDashboardMetricCode =
+  | 'OVERALL_PLAN'
+  | 'COMPONENT_PLAN'
+  | 'PROJECT_TOPIC'
+  | 'COMPONENT_TOPIC'
+  | 'REPORT'
+  | 'MEETING'
+  | 'ISSUE'
+  | 'RELEASE_DRILL'
+  | 'MAPPING_DOC'
+  | 'RULE'
+  | 'PARAMETER'
+  | 'DEPENDENCY'
+  | 'SCRIPT'
+
+export interface DataMigrationDashboardMetric {
+  metricCode: DataMigrationDashboardMetricCode
+  count: number
+  calculatedAt: string
+}
+
+export interface DataMigrationDashboardDrilldownItem {
+  id: number
+  code?: string | null
+  name?: string | null
+  granularity?: string | null
+  systemCode?: string | null
+  updatedAt?: string | null
+}
+
+export function getDataMigrationDashboardMetric(metricCode: DataMigrationDashboardMetricCode, projectId: number, signal?: AbortSignal) {
+  return http.get<ApiResponse<DataMigrationDashboardMetric>>(`/data-migration/dashboard/overall/metrics/${metricCode}`, {
+    params: { projectId },
+    signal,
+  })
+}
+
+export function getDataMigrationDashboardDrilldown(
+  metricCode: DataMigrationDashboardMetricCode,
+  projectId: number,
+  page = 1,
+  signal?: AbortSignal,
+) {
+  return http.get<ApiResponse<DataMigrationPage<DataMigrationDashboardDrilldownItem>>>(`/data-migration/dashboard/overall/drilldowns/${metricCode}`, {
+    params: { projectId, page, size: 20 },
+    signal,
+  })
+}
+
 /* ============ 目标表结构 / 中间表结构（基础资料管理） ============ */
 export type TableCategory = 'TARGET' | 'INTERMEDIATE'
 

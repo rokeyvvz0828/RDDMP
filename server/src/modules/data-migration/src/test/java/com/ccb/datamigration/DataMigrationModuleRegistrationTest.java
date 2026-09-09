@@ -7,6 +7,12 @@ import org.junit.jupiter.api.Test;
 
 class DataMigrationModuleRegistrationTest {
     @Test
+    void dashboardUsesDedicatedControllerWithoutSnapshotScheduler() {
+        assertTrue(Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/DashboardController.java")));
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java")));
+    }
+
+    @Test
     void moduleRegistrationIsBackedByV84() {
         assertTrue(Files.exists(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V84__data_migration_component_enrichment.sql")));
         assertTrue(Files.exists(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V91__attachment_expires_at_datetime.sql")));

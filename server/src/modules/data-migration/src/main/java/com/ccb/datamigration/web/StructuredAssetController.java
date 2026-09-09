@@ -2,7 +2,6 @@ package com.ccb.datamigration.web;
 
 import com.ccb.common.api.ApiResponse;
 import com.ccb.common.trace.TraceId;
-import com.ccb.datamigration.service.DashboardService;
 import com.ccb.datamigration.service.StructuredAssetService;
 import com.ccb.datamigration.service.ExcelService;
 import com.ccb.security.model.AuthUser;
@@ -20,15 +19,12 @@ import org.springframework.http.ResponseEntity;
 @PreAuthorize("hasAnyAuthority('data-migration:access','data-migration:write','data-migration:manage','system:admin','data-migration:dashboard','data-migration:structured')")
 public class StructuredAssetController {
     private final StructuredAssetService structured;
-    private final DashboardService dashboard;
     private final ExcelService excel;
-    public StructuredAssetController(StructuredAssetService structured, DashboardService dashboard, ExcelService excel) { this.structured = structured; this.dashboard = dashboard; this.excel = excel; }
+    public StructuredAssetController(StructuredAssetService structured, ExcelService excel) { this.structured = structured; this.excel = excel; }
     @GetMapping("/structured/{type}") public ApiResponse<List<Map<String,Object>>> list(@PathVariable String type, @RequestParam(required=false) Long projectId, @RequestParam(required=false) String keyword, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(structured.list(type, projectId, keyword, user), TraceId.getOrCreate()); }
     @PostMapping("/structured/{type}") @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')") public ApiResponse<Map<String,Object>> save(@PathVariable String type, @RequestBody Map<String,Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(structured.save(type, body, user), TraceId.getOrCreate()); }
     @PutMapping("/structured/{type}/{id}") @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')") public ApiResponse<Map<String,Object>> update(@PathVariable String type, @PathVariable long id, @RequestBody Map<String,Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(structured.update(type, id, body, user), TraceId.getOrCreate()); }
     @PostMapping("/structured/{type}/delete") @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')") public ApiResponse<Void> delete(@PathVariable String type, @RequestBody List<Long> ids, @AuthenticationPrincipal AuthUser user) { structured.delete(ids, type, user); return ApiResponse.success(null, TraceId.getOrCreate()); }
-    @GetMapping("/dashboard/overall") public ApiResponse<Map<String,Object>> overall(@RequestParam(required=false) Long projectId, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(dashboard.overall(projectId, user), TraceId.getOrCreate()); }
-    @GetMapping({"/dashboard/component", "/dashboard/components"}) public ApiResponse<List<Map<String,Object>>> component(@RequestParam(required=false) Long projectId, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(dashboard.component(user, projectId), TraceId.getOrCreate()); }
     @GetMapping("/structured/{type}/export") public ResponseEntity<byte[]> export(@PathVariable String type, @RequestParam(required=false) Long projectId, @RequestParam(required=false) String systemCode, @RequestParam(required=false) String keyword, @AuthenticationPrincipal AuthUser user) { return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=data-migration-" + type + ".xlsx").contentType(MediaType.APPLICATION_OCTET_STREAM).body(excel.export(type, projectId, systemCode, keyword, user)); }
     @PostMapping("/structured/{type}/import") @PreAuthorize("hasAnyAuthority('data-migration:write','data-migration:manage','system:admin')") public ApiResponse<Map<String,Object>> importAssets(@PathVariable String type, @RequestParam(required=false) Long projectId, @RequestPart MultipartFile file, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(excel.importAssets(type, projectId, file, user), TraceId.getOrCreate()); }
 

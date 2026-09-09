@@ -1,0 +1,234 @@
+{
+  "objective": "当前项目用户能够从数据迁移整体看板快速识别13类有效资产规模，并在不预取明细的情况下下钻核查同口径记录。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "整体看板必须按认证租户、当前可访问项目和deleted=0展示13个已确认资产指标，并按PROJECT/SYSTEM区分方案与专题。",
+      "acceptance": [
+        "13个指标码均能返回当前项目实时数量",
+        "方案与专题的项目级和组件级数量分别按PROJECT与SYSTEM统计",
+        "卡片数量与对应完整下钻分页结果一致"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08请求与完整设计批准",
+      "counterexample": [
+        "仍只展示项目、组件、资产总量三项",
+        "方案或专题不区分颗粒度",
+        "统计包含已删除或其他项目数据"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "整体看板不得使用前端轮询、后端定时任务或dm_dashboard_snapshot运行时读写；快照表本次保留但停用。",
+      "acceptance": [
+        "前端页面不存在看板轮询计时器",
+        "DashboardSnapshotScheduler不再注册执行",
+        "指标与下钻查询不读写dm_dashboard_snapshot"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08明确确认",
+      "counterexample": [
+        "定时刷新快照后再由页面读取",
+        "页面自动轮询指标"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "13个指标必须分别实时请求并独立显示loading、成功、失败和单项重试，前端同时在途请求最多4个。",
+      "acceptance": [
+        "单项失败不阻塞或清空其他指标",
+        "在途指标请求数不超过4",
+        "13项全部成功前不显示误导性的部分总量"
+      ],
+      "priority": "must",
+      "source": "用户批准的通用白名单端点与限流并发方案",
+      "counterexample": [
+        "使用一个批量汇总请求",
+        "13路无界并发",
+        "一个指标失败导致整页失败"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "点击指标后才加载下钻抽屉第一页，并以每页20条的串行滚动分页继续加载，不预取其他明细。",
+      "acceptance": [
+        "未点击指标时无下钻请求",
+        "滚动临界点每次只触发一个下一页请求",
+        "后续页失败保留已有记录并可重试",
+        "空、失败、无权限和全部加载完成状态明确"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08明确确认",
+      "counterexample": [
+        "看板加载时预取明细",
+        "一次返回全部明细",
+        "滚动触发重复页请求"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "指标和下钻必须共享固定白名单指标定义，并逐请求执行认证、RBAC、租户和项目可达性校验。",
+      "acceptance": [
+        "未知指标码返回400",
+        "缺少或不可访问项目失败关闭",
+        "外部指标字符串不能拼接任意SQL标识符",
+        "项目切换后旧响应不能覆盖新状态"
+      ],
+      "priority": "must",
+      "source": "REQ-031统一安全规则与用户批准设计",
+      "counterexample": [
+        "前端权限显隐替代服务端校验",
+        "计数与明细分别维护不一致条件"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "整体看板采用已确认的高保真响应式排版，并覆盖独立加载、部分失败、空、无权限和明暗主题。",
+      "acceptance": [
+        "桌面显示总量、四项方案专题、九项内容资产和构成排行",
+        "平板和手机按确认规则重排",
+        "375x812、390x844、430x932与1280x800无页面级横向溢出",
+        "移动抽屉接近全宽且关闭和滚动区域可达"
+      ],
+      "priority": "must",
+      "source": "用户批准的dashboard-polished-layout-v3视觉方向",
+      "counterexample": [
+        "13张同权重大卡片平铺",
+        "手机端裁切、整页横向滚动或辅助文字拥挤"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "指标和下钻必须满足已批准的响应时间门槛并通过项目范围查询计划验证。",
+      "acceptance": [
+        "单指标P95不高于500ms",
+        "13项全部完成不高于2s",
+        "下钻分页P95不高于800ms",
+        "EXPLAIN ANALYZE证明查询受租户项目索引约束"
+      ],
+      "priority": "must",
+      "source": "用户批准的性能与验收设计",
+      "counterexample": [
+        "以单次开发数据测试代替P95",
+        "无项目条件全表统计",
+        "超标后擅自恢复快照或轮询"
+      ]
+    }
+  ],
+  "invariants": [
+    "顶部全局项目切换器是唯一项目来源，页面不新增所属项目字段",
+    "认证租户、RBAC和项目可达性由服务端执行",
+    "指标计数与下钻明细共享同一指标定义",
+    "整体看板无前后台定时刷新和快照运行依赖",
+    "组件级看板、内容CRUD、附件、审计和其他业务模块行为不变",
+    "只修改REQ-031任务范围授权路径"
+  ],
+  "constraints": [
+    "遵循design-h5.md和web/src/AGENTS.md",
+    "不修改web/src/components/ui公共组件",
+    "不修改历史Flyway脚本或删除dm_dashboard_snapshot表",
+    "使用现有Vue 3、TypeScript、Element Plus、ECharts和API封装",
+    "前端请求并发上限为4，下钻页大小固定20",
+    "当前任务使用专用分支feat/REQ-20260820-031-data-migration，保护既有未提交设计与计划改动",
+    "不读取任务范围禁止的.ai-control/original目录"
+  ],
+  "non_goals": [
+    "前端轮询、WebSocket、SSE、缓存预热或后台快照刷新",
+    "删除dm_dashboard_snapshot表",
+    "预取下钻明细或在浏览器内存中全量分页",
+    "改变资产内容页CRUD、字段和标准分页",
+    "改造组件级看板或平台公共能力"
+  ],
+  "assumptions": [
+    {
+      "text": "13张业务表均保留以tenant_id和project_id为前缀的可用索引",
+      "basis": "当前数据迁移Flyway索引定义",
+      "falsifier": "目标MySQL EXPLAIN ANALYZE出现无项目范围约束的全表扫描或延迟超标"
+    },
+    {
+      "text": "统一下钻投影足以支持看板快速核查",
+      "basis": "已批准视觉抽屉仅展示名称、类型和更新时间等摘要",
+      "falsifier": "用户要求在下钻内编辑或展示领域专属全部字段"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "目标环境单项目各资产表的最大真实数量级",
+      "impact": "影响查询计划样本规模和是否需要后续索引纠正",
+      "owner": "数据迁移模块Owner",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "question": "整体看板数据获取机制",
+      "options": [
+        "独立实时请求",
+        "批量汇总",
+        "定时快照"
+      ],
+      "selected": "独立实时请求",
+      "blocking": false,
+      "source": "2026-09-08用户批准"
+    },
+    {
+      "question": "下钻呈现与加载机制",
+      "options": [
+        "右侧抽屉滚动分页",
+        "独立页面",
+        "预取明细"
+      ],
+      "selected": "右侧抽屉滚动分页",
+      "blocking": false,
+      "source": "2026-09-08用户批准"
+    },
+    {
+      "question": "当前已批准计划是否进入开发",
+      "options": [
+        "进入开发",
+        "继续修订"
+      ],
+      "selected": "进入开发",
+      "blocking": false,
+      "source": "2026-09-09用户回复“进入代码开发”"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "requirement_id": "R1",
+      "observable": "13项API计数与完整下钻分页交叉测试；MySQL跨租户/项目/删除状态测试",
+      "candidate_sensor": "13项API计数与完整下钻分页交叉测试 + MySQL跨租户/项目/删除状态测试"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "静态搜索调度、快照表和前端计时器；Spring模块注册测试",
+      "candidate_sensor": "静态搜索调度、快照表和前端计时器 + Spring模块注册测试"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "浏览器Network在途请求计数、卡片状态与总量状态验收；前端TypeScript生产构建",
+      "candidate_sensor": "浏览器Network在途请求计数、卡片状态与总量状态验收 + 前端TypeScript生产构建"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "浏览器点击前/滚动后请求序列和抽屉全状态验收；服务端固定页大小与稳定分页测试",
+      "candidate_sensor": "浏览器点击前/滚动后请求序列和抽屉全状态验收 + 服务端固定页大小与稳定分页测试"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "Controller权限声明测试、服务权限/SQL参数测试；无权限、缺项目、跨项目和未知码API反例",
+      "candidate_sensor": "Controller权限声明测试、服务权限/SQL参数测试 + 无权限、缺项目、跨项目和未知码API反例"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "四视口明暗主题截图、横向溢出数值检查和控制台检查",
+      "candidate_sensor": "四视口明暗主题截图、横向溢出数值检查和控制台检查"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "Testcontainers/受控MySQL重复计时P95与EXPLAIN ANALYZE",
+      "candidate_sensor": "Testcontainers/受控MySQL重复计时P95与EXPLAIN ANALYZE"
+    }
+  ],
+  "baseline_status": "ready"
+}

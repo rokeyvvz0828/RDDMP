@@ -1,0 +1,4030 @@
+{
+  "schema_version": 4,
+  "revision": 39,
+  "created_at": "2026-09-09T00:38:44+00:00",
+  "updated_at": "2026-09-09T03:52:41+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-08 用户在完整设计修订1落盘后明确回复“实施”，批准该设计进入实施计划阶段。；计划确认=2026-09-09 用户明确回复“进入代码开发”，批准实施计划修订1并进入control-engineering。",
+      "recorded_at": "2026-09-09T00:38:44+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "需求基准ready，无阻塞未知项，全部must需求有测量意图",
+      "recorded_at": "2026-09-09T00:39:36+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R1-R7因果链、传感器和授权执行器门禁通过",
+      "recorded_at": "2026-09-09T00:41:43+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "控制计划门禁通过，任务覆盖、依赖、写入边界和传感器完整",
+      "recorded_at": "2026-09-09T00:44:13+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1输出可由JUnit、MySQL和diff传感器测量",
+      "recorded_at": "2026-09-09T00:53:05+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1无偏差且T2仍待执行",
+      "recorded_at": "2026-09-09T00:54:37+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2输出可由Controller测试、注册测试、静态搜索和diff传感器测量",
+      "recorded_at": "2026-09-09T01:05:41+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2无偏差且T3已具备前置条件",
+      "recorded_at": "2026-09-09T01:06:11+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3输出由生产构建、Playwright Network/DOM/canvas/截图和静态搜索独立测量",
+      "recorded_at": "2026-09-09T03:36:22+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T3观测无剩余偏差且T4前置条件满足",
+      "recorded_at": "2026-09-09T03:36:22+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T4输出由全量测试、聚焦P95、浏览器、静态和范围传感器独立测量。",
+      "recorded_at": "2026-09-09T03:48:50+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1-T4均verified，最终组合采样误差分数0，进入需求覆盖与收敛门禁。",
+      "recorded_at": "2026-09-09T03:51:23+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁通过：T1-T4 verified，4次采样误差分数均为0，R1-R7证据齐全；任务外REQ-061治理格式错误已隔离记录。",
+      "recorded_at": "2026-09-09T03:52:41+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-08 用户在完整设计修订1落盘后明确回复“实施”，批准该设计进入实施计划阶段。；计划确认=2026-09-09 用户明确回复“进入代码开发”，批准实施计划修订1并进入control-engineering。",
+        "recorded_at": "2026-09-09T00:38:44+00:00",
+        "data": {
+          "objective": "在当前可访问项目内以13个独立实时请求展示数据迁移资产指标，并在点击后通过滚动分页抽屉加载同口径明细，全链路不使用前后台定时任务或快照数据。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "整体看板必须按认证租户、当前可访问项目和deleted=0展示13个已确认资产指标，并按PROJECT/SYSTEM区分方案与专题。",
+              "acceptance": [
+                "13个指标码均能返回当前项目实时数量",
+                "方案与专题的项目级和组件级数量分别按PROJECT与SYSTEM统计",
+                "卡片数量与对应完整下钻分页结果一致"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-08请求与完整设计批准",
+              "counterexample": [
+                "仍只展示项目、组件、资产总量三项",
+                "方案或专题不区分颗粒度",
+                "统计包含已删除或其他项目数据"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "整体看板不得使用前端轮询、后端定时任务或dm_dashboard_snapshot运行时读写；快照表本次保留但停用。",
+              "acceptance": [
+                "前端页面不存在看板轮询计时器",
+                "DashboardSnapshotScheduler不再注册执行",
+                "指标与下钻查询不读写dm_dashboard_snapshot"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-08明确确认",
+              "counterexample": [
+                "定时刷新快照后再由页面读取",
+                "页面自动轮询指标"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "13个指标必须分别实时请求并独立显示loading、成功、失败和单项重试，前端同时在途请求最多4个。",
+              "acceptance": [
+                "单项失败不阻塞或清空其他指标",
+                "在途指标请求数不超过4",
+                "13项全部成功前不显示误导性的部分总量"
+              ],
+              "priority": "must",
+              "source": "用户批准的通用白名单端点与限流并发方案",
+              "counterexample": [
+                "使用一个批量汇总请求",
+                "13路无界并发",
+                "一个指标失败导致整页失败"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "点击指标后才加载下钻抽屉第一页，并以每页20条的串行滚动分页继续加载，不预取其他明细。",
+              "acceptance": [
+                "未点击指标时无下钻请求",
+                "滚动临界点每次只触发一个下一页请求",
+                "后续页失败保留已有记录并可重试",
+                "空、失败、无权限和全部加载完成状态明确"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-08明确确认",
+              "counterexample": [
+                "看板加载时预取明细",
+                "一次返回全部明细",
+                "滚动触发重复页请求"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "指标和下钻必须共享固定白名单指标定义，并逐请求执行认证、RBAC、租户和项目可达性校验。",
+              "acceptance": [
+                "未知指标码返回400",
+                "缺少或不可访问项目失败关闭",
+                "外部指标字符串不能拼接任意SQL标识符",
+                "项目切换后旧响应不能覆盖新状态"
+              ],
+              "priority": "must",
+              "source": "REQ-031统一安全规则与用户批准设计",
+              "counterexample": [
+                "前端权限显隐替代服务端校验",
+                "计数与明细分别维护不一致条件"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "整体看板采用已确认的高保真响应式排版，并覆盖独立加载、部分失败、空、无权限和明暗主题。",
+              "acceptance": [
+                "桌面显示总量、四项方案专题、九项内容资产和构成排行",
+                "平板和手机按确认规则重排",
+                "375x812、390x844、430x932与1280x800无页面级横向溢出",
+                "移动抽屉接近全宽且关闭和滚动区域可达"
+              ],
+              "priority": "must",
+              "source": "用户批准的dashboard-polished-layout-v3视觉方向",
+              "counterexample": [
+                "13张同权重大卡片平铺",
+                "手机端裁切、整页横向滚动或辅助文字拥挤"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "指标和下钻必须满足已批准的响应时间门槛并通过项目范围查询计划验证。",
+              "acceptance": [
+                "单指标P95不高于500ms",
+                "13项全部完成不高于2s",
+                "下钻分页P95不高于800ms",
+                "EXPLAIN ANALYZE证明查询受租户项目索引约束"
+              ],
+              "priority": "must",
+              "source": "用户批准的性能与验收设计",
+              "counterexample": [
+                "以单次开发数据测试代替P95",
+                "无项目条件全表统计",
+                "超标后擅自恢复快照或轮询"
+              ]
+            }
+          ],
+          "invariants": [
+            "顶部全局项目切换器是唯一项目来源，页面不新增所属项目字段",
+            "认证租户、RBAC和项目可达性由服务端执行",
+            "指标计数与下钻明细共享同一指标定义",
+            "整体看板无前后台定时刷新和快照运行依赖",
+            "组件级看板、内容CRUD、附件、审计和其他业务模块行为不变",
+            "只修改REQ-031任务范围授权路径"
+          ],
+          "constraints": [
+            "遵循design-h5.md和web/src/AGENTS.md",
+            "不修改web/src/components/ui公共组件",
+            "不修改历史Flyway脚本或删除dm_dashboard_snapshot表",
+            "使用现有Vue 3、TypeScript、Element Plus、ECharts和API封装",
+            "前端请求并发上限为4，下钻页大小固定20"
+          ],
+          "non_goals": [
+            "前端轮询、WebSocket、SSE、缓存预热或后台快照刷新",
+            "删除dm_dashboard_snapshot表",
+            "预取下钻明细或在浏览器内存中全量分页",
+            "改变资产内容页CRUD、字段和标准分页",
+            "改造组件级看板或平台公共能力"
+          ],
+          "assumptions": [
+            {
+              "text": "13张业务表均保留以tenant_id和project_id为前缀的可用索引",
+              "basis": "当前数据迁移Flyway索引定义",
+              "falsifier": "目标MySQL EXPLAIN ANALYZE出现无项目范围约束的全表扫描或延迟超标"
+            },
+            {
+              "text": "统一下钻投影足以支持看板快速核查",
+              "basis": "已批准视觉抽屉仅展示名称、类型和更新时间等摘要",
+              "falsifier": "用户要求在下钻内编辑或展示领域专属全部字段"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "目标环境单项目各资产表的最大真实数量级",
+              "impact": "影响查询计划样本规模和是否需要后续索引纠正",
+              "owner": "数据迁移模块Owner",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "取消前端轮询、后端定时任务和快照运行依赖",
+              "reason": "用户要求所有指标实时独立获取",
+              "source": "2026-09-08用户确认"
+            },
+            {
+              "id": "D2",
+              "decision": "采用通用白名单指标端点和最多4路前端并发",
+              "reason": "兼顾独立状态、集中口径和数据库突发控制",
+              "source": "2026-09-08用户批准采纳"
+            },
+            {
+              "id": "D3",
+              "decision": "下钻采用页面内右侧抽屉、每页20条滚动分页且点击后才加载",
+              "reason": "保留看板上下文并避免明细预取",
+              "source": "2026-09-08用户确认"
+            },
+            {
+              "id": "D4",
+              "decision": "保留但停用dm_dashboard_snapshot表",
+              "reason": "避免本次引入无必要的破坏性迁移并降低回退成本",
+              "source": "2026-09-08用户批准采纳"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R4",
+                "R5"
+              ],
+              "signal": "13项数量与同条件完整下钻分页一致且跨项目请求失败关闭",
+              "method": "服务单元测试、Controller安全测试和MySQL集成测试"
+            },
+            {
+              "requirement_ids": [
+                "R2"
+              ],
+              "signal": "无前端轮询、无后端调度Bean、无快照表读写",
+              "method": "静态搜索、Spring上下文测试和SQL路径检查"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R6"
+              ],
+              "signal": "独立loading/失败/重试、并发上限、项目切换和响应式布局符合设计",
+              "method": "前端逻辑测试、生产构建和真实浏览器验收"
+            },
+            {
+              "requirement_ids": [
+                "R7"
+              ],
+              "signal": "P95门槛和索引约束满足",
+              "method": "代表性数据量下的重复计时与EXPLAIN ANALYZE"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准设计和计划，R1-R7及测量意图复核通过",
+        "recorded_at": "2026-09-09T00:39:36+00:00",
+        "data": {
+          "objective": "当前项目用户能够从数据迁移整体看板快速识别13类有效资产规模，并在不预取明细的情况下下钻核查同口径记录。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "整体看板必须按认证租户、当前可访问项目和deleted=0展示13个已确认资产指标，并按PROJECT/SYSTEM区分方案与专题。",
+              "acceptance": [
+                "13个指标码均能返回当前项目实时数量",
+                "方案与专题的项目级和组件级数量分别按PROJECT与SYSTEM统计",
+                "卡片数量与对应完整下钻分页结果一致"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-08请求与完整设计批准",
+              "counterexample": [
+                "仍只展示项目、组件、资产总量三项",
+                "方案或专题不区分颗粒度",
+                "统计包含已删除或其他项目数据"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "整体看板不得使用前端轮询、后端定时任务或dm_dashboard_snapshot运行时读写；快照表本次保留但停用。",
+              "acceptance": [
+                "前端页面不存在看板轮询计时器",
+                "DashboardSnapshotScheduler不再注册执行",
+                "指标与下钻查询不读写dm_dashboard_snapshot"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-08明确确认",
+              "counterexample": [
+                "定时刷新快照后再由页面读取",
+                "页面自动轮询指标"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "13个指标必须分别实时请求并独立显示loading、成功、失败和单项重试，前端同时在途请求最多4个。",
+              "acceptance": [
+                "单项失败不阻塞或清空其他指标",
+                "在途指标请求数不超过4",
+                "13项全部成功前不显示误导性的部分总量"
+              ],
+              "priority": "must",
+              "source": "用户批准的通用白名单端点与限流并发方案",
+              "counterexample": [
+                "使用一个批量汇总请求",
+                "13路无界并发",
+                "一个指标失败导致整页失败"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "点击指标后才加载下钻抽屉第一页，并以每页20条的串行滚动分页继续加载，不预取其他明细。",
+              "acceptance": [
+                "未点击指标时无下钻请求",
+                "滚动临界点每次只触发一个下一页请求",
+                "后续页失败保留已有记录并可重试",
+                "空、失败、无权限和全部加载完成状态明确"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-08明确确认",
+              "counterexample": [
+                "看板加载时预取明细",
+                "一次返回全部明细",
+                "滚动触发重复页请求"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "指标和下钻必须共享固定白名单指标定义，并逐请求执行认证、RBAC、租户和项目可达性校验。",
+              "acceptance": [
+                "未知指标码返回400",
+                "缺少或不可访问项目失败关闭",
+                "外部指标字符串不能拼接任意SQL标识符",
+                "项目切换后旧响应不能覆盖新状态"
+              ],
+              "priority": "must",
+              "source": "REQ-031统一安全规则与用户批准设计",
+              "counterexample": [
+                "前端权限显隐替代服务端校验",
+                "计数与明细分别维护不一致条件"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "整体看板采用已确认的高保真响应式排版，并覆盖独立加载、部分失败、空、无权限和明暗主题。",
+              "acceptance": [
+                "桌面显示总量、四项方案专题、九项内容资产和构成排行",
+                "平板和手机按确认规则重排",
+                "375x812、390x844、430x932与1280x800无页面级横向溢出",
+                "移动抽屉接近全宽且关闭和滚动区域可达"
+              ],
+              "priority": "must",
+              "source": "用户批准的dashboard-polished-layout-v3视觉方向",
+              "counterexample": [
+                "13张同权重大卡片平铺",
+                "手机端裁切、整页横向滚动或辅助文字拥挤"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "指标和下钻必须满足已批准的响应时间门槛并通过项目范围查询计划验证。",
+              "acceptance": [
+                "单指标P95不高于500ms",
+                "13项全部完成不高于2s",
+                "下钻分页P95不高于800ms",
+                "EXPLAIN ANALYZE证明查询受租户项目索引约束"
+              ],
+              "priority": "must",
+              "source": "用户批准的性能与验收设计",
+              "counterexample": [
+                "以单次开发数据测试代替P95",
+                "无项目条件全表统计",
+                "超标后擅自恢复快照或轮询"
+              ]
+            }
+          ],
+          "invariants": [
+            "顶部全局项目切换器是唯一项目来源，页面不新增所属项目字段",
+            "认证租户、RBAC和项目可达性由服务端执行",
+            "指标计数与下钻明细共享同一指标定义",
+            "整体看板无前后台定时刷新和快照运行依赖",
+            "组件级看板、内容CRUD、附件、审计和其他业务模块行为不变",
+            "只修改REQ-031任务范围授权路径"
+          ],
+          "constraints": [
+            "遵循design-h5.md和web/src/AGENTS.md",
+            "不修改web/src/components/ui公共组件",
+            "不修改历史Flyway脚本或删除dm_dashboard_snapshot表",
+            "使用现有Vue 3、TypeScript、Element Plus、ECharts和API封装",
+            "前端请求并发上限为4，下钻页大小固定20",
+            "当前任务使用专用分支feat/REQ-20260820-031-data-migration，保护既有未提交设计与计划改动",
+            "不读取任务范围禁止的.ai-control/original目录"
+          ],
+          "non_goals": [
+            "前端轮询、WebSocket、SSE、缓存预热或后台快照刷新",
+            "删除dm_dashboard_snapshot表",
+            "预取下钻明细或在浏览器内存中全量分页",
+            "改变资产内容页CRUD、字段和标准分页",
+            "改造组件级看板或平台公共能力"
+          ],
+          "assumptions": [
+            {
+              "text": "13张业务表均保留以tenant_id和project_id为前缀的可用索引",
+              "basis": "当前数据迁移Flyway索引定义",
+              "falsifier": "目标MySQL EXPLAIN ANALYZE出现无项目范围约束的全表扫描或延迟超标"
+            },
+            {
+              "text": "统一下钻投影足以支持看板快速核查",
+              "basis": "已批准视觉抽屉仅展示名称、类型和更新时间等摘要",
+              "falsifier": "用户要求在下钻内编辑或展示领域专属全部字段"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "目标环境单项目各资产表的最大真实数量级",
+              "impact": "影响查询计划样本规模和是否需要后续索引纠正",
+              "owner": "数据迁移模块Owner",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "整体看板数据获取机制",
+              "options": [
+                "独立实时请求",
+                "批量汇总",
+                "定时快照"
+              ],
+              "selected": "独立实时请求",
+              "blocking": false,
+              "source": "2026-09-08用户批准"
+            },
+            {
+              "question": "下钻呈现与加载机制",
+              "options": [
+                "右侧抽屉滚动分页",
+                "独立页面",
+                "预取明细"
+              ],
+              "selected": "右侧抽屉滚动分页",
+              "blocking": false,
+              "source": "2026-09-08用户批准"
+            },
+            {
+              "question": "当前已批准计划是否进入开发",
+              "options": [
+                "进入开发",
+                "继续修订"
+              ],
+              "selected": "进入开发",
+              "blocking": false,
+              "source": "2026-09-09用户回复“进入代码开发”"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "13项API计数与完整下钻分页交叉测试；MySQL跨租户/项目/删除状态测试",
+              "candidate_sensor": "13项API计数与完整下钻分页交叉测试 + MySQL跨租户/项目/删除状态测试"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "静态搜索调度、快照表和前端计时器；Spring模块注册测试",
+              "candidate_sensor": "静态搜索调度、快照表和前端计时器 + Spring模块注册测试"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "浏览器Network在途请求计数、卡片状态与总量状态验收；前端TypeScript生产构建",
+              "candidate_sensor": "浏览器Network在途请求计数、卡片状态与总量状态验收 + 前端TypeScript生产构建"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "浏览器点击前/滚动后请求序列和抽屉全状态验收；服务端固定页大小与稳定分页测试",
+              "candidate_sensor": "浏览器点击前/滚动后请求序列和抽屉全状态验收 + 服务端固定页大小与稳定分页测试"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "Controller权限声明测试、服务权限/SQL参数测试；无权限、缺项目、跨项目和未知码API反例",
+              "candidate_sensor": "Controller权限声明测试、服务权限/SQL参数测试 + 无权限、缺项目、跨项目和未知码API反例"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "四视口明暗主题截图、横向溢出数值检查和控制台检查",
+              "candidate_sensor": "四视口明暗主题截图、横向溢出数值检查和控制台检查"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "Testcontainers/受控MySQL重复计时P95与EXPLAIN ANALYZE",
+              "candidate_sensor": "Testcontainers/受控MySQL重复计时P95与EXPLAIN ANALYZE"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "现有代码、Flyway索引、前端依赖与测试传感器已复核",
+        "recorded_at": "2026-09-09T00:41:43+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "DashboardMetricDefinition静态指标白名单",
+              "DashboardService单指标计数、分页下钻及兼容overall/component",
+              "DashboardController与StructuredAssetController看板路由所有权",
+              "DashboardSnapshotScheduler的Spring注册状态",
+              "web data-migration API类型与OverallDashboardPage请求/渲染状态",
+              "dm_plan、dm_topic、dm_report、dm_meeting、dm_issue、dm_release_drill、dm_mapping_doc、dm_rule、dm_parameter、dm_dependency、dm_script的读查询"
+            ],
+            "environment": [
+              "Spring Security认证主体与方法权限",
+              "DataMigrationPermissionService项目数据范围",
+              "全局项目store和useProjectScope",
+              "MySQL连接池、数据规模和缓存状态",
+              "Element Plus、ECharts、Axios和浏览器",
+              "组件级看板与其他资产CRUD消费者"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "metric_definition",
+              "owner": "DashboardMetricDefinition",
+              "valid_values": [
+                "13个已登记指标",
+                "未知码拒绝"
+              ]
+            },
+            {
+              "name": "request_scope",
+              "owner": "DashboardService",
+              "valid_values": [
+                "认证tenantId与可访问projectId",
+                "拒绝"
+              ]
+            },
+            {
+              "name": "metric_card_state",
+              "owner": "OverallDashboardPage",
+              "valid_values": [
+                "idle",
+                "loading",
+                "success",
+                "error"
+              ]
+            },
+            {
+              "name": "metric_generation",
+              "owner": "OverallDashboardPage",
+              "valid_values": [
+                "当前项目请求代次",
+                "已失效旧代次"
+              ]
+            },
+            {
+              "name": "metric_inflight",
+              "owner": "OverallDashboardPage",
+              "valid_values": [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4"
+              ]
+            },
+            {
+              "name": "aggregate_state",
+              "owner": "OverallDashboardPage",
+              "valid_values": [
+                "等待13项完成",
+                "完整总量",
+                "部分数据",
+                "全部失败"
+              ]
+            },
+            {
+              "name": "drilldown_state",
+              "owner": "OverallDashboardPage",
+              "valid_values": [
+                "closed",
+                "first-loading",
+                "ready",
+                "loading-more",
+                "page-error",
+                "empty",
+                "complete"
+              ]
+            },
+            {
+              "name": "chart_instance",
+              "owner": "OverallDashboardPage",
+              "valid_values": [
+                "uninitialized",
+                "active",
+                "disposed"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "认证用户和ready项目进入整体看板",
+              "transitions": [
+                "页面建立13项任务",
+                "类型化API逐项请求",
+                "Controller校验权限和参数",
+                "Service校验项目并解析静态定义",
+                "MySQL按租户项目活动状态计数",
+                "卡片独立落地响应"
+              ],
+              "outputs": [
+                "13项实时数量",
+                "完整时的总量和可视化"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "页面进入、停留或服务运行到历史调度时间",
+              "transitions": [
+                "页面仅在进入/项目切换/手动刷新/重试发请求",
+                "无轮询计时器",
+                "Spring运行图无DashboardSnapshotScheduler",
+                "指标SQL不引用快照表"
+              ],
+              "outputs": [
+                "无周期请求",
+                "无快照读写"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "13项刷新或单项重试",
+              "transitions": [
+                "队列调度至最多4路",
+                "每卡进入loading",
+                "响应按卡成功或失败",
+                "仅13项全成功计算总量"
+              ],
+              "outputs": [
+                "独立loading/error/retry",
+                "最大4路在途",
+                "无误导部分总量"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "用户点击指标并滚动下钻容器",
+              "transitions": [
+                "点击后请求第一页20条",
+                "滚动阈值检查hasMore/loading/pageError",
+                "串行请求下一页",
+                "失败保留既有记录"
+              ],
+              "outputs": [
+                "统一字段滚动明细",
+                "空/失败/完成状态"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "有效或恶意metricCode/projectId请求，或项目快速切换",
+              "transitions": [
+                "Spring方法权限",
+                "静态白名单解析",
+                "requireProject项目校验",
+                "SQL参数化租户项目条件",
+                "AbortController和代次拒绝旧响应"
+              ],
+              "outputs": [
+                "合法作用域响应",
+                "未知/缺失/越权失败关闭",
+                "无旧项目污染"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "不同视口、主题和异步状态",
+              "transitions": [
+                "批准的信息层级布局",
+                "CSS断点重排",
+                "固定图表/抽屉滚动边界",
+                "语义变量和文字状态"
+              ],
+              "outputs": [
+                "桌面/手机可扫描页面",
+                "无页面级横向溢出",
+                "明暗主题可读"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "代表性项目数据上的指标和分页请求",
+              "transitions": [
+                "项目范围索引访问",
+                "最多4路排队",
+                "重复采样计算P95",
+                "EXPLAIN ANALYZE核对扫描与索引"
+              ],
+              "outputs": [
+                "单项/全量/下钻耗时",
+                "查询计划证据"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "dashboard metric GET",
+              "producers": [
+                "DashboardController",
+                "DashboardService"
+              ],
+              "consumers": [
+                "OverallDashboardPage"
+              ],
+              "invariant": "projectId必填、metricCode白名单、响应含metricCode/count/calculatedAt"
+            },
+            {
+              "name": "dashboard drilldown GET",
+              "producers": [
+                "DashboardController",
+                "DashboardService"
+              ],
+              "consumers": [
+                "OverallDashboardPage drawer"
+              ],
+              "invariant": "size固定20、PageResult记录统一投影、updatedAt和稳定主键倒序"
+            },
+            {
+              "name": "compatibility dashboard routes",
+              "producers": [
+                "DashboardController"
+              ],
+              "consumers": [
+                "OverallDashboardPage旧回退路径",
+                "ComponentDashboardPage"
+              ],
+              "invariant": "/overall和/component(s) URL及组件看板行为不变"
+            },
+            {
+              "name": "project access",
+              "producers": [
+                "DataMigrationPermissionService"
+              ],
+              "consumers": [
+                "DashboardService"
+              ],
+              "invariant": "每次查询都使用认证user并requireProject"
+            },
+            {
+              "name": "project scope UI",
+              "producers": [
+                "useProjectScope"
+              ],
+              "consumers": [
+                "OverallDashboardPage"
+              ],
+              "invariant": "顶部全局项目是页面唯一projectId来源"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "指标定义、SQL条件与服务分页",
+              "method": "JUnit捕获JdbcTemplate调用并对13项映射、参数、排序和错误断言",
+              "blind_spots": [
+                "真实MySQL优化器行为",
+                "浏览器并发"
+              ],
+              "independence": "直接观察服务输入输出和SQL参数"
+            },
+            {
+              "id": "S2",
+              "target": "真实表口径、索引与性能",
+              "method": "Testcontainers MySQL数据夹具、完整分页交叉、EXPLAIN ANALYZE和重复计时",
+              "blind_spots": [
+                "生产最大数据规模与连接池争用"
+              ],
+              "independence": "真实MySQL执行，与mock服务测试异质"
+            },
+            {
+              "id": "S3",
+              "target": "HTTP权限与路由",
+              "method": "Controller权限反射、MockMvc参数和响应测试",
+              "blind_spots": [
+                "部署级安全过滤器配置"
+              ],
+              "independence": "观察Controller契约，不依赖页面"
+            },
+            {
+              "id": "S4",
+              "target": "无调度、无快照和无轮询",
+              "method": "模块注册测试与rg静态搜索",
+              "blind_spots": [
+                "仓库外部署脚本"
+              ],
+              "independence": "Spring装配与源码静态传感器组合"
+            },
+            {
+              "id": "S5",
+              "target": "前端类型和构建",
+              "method": "vue-tsc和Vite生产构建",
+              "blind_spots": [
+                "运行交互和视觉效果"
+              ],
+              "independence": "编译器/打包器"
+            },
+            {
+              "id": "S6",
+              "target": "请求并发、乱序、下钻时序和全状态",
+              "method": "真实浏览器Network、Console与交互记录",
+              "blind_spots": [
+                "无法稳定模拟生产网络分布"
+              ],
+              "independence": "端到端运行观察"
+            },
+            {
+              "id": "S7",
+              "target": "响应式排版和主题",
+              "method": "四视口明暗截图、scrollWidth数值和抽屉滚动检查",
+              "blind_spots": [
+                "未抽样设备字体差异"
+              ],
+              "independence": "浏览器像素与DOM尺寸"
+            },
+            {
+              "id": "S8",
+              "target": "授权写入范围和回归",
+              "method": "scope检查、git diff --check、模块测试和全局治理",
+              "blind_spots": [
+                "未执行的外部CI"
+              ],
+              "independence": "仓库治理脚本和版本差异"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "指标口径和SQL",
+              "action": "新增模块内静态定义并扩展DashboardService",
+              "authority": "REQ-031允许server data-migration路径",
+              "impact_radius": "数据迁移只读看板查询",
+              "rollback": "删除定义并回退DashboardService新增方法"
+            },
+            {
+              "id": "A2",
+              "target": "HTTP所有权和调度",
+              "action": "新增专用DashboardController、移除旧Controller看板职责并删除调度类",
+              "authority": "REQ-031允许server data-migration路径",
+              "impact_radius": "看板路由与快照调度Bean",
+              "rollback": "恢复旧路由和调度类，表无需迁移"
+            },
+            {
+              "id": "A3",
+              "target": "前端API和页面状态",
+              "action": "修改data-migration.ts和OverallDashboardPage.vue",
+              "authority": "REQ-031允许两个前端路径",
+              "impact_radius": "数据迁移整体看板",
+              "rollback": "回退两个文件到旧三卡页面"
+            },
+            {
+              "id": "A4",
+              "target": "查询索引",
+              "action": "仅在现有索引足够时不动作；不足则停止并申请平台迁移写权限",
+              "authority": "当前无platform infrastructure写权限",
+              "impact_radius": "不可控，禁止执行",
+              "rollback": "不适用"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S4",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S5",
+                "S7"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S2",
+                "S6"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "最终表模式跨多次Flyway域化",
+              "effect": "初始表DDL与当前列名不同",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "MySQL冷缓存、数据倾斜和本机负载",
+              "effect": "P95波动",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "快速项目切换与慢请求乱序",
+              "effect": "旧项目数据污染",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "ECharts/ResizeObserver和抽屉挂载时序",
+              "effect": "图表空白或泄漏",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "用户现有未提交设计计划修改",
+              "effect": "新worktree无法自然继承",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "REQ-061畸形scope文件",
+              "effect": "全局治理检查失败",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "最多4路指标队列",
+              "consequence": "后续指标等待前批完成",
+              "sampling_rule": "从首请求开始至13项最终响应测量总完成耗时"
+            },
+            {
+              "source": "数据库连接池与查询",
+              "consequence": "单项响应受并发和缓存影响",
+              "sampling_rule": "预热后重复采样并报告P95与环境"
+            },
+            {
+              "source": "滚动临界点",
+              "consequence": "连续scroll事件可能重复触发",
+              "sampling_rule": "观察每一page只存在一个在途请求"
+            },
+            {
+              "source": "项目切换取消",
+              "consequence": "取消与旧响应回调竞争",
+              "sampling_rule": "慢请求期间切换并确认代次校验后再读取DOM"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "当前专用需求分支可作为隔离边界",
+              "evidence": "任务scope指定同名分支且当前分支匹配，批准文档为未提交工作区改动",
+              "falsifier": "发现该分支被其他并行任务写入相同文件"
+            },
+            {
+              "text": "现有tenant/project前缀索引足够",
+              "evidence": "V161/V162/V168/V180/V184/V185/V186/V194/V197包含相关索引",
+              "falsifier": "EXPLAIN ANALYZE无项目约束或P95超标"
+            },
+            {
+              "text": "统一摘要投影满足下钻核查",
+              "evidence": "批准设计明确统一id/code/name/granularity/systemCode/updatedAt",
+              "falsifier": "用户要求领域全字段或编辑"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "用A1/A2/A3实施并由S1/S2/S3/S6采样"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "用A2/A3移除调度和轮询并由S4/S6采样"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "用A3实现队列和状态并由S5/S6采样"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "用A1/A2/A3实现分页并由S1/S2/S3/S6采样"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "用A1/A2/A3实现失败关闭和代次隔离"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "用A3实现批准布局并由S5/S7采样"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "partial",
+              "controllable": "partial",
+              "action": "先用现有索引和A1/A3优化；若S2推翻索引假设则停止并申请迁移授权"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "实施计划修订1已与工程模型对账，四个串行任务和三次采样覆盖R1-R7",
+        "recorded_at": "2026-09-09T00:44:13+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "实现后端13项单一指标定义、实时计数和同口径固定分页下钻",
+              "requirement_ids": [
+                "R1",
+                "R4",
+                "R5",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "DashboardService现有项目校验和JdbcTemplate模式",
+                "当前Flyway和领域Service确认最终字段",
+                "PageResult是现有分页信封"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java"
+              ],
+              "invariants": [
+                "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+                "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+                "兼容dashboard路由和组件看板行为不变",
+                "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+                "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+              ],
+              "interface_contracts": [
+                "DashboardMetricDefinition.require(String)是13项码唯一解析入口",
+                "metric返回metricCode/count/calculatedAt",
+                "drilldown固定20条并返回统一PageResult投影"
+              ],
+              "non_goals": [
+                "不移动现有CRUD SQL到DashboardService",
+                "不新增缓存、快照或数据库迁移"
+              ],
+              "action_bounds": [
+                "只新增静态定义和DashboardService只读方法",
+                "测试可根据当前测试设施拆分，但不得弱化租户/项目/删除/颗粒度断言"
+              ],
+              "acceptance_checks": [
+                "13项映射与未知码测试通过",
+                "SQL参数包含租户项目deleted条件",
+                "方案专题颗粒度正确",
+                "下钻计数和完整分页一致",
+                "MySQL查询计划受项目范围约束"
+              ],
+              "evidence_required": [
+                "实际diff",
+                "聚焦JUnit退出码",
+                "MySQL查询计划与重复计时样本",
+                "发现的模式差异或扰动"
+              ],
+              "rollback": "删除候选定义/测试并回退DashboardService新增方法，保留兼容overall/component",
+              "stop_conditions": [
+                "指标口径无法由当前表确认",
+                "查询计划无项目范围约束",
+                "达标必须新增当前未授权Flyway迁移"
+              ],
+              "escalation_conditions": [
+                "需要改变指标口径、扩大迁移写入范围或放宽性能门槛"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "迁移专用看板HTTP契约并退役每日快照调度",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "看板路由当前位于StructuredAssetController",
+                "DashboardSnapshotScheduler是唯一模块内调度/快照写入命中"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DashboardController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "invariants": [
+                "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+                "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+                "兼容dashboard路由和组件看板行为不变",
+                "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+                "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+              ],
+              "interface_contracts": [
+                "两个新GET端点使用T1服务方法",
+                "/dashboard/overall和/component(s)路由URL兼容",
+                "看板类级RBAC至少包含dashboard/access/manage/system:admin"
+              ],
+              "non_goals": [
+                "不删除dm_dashboard_snapshot表",
+                "不改变结构化资产Controller的其他路由",
+                "不改变组件看板数据契约"
+              ],
+              "action_bounds": [
+                "看板路由迁移到专用Controller",
+                "删除唯一DashboardSnapshotScheduler类",
+                "仅修改注册测试中与Controller/调度相关断言"
+              ],
+              "acceptance_checks": [
+                "新旧路由无重复且参数校验正确",
+                "看板权限声明测试通过",
+                "模块源码无Scheduled/EnableScheduling/dm_dashboard_snapshot命中"
+              ],
+              "evidence_required": [
+                "实际diff",
+                "Controller与注册测试退出码",
+                "静态rg输出",
+                "兼容路由反射或MockMvc证据"
+              ],
+              "rollback": "恢复原Controller看板路由并删除专用Controller；必要时整体回退调度类，快照表无需迁移",
+              "stop_conditions": [
+                "发现其他代码依赖调度器公共职责",
+                "兼容路由无法无损迁移"
+              ],
+              "escalation_conditions": [
+                "需要改变组件看板消费者契约或恢复长期快照机制"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "实现高保真响应式实时看板、独立状态、4路队列和按需滚动下钻",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "当前页面用scopeProjectId watch驱动",
+                "前端已有Element Plus/ECharts/Axios且无单测脚本",
+                "批准的v3可视稿已在四个宽度和明暗主题检查"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue"
+              ],
+              "invariants": [
+                "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+                "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+                "兼容dashboard路由和组件看板行为不变",
+                "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+                "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+              ],
+              "interface_contracts": [
+                "只消费T2固定新端点",
+                "metricCode使用闭合字符串联合",
+                "项目ID只来自useProjectScope",
+                "请求支持AbortSignal"
+              ],
+              "non_goals": [
+                "不修改公共UI和全局store",
+                "不引入依赖",
+                "不预取明细或增加轮询",
+                "不修改组件看板页面"
+              ],
+              "action_bounds": [
+                "页面内部实现最多4路队列和请求代次",
+                "页面内部实现ECharts生命周期和响应式布局",
+                "页面内部实现固定20条串行滚动抽屉"
+              ],
+              "acceptance_checks": [
+                "npm build通过",
+                "最多4路请求且独立状态",
+                "13项全成功前不显示完整总量",
+                "项目切换清空/取消/关闭",
+                "未点击无下钻且翻页不重复",
+                "四视口明暗主题无横向溢出"
+              ],
+              "evidence_required": [
+                "实际diff",
+                "构建退出码",
+                "浏览器Network/Console记录",
+                "四视口截图和scrollWidth数值"
+              ],
+              "rollback": "回退两个前端文件到旧三卡页面，兼容overall接口继续可用",
+              "stop_conditions": [
+                "需要修改公共UI、全局store或引入新依赖",
+                "375px无法按确认设计保持两列可读",
+                "无法证明并发/分页互斥"
+              ],
+              "escalation_conditions": [
+                "必须改变视觉层级、移动布局、接口字段或页大小"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "完成组合、性能、浏览器、治理和闭环收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "T1-T3已提供可运行组合结果",
+                "目标环境真实最大项目规模为非阻塞未知项",
+                "已知REQ-061 scope错误属于任务外扰动"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T1.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T2.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T3.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-observation.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-verification.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-convergence.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-state.json"
+              ],
+              "invariants": [
+                "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+                "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+                "兼容dashboard路由和组件看板行为不变",
+                "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+                "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+              ],
+              "interface_contracts": [
+                "消费T1-T3运行结果，不修改产品契约",
+                "账本状态仅通过control_loop.py受控命令更新"
+              ],
+              "non_goals": [
+                "不以文档断言替代未执行验证",
+                "不修改任务外REQ-061文件",
+                "不自行合并、发布或推送"
+              ],
+              "action_bounds": [
+                "运行批准检查和真实浏览器验收",
+                "只记录实际证据和测量限制",
+                "发现偏差进入observing/correcting闭环"
+              ],
+              "acceptance_checks": [
+                "后端模块测试和前端构建通过",
+                "权限/隔离/计数分页反例通过",
+                "三项性能门槛或明确阻塞",
+                "四视口全状态通过",
+                "scope与diff检查通过",
+                "R1-R7证据齐全"
+              ],
+              "evidence_required": [
+                "全部命令退出码和关键输出",
+                "P95与EXPLAIN ANALYZE",
+                "浏览器截图/Network/Console",
+                "scope审计",
+                "执行/观测/验证账本"
+              ],
+              "rollback": "按T3、T2、T1逆序回退；无数据库反向迁移",
+              "stop_conditions": [
+                "任一must失败",
+                "性能不达标",
+                "出现越权或跨租户数据",
+                "页面横向溢出",
+                "出现冲突性未知工作区改动"
+              ],
+              "escalation_conditions": [
+                "环境缺失导致无法完成运行验收",
+                "性能修复需要平台迁移或公共能力授权"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "HTTP端点依赖稳定服务契约"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "前端依赖最终HTTP路由和字段"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "组合验收依赖完整前后端实现"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "聚焦service测试与MySQL口径/查询计划采样"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "模块路由/权限/注册回归与快照静态审计"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "前端生产构建和首次浏览器请求行为采样"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "完整模块测试、构建、性能、浏览器、治理和范围收敛门禁"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "后端契约采样",
+              "trigger": "T1与T2完成",
+              "observer": "主Agent使用独立测试/真实MySQL传感器",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5",
+                "R7"
+              ]
+            },
+            {
+              "label": "前端集成采样",
+              "trigger": "T3完成",
+              "observer": "主Agent使用编译器和真实浏览器传感器",
+              "sensors": [
+                "S5",
+                "S6",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "最终收敛采样",
+              "trigger": "T4全部检查完成",
+              "observer": "主Agent以异质自动化与运行证据复核，标注非独立上下文限制",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7",
+                "S8"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S7"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S6"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1实现完成，9项聚焦/MySQL测试通过",
+        "recorded_at": "2026-09-09T00:53:04+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+              "purpose": "建立13项静态白名单和同源计数/下钻SQL"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+              "purpose": "新增单指标实时计数和固定20条分页下钻"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+              "purpose": "验证白名单、颗粒度、最终域字段和未知码拒绝"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+              "purpose": "验证SQL条件、参数、稳定排序和分页边界"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java",
+              "purpose": "MySQL 8.4验证13项口径、作用域、分页、索引和局部延迟"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R4",
+            "R5",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 1,
+              "salient_output": "预期失败基准：18个缺失DashboardMetricDefinition/metric/drilldown符号"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 7, Failures: 0, Errors: 0, Skipped: 0"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest,DashboardMetricMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "MySQL 8.4容器启动；Tests run: 9, Failures: 0, Errors: 0, Skipped: 0"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "13项静态白名单与最终域字段",
+              "result": "pass",
+              "evidence": "DashboardMetricDefinitionTest 4项通过",
+              "limitations": []
+            },
+            {
+              "check": "服务SQL租户/项目/deleted/颗粒度/分页",
+              "result": "pass",
+              "evidence": "DashboardServiceTest 3项通过",
+              "limitations": [
+                "使用JdbcTemplate捕获替身，不覆盖优化器"
+              ]
+            },
+            {
+              "check": "真实MySQL口径和查询计划",
+              "result": "pass",
+              "evidence": "DashboardMetricMySqlTest 2项通过，EXPLAIN ANALYZE命中idx_dm_plan_dashboard",
+              "limitations": [
+                "最小测试表和数据量不代表生产最大项目"
+              ]
+            },
+            {
+              "check": "局部性能门槛",
+              "result": "pass",
+              "evidence": "20轮13项与下钻P95断言通过",
+              "limitations": [
+                "本地容器小数据样本，仅验证明显回归"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "新增枚举式静态查询定义，所有SQL标识符来自编译期常量",
+            "新增metric和drilldown只读方法，复用现有requireProject并保留overall/component",
+            "新增9项聚焦及MySQL测试"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "认证租户、可访问项目和deleted=0恒定过滤",
+              "result": "pass",
+              "evidence": "服务参数测试与MySQL跨租户/项目/删除夹具"
+            },
+            {
+              "invariant": "指标计数与下钻共享同一静态定义",
+              "result": "pass",
+              "evidence": "两条路径都消费countSql/scopeArguments，MySQL全分页一致"
+            },
+            {
+              "invariant": "不修改兼容overall/component与CRUD",
+              "result": "pass",
+              "evidence": "DashboardService旧方法保持未改"
+            },
+            {
+              "invariant": "不增加缓存、调度、快照或迁移",
+              "result": "pass",
+              "evidence": "T1 diff仅服务、定义和测试"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "规则与参数已完成后续域化，旧doc_code/doc_name列不存在",
+              "impact": "静态定义改用rule_code/rule_code_desc与parameter_name，符合当前Service事实"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "目标环境代表性数据量P95和生产索引计划留到T4运行验收"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T4执行检查已完成：后端全量170项、看板聚焦11项、前端构建、范围、静态审计与治理检查结果已写入执行产物。",
+        "recorded_at": "2026-09-09T03:47:37+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java",
+              "purpose": "补充单指标、13项总量和下钻三项本地P95采样输出"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/",
+              "purpose": "记录最终组合、性能、浏览器、治理和范围验收证据"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 170, Failures: 0, Errors: 0, Skipped: 0; all reactor modules SUCCESS"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest,DashboardMetricMySqlTest,DashboardControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 11, Failures: 0, Errors: 0, Skipped: 0; local P95 single metric=8ms, 13 metrics=93ms, drilldown=15ms"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc与Vite生产构建通过，2568 modules transformed"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "任务外REQ-20260904-061 codex-task-scope.yaml不是JSON-compatible YAML；前三段检查通过"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "rg -n 'Scheduled|EnableScheduling|dm_dashboard_snapshot' server/src/modules/data-migration/src/main; rg -n 'setInterval|setTimeout' web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue",
+              "exit_code": 0,
+              "salient_output": "无运行时命中"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "全局治理脚本被任务外REQ-20260904-061格式错误阻断",
+              "impact": "不修改任务外文件；本任务scope检查和前三段治理检查仍通过",
+              "disposition": "isolated"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "完整后端模块回归",
+              "result": "pass",
+              "evidence": "170 tests, 0 failures/errors"
+            },
+            {
+              "check": "看板聚焦后端回归",
+              "result": "pass",
+              "evidence": "11 tests, 0 failures/errors；单指标P95=8ms、13项P95=93ms、下钻P95=15ms"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "2568 modules transformed"
+            },
+            {
+              "check": "浏览器响应式与交互",
+              "result": "pass",
+              "evidence": "六个明暗主题视口无横向溢出，13请求/4并发/按需下钻/项目切换隔离"
+            },
+            {
+              "check": "范围与差异",
+              "result": "pass",
+              "evidence": "scope check passed；git diff --check通过"
+            },
+            {
+              "check": "全局治理",
+              "result": "blocked-by-external-disturbance",
+              "evidence": "任务外REQ-20260904-061 YAML格式错误"
+            }
+          ],
+          "diff_summary": [
+            "为DashboardMetricMySqlTest补充单指标P95采样和输出",
+            "产品实现已完成13项实时指标、4路队列、按需20条滚动下钻和快照调度退役"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不恢复轮询、调度或快照运行依赖",
+              "result": "pass",
+              "evidence": "静态搜索无命中"
+            },
+            {
+              "invariant": "只修改任务scope授权路径",
+              "result": "pass",
+              "evidence": "scope check passed"
+            },
+            {
+              "invariant": "任务外治理扰动不被修改",
+              "result": "pass",
+              "evidence": "REQ-061保持原状并记录为isolated"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "目标部署环境代表性数据量P95、生产EXPLAIN与真实网络延迟需上线前复测",
+            "任务外REQ-20260904-061格式错误需由其Owner修复后重跑全局治理"
+          ],
+          "recommended_next": "observe",
+          "rollback": "按T3、T2、T1逆序回退；无数据库反向迁移"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1观察：9项自动化、MySQL查询计划和范围检查未发现偏差",
+        "recorded_at": "2026-09-09T00:54:37+00:00",
+        "data": {
+          "sample_label": "T1后端指标契约完成采样",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 JUnit + S2 MySQL 8.4",
+              "result": "pass",
+              "raw_evidence": "DashboardMetricDefinitionTest/DashboardServiceTest/DashboardMetricMySqlTest共9项通过；13项计数与完整下钻total/records均一致",
+              "limitation": [
+                "最小测试数据不代表生产容量"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1服务分页参数 + S2真实分页",
+              "result": "pass",
+              "raw_evidence": "size非20被400拒绝；page2 offset=20；MySQL逐项第一页记录与总量一致",
+              "limitation": [
+                "浏览器滚动触发在T3/T4采样"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1 SQL参数捕获 + S2隔离夹具 + S8范围检查",
+              "result": "pass",
+              "raw_evidence": "所有SQL含tenant_id/project_id/deleted；方案专题含granularity参数；未知注入字符串BAD_REQUEST；scope检查通过15个当前工作区文件",
+              "limitation": [
+                "HTTP RBAC由T2观测"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S2 EXPLAIN ANALYZE和20轮局部计时",
+              "result": "pass",
+              "raw_evidence": "EXPLAIN ANALYZE断言命中idx_dm_plan_dashboard；13项与下钻局部P95阈值断言通过",
+              "limitation": [
+                "测试表和小数据仅证明查询形态；目标环境P95留待T4"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "生产规模不可用，局部性能证据不可外推；保持原R7门槛并在T4复测"
+            },
+            {
+              "event": "规则/参数最终域字段不同于V162初始表，已按当前Service和V194/V197使用rule_code/parameter_name"
+            }
+          ],
+          "coverage_gaps": [
+            "HTTP路由/RBAC尚未实现，由T2覆盖",
+            "生产代表性数据规模P95由T4覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2独立观测无原子偏差",
+        "recorded_at": "2026-09-09T01:05:41+00:00",
+        "data": {
+          "sample_label": "T2看板HTTP与调度退役完成采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Controller反射测试",
+              "result": "pass",
+              "raw_evidence": "单指标GET端点存在并调用T1实时查询服务",
+              "limitation": [
+                "前端消费由T3覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "模块注册测试和静态源码搜索",
+              "result": "pass",
+              "raw_evidence": "DashboardSnapshotScheduler源文件不存在；Scheduled/EnableScheduling/dm_dashboard_snapshot无主源码匹配",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Controller参数契约测试",
+              "result": "pass",
+              "raw_evidence": "下钻端点存在，page默认1、size默认20且projectId必填",
+              "limitation": [
+                "滚动触发与不预取由T3/T4覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "Controller权限反射测试与T1服务回归",
+              "result": "pass",
+              "raw_evidence": "类级权限包含dashboard/access/write/manage/system:admin；DashboardService项目隔离测试继续通过",
+              "limitation": [
+                "真实403响应由T4覆盖"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Maven首次从错误子目录执行，随后在仓库根目录获得有效样本"
+            }
+          ],
+          "coverage_gaps": [
+            "浏览器端消费、并发、滚动和项目切换由T3/T4覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3观测修正GraphicComponent和色条优先级后无剩余偏差",
+        "recorded_at": "2026-09-09T03:36:22+00:00",
+        "data": {
+          "sample_label": "T3实时看板与滚动下钻完成采样",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "浏览器受控API与页面DOM",
+              "result": "pass",
+              "raw_evidence": "13项分别显示6/18/9/27/14/22/31/12/38/64/43/16/25，总量325",
+              "limitation": [
+                "数值由受控API提供，后端真实口径由T1 MySQL覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "静态搜索与浏览器Network",
+              "result": "pass",
+              "raw_evidence": "页面无计时器；进入后仅一次13项队列，无后续自动请求",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "浏览器并发计数与500恢复夹具",
+              "result": "pass",
+              "raw_evidence": "maxInFlight=4；RULE失败时12项成功且总量为—；单项重试后恢复325",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "浏览器Network与抽屉DOM",
+              "result": "pass",
+              "raw_evidence": "点击前drilldown=0，点击后第1页，滚动后第2页且记录21出现",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "项目切换受控延迟夹具",
+              "result": "pass",
+              "raw_evidence": "项目101首批4请求在途时重载项目202；最终13项均为2且总量26，无旧值1回写",
+              "limitation": [
+                "HTTP服务端授权由T1/T2覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "Playwright截图、DOM溢出与canvas像素代理",
+              "result": "pass",
+              "raw_evidence": "浅色1280/375/390/430及深色1280/390无横向溢出；canvas尺寸稳定且dataURL长度>14000；控制台无错误",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "修复ECharts GraphicComponent注册与资产色条CSS优先级后复验通过"
+            }
+          ],
+          "coverage_gaps": [
+            "目标部署环境P95由T4/上线验证覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "组合观测：170项后端回归、11项看板聚焦测试、浏览器多视口与网络夹具、静态审计和范围审计。",
+        "recorded_at": "2026-09-09T03:49:39+00:00",
+        "data": {
+          "sample_label": "T4组合性能治理收敛采样",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "JUnit/MySQL/浏览器DOM",
+              "result": "pass",
+              "raw_evidence": "13项固定白名单、租户项目deleted=0与PROJECT/SYSTEM口径测试通过；浏览器13项独立响应并展示构成与排行"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "静态搜索/浏览器Network",
+              "result": "pass",
+              "raw_evidence": "后端主源码无Scheduled、EnableScheduling、dm_dashboard_snapshot命中；页面无setInterval/setTimeout；无自动轮询"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Playwright受控API",
+              "result": "pass",
+              "raw_evidence": "13项独立请求最大并发4；单项500失败保留12项成功，完整总量保持—，仅失败项重试后恢复"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Controller测试/浏览器Network与抽屉DOM",
+              "result": "pass",
+              "raw_evidence": "点击前下钻请求0；点击后第一页，滚动后第二页；页大小固定20且串行互斥；已有记录在后续错误时保留"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "安全测试/项目切换受控夹具",
+              "result": "pass",
+              "raw_evidence": "未知指标拒绝、类级RBAC声明与项目授权测试通过；切换项目后旧响应未覆盖新项目状态"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "Playwright四视口、明暗主题、canvas与scrollWidth",
+              "result": "pass",
+              "raw_evidence": "1280x800、375x812、390x844、430x932浅色及1280x800、390x844深色无横向溢出；canvas非空；控制台无错误"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "MySQL 8.4 EXPLAIN ANALYZE与20轮局部P95",
+              "result": "pass",
+              "raw_evidence": "EXPLAIN命中idx_dm_plan_dashboard；单指标P95=8ms，13项总量P95=93ms，下钻P95=15ms，均低于500/2000/800ms门槛",
+              "limitation": "本地最小夹具不代表目标环境最大数据量；上线前需用代表性数据复测"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "全局治理脚本读取任务外REQ-20260904-061时失败",
+              "impact": "不影响本任务范围证据",
+              "disposition": "isolated"
+            }
+          ],
+          "coverage_gaps": [
+            "目标部署环境代表性数据量与真实网络P95尚未取得"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "最终验证产物覆盖R1-R7、T1-T4、回归、范围、不变量和任务外治理扰动。",
+        "recorded_at": "2026-09-09T03:52:15+00:00",
+        "data": {
+          "schema_version": 1,
+          "prefix": "req-20260820-031-data-migration-asset-library-v3",
+          "baseline_revision": "2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "status": "pass",
+              "evidence": "T1 MySQL/JUnit口径、T3浏览器13项和总量完整性"
+            },
+            {
+              "id": "R2",
+              "status": "pass",
+              "evidence": "T2调度退役与路由回归、T4静态搜索和Network"
+            },
+            {
+              "id": "R3",
+              "status": "pass",
+              "evidence": "T3受控并发4路、独立失败/重试和项目代次隔离"
+            },
+            {
+              "id": "R4",
+              "status": "pass",
+              "evidence": "T1固定分页契约、T3点击后滚动两页且无预取"
+            },
+            {
+              "id": "R5",
+              "status": "pass",
+              "evidence": "T1租户项目deleted过滤、T2 RBAC、T3未知码与切换隔离"
+            },
+            {
+              "id": "R6",
+              "status": "pass",
+              "evidence": "T3六个明暗主题视口、无横向溢出、canvas非空"
+            },
+            {
+              "id": "R7",
+              "status": "pass",
+              "evidence": "T1/T4 EXPLAIN与单指标8ms、13项93ms、下钻15ms本地P95"
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": "DashboardMetricDefinition/Service/MySQL tests"
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": "DashboardControllerSecurityTest、模块注册测试和静态审计"
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": "前端构建与Playwright网络/DOM/截图验收"
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": "170项全量模块测试、11项聚焦测试、治理/范围/diff检查"
+            }
+          ],
+          "feedback_summary": [],
+          "sample_trend": [
+            {
+              "label": "T1后端契约采样",
+              "score": 0
+            },
+            {
+              "label": "T3前端集成采样",
+              "score": 0
+            },
+            {
+              "label": "T4组合性能治理完成采样",
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "name": "backend-module-tests",
+              "result": "pass",
+              "evidence": "170 tests, 0 failures/errors"
+            },
+            {
+              "name": "dashboard-focused-tests",
+              "result": "pass",
+              "evidence": "11 tests, 0 failures/errors"
+            },
+            {
+              "name": "frontend-build",
+              "result": "pass",
+              "evidence": "npm --prefix web run build exit 0"
+            },
+            {
+              "name": "scope-audit",
+              "result": "pass",
+              "evidence": "check-codex-scope passed"
+            },
+            {
+              "name": "governance",
+              "result": "blocked-by-external-disturbance",
+              "evidence": "REQ-20260904-061 scope YAML格式不兼容；未修改任务外文件"
+            }
+          ],
+          "invariant_results": [
+            {
+              "name": "no-dashboard-snapshot-runtime",
+              "result": "pass",
+              "evidence": "主源码静态搜索无命中"
+            },
+            {
+              "name": "shared-definition-for-count-and-drilldown",
+              "result": "pass",
+              "evidence": "DashboardMetricDefinition统一提供SQL"
+            },
+            {
+              "name": "no-unrelated-surface-change",
+              "result": "pass",
+              "evidence": "产品改动限数据迁移模块看板授权路径"
+            }
+          ],
+          "scope_audit": {
+            "result": "pass",
+            "evidence": "Codex scope check passed"
+          },
+          "disturbance_resilience": [
+            {
+              "source": "REQ-20260904-061格式错误",
+              "result": "isolated",
+              "evidence": "任务范围检查独立通过"
+            }
+          ],
+          "residual_risks": [
+            "生产代表性数据量P95和生产EXPLAIN仍需上线前复测",
+            "全局治理脚本需待任务外REQ-061修复后重跑"
+          ],
+          "gate_result": "pass",
+          "route_reason": "T1-T4均已verified，最终采样误差为0，R1-R7均有独立证据；仅任务外治理脚本格式错误隔离记录",
+          "verdict": "all_in_scope_requirements_verified"
+        }
+      }
+    ]
+  },
+  "objective": "当前项目用户能够从数据迁移整体看板快速识别13类有效资产规模，并在不预取明细的情况下下钻核查同口径记录。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "整体看板必须按认证租户、当前可访问项目和deleted=0展示13个已确认资产指标，并按PROJECT/SYSTEM区分方案与专题。",
+      "acceptance": [
+        "13个指标码均能返回当前项目实时数量",
+        "方案与专题的项目级和组件级数量分别按PROJECT与SYSTEM统计",
+        "卡片数量与对应完整下钻分页结果一致"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08请求与完整设计批准",
+      "counterexample": [
+        "仍只展示项目、组件、资产总量三项",
+        "方案或专题不区分颗粒度",
+        "统计包含已删除或其他项目数据"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "整体看板不得使用前端轮询、后端定时任务或dm_dashboard_snapshot运行时读写；快照表本次保留但停用。",
+      "acceptance": [
+        "前端页面不存在看板轮询计时器",
+        "DashboardSnapshotScheduler不再注册执行",
+        "指标与下钻查询不读写dm_dashboard_snapshot"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08明确确认",
+      "counterexample": [
+        "定时刷新快照后再由页面读取",
+        "页面自动轮询指标"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "13个指标必须分别实时请求并独立显示loading、成功、失败和单项重试，前端同时在途请求最多4个。",
+      "acceptance": [
+        "单项失败不阻塞或清空其他指标",
+        "在途指标请求数不超过4",
+        "13项全部成功前不显示误导性的部分总量"
+      ],
+      "priority": "must",
+      "source": "用户批准的通用白名单端点与限流并发方案",
+      "counterexample": [
+        "使用一个批量汇总请求",
+        "13路无界并发",
+        "一个指标失败导致整页失败"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "点击指标后才加载下钻抽屉第一页，并以每页20条的串行滚动分页继续加载，不预取其他明细。",
+      "acceptance": [
+        "未点击指标时无下钻请求",
+        "滚动临界点每次只触发一个下一页请求",
+        "后续页失败保留已有记录并可重试",
+        "空、失败、无权限和全部加载完成状态明确"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08明确确认",
+      "counterexample": [
+        "看板加载时预取明细",
+        "一次返回全部明细",
+        "滚动触发重复页请求"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "指标和下钻必须共享固定白名单指标定义，并逐请求执行认证、RBAC、租户和项目可达性校验。",
+      "acceptance": [
+        "未知指标码返回400",
+        "缺少或不可访问项目失败关闭",
+        "外部指标字符串不能拼接任意SQL标识符",
+        "项目切换后旧响应不能覆盖新状态"
+      ],
+      "priority": "must",
+      "source": "REQ-031统一安全规则与用户批准设计",
+      "counterexample": [
+        "前端权限显隐替代服务端校验",
+        "计数与明细分别维护不一致条件"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "整体看板采用已确认的高保真响应式排版，并覆盖独立加载、部分失败、空、无权限和明暗主题。",
+      "acceptance": [
+        "桌面显示总量、四项方案专题、九项内容资产和构成排行",
+        "平板和手机按确认规则重排",
+        "375x812、390x844、430x932与1280x800无页面级横向溢出",
+        "移动抽屉接近全宽且关闭和滚动区域可达"
+      ],
+      "priority": "must",
+      "source": "用户批准的dashboard-polished-layout-v3视觉方向",
+      "counterexample": [
+        "13张同权重大卡片平铺",
+        "手机端裁切、整页横向滚动或辅助文字拥挤"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "指标和下钻必须满足已批准的响应时间门槛并通过项目范围查询计划验证。",
+      "acceptance": [
+        "单指标P95不高于500ms",
+        "13项全部完成不高于2s",
+        "下钻分页P95不高于800ms",
+        "EXPLAIN ANALYZE证明查询受租户项目索引约束"
+      ],
+      "priority": "must",
+      "source": "用户批准的性能与验收设计",
+      "counterexample": [
+        "以单次开发数据测试代替P95",
+        "无项目条件全表统计",
+        "超标后擅自恢复快照或轮询"
+      ]
+    }
+  ],
+  "invariants": [
+    "顶部全局项目切换器是唯一项目来源，页面不新增所属项目字段",
+    "认证租户、RBAC和项目可达性由服务端执行",
+    "指标计数与下钻明细共享同一指标定义",
+    "整体看板无前后台定时刷新和快照运行依赖",
+    "组件级看板、内容CRUD、附件、审计和其他业务模块行为不变",
+    "只修改REQ-031任务范围授权路径"
+  ],
+  "constraints": [
+    "遵循design-h5.md和web/src/AGENTS.md",
+    "不修改web/src/components/ui公共组件",
+    "不修改历史Flyway脚本或删除dm_dashboard_snapshot表",
+    "使用现有Vue 3、TypeScript、Element Plus、ECharts和API封装",
+    "前端请求并发上限为4，下钻页大小固定20",
+    "当前任务使用专用分支feat/REQ-20260820-031-data-migration，保护既有未提交设计与计划改动",
+    "不读取任务范围禁止的.ai-control/original目录"
+  ],
+  "non_goals": [
+    "前端轮询、WebSocket、SSE、缓存预热或后台快照刷新",
+    "删除dm_dashboard_snapshot表",
+    "预取下钻明细或在浏览器内存中全量分页",
+    "改变资产内容页CRUD、字段和标准分页",
+    "改造组件级看板或平台公共能力"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-handoff.json",
+    "imported_at": "2026-09-09T00:38:44+00:00",
+    "topic": "data-migration-overall-dashboard-realtime",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-overall-dashboard-realtime",
+      "handoff_status": "approved",
+      "created_at": "2026-09-08T22:53:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-overall-dashboard-realtime",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-08-data-migration-overall-dashboard-realtime-design.md",
+        "objective": "在当前可访问项目内以13个独立实时请求展示数据迁移资产指标，并在点击后通过滚动分页抽屉加载同口径明细，全链路不使用前后台定时任务或快照数据。",
+        "users": [
+          "数据迁移管理员在整体看板检查项目资料覆盖并下钻明细",
+          "具有看板访问权限的普通数据迁移人员在项目数据范围内查看统计与明细"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "整体看板必须按认证租户、当前可访问项目和deleted=0展示13个已确认资产指标，并按PROJECT/SYSTEM区分方案与专题。",
+            "acceptance": [
+              "13个指标码均能返回当前项目实时数量",
+              "方案与专题的项目级和组件级数量分别按PROJECT与SYSTEM统计",
+              "卡片数量与对应完整下钻分页结果一致"
+            ],
+            "priority": "must",
+            "source": "用户2026-09-08请求与完整设计批准",
+            "counterexample": [
+              "仍只展示项目、组件、资产总量三项",
+              "方案或专题不区分颗粒度",
+              "统计包含已删除或其他项目数据"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "整体看板不得使用前端轮询、后端定时任务或dm_dashboard_snapshot运行时读写；快照表本次保留但停用。",
+            "acceptance": [
+              "前端页面不存在看板轮询计时器",
+              "DashboardSnapshotScheduler不再注册执行",
+              "指标与下钻查询不读写dm_dashboard_snapshot"
+            ],
+            "priority": "must",
+            "source": "用户2026-09-08明确确认",
+            "counterexample": [
+              "定时刷新快照后再由页面读取",
+              "页面自动轮询指标"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "13个指标必须分别实时请求并独立显示loading、成功、失败和单项重试，前端同时在途请求最多4个。",
+            "acceptance": [
+              "单项失败不阻塞或清空其他指标",
+              "在途指标请求数不超过4",
+              "13项全部成功前不显示误导性的部分总量"
+            ],
+            "priority": "must",
+            "source": "用户批准的通用白名单端点与限流并发方案",
+            "counterexample": [
+              "使用一个批量汇总请求",
+              "13路无界并发",
+              "一个指标失败导致整页失败"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "点击指标后才加载下钻抽屉第一页，并以每页20条的串行滚动分页继续加载，不预取其他明细。",
+            "acceptance": [
+              "未点击指标时无下钻请求",
+              "滚动临界点每次只触发一个下一页请求",
+              "后续页失败保留已有记录并可重试",
+              "空、失败、无权限和全部加载完成状态明确"
+            ],
+            "priority": "must",
+            "source": "用户2026-09-08明确确认",
+            "counterexample": [
+              "看板加载时预取明细",
+              "一次返回全部明细",
+              "滚动触发重复页请求"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "指标和下钻必须共享固定白名单指标定义，并逐请求执行认证、RBAC、租户和项目可达性校验。",
+            "acceptance": [
+              "未知指标码返回400",
+              "缺少或不可访问项目失败关闭",
+              "外部指标字符串不能拼接任意SQL标识符",
+              "项目切换后旧响应不能覆盖新状态"
+            ],
+            "priority": "must",
+            "source": "REQ-031统一安全规则与用户批准设计",
+            "counterexample": [
+              "前端权限显隐替代服务端校验",
+              "计数与明细分别维护不一致条件"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "整体看板采用已确认的高保真响应式排版，并覆盖独立加载、部分失败、空、无权限和明暗主题。",
+            "acceptance": [
+              "桌面显示总量、四项方案专题、九项内容资产和构成排行",
+              "平板和手机按确认规则重排",
+              "375x812、390x844、430x932与1280x800无页面级横向溢出",
+              "移动抽屉接近全宽且关闭和滚动区域可达"
+            ],
+            "priority": "must",
+            "source": "用户批准的dashboard-polished-layout-v3视觉方向",
+            "counterexample": [
+              "13张同权重大卡片平铺",
+              "手机端裁切、整页横向滚动或辅助文字拥挤"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "指标和下钻必须满足已批准的响应时间门槛并通过项目范围查询计划验证。",
+            "acceptance": [
+              "单指标P95不高于500ms",
+              "13项全部完成不高于2s",
+              "下钻分页P95不高于800ms",
+              "EXPLAIN ANALYZE证明查询受租户项目索引约束"
+            ],
+            "priority": "must",
+            "source": "用户批准的性能与验收设计",
+            "counterexample": [
+              "以单次开发数据测试代替P95",
+              "无项目条件全表统计",
+              "超标后擅自恢复快照或轮询"
+            ]
+          }
+        ],
+        "invariants": [
+          "顶部全局项目切换器是唯一项目来源，页面不新增所属项目字段",
+          "认证租户、RBAC和项目可达性由服务端执行",
+          "指标计数与下钻明细共享同一指标定义",
+          "整体看板无前后台定时刷新和快照运行依赖",
+          "组件级看板、内容CRUD、附件、审计和其他业务模块行为不变",
+          "只修改REQ-031任务范围授权路径"
+        ],
+        "constraints": [
+          "遵循design-h5.md和web/src/AGENTS.md",
+          "不修改web/src/components/ui公共组件",
+          "不修改历史Flyway脚本或删除dm_dashboard_snapshot表",
+          "使用现有Vue 3、TypeScript、Element Plus、ECharts和API封装",
+          "前端请求并发上限为4，下钻页大小固定20"
+        ],
+        "non_goals": [
+          "前端轮询、WebSocket、SSE、缓存预热或后台快照刷新",
+          "删除dm_dashboard_snapshot表",
+          "预取下钻明细或在浏览器内存中全量分页",
+          "改变资产内容页CRUD、字段和标准分页",
+          "改造组件级看板或平台公共能力"
+        ],
+        "selected_approach": {
+          "name": "通用白名单指标端点、最多4路并发和按需滚动下钻",
+          "reason": "满足每项独立实时请求与独立loading，同时集中维护统计口径并限制数据库突发压力。",
+          "alternatives": [
+            {
+              "name": "13个专用接口",
+              "rejected_because": "Controller、权限声明和测试重复，新增指标维护成本高。"
+            },
+            {
+              "name": "13路无界并发",
+              "rejected_because": "多用户同时进入时会放大连接池和数据库瞬时压力。"
+            },
+            {
+              "name": "单次批量汇总",
+              "rejected_because": "不满足用户确认的每个指标独立请求和独立loading。"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "数据迁移Dashboard指标定义、服务和Controller",
+              "DashboardSnapshotScheduler退役",
+              "data-migration.ts指标与下钻类型接口",
+              "OverallDashboardPage高保真响应式页面、请求队列和滚动抽屉",
+              "数据迁移模块聚焦测试与当前任务证据"
+            ],
+            "outside": [
+              "dm_dashboard_snapshot物理删表",
+              "平台公共组件、全局项目store和应用壳",
+              "内容资产CRUD、附件和审计",
+              "组件级看板业务行为",
+              "其他业务模块"
+            ]
+          },
+          "components": [
+            {
+              "name": "DashboardMetricDefinition",
+              "responsibility": "固定登记13个指标码、计数条件和下钻投影，作为唯一口径源",
+              "depends_on": []
+            },
+            {
+              "name": "DashboardService",
+              "responsibility": "项目校验、单指标实时计数和单指标稳定分页下钻",
+              "depends_on": [
+                "DashboardMetricDefinition",
+                "DataMigrationPermissionService",
+                "JdbcTemplate"
+              ]
+            },
+            {
+              "name": "DashboardController",
+              "responsibility": "看板兼容路由、新单指标/下钻端点和服务端RBAC",
+              "depends_on": [
+                "DashboardService"
+              ]
+            },
+            {
+              "name": "OverallDashboardPage",
+              "responsibility": "13项独立状态、最多4路请求队列、派生总量/图表和滚动下钻抽屉",
+              "depends_on": [
+                "data-migration.ts",
+                "useProjectScope",
+                "UiPageHeader",
+                "ProjectScopeState",
+                "ECharts"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET /api/data-migration/dashboard/overall/metrics/{metricCode}",
+              "producer": "DashboardController",
+              "consumers": [
+                "OverallDashboardPage"
+              ],
+              "contract": "projectId必填；返回metricCode、count、calculatedAt；指标码固定白名单。"
+            },
+            {
+              "name": "GET /api/data-migration/dashboard/overall/drilldowns/{metricCode}",
+              "producer": "DashboardController",
+              "consumers": [
+                "OverallDashboardPage下钻抽屉"
+              ],
+              "contract": "projectId/page/size；size固定为20；返回统一字段分页信封并按updatedAt和稳定主键倒序。"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "ready的当前项目",
+              "transitions": [
+                "建立13项请求任务",
+                "最多4路并发实时计数",
+                "逐卡更新独立状态",
+                "全部成功后计算总量和完整图表"
+              ],
+              "output": "13项指标、总量、构成和排行"
+            },
+            {
+              "input": "用户点击指标并滚动抽屉",
+              "transitions": [
+                "按同一指标定义加载第一页20条",
+                "接近底部串行加载下一页",
+                "失败保留已有页并等待重试"
+              ],
+              "output": "同口径滚动分页明细"
+            },
+            {
+              "input": "项目切换或重复刷新",
+              "transitions": [
+                "取消请求或提升请求代次",
+                "清空旧项目页面并关闭抽屉",
+                "新项目重新排队"
+              ],
+              "output": "仅显示最新项目结果"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "单指标请求失败",
+            "behavior": "只将该卡片置为错误并标记总量/图表不完整",
+            "recovery": "单项重试或刷新全部"
+          },
+          {
+            "condition": "下钻第一页失败",
+            "behavior": "抽屉显示错误而非空状态",
+            "recovery": "原位重试第一页"
+          },
+          {
+            "condition": "下钻后续页失败",
+            "behavior": "保留已加载记录并停止自动继续",
+            "recovery": "底部重试失败页"
+          },
+          {
+            "condition": "缺少项目、不可访问项目、未知指标或无权限",
+            "behavior": "服务端以400或403失败关闭且不泄露其他项目数据",
+            "recovery": "切换可访问项目或申请权限"
+          },
+          {
+            "condition": "旧请求晚于新项目响应",
+            "behavior": "取消结果或按请求代次丢弃，不写入页面",
+            "recovery": "无需用户操作"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "指标与下钻逐请求执行认证、RBAC、租户和项目校验",
+            "固定指标定义阻断任意SQL标识符拼接"
+          ],
+          "performance": [
+            "前端最多4路指标并发",
+            "单指标P95<=500ms且13项总完成<=2s",
+            "下钻每页20条且P95<=800ms",
+            "EXPLAIN ANALYZE证明项目范围索引生效"
+          ],
+          "compatibility": [
+            "保留/dashboard/overall和/dashboard/component(s)兼容路由",
+            "组件看板和内容业务行为不变",
+            "保留但停用dm_dashboard_snapshot"
+          ],
+          "operations": [
+            "不运行前后台定时任务",
+            "通过接口耗时和数据库慢查询观测性能",
+            "快照表删除另立迁移需求"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R4",
+              "R5"
+            ],
+            "signal": "13项数量与同条件完整下钻分页一致且跨项目请求失败关闭",
+            "method": "服务单元测试、Controller安全测试和MySQL集成测试"
+          },
+          {
+            "requirement_ids": [
+              "R2"
+            ],
+            "signal": "无前端轮询、无后端调度Bean、无快照表读写",
+            "method": "静态搜索、Spring上下文测试和SQL路径检查"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R6"
+            ],
+            "signal": "独立loading/失败/重试、并发上限、项目切换和响应式布局符合设计",
+            "method": "前端逻辑测试、生产构建和真实浏览器验收"
+          },
+          {
+            "requirement_ids": [
+              "R7"
+            ],
+            "signal": "P95门槛和索引约束满足",
+            "method": "代表性数据量下的重复计时与EXPLAIN ANALYZE"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "13张业务表均保留以tenant_id和project_id为前缀的可用索引",
+            "basis": "当前数据迁移Flyway索引定义",
+            "falsifier": "目标MySQL EXPLAIN ANALYZE出现无项目范围约束的全表扫描或延迟超标"
+          },
+          {
+            "text": "统一下钻投影足以支持看板快速核查",
+            "basis": "已批准视觉抽屉仅展示名称、类型和更新时间等摘要",
+            "falsifier": "用户要求在下钻内编辑或展示领域专属全部字段"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "目标环境单项目各资产表的最大真实数量级",
+            "impact": "影响查询计划样本规模和是否需要后续索引纠正",
+            "owner": "数据迁移模块Owner",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "取消前端轮询、后端定时任务和快照运行依赖",
+            "reason": "用户要求所有指标实时独立获取",
+            "source": "2026-09-08用户确认"
+          },
+          {
+            "id": "D2",
+            "decision": "采用通用白名单指标端点和最多4路前端并发",
+            "reason": "兼顾独立状态、集中口径和数据库突发控制",
+            "source": "2026-09-08用户批准采纳"
+          },
+          {
+            "id": "D3",
+            "decision": "下钻采用页面内右侧抽屉、每页20条滚动分页且点击后才加载",
+            "reason": "保留看板上下文并避免明细预取",
+            "source": "2026-09-08用户确认"
+          },
+          {
+            "id": "D4",
+            "decision": "保留但停用dm_dashboard_snapshot表",
+            "reason": "避免本次引入无必要的破坏性迁移并降低回退成本",
+            "source": "2026-09-08用户批准采纳"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "多用户同时进入导致数据库请求突发",
+            "impact": "指标响应变慢或连接池等待",
+            "mitigation": "最多4路并发、项目范围索引、P95门槛和慢查询观测"
+          },
+          {
+            "risk": "异构表字段造成计数和下钻条件漂移",
+            "impact": "卡片数字无法由明细复现",
+            "mitigation": "单一指标定义同时拥有计数条件和下钻投影，并做全分页交叉测试"
+          },
+          {
+            "risk": "项目切换或重复刷新产生请求乱序",
+            "impact": "新项目页面混入旧项目统计或明细",
+            "mitigation": "取消信号和请求代次双重保护"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-08 用户在完整设计修订1落盘后明确回复“实施”，批准该设计进入实施计划阶段。",
+          "confirmed_at": "2026-09-08T22:53:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-08-data-migration-overall-dashboard-realtime-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改REQ-031任务范围授权的数据迁移模块、前端数据迁移API/页面、对应计划和当前前缀账本",
+          "每个查询限定认证租户、requireProject校验的项目和deleted=0，指标码只来自13项静态白名单",
+          "计数与下钻共享DashboardMetricDefinition；前端最多4路并发且13项全成功前不展示总量",
+          "下钻点击后才加载、固定20条串行滚动；项目切换取消或丢弃旧请求并关闭抽屉",
+          "不使用前端轮询、后端调度、缓存或快照读写；保留dm_dashboard_snapshot表",
+          "不修改组件看板行为、资产CRUD、公共UI、全局store、附件、审计或其他业务模块",
+          "验收1280x800、375x812、390x844、430x932及明暗主题，无页面级横向溢出",
+          "性能门槛为单指标P95<=500ms、13项完成<=2s、下钻页P95<=800ms并验证EXPLAIN ANALYZE"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+            "status": "candidate-new",
+            "responsibility": "13项静态白名单以及同源计数/下钻SQL定义",
+            "evidence": "批准设计D2及现有ContentAssetTables静态映射模式"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+            "status": "existing",
+            "responsibility": "项目校验、兼容看板、单指标计数和固定分页下钻",
+            "evidence": "现有DashboardService使用JdbcTemplate和DataMigrationPermissionService"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DashboardController.java",
+            "status": "candidate-new",
+            "responsibility": "看板专用HTTP路由、参数校验与RBAC",
+            "evidence": "批准设计架构边界"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+            "status": "existing",
+            "responsibility": "移除看板路由所有权，保留结构化资产路由",
+            "evidence": "现有第30-31行承载看板路由"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java",
+            "status": "existing",
+            "responsibility": "删除每日快照调度Bean",
+            "evidence": "现有类使用Scheduled写dm_dashboard_snapshot"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+            "status": "candidate-new",
+            "responsibility": "13项白名单和未知码测试",
+            "evidence": "T1测试边界"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+            "status": "candidate-new",
+            "responsibility": "查询条件、权限和分页服务测试",
+            "evidence": "T1测试边界"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java",
+            "status": "candidate-new",
+            "responsibility": "MySQL口径、查询计划和性能样本",
+            "evidence": "R7验收"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java",
+            "status": "candidate-new",
+            "responsibility": "路由和权限声明测试",
+            "evidence": "现有ControllerSecurityTest模式"
+          },
+          {
+            "path": "web/src/api/data-migration.ts",
+            "status": "existing",
+            "responsibility": "闭合指标、计数和下钻请求类型",
+            "evidence": "现有getDataMigrationDashboard位于该文件"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue",
+            "status": "existing",
+            "responsibility": "实时指标队列、批准布局、图表和滚动抽屉",
+            "evidence": "用户指定目标页面"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "实现后端13项单一指标定义、实时计数和同口径固定分页下钻",
+            "requirement_ids": [
+              "R1",
+              "R4",
+              "R5",
+              "R7"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "DashboardService现有项目校验和JdbcTemplate模式",
+              "当前Flyway和领域Service确认最终字段",
+              "PageResult是现有分页信封"
+            ],
+            "files": {
+              "create": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "DataMigrationPermissionService.requireProject(Long,AuthUser)",
+                "JdbcTemplate",
+                "PageResult<Map<String,Object>>"
+              ],
+              "produces": [
+                "DashboardMetricDefinition.require(String)",
+                "DashboardService.metric(String,Long,AuthUser)",
+                "DashboardService.drilldown(String,Long,int,int,AuthUser)"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "建立13项映射、未知码、租户项目删除条件和分页失败测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "当前因缺少定义和服务方法而失败",
+                "evidence": "退出码和首个缺失符号"
+              },
+              {
+                "id": "T1-S2",
+                "action": "实现静态定义及DashboardService单指标计数/下钻",
+                "command": null,
+                "expected": "外部指标码只能解析到固定定义，计数和明细共用同一条件",
+                "evidence": "实际diff和SQL参数断言"
+              },
+              {
+                "id": "T1-S3",
+                "action": "建立MySQL跨租户项目、颗粒度、删除状态、全分页与EXPLAIN ANALYZE测试",
+                "command": null,
+                "expected": "13项计数与完整分页一致且查询受项目范围约束",
+                "evidence": "Surefire与查询计划摘要"
+              },
+              {
+                "id": "T1-S4",
+                "action": "运行T1全部测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest,DashboardMetricMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "退出码0且所有断言通过",
+                "evidence": "测试报告和P95样本"
+              }
+            ],
+            "acceptance_checks": [
+              "13个指标码均可计数",
+              "未知码为BAD_REQUEST",
+              "跨租户/项目和deleted记录不计入",
+              "项目/组件方案专题颗粒度正确",
+              "下钻固定20条且updatedAt与稳定主键倒序",
+              "计数等于完整下钻行数"
+            ],
+            "risks": [
+              "异构表列名或最新域迁移与初始表结构不同",
+              "现有索引在代表性规模下可能不足"
+            ],
+            "rollback": "删除候选定义/测试并回退DashboardService新增方法，保留兼容overall/component",
+            "stop_conditions": [
+              "指标口径无法由当前表确认",
+              "查询计划无项目范围约束",
+              "达标必须新增当前未授权Flyway迁移"
+            ],
+            "escalation_conditions": [
+              "需要改变指标口径、扩大迁移写入范围或放宽性能门槛"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "迁移专用看板HTTP契约并退役每日快照调度",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "看板路由当前位于StructuredAssetController",
+              "DashboardSnapshotScheduler是唯一模块内调度/快照写入命中"
+            ],
+            "files": {
+              "create": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DashboardController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "delete": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1服务方法",
+                "ApiResponse",
+                "TraceId",
+                "AuthUser",
+                "Spring PreAuthorize"
+              ],
+              "produces": [
+                "GET /api/data-migration/dashboard/overall/metrics/{metricCode}",
+                "GET /api/data-migration/dashboard/overall/drilldowns/{metricCode}",
+                "保留三个兼容dashboard路由"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "建立专用Controller权限、路由、参数和无调度Bean测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "当前因Controller缺失或调度器存在而失败",
+                "evidence": "测试失败报告"
+              },
+              {
+                "id": "T2-S2",
+                "action": "新建DashboardController并从StructuredAssetController移除看板职责",
+                "command": null,
+                "expected": "新旧路由无重复且组件看板行为不变",
+                "evidence": "实际diff和路由断言"
+              },
+              {
+                "id": "T2-S3",
+                "action": "删除DashboardSnapshotScheduler且不改快照表",
+                "command": "rg -n \"Scheduled|EnableScheduling|dm_dashboard_snapshot\" server/src/modules/data-migration/src/main",
+                "expected": "无命中",
+                "evidence": "静态搜索输出"
+              },
+              {
+                "id": "T2-S4",
+                "action": "运行Controller及相关服务回归",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardControllerSecurityTest,DataMigrationModuleRegistrationTest,DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "退出码0",
+                "evidence": "Surefire报告"
+              }
+            ],
+            "acceptance_checks": [
+              "新端点具备看板RBAC",
+              "缺项目、未知码和size非20失败关闭",
+              "兼容路由仍存在",
+              "调度类/Bean和快照写入不存在"
+            ],
+            "risks": [
+              "路由移动可能造成重复映射或遗漏兼容别名"
+            ],
+            "rollback": "恢复原Controller看板路由并删除专用Controller；必要时整体回退调度类，快照表无需迁移",
+            "stop_conditions": [
+              "发现其他代码依赖调度器公共职责",
+              "兼容路由无法无损迁移"
+            ],
+            "escalation_conditions": [
+              "需要改变组件看板消费者契约或恢复长期快照机制"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "实现高保真响应式实时看板、独立状态、4路队列和按需滚动下钻",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "当前页面用scopeProjectId watch驱动",
+              "前端已有Element Plus/ECharts/Axios且无单测脚本",
+              "批准的v3可视稿已在四个宽度和明暗主题检查"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T2两个新GET端点",
+                "useProjectScope",
+                "UiPageHeader",
+                "Element Plus",
+                "ECharts",
+                "Axios AbortSignal"
+              ],
+              "produces": [
+                "DataMigrationDashboardMetricCode",
+                "getDataMigrationDashboardMetric",
+                "getDataMigrationDashboardDrilldown",
+                "完整OverallDashboardPage"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "增加闭合API类型和支持AbortSignal的请求函数",
+                "command": null,
+                "expected": "任意指标字符串不能通过TypeScript契约进入请求",
+                "evidence": "API diff和类型构建"
+              },
+              {
+                "id": "T3-S2",
+                "action": "实现最多4路指标队列、独立状态、单项重试、请求代次和取消",
+                "command": null,
+                "expected": "局部失败不阻塞其他卡片且旧项目响应不落地",
+                "evidence": "浏览器Network和交互记录"
+              },
+              {
+                "id": "T3-S3",
+                "action": "实现批准的总量、四项核心、九项资产、构成排行布局与图表生命周期",
+                "command": null,
+                "expected": "总量仅在13项全成功后显示，部分图表明确不完整",
+                "evidence": "桌面/移动截图和控制台"
+              },
+              {
+                "id": "T3-S4",
+                "action": "实现点击后第一页和串行滚动分页抽屉全状态",
+                "command": null,
+                "expected": "未点击无明细请求，后续失败保留记录且可重试",
+                "evidence": "Network请求序列和状态截图"
+              },
+              {
+                "id": "T3-S5",
+                "action": "完成移动/主题/可访问样式并运行生产构建",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc和Vite退出码0",
+                "evidence": "构建输出"
+              }
+            ],
+            "acceptance_checks": [
+              "最多4个指标请求在途",
+              "卡片独立loading/error/retry",
+              "13项全成功前无完整总量",
+              "项目切换清空并关闭下钻",
+              "未点击无下钻请求",
+              "滚动分页无重复页",
+              "四视口和明暗主题可用"
+            ],
+            "risks": [
+              "快速切换导致乱序",
+              "ECharts实例泄漏",
+              "滚动阈值重复触发",
+              "375px两列长标题拥挤"
+            ],
+            "rollback": "回退两个前端文件到旧三卡页面，兼容overall接口继续可用",
+            "stop_conditions": [
+              "需要修改公共UI、全局store或引入新依赖",
+              "375px无法按确认设计保持两列可读",
+              "无法证明并发/分页互斥"
+            ],
+            "escalation_conditions": [
+              "必须改变视觉层级、移动布局、接口字段或页大小"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "完成组合、性能、浏览器、治理和闭环收敛验收",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "T1-T3已提供可运行组合结果",
+              "目标环境真实最大项目规模为非阻塞未知项",
+              "已知REQ-061 scope错误属于任务外扰动"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-*.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-observation-*.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-convergence.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-state.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T3实现和测试",
+                "control-engineering阶段账本",
+                "本地MySQL和真实浏览器"
+              ],
+              "produces": [
+                "逐任务execution/observation",
+                "R1-R7 convergence结论",
+                "最终交付报告"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "运行模块、前端、治理、范围和diff检查",
+                "command": "mvn -pl :ccb-data-migration -am test && npm --prefix web run build && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml && git diff --check",
+                "expected": "全部退出码0；全局治理单独执行并区分已知REQ-061外部扰动",
+                "evidence": "命令退出码和摘要"
+              },
+              {
+                "id": "T4-S2",
+                "action": "核对13项API与完整下钻，验证权限、项目隔离和浏览器请求行为",
+                "command": null,
+                "expected": "数量一致、失败关闭、最多4路且无预取/轮询",
+                "evidence": "API和Network记录"
+              },
+              {
+                "id": "T4-S3",
+                "action": "采集重复请求P95与EXPLAIN ANALYZE",
+                "command": null,
+                "expected": "单项<=500ms、全部<=2s、下钻<=800ms且索引约束生效",
+                "evidence": "P95表和查询计划"
+              },
+              {
+                "id": "T4-S4",
+                "action": "在1280x800、375x812、390x844、430x932验收明暗主题和全状态",
+                "command": null,
+                "expected": "无控制台错误、页面级横向溢出或不可达操作",
+                "evidence": "截图、尺寸断言和交互记录"
+              },
+              {
+                "id": "T4-S5",
+                "action": "写执行、独立观测、纠偏和收敛账本",
+                "command": null,
+                "expected": "所有must有可重复证据且无开放阻塞反馈后phase=converged",
+                "evidence": "当前前缀JSON"
+              }
+            ],
+            "acceptance_checks": [
+              "后端模块测试和前端构建通过",
+              "权限与隔离反例通过",
+              "三项性能门槛通过",
+              "四视口明暗主题全状态通过",
+              "范围检查通过",
+              "R1-R7均有证据"
+            ],
+            "risks": [
+              "Docker/MySQL或浏览器不可用",
+              "测试数据不足以代表目标环境",
+              "全局治理被任务外REQ-061畸形scope阻塞"
+            ],
+            "rollback": "按T3、T2、T1逆序回退；无数据库反向迁移",
+            "stop_conditions": [
+              "任一must失败",
+              "性能不达标",
+              "出现越权或跨租户数据",
+              "页面横向溢出",
+              "出现冲突性未知工作区改动"
+            ],
+            "escalation_conditions": [
+              "环境缺失导致无法完成运行验收",
+              "性能修复需要平台迁移或公共能力授权"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "HTTP 适配依赖稳定的单指标服务契约"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "前端请求依赖最终 HTTP 路由与响应字段"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "组合验收依赖前后端完整实现"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am test",
+            "expected": "数据迁移模块测试退出码0"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "vue-tsc和Vite构建退出码0"
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml && git diff --check",
+            "expected": "范围与diff检查退出码0"
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "rg -n \"Scheduled|EnableScheduling|dm_dashboard_snapshot|setInterval|setTimeout\" server/src/modules/data-migration/src/main web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue",
+            "expected": "无命中"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-09 用户明确回复“进入代码开发”，批准实施计划修订1并进入control-engineering。",
+          "confirmed_at": "2026-09-09T08:36:23+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "数据迁移DashboardMetricDefinition/DashboardService/DashboardController",
+          "OverallDashboardPage和data-migration API",
+          "MySQL 13张指标资产表"
+        ],
+        "state_variable_candidates": [
+          "当前projectId与请求代次",
+          "13项指标状态/值/错误",
+          "指标队列和在途数",
+          "抽屉指标/页码/记录/hasMore/错误",
+          "ECharts实例"
+        ],
+        "interface_candidates": [
+          "两个新GET端点",
+          "三个兼容dashboard路由",
+          "DataMigrationPermissionService.requireProject",
+          "Axios AbortSignal",
+          "ECharts init/setOption/dispose"
+        ],
+        "sensor_candidates": [
+          "JUnit和Testcontainers MySQL",
+          "SQL参数断言和EXPLAIN ANALYZE",
+          "重复请求P95",
+          "vue-tsc/Vite构建",
+          "浏览器Network/Console/视口宽度",
+          "静态rg与范围检查"
+        ],
+        "actuator_candidates": [
+          "静态指标定义和JdbcTemplate查询",
+          "专用Controller和调度器删除",
+          "4路请求队列、AbortController和请求代次",
+          "响应式CSS、ECharts和滚动分页门闩"
+        ],
+        "disturbance_candidates": [
+          "异构表最终模式",
+          "数据倾斜/冷缓存/连接池等待",
+          "快速项目切换和慢请求乱序",
+          "滚动/ResizeObserver时序",
+          "任务外REQ-061治理文件错误"
+        ],
+        "delay_candidates": [
+          "4路队列等待",
+          "数据库查询和网络时延",
+          "滚动触发",
+          "图表初始化与resize"
+        ],
+        "assumptions": [
+          {
+            "text": "现有tenant_id/project_id前缀索引足以满足性能门槛",
+            "basis": "当前Flyway索引定义",
+            "falsifier": "EXPLAIN ANALYZE或P95超标且需新增索引"
+          },
+          {
+            "text": "统一id/code/name/granularity/systemCode/updatedAt投影足以用于看板核查",
+            "basis": "批准设计仅要求摘要下钻",
+            "falsifier": "用户要求下钻内编辑或展示领域完整字段"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Spring Security认证主体与方法权限\", \"DataMigrationPermissionService项目数据范围\", \"全局项目store和useProjectScope\", \"MySQL连接池、数据规模和缓存状态\", \"Element Plus、ECharts、Axios和浏览器\", \"组件级看板与其他资产CRUD消费者\"], \"inside\": [\"DashboardMetricDefinition静态指标白名单\", \"DashboardService单指标计数、分页下钻及兼容overall/component\", \"DashboardController与StructuredAssetController看板路由所有权\", \"DashboardSnapshotScheduler的Spring注册状态\", \"web data-migration API类型与OverallDashboardPage请求/渲染状态\", \"dm_plan、dm_topic、dm_report、dm_meeting、dm_issue、dm_release_drill、dm_mapping_doc、dm_rule、dm_parameter、dm_dependency、dm_script的读查询\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"真实MySQL优化器行为\", \"浏览器并发\"], \"id\": \"S1\", \"independence\": \"直接观察服务输入输出和SQL参数\", \"method\": \"JUnit捕获JdbcTemplate调用并对13项映射、参数、排序和错误断言\", \"target\": \"指标定义、SQL条件与服务分页\"}",
+      "{\"blind_spots\": [\"生产最大数据规模与连接池争用\"], \"id\": \"S2\", \"independence\": \"真实MySQL执行，与mock服务测试异质\", \"method\": \"Testcontainers MySQL数据夹具、完整分页交叉、EXPLAIN ANALYZE和重复计时\", \"target\": \"真实表口径、索引与性能\"}",
+      "{\"blind_spots\": [\"部署级安全过滤器配置\"], \"id\": \"S3\", \"independence\": \"观察Controller契约，不依赖页面\", \"method\": \"Controller权限反射、MockMvc参数和响应测试\", \"target\": \"HTTP权限与路由\"}",
+      "{\"blind_spots\": [\"仓库外部署脚本\"], \"id\": \"S4\", \"independence\": \"Spring装配与源码静态传感器组合\", \"method\": \"模块注册测试与rg静态搜索\", \"target\": \"无调度、无快照和无轮询\"}",
+      "{\"blind_spots\": [\"运行交互和视觉效果\"], \"id\": \"S5\", \"independence\": \"编译器/打包器\", \"method\": \"vue-tsc和Vite生产构建\", \"target\": \"前端类型和构建\"}",
+      "{\"blind_spots\": [\"无法稳定模拟生产网络分布\"], \"id\": \"S6\", \"independence\": \"端到端运行观察\", \"method\": \"真实浏览器Network、Console与交互记录\", \"target\": \"请求并发、乱序、下钻时序和全状态\"}",
+      "{\"blind_spots\": [\"未抽样设备字体差异\"], \"id\": \"S7\", \"independence\": \"浏览器像素与DOM尺寸\", \"method\": \"四视口明暗截图、scrollWidth数值和抽屉滚动检查\", \"target\": \"响应式排版和主题\"}",
+      "{\"blind_spots\": [\"未执行的外部CI\"], \"id\": \"S8\", \"independence\": \"仓库治理脚本和版本差异\", \"method\": \"scope检查、git diff --check、模块测试和全局治理\", \"target\": \"授权写入范围和回归\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"新增模块内静态定义并扩展DashboardService\", \"authority\": \"REQ-031允许server data-migration路径\", \"id\": \"A1\", \"impact_radius\": \"数据迁移只读看板查询\", \"rollback\": \"删除定义并回退DashboardService新增方法\", \"target\": \"指标口径和SQL\"}",
+      "{\"action\": \"新增专用DashboardController、移除旧Controller看板职责并删除调度类\", \"authority\": \"REQ-031允许server data-migration路径\", \"id\": \"A2\", \"impact_radius\": \"看板路由与快照调度Bean\", \"rollback\": \"恢复旧路由和调度类，表无需迁移\", \"target\": \"HTTP所有权和调度\"}",
+      "{\"action\": \"修改data-migration.ts和OverallDashboardPage.vue\", \"authority\": \"REQ-031允许两个前端路径\", \"id\": \"A3\", \"impact_radius\": \"数据迁移整体看板\", \"rollback\": \"回退两个文件到旧三卡页面\", \"target\": \"前端API和页面状态\"}",
+      "{\"action\": \"仅在现有索引足够时不动作；不足则停止并申请平台迁移写权限\", \"authority\": \"当前无platform infrastructure写权限\", \"id\": \"A4\", \"impact_radius\": \"不可控，禁止执行\", \"rollback\": \"不适用\", \"target\": \"查询索引\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"初始表DDL与当前列名不同\", \"source\": \"最终表模式跨多次Flyway域化\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"P95波动\", \"source\": \"MySQL冷缓存、数据倾斜和本机负载\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"旧项目数据污染\", \"source\": \"快速项目切换与慢请求乱序\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"图表空白或泄漏\", \"source\": \"ECharts/ResizeObserver和抽屉挂载时序\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"新worktree无法自然继承\", \"source\": \"用户现有未提交设计计划修改\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"全局治理检查失败\", \"source\": \"REQ-061畸形scope文件\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"任务scope指定同名分支且当前分支匹配，批准文档为未提交工作区改动\", \"falsifier\": \"发现该分支被其他并行任务写入相同文件\", \"text\": \"当前专用需求分支可作为隔离边界\"}",
+      "{\"evidence\": \"V161/V162/V168/V180/V184/V185/V186/V194/V197包含相关索引\", \"falsifier\": \"EXPLAIN ANALYZE无项目约束或P95超标\", \"text\": \"现有tenant/project前缀索引足够\"}",
+      "{\"evidence\": \"批准设计明确统一id/code/name/granularity/systemCode/updatedAt\", \"falsifier\": \"用户要求领域全字段或编辑\", \"text\": \"统一摘要投影满足下钻核查\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\", \"S3\", \"S6\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S4\", \"S6\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S5\", \"S6\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\", \"S3\", \"S6\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S2\", \"S3\", \"S6\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S5\", \"S7\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S2\", \"S6\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "实现后端13项单一指标定义、实时计数和同口径固定分页下钻",
+      "requirements": [
+        "R1",
+        "R4",
+        "R5",
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "DashboardService现有项目校验和JdbcTemplate模式",
+        "当前Flyway和领域Service确认最终字段",
+        "PageResult是现有分页信封"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "DashboardMetricDefinition.require(String)是13项码唯一解析入口",
+        "metric返回metricCode/count/calculatedAt",
+        "drilldown固定20条并返回统一PageResult投影"
+      ],
+      "non_goals": [
+        "不移动现有CRUD SQL到DashboardService",
+        "不新增缓存、快照或数据库迁移"
+      ],
+      "action_bounds": [
+        "只新增静态定义和DashboardService只读方法",
+        "测试可根据当前测试设施拆分，但不得弱化租户/项目/删除/颗粒度断言"
+      ],
+      "acceptance": [
+        "13项映射与未知码测试通过",
+        "SQL参数包含租户项目deleted条件",
+        "方案专题颗粒度正确",
+        "下钻计数和完整分页一致",
+        "MySQL查询计划受项目范围约束"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "聚焦JUnit退出码",
+        "MySQL查询计划与重复计时样本",
+        "发现的模式差异或扰动"
+      ],
+      "rollback": "删除候选定义/测试并回退DashboardService新增方法，保留兼容overall/component",
+      "stop_conditions": [
+        "指标口径无法由当前表确认",
+        "查询计划无项目范围约束",
+        "达标必须新增当前未授权Flyway迁移"
+      ],
+      "escalation_conditions": [
+        "需要改变指标口径、扩大迁移写入范围或放宽性能门槛"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T00:45:25+00:00",
+          "text": "执行前文件、权限、索引和测试设施已核对，开始后端指标契约"
+        },
+        {
+          "recorded_at": "2026-09-09T00:53:04+00:00",
+          "text": "T1实际diff和局部检查已记录，进入独立传感器复核"
+        },
+        {
+          "recorded_at": "2026-09-09T00:54:37+00:00",
+          "text": "T1两类传感器通过且无开放反馈，生产规模P95作为T4覆盖缺口"
+        }
+      ],
+      "updated_at": "2026-09-09T00:54:37+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "迁移专用看板HTTP契约并退役每日快照调度",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "看板路由当前位于StructuredAssetController",
+        "DashboardSnapshotScheduler是唯一模块内调度/快照写入命中"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DashboardController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "两个新GET端点使用T1服务方法",
+        "/dashboard/overall和/component(s)路由URL兼容",
+        "看板类级RBAC至少包含dashboard/access/manage/system:admin"
+      ],
+      "non_goals": [
+        "不删除dm_dashboard_snapshot表",
+        "不改变结构化资产Controller的其他路由",
+        "不改变组件看板数据契约"
+      ],
+      "action_bounds": [
+        "看板路由迁移到专用Controller",
+        "删除唯一DashboardSnapshotScheduler类",
+        "仅修改注册测试中与Controller/调度相关断言"
+      ],
+      "acceptance": [
+        "新旧路由无重复且参数校验正确",
+        "看板权限声明测试通过",
+        "模块源码无Scheduled/EnableScheduling/dm_dashboard_snapshot命中"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "Controller与注册测试退出码",
+        "静态rg输出",
+        "兼容路由反射或MockMvc证据"
+      ],
+      "rollback": "恢复原Controller看板路由并删除专用Controller；必要时整体回退调度类，快照表无需迁移",
+      "stop_conditions": [
+        "发现其他代码依赖调度器公共职责",
+        "兼容路由无法无损迁移"
+      ],
+      "escalation_conditions": [
+        "需要改变组件看板消费者契约或恢复长期快照机制"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T00:55:12+00:00",
+          "text": "T1已验证，开始专用Controller和调度退役"
+        },
+        {
+          "recorded_at": "2026-09-09T01:05:41+00:00",
+          "text": "T2产品改动完成，29项定向测试通过，静态搜索和diff检查通过"
+        },
+        {
+          "recorded_at": "2026-09-09T01:06:11+00:00",
+          "text": "T2观测无偏差，路由权限兼容和调度退役验收通过"
+        }
+      ],
+      "updated_at": "2026-09-09T01:06:11+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "实现高保真响应式实时看板、独立状态、4路队列和按需滚动下钻",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "当前页面用scopeProjectId watch驱动",
+        "前端已有Element Plus/ECharts/Axios且无单测脚本",
+        "批准的v3可视稿已在四个宽度和明暗主题检查"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "只消费T2固定新端点",
+        "metricCode使用闭合字符串联合",
+        "项目ID只来自useProjectScope",
+        "请求支持AbortSignal"
+      ],
+      "non_goals": [
+        "不修改公共UI和全局store",
+        "不引入依赖",
+        "不预取明细或增加轮询",
+        "不修改组件看板页面"
+      ],
+      "action_bounds": [
+        "页面内部实现最多4路队列和请求代次",
+        "页面内部实现ECharts生命周期和响应式布局",
+        "页面内部实现固定20条串行滚动抽屉"
+      ],
+      "acceptance": [
+        "npm build通过",
+        "最多4路请求且独立状态",
+        "13项全成功前不显示完整总量",
+        "项目切换清空/取消/关闭",
+        "未点击无下钻且翻页不重复",
+        "四视口明暗主题无横向溢出"
+      ],
+      "evidence_required": [
+        "实际diff",
+        "构建退出码",
+        "浏览器Network/Console记录",
+        "四视口截图和scrollWidth数值"
+      ],
+      "rollback": "回退两个前端文件到旧三卡页面，兼容overall接口继续可用",
+      "stop_conditions": [
+        "需要修改公共UI、全局store或引入新依赖",
+        "375px无法按确认设计保持两列可读",
+        "无法证明并发/分页互斥"
+      ],
+      "escalation_conditions": [
+        "必须改变视觉层级、移动布局、接口字段或页大小"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T01:06:11+00:00",
+          "text": "T1和T2均已verified，进入前端实时看板实施"
+        },
+        {
+          "recorded_at": "2026-09-09T03:36:22+00:00",
+          "text": "T3产品改动完成，构建、并发、下钻、失败恢复、项目隔离及明暗主题浏览器测量通过"
+        },
+        {
+          "recorded_at": "2026-09-09T03:36:22+00:00",
+          "text": "T3全部验收检查通过且观测无未关闭反馈"
+        }
+      ],
+      "updated_at": "2026-09-09T03:36:22+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "完成组合、性能、浏览器、治理和闭环收敛验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3已提供可运行组合结果",
+        "目标环境真实最大项目规模为非阻塞未知项",
+        "已知REQ-061 scope错误属于任务外扰动"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T1.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T2.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-execution-T3.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-observation.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-verification.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-convergence.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-overall-dashboard-realtime-state.json"
+      ],
+      "invariants": [
+        "所有查询限定认证tenantId、requireProject返回的projectId和deleted=0",
+        "指标与下钻共享DashboardMetricDefinition且外部字符串不能成为任意SQL标识符",
+        "兼容dashboard路由和组件看板行为不变",
+        "不修改平台公共组件、全局项目store、资产CRUD、附件、审计和其他业务模块",
+        "不读写dm_dashboard_snapshot且不增加任何定时刷新"
+      ],
+      "interface_contracts": [
+        "消费T1-T3运行结果，不修改产品契约",
+        "账本状态仅通过control_loop.py受控命令更新"
+      ],
+      "non_goals": [
+        "不以文档断言替代未执行验证",
+        "不修改任务外REQ-061文件",
+        "不自行合并、发布或推送"
+      ],
+      "action_bounds": [
+        "运行批准检查和真实浏览器验收",
+        "只记录实际证据和测量限制",
+        "发现偏差进入observing/correcting闭环"
+      ],
+      "acceptance": [
+        "后端模块测试和前端构建通过",
+        "权限/隔离/计数分页反例通过",
+        "三项性能门槛或明确阻塞",
+        "四视口全状态通过",
+        "scope与diff检查通过",
+        "R1-R7证据齐全"
+      ],
+      "evidence_required": [
+        "全部命令退出码和关键输出",
+        "P95与EXPLAIN ANALYZE",
+        "浏览器截图/Network/Console",
+        "scope审计",
+        "执行/观测/验证账本"
+      ],
+      "rollback": "按T3、T2、T1逆序回退；无数据库反向迁移",
+      "stop_conditions": [
+        "任一must失败",
+        "性能不达标",
+        "出现越权或跨租户数据",
+        "页面横向溢出",
+        "出现冲突性未知工作区改动"
+      ],
+      "escalation_conditions": [
+        "环境缺失导致无法完成运行验收",
+        "性能修复需要平台迁移或公共能力授权"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T03:36:22+00:00",
+          "text": "T1-T3均已verified，进入组合回归与收敛验收"
+        },
+        {
+          "recorded_at": "2026-09-09T03:48:22+00:00",
+          "text": "T4实现与检查已完成，进入独立观测。"
+        },
+        {
+          "recorded_at": "2026-09-09T03:51:07+00:00",
+          "text": "T4组合检查、性能P95、浏览器、范围和静态审计均有通过证据；治理阻断属于任务外REQ-061。"
+        }
+      ],
+      "updated_at": "2026-09-09T03:51:07+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1后端契约采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "T1: 9 tests pass; MySQL 8.4 EXPLAIN index assertion pass; scope/diff check pass",
+      "recorded_at": "2026-09-09T00:55:11+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2看板HTTP与调度退役完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "29项测试通过；调度/快照运行时搜索无匹配；diff检查通过",
+      "recorded_at": "2026-09-09T01:06:11+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T3实时看板与滚动下钻完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "构建通过；13请求/最大4并发；未点击0下钻；四浅色两深色视口无溢出；失败重试和项目切换通过",
+      "recorded_at": "2026-09-09T03:36:22+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "T4组合性能治理完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "全量模块170/0失败；看板聚焦11/0失败；前端build、scope、diff、静态审计通过；本地P95 8/93/15ms；浏览器六视口无溢出、无console错误、并发4、点击前下钻0。",
+      "recorded_at": "2026-09-09T03:50:53+00:00"
+    }
+  ]
+}
