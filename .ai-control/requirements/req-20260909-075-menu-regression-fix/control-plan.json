@@ -1,0 +1,76 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "项目管理入口按当前项目具体业务权限正确显示",
+      "requirement_ids": ["R2"],
+      "prerequisites": [],
+      "input_facts": ["项目根菜单 505 使用 project:access", "可见路由目录不含 501-504 隐藏权限节点", "AuthService 当前只做精确权限匹配"],
+      "write_scope": ["server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java", "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java"],
+      "invariants": ["无 project:* 权限不得获得 /projects", "具体叶子权限仍精确匹配", "不改变 AuthRepository 权限数据范围"],
+      "interface_contracts": ["GET /api/auth/routes 响应结构不变"],
+      "non_goals": ["不修改前端", "不改变项目角色权限模型"],
+      "action_bounds": ["仅增加 AuthService 内部路由匹配辅助逻辑和直接测试"],
+      "acceptance_checks": ["project:plan:list 激活 project:access 根菜单", "无 project:* 权限不激活项目根菜单", "Security 聚焦测试通过"],
+      "evidence_required": ["实际 diff", "JUnit 命令退出码"],
+      "rollback": "恢复 T1 两个文件的本次增量",
+      "stop_conditions": ["需要修改公开 API 或 AuthRepository 数据范围"],
+      "escalation_conditions": ["命名空间 access 语义与现有受保护接口冲突"]
+    },
+    {
+      "id": "T2",
+      "goal": "以客户端字符集无关方式修复权限维护菜单名称",
+      "requirement_ids": ["R1"],
+      "prerequisites": [],
+      "input_facts": ["V201 文件中文字正确但本地数据库值出现 UTF-8/latin1 双重编码乱码", "V202 未被占用"],
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectMenuRegressionMigrationTest.java"],
+      "invariants": ["迁移只追加", "只更新 tenant 1 菜单 102 的名称", "不修改 Flyway 历史"],
+      "interface_contracts": ["sys_menu 102 路由和权限码保持不变"],
+      "non_goals": ["不修复 V159 历史", "不修改其他菜单文本"],
+      "action_bounds": ["追加单一幂等 UPDATE 和静态迁移测试"],
+      "acceptance_checks": ["SQL 使用 E69D83E99990E7BBB4E68AA4", "System 聚焦测试通过"],
+      "evidence_required": ["实际 diff", "JUnit 命令退出码", "数据库字节探针或明确环境限制"],
+      "rollback": "应用回退时保留正确中文数据",
+      "stop_conditions": ["发现需修改已发布迁移或其他表"],
+      "escalation_conditions": ["本地数据库不是 utf8mb4 或菜单 102 不存在"]
+    },
+    {
+      "id": "T3",
+      "goal": "完成菜单修复的跨模块与运行验收",
+      "requirement_ids": ["R1", "R2"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["T1-T2 产生可组合修复"],
+      "write_scope": [".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json"],
+      "invariants": ["P0/P1 为零", "修改面位于 REQ075 范围"],
+      "interface_contracts": ["最终迁移、动态路由与前端菜单组合"],
+      "non_goals": ["不扩大到其他历史环境问题"],
+      "action_bounds": ["执行测试、构建、运行探针和浏览器验收并记录证据"],
+      "acceptance_checks": ["Security/System 测试通过", "前端构建通过", "数据库/API/浏览器结果满足 R1-R2"],
+      "evidence_required": ["三次采样", "至少两类独立传感器", "范围审计"],
+      "rollback": "按 T1 回滚代码；V202 数据保留",
+      "stop_conditions": ["存在未关闭 P0/P1"],
+      "escalation_conditions": ["运行环境需要读取 forbidden_paths 才能启动"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T3", "reason": "运行验收需要路由修复"},
+    {"from": "T2", "to": "T3", "reason": "运行验收需要菜单数据修复"}
+  ],
+  "parallel_groups": [["T1", "T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1", "T2"], "checks": ["运行 Security/System 聚焦测试", "检查最终 diff"]},
+    {"after_tasks": ["T3"], "checks": ["数据库/API/浏览器验收", "范围和收敛门禁"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 路由逻辑采样", "trigger": "T1 实施完成", "observer": "独立测试传感器", "sensors": ["S2"], "requirement_ids": ["R2"]},
+    {"label": "T2 迁移字节采样", "trigger": "T2 实施完成", "observer": "独立静态传感器", "sensors": ["S1"], "requirement_ids": ["R1"]},
+    {"label": "最终组合采样", "trigger": "T3 验收", "observer": "运行与浏览器传感器", "sensors": ["S3", "S4"], "requirement_ids": ["R1", "R2"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T2", "T3"], "sensor_ids": ["S1", "S3", "S4"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T3"], "sensor_ids": ["S2", "S3", "S4"]}
+  ],
+  "plan_status": "ready"
+}

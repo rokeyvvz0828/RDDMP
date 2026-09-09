@@ -40,8 +40,9 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenService tokenService, AuthService authService) {
-        return new JwtAuthenticationFilter(tokenService, authService);
+    JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenService tokenService, AuthService authService,
+                                                     ObjectMapper objectMapper) {
+        return new JwtAuthenticationFilter(tokenService, authService, objectMapper);
     }
 
     @Bean

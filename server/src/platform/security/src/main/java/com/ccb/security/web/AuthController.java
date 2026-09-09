@@ -53,8 +53,8 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<AuthMe> me(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(authService.me(user), TraceId.getOrCreate());
+    public ApiResponse<AuthMe> me(@AuthenticationPrincipal AuthUser user, HttpServletRequest request) {
+        return ApiResponse.success(authService.me(user, authService.resolveProjectId(request, user)), TraceId.getOrCreate());
     }
 
     @PostMapping(value = "/me/avatar", consumes = "multipart/form-data")
@@ -64,8 +64,8 @@ public class AuthController {
     }
 
     @GetMapping("/routes")
-    public ApiResponse<List<RouteNode>> routes(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(authService.routes(user), TraceId.getOrCreate());
+    public ApiResponse<List<RouteNode>> routes(@AuthenticationPrincipal AuthUser user, HttpServletRequest request) {
+        return ApiResponse.success(authService.routes(user, authService.resolveProjectId(request, user)), TraceId.getOrCreate());
     }
 
     @GetMapping("/permission-check")
