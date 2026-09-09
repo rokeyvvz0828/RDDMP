@@ -141,7 +141,7 @@ public class NotificationSseService {
             return true;
         } catch (IOException | IllegalStateException exception) {
             remove(key, emitter);
-            emitter.completeWithError(exception);
+            emitter.complete();
             return false;
         }
     }

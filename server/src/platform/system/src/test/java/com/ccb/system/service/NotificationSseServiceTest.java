@@ -10,6 +10,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
@@ -19,7 +20,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -119,6 +123,24 @@ class NotificationSseServiceTest {
                 synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
 
         verify(emitter, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
+    void disconnectedEmitterIsRemovedWithoutErrorDispatch() throws Exception {
+        SseEmitter emitter = mock(SseEmitter.class);
+        doNothing().doThrow(new IOException("broken pipe"))
+                .when(emitter).send(any(SseEmitter.SseEventBuilder.class));
+        NotificationSseService service = new NotificationSseService(
+                Clock.fixed(Instant.parse("2026-09-09T06:00:00Z"), ZoneOffset.UTC),
+                new SecureRandom(),
+                ignored -> emitter);
+        service.connect(service.issueTicket(USER).ticket());
+
+        service.heartbeat();
+
+        assertEquals(0, service.activeConnectionCount(1L, 7L));
+        verify(emitter).complete();
+        verify(emitter, never()).completeWithError(any());
     }
 
     private int serviceFactoryIndex;
