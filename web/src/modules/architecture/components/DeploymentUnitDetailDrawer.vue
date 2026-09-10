@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
-import type { DeploymentUnit, DeploymentUnitVersion } from '../types'
-import { deploymentUnitKindLabels, deploymentUnitStatusLabels, deploymentUnitStatusTone, formatDateTime } from '../utils'
+import { apiErrorMessage } from '../../../api/error'
+import { listDeploymentUnitDeliveryUnits } from '../api'
+import type { DeliveryUnit, DeploymentUnit, DeploymentUnitVersion, RelatedDeliveryUnit } from '../types'
+import { deliveryUnitStatusLabels, deploymentUnitKindLabels, deploymentUnitStatusLabels, deploymentUnitStatusTone, formatDateTime } from '../utils'
 import '../architecture.css'
 
 const props = defineProps<{
@@ -62,6 +64,38 @@ function canVoid() {
 function canEdit() {
   return props.unit?.status === 'ACTIVE'
 }
+
+// ---------- 关联交付单元（只读反查） ----------
+
+const relatedDeliveryUnits = ref<RelatedDeliveryUnit[]>([])
+const relatedDeliveryUnitsLoading = ref(false)
+const relatedDeliveryUnitsError = ref('')
+let relatedDeliveryUnitsRequest = 0
+
+async function loadRelatedDeliveryUnits() {
+  const id = props.unit?.id
+  if (!id) {
+    relatedDeliveryUnits.value = []
+    relatedDeliveryUnitsError.value = ''
+    return
+  }
+  const request = ++relatedDeliveryUnitsRequest
+  relatedDeliveryUnitsLoading.value = true
+  relatedDeliveryUnitsError.value = ''
+  try {
+    const result = await listDeploymentUnitDeliveryUnits(id)
+    if (request === relatedDeliveryUnitsRequest) relatedDeliveryUnits.value = result
+  } catch (error) {
+    if (request === relatedDeliveryUnitsRequest) {
+      relatedDeliveryUnits.value = []
+      relatedDeliveryUnitsError.value = apiErrorMessage(error, '关联交付单元加载失败')
+    }
+  } finally {
+    if (request === relatedDeliveryUnitsRequest) relatedDeliveryUnitsLoading.value = false
+  }
+}
+
+watch(() => props.unit?.id, () => { void loadRelatedDeliveryUnits() }, { immediate: true })
 </script>
 
 <template>
@@ -84,6 +118,19 @@ function canEdit() {
               <UiStatusTag :value="related.status" :labels="deploymentUnitStatusLabels" :tone="deploymentUnitStatusTone(related.status)" />
             </article>
           </div>
+        </section>
+
+        <section class="architecture-drawer-section">
+          <header><strong>关联交付单元</strong><span class="architecture-muted">{{ relatedDeliveryUnits.length }} 个</span></header>
+          <div v-loading="relatedDeliveryUnitsLoading" class="architecture-related-unit-list">
+            <p v-if="relatedDeliveryUnitsError" class="architecture-field-error">{{ relatedDeliveryUnitsError }}</p>
+            <el-empty v-else-if="!relatedDeliveryUnitsLoading && !relatedDeliveryUnits.length" description="暂无关联交付单元" :image-size="56" />
+            <article v-for="delivery in relatedDeliveryUnits" :key="delivery.id">
+              <div><strong>{{ delivery.name }}</strong><small>{{ delivery.code }}</small></div>
+              <UiStatusTag :value="delivery.status" :labels="deliveryUnitStatusLabels" :tone="delivery.status === 'ACTIVE' ? 'success' : 'warning'" />
+            </article>
+          </div>
+          <p class="architecture-form-hint">关联关系在交付单元详情抽屉内维护，此处仅展示。</p>
         </section>
 
         <section class="architecture-drawer-section">

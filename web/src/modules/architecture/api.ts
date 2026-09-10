@@ -16,6 +16,9 @@ import type {
   DecisionReview,
   DecisionUserReference,
   FirstHandlingOutcome,
+  DeliveryUnit,
+  DeliveryUnitPayload,
+  RelatedDeliveryUnit,
   DeploymentUnit,
   DeploymentUnitImportBatch,
   DeploymentUnitImportBatchDetail,
@@ -420,6 +423,66 @@ export async function reactivateDeploymentUnit(id: number) {
 
 export async function voidDeploymentUnit(id: number) {
   return (await projectHttp.post<ApiResponse<DeploymentUnit>>(`/architecture/deployment-units/${id}/void`)).data.data
+}
+
+/** 部署单元侧只读反查：某部署单元关联的交付单元。 */
+export async function listDeploymentUnitDeliveryUnits(id: number) {
+  return (await projectHttp.get<ApiResponse<RelatedDeliveryUnit[]>>(`/architecture/deployment-units/${id}/delivery-units`)).data.data
+}
+
+// ---------- 交付单元 ----------
+
+export async function listDeliveryUnits(query: Query) {
+  return (await projectHttp.get<ApiResponse<PageResult<DeliveryUnit>>>('/architecture/delivery-units', { params: compact(query) })).data.data
+}
+
+export async function getDeliveryUnit(id: number) {
+  return (await projectHttp.get<ApiResponse<DeliveryUnit>>(`/architecture/delivery-units/${id}`)).data.data
+}
+
+export async function createDeliveryUnit(payload: DeliveryUnitPayload) {
+  return (await projectHttp.post<ApiResponse<DeliveryUnit>>('/architecture/delivery-units', payload)).data.data
+}
+
+export async function updateDeliveryUnit(id: number, payload: DeliveryUnitPayload) {
+  return (await projectHttp.put<ApiResponse<DeliveryUnit>>(`/architecture/delivery-units/${id}`, payload)).data.data
+}
+
+export async function replaceDeliveryUnitDeploymentUnits(id: number, deploymentUnitIds: number[]) {
+  return (await projectHttp.put<ApiResponse<DeliveryUnit>>(`/architecture/delivery-units/${id}/deployment-units`, { deploymentUnitIds })).data.data
+}
+
+export async function deactivateDeliveryUnit(id: number) {
+  return (await projectHttp.post<ApiResponse<DeliveryUnit>>(`/architecture/delivery-units/${id}/deactivate`)).data.data
+}
+
+export async function reactivateDeliveryUnit(id: number) {
+  return (await projectHttp.post<ApiResponse<DeliveryUnit>>(`/architecture/delivery-units/${id}/reactivate`)).data.data
+}
+
+export async function deleteDeliveryUnit(id: number) {
+  return (await projectHttp.delete<ApiResponse<void>>(`/architecture/delivery-units/${id}`)).data
+}
+
+/** 交付单元关联选择用的部署单元候选，只返回同一物理子系统下的启用部署单元。 */
+export async function searchDeliveryUnitDeploymentUnitOptions(query: {
+  physicalSubsystemId: number
+  keyword?: string
+  page?: number
+  size?: number
+  excludeId?: number | null
+}) {
+  return (await projectHttp.get<ApiResponse<PageResult<RelatedDeploymentUnit>>>('/architecture/delivery-units/deployment-unit-options', {
+    params: compact(query)
+  })).data.data
+}
+
+/** 交付单元归属物理子系统候选，使用交付单元自身权限。 */
+export async function loadDeliveryUnitPhysicalSubsystemOptions(keyword = '', size = 50) {
+  const filter = keyword && /^[A-Za-z0-9_-]+$/.test(keyword) ? { code: keyword } : { name: keyword }
+  return (await projectHttp.get<ApiResponse<PageResult<PhysicalSubsystemOption>>>('/architecture/options/delivery-unit/physical-subsystems', {
+    params: compact({ page: 1, size, ...filter })
+  })).data.data.records
 }
 
 export async function loadParticipatingPhysicalOptions() {

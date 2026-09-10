@@ -412,6 +412,7 @@ const router = createRouter({
         { path: 'architecture/decisions/new', name: 'architecture-decision-new', component: () => import('../modules/architecture/DecisionMatterFormPage.vue'), meta: { title: '提交架构决策事项' } },
         { path: 'architecture/decisions/:id', name: 'architecture-decision-detail', component: () => import('../modules/architecture/DecisionMatterDetailPage.vue'), meta: { title: '架构决策事项详情' } },
         { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
+        { path: 'architecture/delivery-units', name: 'architecture-delivery-units', component: () => import('../modules/architecture/DeliveryUnitPage.vue'), meta: { title: '交付单元' } },
         { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
         { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '环境管理' } },
         { path: 'architecture/instances', name: 'architecture-instances', component: () => import('../modules/architecture/InstanceListPage.vue'), meta: { title: '环境部署实例' } },
