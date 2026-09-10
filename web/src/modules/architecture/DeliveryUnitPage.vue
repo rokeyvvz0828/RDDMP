@@ -81,6 +81,9 @@ const relatedError = ref('')
 let listRequest = 0
 let detailRequest = 0
 let relatedRequest = 0
+// el-drawer 在父层把 model-value 置为 false 时也会回发 update:modelValue，
+// 保存成功主动关闭需要通过该标记跳过未保存确认，避免重复弹窗。
+let suppressCloseGuard = false
 
 const canView = computed(() => auth.hasPermission('architecture:delivery-unit:view')
   || auth.hasPermission('architecture:delivery-unit:manage')
@@ -99,6 +102,11 @@ function formSnapshot() {
 async function requestCloseForm(value: boolean) {
   if (value) {
     formOpen.value = true
+    return
+  }
+  if (suppressCloseGuard) {
+    suppressCloseGuard = false
+    formOpen.value = false
     return
   }
   if (formSubmitting.value) return
@@ -202,6 +210,7 @@ function openCreate() {
   formError.value = ''
   relatedOptions.value = []
   relatedError.value = ''
+  suppressCloseGuard = false
   formBaseline.value = formSnapshot()
   formOpen.value = true
   void searchRelatedOptions()
@@ -220,6 +229,7 @@ function openEdit(unit: DeliveryUnit) {
   formError.value = ''
   relatedOptions.value = [...unit.relatedDeploymentUnits]
   relatedError.value = ''
+  suppressCloseGuard = false
   formBaseline.value = formSnapshot()
   formOpen.value = true
   void searchRelatedOptions()
@@ -255,6 +265,7 @@ async function submitForm() {
       ElMessage.success('交付单元已更新')
       detail.value = updated
     }
+    suppressCloseGuard = true
     formOpen.value = false
     void load()
   } catch (error) {
