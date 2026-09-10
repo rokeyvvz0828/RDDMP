@@ -1,0 +1,45 @@
+{
+  "iteration_id": "I11",
+  "task_id": "T3",
+  "status": "feedback-open",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+      "purpose": "同一根因的既有页面修复：remote 下拉补 empty 插槽"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260910-073-architecture-delivery-unit/codex-task-scope.yaml",
+      "purpose": "按用户授权将 DeploymentUnitPage.vue 纳入可写范围"
+    }
+  ],
+  "commands": [
+    {
+      "command": "grep -c \"remote-method\" 与 \"#empty\"",
+      "exit_code": 0,
+      "salient_output": "DeploymentUnitPage.vue remote-select=1 empty-slot=0"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "纯展示层缺陷，关联约束不受影响",
+      "limitations": []
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-4",
+      "requirement_id": "R5",
+      "expected": "部署单元新建/修改的关联选择在搜索无匹配时保持打开并展示空结果提示",
+      "observed": "与 F-3 同一根因：未提供 #empty 插槽，remote 空结果时弹层自动收起",
+      "reproduction": "架构管理→部署单元→新建部署单元→关联部署单元输入 ZZZ-NOT-EXIST",
+      "evidence": "grep 显示 DeploymentUnitPage.vue remote-select=1 empty-slot=0；Element Plus useSelect.mjs dropdownMenuVisible 要求 remote 场景下 slots.empty 为真",
+      "severity": "P2",
+      "confidence": "high",
+      "status": "open"
+    }
+  ],
+  "correction": null,
+  "next": "controlling"
+}

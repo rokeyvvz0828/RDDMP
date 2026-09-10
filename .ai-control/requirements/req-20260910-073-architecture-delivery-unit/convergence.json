@@ -75,7 +75,8 @@
       ],
       "evidence": [
         "MySQL 测试直接插入跨物理子系统关联行被复合外键拒绝；API 跨物理子系统提交 409；浏览器关联候选仅 1 项且限定所选物理子系统",
-        "UAT 反馈 F-3 纠偏后 verify-empty-slot.mjs 4/4：空候选下拉保持打开并展示提示"
+        "UAT 反馈 F-3 纠偏后 verify-empty-slot.mjs 4/4：空候选下拉保持打开并展示提示",
+        "F-4 纠偏后 verify-deployment-unit-select.mjs 3/3：部署单元页关联下拉在无匹配时保持打开"
       ],
       "limitations": [
         "由同一 Agent 执行与观测，非独立验证"
@@ -120,7 +121,8 @@
         "T4"
       ],
       "evidence": [
-        "V202 在真实 MySQL 8.4 上从空库执行成功且未修改既有迁移；架构模块 449 项测试全过；npm build 通过；移动视口无横向滚动且抽屉宽度 366<=390"
+        "V202 在真实 MySQL 8.4 上从空库执行成功且未修改既有迁移；架构模块 449 项测试全过；npm build 通过；移动视口无横向滚动且抽屉宽度 366<=390",
+        "两处前端修复均复用既有 architecture.css 与语义变量，未新增公共组件"
       ],
       "limitations": [
         "由同一 Agent 执行与观测，非独立验证"
@@ -158,7 +160,7 @@
     }
   ],
   "feedback_summary": {
-    "total": 3,
+    "total": 4,
     "accepted_open": 0,
     "escalated": 0,
     "deferred_by_severity": {
@@ -198,6 +200,14 @@
       "P2": 0,
       "P3": 3,
       "score": 3
+    },
+    {
+      "sample_id": "S-0005",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 3,
+      "score": 3
     }
   ],
   "regression_checks": [
@@ -230,6 +240,11 @@
       "check": "三组浏览器验收复跑",
       "result": "pass",
       "evidence": "accept.mjs 16/16、accept-reverse.mjs 2/2、accept-mobile.mjs 7/7 全 PASS，console errors none"
+    },
+    {
+      "check": "F-4 纠偏回归（部署单元关联下拉空结果）",
+      "result": "pass",
+      "evidence": "verify-deployment-unit-select.mjs 3/3 PASS"
     }
   ],
   "invariant_results": [
@@ -316,11 +331,10 @@
     "部署单元作废守卫未对本地演示数据真实执行（避免破坏数据），以真实数据库集成断言为准",
     "全部观测由同一 Agent 执行，属非独立验证",
     "三项治理基线故障（V84_1 命名、模块越界导入、REQ-20260904-061 scope 非 JSON 兼容）为本任务之前既有问题，未修复",
-    "移动端仅用 Chromium 视口模拟（390x844），未在真机验证",
-    "已修复的 remote 下拉空候选自动收起问题同样存在于既有 DeploymentUnitPage.vue 的关联部署单元选择（跨物理子系统搜索，命中空结果时也会收起）；该文件不在本需求 writable_paths 内，未一并修复，建议单独提需求或扩展范围"
+    "移动端仅用 Chromium 视口模拟（390x844），未在真机验证"
   ],
   "gate_result": "blocked",
-  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量）；F-1/F-2/F-3 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，属于缺少权限与用户决定，按契约返回 blocked 并升级给用户",
+  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量）；F-1～F-4 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，属于缺少权限与用户决定，按契约返回 blocked 并升级给用户",
   "definition_revision": "definition-1",
   "open_feedback": [],
   "generated_at": "2026-09-10"
