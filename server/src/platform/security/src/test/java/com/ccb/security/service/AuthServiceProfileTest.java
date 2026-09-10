@@ -44,6 +44,11 @@ class AuthServiceProfileTest {
         public List<String> findPermissions(long userId, long tenantId) {
             return List.of("system:admin");
         }
+
+        @Override
+        public List<String> findPermissions(long userId, long tenantId, Long projectId) {
+            return List.of("system:admin");
+        }
     }
 
     private static final class UnavailableStorage extends MinioStorageService {

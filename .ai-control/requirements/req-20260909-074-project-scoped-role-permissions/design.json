@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260909-074-project-scoped-role-permissions",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-09-project-scoped-role-permissions-design.md",
+  "objective": "Make project business permissions follow the selected project and its project roles while keeping system administration permissions global.",
+  "users": ["System administrators maintaining the permission catalog", "Project owners configuring project roles", "Project members switching between projects"],
+  "requirements": [
+    {"id": "R1", "statement": "System settings must provide permission catalog maintenance instead of system role-to-permission assignment.", "acceptance": ["Authorized administrators can query, create, edit, enable, disable and conditionally delete permissions", "Permission codes are immutable after creation"], "priority": "must", "source": "User-confirmed design section 2", "counterexample": ["The system settings page still assigns business permissions directly to system roles"]},
+    {"id": "R2", "statement": "Project roles must configure project business permissions from the central catalog.", "acceptance": ["A project role drawer groups selectable permissions by menu", "System permissions never appear as project role options", "Saved selections reload unchanged"], "priority": "must", "source": "User request and confirmed design sections 1-2", "counterexample": ["A project role can grant system settings access"]},
+    {"id": "R3", "statement": "Effective business permissions must change with the active project and be enforced by the server.", "acceptance": ["The same user receives different permissions for projects A and B according to assigned project roles", "Menus, routes, buttons and protected APIs agree", "Forged or mismatched project context is rejected"], "priority": "must", "source": "User request and confirmed design section 3", "counterexample": ["Only frontend controls change while the backend still accepts unauthorized writes"]},
+    {"id": "R4", "statement": "Existing project roles must be initialized without locking out project administration.", "acceptance": ["PM roles receive all active project business permissions", "Other existing roles receive active read permissions", "New roles have no permissions", "Project owners retain full current-project permissions"], "priority": "must", "source": "User-confirmed migration rule", "counterexample": ["Migration leaves a project owner unable to configure roles"]},
+    {"id": "R5", "statement": "Permission changes must preserve tenant and project isolation and be audited.", "acceptance": ["Cross-tenant and cross-project role identifiers are rejected", "Permission catalog and role assignment writes create audit records"], "priority": "must", "source": "Repository security rules", "counterexample": ["A role from one project can be assigned permissions through another project endpoint"]}
+  ],
+  "invariants": ["System administration permissions remain global", "Project roles cannot grant system permissions", "Frontend visibility never replaces backend authorization", "Flyway migrations are append-only"],
+  "constraints": ["Keep existing Java packages and JWT format", "Reuse sys_menu and sys_menu_permission as the permission catalog", "Use X-Project-Id for request project context", "No production or external-system access"],
+  "non_goals": ["Rebuild organization or member management", "Store permission lists in JWT", "Restore business form metadata"],
+  "selected_approach": {
+    "name": "Request-scoped project context with server-side permission union",
+    "reason": "Provides immediate revocation, secure API enforcement and consistent project switching without token churn.",
+    "alternatives": [
+      {"name": "Issue a new token on every project switch", "rejected_because": "Creates token rotation and multi-tab consistency problems."},
+      {"name": "Merge permissions only in the frontend", "rejected_because": "Cannot enforce backend authorization."}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["Permission catalog maintenance", "Project role permission assignment", "Request project context", "Effective permission and route calculation", "V201 migration", "Desktop and mobile role permission UI"], "outside": ["JWT schema", "Organization data", "Business form metadata", "Non-project business data"]},
+    "components": [
+      {"name": "System permission catalog", "responsibility": "Own permission definitions, lifecycle and reference protection.", "depends_on": ["sys_menu", "sys_menu_permission", "operation audit"]},
+      {"name": "Project role authorization", "responsibility": "Persist and validate role-permission selections within a project.", "depends_on": ["pm_project_role", "pm_project_member_role", "pm_project_role_permission"]},
+      {"name": "Security effective-permission resolver", "responsibility": "Union global system permissions with active-project business permissions and build routes.", "depends_on": ["authenticated user", "X-Project-Id", "project membership"]},
+      {"name": "Frontend project/auth context", "responsibility": "Attach project context, refresh permissions/routes and recover failed switches.", "depends_on": ["project-context store", "auth store", "HTTP client"]}
+    ],
+    "interfaces": [
+      {"name": "Permission catalog API", "producer": "platform/system", "consumers": ["system permission maintenance", "project role permission drawer"], "contract": "Tenant-scoped active catalog with immutable codes and reference-safe lifecycle."},
+      {"name": "Project role permissions API", "producer": "platform/system", "consumers": ["project settings"], "contract": "GET and transactionally replace permissions for a role belonging to the path project."},
+      {"name": "Effective auth context", "producer": "platform/security", "consumers": ["JWT filter", "auth store", "dynamic navigation"], "contract": "Global system permissions plus active-project business permissions after membership and tenant validation."}
+    ],
+    "data_flows": [
+      {"input": "User selects project B", "transitions": ["keep project A active while loading", "request auth context for B", "validate membership", "resolve B role union", "replace routes and permissions", "commit project B selection"], "output": "Navigation and protected actions reflect project B"},
+      {"input": "Project owner saves role permission IDs", "transitions": ["validate manager authority", "validate role project", "filter active business permissions", "transactionally replace relations", "write audit"], "output": "Subsequent requests use the new permission set"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "Missing, malformed or mismatched project context", "behavior": "Reject project business access with 403.", "recovery": "Select a valid accessible project and retry."},
+    {"condition": "Project switch refresh fails", "behavior": "Keep the previous project and permissions; show a retryable error.", "recovery": "Retry without losing the current page context."},
+    {"condition": "Permission save fails", "behavior": "Keep the drawer and local selection open; do not show success.", "recovery": "Correct the validation error or retry."},
+    {"condition": "Permission is referenced", "behavior": "Reject deletion and identify that the permission is in use.", "recovery": "Remove assignments or disable the permission."}
+  ],
+  "quality_attributes": {
+    "security": ["Tenant and project isolation", "Server-side RBAC", "No project-to-system privilege elevation", "Audited writes"],
+    "performance": ["Indexed role-permission lookup", "Request-scoped caching only", "No per-row permission query"],
+    "compatibility": ["Existing JWTs remain valid", "System role model remains", "Migration seeds existing project roles"],
+    "operations": ["Append-only migration", "Post-deploy count and access checks", "Rollback keeps V201 data"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "Catalog and project-role UI/API operations persist and enforce allowed scope.", "method": "Focused backend tests, frontend build and browser acceptance."},
+    {"requirement_ids": ["R3", "R5"], "signal": "Project A/B produce different effective permissions and forged contexts return 403.", "method": "Security integration tests and real API calls."},
+    {"requirement_ids": ["R4"], "signal": "Migration output assigns all/read/none according to role type and owner remains privileged.", "method": "Flyway migration test and seeded-database queries."}
+  ],
+  "assumptions": [
+    {"text": "Every project business write can be associated with one current project.", "basis": "Existing project-scoped tables and top project selector.", "falsifier": "An in-scope endpoint performs a cross-project operation without a single owner project."},
+    {"text": "Project role code PM identifies the manager role in existing data.", "basis": "Current project access and security queries already use role_code = PM.", "falsifier": "Existing projects use a different manager role code."}
+  ],
+  "unknowns": [
+    {"question": "Which legacy project API calls currently omit project context outside path/query data?", "impact": "Implementation plan must inventory and adapt those callers.", "owner": "Implementation engineer", "blocking": false},
+    {"question": "Why does the local plugin entry checker receive an unknown error from the Codex plugin list?", "impact": "Repository development-entry gate must pass before product code implementation.", "owner": "Development environment maintainer", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "Keep system administration permissions global and restrict project roles to project business permissions.", "reason": "Prevents project-level privilege elevation into platform administration.", "source": "User confirmation"},
+    {"id": "D2", "decision": "Initialize PM with all permissions, other existing roles with read permissions, new roles with none, and owners with full fallback.", "reason": "Provides a usable migration without broad write access.", "source": "User confirmation"},
+    {"id": "D3", "decision": "Use request-scoped project context and server-side permission union.", "reason": "Secure, immediately consistent and avoids token churn.", "source": "User selected option 1"},
+    {"id": "D4", "decision": "Use central permission maintenance and a fullscreen-capable project-role drawer.", "reason": "Separates catalog ownership from per-project assignment while reusing established UI patterns.", "source": "User confirmation"}
+  ],
+  "risks": [
+    {"risk": "Legacy clients omit project context.", "impact": "Unexpected 403 responses.", "mitigation": "Inventory calls, classify global versus project APIs and add contract tests before switching enforcement."},
+    {"risk": "Routes and API checks use different permission sources.", "impact": "Visible pages fail or hidden pages remain callable.", "mitigation": "Use one effective-permission resolver and test route/button/API agreement."},
+    {"risk": "Role migration over-grants non-PM roles.", "impact": "Privilege escalation.", "mitigation": "Seed only active read actions for non-PM roles and verify counts per project."}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User confirmed all three design sections and selected the recommended request-scoped approach.",
+    "confirmed_at": "2026-09-09T09:15:00+08:00"
+  }
+}

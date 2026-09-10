@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260908-072", "status": "ready", "document": "docs/requirements/REQ-20260908-072-user-password-reset/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "Codex", "module": "platform/system", "module_owner": "rokeyvvz0828", "branch": "licon", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "local-browser"]},
+  "external_access": {"changed": false, "systems": [], "data_classification": "local-development-only"},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260908-072-user-password-reset/**",
+      ".ai-control/requirements/req-20260908-072-user-password-reset/*.json",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/SystemServicePasswordResetTest.java",
+      "web/src/views/ModuleView.vue"
+    ],
+    "read_only_paths": [".env", "server/src/platform/security/**", "web/src/api/system.ts", "web/src/components/ui/**", "docs/governance/**", "governance/modules.yaml", ".ai-control/original/state.json"],
+    "forbidden_paths": ["**/*.pem", "**/*.key", "server/src/platform/infrastructure/src/main/resources/db/migration/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260908-072", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["non-empty password update", "blank password preservation", "system module tests"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No schema change; revert service and UI changes."},
+  "required_tests": [
+    {"name": "system", "command": "mvn -pl :ccb-system -am test"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "whitespace", "command": "git diff --check"}
+  ],
+  "risk": {"level": "high", "items": ["Credential update", "tenant-scoped user mutation"]},
+  "completion": {"control_mode": "high-assurance", "control_prefix": "req-20260908-072-user-password-reset", "rollback": "Revert only REQ072 service, test and label changes; existing password hashes remain valid."}
+}

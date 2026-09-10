@@ -1,0 +1,37 @@
+{
+  "objective": "恢复权限维护中文菜单名称，并让项目管理入口与当前项目业务权限一致显示。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须以正确中文显示权限维护菜单。",
+      "acceptance": ["菜单 102 名称等于权限维护", "名称 UTF-8 十六进制为 E69D83E99990E7BBB4E68AA4"],
+      "priority": "must",
+      "source": "用户反馈",
+      "counterexample": ["菜单名称显示为 æƒé™ç»´æŠ¤"]
+    },
+    {
+      "id": "R2",
+      "statement": "拥有当前项目任一 project 命名空间业务权限的用户必须看到项目管理菜单。",
+      "acceptance": ["project:plan:list 可激活 /projects 根菜单", "没有 project:* 权限时不返回 /projects"],
+      "priority": "must",
+      "source": "用户反馈与 REQ074 不变量",
+      "counterexample": ["拥有 project:plan:list 但动态路由没有 /projects", "无项目权限仍返回 /projects"]
+    }
+  ],
+  "invariants": ["服务端权限为权威", "项目权限不授予系统权限", "Flyway 迁移只追加", "保留全部用户现有改动"],
+  "constraints": ["只修改 REQ075 writable_paths", "不读取 .env 或密钥", "不修改 V201"],
+  "non_goals": ["不改前端布局", "不改公开 API", "不修复本地既有 Flyway V159 历史"],
+  "assumptions": [
+    {"text": "乱码只存在于菜单 102 的数据库值", "basis": "浏览器中页面静态标题正常且 V201 仅更新该中文菜单名", "falsifier": "运行检查发现其他本次变更字段乱码"},
+    {"text": "项目菜单缺失源于 project:access 与具体 project:* 权限不匹配", "basis": "V52 根菜单权限码和 AuthService 精确匹配逻辑", "falsifier": "带 project:* 权限的路由服务测试仍包含 /projects"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"question": "是否保持既有权限数据模型和 API", "options": ["保持兼容", "改变权限模型"], "selected": "保持兼容", "blocking": false, "source": "REQ074 与仓库约束"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "迁移 SQL 的目标字节与运行数据库菜单文本", "candidate_sensor": "迁移静态测试和数据库/API探针"},
+    {"requirement_id": "R2", "observable": "不同项目权限集合生成的动态路由树", "candidate_sensor": "AuthService 单元测试和真实浏览器"}
+  ],
+  "baseline_status": "ready"
+}

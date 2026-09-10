@@ -1,0 +1,54 @@
+{
+  "sample_label": "T5 assembled project-scoped permission acceptance",
+  "task_ids": ["T5"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "System tests, local API probe and real browser",
+      "result": "pass",
+      "raw_evidence": "91 System tests passed; permission catalog CRUD succeeded; search, create drawer, immutable edit codes, status confirmation and delete cancellation were exercised; audit rows were persisted.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "Database relation query, scoped API and real browser drawer",
+      "result": "pass",
+      "raw_evidence": "Zero system:* project-role relations; role counts render as PM 392 and DEV/QA 82; DEV assignment search, menu toggle, fullscreen and original-value save/readback succeeded.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "Security tests, two-project API identity and browser project switch",
+      "result": "pass",
+      "raw_evidence": "12 Security tests passed; one temporary identity produced different A/B permission and route sets; forged contexts returned 403; browser switch committed only after confirmation and synchronized the project detail URL.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Local MySQL counts and role authorization API",
+      "result": "pass",
+      "raw_evidence": "V201 created 1030 relations with PM 392 and existing non-PM roles 82 read permissions; project owner/admin could open and save role permissions.",
+      "limitation": ["Local migration execution bypassed Flyway because the database has a pre-existing failed V159 history row; SQL outcomes were inspected directly."]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "Security/System tests, negative API probes and database audit query",
+      "result": "pass",
+      "raw_evidence": "Non-member and path/header mismatch requests returned 403; no orphan relations exist; catalog and role assignment actions produced audit rows.",
+      "limitation": ["Audit rows were read directly because the local admin's unrelated audit-list permission is missing."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Local Flyway V159 history failure and seeded workflow publisher configuration prevent an unmodified backend startup.",
+    "Full repository governance is blocked by unrelated REQ061 YAML; approved-path and entry checks remain green.",
+    "The browser-found null option warning was corrected in scope and produced zero new warn/error logs on recheck."
+  ],
+  "coverage_gaps": [
+    "No production data, identity or environment was accessed.",
+    "Historical Flyway repair, seeded workflow configuration and the unrelated audit-list grant are outside REQ074."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

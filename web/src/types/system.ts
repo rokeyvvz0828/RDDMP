@@ -45,6 +45,26 @@ export interface PermissionAction { id: number; action_code: string; permission_
 
 export interface PermissionMenu { id: number; parent_id: number; menu_name: string; menu_type: string; route_path?: string; permission_code?: string; icon?: string; sort_no: number; actions: PermissionAction[]; children?: PermissionMenu[] }
 
+export interface PermissionRecord {
+  id: number
+  menu_id: number
+  menu_name: string
+  action_code: string
+  permission_code: string
+  permission_name: string
+  status: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PermissionPayload {
+  menu_id: number
+  action_code: string
+  permission_code: string
+  permission_name: string
+  status: number
+}
+
 export interface OperationAuditRecord {
   id: number
   operatorId: number

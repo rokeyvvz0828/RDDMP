@@ -2,13 +2,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, ArrowLeft, ArrowUp, Briefcase, Calendar, ChatDotRound, Delete, Document, Download, Edit, Folder, Lock, Plus, Search, Upload, User, View } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowLeft, ArrowUp, Briefcase, Calendar, ChatDotRound, Delete, Document, Download, Edit, Folder, FullScreen, Lock, Plus, ScaleToOriginal, Search, Upload, User, View } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import { apiErrorMessage } from '../api/error'
 import { createProjectAttachmentCategory, deleteProjectAttachment, getProjectAttachmentCategories, getProjectAttachmentDownload, getProjectAttachmentPreview, getProjectAttachments, uploadProjectAttachment } from '../api/attachments'
-import { createProject, createProjectMember, createProjectOrganization, createProjectPlan, createProjectPlanGroup, createProjectRisk, createProjectRiskComment, createProjectRole, createProjectStage, deleteProject, deleteProjectMember, deleteProjectOrganization, deleteProjectPlan, deleteProjectPlanGroup, deleteProjectRisk, deleteProjectRole, deleteProjectStage, getProject, getProjectOptions, getProjectRiskComments, getProjectUserOptions, getProjectWorkbench, moveProjectPlanToGroup, updateProject, updateProjectMember, updateProjectOrganization, updateProjectPlan, updateProjectRisk, updateProjectRole, updateProjectSettings, updateProjectStage } from '../api/project'
+import { createProject, createProjectMember, createProjectOrganization, createProjectPlan, createProjectPlanGroup, createProjectRisk, createProjectRiskComment, createProjectRole, createProjectStage, deleteProject, deleteProjectMember, deleteProjectOrganization, deleteProjectPlan, deleteProjectPlanGroup, deleteProjectRisk, deleteProjectRole, deleteProjectStage, getProject, getProjectOptions, getProjectRiskComments, getProjectRolePermissions, getProjectUserOptions, getProjectWorkbench, moveProjectPlanToGroup, saveProjectRolePermissions, updateProject, updateProjectMember, updateProjectOrganization, updateProjectPlan, updateProjectRisk, updateProjectRole, updateProjectSettings, updateProjectStage } from '../api/project'
 import type { Project, ProjectMember, ProjectOptions, ProjectOrganization, ProjectPlan, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectStage, ProjectStatus, PlanStatus, ProjectUserOption, ProjectOrganizationOption, ProjectPlanGroupColorToken } from '../types/project'
 import type { AttachmentCategory, ProjectAttachment } from '../types/attachments'
+import type { PermissionMenu } from '../types/system'
 import { formatDateOnly } from '../utils/date'
 import { useAuthStore } from '../stores/auth'
 import { useProjectContextStore } from '../stores/project-context'
@@ -59,6 +60,14 @@ const memberForm = reactive<{ user_id: number | null; org_id: number | null; rol
 const roleDialog = ref(false)
 const roleEditingId = ref<number | null>(null)
 const roleForm = reactive<Record<string, unknown>>({})
+const rolePermissionDrawer = ref(false)
+const rolePermissionFullscreen = ref(false)
+const rolePermissionRole = ref<ProjectRole | null>(null)
+const rolePermissionMenus = ref<PermissionMenu[]>([])
+const rolePermissionIds = ref<number[]>([])
+const rolePermissionKeyword = ref('')
+const rolePermissionLoading = ref(false)
+const rolePermissionSaving = ref(false)
 const projectOrganizationDialog = ref(false)
 const projectOrganizationEditingId = ref<number | null>(null)
 const projectOrganizationForm = reactive<Record<string, unknown>>({})
@@ -78,7 +87,7 @@ const riskCommentText = ref('')
 const attachments = ref<ProjectAttachment[]>([])
 const attachmentsLoading = ref(false)
 const attachmentKeyword = ref('')
-const attachmentCategoryFilterId = ref<number | null>(null)
+const attachmentCategoryFilterId = ref<number | '' | null>(null)
 const attachmentPage = ref(1)
 const attachmentPageSize = ref(10)
 const attachmentTotal = ref(0)
@@ -88,7 +97,7 @@ const attachmentCategories = ref<AttachmentCategory[]>([])
 const attachmentCategoriesLoading = ref(false)
 const attachmentCategoriesError = ref('')
 const activeAttachmentCategoryName = computed(() => {
-  if (attachmentCategoryFilterId.value === null) return '全部附件'
+  if (attachmentCategoryFilterId.value === null || attachmentCategoryFilterId.value === '') return '全部附件'
   if (attachmentCategoryFilterId.value === 0) return '未分类'
   return attachmentCategories.value.find(category => category.id === attachmentCategoryFilterId.value)?.name || '分类附件'
 })
@@ -226,6 +235,34 @@ const plans = flatPlans
 const risks = computed(() => selectedProject.value?.risks || [])
 const members = computed(() => selectedProject.value?.members || [])
 const roles = computed(() => selectedProject.value?.roles || [])
+function buildPermissionTree(values: PermissionMenu[]) {
+  const nodes = new Map<number, PermissionMenu>()
+  values.forEach(item => nodes.set(item.id, { ...item, actions: [...(item.actions || [])], children: [] }))
+  const roots: PermissionMenu[] = []
+  nodes.forEach(node => {
+    const parent = nodes.get(Number(node.parent_id || 0))
+    if (parent) parent.children?.push(node)
+    else roots.push(node)
+  })
+  const sort = (items: PermissionMenu[]) => {
+    items.sort((left, right) => left.sort_no - right.sort_no || left.id - right.id)
+    items.forEach(item => sort(item.children || []))
+  }
+  sort(roots)
+  return roots
+}
+const rolePermissionTree = computed(() => {
+  const tree = buildPermissionTree(rolePermissionMenus.value)
+  const keyword = rolePermissionKeyword.value.trim().toLowerCase()
+  if (!keyword) return tree
+  const filter = (items: PermissionMenu[]): PermissionMenu[] => items.flatMap(item => {
+    const children = filter(item.children || [])
+    const actions = item.actions.filter(action => `${action.permission_name} ${action.permission_code} ${action.action_code}`.toLowerCase().includes(keyword))
+    const selfMatches = `${item.menu_name} ${item.route_path || ''}`.toLowerCase().includes(keyword)
+    return selfMatches || actions.length || children.length ? [{ ...item, actions: selfMatches ? item.actions : actions, children }] : []
+  })
+  return filter(tree)
+})
 const mainPlanTimelineRanges = computed<GanttRange[]>(() => {
   return plans.value
     .filter(plan => !Number(plan.parent_id || 0))
@@ -387,7 +424,7 @@ function userOptionLabel(item: ProjectUserOption) { return item.username ? `${it
 function ensureProjectUserOptions(project: Project) { addUserOption(project.owner_id, project.owner_name); project.plans?.forEach(plan => addUserOption(plan.owner_id, plan.owner_name)); project.members?.forEach(member => addUserOption(member.user_id, member.display_name)) }
 async function refreshProject(projectId: number) { detailLoading.value = true; try { if (selectedProject.value?.id !== projectId) newlyCreatedStageRowIds.value = new Set(); selectedProject.value = (await getProject(projectId)).data.data; ensureProjectUserOptions(selectedProject.value); resetSettingsForm(); if (activeTab.value === 'attachments') { resetAttachmentQuery(); await Promise.all([loadProjectAttachments(), loadProjectAttachmentCategories()]) } } catch (error) { newlyCreatedStageRowIds.value = new Set(); selectedProject.value = null; ElMessage.error(apiErrorMessage(error, '项目详情加载失败')); await router.replace({ name: 'projects', query: {} }) } finally { detailLoading.value = false } }
 function resetAttachmentQuery() { attachmentKeyword.value = ''; attachmentCategoryFilterId.value = null; attachmentPage.value = 1; attachmentPageSize.value = 10; attachmentTotal.value = 0; attachments.value = []; attachmentCategories.value = []; attachmentCategoriesError.value = '' }
-async function loadProjectAttachments() { if (!selectedProject.value) return; const requestSequence = ++attachmentRequestSequence; attachmentsLoading.value = true; try { const page = (await getProjectAttachments(selectedProject.value.id, { page: attachmentPage.value, size: attachmentPageSize.value, keyword: attachmentKeyword.value.trim() || undefined, categoryId: attachmentCategoryFilterId.value ?? undefined })).data.data; if (requestSequence !== attachmentRequestSequence) return; attachments.value = page.records; attachmentTotal.value = page.total } catch (error) { if (requestSequence !== attachmentRequestSequence) return; attachments.value = []; attachmentTotal.value = 0; ElMessage.error(apiErrorMessage(error, '项目附件加载失败')) } finally { if (requestSequence === attachmentRequestSequence) attachmentsLoading.value = false } }
+async function loadProjectAttachments() { if (!selectedProject.value) return; const requestSequence = ++attachmentRequestSequence; attachmentsLoading.value = true; try { const categoryId = typeof attachmentCategoryFilterId.value === 'number' ? attachmentCategoryFilterId.value : undefined; const page = (await getProjectAttachments(selectedProject.value.id, { page: attachmentPage.value, size: attachmentPageSize.value, keyword: attachmentKeyword.value.trim() || undefined, categoryId })).data.data; if (requestSequence !== attachmentRequestSequence) return; attachments.value = page.records; attachmentTotal.value = page.total } catch (error) { if (requestSequence !== attachmentRequestSequence) return; attachments.value = []; attachmentTotal.value = 0; ElMessage.error(apiErrorMessage(error, '项目附件加载失败')) } finally { if (requestSequence === attachmentRequestSequence) attachmentsLoading.value = false } }
 async function loadProjectAttachmentCategories() { if (!selectedProject.value) return; attachmentCategoriesLoading.value = true; attachmentCategoriesError.value = ''; try { attachmentCategories.value = (await getProjectAttachmentCategories(selectedProject.value.id)).data.data } catch (error) { attachmentCategories.value = []; attachmentCategoriesError.value = apiErrorMessage(error, '附件分类加载失败'); ElMessage.error(attachmentCategoriesError.value) } finally { attachmentCategoriesLoading.value = false } }
 function searchAttachments() { attachmentPage.value = 1; void loadProjectAttachments() }
 function selectAttachmentCategory(categoryId: number | null) { attachmentCategoryFilterId.value = categoryId; attachmentPage.value = 1; void loadProjectAttachments() }
@@ -640,6 +677,57 @@ function openCreateRole() { roleEditingId.value = null; resetRoleForm(); roleDia
 function openEditRole(row: ProjectRole) { roleEditingId.value = row.id; Object.assign(roleForm, { role_code: row.role_code, role_name: row.role_name, description: row.description || '' }); roleDialog.value = true }
 async function saveRole() { if (!selectedProject.value || !String(roleForm.role_code || '').trim() || !String(roleForm.role_name || '').trim()) { ElMessage.warning('请填写角色编码和角色名称'); return }; saving.value = true; try { const payload = { role_code: String(roleForm.role_code).trim(), role_name: String(roleForm.role_name).trim(), description: String(roleForm.description || '').trim() }; if (roleEditingId.value) await updateProjectRole(selectedProject.value.id, roleEditingId.value, payload); else await createProjectRole(selectedProject.value.id, payload); roleDialog.value = false; await refreshSelectedProject(); ElMessage.success('项目角色已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目角色保存失败')) } finally { saving.value = false } }
 async function removeRole(row: ProjectRole) { if (!selectedProject.value) return; try { await ElMessageBox.confirm('确认删除该项目角色吗？', '删除确认', { type: 'warning' }); await deleteProjectRole(selectedProject.value.id, row.id); await refreshSelectedProject(); ElMessage.success('项目角色已删除') } catch (error) { const action = messageBoxAction(error); if (action !== 'cancel' && action !== 'close') ElMessage.error(apiErrorMessage(error, '项目角色删除失败')) } }
+function rolePermissionChecked(permissionId: number) { return rolePermissionIds.value.includes(permissionId) }
+function toggleRolePermission(permissionId: number, checked: boolean) {
+  if (checked && !rolePermissionIds.value.includes(permissionId)) rolePermissionIds.value = [...rolePermissionIds.value, permissionId]
+  if (!checked) rolePermissionIds.value = rolePermissionIds.value.filter(id => id !== permissionId)
+}
+function menuPermissionIds(menu: PermissionMenu): number[] {
+  return [...menu.actions.map(action => action.id), ...(menu.children || []).flatMap(menuPermissionIds)]
+}
+function toggleRolePermissionMenu(menu: PermissionMenu) {
+  const ids = menuPermissionIds(menu)
+  const shouldCheck = ids.some(id => !rolePermissionChecked(id))
+  ids.forEach(id => toggleRolePermission(id, shouldCheck))
+}
+async function openRolePermissions(row: ProjectRole) {
+  if (!selectedProject.value) return
+  rolePermissionRole.value = row
+  rolePermissionKeyword.value = ''
+  rolePermissionFullscreen.value = false
+  rolePermissionDrawer.value = true
+  rolePermissionLoading.value = true
+  try {
+    const response = await getProjectRolePermissions(selectedProject.value.id, row.id)
+    rolePermissionMenus.value = response.data.data.menus || []
+    rolePermissionIds.value = response.data.data.permissionIds || []
+  } catch (error) {
+    rolePermissionDrawer.value = false
+    ElMessage.error(apiErrorMessage(error, '项目角色权限加载失败'))
+  } finally {
+    rolePermissionLoading.value = false
+  }
+}
+async function saveRolePermissionSelection() {
+  if (!selectedProject.value || !rolePermissionRole.value) return
+  rolePermissionSaving.value = true
+  try {
+    await saveProjectRolePermissions(selectedProject.value.id, rolePermissionRole.value.id, rolePermissionIds.value)
+    const response = await getProjectRolePermissions(selectedProject.value.id, rolePermissionRole.value.id)
+    rolePermissionMenus.value = response.data.data.menus || []
+    rolePermissionIds.value = response.data.data.permissionIds || []
+    await refreshSelectedProject()
+    ElMessage.success('项目角色权限已保存')
+  } catch (error) {
+    ElMessage.error(apiErrorMessage(error, '项目角色权限保存失败'))
+  } finally {
+    rolePermissionSaving.value = false
+  }
+}
+function closeRolePermissionDrawer() {
+  rolePermissionDrawer.value = false
+  rolePermissionFullscreen.value = false
+}
 function openCreateProjectOrganization(parentId = 0) { projectOrganizationEditingId.value = null; resetProjectOrganizationForm(parentId); projectOrganizationDialog.value = true }
 function openEditProjectOrganization(row: ProjectOrganization) { projectOrganizationEditingId.value = row.id; Object.assign(projectOrganizationForm, { parent_id: row.parent_id, org_code: row.org_code, org_name: row.org_name, sort_no: row.sort_no, status: row.status }); projectOrganizationDialog.value = true }
 async function saveProjectOrganization() { if (!selectedProject.value || !String(projectOrganizationForm.org_code || '').trim() || !String(projectOrganizationForm.org_name || '').trim()) { ElMessage.warning('请填写项目组织编码和名称'); return }; saving.value = true; try { if (projectOrganizationEditingId.value) await updateProjectOrganization(selectedProject.value.id, projectOrganizationEditingId.value, projectOrganizationForm); else await createProjectOrganization(selectedProject.value.id, projectOrganizationForm); projectOrganizationDialog.value = false; await refreshSelectedProject(); ElMessage.success('项目组织已保存') } catch (error) { ElMessage.error(apiErrorMessage(error, '项目组织保存失败')) } finally { saving.value = false } }
@@ -765,7 +853,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer() })
             <div class="project-settings__layout">
               <el-form label-position="top" class="project-settings__form"><div class="project-settings__form-heading"><span class="panel-kicker">PROJECT RULES</span><h3>项目基础设置</h3><p>统一维护项目计划和风险编号生成规则。</p></div><el-form-item label="主计划编号规则"><el-input v-model="settingsForm.plan_number_rule" maxlength="128" show-word-limit /></el-form-item><p class="project-settings__hint">主计划支持 {PROJECT_CODE}、{SEQ}、{SEQ:3}、{YYYY}、{MM}、{DD}。例如：{PROJECT_CODE}-P{SEQ:3}，项目编号为 RDC 时会生成 RDC-P001。</p><el-form-item label="子计划编号规则"><el-input v-model="settingsForm.child_plan_number_rule" maxlength="128" show-word-limit /></el-form-item><p class="project-settings__hint">子计划支持 {PARENT_CODE}、{SEQ}、{SEQ:3}、{YYYY}、{MM}、{DD}。例如：{PARENT_CODE}-S{SEQ:3}，主计划 RDC-P001 下会生成 RDC-P001-S001。</p><el-form-item label="项目风险编号规则"><el-input v-model="settingsForm.risk_number_rule" maxlength="128" show-word-limit /></el-form-item><p class="project-settings__hint">风险支持 {PROJECT_CODE}、{SEQ}、{SEQ:3}、{YYYY}、{MM}、{DD}。例如：{PROJECT_CODE}-R{SEQ:3}，项目编号为 RDC 时会生成 RDC-R001。</p><el-button v-if="canUpdateProject && isOwner" type="primary" :loading="saving" @click="saveSettings">保存设置</el-button></el-form>
               <section class="project-settings__stages"><div class="project-settings__stages-heading"><div><h3>项目计划阶段</h3><p>阶段名称和顺序仅对当前项目生效；已有主计划的阶段将锁定配置。</p></div><el-button v-if="canManageStages" type="primary" plain @click="openCreateStage"><el-icon><Plus /></el-icon>新增阶段</el-button></div><div v-if="!projectStages.length" class="project-settings__stages-empty"><el-empty description="暂无项目阶段，请新增阶段" :image-size="48" /></div><div v-else class="project-settings__stage-list"><div v-for="(stage, index) in projectStages" :key="stage.id" class="project-settings__stage-row" :class="{ 'is-locked': stageIsLocked(stage) }"><div class="project-settings__stage-order">{{ index + 1 }}</div><div class="project-settings__stage-main"><strong>{{ stage.stage_name }}</strong><span>{{ stageIsLocked(stage) ? (stage.locked_reason || '已有主计划，无法修改或删除') : '暂无主计划，可配置' }}</span></div><div class="project-settings__stage-actions"><el-tooltip v-if="stageIsLocked(stage)" :content="stage.locked_reason || '该阶段已有主计划，不能编辑或删除'" placement="top"><el-icon class="project-settings__stage-lock"><Lock /></el-icon></el-tooltip><template v-else-if="canManageStages"><el-button text circle :disabled="index === 0 || saving" title="上移阶段" @click="reorderStage(stage, -1)"><el-icon><ArrowUp /></el-icon></el-button><el-button text circle :disabled="index === projectStages.length - 1 || saving" title="下移阶段" @click="reorderStage(stage, 1)"><el-icon><ArrowDown /></el-icon></el-button><el-button text circle title="编辑阶段" @click="openEditStage(stage)"><el-icon><Edit /></el-icon></el-button><el-button text circle type="danger" title="删除阶段" @click="removeStage(stage)"><el-icon><Delete /></el-icon></el-button></template></div></div></div></section>
-              <section class="project-settings__roles"><div class="project-settings__roles-heading"><div><h3>项目角色</h3><p>维护项目角色定义；成员角色分配仍在项目组织架构的成员编辑中完成。</p></div><el-button v-if="canCreateRole && isOwner" type="primary" @click="openCreateRole"><el-icon><Plus /></el-icon>新增角色</el-button></div><UiDataTable :data="roles" row-key="id" border empty-text="暂无项目角色"><el-table-column prop="role_name" label="角色名称" min-width="180" /><el-table-column prop="role_code" label="角色编码" min-width="180" /><el-table-column prop="description" label="角色说明" min-width="220" show-overflow-tooltip /><el-table-column v-if="canUpdateRole && isOwner || canDeleteRole && isOwner" label="操作" width="150" fixed="right"><template #default="scope"><el-button v-if="canUpdateRole && isOwner" link type="primary" @click="openEditRole(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button><el-button v-if="canDeleteRole && isOwner" link type="danger" @click="removeRole(scope.row)"><el-icon><Delete /></el-icon>删除</el-button></template></el-table-column></UiDataTable></section>
+              <section class="project-settings__roles"><div class="project-settings__roles-heading"><div><h3>项目角色</h3><p>维护角色定义和页面权限；成员角色分配仍在项目组织架构中完成。</p></div><el-button v-if="canCreateRole" type="primary" @click="openCreateRole"><el-icon><Plus /></el-icon>新增角色</el-button></div><UiDataTable :data="roles" row-key="id" border empty-text="暂无项目角色"><el-table-column prop="role_name" label="角色名称" min-width="160" /><el-table-column prop="role_code" label="角色编码" min-width="150" /><el-table-column prop="description" label="角色说明" min-width="200" show-overflow-tooltip /><el-table-column label="已配权限" width="110" align="center"><template #default="scope"><el-tag effect="plain" type="info">{{ Number(scope.row.permission_count || 0) }} 项</el-tag></template></el-table-column><el-table-column v-if="canUpdateRole || canDeleteRole" label="操作" width="240" fixed="right"><template #default="scope"><el-button v-if="canUpdateRole" link type="primary" @click="openRolePermissions(scope.row)"><el-icon><Lock /></el-icon>配置权限</el-button><el-button v-if="canUpdateRole" link type="primary" @click="openEditRole(scope.row)"><el-icon><Edit /></el-icon>编辑</el-button><el-button v-if="canDeleteRole" link type="danger" @click="removeRole(scope.row)"><el-icon><Delete /></el-icon>删除</el-button></template></el-table-column></UiDataTable></section>
             </div>
           </div>
         </el-tab-pane>
@@ -782,7 +870,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer() })
                 <div class="project-attachments__sidebar-heading"><div><el-icon><Folder /></el-icon><div><strong>附件分类</strong><span>按分类浏览</span></div></div><b>{{ attachmentCategories.length + 2 }}</b></div>
                 <div v-if="attachmentCategoriesLoading" class="project-attachments__sidebar-loading"><el-skeleton :rows="4" animated /></div>
                 <nav v-else class="project-attachments__category-nav">
-                  <button type="button" class="project-attachments__category-nav-item" :class="{ 'is-active': attachmentCategoryFilterId === null }" :aria-current="attachmentCategoryFilterId === null ? 'page' : undefined" @click="selectAttachmentCategory(null)"><el-icon><Document /></el-icon><span>全部附件</span></button>
+                  <button type="button" class="project-attachments__category-nav-item" :class="{ 'is-active': attachmentCategoryFilterId === null || attachmentCategoryFilterId === '' }" :aria-current="attachmentCategoryFilterId === null || attachmentCategoryFilterId === '' ? 'page' : undefined" @click="selectAttachmentCategory(null)"><el-icon><Document /></el-icon><span>全部附件</span></button>
                   <button type="button" class="project-attachments__category-nav-item" :class="{ 'is-active': attachmentCategoryFilterId === 0 }" :aria-current="attachmentCategoryFilterId === 0 ? 'page' : undefined" @click="selectAttachmentCategory(0)"><el-icon><Folder /></el-icon><span>未分类</span></button>
                   <button v-for="category in attachmentCategories" :key="category.id" type="button" class="project-attachments__category-nav-item" :class="{ 'is-active': attachmentCategoryFilterId === category.id }" :aria-current="attachmentCategoryFilterId === category.id ? 'page' : undefined" @click="selectAttachmentCategory(category.id)"><el-icon><Folder /></el-icon><span :title="category.name">{{ category.name }}</span></button>
                 </nav>
@@ -793,7 +881,7 @@ onBeforeUnmount(() => { clearTabLoadingTimer() })
             <div class="project-attachments__toolbar">
               <div class="project-attachments__filter-group">
                 <el-select v-model="attachmentCategoryFilterId" class="project-attachments__category-select" placeholder="全部分类" clearable @change="searchAttachments">
-                  <el-option label="全部分类" :value="null" />
+                  <el-option label="全部分类" value="" />
                   <el-option label="未分类" :value="0" />
                   <el-option v-for="category in attachmentCategories" :key="category.id" :label="category.name" :value="category.id" />
                 </el-select>
@@ -874,6 +962,16 @@ onBeforeUnmount(() => { clearTabLoadingTimer() })
     <el-dialog v-model="planDialog" :title="planEditingId ? '编辑项目计划' : (planParentName ? '新增子计划' : '新增主计划')" width="600px" destroy-on-close><el-form label-position="top"><el-form-item label="计划名称" required><el-input v-model="planForm.plan_name" /></el-form-item><el-form-item label="计划层级"><el-input :model-value="planParentName ? `子计划（${planParentName}）` : '主计划'" disabled /></el-form-item><el-form-item label="计划描述"><el-input v-model="planForm.description" type="textarea" :rows="2" /></el-form-item><el-row :gutter="16"><el-col :span="12"><el-form-item label="负责人"><el-select v-model="planForm.owner_id" clearable filterable :loading="userOptionsLoading" style="width:100%" @visible-change="onUserOptionsVisible"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="状态"><el-select v-model="planForm.status" style="width:100%"><el-option v-for="(label, value) in planStatusLabels" :key="value" :label="label" :value="value" /></el-select></el-form-item></el-col></el-row><el-form-item label="牵头方"><UiTreeSelect :model-value="planForm.lead_org_id === null ? null : Number(planForm.lead_org_id || 0)" :options="organizationTreeOptions" placeholder="请选择牵头组织" @update:model-value="planForm.lead_org_id = $event" /></el-form-item><el-form-item label="配合方"><el-tree-select v-model="planForm.cooperating_org_ids" :data="organizationTreeOptions" multiple show-checkbox check-strictly clearable filterable node-key="value" placeholder="请选择配合组织" style="width:100%" /></el-form-item><el-form-item label="计划时间范围" :required="!Number(planForm.parent_id || 0)"><el-date-picker v-model="planDateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" clearable unlink-panels style="width:100%" @change="onPlanDateRangeChange" /></el-form-item><el-form-item label="完成进度"><el-slider v-model="planForm.progress" :max="100" /></el-form-item></el-form><template #footer><el-button @click="planDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="savePlan">保存</el-button></template></el-dialog>
     <el-dialog v-model="memberDialog" :title="memberEditingId ? '编辑项目成员' : '添加项目成员'" width="520px" destroy-on-close><el-form label-position="top"><el-form-item label="成员" required><el-select v-model="memberForm.user_id" filterable :disabled="Boolean(memberEditingId)" :loading="userOptionsLoading" style="width:100%"><el-option v-for="item in userOptions" :key="item.id" :label="userOptionLabel(item)" :value="item.id" /></el-select></el-form-item><el-form-item label="所属项目机构"><UiTreeSelect :model-value="memberForm.org_id" :options="projectOrganizationTreeOptions" placeholder="请选择项目机构" @update:model-value="memberForm.org_id = $event" /></el-form-item><el-form-item label="项目角色"><el-select v-model="memberForm.role_ids" multiple collapse-tags filterable style="width:100%"><el-option v-for="role in roles" :key="role.id" :label="role.role_name" :value="role.id" /></el-select></el-form-item><el-form-item label="成员状态"><el-switch v-model="memberForm.status" :active-value="1" :inactive-value="0" active-text="有效" inactive-text="停用" /></el-form-item></el-form><template #footer><el-button @click="memberDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveMember">保存</el-button></template></el-dialog>
     <el-dialog v-model="roleDialog" :title="roleEditingId ? '编辑项目角色' : '新增项目角色'" width="560px" destroy-on-close><el-form label-position="top"><el-form-item label="角色编码" required><el-input v-model="roleForm.role_code" /></el-form-item><el-form-item label="角色名称" required><el-input v-model="roleForm.role_name" /></el-form-item><el-form-item label="角色说明"><el-input v-model="roleForm.description" type="textarea" :rows="3" /></el-form-item></el-form><template #footer><el-button @click="roleDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveRole">保存</el-button></template></el-dialog>
+    <el-drawer v-model="rolePermissionDrawer" direction="rtl" :size="rolePermissionFullscreen ? '100%' : 'min(880px, 100vw)'" :close-on-click-modal="!rolePermissionSaving" destroy-on-close append-to-body class="project-role-permission-drawer" :class="{ 'is-fullscreen': rolePermissionFullscreen }">
+      <template #header><div class="project-role-permission-drawer__header"><div><span>项目角色权限</span><strong>{{ rolePermissionRole?.role_name }}</strong><small>{{ rolePermissionRole?.role_code }}</small></div><el-tooltip :content="rolePermissionFullscreen ? '还原' : '全屏'"><el-button text circle :aria-label="rolePermissionFullscreen ? '还原' : '全屏'" @click.stop="rolePermissionFullscreen = !rolePermissionFullscreen"><el-icon><ScaleToOriginal v-if="rolePermissionFullscreen" /><FullScreen v-else /></el-icon></el-button></el-tooltip></div></template>
+      <div v-loading="rolePermissionLoading" class="project-role-permission-drawer__body">
+        <div class="project-role-permission-drawer__search"><el-input v-model="rolePermissionKeyword" clearable placeholder="搜索菜单、权限名称或权限编码"><template #prefix><el-icon><Search /></el-icon></template></el-input><span>已选择 {{ rolePermissionIds.length }} 项权限</span></div>
+        <el-tree :data="rolePermissionTree" node-key="id" default-expand-all :expand-on-click-node="false" empty-text="暂无可配置的业务权限">
+          <template #default="{ data }"><div class="project-role-permission-node"><div class="project-role-permission-node__menu"><strong>{{ data.menu_name }}</strong><small>{{ data.route_path || '目录' }}</small></div><div class="project-role-permission-node__actions"><el-checkbox v-for="action in data.actions" :key="action.id" :model-value="rolePermissionChecked(action.id)" @click.stop @update:model-value="toggleRolePermission(action.id, Boolean($event))"><span>{{ action.permission_name }}</span><small>{{ action.action_code }}</small></el-checkbox><el-tooltip v-if="menuPermissionIds(data).length" :content="menuPermissionIds(data).every(rolePermissionChecked) ? '取消当前菜单全部权限' : '选择当前菜单全部权限'"><el-button text circle @click.stop="toggleRolePermissionMenu(data)"><el-icon><Plus /></el-icon></el-button></el-tooltip></div></div></template>
+        </el-tree>
+      </div>
+      <template #footer><div class="project-role-permission-drawer__footer"><el-button :disabled="rolePermissionSaving" @click="closeRolePermissionDrawer">取消</el-button><el-button type="primary" :loading="rolePermissionSaving" :disabled="rolePermissionLoading" @click="saveRolePermissionSelection">保存权限</el-button></div></template>
+    </el-drawer>
     <el-dialog v-model="projectOrganizationDialog" :title="projectOrganizationEditingId ? '编辑项目组织' : '新增项目组织'" width="520px" destroy-on-close><el-form label-position="top"><el-form-item label="上级项目组织"><UiTreeSelect :model-value="projectOrganizationForm.parent_id ? Number(projectOrganizationForm.parent_id) : null" :options="projectOrganizationParentOptions" placeholder="请选择上级项目组织" @update:model-value="projectOrganizationForm.parent_id = $event || 0" /></el-form-item><el-form-item label="组织编码" required><el-input v-model="projectOrganizationForm.org_code" maxlength="64" /></el-form-item><el-form-item label="组织名称" required><el-input v-model="projectOrganizationForm.org_name" maxlength="128" /></el-form-item><el-form-item label="排序号"><el-input-number v-model="projectOrganizationForm.sort_no" :min="0" :max="9999" controls-position="right" /></el-form-item><el-form-item label="状态"><el-switch v-model="projectOrganizationForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" /></el-form-item></el-form><template #footer><el-button @click="projectOrganizationDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveProjectOrganization">保存</el-button></template></el-dialog>
     <el-dialog v-model="riskDialog" :title="riskEditingId ? '编辑项目风险' : '新增项目风险'" width="920px" top="5vh" destroy-on-close class="project-risk-dialog"><el-form label-position="top" class="project-risk-form"><section class="project-risk-form-section"><div class="project-risk-form-section__heading"><span>一、问题上报</span><small>记录问题来源、影响范围和初始处理信息</small></div><el-row :gutter="16"><el-col :span="6"><el-form-item label="编号"><el-input :model-value="riskEditingId ? String(riskForm.risk_code || '') : '保存后自动生成'" disabled /></el-form-item></el-col><el-col :span="6"><el-form-item label="发生时间"><el-date-picker v-model="riskForm.occurred_date" type="date" value-format="YYYY-MM-DD" placeholder="请选择日期" style="width:100%" /></el-form-item></el-col><el-col :span="6"><el-form-item label="项目阶段"><el-select v-model="riskForm.project_phase" clearable style="width:100%"><el-option v-for="item in projectOptions.project_phases" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col><el-col :span="6"><el-form-item label="紧急程度"><el-select v-model="riskForm.urgency" clearable style="width:100%"><el-option v-for="item in projectOptions.risk_urgencies" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="6"><el-form-item label="上报问题级别"><el-select v-model="riskForm.report_level" clearable style="width:100%"><el-option v-for="item in projectOptions.risk_report_levels" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col><el-col :span="6"><el-form-item label="当前状态" required><el-select v-model="riskForm.current_status" style="width:100%"><el-option v-for="item in projectOptions.risk_statuses" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col><el-col :span="6"><el-form-item label="提出组织/组"><UiTreeSelect :model-value="riskForm.proposer_org_id ? Number(riskForm.proposer_org_id) : null" :options="organizationTreeOptions" placeholder="请选择提出组织" clearable @update:model-value="riskForm.proposer_org_id = $event" /></el-form-item></el-col><el-col :span="6"><el-form-item label="提出物理子系统"><el-input v-model="riskForm.proposer_subsystem" maxlength="128" /></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="12"><el-form-item label="联系人"><el-input v-model="riskForm.proposer_contact_name" maxlength="128" /></el-form-item></el-col><el-col :span="12"><el-form-item label="联系方式"><el-input v-model="riskForm.proposer_contact_phone" maxlength="64" /></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="6"><el-form-item label="涉及组织/组"><UiTreeSelect :model-value="riskForm.involved_org_id ? Number(riskForm.involved_org_id) : null" :options="organizationTreeOptions" placeholder="请选择涉及组织" clearable @update:model-value="riskForm.involved_org_id = $event" /></el-form-item></el-col><el-col :span="6"><el-form-item label="涉及物理子系统"><el-input v-model="riskForm.involved_subsystem" maxlength="128" /></el-form-item></el-col><el-col :span="12"><el-form-item label="问题描述"><el-input v-model="riskForm.problem_description" type="textarea" :rows="2" maxlength="2000" show-word-limit /></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="6"><el-form-item label="期望解决时间"><el-date-picker v-model="riskForm.expected_resolution_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col><el-col :span="9"><el-form-item label="建议解决方案"><el-input v-model="riskForm.suggested_solution" type="textarea" :rows="2" /></el-form-item></el-col><el-col :span="5"><el-form-item label="当前处理人"><el-input v-model="riskForm.current_handler_name" maxlength="128" /></el-form-item></el-col><el-col :span="4"><el-form-item label="联系方式"><el-input v-model="riskForm.current_handler_phone" maxlength="64" /></el-form-item></el-col></el-row></section><section class="project-risk-form-section"><div class="project-risk-form-section__heading"><span>二、进展描述</span><small>持续更新风险处理过程和关键进展</small></div><el-form-item label="进展描述"><el-input v-model="riskForm.progress_description" type="textarea" :rows="5" maxlength="4000" show-word-limit /></el-form-item></section><section class="project-risk-form-section"><div class="project-risk-form-section__heading"><span>三、升级与解决</span><small>记录风险关注、升级和最终解决结果</small></div><el-row :gutter="16"><el-col :span="6"><el-form-item label="关注等级"><el-select v-model="riskForm.attention_level" clearable style="width:100%"><el-option v-for="item in projectOptions.risk_attention_levels" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col><el-col :span="6"><el-form-item label="问题性质"><el-input v-model="riskForm.problem_nature" maxlength="128" /></el-form-item></el-col><el-col :span="6"><el-form-item label="问题领域"><el-input v-model="riskForm.problem_domain" maxlength="128" /></el-form-item></el-col><el-col :span="6"><el-form-item label="PMO联系人"><el-input v-model="riskForm.pmo_contact" maxlength="256" /></el-form-item></el-col></el-row><el-row :gutter="16"><el-col :span="6"><el-form-item label="是否升级"><el-select v-model="riskForm.escalation_level" clearable style="width:100%"><el-option v-for="item in projectOptions.risk_escalation_levels" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col><el-col :span="6"><el-form-item label="当前问题级别"><el-select v-model="riskForm.current_problem_level" clearable style="width:100%"><el-option v-for="item in projectOptions.risk_problem_levels" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item></el-col><el-col :span="6"><el-form-item label="计划解决时间"><el-date-picker v-model="riskForm.planned_resolution_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col><el-col :span="6"><el-form-item label="实际解决时间"><el-date-picker v-model="riskForm.actual_resolution_date" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col></el-row><el-form-item label="问题解决方案"><el-input v-model="riskForm.resolution_solution" type="textarea" :rows="4" maxlength="4000" show-word-limit /></el-form-item></section></el-form><template #footer><el-button @click="riskDialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveRisk">保存风险</el-button></template></el-dialog>
     <el-drawer v-model="riskDialog" direction="rtl" size="min(820px, 100vw)" destroy-on-close class="project-risk-drawer">

@@ -37,6 +37,7 @@ import BusinessDayManagement from '../modules/test-management/business-day/Busin
 import TestConfigurationPage from '../modules/test-management/configuration/TestConfigurationPage.vue'
 import { getWorkflowTaskContext } from '../api/workflow'
 import { useAuthStore } from '../stores/auth'
+import { useProjectContextStore } from '../stores/project-context'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -89,9 +90,13 @@ const router = createRouter({
         // },
         {
           path: 'system/role-permissions',
-          name: 'role-permissions',
+          redirect: '/system/permissions'
+        },
+        {
+          path: 'system/permissions',
+          name: 'permissions',
           component: RolePermissionView,
-          meta: { title: '角色权限配置' }
+          meta: { title: '权限维护', permission: 'system:role:list', menuPath: '/system/permissions' }
         },
         {
           path: 'system/audit',
@@ -475,7 +480,7 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (!auth.user) {
-    await auth.hydrate()
+    await auth.hydrate(null)
   }
 
   if (!auth.token) {
@@ -487,6 +492,16 @@ router.beforeEach(async (to) => {
 
   if (to.name === 'login') {
     return { name: 'dashboard' }
+  }
+
+  const projectContext = useProjectContextStore()
+  await projectContext.initialize()
+  if (projectContext.currentId && auth.currentProjectId !== projectContext.currentId) {
+    try {
+      auth.applyAuthorization(await auth.fetchAuthorization(projectContext.currentId))
+    } catch {
+      // Keep the last valid authorization snapshot; explicit project switching reports failures in AppLayout.
+    }
   }
 
   if (to.path === '/dashboard') {

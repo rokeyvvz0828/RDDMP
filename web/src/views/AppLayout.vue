@@ -68,7 +68,7 @@ const fallbackTitles: Record<string, string> = {
   menus: '菜单路由',
   params: '参数管理',
   'form-metadata': '输入项配置',
-  'role-permissions': '角色权限配置',
+  permissions: '权限维护',
   definitions: '流程定义',
   monitor: '流程监控',
   inbox: '待办审批',
@@ -148,13 +148,29 @@ async function confirmProjectSwitch(projectRef: string) {
       }
     )
 
+    const projectId = projectContext.projectIdFor(projectRef)
+    if (!projectId) {
+      projectSelectVersion.value += 1
+      return
+    }
+    const nextAuthorization = await auth.fetchAuthorization(projectId)
     if (!projectContext.select(projectRef)) {
       projectSelectVersion.value += 1
       return
     }
-    window.location.reload()
-  } catch {
+    auth.applyAuthorization(nextAuthorization)
+    const permission = typeof route.meta.permission === 'string' ? route.meta.permission : ''
+    const menuPath = typeof route.meta.menuPath === 'string' ? route.meta.menuPath : ''
+    if ((permission && !auth.hasPermission(permission)) || (menuPath && !auth.hasRoute(menuPath))) {
+      await router.replace('/dashboard')
+      ElMessage.warning('当前项目无权访问原页面，已返回工作台')
+    } else {
+      if (route.name === 'project-detail') await router.replace({ name: 'project-detail', params: { projectId } })
+      window.location.reload()
+    }
+  } catch (error) {
     projectSelectVersion.value += 1
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '项目切换失败，仍保留当前项目'))
   } finally {
     projectSwitching.value = false
   }

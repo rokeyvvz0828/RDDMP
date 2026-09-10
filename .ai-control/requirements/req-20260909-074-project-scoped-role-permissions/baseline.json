@@ -1,0 +1,18 @@
+{
+  "objective": "用户切换当前项目后，系统管理权限保持全局不变，业务页面及操作权限按其在目标项目中的项目角色立即且安全地切换。",
+  "requirements": [
+    {"id":"R1","statement":"系统设置必须提供权限目录维护，不再承担项目业务权限的系统角色分配。","acceptance":["管理员可新增、查询、编辑、启停和受引用保护地删除权限","权限编码创建后不可修改"],"priority":"must","source":"用户确认设计","counterexample":["系统设置仍按系统角色配置项目业务权限"]},
+    {"id":"R2","statement":"项目角色必须能从中央目录配置当前项目的业务权限。","acceptance":["角色权限保存后可回读","系统权限不出现在候选项"],"priority":"must","source":"用户确认设计","counterexample":["项目角色可获得系统管理权限"]},
+    {"id":"R3","statement":"业务权限必须随当前项目切换并由服务端执行。","acceptance":["同一用户在项目A/B得到各自角色权限","菜单路由按钮接口结果一致","伪造项目上下文被拒绝"],"priority":"must","source":"用户确认设计","counterexample":["仅前端显隐发生变化"]},
+    {"id":"R4","statement":"存量项目角色初始化不得导致项目管理锁死。","acceptance":["PM获得全部业务权限","其他存量角色获得查看权限","新角色默认无权限","项目负责人保持全权限"],"priority":"must","source":"用户确认迁移规则","counterexample":["迁移后负责人不能维护角色"]},
+    {"id":"R5","statement":"权限维护必须满足租户和项目隔离并记录审计。","acceptance":["跨租户和跨项目标识被拒绝","目录和角色权限写入产生审计"],"priority":"must","source":"仓库安全规则","counterexample":["可通过项目B接口修改项目A角色"]}
+  ],
+  "invariants":["系统管理权限始终由系统角色控制","项目角色不能授予系统权限","服务端授权为唯一权威","Flyway只追加"],
+  "constraints":["保持JWT和Java包名","复用sys_menu_permission","项目上下文使用X-Project-Id","不访问生产或外部系统","仅修改REQ074授权路径"],
+  "non_goals":["重构组织和成员管理","把权限写入JWT","恢复输入项配置"],
+  "assumptions":[{"text":"范围内每个项目业务操作可归属一个项目","basis":"现有项目API均使用projectId路径或实体归属","falsifier":"建模发现范围内跨项目批量操作"}],
+  "unknowns":[{"question":"哪些既有调用未携带项目上下文","impact":"决定前端调用适配范围","owner":"modeling","blocking":false}],
+  "decisions":[{"question":"权限上下文方案","options":["请求头实时解析","切换时换Token","仅前端"],"selected":"请求头实时解析","blocking":false,"source":"用户选择1"},{"question":"存量角色初始化","options":["PM全量其他只读","全部全量","全部空"],"selected":"PM全量其他只读","blocking":false,"source":"用户确认"}],
+  "measurement_intents":[{"requirement_id":"R1","observable":"目录CRUD、不可变编码和引用删除状态","candidate_sensor":"System服务测试与浏览器操作"},{"requirement_id":"R2","observable":"角色权限保存回读及候选范围","candidate_sensor":"Project服务测试与浏览器抽屉"},{"requirement_id":"R3","observable":"A/B权限集合与受保护API状态码","candidate_sensor":"Security集成测试和API探针"},{"requirement_id":"R4","observable":"各类角色迁移权限数量与负责人授权结果","candidate_sensor":"迁移测试和SQL查询"},{"requirement_id":"R5","observable":"跨项目拒绝和审计记录","candidate_sensor":"服务测试与审计查询"}],
+  "baseline_status":"ready"
+}

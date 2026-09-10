@@ -1,8 +1,8 @@
-import http from './http'
+import http, { withProjectContext } from './http'
 import type { ApiResponse } from '../types/auth'
 import type { Project, ProjectMember, ProjectOptions, ProjectPlan, ProjectPlanGroup, ProjectPlanGroupPayload, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectUserOption, ProjectOrganization, ProjectStage } from '../types/project'
 
-export function getProjectWorkbench() { return http.get<ApiResponse<Project[]>>('/project/workbench') }
+export function getProjectWorkbench() { return http.get<ApiResponse<Project[]>>('/project/workbench', withProjectContext(null)) }
 export function getProject(id: number) { return http.get<ApiResponse<Project>>(`/project/${id}`) }
 export function createProject(payload: Record<string, unknown>) { return http.post<ApiResponse<Project>>('/project', payload) }
 export function updateProject(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}`, payload) }
@@ -37,3 +37,5 @@ export function deleteProjectOrganization(id: number, organizationId: number) { 
 export function createProjectRole(id: number, payload: Record<string, unknown>) { return http.post<ApiResponse<ProjectRole>>(`/project/${id}/roles`, payload) }
 export function updateProjectRole(id: number, roleId: number, payload: Record<string, unknown>) { return http.put<ApiResponse<ProjectRole>>(`/project/${id}/roles/${roleId}`, payload) }
 export function deleteProjectRole(id: number, roleId: number) { return http.delete<ApiResponse<void>>(`/project/${id}/roles/${roleId}`) }
+export function getProjectRolePermissions(id: number, roleId: number) { return http.get<ApiResponse<{ menus: import('../types/system').PermissionMenu[]; permissionIds: number[] }>>(`/project/${id}/roles/${roleId}/permissions`) }
+export function saveProjectRolePermissions(id: number, roleId: number, permissionIds: number[]) { return http.put<ApiResponse<void>>(`/project/${id}/roles/${roleId}/permissions`, { permissionIds }) }

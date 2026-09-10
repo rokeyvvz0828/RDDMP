@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260909-075",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260909-075-menu-regression-fix/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "platform/security",
+    "module_owner": "rokeyvvz0828",
+    "branch": "licon",
+    "worktree": "D:/ai_project/ccb_rd"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "local-browser", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260909-075-menu-regression-fix/**",
+      ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json",
+      "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+      "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectMenuRegressionMigrationTest.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql"
+    ],
+    "read_only_paths": [
+      "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V2__*.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V51__*.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V52__*.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V201__*.sql",
+      "web/src/**",
+      "docs/governance/**",
+      "governance/modules.yaml",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260909-075",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["dynamic routes", "project-scoped permissions", "system menu catalog"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql"],
+    "compatibility_and_rollback": "Append-only data correction; application rollback may retain the corrected UTF-8 menu name."
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "local-development-only"},
+  "required_tests": [
+    {"name": "security", "command": "mvn -pl :ccb-security -am test"},
+    {"name": "system", "command": "mvn -pl :ccb-system -am test"},
+    {"name": "api", "command": "verify GET /api/auth/routes with current project context"},
+    {"name": "permission", "command": "verify project namespace access and no-permission denial"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "browser", "command": "verify permission menu text and project management visibility"}
+  ],
+  "risk": {"level": "high", "items": ["authorization route filtering", "append-only database correction"]},
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260909-075-menu-regression-fix",
+    "control_justification": null,
+    "acceptance_evidence": [".ai-control/requirements/req-20260909-075-menu-regression-fix/convergence.json"],
+    "release_verification": ["menu 102 UTF-8 bytes", "project route present with project permission", "project route absent without permission"],
+    "rollback": "Revert AuthService namespace access matching; retain V202 corrected menu text."
+  }
+}
