@@ -156,11 +156,12 @@ function canEditRelations() {
               collapse-tags-tooltip
               :loading="relatedLoading"
               :remote-method="searchRelatedOptions"
-              :no-data-text="relatedError || '当前物理子系统下没有匹配的启用部署单元'"
               placeholder="按名称或编号搜索，可多选"
               class="architecture-related-unit-select"
             >
               <el-option v-for="option in relatedOptions" :key="option.id" :label="`${option.name}（${option.code}）`" :value="option.id" />
+              <!-- remote 选择器必须在空结果时提供 empty 插槽，否则下拉会自动收起 -->
+              <template #empty><p class="el-select-dropdown__empty">{{ relatedError || '当前物理子系统下没有匹配的启用部署单元' }}</p></template>
             </el-select>
             <p v-if="relatedError" class="architecture-field-error">{{ relatedError }}，已选项已保留，可重新输入关键字重试。</p>
             <p class="architecture-form-hint">保存后以当前选择覆盖原有关联；被移除的部署单元不会受影响。</p>
