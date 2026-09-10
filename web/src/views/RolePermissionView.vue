@@ -6,13 +6,16 @@ import UiDataTable from '../components/ui/UiDataTable.vue'
 import UiFormDrawer from '../components/ui/UiFormDrawer.vue'
 import UiPagination from '../components/ui/UiPagination.vue'
 import UiStatusTag from '../components/ui/UiStatusTag.vue'
+import { type UiTreeOption } from '../components/ui/UiTreeSelect.vue'
 import UiToolbar from '../components/ui/UiToolbar.vue'
 import { createPermission, deletePermission, getPermissionCatalog, listPermissions, updatePermission, updatePermissionStatus } from '../api/system'
 import type { PermissionMenu, PermissionPayload, PermissionRecord } from '../types/system'
 import { apiErrorMessage } from '../api/error'
 
+type PermissionCatalogMenu = PermissionMenu & { status?: number }
+
 const rows = ref<PermissionRecord[]>([])
-const menus = ref<PermissionMenu[]>([])
+const menus = ref<PermissionCatalogMenu[]>([])
 const keyword = ref('')
 const status = ref<number | undefined>()
 const page = ref(1)
@@ -25,9 +28,70 @@ const drawerOpen = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<PermissionPayload>({ menu_id: 0, action_code: '', permission_code: '', permission_name: '', status: 1 })
 
-const menuOptions = computed(() => menus.value
-  .filter(menu => menu.menu_type !== 'catalog')
-  .map(menu => ({ id: menu.id, label: menu.menu_name, route: menu.route_path || '目录' })))
+const menuTree = computed(() => {
+  const nodes = new Map<number, PermissionMenu>()
+  menus.value.forEach(menu => {
+    if (Number(menu.status) === 0) return
+    const id = Number(menu.id)
+    if (!Number.isFinite(id)) return
+    nodes.set(id, {
+      ...menu,
+      id,
+      parent_id: Number(menu.parent_id || 0),
+      sort_no: Number(menu.sort_no || 0),
+      children: []
+    })
+  })
+  const roots: PermissionMenu[] = []
+  nodes.forEach(node => {
+    const parent = nodes.get(node.parent_id)
+    if (parent && parent.id !== node.id) parent.children!.push(node)
+    else roots.push(node)
+  })
+  const sort = (items: PermissionMenu[]) => {
+    items.sort((left, right) => left.sort_no - right.sort_no || left.id - right.id)
+    items.forEach(item => sort(item.children || []))
+  }
+  sort(roots)
+  return roots
+})
+
+const expandedMenuIds = computed(() => {
+  const activeMenus = new Map<number, PermissionMenu>()
+  menus.value.forEach(menu => {
+    if (Number(menu.status) !== 0) activeMenus.set(Number(menu.id), menu)
+  })
+  const expanded: number[] = []
+  const visited = new Set<number>()
+  let menu = activeMenus.get(form.menu_id)
+  while (menu) {
+    const parentId = Number(menu.parent_id || 0)
+    if (!parentId || visited.has(parentId)) break
+    const parent = activeMenus.get(parentId)
+    if (!parent) break
+    expanded.push(parentId)
+    visited.add(parentId)
+    menu = parent
+  }
+  return expanded
+})
+
+const menuOptions = computed<UiTreeOption[]>(() => {
+  const mapNode = (menu: PermissionMenu): UiTreeOption => ({
+    value: menu.id,
+    label: menu.menu_name,
+    disabled: menu.menu_type === 'catalog',
+    children: (menu.children || []).map(mapNode)
+  })
+  return menuTree.value.map(mapNode)
+})
+
+const menuTreeSelectProps = {
+  value: 'value',
+  label: 'label',
+  children: 'children',
+  disabled: 'disabled'
+}
 
 function resetForm() {
   Object.assign(form, { menu_id: 0, action_code: '', permission_code: '', permission_name: '', status: 1 })
@@ -135,7 +199,7 @@ onMounted(async () => {
 
     <UiFormDrawer v-model="drawerOpen" :title="editingId ? '编辑权限' : '新增权限'" width="560px" :loading="saving" @submit="save">
       <el-form label-position="top" @submit.prevent="save">
-        <el-form-item label="所属菜单" required><el-select v-model="form.menu_id" filterable placeholder="请选择菜单" style="width:100%"><el-option v-for="menu in menuOptions" :key="menu.id" :value="menu.id" :label="menu.label"><span>{{ menu.label }}</span><small class="permission-menu-option__route">{{ menu.route }}</small></el-option></el-select></el-form-item>
+        <el-form-item label="所属菜单" required><el-tree-select :key="`permission-menu-${drawerOpen}-${editingId || 'new'}-${form.menu_id}`" :model-value="form.menu_id || null" :data="menuOptions" :props="menuTreeSelectProps" check-strictly clearable filterable node-key="value" :render-after-expand="false" :default-expanded-keys="expandedMenuIds" placeholder="请选择菜单" style="width:100%" @update:model-value="form.menu_id = Number($event) || 0"><template #default="{ data }"><span>{{ data.label }}</span></template></el-tree-select></el-form-item>
         <el-form-item label="权限名称" required><el-input v-model="form.permission_name" maxlength="64" show-word-limit /></el-form-item>
         <el-form-item label="动作编码" required><el-input v-model="form.action_code" :disabled="Boolean(editingId)" maxlength="64" placeholder="例如 read、create、update" /></el-form-item>
         <el-form-item label="权限编码" required><el-input v-model="form.permission_code" :disabled="Boolean(editingId)" maxlength="128" placeholder="例如 project:plan:list:read" /></el-form-item>

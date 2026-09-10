@@ -10,8 +10,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,6 +31,21 @@ class SystemPermissionCatalogTest {
     @Mock private MinioStorageService storage;
 
     private final AuthUser admin = new AuthUser(1L, 1L, "admin", "hash", "管理员", 1L, true);
+
+    @Test
+    void permissionCatalogIncludesMenuStatus() {
+        SystemService service = spy(new SystemService(jdbc, passwordEncoder, storage));
+        doNothing().when(service).requireAction("roles", "read", admin);
+        Map<String, Object> menu = new LinkedHashMap<>(Map.of("id", 101L, "status", 1));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("menu_type, status, route_path"), eq(1L))).thenReturn(List.of(menu));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("SELECT id, action_code"), eq(1L), eq(101L))).thenReturn(List.of());
+
+        Map<String, Object> catalog = service.permissionCatalog(admin);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> menus = (List<Map<String, Object>>) catalog.get("menus");
+        assertEquals(1, menus.get(0).get("status"));
+    }
 
     @Test
     void permissionCodeAndActionCodeAreImmutable() {

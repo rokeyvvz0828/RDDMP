@@ -93,6 +93,36 @@ public class AuthRepository {
         return List.copyOf(permissions);
     }
 
+    public boolean hasAnyProjectManagementPermission(long userId, long tenantId) {
+        Integer granted = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM pm_project project
+                WHERE project.tenant_id = ? AND project.deleted = 0
+                  AND (
+                    project.owner_id = ?
+                    OR EXISTS (
+                      SELECT 1 FROM pm_project_member member
+                      JOIN pm_project_member_role mr ON mr.member_id = member.id AND mr.tenant_id = member.tenant_id
+                      JOIN pm_project_role role ON role.id = mr.role_id AND role.project_id = member.project_id
+                        AND role.tenant_id = member.tenant_id AND role.deleted = 0
+                      LEFT JOIN pm_project_role_permission rp ON rp.project_id = role.project_id
+                        AND rp.role_id = role.id AND rp.tenant_id = role.tenant_id
+                      LEFT JOIN sys_menu_permission permission ON permission.id = rp.permission_id
+                        AND permission.tenant_id = rp.tenant_id AND permission.status = 1
+                      WHERE member.project_id = project.id AND member.tenant_id = project.tenant_id
+                        AND member.user_id = ? AND member.status = 1 AND member.deleted = 0
+                        AND (role.role_code = 'PM' OR permission.permission_code = 'project:project:list')
+                    )
+                    OR EXISTS (
+                      SELECT 1 FROM sys_user_role ur JOIN sys_role system_role
+                        ON system_role.id = ur.role_id AND system_role.tenant_id = ur.tenant_id
+                      WHERE ur.user_id = ? AND ur.tenant_id = ? AND system_role.role_code = 'SUPER_ADMIN'
+                        AND system_role.status = 1 AND system_role.deleted = 0
+                    )
+                  )
+                """, Integer.class, tenantId, userId, userId, userId, tenantId);
+        return granted != null && granted > 0;
+    }
+
     public boolean hasProjectAccess(long userId, long tenantId, long projectId) {
         Integer allowed = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM pm_project project
