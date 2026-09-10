@@ -1,0 +1,217 @@
+{
+  "iteration_id": "I4",
+  "task_id": "T4",
+  "status": "corrected",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/DeliveryUnitPage.vue",
+      "purpose": "纠偏 F-1：保存成功后跳过未保存修改确认"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260910-073-architecture-delivery-unit/codex-task-scope.yaml",
+      "purpose": "补齐实际写入路径并如实声明公共能力变更"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/design.json",
+      "purpose": "纠偏 F-2：澄清缺失 projectRef 的实际行为"
+    }
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-governance.mjs && node scripts/check-repo-skill.mjs",
+      "exit_code": 0,
+      "salient_output": "两项通过：18 个模块治理检查通过；仓库 Skill 检查通过"
+    },
+    {
+      "command": "node scripts/check-ai-control-layout.mjs",
+      "exit_code": 1,
+      "salient_output": "基线故障：docs/requirements/REQ-20260904-061-.../codex-task-scope.yaml 非 JSON 兼容 YAML，该文件本任务未修改"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 1,
+      "salient_output": "基线故障：business/requirement 与 platform/boot 5 处越界导入，均非本任务文件"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 1,
+      "salient_output": "基线故障：V84_1__seed_requirement_system_catalog.sql 命名不符合 V<number>__description.sql，该文件本任务未修改"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope <本需求 scope> --base 3f0098b --head HEAD",
+      "exit_code": 1,
+      "salient_output": "唯一违规：public capability change requires issue, owner approval, compatibility and regression tests（owner_approved=false、issue 缺失，待模块 Owner 审批）"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 449, Failures: 0, Errors: 0；BUILD SUCCESS"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit 与 vite build 通过"
+    },
+    {
+      "command": "node /tmp/api-verify.mjs",
+      "exit_code": 0,
+      "salient_output": "菜单可见=true；create=200 code=DUPHY_MOBILE001；重名 409；跨物理子系统关联 409；过期 rowVersion 409；停用后调整关联 409；删除后详情 404、列表 total=0"
+    },
+    {
+      "command": "node /tmp/api-verify2.mjs",
+      "exit_code": 0,
+      "salient_output": "同物理子系统关联 200 related=1；部署单元反查 contains=true；清空关联后反查 false；删除后反查 false"
+    },
+    {
+      "command": "node /tmp/pwtest/diag.mjs（纠偏前）",
+      "exit_code": 0,
+      "salient_output": "after create click: messageBox=1 text=放弃未保存修改？（缺陷复现）"
+    },
+    {
+      "command": "node /tmp/pwtest/diag.mjs（纠偏后）",
+      "exit_code": 0,
+      "salient_output": "after create click: messageBox=0 visibleDrawers=0"
+    },
+    {
+      "command": "node /tmp/pwtest/accept.mjs（桌面）",
+      "exit_code": 0,
+      "salient_output": "16 项全部 PASS，console errors: none"
+    },
+    {
+      "command": "node /tmp/pwtest/accept-reverse.mjs（部署单元反查）",
+      "exit_code": 0,
+      "salient_output": "2 项全部 PASS，console errors: none"
+    },
+    {
+      "command": "node /tmp/pwtest/accept-mobile.mjs（390x844）",
+      "exit_code": 0,
+      "salient_output": "7 项全部 PASS，抽屉宽度 366 <= 390，无横向滚动，console errors: none"
+    },
+    {
+      "command": "git commit -m \"fix(architecture): 保存成功后不再触发未保存修改确认并补齐任务范围\"",
+      "exit_code": 0,
+      "salient_output": "6a59cc8"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "浏览器创建成功并分配 DUPHY_PORTAL004；重名 409；编号容量上限由 MySQL 测试覆盖",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "列表筛选分页与详情抽屉字段在浏览器与 API 双通道验证",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "过期 rowVersion 409；编辑态归属不可选；服务测试覆盖归属变更 400",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "浏览器删除二次确认后列表消失；API 删除后详情 404 且部署单元反查为空；作废守卫由 MySQL 集成断言",
+      "limitations": [
+        "未在本地演示数据上真实执行部署单元作废（避免破坏演示数据），守卫以 DeliveryUnitMySqlTest 的真实数据库断言为准"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "浏览器关联候选仅 1 项且限定所选物理子系统；跨物理子系统 API 提交 409；复合外键由 MySQL 测试断言",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "部署单元详情抽屉展示关联交付单元（浏览器）与反查接口（API）",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": "菜单在登录后的路由树中可见且页面可访问；权限表达式在控制器测试逐项断言",
+      "limitations": [
+        "未用无权限账号做端到端 403 验证；无权限态页面仅代码路径可达，未在浏览器实测"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "mvn -pl :ccb-architecture -am test 449 项全过；npm build 通过；移动视口无横向滚动且抽屉宽度受限",
+      "limitations": [
+        "全量治理脚本存在 3 项与本任务无关的基线故障"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-1",
+      "requirement_id": "R1",
+      "expected": "保存成功关闭抽屉时不出现额外确认",
+      "observed": "创建成功后弹出“放弃未保存修改？”确认框，用户需再次点击",
+      "reproduction": "node /tmp/pwtest/diag.mjs，在新建表单填写后点击创建按钮",
+      "evidence": "diag 输出 messageBox=1 text=放弃未保存修改？；el-drawer 在父层置 false 时回发 update:modelValue，触发页面未保存守卫",
+      "severity": "P1",
+      "confidence": "high",
+      "status": "open"
+    },
+    {
+      "id": "F-2",
+      "requirement_id": "R2",
+      "expected": "缺少 projectRef 参数返回 400",
+      "observed": "参数完全缺失时返回 500",
+      "reproduction": "curl /api/architecture/delivery-units（无 projectRef）",
+      "evidence": "交付单元 500；既有 deployment-units 与 physical-subsystems 同样 500；projectRef= 空串返回 400",
+      "severity": "P3",
+      "confidence": "high",
+      "status": "open"
+    }
+  ],
+  "correction": {
+    "decisions": [
+      {
+        "feedback_id": "F-1",
+        "decision": "accept",
+        "reason": "保存成功后父层关闭抽屉被误判为用户放弃修改，属于真实缺陷",
+        "causal_basis": "UiFormDrawer 内部 el-drawer 在 modelValue 外部置 false 时同样 emit update:modelValue(false)，页面把该事件一律当作未保存关闭处理",
+        "actions": [
+          "DeliveryUnitPage 增加 suppressCloseGuard 标记，保存成功后置位并在关闭处理中短路",
+          "openCreate/openEdit 重置该标记"
+        ],
+        "checks": [
+          "diag.mjs 纠偏后 messageBox=0 且抽屉关闭",
+          "accept.mjs 16 项全 PASS"
+        ],
+        "closure_evidence": [
+          "node /tmp/pwtest/diag.mjs 输出 after create click: messageBox=0 visibleDrawers=0",
+          "node /tmp/pwtest/accept.mjs 输出 16 项 PASS，console errors: none",
+          "提交 6a59cc8"
+        ]
+      },
+      {
+        "feedback_id": "F-2",
+        "decision": "accept",
+        "reason": "实测行为与既有全部架构接口一致，属于设计文档描述不准确而非实现缺陷",
+        "causal_basis": "平台全局异常处理把缺参异常统一映射为 500；单独修改会使交付单元与既有接口行为不一致",
+        "actions": [
+          "在 design.json 的错误处理中区分空串与缺参，并注明如需统一需单独的平台公共能力变更"
+        ],
+        "checks": [
+          "design.json 通过 JSON 解析",
+          "交付单元、deployment-units、physical-subsystems 三个接口实测一致"
+        ],
+        "closure_evidence": [
+          "curl 三个接口均 500，projectRef= 返回 400",
+          "design.json 更新并校验通过"
+        ]
+      }
+    ]
+  },
+  "next": "verifying"
+}

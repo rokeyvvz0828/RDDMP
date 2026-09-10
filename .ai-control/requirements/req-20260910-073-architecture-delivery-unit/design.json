@@ -310,9 +310,14 @@
   },
   "error_handling": [
     {
-      "condition": "参数非法或缺少 projectRef",
-      "behavior": "HTTP 400",
+      "condition": "参数非法，或 projectRef 为空字符串",
+      "behavior": "HTTP 400（与既有架构接口一致）",
       "recovery": "修正请求"
+    },
+    {
+      "condition": "projectRef 参数完全缺失",
+      "behavior": "与既有 architecture 接口一致，由平台全局异常处理返回 HTTP 500",
+      "recovery": "前端请求始终携带 projectRef；如需统一改为 400 需单独的平台能力变更"
     },
     {
       "condition": "无 view/manage 权限或跨项目",

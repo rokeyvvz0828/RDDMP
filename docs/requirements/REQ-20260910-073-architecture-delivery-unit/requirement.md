@@ -67,6 +67,16 @@ module: business/architecture
 8. 写操作产生审计记录；跨项目、越权与未认证请求被服务端拒绝。
 9. 桌面与手机视口下加载、空、失败、无权限、提交中状态完整，无横向整页滚动、遮挡或按钮不可达。
 
+## 实施状态（2026-09-10）
+
+已完成实施与验收，控制账本当前停在 `verifying`，收敛门禁因公共能力授权未闭合而阻塞，未声明完成。
+
+- 提交：`0ee2764`（需求/设计/计划）、`a02298e`（T1 数据层与 V202 迁移）、`ad835da`（T2 服务/接口/作废守卫）、`effe9f5`（T3 前端）、`6a59cc8`（T4 纠偏与范围修正）。实际开发分支为 `dev-ivanh`（经用户确认，未建独立需求分支）。
+- 证据：`mvn -pl :ccb-architecture -am test` 449 项通过；`npm --prefix web run build` 通过；真实 Chromium 桌面与移动视口验收 25 项全 PASS 且无控制台错误。
+- 纠偏：F-1 保存成功后误弹“放弃未保存修改？”已修复并复验（P1，已关闭）；F-2 缺失 `projectRef` 实际与既有架构接口一致返回 500，属设计描述不准确，已更正文档（P3，已关闭）。
+- 未闭合项：V202 迁移与菜单/权限种子位于 `platform/infrastructure`，`check-codex-scope.mjs` 要求 issue 与 Owner 审批；`owner_approved=false`，需模块 Owner `rokeyvvz0828` 专项复核后方可启动收敛。
+- 三项治理基线故障（`V84_1` 命名、模块越界导入、`REQ-20260904-061` 的 scope 文件非 JSON 兼容 YAML）在本任务之前既已存在，本次未修复。
+
 ## 测试与发布
 - 必须执行的测试：`mvn -pl :ccb-architecture -am test`、`node scripts/check-all-governance.mjs`、`node scripts/check-flyway-migrations.mjs`、`node scripts/check-codex-scope.mjs`、`npm --prefix web run build`，以及真实浏览器桌面/手机视口验收。
 - 上线验证：确认菜单与权限种子在目标环境生效，管理员与架构角色可访问，其他角色无越权入口。
