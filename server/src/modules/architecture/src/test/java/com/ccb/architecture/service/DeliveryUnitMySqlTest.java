@@ -328,6 +328,61 @@ class DeliveryUnitMySqlTest {
                 TENANT_ID, DEPLOYMENT_UNIT_ID));
     }
 
+    @Test
+    void relationsEditedFromDeploymentSideAreSymmetricAndDoNotPublishVersions() {
+        long deliveryUnitId = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "统一认证交付包");
+        int versionsBefore = countRows("arch_deployment_unit_version", "unit_id = " + DEPLOYMENT_UNIT_ID);
+
+        store.replaceDeploymentUnitsFromDeploymentSide(TENANT_ID, PROJECT.id(), PHYSICAL_ID, DEPLOYMENT_UNIT_ID,
+                Set.of(deliveryUnitId), actor.id());
+
+        assertThat(store.findRelatedDeliveryUnits(TENANT_ID, PROJECT.id(), DEPLOYMENT_UNIT_ID))
+                .extracting(DeliveryUnit::id).containsExactly(deliveryUnitId);
+        assertThat(store.findRelatedDeploymentUnits(TENANT_ID, PROJECT.id(), deliveryUnitId))
+                .extracting(DeploymentUnitRef::id).containsExactly(DEPLOYMENT_UNIT_ID);
+        assertThat(store.hasDeliveryUnitRelation(TENANT_ID, PROJECT.id(), DEPLOYMENT_UNIT_ID)).isTrue();
+
+        // 方案 A：部署单元侧的关联编辑不发布新版本，也不写关系变更历史
+        assertThat(countRows("arch_deployment_unit_version", "unit_id = " + DEPLOYMENT_UNIT_ID))
+                .isEqualTo(versionsBefore);
+        assertThat(countRows("arch_deployment_unit_relation_history", null)).isZero();
+
+        // 从部署单元侧清空后，交付单元侧也立即看不到
+        store.replaceDeploymentUnitsFromDeploymentSide(TENANT_ID, PROJECT.id(), PHYSICAL_ID, DEPLOYMENT_UNIT_ID,
+                Set.of(), actor.id());
+        assertThat(store.findRelatedDeliveryUnits(TENANT_ID, PROJECT.id(), DEPLOYMENT_UNIT_ID)).isEmpty();
+        assertThat(store.findRelatedDeploymentUnits(TENANT_ID, PROJECT.id(), deliveryUnitId)).isEmpty();
+    }
+
+    @Test
+    void deliveryUnitCandidatesAreLimitedToActiveUnitsOfSamePhysicalSubsystem() {
+        long active = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "启用交付包");
+        long inactive = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "停用交付包");
+        store.updateUnitStatus(TENANT_ID, PROJECT.id(), inactive, "ACTIVE", "INACTIVE", actor.id());
+        long otherPhysical = insertDeliveryUnit(PROJECT.id(), PHYSICAL_B_ID, "其他子系统交付包");
+        long deleted = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "已删除交付包");
+        store.softDelete(TENANT_ID, PROJECT.id(), deleted, actor.id());
+
+        PageResult<DeliveryUnit> page = store.searchActiveOptions(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "交付包",
+                new PageQuery(1, 20));
+
+        assertThat(page.records()).extracting(DeliveryUnit::id).containsExactly(active);
+        assertThat(page.records()).extracting(DeliveryUnit::id).doesNotContain(inactive, otherPhysical, deleted);
+
+        PageResult<DeliveryUnit> byKeyword = store.searchActiveOptions(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "启用",
+                new PageQuery(1, 20));
+        assertThat(byKeyword.records()).extracting(DeliveryUnit::id).containsExactly(active);
+        assertThat(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), List.of(active, otherPhysical)))
+                .extracting(DeliveryUnit::id).containsExactlyInAnyOrder(active, otherPhysical);
+        assertThat(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), List.of(deleted))).isEmpty();
+    }
+
+    private static int countRows(String table, String where) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM " + table
+                + (where == null ? "" : " WHERE " + where), Integer.class);
+        return count == null ? 0 : count;
+    }
+
     private long insertDeliveryUnit(long projectId, long physicalSubsystemId, String name) {
         long id = nextId();
         String code = "DU" + physicalSubsystemId + "00" + sequence.incrementAndGet();

@@ -206,6 +206,43 @@ class DeliveryUnitControllerTest {
                         + "'architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
                         + "'architecture:view', 'architecture:apply', 'architecture:manage')",
                 long.class, String.class, AuthUser.class);
+        assertPermission(DeploymentUnitDeliveryUnitController.class, "deliveryUnitOptions",
+                "hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', "
+                        + "'architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
+                        + "'architecture:view', 'architecture:apply', 'architecture:manage')",
+                long.class, String.class, long.class, long.class, String.class, AuthUser.class);
+        assertPermission(DeploymentUnitDeliveryUnitController.class, "replaceDeliveryUnits",
+                "hasAuthority('architecture:delivery-unit:manage')",
+                long.class, DeliveryUnitController.DeliveryUnitRelationCommand.class, String.class, AuthUser.class);
+    }
+
+    @Test
+    void 部署单元侧关联保存转发集合() throws Exception {
+        when(service.replaceDeploymentUnitDeliveryUnits(eq(ACTOR), eq(PROJECT), eq(31L), any(), any()))
+                .thenReturn(List.of());
+
+        mockMvc.perform(put("/api/architecture/deployment-units/31/delivery-units")
+                        .param("projectRef", "PROJECT-A")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"deploymentUnitIds\":[1,2]}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<List<Long>> ids = ArgumentCaptor.forClass(List.class);
+        verify(service).replaceDeploymentUnitDeliveryUnits(eq(ACTOR), eq(PROJECT), eq(31L), ids.capture(), any());
+        assertThat(ids.getValue()).containsExactly(1L, 2L);
+    }
+
+    @Test
+    void 部署单元侧候选接口返回同子系统交付单元() throws Exception {
+        when(service.deliveryUnitOptionsForDeploymentUnit(eq(ACTOR), eq(PROJECT), eq(31L), eq("认证"), any()))
+                .thenReturn(new PageResult<>(List.of(new DeliveryUnitService.RelatedDeliveryUnitView(1L,
+                        "DUW0001A001", "统一认证交付包", "ACTIVE")), 1L, 1L, 20L));
+
+        mockMvc.perform(get("/api/architecture/deployment-units/31/delivery-unit-options")
+                        .param("projectRef", "PROJECT-A")
+                        .param("keyword", "认证"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.records[0].code").value("DUW0001A001"));
     }
 
     private void assertPermission(Class<?> controller, String methodName, String expectedExpression,

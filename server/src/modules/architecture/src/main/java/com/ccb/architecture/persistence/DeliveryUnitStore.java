@@ -267,6 +267,73 @@ public class DeliveryUnitStore {
         return count != null && count > 0;
     }
 
+    /** 按 ID 批量读取未删除的交付单元，用于关联校验。 */
+    public List<DeliveryUnit> findDeliveryUnitsByIds(long tenantId, long projectId, Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
+        args.addAll(ids);
+        String placeholders = String.join(", ", ids.stream().map(id -> "?").toList());
+        return jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_delivery_unit "
+                        + "WHERE tenant_id = ? AND project_id = ? AND deleted = 0 AND id IN (" + placeholders + ")",
+                UNIT_MAPPER, args.toArray());
+    }
+
+    /** 同物理子系统下的启用交付单元候选；用于部署单元侧的关联选择。 */
+    public PageResult<DeliveryUnit> searchActiveOptions(long tenantId, long projectId, long physicalSubsystemId,
+                                                        String keyword, PageQuery page) {
+        PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
+        StringBuilder filter = new StringBuilder();
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, physicalSubsystemId));
+        addLike(filter, args, "name", keyword);
+        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM arch_delivery_unit "
+                        + "WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_id = ? "
+                        + "AND deleted = 0 AND status = 'ACTIVE'" + filter,
+                Long.class, args.toArray());
+        List<Object> listArgs = new ArrayList<>(args);
+        listArgs.add(normalizedPage.size());
+        listArgs.add((normalizedPage.page() - 1) * normalizedPage.size());
+        List<DeliveryUnit> records = jdbc.query("SELECT " + UNIT_COLUMNS + " FROM arch_delivery_unit "
+                        + "WHERE tenant_id = ? AND project_id = ? AND physical_subsystem_id = ? "
+                        + "AND deleted = 0 AND status = 'ACTIVE'" + filter
+                        + " ORDER BY name, id LIMIT ? OFFSET ?",
+                UNIT_MAPPER, listArgs.toArray());
+        return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
+    }
+
+    /**
+     * 从部署单元侧覆盖式替换关联集合；与交付单元侧写同一张关系表。
+     * 只增删差集，不重写未变化的关系行。
+     */
+    public void replaceDeploymentUnitsFromDeploymentSide(long tenantId, long projectId, long physicalSubsystemId,
+                                                        long deploymentUnitId, Set<Long> deliveryUnitIds,
+                                                        long actorId) {
+        Set<Long> desired = deliveryUnitIds == null ? Set.of() : new HashSet<>(deliveryUnitIds);
+        Set<Long> current = new HashSet<>(jdbc.query(
+                "SELECT delivery_unit_id FROM arch_delivery_unit_deployment_unit "
+                        + "WHERE tenant_id = ? AND project_id = ? AND deployment_unit_id = ? FOR UPDATE",
+                (rs, rowNum) -> rs.getLong("delivery_unit_id"), tenantId, projectId, deploymentUnitId));
+
+        Set<Long> additions = new HashSet<>(desired);
+        additions.removeAll(current);
+        Set<Long> removals = new HashSet<>(current);
+        removals.removeAll(desired);
+
+        for (Long deliveryUnitId : additions.stream().sorted().toList()) {
+            jdbc.update("""
+                    INSERT INTO arch_delivery_unit_deployment_unit
+                        (tenant_id, project_id, physical_subsystem_id, delivery_unit_id, deployment_unit_id, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """, tenantId, projectId, physicalSubsystemId, deliveryUnitId, deploymentUnitId, actorId);
+        }
+        for (Long deliveryUnitId : removals.stream().sorted().toList()) {
+            jdbc.update("DELETE FROM arch_delivery_unit_deployment_unit "
+                            + "WHERE tenant_id = ? AND project_id = ? AND delivery_unit_id = ? AND deployment_unit_id = ?",
+                    tenantId, projectId, deliveryUnitId, deploymentUnitId);
+        }
+    }
+
     /** 覆盖式替换关联集合：只增删差集，避免重写未变化的关系行。 */
     public void replaceDeploymentUnits(long tenantId, long projectId, long physicalSubsystemId, long deliveryUnitId,
                                        Set<Long> deploymentUnitIds, long actorId) {

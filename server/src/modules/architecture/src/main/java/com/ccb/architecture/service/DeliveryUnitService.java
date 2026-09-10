@@ -50,6 +50,9 @@ public class DeliveryUnitService {
     private static final String DEACTIVATE_OPERATION = "ARCHITECTURE_DELIVERY_UNIT_DEACTIVATE";
     private static final String REACTIVATE_OPERATION = "ARCHITECTURE_DELIVERY_UNIT_REACTIVATE";
     private static final String DELETE_OPERATION = "ARCHITECTURE_DELIVERY_UNIT_DELETE";
+    private static final String DEPLOYMENT_UNIT_RELATE_OPERATION =
+            "ARCHITECTURE_DEPLOYMENT_UNIT_RELATE_DELIVERY_UNIT";
+    private static final String DEPLOYMENT_UNIT_RESOURCE_PATH = "/api/architecture/deployment-units";
     private static final String ACTIVE = "ACTIVE";
     private static final String INACTIVE = "INACTIVE";
 
@@ -122,12 +125,61 @@ public class DeliveryUnitService {
         requireActor(actor);
         requireProject(project);
         requirePositiveId(deploymentUnitId);
-        if (store.findDeploymentUnitsByIds(actor.tenantId(), project.id(), List.of(deploymentUnitId)).isEmpty()) {
-            throw new ArchitectureNotFoundException("部署单元不存在：" + deploymentUnitId);
-        }
+        requireDeploymentUnit(actor, project, deploymentUnitId);
         return store.findRelatedDeliveryUnits(actor.tenantId(), project.id(), deploymentUnitId).stream()
                 .map(unit -> new RelatedDeliveryUnitView(unit.id(), unit.code(), unit.name(), unit.status()))
                 .toList();
+    }
+
+    /** 部署单元侧关联候选：同物理子系统下启用且未删除的交付单元。 */
+    public PageResult<RelatedDeliveryUnitView> deliveryUnitOptionsForDeploymentUnit(AuthUser actor,
+                                                                                   ProjectAccess project,
+                                                                                   long deploymentUnitId,
+                                                                                   String keyword, PageQuery page) {
+        requireActor(actor);
+        requireProject(project);
+        requirePositiveId(deploymentUnitId);
+        DeploymentUnitRef deploymentUnit = requireDeploymentUnit(actor, project, deploymentUnitId);
+        PageResult<DeliveryUnit> result = store.searchActiveOptions(actor.tenantId(), project.id(),
+                deploymentUnit.physicalSubsystemId(), keyword, page);
+        List<RelatedDeliveryUnitView> records = result.records().stream()
+                .map(unit -> new RelatedDeliveryUnitView(unit.id(), unit.code(), unit.name(), unit.status()))
+                .toList();
+        return new PageResult<>(records, result.total(), result.page(), result.size());
+    }
+
+    /**
+     * 从部署单元侧覆盖式更新关联集合；与交付单元侧写同一张关系表。
+     *
+     * <p>按用户确认的方案 A，本入口不发布部署单元新版本，也不写关系变更历史，
+     * 只更新关联表并写审计。</p>
+     */
+    public List<RelatedDeliveryUnitView> replaceDeploymentUnitDeliveryUnits(AuthUser actor, ProjectAccess project,
+                                                                          long deploymentUnitId,
+                                                                          List<Long> deliveryUnitIds,
+                                                                          String traceId) {
+        requireActor(actor);
+        requireProject(project);
+        requirePositiveId(deploymentUnitId);
+        Set<Long> desired = normalizeRelationIds(deliveryUnitIds);
+        try {
+            transactions.executeWithoutResult(status -> {
+                DeploymentUnitRef deploymentUnit = requireDeploymentUnit(actor, project, deploymentUnitId);
+                if (!ACTIVE.equals(deploymentUnit.status())) {
+                    throw conflict("已停用或已作废部署单元不能调整关联，请先重新启用");
+                }
+                validateDeliveryUnitTargets(actor.tenantId(), project.id(), deploymentUnit.physicalSubsystemId(),
+                        desired);
+                store.replaceDeploymentUnitsFromDeploymentSide(actor.tenantId(), project.id(),
+                        deploymentUnit.physicalSubsystemId(), deploymentUnitId, desired, actor.id());
+            });
+        } catch (RuntimeException exception) {
+            throw recordFailure(actor, DEPLOYMENT_UNIT_RELATE_OPERATION, "PUT",
+                    DEPLOYMENT_UNIT_RESOURCE_PATH + "/" + deploymentUnitId + "/delivery-units", exception, traceId);
+        }
+        operationAudit.recordSuccess(auditCommand(actor, DEPLOYMENT_UNIT_RELATE_OPERATION, "PUT",
+                DEPLOYMENT_UNIT_RESOURCE_PATH + "/" + deploymentUnitId + "/delivery-units", null, traceId));
+        return relatedDeliveryUnits(actor, project, deploymentUnitId);
     }
 
     // ---------- 写操作 ----------
@@ -327,6 +379,31 @@ public class DeliveryUnitService {
         }
     }
 
+    private void validateDeliveryUnitTargets(long tenantId, long projectId, long physicalSubsystemId,
+                                             Set<Long> deliveryUnitIds) {
+        if (deliveryUnitIds.isEmpty()) {
+            return;
+        }
+        List<DeliveryUnit> targets = store.findDeliveryUnitsByIds(tenantId, projectId, deliveryUnitIds);
+        if (targets.size() != deliveryUnitIds.size()) {
+            throw conflict("关联的交付单元不存在或已删除");
+        }
+        for (DeliveryUnit target : targets) {
+            if (!ACTIVE.equals(target.status())) {
+                throw conflict("只能关联启用状态的交付单元：" + target.name());
+            }
+            if (target.physicalSubsystemId() != physicalSubsystemId) {
+                throw conflict("只能关联同一物理子系统下的交付单元：" + target.name());
+            }
+        }
+    }
+
+    private DeploymentUnitRef requireDeploymentUnit(AuthUser actor, ProjectAccess project, long deploymentUnitId) {
+        return store.findDeploymentUnitsByIds(actor.tenantId(), project.id(), List.of(deploymentUnitId)).stream()
+                .findFirst()
+                .orElseThrow(() -> new ArchitectureNotFoundException("部署单元不存在：" + deploymentUnitId));
+    }
+
     private Set<Long> normalizeRelationIds(List<Long> values) {
         if (values == null || values.isEmpty()) {
             return Set.of();
@@ -394,8 +471,13 @@ public class DeliveryUnitService {
 
     private RuntimeException recordFailure(AuthUser actor, String operationCode, String method,
                                            RuntimeException original, String traceId) {
+        return recordFailure(actor, operationCode, method, RESOURCE_PATH, original, traceId);
+    }
+
+    private RuntimeException recordFailure(AuthUser actor, String operationCode, String method, String path,
+                                           RuntimeException original, String traceId) {
         try {
-            operationAudit.recordFailure(auditCommand(actor, operationCode, method, RESOURCE_PATH,
+            operationAudit.recordFailure(auditCommand(actor, operationCode, method, path,
                     safeErrorMessage(original), traceId));
         } catch (RuntimeException auditFailure) {
             logFailure(operationCode, auditFailure);

@@ -309,6 +309,88 @@ class DeliveryUnitServiceTest {
     }
 
     @Test
+    void deploymentSideReplacePersistsValidatedTargets() {
+        when(store.findDeploymentUnitsByIds(TENANT_ID, PROJECT.id(), List.of(31L)))
+                .thenReturn(List.of(deploymentUnit(31L, PHYSICAL_ID, "ACTIVE")));
+        when(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), Set.of(UNIT_ID)))
+                .thenReturn(List.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 0)));
+        when(store.findRelatedDeliveryUnits(TENANT_ID, PROJECT.id(), 31L))
+                .thenReturn(List.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 0)));
+
+        var result = service.replaceDeploymentUnitDeliveryUnits(operator, PROJECT, 31L, List.of(UNIT_ID), "trace-d1");
+
+        assertThat(result).extracting(DeliveryUnitService.RelatedDeliveryUnitView::id).containsExactly(UNIT_ID);
+        verify(store).replaceDeploymentUnitsFromDeploymentSide(TENANT_ID, PROJECT.id(), PHYSICAL_ID, 31L,
+                Set.of(UNIT_ID), operator.id());
+        verify(operationAudit).recordSuccess(any(SystemOperationAuditCommand.class));
+    }
+
+    @Test
+    void deploymentSideReplaceRejectsInactiveDeploymentUnit() {
+        when(store.findDeploymentUnitsByIds(TENANT_ID, PROJECT.id(), List.of(31L)))
+                .thenReturn(List.of(deploymentUnit(31L, PHYSICAL_ID, "INACTIVE")));
+
+        assertThatThrownBy(() -> service.replaceDeploymentUnitDeliveryUnits(operator, PROJECT, 31L,
+                List.of(UNIT_ID), "trace-d2"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
+                .hasMessageContaining("已停用或已作废部署单元不能调整关联");
+        verify(store, never()).replaceDeploymentUnitsFromDeploymentSide(anyLong(), anyLong(), anyLong(), anyLong(),
+                any(), anyLong());
+    }
+
+    @Test
+    void deploymentSideReplaceRejectsInactiveOrMissingDeliveryUnit() {
+        when(store.findDeploymentUnitsByIds(TENANT_ID, PROJECT.id(), List.of(31L)))
+                .thenReturn(List.of(deploymentUnit(31L, PHYSICAL_ID, "ACTIVE")));
+        when(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), Set.of(UNIT_ID)))
+                .thenReturn(List.of(unit(UNIT_ID, "DUW0001A001", "INACTIVE", 0)));
+
+        assertThatThrownBy(() -> service.replaceDeploymentUnitDeliveryUnits(operator, PROJECT, 31L,
+                List.of(UNIT_ID), "trace-d3"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("只能关联启用状态的交付单元");
+
+        when(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), Set.of(UNIT_ID))).thenReturn(List.of());
+        assertThatThrownBy(() -> service.replaceDeploymentUnitDeliveryUnits(operator, PROJECT, 31L,
+                List.of(UNIT_ID), "trace-d4"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不存在或已删除");
+    }
+
+    @Test
+    void deploymentSideReplaceRejectsCrossPhysicalSubsystemDeliveryUnit() {
+        when(store.findDeploymentUnitsByIds(TENANT_ID, PROJECT.id(), List.of(31L)))
+                .thenReturn(List.of(deploymentUnit(31L, PHYSICAL_ID, "ACTIVE")));
+        when(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), Set.of(UNIT_ID)))
+                .thenReturn(List.of(new DeliveryUnit(UNIT_ID, "DUW0002B001", OTHER_PHYSICAL_ID, "其他交付包",
+                        "ACTIVE", null, null, 88L, 88L, LocalDateTime.of(2026, 9, 10, 10, 0),
+                        LocalDateTime.of(2026, 9, 10, 10, 0), 0)));
+
+        assertThatThrownBy(() -> service.replaceDeploymentUnitDeliveryUnits(operator, PROJECT, 31L,
+                List.of(UNIT_ID), "trace-d5"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("只能关联同一物理子系统下的交付单元");
+    }
+
+    @Test
+    void deploymentSideOptionsUseDeploymentUnitPhysicalSubsystem() {
+        when(store.findDeploymentUnitsByIds(TENANT_ID, PROJECT.id(), List.of(31L)))
+                .thenReturn(List.of(deploymentUnit(31L, PHYSICAL_ID, "ACTIVE")));
+        when(store.searchActiveOptions(eq(TENANT_ID), eq(PROJECT.id()), eq(PHYSICAL_ID), eq("认证"), any()))
+                .thenReturn(new com.ccb.common.api.PageResult<>(List.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 0)),
+                        1L, 1L, 20L));
+
+        var result = service.deliveryUnitOptionsForDeploymentUnit(operator, PROJECT, 31L, "认证",
+                new com.ccb.common.api.PageQuery(1, 20));
+
+        assertThat(result.records()).extracting(DeliveryUnitService.RelatedDeliveryUnitView::code)
+                .containsExactly("DUW0001A001");
+        verify(store).searchActiveOptions(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "认证",
+                new com.ccb.common.api.PageQuery(1, 20));
+    }
+
+    @Test
     void deploymentUnitOptionsDelegateToDeploymentUnitService() {
         var expected = new com.ccb.common.api.PageResult<DeploymentUnitService.RelatedDeploymentUnitView>(List.of(),
                 0L, 1L, 20L);
