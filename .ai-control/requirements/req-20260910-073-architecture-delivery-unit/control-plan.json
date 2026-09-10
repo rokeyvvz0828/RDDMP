@@ -1,0 +1,246 @@
+{
+  "definition_revision": "definition-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "新增 V202 迁移与交付单元数据层（模型、存储、编号分配、无方向关联），并由真实 MySQL 集成测试证明唯一键、复合外键与软删除行为。",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitNumberCapacityExceededException.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java"
+      ],
+      "checks": [
+        "迁移在真实 MySQL 8.4 上完整执行",
+        "编号 DU<物理编号>001/002 确定性且并发不重号",
+        "同物理子系统同名返回 DuplicateKeyException，跨物理子系统可同名",
+        "直接插入跨物理子系统关联被复合外键拒绝",
+        "软删除后 findUnit 为空且 hasDeliveryUnitRelation 为 false",
+        "跨项目 findRelatedDeliveryUnits 返回空"
+      ],
+      "evidence_required": [
+        "T1-S1: 文件内容",
+        "T1-S2: 退出码与首个错误行",
+        "T1-S3: 迁移文件",
+        "T1-S4: 源文件",
+        "T1-S5: 退出码与测试统计行",
+        "T1-S6: git 提交哈希"
+      ],
+      "rollback": "git revert 本任务提交；new 表为空时可直接 DROP TABLE，有数据时先导出",
+      "stop_conditions": [
+        "迁移无法在真实 MySQL 8.4 上执行",
+        "复合外键无法建立",
+        "需要修改已发布迁移"
+      ],
+      "escalation_conditions": [
+        "需要改写存量 arch_deployment_unit 行",
+        "需要对既有表加长时锁"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "交付单元应用服务与 HTTP 接口可用，且部署单元作废在存在交付单元关联时被拒绝。",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "write_scope": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitDeploymentUnitReferenceChecker.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeliveryUnitController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java"
+      ],
+      "checks": [
+        "无权限 403；view 可读不可写；manage 可写",
+        "缺 projectRef 返回 400",
+        "归属物理子系统不同的修改请求返回 400",
+        "乐观锁过期返回 409",
+        "跨物理子系统关联返回 409 且不写关联",
+        "删除软删并清理关联且写审计",
+        "部署单元作废在存在交付单元关联时返回 409"
+      ],
+      "evidence_required": [
+        "T2-S1: 文件内容",
+        "T2-S2: 退出码与首个错误行",
+        "T2-S3: 源文件",
+        "T2-S4: 源文件",
+        "T2-S5: 退出码与测试统计行",
+        "T2-S6: git 提交哈希"
+      ],
+      "rollback": "git revert 本任务提交；数据库无需补偿",
+      "stop_conditions": [
+        "需要放宽既有接口权限才能复用",
+        "需要修改 DeploymentUnitReferenceCheckRequest 等公开契约"
+      ],
+      "escalation_conditions": [
+        "权限模型与设计不一致",
+        "需要新增平台公共能力"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "前端交付单元列表、抽屉表单、详情抽屉与部署单元反向展示可用且覆盖全状态。",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R8"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/DeliveryUnitPage.vue",
+        "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+        "web/src/modules/architecture/types.ts",
+        "web/src/modules/architecture/api.ts",
+        "web/src/modules/architecture/utils.ts",
+        "web/src/modules/architecture/architecture.css",
+        "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+        "web/src/router/index.ts"
+      ],
+      "checks": [
+        "交付单元名称必填且长度为 2—200",
+        "关联候选只出现同一物理子系统下的启用部署单元",
+        "未保存关闭抽屉需要二次确认",
+        "删除/停用需二次确认且禁用重复提交",
+        "部署单元详情展示关联交付单元或空态",
+        "移动视口无整页横向滚动"
+      ],
+      "evidence_required": [
+        "T3-S1: 退出码与构建结尾行",
+        "T3-S2: 源文件",
+        "T3-S3: 源文件",
+        "T3-S4: 源文件",
+        "T3-S5: 退出码与构建结尾行",
+        "T3-S6: git 提交哈希"
+      ],
+      "rollback": "git revert 本任务提交",
+      "stop_conditions": [
+        "需要修改 web/src/components/ui/** 公共组件",
+        "需要引入新依赖"
+      ],
+      "escalation_conditions": [
+        "交付示范中心范式无法覆盖目标形态"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "治理、迁移、构建、测试与真实浏览器验收全部通过并形成收敛产物。",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json"
+      ],
+      "checks": [
+        "治理与迁移检查退出码 0",
+        "架构模块完整测试无回归",
+        "前端构建通过",
+        "浏览器八条场景通过且无控制台错误",
+        "全部 must 需求有独立证据"
+      ],
+      "evidence_required": [
+        "T4-S1: 命令输出",
+        "T4-S2: 测试统计行",
+        "T4-S3: 构建结尾行",
+        "T4-S4: 每条场景的通过记录与接口状态码",
+        "T4-S5: convergence.json"
+      ],
+      "rollback": "回退全部提交并停用菜单 816 与权限 8161/8162",
+      "stop_conditions": [
+        "治理或迁移检查失败",
+        "架构模块测试出现回归"
+      ],
+      "escalation_conditions": [
+        "需要修改既有迁移、公共组件、模块边界或需求基准"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "服务依赖存储方法签名与表结构"
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "前端依赖接口响应结构"
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "reason": "验收依赖完整实现"
+    }
+  ],
+  "integration_checks": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "check": "mvn -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest,DeploymentUnitLifecycleMySqlTest -Dsurefire.failIfNoSpecifiedTests=false => 通过且既有部署单元行为无回归"
+    },
+    {
+      "after_tasks": [
+        "T2"
+      ],
+      "check": "mvn -pl :ccb-architecture -am test => 通过"
+    },
+    {
+      "after_tasks": [
+        "T3"
+      ],
+      "check": "npm --prefix web run build => 通过"
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "check": "node scripts/check-all-governance.mjs && node scripts/check-flyway-migrations.mjs => 退出码 0"
+    }
+  ],
+  "status": "ready"
+}

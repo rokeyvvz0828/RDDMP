@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260910-073",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260910-073-architecture-delivery-unit/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/architecture",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260910-073-architecture-delivery-unit",
+    "worktree": "/home/ivanh/source/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": [
+      "local-shell",
+      "codex"
+    ]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260910-073-architecture-delivery-unit/**",
+      ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/*.json",
+      "docs/engineering-control/designs/2026-09-10-architecture-delivery-unit-design.md",
+      "docs/engineering-control/plans/2026-09-10-architecture-delivery-unit-plan.md",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeliveryUnitController.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java",
+      "web/src/modules/architecture/types.ts",
+      "web/src/modules/architecture/api.ts",
+      "web/src/modules/architecture/utils.ts",
+      "web/src/modules/architecture/architecture.css",
+      "web/src/modules/architecture/DeliveryUnitPage.vue",
+      "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+      "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+      "web/src/router/index.ts"
+    ],
+    "read_only_paths": [
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "server/src/shared/**",
+      "server/src/platform/system/**",
+      "governance/modules.yaml",
+      "docs/governance/**",
+      "docs/architecture/**",
+      "docs/integration/**",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": []
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql"
+    ],
+    "compatibility_and_rollback": "仅追加新表、新菜单与新权限行；不改写既有表数据、不修改已发布迁移。回退为回退代码并停用菜单权限，新表为空时可直接删除，已产生数据先导出。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "unit",
+      "command": "mvn -pl :ccb-architecture -am test"
+    },
+    {
+      "name": "api",
+      "command": "交付单元列表/详情/增改删与关联接口的聚焦验证"
+    },
+    {
+      "name": "permission",
+      "command": "构造跨项目、跨物理子系统与越权请求验证403/409"
+    },
+    {
+      "name": "frontend",
+      "command": "npm --prefix web run build"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "V202 迁移与菜单/权限种子属于较高风险面，上线前须模块 Owner 专项复核。",
+      "关联表通过复合外键保证“同一物理子系统”，需给 arch_deployment_unit 追加唯一键；该键在存量数据上天然唯一。",
+      "只做加法，不修改既有契约、存量数据和历史迁移；不连接生产。"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260910-073-architecture-delivery-unit",
+    "control_justification": "涉及数据库追加迁移、菜单与权限种子和跨前后端契约，使用持久账本记录控制定义、计划、受控迭代与收敛验收。",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json"
+    ],
+    "release_verification": [
+      "mvn -pl :ccb-architecture -am test",
+      "npm --prefix web run build",
+      "桌面与手机视口真实浏览器验收",
+      "模块 Owner 迁移与权限专项复核"
+    ],
+    "rollback": "回退本需求提交；停用交付单元菜单与权限后重新发布，新表为空时直接删除，已有数据先导出再删除。"
+  }
+}
