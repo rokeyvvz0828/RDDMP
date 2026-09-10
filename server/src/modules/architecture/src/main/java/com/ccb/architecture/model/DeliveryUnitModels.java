@@ -63,6 +63,7 @@ public final class DeliveryUnitModels {
             long id,
             String code,
             String name,
+            String kind,
             String status,
             boolean deleted,
             long physicalSubsystemId) {

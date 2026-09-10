@@ -43,7 +43,7 @@ public class DeliveryUnitStore {
 
     private static final RowMapper<DeploymentUnitRef> DEPLOYMENT_UNIT_MAPPER = (rs, rowNum) ->
             new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"), rs.getString("name"),
-                    rs.getString("status"), false, rs.getLong("physical_subsystem_id"));
+                    rs.getString("kind"), rs.getString("status"), false, rs.getLong("physical_subsystem_id"));
 
     private final JdbcTemplate jdbc;
 
@@ -225,13 +225,13 @@ public class DeliveryUnitStore {
         List<Object> args = new ArrayList<>(List.of(tenantId, projectId));
         args.addAll(ids);
         String placeholders = String.join(", ", ids.stream().map(id -> "?").toList());
-        return jdbc.query("SELECT id, code, name, status, physical_subsystem_id FROM arch_deployment_unit "
+        return jdbc.query("SELECT id, code, name, kind, status, physical_subsystem_id FROM arch_deployment_unit "
                         + "WHERE tenant_id = ? AND project_id = ? AND id IN (" + placeholders + ")",
                 DEPLOYMENT_UNIT_MAPPER, args.toArray());
     }
 
     public List<DeploymentUnitRef> findRelatedDeploymentUnits(long tenantId, long projectId, long deliveryUnitId) {
-        return jdbc.query("SELECT unit.id, unit.code, unit.name, unit.status, unit.physical_subsystem_id "
+        return jdbc.query("SELECT unit.id, unit.code, unit.name, unit.kind, unit.status, unit.physical_subsystem_id "
                         + "FROM arch_delivery_unit_deployment_unit relation "
                         + "JOIN arch_deployment_unit unit "
                         + "  ON unit.tenant_id = relation.tenant_id AND unit.id = relation.deployment_unit_id "
@@ -256,6 +256,14 @@ public class DeliveryUnitStore {
         Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_delivery_unit_deployment_unit "
                         + "WHERE tenant_id = ? AND project_id = ? AND deployment_unit_id = ?",
                 Long.class, tenantId, projectId, deploymentUnitId);
+        return count != null && count > 0;
+    }
+
+    /** 租户维度关联检查；部署单元 ID 在租户内唯一，供作废引用守卫使用。 */
+    public boolean hasDeliveryUnitRelationInTenant(long tenantId, long deploymentUnitId) {
+        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM arch_delivery_unit_deployment_unit "
+                        + "WHERE tenant_id = ? AND deployment_unit_id = ?",
+                Long.class, tenantId, deploymentUnitId);
         return count != null && count > 0;
     }
 

@@ -7,6 +7,8 @@ import com.ccb.architecture.persistence.DeliveryUnitNumberCapacityExceededExcept
 import com.ccb.architecture.persistence.DeliveryUnitStore;
 import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
+import com.ccb.common.exception.BusinessException;
+import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectAccess;
 import org.flywaydb.core.Flyway;
@@ -298,6 +300,32 @@ class DeliveryUnitMySqlTest {
                 actor.id())).isEqualTo(1);
         assertThat(store.updateUnitStatus(TENANT_ID, PROJECT.id(), deliveryUnitId, "ACTIVE", "INACTIVE",
                 actor.id())).isZero();
+    }
+
+    @Test
+    void deploymentUnitVoidGuardRejectsWhileDeliveryUnitRelationExists() {
+        long deliveryUnitId = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "统一认证交付包");
+        DeploymentUnitReferenceGuard guard = new DeploymentUnitReferenceGuard(
+                List.of(new DeliveryUnitDeploymentUnitReferenceChecker(store)));
+
+        // 没有交付单元关联时允许作废
+        guard.requireClear(new com.ccb.architecture.integration.DeploymentUnitReferenceCheckRequest(
+                TENANT_ID, DEPLOYMENT_UNIT_ID));
+
+        store.replaceDeploymentUnits(TENANT_ID, PROJECT.id(), PHYSICAL_ID, deliveryUnitId,
+                Set.of(DEPLOYMENT_UNIT_ID), actor.id());
+
+        assertThatThrownBy(() -> guard.requireClear(
+                new com.ccb.architecture.integration.DeploymentUnitReferenceCheckRequest(
+                        TENANT_ID, DEPLOYMENT_UNIT_ID)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
+                .hasMessageContaining("交付单元关联");
+
+        // 交付单元软删除后恢复可作废
+        store.softDelete(TENANT_ID, PROJECT.id(), deliveryUnitId, actor.id());
+        guard.requireClear(new com.ccb.architecture.integration.DeploymentUnitReferenceCheckRequest(
+                TENANT_ID, DEPLOYMENT_UNIT_ID));
     }
 
     private long insertDeliveryUnit(long projectId, long physicalSubsystemId, String name) {
