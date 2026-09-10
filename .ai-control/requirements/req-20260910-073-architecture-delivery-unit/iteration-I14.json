@@ -1,0 +1,61 @@
+{
+  "iteration_id": "I14",
+  "task_id": "T6",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/api.ts",
+      "purpose": "新增部署单元侧关联保存与候选接口封装"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+      "purpose": "关联交付单元区块改为可多选编辑并补 empty 插槽"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+      "purpose": "传入 canManageRelations 并在 updated 后刷新列表"
+    }
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 1,
+      "salient_output": "首次失败：api.ts 形参与请求字段名不一致（deliveryUnitIds vs deploymentUnitIds），已修复"
+    },
+    {
+      "command": "node /tmp/pwtest/diag-list.mjs",
+      "exit_code": 0,
+      "salient_output": "发现页面空白：watch(immediate) 引用了尚未声明的 relationEditing，setup 期 TDZ 报错"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit 与 vite build 通过"
+    }
+  ],
+  "status": "feedback-open",
+  "checks": [
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "部署单元侧关联保存接口与抽屉交互已实现（待纠偏后复验）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-5",
+      "requirement_id": "R8",
+      "expected": "部署单元页面正常渲染列表与详情抽屉",
+      "observed": "页面完全空白：setup 期间 watch(immediate) 调用 cancelRelationEdit()，其内部访问尚未声明的 relationEditing，触发 TDZ ReferenceError",
+      "reproduction": "node /tmp/pwtest/diag-list.mjs 打开 /architecture/deployment-units",
+      "evidence": "diag-list 输出 body 为空、table rows=0、identity buttons=0；把 watch 移到所有状态声明之后即恢复",
+      "severity": "P1",
+      "confidence": "high",
+      "status": "open"
+    }
+  ],
+  "correction": null,
+  "next": "controlling"
+}

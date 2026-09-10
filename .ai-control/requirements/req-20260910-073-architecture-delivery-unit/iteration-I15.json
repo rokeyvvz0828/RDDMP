@@ -1,0 +1,75 @@
+{
+  "iteration_id": "I15",
+  "task_id": "T6",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/api.ts",
+      "purpose": "新增部署单元侧关联保存与候选接口封装"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+      "purpose": "关联交付单元区块改为可多选编辑并补 empty 插槽"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+      "purpose": "传入 canManageRelations 并在 updated 后刷新列表"
+    }
+  ],
+  "commands": [
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 1,
+      "salient_output": "首次失败：api.ts 形参与请求字段名不一致（deliveryUnitIds vs deploymentUnitIds），已修复"
+    },
+    {
+      "command": "node /tmp/pwtest/diag-list.mjs",
+      "exit_code": 0,
+      "salient_output": "发现页面空白：watch(immediate) 引用了尚未声明的 relationEditing，setup 期 TDZ 报错"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit 与 vite build 通过"
+    },
+    {
+      "command": "node /tmp/pwtest/diag-list.mjs（修复后）",
+      "exit_code": 0,
+      "salient_output": "table rows=1，identity=ECIP_AP / DPHY_PORTAL001"
+    },
+    {
+      "command": "node /tmp/pwtest/verify-deployment-side-relation.mjs",
+      "exit_code": 0,
+      "salient_output": "7/7 PASS：编辑入口、清空保存为空态、无匹配下拉保持打开、候选仅同物理子系统、保存后展示、交付单元侧立即可见、还原原始关联"
+    },
+    {
+      "command": "node /tmp/pwtest/accept.mjs / accept-reverse.mjs / accept-mobile.mjs / verify-empty-slot.mjs / verify-deployment-unit-select.mjs",
+      "exit_code": 0,
+      "salient_output": "16+2+7+4+3 项全 PASS，console errors none"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+    }
+  ],
+  "status": "verified",
+  "checks": [
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "两侧抽屉都可保存关联，任一侧保存另一侧立即可见（浏览器 7/7 + MySQL 12/12 对称性断言）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "npm build 通过；关联编辑复用既有抽屉区块与样式，未新增公共组件；移动视口 7/7；TDZ 缺陷修复后页面恢复",
+      "limitations": []
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "verifying"
+}

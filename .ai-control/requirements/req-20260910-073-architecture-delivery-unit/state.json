@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 34,
+  "revision": 48,
   "created_at": "2026-09-10T07:26:06+00:00",
-  "updated_at": "2026-09-10T08:44:36+00:00",
+  "updated_at": "2026-09-10T09:45:39+00:00",
   "mode": "standard",
   "workflow": "compact",
   "phase": "verifying",
@@ -54,6 +54,30 @@
       "to": "verifying",
       "evidence": "F-4 已裁决并复验关闭，T3 保持 verified",
       "recorded_at": "2026-09-10T08:44:36+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "defining",
+      "evidence": "用户追加需求并确认方案 A，approved 需求基准实质变化，按契约回到开发前设计修订",
+      "recorded_at": "2026-09-10T08:51:35+00:00"
+    },
+    {
+      "from": "defining",
+      "to": "planning",
+      "evidence": "定义门禁通过（definition-2）",
+      "recorded_at": "2026-09-10T08:51:36+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "controlling",
+      "evidence": "计划门禁通过（plan-2）",
+      "recorded_at": "2026-09-10T08:51:36+00:00"
+    },
+    {
+      "from": "controlling",
+      "to": "verifying",
+      "evidence": "T5/T6/T7 均 verified，反馈全部关闭",
+      "recorded_at": "2026-09-10T09:45:30+00:00"
     }
   ],
   "stage_artifacts": {
@@ -331,6 +355,300 @@
           ],
           "status": "ready"
         }
+      },
+      {
+        "revision": 2,
+        "evidence": "设计修订2：R6 改为双向可编，新增测量与受权动作，用户已确认方案 A",
+        "recorded_at": "2026-09-10T08:51:36+00:00",
+        "data": {
+          "definition_revision": "definition-2",
+          "objective": "在架构管理菜单下提供交付单元（名称 + 归属物理子系统）的增删改查，并与同一物理子系统下的部署单元建立无方向、双向可查的关联。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "新增交付单元必须提供名称与归属物理子系统，系统在创建时分配不可修改的编号。",
+              "acceptance": [
+                "创建成功后返回 DU<物理编号><三位序号> 格式编号",
+                "同租户同项目同物理子系统内名称重复返回 409"
+              ],
+              "priority": "must",
+              "source": "2026-09-10 用户需求确认与设计复核",
+              "counterexample": [
+                "允许客户端指定或修改编号",
+                "不同物理子系统使用相同名称被误拒绝"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "交付单元支持分页查询与抽屉式详情展示，可按名称、归属物理子系统、状态筛选。",
+              "acceptance": [
+                "列表分页与筛选结果正确且只包含当前项目数据",
+                "详情展示编号、名称、归属物理子系统、状态、描述、备注与关联部署单元"
+              ],
+              "priority": "must",
+              "source": "2026-09-10 用户需求确认",
+              "counterexample": [
+                "列表返回其他项目或已删除记录"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "交付单元名称、描述、备注可修改，归属物理子系统创建后不可变更，写操作受乐观锁保护。",
+              "acceptance": [
+                "合法修改递增 row_version",
+                "使用过期 row_version 提交返回 409",
+                "任何入口都无法改变归属物理子系统"
+              ],
+              "priority": "must",
+              "source": "2026-09-10 用户需求确认与设计复核",
+              "counterexample": [
+                "通过修改接口改变归属物理子系统"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "删除交付单元为软删除并要求二次确认，同时清理其部署单元关联且不影响部署单元主记录。",
+              "acceptance": [
+                "删除后列表与详情不再返回该交付单元",
+                "关联表中该交付单元的行被清除",
+                "部署单元主记录与其他关联不受影响"
+              ],
+              "priority": "must",
+              "source": "2026-09-10 设计复核确认（软删除 + 引用守卫）",
+              "counterexample": [
+                "删除后部署单元详情仍显示该关联",
+                "删除操作物理移除部署单元记录"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "交付单元只能关联同一物理子系统下的部署单元，关联无方向，交付单元详情抽屉内可增删关联。",
+              "acceptance": [
+                "提交跨物理子系统的部署单元 ID 返回 409 且不写入",
+                "合法关联保存后交付单元详情立即可见",
+                "数据库复合外键拒绝跨物理子系统的关联行"
+              ],
+              "priority": "must",
+              "source": "2026-09-10 用户确认关联范围 B 且关系无方向",
+              "counterexample": [
+                "通过构造请求关联其他物理子系统的部署单元"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "关联双向可编：交付单元详情抽屉与部署单元详情抽屉都可维护同一份无方向关联（同物理子系统、仅启用状态对象）。",
+              "acceptance": [
+                "两侧详情抽屉都可多选保存关联",
+                "任一侧保存后另一侧立即可见",
+                "已停用的交付单元、已停用或已作废的部署单元不能调整关联"
+              ],
+              "priority": "must",
+              "source": "2026-09-10 用户补充需求",
+              "counterexample": [
+                "只能从交付单元一侧编辑",
+                "从部署单元侧保存后交付单元侧看不到"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "架构管理下新增交付单元菜单与 view/manage 两级权限，服务端强制认证、RBAC、项目范围与审计。",
+              "acceptance": [
+                "无权限请求返回 403",
+                "写操作产生 SystemOperationAudit 审计记录",
+                "菜单与权限种子授予超级管理员与架构角色"
+              ],
+              "priority": "must",
+              "source": "现有架构权限模式（V78/V97）与项目规约",
+              "counterexample": [
+                "仅靠前端隐藏按钮即视为受控"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "迁移只追加、既有契约不变；桌面与手机视口覆盖加载、空、失败、无权限和提交中状态。",
+              "acceptance": [
+                "check-flyway-migrations.mjs 与 check-all-governance.mjs 通过",
+                "npm --prefix web run build 通过",
+                "四视口浏览器验收无遮挡、溢出与不可达按钮"
+              ],
+              "priority": "must",
+              "source": "项目前端与迁移规约",
+              "counterexample": [
+                "修改历史 Flyway 脚本",
+                "移动视口出现整页横向滚动"
+              ]
+            }
+          ],
+          "boundary": {
+            "inside": [
+              "business/architecture 的交付单元模型、存储、服务、控制器与前端页面组件",
+              "V202 追加迁移、交付单元菜单（816）与权限（8161/8162）种子"
+            ],
+            "environment": [
+              "本地 MySQL 8.4、Flyway、Vue 构建环境、真实浏览器验收",
+              "既有物理子系统与部署单元主数据"
+            ]
+          },
+          "invariants": [
+            "交付单元归属物理子系统创建后不可变更",
+            "关联双方必须属于同一物理子系统",
+            "交付单元编号创建时分配且永久不可修改，序号不回收",
+            "只读写本模块 arch_ 表，平台数据只能经公开契约访问",
+            "HTTP DTO 不接收或返回 tenantId",
+            "Flyway 只追加，不修改已发布脚本",
+            "部署单元作废时存在交付单元关联则拒绝（fail-closed）",
+            "关联写入统一要求 architecture:delivery-unit:manage"
+          ],
+          "constraints": [
+            "模块 business/architecture，Owner rokeyvvz0828",
+            "只允许修改 codex-task-scope.yaml 中 writable_paths 覆盖的文件",
+            "复用 web/src/components/ui 与语义主题变量，不新增平台公共组件",
+            "编号容量上限每个物理子系统 999，用尽即失败不回退复用"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "DeliveryUnitMySqlTest.allocateNumber 与唯一键断言",
+              "expected": "DU<物理编号>001/002 且同子系统同名抛 DuplicateKeyException",
+              "blind_spots": [
+                "真实并发下 GET_LOCK 行为未在本任务压测"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "DeliveryUnitMySqlTest.pageUnits/findUnit 与浏览器列表验收",
+              "expected": "分页筛选正确且不含其他项目与已删除记录",
+              "blind_spots": [
+                "大数据量分页性能未测"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "DeliveryUnitServiceTest 的归属不可改与乐观锁断言",
+              "expected": "归属变更 400、旧 rowVersion 409",
+              "blind_spots": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "DeliveryUnitMySqlTest.softDelete 与浏览器删除验收",
+              "expected": "findUnit 为空且关联被清理",
+              "blind_spots": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "DeliveryUnitServiceTest 关联越界断言 + 复合外键直接插入断言",
+              "expected": "越界返回 409 且数据库拒绝跨物理子系统关联行",
+              "blind_spots": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "DeliveryUnitMySqlTest 两侧一致性断言 + DeliveryUnitServiceTest 状态校验 + 两侧浏览器验收脚本",
+              "expected": "两侧保存关联后对侧查询立即可见；部署单元侧同物理子系统与状态校验生效",
+              "blind_spots": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "DeliveryUnitControllerTest 权限断言 + 审计调用断言",
+              "expected": "无权限 403 且关联写入统一要求 architecture:delivery-unit:manage",
+              "blind_spots": [
+                "菜单可见性只在本地租户 1 验证"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "check-all-governance.mjs、check-flyway-migrations.mjs、npm --prefix web run build、四视口浏览器验收",
+              "expected": "全部退出码 0 且移动视口无整页横向滚动",
+              "blind_spots": [
+                "真机移动端未测，仅浏览器视口模拟"
+              ]
+            }
+          ],
+          "action_bounds": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R7",
+                "R8"
+              ],
+              "target": "交付单元数据层与迁移",
+              "authority": "只新增 arch_delivery_unit* 三张表与 arch_deployment_unit 唯一键、菜单 816 与权限 8161/8162 种子",
+              "impact_limit": "不修改既有表数据、不修改已发布迁移",
+              "rollback": "git revert T1，空表可直接 DROP TABLE"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "target": "交付单元应用与 Web 层",
+              "authority": "只新增 delivery-units 接口与部署单元反查子资源、给 DeploymentUnitService.options 增加重载",
+              "impact_limit": "既有接口签名与权限语义不变",
+              "rollback": "git revert T2"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R8"
+              ],
+              "target": "前端交付单元页面",
+              "authority": "只新增页面、抽屉与路由，复用 components/ui 与 architecture.css",
+              "impact_limit": "不改公共组件与公共类型",
+              "rollback": "git revert T3"
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "target": "部署单元侧关联接口与详情抽屉交互",
+              "authority": "只新增 PUT /deployment-units/{id}/delivery-units 与 GET /deployment-units/{id}/delivery-unit-options，以及 DeploymentUnitDetailDrawer 的可编辑关联区块",
+              "impact_limit": "复用同一张关联表；不新增表、不改部署单元版本语义、不改既有接口签名",
+              "rollback": "git revert T5/T6 提交"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "arch_deployment_unit 上 (tenant_id, physical_subsystem_id, id) 在存量数据中唯一",
+              "basis": "id 是主键，天然唯一",
+              "falsifier": "出现同一 id 对应多个物理子系统的数据"
+            },
+            {
+              "text": "角色 1（超级管理员）与 111（技术架构师）是交付单元维护的授权主体",
+              "basis": "V97 部署单元菜单与权限的既有授权模式",
+              "falsifier": "目标环境角色定义与本地种子不一致"
+            },
+            {
+              "text": "部署单元侧关联编辑无需进入版本发布即可满足用户诉求",
+              "basis": "用户明确选择方案 A",
+              "falsifier": "用户要求关联变更出现在部署单元版本历史中"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "release 模块是否改为读取本主数据替代 mock",
+              "impact": "不影响本需求验收，仅影响后续需求范围",
+              "owner": "需求负责人",
+              "blocking": false
+            }
+          ],
+          "status": "ready"
+        }
       }
     ],
     "planning": [
@@ -580,6 +898,393 @@
                 "T4"
               ],
               "check": "node scripts/check-all-governance.mjs && node scripts/check-flyway-migrations.mjs => 退出码 0"
+            }
+          ],
+          "status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "计划修订2：新增 T5/T6/T7，含写入范围、检查、证据、回滚与升级条件",
+        "recorded_at": "2026-09-10T08:51:36+00:00",
+        "data": {
+          "definition_revision": "definition-2",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "新增 V202 迁移与交付单元数据层（模型、存储、编号分配、无方向关联），并由真实 MySQL 集成测试证明唯一键、复合外键与软删除行为。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitNumberCapacityExceededException.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java"
+              ],
+              "checks": [
+                "迁移在真实 MySQL 8.4 上完整执行",
+                "编号 DU<物理编号>001/002 确定性且并发不重号",
+                "同物理子系统同名返回 DuplicateKeyException，跨物理子系统可同名",
+                "直接插入跨物理子系统关联被复合外键拒绝",
+                "软删除后 findUnit 为空且 hasDeliveryUnitRelation 为 false",
+                "跨项目 findRelatedDeliveryUnits 返回空"
+              ],
+              "evidence_required": [
+                "T1-S1: 文件内容",
+                "T1-S2: 退出码与首个错误行",
+                "T1-S3: 迁移文件",
+                "T1-S4: 源文件",
+                "T1-S5: 退出码与测试统计行",
+                "T1-S6: git 提交哈希"
+              ],
+              "rollback": "git revert 本任务提交；new 表为空时可直接 DROP TABLE，有数据时先导出",
+              "stop_conditions": [
+                "迁移无法在真实 MySQL 8.4 上执行",
+                "复合外键无法建立",
+                "需要修改已发布迁移"
+              ],
+              "escalation_conditions": [
+                "需要改写存量 arch_deployment_unit 行",
+                "需要对既有表加长时锁"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "交付单元应用服务与 HTTP 接口可用，且部署单元作废在存在交付单元关联时被拒绝。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitDeploymentUnitReferenceChecker.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeliveryUnitController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java"
+              ],
+              "checks": [
+                "无权限 403；view 可读不可写；manage 可写",
+                "缺 projectRef 返回 400",
+                "归属物理子系统不同的修改请求返回 400",
+                "乐观锁过期返回 409",
+                "跨物理子系统关联返回 409 且不写关联",
+                "删除软删并清理关联且写审计",
+                "部署单元作废在存在交付单元关联时返回 409"
+              ],
+              "evidence_required": [
+                "T2-S1: 文件内容",
+                "T2-S2: 退出码与首个错误行",
+                "T2-S3: 源文件",
+                "T2-S4: 源文件",
+                "T2-S5: 退出码与测试统计行",
+                "T2-S6: git 提交哈希"
+              ],
+              "rollback": "git revert 本任务提交；数据库无需补偿",
+              "stop_conditions": [
+                "需要放宽既有接口权限才能复用",
+                "需要修改 DeploymentUnitReferenceCheckRequest 等公开契约"
+              ],
+              "escalation_conditions": [
+                "权限模型与设计不一致",
+                "需要新增平台公共能力"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "前端交付单元列表、抽屉表单、详情抽屉与部署单元反向展示可用且覆盖全状态。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R8"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/DeliveryUnitPage.vue",
+                "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+                "web/src/modules/architecture/types.ts",
+                "web/src/modules/architecture/api.ts",
+                "web/src/modules/architecture/utils.ts",
+                "web/src/modules/architecture/architecture.css",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+                "web/src/router/index.ts"
+              ],
+              "checks": [
+                "交付单元名称必填且长度为 2—200",
+                "关联候选只出现同一物理子系统下的启用部署单元",
+                "未保存关闭抽屉需要二次确认",
+                "删除/停用需二次确认且禁用重复提交",
+                "部署单元详情展示关联交付单元或空态",
+                "移动视口无整页横向滚动"
+              ],
+              "evidence_required": [
+                "T3-S1: 退出码与构建结尾行",
+                "T3-S2: 源文件",
+                "T3-S3: 源文件",
+                "T3-S4: 源文件",
+                "T3-S5: 退出码与构建结尾行",
+                "T3-S6: git 提交哈希"
+              ],
+              "rollback": "git revert 本任务提交",
+              "stop_conditions": [
+                "需要修改 web/src/components/ui/** 公共组件",
+                "需要引入新依赖"
+              ],
+              "escalation_conditions": [
+                "交付示范中心范式无法覆盖目标形态"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "治理、迁移、构建、测试与真实浏览器验收全部通过并形成收敛产物。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json"
+              ],
+              "checks": [
+                "治理与迁移检查退出码 0",
+                "架构模块完整测试无回归",
+                "前端构建通过",
+                "浏览器八条场景通过且无控制台错误",
+                "全部 must 需求有独立证据"
+              ],
+              "evidence_required": [
+                "T4-S1: 命令输出",
+                "T4-S2: 测试统计行",
+                "T4-S3: 构建结尾行",
+                "T4-S4: 每条场景的通过记录与接口状态码",
+                "T4-S5: convergence.json"
+              ],
+              "rollback": "回退全部提交并停用菜单 816 与权限 8161/8162",
+              "stop_conditions": [
+                "治理或迁移检查失败",
+                "架构模块测试出现回归"
+              ],
+              "escalation_conditions": [
+                "需要修改既有迁移、公共组件、模块边界或需求基准"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "部署单元侧关联的候选、校验与覆盖式保存可用且不产生部署单元新版本",
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java"
+              ],
+              "checks": [
+                "两侧查询一致",
+                "跨物理子系统候选 409",
+                "停用交付单元 409",
+                "停用/作废部署单元 409",
+                "不新增部署单元版本与关系历史行"
+              ],
+              "evidence_required": [
+                "DeliveryUnitMySqlTest 输出",
+                "DeliveryUnitServiceTest 输出",
+                "DeliveryUnitControllerTest 输出"
+              ],
+              "rollback": "git revert T5 提交",
+              "stop_conditions": [
+                "需要改版本表或关系历史表"
+              ],
+              "escalation_conditions": [
+                "需要放宽部署单元既有授权"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "部署单元详情抽屉可编辑关联，与交付单元侧交互一致且双向即时生效",
+              "requirement_ids": [
+                "R6",
+                "R8"
+              ],
+              "prerequisites": [
+                "T5"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/types.ts",
+                "web/src/modules/architecture/api.ts",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+                "web/src/modules/architecture/DeploymentUnitPage.vue"
+              ],
+              "checks": [
+                "构建通过",
+                "部署单元侧保存后交付单元侧可见",
+                "空候选下拉保持打开",
+                "无权限时不显示编辑入口"
+              ],
+              "evidence_required": [
+                "npm build 输出",
+                "verify-deployment-side-relation.mjs 输出"
+              ],
+              "rollback": "git revert T6 提交",
+              "stop_conditions": [
+                "需要在部署单元表单中增加关联选择"
+              ],
+              "escalation_conditions": [
+                "需要改公共组件"
+              ]
+            },
+            {
+              "id": "T7",
+              "goal": "回归、范围审计与收敛证据更新",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T5",
+                "T6"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json"
+              ],
+              "checks": [
+                "架构模块 449+ 项测试通过",
+                "前端构建通过",
+                "四组浏览器验收通过",
+                "治理与范围检查无新增违规"
+              ],
+              "evidence_required": [
+                "测试统计行",
+                "构建输出",
+                "浏览器脚本输出",
+                "治理脚本输出"
+              ],
+              "rollback": "仅账本与文档，可回退提交",
+              "stop_conditions": [
+                "出现版本或授权相关回归"
+              ],
+              "escalation_conditions": [
+                "需要改既有迁移或公共契约"
+              ]
+            }
+          ],
+          "dependencies": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "服务依赖存储方法签名与表结构"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "前端依赖接口响应结构"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "验收依赖完整实现"
+            },
+            {
+              "from": "T5",
+              "to": "T6",
+              "reason": "前端依赖新接口"
+            },
+            {
+              "from": "T6",
+              "to": "T7",
+              "reason": "收敛依赖实现完成"
+            }
+          ],
+          "integration_checks": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "check": "mvn -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest,DeploymentUnitLifecycleMySqlTest -Dsurefire.failIfNoSpecifiedTests=false => 通过且既有部署单元行为无回归"
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "check": "mvn -pl :ccb-architecture -am test => 通过"
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "check": "npm --prefix web run build => 通过"
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "check": "node scripts/check-all-governance.mjs && node scripts/check-flyway-migrations.mjs => 退出码 0"
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "check": "mvn -pl :ccb-architecture -am test => 0 失败"
+            },
+            {
+              "after_tasks": [
+                "T6"
+              ],
+              "check": "npm --prefix web run build => 退出码 0"
             }
           ],
           "status": "ready"
@@ -1847,6 +2552,339 @@
           "correction": null,
           "next": "verifying"
         }
+      },
+      {
+        "revision": 13,
+        "evidence": "T5 验证：两侧共享关系表、候选与状态校验生效，且不产生部署单元版本与关系历史副作用",
+        "recorded_at": "2026-09-10T08:54:32+00:00",
+        "data": {
+          "iteration_id": "I13",
+          "task_id": "T5",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+              "purpose": "交付单元批量读取、同子系统启用候选、部署单元侧覆盖式替换"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+              "purpose": "部署单元侧候选与关联保存的服务校验与审计"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+              "purpose": "新增 PUT delivery-units 与 GET delivery-unit-options"
+            }
+          ],
+          "commands": [
+            {
+              "command": "mvn -q -pl :ccb-architecture -am test-compile",
+              "exit_code": 1,
+              "salient_output": "预期的失败信号：cannot find symbol replaceDeploymentUnitsFromDeploymentSide"
+            },
+            {
+              "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest",
+              "exit_code": 0,
+              "salient_output": "Tests run: 12, Failures: 0, Errors: 0（含不对版本与关系历史产生副作用的两条断言）"
+            },
+            {
+              "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitServiceTest,DeliveryUnitControllerTest,DeploymentUnitServiceTest,DeploymentUnitControllerTest",
+              "exit_code": 0,
+              "salient_output": "Tests run: 24+10+18+3, Failures: 0, Errors: 0"
+            },
+            {
+              "command": "git commit -m \"feat(architecture): 部署单元侧支持关联交付单元（方案A后端）\"",
+              "exit_code": 0,
+              "salient_output": "见 git log"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": "部署单元侧候选仅限同物理子系统启用交付单元（MySQL searchActiveOptions 断言）；跨物理子系统关联 409（服务测试）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": "两侧写同一张关系表：MySQL 断言部署单元侧保存后交付单元侧查询可见、清空后两侧同步消失",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "result": "pass",
+              "evidence": "PUT /deployment-units/{id}/delivery-units 要求 architecture:delivery-unit:manage；候选接口沿用部署单元查看权限；均写入审计",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 14,
+        "evidence": "T6 记录：部署单元侧关联编辑实现完成，同时发现自引入缺陷 F-5",
+        "recorded_at": "2026-09-10T09:45:14+00:00",
+        "data": {
+          "iteration_id": "I14",
+          "task_id": "T6",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/api.ts",
+              "purpose": "新增部署单元侧关联保存与候选接口封装"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+              "purpose": "关联交付单元区块改为可多选编辑并补 empty 插槽"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+              "purpose": "传入 canManageRelations 并在 updated 后刷新列表"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 1,
+              "salient_output": "首次失败：api.ts 形参与请求字段名不一致（deliveryUnitIds vs deploymentUnitIds），已修复"
+            },
+            {
+              "command": "node /tmp/pwtest/diag-list.mjs",
+              "exit_code": 0,
+              "salient_output": "发现页面空白：watch(immediate) 引用了尚未声明的 relationEditing，setup 期 TDZ 报错"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 vite build 通过"
+            }
+          ],
+          "status": "feedback-open",
+          "checks": [
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": "部署单元侧关联保存接口与抽屉交互已实现（待纠偏后复验）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "id": "F-5",
+              "requirement_id": "R8",
+              "expected": "部署单元页面正常渲染列表与详情抽屉",
+              "observed": "页面完全空白：setup 期间 watch(immediate) 调用 cancelRelationEdit()，其内部访问尚未声明的 relationEditing，触发 TDZ ReferenceError",
+              "reproduction": "node /tmp/pwtest/diag-list.mjs 打开 /architecture/deployment-units",
+              "evidence": "diag-list 输出 body 为空、table rows=0、identity buttons=0；把 watch 移到所有状态声明之后即恢复",
+              "severity": "P1",
+              "confidence": "high",
+              "status": "open"
+            }
+          ],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 15,
+        "evidence": "F-5 纠偏后复验：部署单元侧关联编辑 7/7，全量回归无回归",
+        "recorded_at": "2026-09-10T09:45:14+00:00",
+        "data": {
+          "iteration_id": "I15",
+          "task_id": "T6",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/api.ts",
+              "purpose": "新增部署单元侧关联保存与候选接口封装"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+              "purpose": "关联交付单元区块改为可多选编辑并补 empty 插槽"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+              "purpose": "传入 canManageRelations 并在 updated 后刷新列表"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 1,
+              "salient_output": "首次失败：api.ts 形参与请求字段名不一致（deliveryUnitIds vs deploymentUnitIds），已修复"
+            },
+            {
+              "command": "node /tmp/pwtest/diag-list.mjs",
+              "exit_code": 0,
+              "salient_output": "发现页面空白：watch(immediate) 引用了尚未声明的 relationEditing，setup 期 TDZ 报错"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 vite build 通过"
+            },
+            {
+              "command": "node /tmp/pwtest/diag-list.mjs（修复后）",
+              "exit_code": 0,
+              "salient_output": "table rows=1，identity=ECIP_AP / DPHY_PORTAL001"
+            },
+            {
+              "command": "node /tmp/pwtest/verify-deployment-side-relation.mjs",
+              "exit_code": 0,
+              "salient_output": "7/7 PASS：编辑入口、清空保存为空态、无匹配下拉保持打开、候选仅同物理子系统、保存后展示、交付单元侧立即可见、还原原始关联"
+            },
+            {
+              "command": "node /tmp/pwtest/accept.mjs / accept-reverse.mjs / accept-mobile.mjs / verify-empty-slot.mjs / verify-deployment-unit-select.mjs",
+              "exit_code": 0,
+              "salient_output": "16+2+7+4+3 项全 PASS，console errors none"
+            },
+            {
+              "command": "mvn -pl :ccb-architecture -am test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+            }
+          ],
+          "status": "verified",
+          "checks": [
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": "两侧抽屉都可保存关联，任一侧保存另一侧立即可见（浏览器 7/7 + MySQL 12/12 对称性断言）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "npm build 通过；关联编辑复用既有抽屉区块与样式，未新增公共组件；移动视口 7/7；TDZ 缺陷修复后页面恢复",
+              "limitations": []
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "verifying"
+        }
+      },
+      {
+        "revision": 16,
+        "evidence": "T7 验证：全量回归、范围审计与浏览器验收通过，无新增违规",
+        "recorded_at": "2026-09-10T09:45:30+00:00",
+        "data": {
+          "iteration_id": "I16",
+          "task_id": "T7",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json",
+              "purpose": "更新 R6/R7 证据、F-5 与新增采样"
+            }
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-architecture -am test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "构建通过"
+            },
+            {
+              "command": "node /tmp/pwtest/verify-deployment-side-relation.mjs",
+              "exit_code": 0,
+              "salient_output": "7/7 PASS"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --base <本轮起点> --head HEAD",
+              "exit_code": 0,
+              "salient_output": "本轮 16 个文件全部在 writable_paths 内；跨全量范围仍只剩公共能力授权一项"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs / check-module-boundaries.mjs / check-ai-control-layout.mjs",
+              "exit_code": 1,
+              "salient_output": "无新增违规；仍为三项与本任务无关的基线故障"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": "创建流程与编号分配未受影响（accept.mjs、MySQL 12/12）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "列表筛选分页与详情未受影响",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "归属不可改与乐观锁未受影响（服务测试 24/24）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": "软删除与关联清理未受影响",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": "两侧候选都限定同物理子系统且仅启用对象（服务测试 + MySQL 12/12 + 两组浏览器候选断言）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": "部署单元详情抽屉可编辑关联，与交付单元侧共享同一份数据并双向即时可见（verify-deployment-side-relation 7/7）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "result": "pass",
+              "evidence": "关联写入统一要求 architecture:delivery-unit:manage，三个端点权限表达式逐项断言",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "458 项后端测试、npm build 与六组浏览器验收通过；TDZ 缺陷 F-5 已修复复验",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "verifying"
+        }
       }
     ],
     "verifying": [
@@ -2838,6 +3876,413 @@
           "open_feedback": [],
           "generated_at": "2026-09-10"
         }
+      },
+      {
+        "revision": 4,
+        "evidence": "收敛报告 v4：含方案A（两侧可编辑关联）证据、F-5 与第 6 次采样",
+        "recorded_at": "2026-09-10T09:45:39+00:00",
+        "data": {
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "evidence": [
+                "浏览器创建成功并分配 DUPHY_PORTAL004；API 创建 DUPHY_MOBILE001；同物理子系统重名 409；DeliveryUnitMySqlTest 编号 001/002 与容量耗尽断言"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "evidence": [
+                "浏览器与 API 双通道验证列表筛选分页与详情抽屉字段；DeliveryUnitMySqlTest pageUnits 跨项目隔离"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "evidence": [
+                "服务测试归属变更 400 与过期 rowVersion 409；API 过期 rowVersion 409；编辑态归属选择禁用"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "evidence": [
+                "浏览器二次确认删除后列表消失；API 删除后详情 404 且反查为空；MySQL 测试软删除清理关联且部署单元主记录保留"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "evidence": [
+                "MySQL 测试直接插入跨物理子系统关联行被复合外键拒绝；API 跨物理子系统提交 409；浏览器关联候选仅 1 项且限定所选物理子系统",
+                "UAT 反馈 F-3 纠偏后 verify-empty-slot.mjs 4/4：空候选下拉保持打开并展示提示",
+                "F-4 纠偏后 verify-deployment-unit-select.mjs 3/3：部署单元页关联下拉在无匹配时保持打开"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5",
+                "T6",
+                "T7"
+              ],
+              "evidence": [
+                "部署单元详情抽屉展示关联交付单元（浏览器 accept-reverse 全过）；反查接口返回列表（API）",
+                "两侧详情抽屉都可多选保存关联并双向即时可见：verify-deployment-side-relation.mjs 7/7；DeliveryUnitMySqlTest 12/12 断言两侧写同一张表且不产生部署单元版本与关系历史"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T7"
+              ],
+              "evidence": [
+                "登录后路由树包含 /architecture/delivery-units 且页面可访问；9 个端点 @PreAuthorize 表达式逐项断言；写操作审计调用断言",
+                "关联写入统一要求 architecture:delivery-unit:manage；三个关联端点权限表达式逐项断言；写操作审计调用断言"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4",
+                "T7"
+              ],
+              "evidence": [
+                "V202 在真实 MySQL 8.4 上从空库执行成功且未修改既有迁移；架构模块 449 项测试全过；npm build 通过；移动视口无横向滚动且抽屉宽度 366<=390",
+                "两处前端修复均复用既有 architecture.css 与语义变量，未新增公共组件"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": [
+                "提交 a02298e；DeliveryUnitMySqlTest 10/10（真实 MySQL 8.4 + Flyway v202）；既有部署单元 MySQL 测试 21 项无回归"
+              ]
+            },
+            {
+              "task_id": "T2",
+              "result": "verified",
+              "evidence": [
+                "提交 ad835da；DeliveryUnitServiceTest 19/19、DeliveryUnitControllerTest 8/8、既有 DeploymentUnitServiceTest 18/18 与 DeploymentUnitControllerTest 3/3"
+              ]
+            },
+            {
+              "task_id": "T3",
+              "result": "verified",
+              "evidence": [
+                "提交 effe9f5；npm --prefix web run build 通过（vue-tsc --noEmit + vite build），产出 DeliveryUnitPage chunk"
+              ]
+            },
+            {
+              "task_id": "T4",
+              "result": "verified",
+              "evidence": [
+                "提交 6a59cc8；架构模块 449 项全过；三组浏览器验收 25 项全 PASS、无 console 错误；F-1 复验关闭、F-2 澄清关闭"
+              ]
+            },
+            {
+              "task_id": "T5",
+              "result": "verified",
+              "evidence": [
+                "提交 acd18d3；DeliveryUnitMySqlTest 12/12、DeliveryUnitServiceTest 24/24、DeliveryUnitControllerTest 10/10"
+              ]
+            },
+            {
+              "task_id": "T6",
+              "result": "verified",
+              "evidence": [
+                "提交 1385c57；verify-deployment-side-relation 7/7、npm build 通过、F-5 修复复验"
+              ]
+            },
+            {
+              "task_id": "T7",
+              "result": "verified",
+              "evidence": [
+                "架构模块 458 项全过；六组浏览器验收 39 项全 PASS；范围审计 16 文件均在 writable_paths 内"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 5,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 1,
+              "score": 1
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0004",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0005",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0006",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "架构模块完整测试",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 449, Failures: 0, Errors: 0, BUILD SUCCESS"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "npm --prefix web run build -> 退出码 0"
+            },
+            {
+              "check": "既有部署单元行为",
+              "result": "pass",
+              "evidence": "DeploymentUnitLifecycleMySqlTest 13 项、DeploymentUnitImportMySqlTest 8 项全过；options 原签名保留且行为不变"
+            },
+            {
+              "check": "治理与迁移脚本",
+              "result": "fail-baseline",
+              "evidence": "check-flyway-migrations.mjs 因 V84_1 命名基线故障失败；check-module-boundaries.mjs 因 business/requirement 与 platform/boot 5 处越界失败；check-ai-control-layout.mjs 因 REQ-20260904-061 scope 文件非 JSON 兼容 YAML 失败；三个文件均未被本任务修改"
+            },
+            {
+              "check": "F-3 纠偏回归（空候选下拉）",
+              "result": "pass",
+              "evidence": "verify-empty-slot.mjs 4/4 PASS，覆盖表单抽屉与详情抽屉"
+            },
+            {
+              "check": "三组浏览器验收复跑",
+              "result": "pass",
+              "evidence": "accept.mjs 16/16、accept-reverse.mjs 2/2、accept-mobile.mjs 7/7 全 PASS，console errors none"
+            },
+            {
+              "check": "F-4 纠偏回归（部署单元关联下拉空结果）",
+              "result": "pass",
+              "evidence": "verify-deployment-unit-select.mjs 3/3 PASS"
+            },
+            {
+              "check": "部署单元侧关联编辑（方案A）回归",
+              "result": "pass",
+              "evidence": "verify-deployment-side-relation.mjs 7/7，含双向可见与原始关联还原"
+            },
+            {
+              "check": "架构模块完整回归（方案A后）",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "交付单元归属物理子系统创建后不可变更",
+              "result": "pass",
+              "evidence": [
+                "服务测试归属变更返回 400；页面编辑态禁用归属选择并提交 null"
+              ]
+            },
+            {
+              "invariant": "关联双方必须属于同一物理子系统",
+              "result": "pass",
+              "evidence": [
+                "复合外键直接插入断言 + API 跨子系统 409 + 浏览器候选限定"
+              ]
+            },
+            {
+              "invariant": "交付单元编号创建时分配且永久不可修改，序号不回收",
+              "result": "pass",
+              "evidence": [
+                "无任何更新 code 的语句；allocateNumber 序号递增断言与容量耗尽断言"
+              ]
+            },
+            {
+              "invariant": "只读写本模块 arch_ 表，平台数据只能经公开契约访问",
+              "result": "pass",
+              "evidence": [
+                "新增语句仅涉及 arch_delivery_unit*、arch_deployment_unit、arch_physical_subsystem；项目与用户数据经 ProjectAccessService 与 SystemReferenceQuery"
+              ]
+            },
+            {
+              "invariant": "HTTP DTO 不接收或返回 tenantId",
+              "result": "pass",
+              "evidence": [
+                "DeliveryUnitControllerTest 断言 DeliveryUnitCommand 记录组件与响应 JSON 均不含 tenantId"
+              ]
+            },
+            {
+              "invariant": "Flyway 只追加，不修改已发布脚本",
+              "result": "pass",
+              "evidence": [
+                "git diff 仅新增 V202__create_architecture_delivery_units.sql，无既有迁移改动"
+              ]
+            },
+            {
+              "invariant": "部署单元作废时存在交付单元关联则拒绝（fail-closed）",
+              "result": "pass",
+              "evidence": [
+                "DeliveryUnitMySqlTest 断言有关联时 requireClear 抛 CONFLICT、软删除后恢复通过；检查器异常返回 INDETERMINATE"
+              ]
+            },
+            {
+              "invariant": "部署单元侧的关联编辑不发布部署单元新版本，也不写 arch_deployment_unit_relation_history",
+              "result": "pass",
+              "evidence": [
+                "DeliveryUnitMySqlTest 断言保存关联前后 arch_deployment_unit_version 行数不变、relation_history 为空"
+              ]
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": [],
+            "note": "6 个提交共 31 个文件全部落在 codex-task-scope.yaml 的 writable_paths 内；工作树中未提交的 .agents/skills/** 为本任务开始前已存在的他人改动，未触碰；唯一未通过的是公共能力授权门禁：触及 platform/infrastructure 迁移需要 issue 与 Owner 审批，当前 owner_approved=false"
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "并发编号分配",
+              "result": "pass",
+              "evidence": "DeliveryUnitMySqlTest 6 线程并发分配无重号"
+            },
+            {
+              "disturbance": "并发乐观锁",
+              "result": "pass",
+              "evidence": "过期 rowVersion 返回 409 且不写入"
+            },
+            {
+              "disturbance": "物理子系统或部署单元在提交前失效",
+              "result": "pass",
+              "evidence": "服务在同事务内重新校验并拒绝；跨子系统与停用状态均 409"
+            },
+            {
+              "disturbance": "本地依赖未完整安装",
+              "result": "pass",
+              "evidence": "@wangeditor/editor 缺失导致构建基线失败，执行 npm install 恢复声明依赖后构建通过（package.json 与 lock 未变更）"
+            }
+          ],
+          "residual_risks": [
+            "公共能力授权未闭合：V202 迁移与菜单/权限种子位于 platform/infrastructure，check-codex-scope.mjs 要求 issue 与 Owner 审批；owner_approved=false，需模块 Owner rokeyvvz0828 专项复核",
+            "未用无权限账号做端到端 403 验证，无权限页面仅在代码路径与控制器注解开层面验证",
+            "部署单元作废守卫未对本地演示数据真实执行（避免破坏数据），以真实数据库集成断言为准",
+            "全部观测由同一 Agent 执行，属非独立验证",
+            "三项治理基线故障（V84_1 命名、模块越界导入、REQ-20260904-061 scope 非 JSON 兼容）为本任务之前既有问题，未修复",
+            "移动端仅用 Chromium 视口模拟（390x844），未在真机验证",
+            "部署单元侧的关联编辑授权复用交付单元维护权限：只有 architecture:deployment-unit:manage 而无交付单元维护权限的角色看不到编辑入口"
+          ],
+          "gate_result": "blocked",
+          "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量、双向关联与方案A约束）；F-1～F-5 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
+          "definition_revision": "definition-2",
+          "open_feedback": [],
+          "generated_at": "2026-09-10"
+        }
       }
     ]
   },
@@ -2915,15 +4360,17 @@
     },
     {
       "id": "R6",
-      "statement": "部署单元侧可以只读查看关联的交付单元。",
+      "statement": "关联双向可编：交付单元详情抽屉与部署单元详情抽屉都可维护同一份无方向关联（同物理子系统、仅启用状态对象）。",
       "acceptance": [
-        "部署单元详情抽屉展示关联交付单元列表",
-        "部署单元侧不提供关联编辑入口"
+        "两侧详情抽屉都可多选保存关联",
+        "任一侧保存后另一侧立即可见",
+        "已停用的交付单元、已停用或已作废的部署单元不能调整关联"
       ],
       "priority": "must",
       "source": "2026-09-10 用户补充需求",
       "counterexample": [
-        "只能从交付单元一侧查询关联"
+        "只能从交付单元一侧编辑",
+        "从部署单元侧保存后交付单元侧看不到"
       ]
     },
     {
@@ -2963,7 +4410,8 @@
     "只读写本模块 arch_ 表，平台数据只能经公开契约访问",
     "HTTP DTO 不接收或返回 tenantId",
     "Flyway 只追加，不修改已发布脚本",
-    "部署单元作废时存在交付单元关联则拒绝（fail-closed）"
+    "部署单元作废时存在交付单元关联则拒绝（fail-closed）",
+    "关联写入统一要求 architecture:delivery-unit:manage"
   ],
   "constraints": [
     "模块 business/architecture，Owner rokeyvvz0828",
@@ -4188,19 +5636,21 @@
       "DeliveryUnitServiceTest 的归属不可改与乐观锁断言",
       "DeliveryUnitMySqlTest.softDelete 与浏览器删除验收",
       "DeliveryUnitServiceTest 关联越界断言 + 复合外键直接插入断言",
-      "DeliveryUnitControllerTest 反查接口与浏览器部署单元详情验收",
+      "DeliveryUnitMySqlTest 两侧一致性断言 + DeliveryUnitServiceTest 状态校验 + 两侧浏览器验收脚本",
       "DeliveryUnitControllerTest 权限断言 + 审计调用断言",
       "check-all-governance.mjs、check-flyway-migrations.mjs、npm --prefix web run build、四视口浏览器验收"
     ],
     "actuators": [
       "{\"authority\": \"只新增 arch_delivery_unit* 三张表与 arch_deployment_unit 唯一键、菜单 816 与权限 8161/8162 种子\", \"impact_limit\": \"不修改既有表数据、不修改已发布迁移\", \"requirement_ids\": [\"R1\", \"R2\", \"R3\", \"R4\", \"R5\", \"R7\", \"R8\"], \"rollback\": \"git revert T1，空表可直接 DROP TABLE\", \"target\": \"交付单元数据层与迁移\"}",
       "{\"authority\": \"只新增 delivery-units 接口与部署单元反查子资源、给 DeploymentUnitService.options 增加重载\", \"impact_limit\": \"既有接口签名与权限语义不变\", \"requirement_ids\": [\"R1\", \"R2\", \"R3\", \"R4\", \"R5\", \"R6\", \"R7\"], \"rollback\": \"git revert T2\", \"target\": \"交付单元应用与 Web 层\"}",
-      "{\"authority\": \"只新增页面、抽屉与路由，复用 components/ui 与 architecture.css\", \"impact_limit\": \"不改公共组件与公共类型\", \"requirement_ids\": [\"R1\", \"R2\", \"R3\", \"R4\", \"R5\", \"R6\", \"R8\"], \"rollback\": \"git revert T3\", \"target\": \"前端交付单元页面\"}"
+      "{\"authority\": \"只新增页面、抽屉与路由，复用 components/ui 与 architecture.css\", \"impact_limit\": \"不改公共组件与公共类型\", \"requirement_ids\": [\"R1\", \"R2\", \"R3\", \"R4\", \"R5\", \"R6\", \"R8\"], \"rollback\": \"git revert T3\", \"target\": \"前端交付单元页面\"}",
+      "{\"authority\": \"只新增 PUT /deployment-units/{id}/delivery-units 与 GET /deployment-units/{id}/delivery-unit-options，以及 DeploymentUnitDetailDrawer 的可编辑关联区块\", \"impact_limit\": \"复用同一张关联表；不新增表、不改部署单元版本语义、不改既有接口签名\", \"requirement_ids\": [\"R5\", \"R6\", \"R7\", \"R8\"], \"rollback\": \"git revert T5/T6 提交\", \"target\": \"部署单元侧关联接口与详情抽屉交互\"}"
     ],
     "disturbances": [],
     "assumptions": [
       "{\"basis\": \"id 是主键，天然唯一\", \"falsifier\": \"出现同一 id 对应多个物理子系统的数据\", \"text\": \"arch_deployment_unit 上 (tenant_id, physical_subsystem_id, id) 在存量数据中唯一\"}",
-      "{\"basis\": \"V97 部署单元菜单与权限的既有授权模式\", \"falsifier\": \"目标环境角色定义与本地种子不一致\", \"text\": \"角色 1（超级管理员）与 111（技术架构师）是交付单元维护的授权主体\"}"
+      "{\"basis\": \"V97 部署单元菜单与权限的既有授权模式\", \"falsifier\": \"目标环境角色定义与本地种子不一致\", \"text\": \"角色 1（超级管理员）与 111（技术架构师）是交付单元维护的授权主体\"}",
+      "{\"basis\": \"用户明确选择方案 A\", \"falsifier\": \"用户要求关联变更出现在部署单元版本历史中\", \"text\": \"部署单元侧关联编辑无需进入版本发布即可满足用户诉求\"}"
     ],
     "measurements": [
       {
@@ -4225,7 +5675,7 @@
       },
       {
         "requirement": "R6",
-        "sensor": "DeliveryUnitControllerTest 反查接口与浏览器部署单元详情验收"
+        "sensor": "DeliveryUnitMySqlTest 两侧一致性断言 + DeliveryUnitServiceTest 状态校验 + 两侧浏览器验收脚本"
       },
       {
         "requirement": "R7",
@@ -4297,7 +5747,7 @@
           "text": "ControlIteration I5: verified"
         }
       ],
-      "updated_at": "2026-09-10T08:17:26+00:00"
+      "updated_at": "2026-09-10T08:51:36+00:00"
     },
     {
       "id": "T2",
@@ -4363,7 +5813,7 @@
           "text": "ControlIteration I6: verified"
         }
       ],
-      "updated_at": "2026-09-10T08:17:26+00:00"
+      "updated_at": "2026-09-10T08:51:36+00:00"
     },
     {
       "id": "T3",
@@ -4441,7 +5891,7 @@
           "text": "ControlIteration I12: verified"
         }
       ],
-      "updated_at": "2026-09-10T08:44:29+00:00"
+      "updated_at": "2026-09-10T08:51:36+00:00"
     },
     {
       "id": "T4",
@@ -4497,7 +5947,149 @@
           "text": "ControlIteration I8: verified"
         }
       ],
-      "updated_at": "2026-09-10T08:17:27+00:00"
+      "updated_at": "2026-09-10T08:51:36+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "部署单元侧关联的候选、校验与覆盖式保存可用且不产生部署单元新版本",
+      "requirements": [
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "write_scope": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java"
+      ],
+      "acceptance": [
+        "两侧查询一致",
+        "跨物理子系统候选 409",
+        "停用交付单元 409",
+        "停用/作废部署单元 409",
+        "不新增部署单元版本与关系历史行"
+      ],
+      "evidence_required": [
+        "DeliveryUnitMySqlTest 输出",
+        "DeliveryUnitServiceTest 输出",
+        "DeliveryUnitControllerTest 输出"
+      ],
+      "rollback": "git revert T5 提交",
+      "stop_conditions": [
+        "需要改版本表或关系历史表"
+      ],
+      "escalation_conditions": [
+        "需要放宽部署单元既有授权"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T08:54:32+00:00",
+          "text": "ControlIteration I13: verified"
+        }
+      ],
+      "updated_at": "2026-09-10T08:54:32+00:00"
+    },
+    {
+      "id": "T6",
+      "goal": "部署单元详情抽屉可编辑关联，与交付单元侧交互一致且双向即时生效",
+      "requirements": [
+        "R6",
+        "R8"
+      ],
+      "prerequisites": [
+        "T5"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/types.ts",
+        "web/src/modules/architecture/api.ts",
+        "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+        "web/src/modules/architecture/DeploymentUnitPage.vue"
+      ],
+      "acceptance": [
+        "构建通过",
+        "部署单元侧保存后交付单元侧可见",
+        "空候选下拉保持打开",
+        "无权限时不显示编辑入口"
+      ],
+      "evidence_required": [
+        "npm build 输出",
+        "verify-deployment-side-relation.mjs 输出"
+      ],
+      "rollback": "git revert T6 提交",
+      "stop_conditions": [
+        "需要在部署单元表单中增加关联选择"
+      ],
+      "escalation_conditions": [
+        "需要改公共组件"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T09:45:14+00:00",
+          "text": "ControlIteration I14: feedback-open"
+        },
+        {
+          "recorded_at": "2026-09-10T09:45:14+00:00",
+          "text": "ControlIteration I15: verified"
+        }
+      ],
+      "updated_at": "2026-09-10T09:45:14+00:00"
+    },
+    {
+      "id": "T7",
+      "goal": "回归、范围审计与收敛证据更新",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T5",
+        "T6"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json"
+      ],
+      "acceptance": [
+        "架构模块 449+ 项测试通过",
+        "前端构建通过",
+        "四组浏览器验收通过",
+        "治理与范围检查无新增违规"
+      ],
+      "evidence_required": [
+        "测试统计行",
+        "构建输出",
+        "浏览器脚本输出",
+        "治理脚本输出"
+      ],
+      "rollback": "仅账本与文档，可回退提交",
+      "stop_conditions": [
+        "出现版本或授权相关回归"
+      ],
+      "escalation_conditions": [
+        "需要改既有迁移或公共契约"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T09:45:30+00:00",
+          "text": "ControlIteration I16: verified"
+        }
+      ],
+      "updated_at": "2026-09-10T09:45:30+00:00"
     }
   ],
   "feedback": [
@@ -4601,6 +6193,27 @@
       "resolved_at": "2026-09-10T08:44:29+00:00",
       "resolution_evidence": "verify-deployment-unit-select.mjs 3/3 PASS（无匹配保持打开+空提示、有匹配展示候选）；npm build 通过；verify-empty-slot.mjs 4/4 与 accept-reverse.mjs 2/2 无回归；提交 19236fc",
       "decided_at": "2026-09-10T08:44:29+00:00"
+    },
+    {
+      "id": "F-5",
+      "task": "T6",
+      "source": "ControlIteration I14",
+      "requirement": "R8",
+      "expected": "部署单元页面正常渲染列表与详情抽屉",
+      "observed": "页面完全空白：setup 期间 watch(immediate) 调用 cancelRelationEdit()，其内部访问尚未声明的 relationEditing，触发 TDZ ReferenceError",
+      "reproduction": "node /tmp/pwtest/diag-list.mjs 打开 /architecture/deployment-units",
+      "evidence": "diag-list 输出 body 为空、table rows=0、identity buttons=0；把 watch 移到所有状态声明之后即恢复",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": null,
+      "decision": "accept",
+      "decision_reason": "自引入的真实渲染缺陷：watch 的 immediate 回调在 setup 期访问了尚未初始化的响应式状态",
+      "created_at": "2026-09-10T09:45:14+00:00",
+      "resolved_at": "2026-09-10T09:45:14+00:00",
+      "resolution_evidence": "diag-list 修复后 table rows=1；verify-deployment-side-relation 7/7、accept 16/16、accept-reverse 2/2、accept-mobile 7/7、verify-empty-slot 4/4、verify-deployment-unit-select 3/3 全 PASS；mvn 458 项通过",
+      "decided_at": "2026-09-10T09:45:14+00:00"
     }
   ],
   "samples": [
@@ -4668,6 +6281,19 @@
       "score": 3,
       "evidence": "verify-deployment-unit-select 3/3、verify-empty-slot 4/4、accept-reverse 2/2 全 PASS；npm build 通过",
       "recorded_at": "2026-09-10T08:44:29+00:00"
+    },
+    {
+      "id": "S-0006",
+      "label": "部署单元侧关联编辑验证采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 3
+      },
+      "score": 3,
+      "evidence": "758 项后端测试（架构模块 458）全过；六组浏览器验收 39 项全 PASS；npm build 通过",
+      "recorded_at": "2026-09-10T09:45:14+00:00"
     }
   ]
 }

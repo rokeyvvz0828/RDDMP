@@ -1,0 +1,289 @@
+{
+  "definition_revision": "definition-2",
+  "objective": "在架构管理菜单下提供交付单元（名称 + 归属物理子系统）的增删改查，并与同一物理子系统下的部署单元建立无方向、双向可查的关联。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "新增交付单元必须提供名称与归属物理子系统，系统在创建时分配不可修改的编号。",
+      "acceptance": [
+        "创建成功后返回 DU<物理编号><三位序号> 格式编号",
+        "同租户同项目同物理子系统内名称重复返回 409"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 用户需求确认与设计复核",
+      "counterexample": [
+        "允许客户端指定或修改编号",
+        "不同物理子系统使用相同名称被误拒绝"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "交付单元支持分页查询与抽屉式详情展示，可按名称、归属物理子系统、状态筛选。",
+      "acceptance": [
+        "列表分页与筛选结果正确且只包含当前项目数据",
+        "详情展示编号、名称、归属物理子系统、状态、描述、备注与关联部署单元"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 用户需求确认",
+      "counterexample": [
+        "列表返回其他项目或已删除记录"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "交付单元名称、描述、备注可修改，归属物理子系统创建后不可变更，写操作受乐观锁保护。",
+      "acceptance": [
+        "合法修改递增 row_version",
+        "使用过期 row_version 提交返回 409",
+        "任何入口都无法改变归属物理子系统"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 用户需求确认与设计复核",
+      "counterexample": [
+        "通过修改接口改变归属物理子系统"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "删除交付单元为软删除并要求二次确认，同时清理其部署单元关联且不影响部署单元主记录。",
+      "acceptance": [
+        "删除后列表与详情不再返回该交付单元",
+        "关联表中该交付单元的行被清除",
+        "部署单元主记录与其他关联不受影响"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 设计复核确认（软删除 + 引用守卫）",
+      "counterexample": [
+        "删除后部署单元详情仍显示该关联",
+        "删除操作物理移除部署单元记录"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "交付单元只能关联同一物理子系统下的部署单元，关联无方向，交付单元详情抽屉内可增删关联。",
+      "acceptance": [
+        "提交跨物理子系统的部署单元 ID 返回 409 且不写入",
+        "合法关联保存后交付单元详情立即可见",
+        "数据库复合外键拒绝跨物理子系统的关联行"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 用户确认关联范围 B 且关系无方向",
+      "counterexample": [
+        "通过构造请求关联其他物理子系统的部署单元"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "关联双向可编：交付单元详情抽屉与部署单元详情抽屉都可维护同一份无方向关联（同物理子系统、仅启用状态对象）。",
+      "acceptance": [
+        "两侧详情抽屉都可多选保存关联",
+        "任一侧保存后另一侧立即可见",
+        "已停用的交付单元、已停用或已作废的部署单元不能调整关联"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 用户补充需求",
+      "counterexample": [
+        "只能从交付单元一侧编辑",
+        "从部署单元侧保存后交付单元侧看不到"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "架构管理下新增交付单元菜单与 view/manage 两级权限，服务端强制认证、RBAC、项目范围与审计。",
+      "acceptance": [
+        "无权限请求返回 403",
+        "写操作产生 SystemOperationAudit 审计记录",
+        "菜单与权限种子授予超级管理员与架构角色"
+      ],
+      "priority": "must",
+      "source": "现有架构权限模式（V78/V97）与项目规约",
+      "counterexample": [
+        "仅靠前端隐藏按钮即视为受控"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "迁移只追加、既有契约不变；桌面与手机视口覆盖加载、空、失败、无权限和提交中状态。",
+      "acceptance": [
+        "check-flyway-migrations.mjs 与 check-all-governance.mjs 通过",
+        "npm --prefix web run build 通过",
+        "四视口浏览器验收无遮挡、溢出与不可达按钮"
+      ],
+      "priority": "must",
+      "source": "项目前端与迁移规约",
+      "counterexample": [
+        "修改历史 Flyway 脚本",
+        "移动视口出现整页横向滚动"
+      ]
+    }
+  ],
+  "boundary": {
+    "inside": [
+      "business/architecture 的交付单元模型、存储、服务、控制器与前端页面组件",
+      "V202 追加迁移、交付单元菜单（816）与权限（8161/8162）种子"
+    ],
+    "environment": [
+      "本地 MySQL 8.4、Flyway、Vue 构建环境、真实浏览器验收",
+      "既有物理子系统与部署单元主数据"
+    ]
+  },
+  "invariants": [
+    "交付单元归属物理子系统创建后不可变更",
+    "关联双方必须属于同一物理子系统",
+    "交付单元编号创建时分配且永久不可修改，序号不回收",
+    "只读写本模块 arch_ 表，平台数据只能经公开契约访问",
+    "HTTP DTO 不接收或返回 tenantId",
+    "Flyway 只追加，不修改已发布脚本",
+    "部署单元作废时存在交付单元关联则拒绝（fail-closed）",
+    "关联写入统一要求 architecture:delivery-unit:manage"
+  ],
+  "constraints": [
+    "模块 business/architecture，Owner rokeyvvz0828",
+    "只允许修改 codex-task-scope.yaml 中 writable_paths 覆盖的文件",
+    "复用 web/src/components/ui 与语义主题变量，不新增平台公共组件",
+    "编号容量上限每个物理子系统 999，用尽即失败不回退复用"
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "DeliveryUnitMySqlTest.allocateNumber 与唯一键断言",
+      "expected": "DU<物理编号>001/002 且同子系统同名抛 DuplicateKeyException",
+      "blind_spots": [
+        "真实并发下 GET_LOCK 行为未在本任务压测"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "DeliveryUnitMySqlTest.pageUnits/findUnit 与浏览器列表验收",
+      "expected": "分页筛选正确且不含其他项目与已删除记录",
+      "blind_spots": [
+        "大数据量分页性能未测"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "DeliveryUnitServiceTest 的归属不可改与乐观锁断言",
+      "expected": "归属变更 400、旧 rowVersion 409",
+      "blind_spots": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "DeliveryUnitMySqlTest.softDelete 与浏览器删除验收",
+      "expected": "findUnit 为空且关联被清理",
+      "blind_spots": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "DeliveryUnitServiceTest 关联越界断言 + 复合外键直接插入断言",
+      "expected": "越界返回 409 且数据库拒绝跨物理子系统关联行",
+      "blind_spots": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "DeliveryUnitMySqlTest 两侧一致性断言 + DeliveryUnitServiceTest 状态校验 + 两侧浏览器验收脚本",
+      "expected": "两侧保存关联后对侧查询立即可见；部署单元侧同物理子系统与状态校验生效",
+      "blind_spots": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "DeliveryUnitControllerTest 权限断言 + 审计调用断言",
+      "expected": "无权限 403 且关联写入统一要求 architecture:delivery-unit:manage",
+      "blind_spots": [
+        "菜单可见性只在本地租户 1 验证"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "check-all-governance.mjs、check-flyway-migrations.mjs、npm --prefix web run build、四视口浏览器验收",
+      "expected": "全部退出码 0 且移动视口无整页横向滚动",
+      "blind_spots": [
+        "真机移动端未测，仅浏览器视口模拟"
+      ]
+    }
+  ],
+  "action_bounds": [
+    {
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "target": "交付单元数据层与迁移",
+      "authority": "只新增 arch_delivery_unit* 三张表与 arch_deployment_unit 唯一键、菜单 816 与权限 8161/8162 种子",
+      "impact_limit": "不修改既有表数据、不修改已发布迁移",
+      "rollback": "git revert T1，空表可直接 DROP TABLE"
+    },
+    {
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "target": "交付单元应用与 Web 层",
+      "authority": "只新增 delivery-units 接口与部署单元反查子资源、给 DeploymentUnitService.options 增加重载",
+      "impact_limit": "既有接口签名与权限语义不变",
+      "rollback": "git revert T2"
+    },
+    {
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R8"
+      ],
+      "target": "前端交付单元页面",
+      "authority": "只新增页面、抽屉与路由，复用 components/ui 与 architecture.css",
+      "impact_limit": "不改公共组件与公共类型",
+      "rollback": "git revert T3"
+    },
+    {
+      "requirement_ids": [
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "target": "部署单元侧关联接口与详情抽屉交互",
+      "authority": "只新增 PUT /deployment-units/{id}/delivery-units 与 GET /deployment-units/{id}/delivery-unit-options，以及 DeploymentUnitDetailDrawer 的可编辑关联区块",
+      "impact_limit": "复用同一张关联表；不新增表、不改部署单元版本语义、不改既有接口签名",
+      "rollback": "git revert T5/T6 提交"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "arch_deployment_unit 上 (tenant_id, physical_subsystem_id, id) 在存量数据中唯一",
+      "basis": "id 是主键，天然唯一",
+      "falsifier": "出现同一 id 对应多个物理子系统的数据"
+    },
+    {
+      "text": "角色 1（超级管理员）与 111（技术架构师）是交付单元维护的授权主体",
+      "basis": "V97 部署单元菜单与权限的既有授权模式",
+      "falsifier": "目标环境角色定义与本地种子不一致"
+    },
+    {
+      "text": "部署单元侧关联编辑无需进入版本发布即可满足用户诉求",
+      "basis": "用户明确选择方案 A",
+      "falsifier": "用户要求关联变更出现在部署单元版本历史中"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "release 模块是否改为读取本主数据替代 mock",
+      "impact": "不影响本需求验收，仅影响后续需求范围",
+      "owner": "需求负责人",
+      "blocking": false
+    }
+  ],
+  "status": "ready"
+}

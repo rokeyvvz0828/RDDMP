@@ -1,9 +1,9 @@
 # 交付单元（架构管理）工程设计
 
 ## 文档状态
-- 修订：1
+- 修订：2
 - 状态：已确认
-- 用户确认依据：2026-09-10 当前会话，用户先提出需求，随后确认“关联范围=同一物理子系统、关系无方向、两侧可查、逻辑子系统已删除”，并在复核设计文档时回复“可以”。
+- 用户确认依据：2026-09-10 当前会话，用户先提出需求，随后确认“关联范围=同一物理子系统、关系无方向、两侧可查、逻辑子系统已删除”，复核设计文档后回复“可以”；同日追加“部署单元菜单也可以关联交付单元，和交付单元页面使用同样的逻辑”，并在方案 A/B 对比后明确“按 A 执行”（关联编辑只在部署单元详情抽屉、不进入表单、不发布新版本）。
 - 关联需求：`docs/requirements/REQ-20260910-073-architecture-delivery-unit/requirement.md`
 
 ## 目标与成功信号
@@ -29,7 +29,7 @@
 | R3 | 修改：名称/描述/备注可改，归属不可改，乐观锁保护 | 正常修改递增 row_version；旧 row_version 提交被拒 | 通过修改接口改变归属物理子系统 |
 | R4 | 删除：软删除 + 二次确认，并清理其关联 | 删除后列表不含该记录；关联表不再存在该交付单元的行；部署单元主记录不受影响 | 删除被关联的交付单元后部署单元侧仍显示该关联 |
 | R5 | 关联部署单元：仅同一物理子系统、无方向、交付单元详情抽屉内维护 | 跨物理子系统 ID 提交被拒；合法关联保存后交付单元详情可见 | 通过构造请求关联其他物理子系统的部署单元 |
-| R6 | 反向可查：部署单元详情可查看关联交付单元 | 部署单元详情抽屉展示关联交付单元 | 只能从交付单元一侧查询 |
+| R6 | 关联双向可编：两侧详情抽屉都可维护关联 | 交付单元详情抽屉可多选保存；部署单元详情抽屉同样可多选保存；任一侧保存后另一侧立即生效 | 只能从交付单元一侧编辑；关联写入不由服务端授权约束 |
 | R7 | 权限与菜单：架构管理下新增菜单，view/manage 两级权限，服务端强制校验并审计 | 无权限 403；写操作有审计记录 | 仅靠前端隐藏按钮即视为受控 |
 | R8 | 迁移只追加、既有契约不变、桌面与移动视口全状态可用 | 治理与迁移检查通过；四视口验收覆盖加载/空/失败/无权限/提交中 | 修改历史迁移或删除既有字段 |
 
@@ -39,12 +39,14 @@
 - 只读写本模块 `arch_` 表；平台数据通过 `com.ccb.system.capability` 公开契约访问。
 - 租户与项目只能来自服务端认证与项目上下文，HTTP DTO 不得接收 `tenantId`。
 - Flyway 只能追加新迁移；不修改已发布脚本。
-- 关联表由交付单元一侧拥有；部署单元作废时把该关联纳入引用守卫并 fail-closed。
+- 关联表由交付单元聚合拥有；**关联的写入统一要求 `architecture:delivery-unit:manage`**，无论从交付单元侧还是部署单元侧发起，保证同一关系只有一套授权规则。
+- 部署单元作废时把该关联纳入引用守卫并 fail-closed。
+- 部署单元侧的关联编辑不进入部署单元版本发布，不写 `arch_deployment_unit_relation_history`，只更新关联表并写审计。
 
 ## 非目标
-- 不改 `release` 模块 mock 交付单元；不做交付版本、制品、交付映射审批与 Excel 导入。
+- 不做交付版本、制品、交付映射审批与 Excel 导入。
 - 不恢复逻辑子系统模型；不调整物理子系统、部署单元既有契约与既有数据。
-- 不在部署单元侧提供关联编辑入口。
+- 不在部署单元的新建/修改表单中增加交付单元选择（避免只改关联也发布新版本）。
 - 不新增平台公共组件、公共包或公共 API。
 
 ## 方案比较与选择
@@ -64,7 +66,9 @@
   - `DeliveryUnitService`（应用服务）：参数与权限校验、同物理子系统约束校验、事务编排、审计。
   - `DeliveryUnitController`（Web）：权限注解、项目上下文获取、`ApiResponse` 包装。
   - `DeliveryUnitPage.vue` + `DeliveryUnitDetailDrawer.vue`（前端）：列表、抽屉表单、详情与关联维护。
-  - `DeploymentUnitService` / `DeploymentUnitDetailDrawer.vue`（既有组件的小幅扩展）：作废引用守卫 + 只读反查区块。
+  - `DeploymentUnitService` / `DeploymentUnitDetailDrawer.vue`（既有组件的小幅扩展）：作废引用守卫 + 关联交付单元区块。
+  - `DeploymentUnitDeliveryUnitController`（Web）：部署单元侧关联的查询、候选与覆盖式保存。
+  - `DeploymentUnitDetailDrawer.vue` 的关联区块由只读改为可多选编辑（与交付单元详情抽屉同交互）；编辑入口仅当持有 `architecture:delivery-unit:manage` 时可见，部署单元状态为 `INACTIVE`/`VOIDED` 时只读。
 - 依赖方向：交付单元 → 物理子系统 / 部署单元（同模块内），平台能力只经公开契约。
 
 ## 接口、数据和状态流
@@ -96,7 +100,9 @@
 | PUT | `/{id}/deployment-units` | manage | 覆盖式更新关联集合（原子） |
 | POST | `/{id}/deactivate`、`/{id}/reactivate` | manage | 状态流转 |
 | DELETE | `/{id}` | manage | 软删除并清理关联 |
-| GET | `/api/architecture/deployment-units/{id}/delivery-units` | 部署单元 view | 只读反查 |
+| GET | `/api/architecture/deployment-units/{id}/delivery-units` | 部署单元 view | 反向查询关联交付单元 |
+| PUT | `/api/architecture/deployment-units/{id}/delivery-units` | delivery-unit manage | **新增**：从部署单元侧覆盖式更新关联集合（与交付单元侧写同一张关系表，不发布部署单元新版本） |
+| GET | `/api/architecture/deployment-units/{id}/delivery-unit-options` | 部署单元 view | **新增**：同物理子系统下启用交付单元候选（关键字分页） |
 
 - 错误语义：参数非法 400；无权限 403；重名/同项目冲突 409；跨物理子系统关联 409；并发旧版本 409；不存在 404。
 
@@ -127,7 +133,7 @@
 | R3 | 归属不可改、乐观锁 409 | 服务测试 |
 | R4 | 软删除后列表与会话查询不返回，关联清理 | 存储集成测试 |
 | R5 | 跨物理子系统关联被拒；合法关联持久化 | 服务测试 + 数据库约束测试 |
-| R6 | 部署单元反查返回交付单元 | 控制器测试 + 浏览器验收 |
+| R6 | 两侧详情抽屉都能保存关联，任一侧保存另一侧立即生效 | 服务/MySQL 测试 + 两侧浏览器验收 |
 | R7 | 无权限 403、写操作审计 | 权限测试 + 审计断言 |
 | R8 | 迁移/治理检查、前端构建、四视口 | `check-flyway-migrations.mjs`、`check-all-governance.mjs`、`npm --prefix web run build`、浏览器验收 |
 

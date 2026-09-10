@@ -658,3 +658,102 @@ npm --prefix web run build
 **待你确认：**
 1. 是否批准本计划并按序实施 T1—T4？
 2. 是否在当前分支 `dev-ivanh` 直接实施（不使用隔离 worktree）？当前工作区存在与本需求无关的未提交改动（`.agents/skills/**`），我会保留并不触碰它们。
+
+---
+
+# 计划修订 2（2026-09-10）：部署单元侧关联编辑（方案 A）
+
+## 状态与来源
+- 计划修订：2
+- 设计修订：2
+- 变更原因：用户追加“部署单元菜单也可以关联交付单元，和交付单元页面使用同样的逻辑”，并在方案 A/B 对比后确认“按 A 执行”。
+- 全局约束沿用修订 1，并新增：关联写入统一要求 `architecture:delivery-unit:manage`；部署单元侧关联编辑不发布部署单元新版本、不写 `arch_deployment_unit_relation_history`；不进入部署单元新建/修改表单。
+
+## 新增任务
+
+### T5 后端：部署单元侧关联的候选、校验与覆盖式保存
+
+**需求映射：** R5, R6, R7
+
+**前置任务：** T1, T2
+
+**文件：**
+- 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java`
+- 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java`
+- 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java`
+- 测试：`server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java`
+- 测试：`server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java`
+- 测试：`server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java`
+
+**接口：**
+- 产出 `DeliveryUnitStore.findDeliveryUnitsByIds(long tenantId, long projectId, Collection<Long> ids)` → `List<DeliveryUnit>`
+- 产出 `DeliveryUnitStore.replaceDeploymentUnitsFromDeploymentSide(long tenantId, long projectId, long physicalSubsystemId, long deploymentUnitId, Set<Long> deliveryUnitIds, long actorId)`
+- 产出 `DeliveryUnitService.replaceDeploymentUnitDeliveryUnits(AuthUser, ProjectAccess, long deploymentUnitId, List<Long> deliveryUnitIds, String traceId)` → `List<RelatedDeliveryUnitView>`
+- 产出 `DeliveryUnitService.deliveryUnitOptionsForDeploymentUnit(AuthUser, ProjectAccess, long deploymentUnitId, String keyword, PageQuery)` → `PageResult<DeliveryUnitOptionView>`
+- 产出 HTTP：`PUT /api/architecture/deployment-units/{id}/delivery-units`、`GET /api/architecture/deployment-units/{id}/delivery-unit-options`
+
+**步骤：**
+1. 先补失败的 MySQL 断言：从部署单元侧替换关联后两侧查询一致；跨物理子系统交付单元被拒；已停用交付单元被拒；软删除交付单元被拒。
+2. 运行 `mvn -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest -Dsurefire.failIfNoSpecifiedTests=false` 确认失败信号。
+3. 在 `DeliveryUnitStore` 增加按 ID 批量读取交付单元与从部署单元侧替换关联的方法（复用 `arch_delivery_unit_deployment_unit`，删除与新增按差集处理）。
+4. 在 `DeliveryUnitService` 增加两个方法：候选查询（同物理子系统、未删除、状态 ACTIVE、关键字分页）与覆盖式保存（先校验部署单元存在且状态为 ACTIVE，再逐一校验候选对象的物理子系统与状态），审计操作码 `ARCHITECTURE_DEPLOYMENT_UNIT_RELATE_DELIVERY_UNIT`，审计路径为部署单元子资源路径。
+5. 在 `DeploymentUnitDeliveryUnitController` 增加两个端点：`PUT` 使用 `hasAuthority('architecture:delivery-unit:manage')`，`GET` 使用既有部署单元查看权限。
+6. 运行服务/控制器/MySQL 测试与既有部署单元回归。
+
+**验收、证据与回滚**
+- 验收：两侧写同一张关系表；非法候选与非法状态均 409 且不写入；不产生部署单元新版本与关系历史行。
+- 证据：`DeliveryUnitMySqlTest`、`DeliveryUnitServiceTest`、`DeliveryUnitControllerTest` 输出。
+- 回滚：`git revert` 本任务提交；关系表数据由部署单元侧不再写入，无 schema 变更。
+
+**停止条件：** 需要修改 `arch_deployment_unit_relation_history` 或部署单元版本表才能实现。
+**升级条件：** 需要放宽部署单元既有授权或引入新的关系历史表。
+
+---
+
+### T6 前端与验收：部署单元详情抽屉内编辑关联
+
+**需求映射：** R6, R8
+
+**前置任务：** T5
+
+**文件：**
+- 修改：`web/src/modules/architecture/types.ts`
+- 修改：`web/src/modules/architecture/api.ts`
+- 修改：`web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue`
+- 修改：`web/src/modules/architecture/DeploymentUnitPage.vue`
+
+**接口：**
+- 产出 `replaceDeploymentUnitDeliveryUnits(id, deliveryUnitIds)`、`searchDeploymentUnitDeliveryUnitOptions({ deploymentUnitId, keyword, page, size })`
+- 产出 `DeploymentUnitDetailDrawer` 的 `canManageRelations` prop 与 `updated` 事件
+
+**步骤：**
+1. 建立构建基准：`npm --prefix web run build`。
+2. 增加 API 封装与 `RelatedDeliveryUnit` 复用类型。
+3. 把 `DeploymentUnitDetailDrawer` 的“关联交付单元”区块改为可编辑：编辑态使用多选远程搜索下拉（同物理子系统候选）、`#empty` 插槽保留、保存调用新接口并 `emit('updated')`；仅当 `canManageRelations` 为真且部署单元状态为 `ACTIVE` 时展示入口。
+4. `DeploymentUnitPage` 传入 `canManageRelations = auth.hasPermission('architecture:delivery-unit:manage')`，并在 `updated` 后刷新列表与详情。
+5. 运行 `npm --prefix web run build`。
+6. 浏览器回归：部署单元详情抽屉内新增/移除关联后，交付单元详情抽屉立即可见；反向亦成立；无匹配关键字时下拉保持打开。
+
+**验收、证据与回滚**
+- 验收：两侧抽屉交互一致；任一侧保存另一侧立即生效；空候选提示与下拉保持打开。
+- 证据：构建输出、`/tmp/pwtest/verify-deployment-side-relation.mjs` 输出、既有三组验收复跑。
+- 回滚：`git revert` 本任务提交。
+
+**停止条件：** 需要在部署单元新建/修改表单中增加关联选择（超出方案 A）。
+**升级条件：** 需要修改公共组件或平台能力。
+
+---
+
+### T7 收敛：回归与账本
+
+**需求映射：** R1–R8
+
+**前置任务：** T5, T6
+
+**步骤：**
+1. 运行 `mvn -pl :ccb-architecture -am test`、`npm --prefix web run build`、三组既有浏览器验收与新增 `verify-deployment-side-relation.mjs`。
+2. 复跑治理、迁移与范围检查，确认无新增违规。
+3. 更新 `convergence.json`（新增采样与回归项，R6 证据更新），重新执行 verifying 门禁。
+
+**停止条件：** 出现与部署单元版本/授权相关的回归。
+**升级条件：** 需要修改既有迁移或公共契约。
