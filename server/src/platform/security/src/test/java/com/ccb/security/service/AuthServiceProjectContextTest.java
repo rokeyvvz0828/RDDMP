@@ -44,24 +44,23 @@ class AuthServiceProjectContextTest {
     }
 
     @Test
-    void routesKeepNamespaceAccessMenuAndAuthorizedLeaf() {
-        ProjectRepository repository = new ProjectRepository(true, List.of("project:plan:list"));
+    void routesIncludeProjectManagementForAnyAccessibleProjectManagementPermission() {
+        ProjectRepository repository = new ProjectRepository(true, List.of("system:user:list"), true);
         AuthService service = service(repository);
 
-        List<RouteNode> routes = service.routes(user, 9001L);
+        List<RouteNode> routes = service.routes(user, null);
 
         assertEquals(1, routes.size());
         assertEquals("项目管理", routes.get(0).menuName());
-        assertEquals(1, routes.get(0).children().size());
-        assertEquals("项目计划", routes.get(0).children().get(0).menuName());
+        assertTrue(routes.get(0).children().isEmpty());
     }
 
     @Test
-    void routesExcludeProjectAccessMenuWithoutProjectPermission() {
-        ProjectRepository repository = new ProjectRepository(true, List.of("system:user:list"));
+    void routesExcludeProjectManagementForOtherProjectPermissionOnly() {
+        ProjectRepository repository = new ProjectRepository(true, List.of("project:plan:list"), false);
         AuthService service = service(repository);
 
-        List<RouteNode> routes = service.routes(user, 9001L);
+        List<RouteNode> routes = service.routes(user, null);
 
         assertTrue(routes.isEmpty());
     }
@@ -95,15 +94,17 @@ class AuthServiceProjectContextTest {
     private static final class ProjectRepository extends AuthRepository {
         private final boolean accessible;
         private final List<String> permissions;
+        private final boolean hasProjectManagementPermission;
 
         private ProjectRepository(boolean accessible) {
-            this(accessible, List.of("project:plan:list"));
+            this(accessible, List.of("project:plan:list"), false);
         }
 
-        private ProjectRepository(boolean accessible, List<String> permissions) {
+        private ProjectRepository(boolean accessible, List<String> permissions, boolean hasProjectManagementPermission) {
             super(null);
             this.accessible = accessible;
             this.permissions = permissions;
+            this.hasProjectManagementPermission = hasProjectManagementPermission;
         }
 
         @Override
@@ -113,7 +114,14 @@ class AuthServiceProjectContextTest {
 
         @Override
         public List<String> findPermissions(long userId, long tenantId, Long projectId) {
-            return permissions;
+            return projectId == null
+                    ? permissions.stream().filter(permission -> permission.startsWith("system:")).toList()
+                    : permissions;
+        }
+
+        @Override
+        public boolean hasAnyProjectManagementPermission(long userId, long tenantId) {
+            return hasProjectManagementPermission;
         }
 
         @Override

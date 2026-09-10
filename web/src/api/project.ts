@@ -3,7 +3,7 @@ import type { ApiResponse } from '../types/auth'
 import type { Project, ProjectMember, ProjectOptions, ProjectPlan, ProjectPlanGroup, ProjectPlanGroupPayload, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectUserOption, ProjectOrganization, ProjectStage } from '../types/project'
 
 export function getProjectWorkbench() { return http.get<ApiResponse<Project[]>>('/project/workbench', withProjectContext(null)) }
-export function getProject(id: number) { return http.get<ApiResponse<Project>>(`/project/${id}`) }
+export function getProject(id: number) { return http.get<ApiResponse<Project>>(`/project/${id}`, withProjectContext(id)) }
 export function createProject(payload: Record<string, unknown>) { return http.post<ApiResponse<Project>>('/project', payload) }
 export function updateProject(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}`, payload) }
 export function updateProjectSettings(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}/settings`, payload) }

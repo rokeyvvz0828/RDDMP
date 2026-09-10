@@ -69,10 +69,26 @@ export const useAuthStore = defineStore('auth', () => {
     currentProjectId.value = snapshot.projectId
   }
 
+  async function hydrateProjectAuthorizationIfAvailable() {
+    if (currentProjectId.value) return
+    const { useProjectContextStore } = await import('./project-context')
+    const projectContext = useProjectContextStore()
+    await projectContext.initialize()
+    if (!projectContext.currentId) return
+    applyAuthorization(await fetchAuthorization(projectContext.currentId))
+  }
+
   async function hydrate(projectId: number | null = storedProjectId()) {
     if (!token.value) return
     try {
       applyAuthorization(await fetchAuthorization(projectId))
+      if (!projectId) {
+        try {
+          await hydrateProjectAuthorizationIfAvailable()
+        } catch {
+          // Keep global authorization when the optional project context cannot be restored.
+        }
+      }
     } catch {
       clear()
     }

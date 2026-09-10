@@ -310,7 +310,7 @@ public class SystemService {
 
     public Map<String, Object> permissionCatalog(AuthUser user) {
         requireAction("roles", "read", user);
-        List<Map<String, Object>> menus = jdbc.queryForList("SELECT id, parent_id, menu_name, menu_type, route_path, permission_code, icon, sort_no FROM sys_menu WHERE tenant_id = ? AND deleted = 0 ORDER BY parent_id, sort_no, id", user.tenantId());
+        List<Map<String, Object>> menus = jdbc.queryForList("SELECT id, parent_id, menu_name, menu_type, status, route_path, permission_code, icon, sort_no FROM sys_menu WHERE tenant_id = ? AND deleted = 0 ORDER BY parent_id, sort_no, id", user.tenantId());
         for (Map<String, Object> menu : menus) menu.put("actions", jdbc.queryForList("SELECT id, action_code, permission_code, permission_name FROM sys_menu_permission WHERE tenant_id = ? AND menu_id = ? AND status = 1 ORDER BY id", user.tenantId(), menu.get("id")));
         return Map.of("menus", menus);
     }

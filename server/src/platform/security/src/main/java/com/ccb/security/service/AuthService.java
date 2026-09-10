@@ -166,7 +166,10 @@ public class AuthService {
     }
 
     public List<RouteNode> routes(AuthUser user, Long projectId) {
-        Set<String> permissions = Set.copyOf(permissions(user, projectId));
+        Set<String> permissions = new HashSet<>(permissions(user, projectId));
+        if (repository.hasAnyProjectManagementPermission(user.id(), user.tenantId())) {
+            permissions.add("project:project:list");
+        }
         List<RouteNode> catalog = repository.findRoutes(user.id(), user.tenantId(), projectId);
         Set<Long> included = new HashSet<>();
         for (RouteNode node : catalog) {
@@ -191,6 +194,7 @@ public class AuthService {
 
     private boolean hasRoutePermission(String permissionCode, Set<String> permissions) {
         if (permissionCode == null || permissionCode.isBlank()) return false;
+        if ("project:access".equals(permissionCode)) return permissions.contains("project:project:list");
         if (permissions.contains(permissionCode)) return true;
         if (!permissionCode.endsWith(":access")) return false;
         String namespace = permissionCode.substring(0, permissionCode.length() - "access".length());
