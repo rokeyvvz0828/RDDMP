@@ -495,11 +495,12 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
             collapse-tags-tooltip
             :loading="relatedLoading"
             :remote-method="searchRelatedOptions"
-            :no-data-text="relatedError || '没有匹配的启用部署单元'"
             placeholder="按名称、编号或物理子系统搜索，可多选"
             class="architecture-related-unit-select"
           >
             <el-option v-for="unit in relatedOptions" :key="unit.id" :label="`${unit.name}（${unit.code} · ${unit.physicalSubsystemName || '未知物理子系统'}）`" :value="unit.id" />
+            <!-- remote 选择器必须在空结果时提供 empty 插槽，否则下拉会自动收起 -->
+            <template #empty><p class="el-select-dropdown__empty">{{ relatedError || '没有匹配的启用部署单元' }}</p></template>
           </el-select>
           <p v-if="relatedError" class="architecture-field-error">{{ relatedError }}，已选项已保留，可重新输入关键字重试。</p>
         </el-form-item>
