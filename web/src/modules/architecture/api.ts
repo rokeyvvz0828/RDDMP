@@ -430,6 +430,24 @@ export async function listDeploymentUnitDeliveryUnits(id: number) {
   return (await projectHttp.get<ApiResponse<RelatedDeliveryUnit[]>>(`/architecture/deployment-units/${id}/delivery-units`)).data.data
 }
 
+/** 部署单元侧覆盖式更新关联交付单元集合，与交付单元侧共享同一份关系数据。 */
+export async function replaceDeploymentUnitDeliveryUnits(id: number, deliveryUnitIds: number[]) {
+  return (await projectHttp.put<ApiResponse<RelatedDeliveryUnit[]>>(`/architecture/deployment-units/${id}/delivery-units`, { deploymentUnitIds: deliveryUnitIds })).data.data
+}
+
+/** 部署单元侧的交付单元候选，只返回同一物理子系统下的启用交付单元。 */
+export async function searchDeploymentUnitDeliveryUnitOptions(query: {
+  deploymentUnitId: number
+  keyword?: string
+  page?: number
+  size?: number
+}) {
+  const { deploymentUnitId, ...rest } = query
+  return (await projectHttp.get<ApiResponse<PageResult<RelatedDeliveryUnit>>>(`/architecture/deployment-units/${deploymentUnitId}/delivery-unit-options`, {
+    params: compact(rest)
+  })).data.data
+}
+
 // ---------- 交付单元 ----------
 
 export async function listDeliveryUnits(query: Query) {

@@ -91,6 +91,8 @@ const canView = computed(() => auth.hasPermission('architecture:deployment-unit:
   || auth.hasPermission('architecture:deployment-unit:manage')
   || ['architecture:view', 'architecture:apply', 'architecture:manage'].some(p => auth.hasPermission(p)))
 const canManage = computed(() => auth.hasPermission('architecture:deployment-unit:manage'))
+// 关联写入统一要求交付单元维护权限（与发起侧无关，见设计修订2）
+const canManageRelations = computed(() => auth.hasPermission('architecture:delivery-unit:manage'))
 
 function text(value: string | null | undefined) {
   const normalized = value?.trim()
@@ -461,10 +463,12 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
       :title="detail?.name || '部署单元详情'"
       :unit="detail"
       :versions="versions"
+      :can-manage-relations="canManageRelations"
       @edit="detail && openEdit(detail)"
       @deactivate="detail && confirmLifecycle('deactivate', detail)"
       @reactivate="detail && confirmLifecycle('reactivate', detail)"
       @void="detail && confirmLifecycle('void', detail)"
+      @updated="() => { void load() }"
     />
 
     <el-dialog v-model="formOpen" :title="formMode === 'create' ? '新建部署单元' : '修改并发布新版本'" width="min(620px, 94vw)" destroy-on-close :before-close="requestCloseForm">
