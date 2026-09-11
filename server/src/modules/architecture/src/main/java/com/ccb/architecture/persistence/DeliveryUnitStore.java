@@ -30,7 +30,7 @@ public class DeliveryUnitStore {
     public static final int MAX_ORDINAL_PER_PHYSICAL = 999;
 
     private static final String UNIT_COLUMNS = """
-            id, code, physical_subsystem_id, name, status, description, remark,
+            id, code, physical_subsystem_id, name, artifact_type_code, status, description, remark,
             created_by, updated_by, created_at, updated_at, row_version
             """;
 
@@ -39,7 +39,7 @@ public class DeliveryUnitStore {
             rs.getString("name"), rs.getString("status"), rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
             localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
-            rs.getLong("row_version"));
+            rs.getLong("row_version"), rs.getString("artifact_type_code"));
 
     private static final RowMapper<DeploymentUnitRef> DEPLOYMENT_UNIT_MAPPER = (rs, rowNum) ->
             new DeploymentUnitRef(rs.getLong("id"), rs.getString("code"), rs.getString("name"),
@@ -78,6 +78,10 @@ public class DeliveryUnitStore {
         if (normalized.status() != null) {
             filter.append(" AND status = ?");
             args.add(normalized.status());
+        }
+        if (normalized.artifactTypeCode() != null) {
+            filter.append(" AND artifact_type_code = ?");
+            args.add(normalized.artifactTypeCode());
         }
         Long total = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM arch_delivery_unit "
@@ -123,23 +127,25 @@ public class DeliveryUnitStore {
     }
 
     public void insertUnit(long id, long tenantId, long projectId, String code, long physicalSubsystemId,
-                           String name, String description, String remark, long actorId) {
+                           String name, String artifactTypeCode, String description, String remark, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_delivery_unit
-                    (id, tenant_id, project_id, code, physical_subsystem_id, name, status,
+                    (id, tenant_id, project_id, code, physical_subsystem_id, name, artifact_type_code, status,
                      description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?)
-                """, id, tenantId, projectId, code, physicalSubsystemId, name, description, remark, actorId, actorId);
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?)
+                """, id, tenantId, projectId, code, physicalSubsystemId, name, artifactTypeCode, description, remark,
+                actorId, actorId);
     }
 
     /** 乐观锁更新展示内容；返回 0 表示版本冲突或记录不可改。 */
     public int updateUnitContent(long tenantId, long projectId, long id, long expectedRowVersion, String name,
-                                 String description, String remark, long actorId) {
+                                 String artifactTypeCode, String description, String remark, long actorId) {
         return jdbc.update("""
                 UPDATE arch_delivery_unit
-                SET name = ?, description = ?, remark = ?, updated_by = ?, row_version = row_version + 1
+                SET name = ?, artifact_type_code = ?, description = ?, remark = ?, updated_by = ?,
+                    row_version = row_version + 1
                 WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0 AND row_version = ?
-                """, name, description, remark, actorId, tenantId, projectId, id, expectedRowVersion);
+                """, name, artifactTypeCode, description, remark, actorId, tenantId, projectId, id, expectedRowVersion);
     }
 
     /** 状态迁移；返回 0 表示状态不允许或已变更。 */

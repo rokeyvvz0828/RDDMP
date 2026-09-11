@@ -4,6 +4,7 @@ import com.ccb.architecture.model.DeliveryUnitModels.DeliveryUnit;
 import com.ccb.architecture.model.DeliveryUnitModels.DeliveryUnitCommand;
 import com.ccb.architecture.model.DeliveryUnitModels.DeliveryUnitQuery;
 import com.ccb.architecture.model.DeliveryUnitModels.DeploymentUnitRef;
+import com.ccb.architecture.model.DeliveryUnitModels;
 import com.ccb.architecture.persistence.DeliveryUnitNumberCapacityExceededException;
 import com.ccb.architecture.persistence.DeliveryUnitStore;
 import com.ccb.architecture.persistence.DeliveryUnitStore.PhysicalSubsystemProjection;
@@ -18,6 +19,7 @@ import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.ccb.system.capability.SystemReferenceQuery;
+import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemUserReference;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -218,7 +220,8 @@ public class DeliveryUnitService {
                     throw conflict("同一物理子系统下已存在同名交付单元");
                 }
                 int updated = store.updateUnitContent(actor.tenantId(), project.id(), id, prepared.rowVersion(),
-                        prepared.name(), prepared.description(), prepared.remark(), actor.id());
+                        prepared.name(), prepared.artifactTypeCode(), prepared.description(), prepared.remark(),
+                        actor.id());
                 if (updated != 1) {
                     throw conflict("交付单元已被其他操作修改，请刷新后重试");
                 }
@@ -332,7 +335,7 @@ public class DeliveryUnitService {
             throw conflict(exception.getMessage());
         }
         store.insertUnit(unitId, tenantId, project.id(), code, prepared.physicalSubsystemId(), prepared.name(),
-                prepared.description(), prepared.remark(), actor.id());
+                prepared.artifactTypeCode(), prepared.description(), prepared.remark(), actor.id());
         store.replaceDeploymentUnits(tenantId, project.id(), prepared.physicalSubsystemId(), unitId,
                 prepared.relatedDeploymentUnitIds(), actor.id());
         return unitId;
@@ -352,12 +355,28 @@ public class DeliveryUnitService {
             throw badRequest("请选择归属物理子系统");
         }
         String name = required(command.name(), "交付单元名称", 2, 200);
+        String artifactTypeCode = validateArtifactType(actor, command.artifactTypeCode());
         String description = optional(command.description(), "描述", 2000);
         String remark = optional(command.remark(), "备注", 1000);
         Set<Long> related = normalizeRelationIds(command.relatedDeploymentUnitIds());
         Long physicalSubsystemId = existing == null ? command.physicalSubsystemId() : existing.physicalSubsystemId();
         Long rowVersion = existing == null ? null : requiredRowVersion(command.rowVersion());
-        return new PreparedCommand(physicalSubsystemId, name, description, remark, related, rowVersion);
+        return new PreparedCommand(physicalSubsystemId, name, artifactTypeCode, description, remark, related,
+                rowVersion);
+    }
+
+    /** 制品类型取值必须来自平台统一字典（参数管理）的启用项；空值允许。 */
+    private String validateArtifactType(AuthUser actor, String input) {
+        String normalized = optional(input, "制品类型", 64);
+        if (normalized == null) {
+            return null;
+        }
+        return referenceQuery.activeParameters(actor, DeliveryUnitModels.ARTIFACT_TYPE_CATEGORY).stream()
+                .map(SystemParameterReference::code)
+                .filter(code -> code != null && code.trim().equalsIgnoreCase(normalized))
+                .map(String::trim)
+                .findFirst()
+                .orElseThrow(() -> badRequest("制品类型参数无效或已停用"));
     }
 
     private void validateRelationTargets(long tenantId, long projectId, long physicalSubsystemId,
@@ -441,7 +460,7 @@ public class DeliveryUnitService {
                 item.description(), item.remark(), item.createdBy(),
                 creator == null ? null : creator.displayName(), item.updatedBy(),
                 updater == null ? null : updater.displayName(), item.createdAt(), item.updatedAt(),
-                item.rowVersion());
+                item.rowVersion(), item.artifactTypeCode());
     }
 
     private SystemUserReference userReference(AuthUser actor, Long userId,
@@ -461,7 +480,8 @@ public class DeliveryUnitService {
         }
         String status = optional(query.status(), "状态", 16);
         return new DeliveryUnitQuery(optional(query.name(), "交付单元名称", 200),
-                query.physicalSubsystemId(), status == null ? null : status.toUpperCase(Locale.ROOT));
+                query.physicalSubsystemId(), status == null ? null : status.toUpperCase(Locale.ROOT),
+                optional(query.artifactTypeCode(), "制品类型", 64));
     }
 
     private SystemOperationAuditCommand auditCommand(AuthUser actor, String operationCode, String method,
@@ -561,8 +581,9 @@ public class DeliveryUnitService {
         return identifiers.getAsLong();
     }
 
-    private record PreparedCommand(Long physicalSubsystemId, String name, String description, String remark,
-                                   Set<Long> relatedDeploymentUnitIds, Long rowVersion) {
+    private record PreparedCommand(Long physicalSubsystemId, String name, String artifactTypeCode,
+                                   String description, String remark, Set<Long> relatedDeploymentUnitIds,
+                                   Long rowVersion) {
     }
 
     /** 交付单元视图。 */
@@ -584,7 +605,8 @@ public class DeliveryUnitService {
             String updatedByDisplayName,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            long rowVersion) {
+            long rowVersion,
+            String artifactTypeCode) {
     }
 
     /** 部署单元侧反查到的交付单元只读引用。 */

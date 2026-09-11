@@ -54,9 +54,10 @@ public class DeliveryUnitController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long physicalSubsystemId,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String artifactTypeCode,
             @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        DeliveryUnitQuery query = new DeliveryUnitQuery(name, physicalSubsystemId, status);
+        DeliveryUnitQuery query = new DeliveryUnitQuery(name, physicalSubsystemId, status, artifactTypeCode);
         return ApiResponse.success(service.list(actor, project(projectRef, actor), new PageQuery(page, size), query),
                 TraceId.getOrCreate());
     }

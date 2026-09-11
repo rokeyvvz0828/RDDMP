@@ -13,6 +13,9 @@ public final class DeliveryUnitModels {
     private DeliveryUnitModels() {
     }
 
+    /** 制品类型字典类别（平台参数管理维护）。 */
+    public static final String ARTIFACT_TYPE_CATEGORY = "ARCH_ARTIFACT_TYPE";
+
     /** 交付单元状态（受控值）。 */
     public enum DeliveryUnitStatus {
         ACTIVE,
@@ -32,11 +35,13 @@ public final class DeliveryUnitModels {
             long updatedBy,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            long rowVersion) {
+            long rowVersion,
+            String artifactTypeCode) {
     }
 
     /**
      * 创建/更新交付单元命令；归属物理子系统只在创建时提供，更新时携带不同值会被拒绝。
+     * {@code artifactTypeCode} 为可选制品类型字典 code。
      */
     public record DeliveryUnitCommand(
             Long physicalSubsystemId,
@@ -44,17 +49,19 @@ public final class DeliveryUnitModels {
             String description,
             String remark,
             List<Long> relatedDeploymentUnitIds,
-            Long rowVersion) {
+            Long rowVersion,
+            String artifactTypeCode) {
     }
 
     /** 交付单元分页查询条件。 */
     public record DeliveryUnitQuery(
             String name,
             Long physicalSubsystemId,
-            String status) {
+            String status,
+            String artifactTypeCode) {
 
         public static DeliveryUnitQuery empty() {
-            return new DeliveryUnitQuery(null, null, null);
+            return new DeliveryUnitQuery(null, null, null, null);
         }
     }
 

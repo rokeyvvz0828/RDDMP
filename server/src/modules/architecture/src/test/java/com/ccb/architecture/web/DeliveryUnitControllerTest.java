@@ -75,7 +75,8 @@ class DeliveryUnitControllerTest {
     void 列表转发分页筛选且不返回租户标识() throws Exception {
         DeliveryUnitView view = new DeliveryUnitView(1L, "DUW0001A001", 501L, "W0001A", "渠道接入系统", "ACTIVE",
                 "统一认证交付包", "ACTIVE", List.of(), null, null, 88L, "技术架构师", 88L, "技术架构师",
-                java.time.LocalDateTime.of(2026, 9, 10, 10, 0), java.time.LocalDateTime.of(2026, 9, 10, 10, 0), 0L);
+                java.time.LocalDateTime.of(2026, 9, 10, 10, 0), java.time.LocalDateTime.of(2026, 9, 10, 10, 0), 0L,
+                null);
         when(service.list(eq(ACTOR), eq(PROJECT), any(PageQuery.class), any()))
                 .thenReturn(new PageResult<>(List.of(view), 1L, 1L, 20L));
 
@@ -102,6 +103,7 @@ class DeliveryUnitControllerTest {
                                 {
                                   "physicalSubsystemId": 501,
                                   "name": "统一认证交付包",
+                                  "artifactTypeCode": "architecture.artifact-type.container",
                                   "relatedDeploymentUnitIds": [31, 32],
                                   "description": "交付内容",
                                   "remark": "测试"
@@ -113,6 +115,7 @@ class DeliveryUnitControllerTest {
         verify(service).create(eq(ACTOR), eq(PROJECT), command.capture(), any());
         assertThat(command.getValue().physicalSubsystemId()).isEqualTo(501L);
         assertThat(command.getValue().name()).isEqualTo("统一认证交付包");
+        assertThat(command.getValue().artifactTypeCode()).isEqualTo("architecture.artifact-type.container");
         assertThat(command.getValue().relatedDeploymentUnitIds()).containsExactly(31L, 32L);
 
         List<String> componentNames = Arrays.stream(DeliveryUnitCommand.class.getRecordComponents())
@@ -184,7 +187,7 @@ class DeliveryUnitControllerTest {
     @Test
     void 交付单元端点保持权限契约() throws Exception {
         assertPermission(DeliveryUnitController.class, "list", VIEW_PERMISSION, long.class, long.class, String.class,
-                Long.class, String.class, String.class, AuthUser.class);
+                Long.class, String.class, String.class, String.class, AuthUser.class);
         assertPermission(DeliveryUnitController.class, "deploymentUnitOptions", VIEW_PERMISSION, Long.class,
                 String.class, long.class, long.class, Long.class, String.class, AuthUser.class);
         assertPermission(DeliveryUnitController.class, "detail", VIEW_PERMISSION, long.class, String.class,

@@ -196,14 +196,14 @@ class DeliveryUnitMySqlTest {
     @Test
     void nameIsUniqueInsidePhysicalSubsystemAndReusableAcrossSubsystems() {
         store.insertUnit(nextId(), TENANT_ID, PROJECT.id(), "DUW0001A001", PHYSICAL_ID, "统一认证交付包",
-                null, null, actor.id());
+                null, null, null, actor.id());
 
         assertThatThrownBy(() -> store.insertUnit(nextId(), TENANT_ID, PROJECT.id(), "DUW0001A002", PHYSICAL_ID,
-                "统一认证交付包", null, null, actor.id()))
+                "统一认证交付包", null, null, null, actor.id()))
                 .isInstanceOf(DuplicateKeyException.class);
 
         store.insertUnit(nextId(), TENANT_ID, PROJECT.id(), "DUW0002B001", PHYSICAL_B_ID, "统一认证交付包",
-                null, null, actor.id());
+                null, null, null, actor.id());
         assertThat(store.unitNameExists(TENANT_ID, PROJECT.id(), PHYSICAL_B_ID, "统一认证交付包", null)).isTrue();
         assertThat(store.unitNameExists(TENANT_ID, PROJECT.id(), 503L, "统一认证交付包", null)).isFalse();
     }
@@ -271,15 +271,15 @@ class DeliveryUnitMySqlTest {
         assertThat(all.total()).isEqualTo(2);
 
         PageResult<DeliveryUnit> byPhysical = store.pageUnits(TENANT_ID, PROJECT.id(), new PageQuery(1, 20),
-                new DeliveryUnitQuery(null, PHYSICAL_B_ID, null));
+                new DeliveryUnitQuery(null, PHYSICAL_B_ID, null, null));
         assertThat(byPhysical.records()).extracting(DeliveryUnit::name).containsExactly("支付交付包");
 
         PageResult<DeliveryUnit> byName = store.pageUnits(TENANT_ID, PROJECT.id(), new PageQuery(1, 20),
-                new DeliveryUnitQuery("认证交付", null, null));
+                new DeliveryUnitQuery("认证交付", null, null, null));
         assertThat(byName.records()).extracting(DeliveryUnit::name).containsExactly("统一认证交付包");
 
         PageResult<DeliveryUnit> inactive = store.pageUnits(TENANT_ID, PROJECT.id(), new PageQuery(1, 20),
-                new DeliveryUnitQuery(null, null, "INACTIVE"));
+                new DeliveryUnitQuery(null, null, "INACTIVE", null));
         assertThat(inactive.total()).isZero();
     }
 
@@ -289,11 +289,11 @@ class DeliveryUnitMySqlTest {
         DeliveryUnit created = store.findUnit(TENANT_ID, PROJECT.id(), deliveryUnitId).orElseThrow();
 
         int updated = store.updateUnitContent(TENANT_ID, PROJECT.id(), deliveryUnitId, created.rowVersion(),
-                "统一认证交付包 V2", "描述", "备注", actor.id());
+                "统一认证交付包 V2", null, "描述", "备注", actor.id());
         assertThat(updated).isEqualTo(1);
 
         int stale = store.updateUnitContent(TENANT_ID, PROJECT.id(), deliveryUnitId, created.rowVersion(),
-                "统一认证交付包 V3", null, null, actor.id());
+                "统一认证交付包 V3", null, null, null, actor.id());
         assertThat(stale).isZero();
 
         assertThat(store.updateUnitStatus(TENANT_ID, PROJECT.id(), deliveryUnitId, "ACTIVE", "INACTIVE",
@@ -384,10 +384,46 @@ class DeliveryUnitMySqlTest {
     }
 
     private long insertDeliveryUnit(long projectId, long physicalSubsystemId, String name) {
+        return insertDeliveryUnit(projectId, physicalSubsystemId, name, null);
+    }
+
+    private long insertDeliveryUnit(long projectId, long physicalSubsystemId, String name, String artifactTypeCode) {
         long id = nextId();
         String code = "DU" + physicalSubsystemId + "00" + sequence.incrementAndGet();
-        store.insertUnit(id, TENANT_ID, projectId, code, physicalSubsystemId, name, null, null, actor.id());
+        store.insertUnit(id, TENANT_ID, projectId, code, physicalSubsystemId, name, artifactTypeCode, null, null,
+                actor.id());
         return id;
+    }
+
+    @Test
+    void artifactTypeDictionaryIsSeededAndArtifactTypeIsOptionalPersistedAndFilterable() {
+        Integer dictionaryCount = jdbc.queryForObject("SELECT COUNT(*) FROM sys_dict_type "
+                + "WHERE tenant_id = 1 AND dict_code = 'ARCH_ARTIFACT_TYPE' AND status = 1 AND deleted = 0",
+                Integer.class);
+        assertThat(dictionaryCount).isEqualTo(1);
+        List<String> keys = jdbc.queryForList("SELECT config.config_key FROM sys_config config "
+                + "JOIN sys_dict_type dict ON dict.id = config.category_id AND dict.tenant_id = config.tenant_id "
+                + "WHERE config.tenant_id = 1 AND dict.dict_code = 'ARCH_ARTIFACT_TYPE' "
+                + "AND config.status = 1 AND config.deleted = 0 ORDER BY config.id", String.class);
+        assertThat(keys).containsExactly("architecture.artifact-type.container",
+                "architecture.artifact-type.archive", "architecture.artifact-type.script");
+
+        long withType = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "容器交付包",
+                "architecture.artifact-type.container");
+        long withoutType = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "无类型交付包");
+        assertThat(store.findUnit(TENANT_ID, PROJECT.id(), withType).orElseThrow().artifactTypeCode())
+                .isEqualTo("architecture.artifact-type.container");
+        assertThat(store.findUnit(TENANT_ID, PROJECT.id(), withoutType).orElseThrow().artifactTypeCode()).isNull();
+
+        PageResult<DeliveryUnit> filtered = store.pageUnits(TENANT_ID, PROJECT.id(), new PageQuery(1, 20),
+                new DeliveryUnitQuery(null, null, null, "architecture.artifact-type.container"));
+        assertThat(filtered.records()).extracting(DeliveryUnit::id).containsExactly(withType);
+
+        DeliveryUnit created = store.findUnit(TENANT_ID, PROJECT.id(), withType).orElseThrow();
+        assertThat(store.updateUnitContent(TENANT_ID, PROJECT.id(), withType, created.rowVersion(), "容器交付包",
+                "architecture.artifact-type.script", null, null, actor.id())).isEqualTo(1);
+        assertThat(store.findUnit(TENANT_ID, PROJECT.id(), withType).orElseThrow().artifactTypeCode())
+                .isEqualTo("architecture.artifact-type.script");
     }
 
     private static long nextId() {

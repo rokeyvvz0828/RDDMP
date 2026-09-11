@@ -75,13 +75,13 @@ class DeliveryUnitServiceTest {
                 .thenReturn(Optional.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 0)));
 
         var view = service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(31L), null), "trace-1");
+                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(31L), null, null), "trace-1");
 
         assertThat(view.code()).isEqualTo("DUW0001A001");
         assertThat(view.name()).isEqualTo("统一认证交付包");
         assertThat(view.status()).isEqualTo("ACTIVE");
         verify(store).insertUnit(UNIT_ID, TENANT_ID, PROJECT.id(), "DUW0001A001", PHYSICAL_ID, "统一认证交付包",
-                null, null, operator.id());
+                null, null, null, operator.id());
         verify(store).replaceDeploymentUnits(TENANT_ID, PROJECT.id(), PHYSICAL_ID, UNIT_ID, Set.of(31L),
                 operator.id());
         verify(operationAudit).recordSuccess(any(SystemOperationAuditCommand.class));
@@ -94,13 +94,13 @@ class DeliveryUnitServiceTest {
                         "INACTIVE", false)));
 
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null), "trace-2"))
+                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null, null), "trace-2"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
                 .hasMessageContaining("物理子系统当前状态不允许");
         verify(store, never()).allocateNumber(anyLong(), anyLong(), anyLong(), anyString());
         verify(store, never()).insertUnit(anyLong(), anyLong(), anyLong(), anyString(), anyLong(), anyString(),
-                any(), any(), anyLong());
+                any(), any(), any(), anyLong());
     }
 
     @Test
@@ -109,7 +109,7 @@ class DeliveryUnitServiceTest {
         when(store.unitNameExists(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "统一认证交付包", null)).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null), "trace-3"))
+                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null, null), "trace-3"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
         verify(store, never()).allocateNumber(anyLong(), anyLong(), anyLong(), anyString());
@@ -124,7 +124,7 @@ class DeliveryUnitServiceTest {
                 .thenReturn(List.of(deploymentUnit(31L, OTHER_PHYSICAL_ID, "ACTIVE")));
 
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(31L), null), "trace-4"))
+                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(31L), null, null), "trace-4"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
                 .hasMessageContaining("同一物理子系统");
@@ -138,10 +138,10 @@ class DeliveryUnitServiceTest {
         when(store.allocateNumber(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "W0001A")).thenReturn("DUW0001A001");
         org.mockito.Mockito.doThrow(new DuplicateKeyException("duplicate"))
                 .when(store).insertUnit(anyLong(), anyLong(), anyLong(), anyString(), anyLong(), anyString(),
-                        any(), any(), anyLong());
+                        any(), any(), any(), anyLong());
 
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null), "trace-5"))
+                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null, null), "trace-5"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT));
     }
@@ -154,7 +154,7 @@ class DeliveryUnitServiceTest {
                 .thenThrow(new DeliveryUnitNumberCapacityExceededException("编号容量已用尽"));
 
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null), "trace-6"))
+                new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null, List.of(), null, null), "trace-6"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
                 .hasMessageContaining("编号容量已用尽");
@@ -163,11 +163,11 @@ class DeliveryUnitServiceTest {
     @Test
     void createRejectsMissingNameAndMissingPhysical() {
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(null, "统一认证交付包", null, null, List.of(), null), "trace-7"))
+                new DeliveryUnitCommand(null, "统一认证交付包", null, null, List.of(), null, null), "trace-7"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("请选择归属物理子系统");
         assertThatThrownBy(() -> service.create(operator, PROJECT,
-                new DeliveryUnitCommand(PHYSICAL_ID, " ", null, null, List.of(), null), "trace-8"))
+                new DeliveryUnitCommand(PHYSICAL_ID, " ", null, null, List.of(), null, null), "trace-8"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("交付单元名称");
     }
@@ -180,12 +180,12 @@ class DeliveryUnitServiceTest {
                 .thenReturn(Optional.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 3)));
 
         assertThatThrownBy(() -> service.update(operator, PROJECT, UNIT_ID,
-                new DeliveryUnitCommand(OTHER_PHYSICAL_ID, "统一认证交付包", null, null, List.of(), 3L), "trace-9"))
+                new DeliveryUnitCommand(OTHER_PHYSICAL_ID, "统一认证交付包", null, null, List.of(), 3L, null), "trace-9"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
                 .hasMessageContaining("归属物理子系统不可变更");
         verify(store, never()).updateUnitContent(anyLong(), anyLong(), anyLong(), anyLong(), anyString(), any(),
-                any(), anyLong());
+                any(), any(), anyLong());
     }
 
     @Test
@@ -194,11 +194,11 @@ class DeliveryUnitServiceTest {
                 .thenReturn(Optional.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 3)));
         when(store.unitNameExists(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "统一认证交付包 V2", UNIT_ID))
                 .thenReturn(false);
-        when(store.updateUnitContent(TENANT_ID, PROJECT.id(), UNIT_ID, 3L, "统一认证交付包 V2", null, null,
+        when(store.updateUnitContent(TENANT_ID, PROJECT.id(), UNIT_ID, 3L, "统一认证交付包 V2", null, null, null,
                 operator.id())).thenReturn(0);
 
         assertThatThrownBy(() -> service.update(operator, PROJECT, UNIT_ID,
-                new DeliveryUnitCommand(null, "统一认证交付包 V2", null, null, List.of(), 3L), "trace-10"))
+                new DeliveryUnitCommand(null, "统一认证交付包 V2", null, null, List.of(), 3L, null), "trace-10"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.CONFLICT))
                 .hasMessageContaining("已被其他操作修改");
@@ -210,7 +210,7 @@ class DeliveryUnitServiceTest {
                 .thenReturn(Optional.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 3)));
 
         assertThatThrownBy(() -> service.update(operator, PROJECT, UNIT_ID,
-                new DeliveryUnitCommand(null, "统一认证交付包", null, null, List.of(), null), "trace-11"))
+                new DeliveryUnitCommand(null, "统一认证交付包", null, null, List.of(), null, null), "trace-11"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("数据版本不能为空");
     }
@@ -365,7 +365,7 @@ class DeliveryUnitServiceTest {
         when(store.findDeliveryUnitsByIds(TENANT_ID, PROJECT.id(), Set.of(UNIT_ID)))
                 .thenReturn(List.of(new DeliveryUnit(UNIT_ID, "DUW0002B001", OTHER_PHYSICAL_ID, "其他交付包",
                         "ACTIVE", null, null, 88L, 88L, LocalDateTime.of(2026, 9, 10, 10, 0),
-                        LocalDateTime.of(2026, 9, 10, 10, 0), 0)));
+                        LocalDateTime.of(2026, 9, 10, 10, 0), 0, null)));
 
         assertThatThrownBy(() -> service.replaceDeploymentUnitDeliveryUnits(operator, PROJECT, 31L,
                 List.of(UNIT_ID), "trace-d5"))
@@ -431,7 +431,57 @@ class DeliveryUnitServiceTest {
 
     private static DeliveryUnit unit(long id, String code, String status, long rowVersion) {
         return new DeliveryUnit(id, code, PHYSICAL_ID, "统一认证交付包", status, null, null, 88L, 88L,
-                LocalDateTime.of(2026, 9, 10, 10, 0), LocalDateTime.of(2026, 9, 10, 10, 0), rowVersion);
+                LocalDateTime.of(2026, 9, 10, 10, 0), LocalDateTime.of(2026, 9, 10, 10, 0), rowVersion, null);
+    }
+
+    @Test
+    void createValidatesArtifactTypeAgainstDictionary() {
+        stubActivePhysical();
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "统一认证交付包", null)).thenReturn(false);
+        when(store.allocateNumber(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "W0001A")).thenReturn("DUW0001A001");
+        when(store.findUnit(TENANT_ID, PROJECT.id(), UNIT_ID))
+                .thenReturn(Optional.of(new DeliveryUnit(UNIT_ID, "DUW0001A001", PHYSICAL_ID, "统一认证交付包",
+                        "ACTIVE", null, null, 88L, 88L, LocalDateTime.of(2026, 9, 10, 10, 0),
+                        LocalDateTime.of(2026, 9, 10, 10, 0), 0L, "architecture.artifact-type.container")));
+        when(referenceQuery.activeParameters(operator, "ARCH_ARTIFACT_TYPE"))
+                .thenReturn(List.of(new com.ccb.system.capability.SystemParameterReference(
+                        "architecture.artifact-type.container", "容器")));
+
+        var view = service.create(operator, PROJECT, new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null,
+                List.of(), null, "architecture.artifact-type.container"), "trace-a1");
+
+        assertThat(view.artifactTypeCode()).isEqualTo("architecture.artifact-type.container");
+        verify(store).insertUnit(UNIT_ID, TENANT_ID, PROJECT.id(), "DUW0001A001", PHYSICAL_ID, "统一认证交付包",
+                "architecture.artifact-type.container", null, null, operator.id());
+    }
+
+    @Test
+    void createRejectsUnknownOrDisabledArtifactType() {
+        stubActivePhysical();
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "统一认证交付包", null)).thenReturn(false);
+        when(referenceQuery.activeParameters(operator, "ARCH_ARTIFACT_TYPE")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.create(operator, PROJECT, new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包",
+                null, null, List.of(), null, "architecture.artifact-type.unknown"), "trace-a2"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).code()).isEqualTo(ErrorCode.BAD_REQUEST))
+                .hasMessageContaining("制品类型参数无效或已停用");
+        verify(store, never()).allocateNumber(anyLong(), anyLong(), anyLong(), anyString());
+    }
+
+    @Test
+    void createAllowsNullArtifactType() {
+        stubActivePhysical();
+        when(store.unitNameExists(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "统一认证交付包", null)).thenReturn(false);
+        when(store.allocateNumber(TENANT_ID, PROJECT.id(), PHYSICAL_ID, "W0001A")).thenReturn("DUW0001A001");
+        when(store.findUnit(TENANT_ID, PROJECT.id(), UNIT_ID))
+                .thenReturn(Optional.of(unit(UNIT_ID, "DUW0001A001", "ACTIVE", 0)));
+
+        var view = service.create(operator, PROJECT, new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null,
+                List.of(), null, null), "trace-a3");
+
+        assertThat(view.artifactTypeCode()).isNull();
+        verify(referenceQuery, never()).activeParameters(any(), any());
     }
 
     private static final class RecordingTransactionManager implements PlatformTransactionManager {

@@ -54,6 +54,17 @@ public class ArchitectureOptionsController {
         return success(service.users(actor, new PageQuery(page, size), keyword));
     }
 
+    /** 交付单元可用字典类别候选（当前仅制品类型）。 */
+    @GetMapping("/delivery-unit/parameters/{categoryCode}")
+    @PreAuthorize("hasAnyAuthority('architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
+            + "'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<List<ParameterOption>> deliveryUnitParameters(
+            @PathVariable String categoryCode, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
+        return success(service.parameters(actor, ArchitectureOptionsService.DELIVERY_UNIT_RESOURCE, categoryCode));
+    }
+
     @GetMapping("/physical-subsystem/parameters/{categoryCode}")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')")
     public ApiResponse<List<ParameterOption>> physicalParameters(
