@@ -33,7 +33,7 @@ class DataMigrationParameterFieldMigrationMySqlTest {
     void v200CreatesFieldTableWithCodeValuesAndIsIdempotent() throws Exception {
         try (Connection connection = connection()) {
             createContextTables(connection);
-            List<String> statements = readMigrationStatements("V200__data_migration_parameter_field.sql");
+            List<String> statements = readMigrationStatements("V205__data_migration_parameter_field.sql");
 
             for (String statement : statements) execute(connection, statement);
             assertV200Applied(connection);
@@ -47,7 +47,7 @@ class DataMigrationParameterFieldMigrationMySqlTest {
     void v200UniqueKeysRejectCaseInsensitiveDuplicateFieldNames() throws Exception {
         try (Connection connection = connection()) {
             createContextTables(connection);
-            for (String statement : readMigrationStatements("V200__data_migration_parameter_field.sql")) {
+            for (String statement : readMigrationStatements("V205__data_migration_parameter_field.sql")) {
                 execute(connection, statement);
             }
             execute(connection, "INSERT INTO dm_parameter (id, tenant_id, project_id) VALUES (1, 1, 91)");

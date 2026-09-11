@@ -34,7 +34,7 @@ class DataMigrationDependencyMigrationMySqlTest {
         try (Connection connection = connection()) {
             createLegacyDependencyTable(connection);
             createMenuPermissionTables(connection);
-            List<String> statements = readMigrationStatements("V199__data_migration_dependency_domain.sql");
+            List<String> statements = readMigrationStatements("V204__data_migration_dependency_domain.sql");
 
             for (String statement : statements) execute(connection, statement);
 
@@ -59,7 +59,7 @@ class DataMigrationDependencyMigrationMySqlTest {
                             CURRENT_TIMESTAMP, 7, CURRENT_TIMESTAMP)
                     """);
 
-            List<String> statements = readMigrationStatements("V199__data_migration_dependency_domain.sql");
+            List<String> statements = readMigrationStatements("V204__data_migration_dependency_domain.sql");
             SQLException failure = assertThrows(SQLException.class, () -> {
                 for (String statement : statements) execute(connection, statement);
             });
