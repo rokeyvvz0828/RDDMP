@@ -67,6 +67,7 @@ const detail = ref<DeliveryUnit | null>(null)
 const detailLoading = ref(false)
 
 const formOpen = ref(false)
+const formVisible = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const formSubmitting = ref(false)
 const formError = ref('')
@@ -101,12 +102,15 @@ function text(value: string | null | undefined) {
   return normalized || null
 }
 
-function formSnapshot() {
-  return JSON.stringify({ ...form, relatedDeploymentUnitIds: [...form.relatedDeploymentUnitIds].sort((a, b) => a - b) })
-}
+// 表单抽屉可见性以 formVisible 为单一状态源：UiFormDrawer 内部 el-drawer 是单向绑定，
+// 用户点遮罩/ESC/取消时抽屉会先自行关闭再回发事件；若这里只拦截不同步回写，
+// 父层状态会停在 true，导致“继续编辑”后抽屉无法重开、再次点“修改”也弹不出来。
+watch(formVisible, value => {
+  void handleDrawerVisibility(value)
+})
 
-async function requestCloseForm(value: boolean) {
-  if (value) {
+async function handleDrawerVisibility(visible: boolean) {
+  if (visible) {
     formOpen.value = true
     return
   }
@@ -115,7 +119,10 @@ async function requestCloseForm(value: boolean) {
     formOpen.value = false
     return
   }
-  if (formSubmitting.value) return
+  if (formSubmitting.value) {
+    formVisible.value = true
+    return
+  }
   if (formSnapshot() !== formBaseline.value) {
     try {
       await ElMessageBox.confirm('当前交付单元信息尚未保存，关闭后修改将丢失。', '放弃未保存修改？', {
@@ -124,10 +131,16 @@ async function requestCloseForm(value: boolean) {
         type: 'warning'
       })
     } catch {
+      // 用户选择继续编辑：把抽屉重新打开，保持与业务意图一致
+      formVisible.value = true
       return
     }
   }
   formOpen.value = false
+}
+
+function formSnapshot() {
+  return JSON.stringify({ ...form, relatedDeploymentUnitIds: [...form.relatedDeploymentUnitIds].sort((a, b) => a - b) })
 }
 
 function mergeRelatedOptions(items: RelatedDeploymentUnit[]) {
@@ -229,6 +242,7 @@ function openCreate() {
   suppressCloseGuard = false
   formBaseline.value = formSnapshot()
   formOpen.value = true
+  formVisible.value = true
   void searchRelatedOptions()
 }
 
@@ -249,6 +263,7 @@ function openEdit(unit: DeliveryUnit) {
   suppressCloseGuard = false
   formBaseline.value = formSnapshot()
   formOpen.value = true
+  formVisible.value = true
   void searchRelatedOptions()
 }
 
@@ -284,6 +299,7 @@ async function submitForm() {
       detail.value = updated
     }
     suppressCloseGuard = true
+    formVisible.value = false
     formOpen.value = false
     void load()
   } catch (error) {
@@ -427,12 +443,11 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
     />
 
     <UiFormDrawer
-      :model-value="formOpen"
+      v-model="formVisible"
       :title="formMode === 'create' ? '新建交付单元' : '修改交付单元'"
       width="min(620px, 94vw)"
       :loading="formSubmitting"
       :confirm-text="formMode === 'create' ? '创建' : '保存'"
-      @update:model-value="requestCloseForm"
       @submit="submitForm"
     >
       <el-form label-position="top">
