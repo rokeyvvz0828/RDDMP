@@ -1,0 +1,48 @@
+{
+  "iteration_id": "I20",
+  "task_id": "T9",
+  "status": "feedback-open",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/DeliveryUnitPage.vue",
+      "purpose": "抽屉可见性改为单一状态源 formVisible + v-model 与关闭守卫"
+    }
+  ],
+  "commands": [
+    {
+      "command": "node /tmp/pwtest/repro-drawer-overlay.mjs",
+      "exit_code": 0,
+      "salient_output": "复现：点遮罩→抽屉关闭+确认框；继续编辑→抽屉不重开；再次修改→弹不出来"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "构建通过"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "抽屉关闭守卫在四条路径上行为一致（待纠偏后复验）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-6",
+      "requirement_id": "R8",
+      "expected": "点遮罩/ESC/取消关闭修改抽屉并选择“继续编辑”后，抽屉保持打开且可继续编辑；再次点“修改”可正常打开",
+      "observed": "点遮罩后抽屉先自行关闭并弹出未保存确认；选“继续编辑”抽屉不重开；再次点“修改”抽屉完全弹不出来",
+      "reproduction": "node /tmp/pwtest/repro-drawer-overlay.mjs：打开修改→改名称→点遮罩→继续编辑→再点修改",
+      "evidence": "复现日志：步骤3 可见抽屉=0 确认框=1；步骤4 继续编辑后 可见抽屉=0；步骤5 再次点修改 可见抽屉=0。根因：UiFormDrawer 内部 el-drawer 单向绑定 model-value 并回发 update:modelValue，守卫只拦截未回写，父层 formOpen 停在 true 而抽屉内部已关闭，状态脱同步导致 true→true 赋值不触发重开",
+      "severity": "P1",
+      "confidence": "high",
+      "status": "open"
+    }
+  ],
+  "correction": null,
+  "next": "controlling"
+}

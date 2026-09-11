@@ -1,4 +1,5 @@
 import type {
+  DeliveryUnitStatus,
   DeploymentUnitImportBatchStatus,
   DeploymentUnitImportItemStatus,
   DeploymentUnitKind,
@@ -149,6 +150,17 @@ export function deploymentUnitStatusTone(status: DeploymentUnitStatus) {
   if (status === 'ACTIVE') return 'success' as const
   if (status === 'INACTIVE') return 'warning' as const
   return 'danger' as const
+}
+
+// ---------- 交付单元 ----------
+
+export const deliveryUnitStatusLabels: Record<DeliveryUnitStatus, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '已停用'
+}
+
+export function deliveryUnitStatusTone(status: DeliveryUnitStatus) {
+  return status === 'ACTIVE' ? 'success' as const : 'warning' as const
 }
 
 export function importBatchStatusTone(status: DeploymentUnitImportBatchStatus) {

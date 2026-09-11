@@ -136,7 +136,7 @@ export interface OrganizationOption { id: number; name: string; parentId: number
 export interface UserOption { id: number; displayName: string; username: string; phone: string | null }
 export interface ParameterOption { code: string; label: string }
 
-export type ArchitectureResource = 'physical-subsystem'
+export type ArchitectureResource = 'physical-subsystem' | 'delivery-unit'
 export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
 
 // ---------- 架构规范 ----------
@@ -421,6 +421,50 @@ export interface DeploymentUnitImportItem {
 export interface DeploymentUnitImportBatchDetail {
   batch: DeploymentUnitImportBatch
   items: DeploymentUnitImportItem[]
+}
+
+// ---------- 交付单元 ----------
+
+export type DeliveryUnitStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface DeliveryUnit {
+  id: number
+  code: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string | null
+  physicalSubsystemName: string | null
+  physicalSubsystemStatus: string | null
+  name: string
+  status: DeliveryUnitStatus
+  artifactTypeCode: string | null
+  relatedDeploymentUnits: RelatedDeploymentUnit[]
+  description: string | null
+  remark: string | null
+  createdBy: number
+  createdByDisplayName: string | null
+  updatedBy: number
+  updatedByDisplayName: string | null
+  createdAt: string
+  updatedAt: string
+  rowVersion: number
+}
+
+export interface DeliveryUnitPayload {
+  physicalSubsystemId: number | null
+  name: string
+  description: string | null
+  remark: string | null
+  relatedDeploymentUnitIds: number[]
+  rowVersion?: number | null
+  artifactTypeCode: string | null
+}
+
+/** 部署单元侧反查到的交付单元只读引用。 */
+export interface RelatedDeliveryUnit {
+  id: number
+  code: string
+  name: string
+  status: DeliveryUnitStatus
 }
 
 export interface PhysicalSubsystemOption {

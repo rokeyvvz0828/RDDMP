@@ -48,6 +48,7 @@ public class ArchitectureOptionsService {
     }
 
     public static final String PHYSICAL_RESOURCE = "physical-subsystem";
+    public static final String DELIVERY_UNIT_RESOURCE = "delivery-unit";
     public static final String BUSINESS_COMPONENT_CATEGORY = "ARCH_BUSINESS_COMPONENT";
 
     private static final Set<String> PHYSICAL_PARAMETER_CATEGORIES = Set.of(
@@ -61,6 +62,9 @@ public class ArchitectureOptionsService {
             EnvironmentResourceService.JDK_VERSION_CATEGORY,
             EnvironmentResourceService.MIDDLEWARE_CATEGORY,
             EnvironmentResourceService.OPERATING_SYSTEM_CATEGORY);
+
+    private static final Set<String> DELIVERY_UNIT_PARAMETER_CATEGORIES = Set.of(
+            com.ccb.architecture.model.DeliveryUnitModels.ARTIFACT_TYPE_CATEGORY);
 
     private final OrganizationService organizationService;
     private final SystemReferenceQuery referenceQuery;
@@ -107,6 +111,7 @@ public class ArchitectureOptionsService {
         normalizedCategory = normalizedCategory.toUpperCase(Locale.ROOT);
         Set<String> allowed = switch (resource) {
             case PHYSICAL_RESOURCE -> PHYSICAL_PARAMETER_CATEGORIES;
+            case DELIVERY_UNIT_RESOURCE -> DELIVERY_UNIT_PARAMETER_CATEGORIES;
             default -> throw badRequest("选项资源上下文无效");
         };
         if (!allowed.contains(normalizedCategory)) {

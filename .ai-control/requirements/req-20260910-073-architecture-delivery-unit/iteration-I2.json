@@ -1,0 +1,117 @@
+{
+  "iteration_id": "I2",
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+      "purpose": "交付单元应用服务：校验、事务、视图与审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitDeploymentUnitReferenceChecker.java",
+      "purpose": "部署单元作废引用守卫 SPI 实现"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeliveryUnitController.java",
+      "purpose": "交付单元读写接口与部署单元候选接口"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+      "purpose": "部署单元侧只读反查"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+      "purpose": "交付单元归属物理子系统选项"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+      "purpose": "options 增加 physicalSubsystemId 重载，原签名行为不变"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java",
+      "purpose": "DeploymentUnitRef 增加 kind"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+      "purpose": "kind 投影与租户维度关联检查"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am compile",
+      "exit_code": 0,
+      "salient_output": "编译通过"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitServiceTest,DeliveryUnitControllerTest,DeploymentUnitServiceTest,DeploymentUnitControllerTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 1,
+      "salient_output": "首次失败：删除接口测试混用 matcher 触发 InvalidUseOfMatchers（已修复）"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitServiceTest,DeliveryUnitControllerTest,DeploymentUnitServiceTest,DeploymentUnitControllerTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "Tests run: 19+8+18+3=48, Failures: 0, Errors: 0"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "Tests run: 10, Failures: 0, Errors: 0（含作废守卫集成断言）"
+    },
+    {
+      "command": "git commit -m \"feat(architecture): 交付单元服务、接口与作废引用守卫\"",
+      "exit_code": 0,
+      "salient_output": "ad835da"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "非启用物理子系统拒绝且不消耗编号；编号分配与主记录写入顺序正确；容量耗尽转 409",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "归属物理子系统变更返回 400；过期 rowVersion 返回 409；缺 rowVersion 返回 400",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "delete 调用 softDelete 并写审计；缺失记录返回 404 语义",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "跨物理子系统关联返回 409 且不写关联；停用交付单元禁止调整关联",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "反查接口返回交付单元列表，未知部署单元返回 404 语义",
+      "limitations": [
+        "未验证真实 HTTP 鉴权，仅反射断言权限表达式"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": "9 个端点的 @PreAuthorize 表达式逐一声明断言；写操作调用 recordSuccess",
+      "limitations": [
+        "权限表达式未被 Spring 实际执行，端到端鉴权待 T4"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "list/detail 校验认证、项目与标识；视图包含归属物理子系统与关联列表",
+      "limitations": []
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

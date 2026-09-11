@@ -1,0 +1,92 @@
+{
+  "iteration_id": "I17",
+  "task_id": "T8",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V203__delivery_unit_artifact_type.sql",
+      "purpose": "artifact_type_code 列与 ARCH_ARTIFACT_TYPE 字典种子"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java",
+      "purpose": "制品类型类别常量与字段"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+      "purpose": "列读写与筛选"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+      "purpose": "字典校验"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/ArchitectureOptionsService.java",
+      "purpose": "交付单元字典资源上下文白名单"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/ArchitectureOptionsController.java",
+      "purpose": "交付单元字典选项端点"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeliveryUnitController.java",
+      "purpose": "列表新增 artifactTypeCode 筛选参数"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test-compile",
+      "exit_code": 1,
+      "salient_output": "预期的失败信号：构造器与 insertUnit/updateUnitContent 签名不匹配"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest,DeliveryUnitServiceTest,DeliveryUnitControllerTest,ArchitectureOptionsControllerTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "Tests run: 13+27+10+7=57, Failures: 0, Errors: 0"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R9",
+      "result": "pass",
+      "evidence": "字典种子 ARCH_ARTIFACT_TYPE 三项目落库（容器/压缩包/脚本）；制品类型可选、可改、可筛选；非法或停用 code 返回 400",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "创建流程兼容新字段（服务测试 27/27）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "列表新增 artifactTypeCode 筛选且存量空值兼容",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "updateUnitContent 携带制品类型且乐观锁语义不变",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "V203 只追加，未修改既有迁移与既有列",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

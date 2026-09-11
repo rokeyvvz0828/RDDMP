@@ -162,13 +162,23 @@ public class DeploymentUnitService {
 
     public PageResult<RelatedDeploymentUnitView> options(AuthUser actor, ProjectAccess project, String keyword,
                                                           Long excludeId, PageQuery page) {
+        return options(actor, project, keyword, excludeId, null, page);
+    }
+
+    /**
+     * 启用部署单元候选查询；{@code physicalSubsystemId} 非空时限定归属物理子系统，
+     * 供交付单元关联选择复用。
+     */
+    public PageResult<RelatedDeploymentUnitView> options(AuthUser actor, ProjectAccess project, String keyword,
+                                                          Long excludeId, Long physicalSubsystemId,
+                                                          PageQuery page) {
         requireActor(actor);
         requireProject(project);
         if (excludeId != null) {
             requirePositiveId(excludeId);
         }
         PageResult<DeploymentUnit> result = store.searchActiveOptions(actor.tenantId(), project.id(), keyword,
-                excludeId, page);
+                excludeId, physicalSubsystemId, page);
         Map<Long, PhysicalSubsystemRef> physicals = new HashMap<>();
         List<RelatedDeploymentUnitView> records = result.records().stream()
                 .map(unit -> {

@@ -54,6 +54,17 @@ public class ArchitectureOptionsController {
         return success(service.users(actor, new PageQuery(page, size), keyword));
     }
 
+    /** 交付单元可用字典类别候选（当前仅制品类型）。 */
+    @GetMapping("/delivery-unit/parameters/{categoryCode}")
+    @PreAuthorize("hasAnyAuthority('architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
+            + "'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<List<ParameterOption>> deliveryUnitParameters(
+            @PathVariable String categoryCode, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
+        return success(service.parameters(actor, ArchitectureOptionsService.DELIVERY_UNIT_RESOURCE, categoryCode));
+    }
+
     @GetMapping("/physical-subsystem/parameters/{categoryCode}")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')")
     public ApiResponse<List<ParameterOption>> physicalParameters(
@@ -80,6 +91,19 @@ public class ArchitectureOptionsController {
             @AuthenticationPrincipal AuthUser actor) {
         return success(service.physicalSubsystems(actor, project(projectRef, actor),
                 new PageQuery(page, size), code, name));
+    }
+
+    /** 交付单元归属物理子系统候选；使用交付单元自身权限，不放宽既有选项接口。 */
+    @GetMapping("/delivery-unit/physical-subsystems")
+    @PreAuthorize("hasAnyAuthority('architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
+            + "'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<PageResult<PhysicalSubsystemOption>> deliveryUnitPhysicalSubsystems(
+            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "50") long size,
+            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.physicalSubsystems(actor, project(projectRef, actor), new PageQuery(page, size),
+                code, name));
     }
 
     @GetMapping("/resource-request/physical-subsystems")

@@ -412,6 +412,16 @@ public class DeploymentUnitStore {
 
     public PageResult<DeploymentUnit> searchActiveOptions(long tenantId, long projectId, String keyword,
                                                            Long excludeId, PageQuery page) {
+        return searchActiveOptions(tenantId, projectId, keyword, excludeId, null, page);
+    }
+
+    /**
+     * 启用部署单元候选查询；{@code physicalSubsystemId} 非空时限定归属物理子系统，
+     * 供交付单元关联选择使用。
+     */
+    public PageResult<DeploymentUnit> searchActiveOptions(long tenantId, long projectId, String keyword,
+                                                           Long excludeId, Long physicalSubsystemId,
+                                                           PageQuery page) {
         PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         String escaped = "%" + escapeLike(normalizedKeyword) + "%";
@@ -419,6 +429,10 @@ public class DeploymentUnitStore {
         String filter = " AND (unit.name LIKE ? ESCAPE '\\\\' OR unit.code LIKE ? ESCAPE '\\\\'"
                 + " OR physical.name LIKE ? ESCAPE '\\\\' OR physical.code LIKE ? ESCAPE '\\\\')";
         List<Object> args = new ArrayList<>(List.of(tenantId, projectId, escaped, escaped, escaped, escaped));
+        if (physicalSubsystemId != null) {
+            filter = filter + " AND unit.physical_subsystem_id = ?";
+            args.add(physicalSubsystemId);
+        }
         if (excludeId != null) {
             args.add(excludeId);
         }

@@ -150,6 +150,36 @@ class ArchitectureOptionsControllerTest {
     }
 
     @Test
+    void deliveryUnitParametersExposeOnlyArtifactTypeCategory() throws Exception {
+        when(referenceQuery.activeParameters(ACTOR, "ARCH_ARTIFACT_TYPE"))
+                .thenReturn(List.of(
+                        new SystemParameterReference("architecture.artifact-type.container", "容器"),
+                        new SystemParameterReference("architecture.artifact-type.archive", "压缩包"),
+                        new SystemParameterReference("architecture.artifact-type.script", "脚本")));
+
+        MvcResult result = mockMvc.perform(get(
+                        "/api/architecture/options/delivery-unit/parameters/ARCH_ARTIFACT_TYPE")
+                        .param("projectRef", "PROJECT-A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].code").value("architecture.artifact-type.container"))
+                .andExpect(jsonPath("$.data[0].label").value("容器"))
+                .andReturn();
+        assertExactKeys(result, "/data/0", "code", "label");
+
+        // 白名单：交付单元资源上下文下不得暴露其他字典类别
+        assertThatThrownBy(() -> service.parameters(ACTOR, ArchitectureOptionsService.DELIVERY_UNIT_RESOURCE,
+                "ARCH_RUNTIME"))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST));
+        // 反向：制品类型类别不得经物理子系统资源上下文暴露
+        assertThatThrownBy(() -> service.parameters(ACTOR, ArchitectureOptionsService.PHYSICAL_RESOURCE,
+                "ARCH_ARTIFACT_TYPE"))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.code()).isEqualTo(ErrorCode.BAD_REQUEST));
+    }
+
+    @Test
     void unknownOrRetiredResourceContextReturns40400() throws Exception {
         mockMvc.perform(get("/api/architecture/options/unknown/users"))
                 .andExpect(status().isNotFound())
