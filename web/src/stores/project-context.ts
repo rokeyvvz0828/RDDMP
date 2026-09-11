@@ -26,6 +26,7 @@ class ProjectApiContextProvider implements ProjectContextProvider {
   }
   readSelection() { return localStorage.getItem(STORAGE_KEY) }
   saveSelection(projectRef: string) { localStorage.setItem(STORAGE_KEY, projectRef) }
+  clearSelection() { localStorage.removeItem(STORAGE_KEY) }
 }
 
 const provider: ProjectContextProvider = new ProjectApiContextProvider()
@@ -76,5 +77,13 @@ export const useProjectContextStore = defineStore('project-context', () => {
     else projects.value[index] = item
     if (loading.value) savedDuringLoad.set(item.ref, item)
   }
-  return { projects, currentRef, current, loading, error, initialize, retry, select, canAccess, syncProject }
+  function removeProject(projectRef: string) {
+    projects.value = projects.value.filter(item => item.ref !== projectRef)
+    savedDuringLoad.delete(projectRef)
+    if (currentRef.value !== projectRef) return
+    currentRef.value = projects.value[0]?.ref || ''
+    if (currentRef.value) provider.saveSelection(currentRef.value)
+    else provider.clearSelection()
+  }
+  return { projects, currentRef, current, loading, error, initialize, retry, select, canAccess, syncProject, removeProject }
 })
