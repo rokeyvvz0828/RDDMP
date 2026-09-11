@@ -42,11 +42,14 @@
 - 关联表由交付单元聚合拥有；**关联的写入统一要求 `architecture:delivery-unit:manage`**，无论从交付单元侧还是部署单元侧发起，保证同一关系只有一套授权规则。
 - 部署单元作废时把该关联纳入引用守卫并 fail-closed。
 - 部署单元侧的关联编辑不进入部署单元版本发布，不写 `arch_deployment_unit_relation_history`，只更新关联表并写审计。
+- 制品类型只存字典 code（不存显示名）；写入时服务端校验 code 属于启用字典项。
+- 不新增独立字典表：复用平台 `sys_dict_type` / `sys_config`。
 
 ## 非目标
 - 不做交付版本、制品、交付映射审批与 Excel 导入。
 - 不恢复逻辑子系统模型；不调整物理子系统、部署单元既有契约与既有数据。
 - 不在部署单元的新建/修改表单中增加交付单元选择（避免只改关联也发布新版本）。
+- 不新增独立的字典/参数表，不修改平台参数管理实现；制品类型取值变化由字典维护，不改代码。
 - 不新增平台公共组件、公共包或公共 API。
 
 ## 方案比较与选择
@@ -75,7 +78,8 @@
 
 ### 数据模型（新增迁移 `V202__create_architecture_delivery_units.sql`）
 `arch_delivery_unit`
-- `id, tenant_id, project_id, code, physical_subsystem_id, name, status, description, remark, deleted, row_version, created_by, updated_by, created_at, updated_at`
+- `id, tenant_id, project_id, code, physical_subsystem_id, name, artifact_type_code, status, description, remark, deleted, row_version, created_by, updated_by, created_at, updated_at`
+- `artifact_type_code` 可为空，只存字典 code（`sys_dict_type.dict_code = 'ARCH_ARTIFACT_TYPE'` 下的 `sys_config.config_key`）；存量行为 NULL，不回填。
 - 唯一键：`(tenant_id, project_id, physical_subsystem_id, name)`、`(tenant_id, code)`、`(tenant_id, physical_subsystem_id, id)`（供关联表复合外键）
 - 外键：`(tenant_id, physical_subsystem_id)` → `arch_physical_subsystem`
 - 约束：`status IN ('ACTIVE','INACTIVE')`、`deleted IN (0,1)`、`row_version >= 0`
@@ -93,16 +97,17 @@
 ### API `/api/architecture/delivery-units`
 | 方法 | 路径 | 权限 | 行为 |
 | --- | --- | --- | --- |
-| GET | `/` | view | 分页列表，筛选 `name/physicalSubsystemId/status`，必填 `projectRef` |
+| GET | `/` | view | 分页列表，筛选 `name/physicalSubsystemId/status/artifactTypeCode`，必填 `projectRef` |
 | GET | `/{id}` | view | 详情，含 `relatedDeploymentUnits` |
-| POST | `/` | manage | 新增：`physicalSubsystemId,name,description,remark,relatedDeploymentUnitIds[]` |
-| PUT | `/{id}` | manage | 修改：`name,description,remark,rowVersion`；请求体携带与当前值不同的 `physicalSubsystemId` 时返回 400 |
+| POST | `/` | manage | 新增：`physicalSubsystemId,name,artifactTypeCode,description,remark,relatedDeploymentUnitIds[]` |
+| PUT | `/{id}` | manage | 修改：`name,artifactTypeCode,description,remark,rowVersion`；请求体携带与当前值不同的 `physicalSubsystemId` 时返回 400 |
 | PUT | `/{id}/deployment-units` | manage | 覆盖式更新关联集合（原子） |
 | POST | `/{id}/deactivate`、`/{id}/reactivate` | manage | 状态流转 |
 | DELETE | `/{id}` | manage | 软删除并清理关联 |
 | GET | `/api/architecture/deployment-units/{id}/delivery-units` | 部署单元 view | 反向查询关联交付单元 |
 | PUT | `/api/architecture/deployment-units/{id}/delivery-units` | delivery-unit manage | **新增**：从部署单元侧覆盖式更新关联集合（与交付单元侧写同一张关系表，不发布部署单元新版本） |
 | GET | `/api/architecture/deployment-units/{id}/delivery-unit-options` | 部署单元 view | **新增**：同物理子系统下启用交付单元候选（关键字分页） |
+| GET | `/api/architecture/options/delivery-unit/parameters/{categoryCode}` | 交付单元 view | **新增**：交付单元可用字典类别的启用项（当前仅 `ARCH_ARTIFACT_TYPE`） |
 
 - 错误语义：参数非法 400；无权限 403；重名/同项目冲突 409；跨物理子系统关联 409；并发旧版本 409；不存在 404。
 
@@ -136,6 +141,7 @@
 | R6 | 两侧详情抽屉都能保存关联，任一侧保存另一侧立即生效 | 服务/MySQL 测试 + 两侧浏览器验收 |
 | R7 | 无权限 403、写操作审计 | 权限测试 + 审计断言 |
 | R8 | 迁移/治理检查、前端构建、四视口 | `check-flyway-migrations.mjs`、`check-all-governance.mjs`、`npm --prefix web run build`、浏览器验收 |
+| R9 | 表单按钮式单选的选项与字典启用项一致；非法/停用 code 400；存量空值展示“—” | 服务与控制器测试 + 字典种子断言 + 浏览器验收 |
 
 ## 假设、未知项与决策记录
 - 假设：`arch_deployment_unit` 的 `(tenant_id, physical_subsystem_id, id)` 在存量数据上唯一（由主键 `id` 蕴含）。推翻证据：存在同一 id 对应多个物理子系统的数据（不可能，id 为主键）。
