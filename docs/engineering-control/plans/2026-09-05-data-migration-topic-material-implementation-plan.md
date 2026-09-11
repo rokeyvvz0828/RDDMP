@@ -12,7 +12,7 @@
 
 - 需求基准：`REQ-20260820-031`，控制前缀：`req-20260820-031-data-migration-asset-library-v3`。
 - 只修改当前 `codex-task-scope.yaml` 的 `writable_paths`；禁止修改生产系统、凭据、平台私有实现和其他需求账本。
-- Flyway 只追加 `V180__data_migration_topic_domain.sql`，不修改 V1-V179。
+- Flyway 只追加 `V181__data_migration_topic_domain.sql`，不修改 V1-V179。
 - 专题类型只能来自 `SystemReferenceQuery.activeParameters`；禁止新增 `dm_topic_type` 或前端硬编码类型。
 - 所有 SQL 绑定 `tenant_id` 和项目范围；项目归属由全局项目上下文和服务端项目可达性校验决定。
 - 文件单个不超过 50MB；对象引用不返回前端；附件绑定必须经过公共附件能力。
@@ -24,7 +24,7 @@
 
 | 领域 | 新建文件 | 修改文件 | 责任 |
 |---|---|---|---|
-| 数据库 | `server/src/platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql` | 无历史迁移修改 | 建字段、关系表、参数初始化 |
+| 数据库 | `server/src/platform/infrastructure/src/main/resources/db/migration/V181__data_migration_topic_domain.sql` | 无历史迁移修改 | 建字段、关系表、参数初始化 |
 | 后端专题域 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java`、`TopicRecycleBinSource.java`、`web/TopicController.java` | `ContentAssetController.java`、`ContentFileAssetService.java`、`ContentAssetRecycleBinSource.java`、`ContentAssetTables.java`、看板/注册相关实现 | 专题 CRUD、选项、附件、回收站和通用链路摘除 |
 | 后端测试 | `server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java`、`TopicDomainMigrationMySqlTest.java`、`TopicRecycleBinSourceTest.java`、必要的注册测试修改 | 现有模块注册/治理测试 | 结构、权限、关系、状态和路由证据 |
 | 前端契约 | 无新模块 | `web/src/api/data-migration.ts` | TOPIC 专属类型和请求函数 |
@@ -52,7 +52,7 @@ T1 迁移与参数初始化
 **输入事实：** V179 最终模型已有 `dm_topic`、`dm_content_attachment`、`dm_operation_log`；系统公开参数契约为 `SystemReferenceQuery.activeParameters(actor, categoryCode)`；用户已确认参数类别和 23 项初始化授权。
 
 **文件：**
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V181__data_migration_topic_domain.sql`
 - 新建：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java`
 - 修改：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java`（仅增加 V180/参数/关系断言）
 

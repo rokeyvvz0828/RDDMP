@@ -1,0 +1,272 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "项目类型持久化、兼容读写并保持授权审计",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ProjectService.create/update采用Map输入和JdbcTemplate，保留requireAction、requireProjectAccess及audit",
+        "workbench第81行与project第896行显式SELECT，均需增加creation_type",
+        "ProjectServiceTest已有Mockito JdbcTemplate与权限测试",
+        "迁移文件当前最高V198，V199为候选，执行前重查"
+      ],
+      "acceptance_checks": [
+        "NEW/CONTINUATION创建和互相编辑",
+        "缺失创建NEW；更新缺失保留CONTINUATION",
+        "非法/空值不持久化；读写权限和审计保持",
+        "隔离MySQL存量行默认NEW"
+      ],
+      "rollback": "反向撤销本次代码增量；已执行迁移保留列和值，不删除数据；数据库纠偏仅追加迁移",
+      "stop_conditions": [
+        "V199冲突",
+        "需读取.env或当前业务库",
+        "需改历史迁移或权限模型"
+      ],
+      "escalation_conditions": [
+        "隔离MySQL不可用需明确验收缺口",
+        "授权文件以外平台改动"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+      ],
+      "invariants": [
+        "保留现有项目权限/数据范围/审计",
+        "不改变项目切换确认和选中引用",
+        "不覆盖其他未提交改动"
+      ],
+      "interface_contracts": [
+        "pm_project、现有project接口Map输入",
+        "AuthUser与现有项目权限",
+        "creation_type=NEW|CONTINUATION；创建缺失默认NEW，更新缺失不改，显式空或非法400",
+        "workbench/detail/create/update响应包含creation_type"
+      ],
+      "non_goals": [
+        "类型字典维护",
+        "续建关联原项目或复制数据",
+        "按类型驱动计划/投产规则",
+        "项目列表改版、筛选和统计"
+      ],
+      "action_bounds": [
+        "Only approved field additions and local sync/UI; no current DB or services"
+      ],
+      "evidence_required": [
+        "diff",
+        "tests exit codes",
+        "real runtime evidence or explicit gaps"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "表单维护类型并在顶部三个入口即时一致展示",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "project-context将workbench映射为ref/name/shortName/status；ref当前为project_code",
+        "AppLayout第244/262/271行有三个选择器且共享confirmProjectSwitch",
+        "ProjectView.resetProjectForm/openEditProject/saveProject负责表单流，目前保存后不更新顶部store",
+        "api/project.ts现有Record请求和Project响应可复用无需更改"
+      ],
+      "acceptance_checks": [
+        "表单选择保存并回显",
+        "三个入口展开/收起均展示标签",
+        "保存后即时同步，不自动切项目；旧列表响应不覆盖新类型",
+        "现有切换确认、失败/空/加载、权限不变",
+        "四视口无溢出及遮挡"
+      ],
+      "rollback": "仅撤销T2新增字段、标签、store同步和本次专项样式；不回退其他页面改动",
+      "stop_conditions": [
+        "需要改变项目引用身份或其他业务选择逻辑",
+        "共享UI实现需要修改"
+      ],
+      "escalation_conditions": [
+        "无法在既有project_code引用下保持正确选择",
+        "真实浏览器验收受阻，保留待验收状态"
+      ],
+      "write_scope": [
+        "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+        "web/src/types/project.ts",
+        "web/src/types/project-context.ts",
+        "web/src/stores/project-context.ts",
+        "web/src/views/ProjectView.vue",
+        "web/src/views/AppLayout.vue"
+      ],
+      "invariants": [
+        "保留现有项目权限/数据范围/审计",
+        "不改变项目切换确认和选中引用",
+        "不覆盖其他未提交改动"
+      ],
+      "interface_contracts": [
+        "T1新增creation_type",
+        "现有Project和ProjectContextItem、Vue/Pinia、UiStatusTag",
+        "ProjectCreationType联合类型及统一中文标签",
+        "ProjectContextItem携带creationType",
+        "store.syncProject(project: Project): void，更新服务端确认的项目元数据，不触发select/路由/业务请求"
+      ],
+      "non_goals": [
+        "类型字典维护",
+        "续建关联原项目或复制数据",
+        "按类型驱动计划/投产规则",
+        "项目列表改版、筛选和统计"
+      ],
+      "action_bounds": [
+        "Only approved field additions and local sync/UI; no current DB or services"
+      ],
+      "evidence_required": [
+        "diff",
+        "tests exit codes",
+        "real runtime evidence or explicit gaps"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "先固定类型读写与兼容契约，再接入消费者"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1",
+        "T2"
+      ],
+      "checks": [
+        "mvn test JBR17",
+        "frontend test/build",
+        "browser and isolated DB if authorized"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "baseline",
+      "trigger": "baseline",
+      "observer": "main agent separate pass (not independent)",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    {
+      "label": "T1",
+      "trigger": "T1",
+      "observer": "main agent separate pass (not independent)",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    {
+      "label": "T2",
+      "trigger": "T2",
+      "observer": "main agent separate pass (not independent)",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

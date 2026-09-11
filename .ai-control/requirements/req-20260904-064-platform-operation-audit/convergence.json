@@ -1,0 +1,53 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1"], "evidence": ["关键写操作、审批、导入导出和敏感查询策略与运行态采样通过"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1"], "evidence": ["普通列表、健康、轮询、选项和预览校验排除测试通过"], "limitations": []},
+    {"id": "R3", "result": "pass", "task_ids": ["T1"], "evidence": ["数据库哨兵值未出现；更新仅保存字段名 JSON"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T1"], "evidence": ["HTTP 请求内手工语义合并且只写一条；非 HTTP 手工审计兼容"], "limitations": []},
+    {"id": "R5", "result": "pass", "task_ids": ["T2"], "evidence": ["SUPER_ADMIN、owner/PM、普通成员的菜单及 API 权限边界通过，PM 无登录日志权限"], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T2"], "evidence": ["30 天查询钳制和 180 天每日清理测试通过"], "limitations": ["生产大数据量删除性能需持续观察"]},
+    {"id": "R7", "result": "pass", "task_ids": ["T3"], "evidence": ["桌面和 430/390/375 像素浏览器验收通过，无溢出和控制台错误"], "limitations": []},
+    {"id": "R8", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["V156 真实 MySQL 迁移通过", "Maven 583/583 和 Vue production build 通过", "diff 与任务范围检查通过"], "limitations": ["两个仓库级治理命令受既有 V84_1 和历史台账问题阻塞"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["observation-T1.json：策略、脱敏、去重、V156 迁移均通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["observation-T2.json：项目权限、30 天查询和 180 天清理通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["observation-T3.json：构建、全量回归、范围和四视口通过"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "全仓 Maven JDK 17", "result": "pass", "evidence": "583 tests，Failures 0、Errors 0、Skipped 0；BUILD SUCCESS"},
+    {"check": "前端 TypeScript 与生产构建", "result": "pass", "evidence": "vue-tsc --noEmit 和 Vite build 退出码 0"},
+    {"check": "MySQL 8.4 V156", "result": "pass", "evidence": "隔离数据库成功升级到 V156"},
+    {"check": "任务范围", "result": "pass", "evidence": "50 个变更文件均在 codex-task-scope 授权路径"},
+    {"check": "仓库 Flyway 命名", "result": "disturbed", "evidence": "既有 V84_1__seed_requirement_system_catalog.sql 不符合检查器规则；V156 合法且真实迁移通过"},
+    {"check": "全仓治理", "result": "disturbed", "evidence": "17 模块、仓库 skill 和开发入口通过；历史 .ai-control 台账格式问题导致总命令返回 1"}
+  ],
+  "invariant_results": [
+    {"invariant": "服务端权限是唯一授权依据", "result": "pass", "evidence": "控制器授权与 SQL 级项目范围验证"},
+    {"invariant": "未知项目归属为空，不信任客户端项目头", "result": "pass", "evidence": "拦截器只解析可信路径、参数和服务端上下文"},
+    {"invariant": "不记录正文和敏感值", "result": "pass", "evidence": "白名单命令结构与数据库哨兵查询"},
+    {"invariant": "领域专用审计继续保留", "result": "pass", "evidence": "未删除领域审计表或调用；通用日志仅做请求级去重"},
+    {"invariant": "rokey 分支不被本任务修改", "result": "pass", "evidence": "实现位于独立 worktree 和 feat/REQ-20260904-064-platform-operation-audit 分支"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "本机 Java 26 超出 Byte Buddy 支持范围", "result": "contained", "evidence": "使用项目基准 JDK 17 全量复跑 583/583"},
+    {"disturbance": "旧迁移文件命名不符合当前脚本", "result": "contained", "evidence": "V156 真实迁移和全量数据库测试通过，旧文件无修改"},
+    {"disturbance": "历史控制台账格式不一致", "result": "contained", "evidence": "当前需求产物为合法 JSON，范围检查通过"}
+  ],
+  "residual_risks": [
+    "部署时必须确保后端仅接受可信反向代理流量，否则 X-Forwarded-For 不能作为可信客户端 IP。",
+    "半年以上大数据量的每日删除尚未做生产规模性能压测。",
+    "仓库仍存在既有 V84_1 迁移命名和历史 .ai-control 台账治理问题。",
+    "前端公共主包仍有既有大于 500 kB 的构建警告。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R8 全部由 verified 任务覆盖；三次异质采样无 P0-P3 反馈，权限、脱敏、迁移、回归、范围和四视口证据一致，范围外既有治理问题已隔离披露。"
+}

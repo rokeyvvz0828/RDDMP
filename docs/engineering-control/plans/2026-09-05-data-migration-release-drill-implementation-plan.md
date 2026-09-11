@@ -19,7 +19,7 @@
 ## 全局约束
 
 - 只修改 `docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml` 中 `writable_paths` 覆盖的文件。
-- Flyway 只追加，不修改已发布迁移；使用 `V184__data_migration_release_drill_domain.sql`。
+- Flyway 只追加，不修改已发布迁移；使用 `V185__data_migration_release_drill_domain.sql`。
 - 颗粒度与资料类型通过 `DataMigrationCodeValueService` 和“系统管理/参数管理”读取；业务代码与前端不硬编码选项名称。
 - 数据迁移模块不读取或依赖投产模块表/服务；“所属轮次”为纯手填文本。
 - 涉及物理子系统只允许 `dm_component.enabled=1` 且属于当前项目；业务表只存 `(project_id, system_code)`。
@@ -31,7 +31,7 @@
 
 | 文件 | 状态 | 职责 | 证据来源 |
 |---|---|---|---|
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V184__data_migration_release_drill_domain.sql` | 新建 | 加列、回填、索引、参数类别/项初始化 | V180/V183 模式 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_release_drill_domain.sql` | 新建 | 加列、回填、索引、参数类别/项初始化 | V180/V183 模式 |
 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java` | 修改 | 注册 `DM_RELEASE_DRILL_GRANULARITY` 与 `DM_RELEASE_DRILL_TYPE` | V183 模式 |
 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java` | 新建 | 专属 CRUD、筛选、校验、附件、审计、回收站 SPI | TopicService/PlanService |
 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java` | 新建 | `/api/data-migration/release-drills` 路由与权限 | TopicController/PlanController |
@@ -85,7 +85,7 @@ T1
 **输入事实：** 当前最新迁移为 `V183`；`dm_release_drill` 目前仅含通用 14 列；`DataMigrationCodeValueService` 已具备按前缀读取参数的能力；参数选项服务已存在。
 
 **文件：**
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V184__data_migration_release_drill_domain.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_release_drill_domain.sql`
 - 修改：`server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java`
 - 修改：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TestDataMigrationCodeValues.java`
 - 修改：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationCodeValueServiceTest.java`

@@ -31,6 +31,74 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectServiceTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"NEW", "CONTINUATION", "ABSENT"})
+    void persistsProjectCreationType(String type) {
+        ProjectService service = org.mockito.Mockito.spy(new ProjectService(jdbc, storage));
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        org.mockito.Mockito.doReturn(Map.of()).when(service).detail(anyLong(), eq(admin));
+        Map<String, Object> input = new HashMap<>(Map.of("project_code", "TEST-070", "project_name", "Creation type"));
+        if (!"ABSENT".equals(type)) input.put("creation_type", type);
+
+        service.create(input, admin);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc, org.mockito.Mockito.atLeastOnce()).update(sql.capture(), args.capture());
+        int index = java.util.stream.IntStream.range(0, sql.getAllValues().size())
+                .filter(i -> sql.getAllValues().get(i).startsWith("INSERT INTO pm_project (")).findFirst().orElseThrow();
+        String insert = sql.getAllValues().get(index);
+        String[] columns = insert.substring(insert.indexOf('(') + 1, insert.indexOf(')')).split(",\\s*");
+        int field = java.util.Arrays.asList(columns).indexOf("creation_type");
+        org.junit.jupiter.api.Assertions.assertTrue(field >= 0, "creation_type must be persisted");
+        assertEquals("ABSENT".equals(type) ? "NEW" : type, args.getAllValues().get(index)[field]);
+        verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO sys_operation_log"),
+                any(), eq(1L), eq(1L), eq("project:create"), any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.NullAndEmptySource
+    @org.junit.jupiter.params.provider.ValueSource(strings = {" ", "INVALID", "new"})
+    void rejectsInvalidCreationTypeBeforeWriting(String type) {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        Map<String, Object> input = new HashMap<>(Map.of("project_code", "TEST-070", "project_name", "Creation type"));
+        input.put("creation_type", type);
+        assertThrows(BusinessException.class, () -> service.create(input, admin));
+        assertThrows(BusinessException.class, () -> service.update(9001L, input, admin));
+        verify(jdbc, org.mockito.Mockito.never()).update(anyString(), any(Object[].class));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"NEW", "CONTINUATION", "ABSENT"})
+    void updatesCreationTypeOnlyWhenProvided(String type) {
+        ProjectService service = org.mockito.Mockito.spy(new ProjectService(jdbc, storage));
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForMap(anyString(), any(Object[].class))).thenReturn(new HashMap<>(Map.of("creation_type", "CONTINUATION")));
+        org.mockito.Mockito.doReturn(Map.of()).when(service).detail(anyLong(), eq(admin));
+        Map<String, Object> input = new HashMap<>(Map.of("project_name", "Changed name"));
+        if (!"ABSENT".equals(type)) input.put("creation_type", type);
+        service.update(9001L, input, admin);
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc, org.mockito.Mockito.atLeastOnce()).update(sql.capture(), args.capture());
+        String update = sql.getAllValues().get(0);
+        assertEquals(!"ABSENT".equals(type), update.contains("creation_type = ?"));
+        if (!"ABSENT".equals(type)) assertEquals(type, args.getAllValues().get(0)[1]);
+        org.junit.jupiter.api.Assertions.assertTrue(update.contains("tenant_id = ?"));
+        verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO sys_operation_log"),
+                any(), eq(1L), eq(1L), eq("project:update"), eq("9001"));
+    }
+
+    @Test
+    void workbenchSelectsCreationType() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of());
+        service.workbench(admin);
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("creation_type"), eq(1L));
+    }
+
     @Mock
     private JdbcTemplate jdbc;
     @Mock

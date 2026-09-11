@@ -38,7 +38,7 @@ class ContentAssetMigrationMySqlTest {
         prepareV98Baseline();
         seedSourceData();
 
-        assertTrue(flyway("162").migrate().success);
+        assertTrue(flyway("163").migrate().success);
         try (Connection connection = connection()) {
             assertEquals("STORED GENERATED", value(connection, """
                     SELECT EXTRA FROM information_schema.columns
@@ -51,7 +51,7 @@ class ContentAssetMigrationMySqlTest {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_plan"));
         }
 
-        assertTrue(flyway("163").migrate().success);
+        assertTrue(flyway("164").migrate().success);
         try (Connection connection = connection()) {
             // 十张内容表行数与 id 保留
             assertEquals(2, count(connection, "SELECT COUNT(*) FROM dm_plan"));
@@ -136,8 +136,8 @@ class ContentAssetMigrationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("162").migrate().success);
-        assertThrows(Exception.class, () -> flyway("163").migrate());
+        assertTrue(flyway("163").migrate().success);
+        assertThrows(Exception.class, () -> flyway("164").migrate());
 
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_plan"));
@@ -160,8 +160,8 @@ class ContentAssetMigrationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("162").migrate().success);
-        assertThrows(Exception.class, () -> flyway("163").migrate());
+        assertTrue(flyway("163").migrate().success);
+        assertThrows(Exception.class, () -> flyway("164").migrate());
 
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_plan"));
@@ -173,10 +173,10 @@ class ContentAssetMigrationMySqlTest {
     void v101DropsLegacyTablesAfterCompletenessAssertions() throws Exception {
         prepareV98Baseline();
         seedSourceData();
-        assertTrue(flyway("162").migrate().success);
         assertTrue(flyway("163").migrate().success);
-
         assertTrue(flyway("164").migrate().success);
+
+        assertTrue(flyway("165").migrate().success);
         try (Connection connection = connection()) {
             // 三张旧表物理删除
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('dm_asset','dm_asset_relation','dm_meeting_attachment')"));
@@ -195,8 +195,8 @@ class ContentAssetMigrationMySqlTest {
     void v101BlocksDropWhenAssetRowUnmigrated() throws Exception {
         prepareV98Baseline();
         seedSourceData();
-        assertTrue(flyway("162").migrate().success);
         assertTrue(flyway("163").migrate().success);
+        assertTrue(flyway("164").migrate().success);
         // V100 之后向旧表补写一行未搬迁记录，模拟残留
         try (Connection connection = connection()) {
             execute(connection, """
@@ -205,7 +205,7 @@ class ContentAssetMigrationMySqlTest {
                     """);
         }
 
-        assertThrows(Exception.class, () -> flyway("164").migrate());
+        assertThrows(Exception.class, () -> flyway("165").migrate());
 
         try (Connection connection = connection()) {
             // 断言失败 => 旧表未被删除、新表未受影响
@@ -218,10 +218,10 @@ class ContentAssetMigrationMySqlTest {
     @Test
     void v169DropsEmptyLegacyIntermediateTable() throws Exception {
         prepareV98Baseline();
-        assertTrue(flyway("165").migrate().success);
+        assertTrue(flyway("166").migrate().success);
         prepareV169Baseline();
 
-        assertTrue(flyway("169").migrate().success);
+        assertTrue(flyway("170").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dm_intermediate_table'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dm_target_table'"));
@@ -231,13 +231,13 @@ class ContentAssetMigrationMySqlTest {
     @Test
     void v169BlocksDropWhenLegacyIntermediateTableIsNotEmpty() throws Exception {
         prepareV98Baseline();
-        assertTrue(flyway("165").migrate().success);
+        assertTrue(flyway("166").migrate().success);
         prepareV169Baseline();
         try (Connection connection = connection()) {
             execute(connection, "INSERT INTO dm_intermediate_table (tenant_id, project_id, doc_code, doc_name, structured_data, owner_id) VALUES (1, 100, 'IMT-001', '中间表', '{}', 1)");
         }
 
-        assertThrows(Exception.class, () -> flyway("169").migrate());
+        assertThrows(Exception.class, () -> flyway("170").migrate());
         try (Connection connection = connection()) {
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dm_intermediate_table'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_intermediate_table WHERE doc_code = 'IMT-001'"));
@@ -247,11 +247,11 @@ class ContentAssetMigrationMySqlTest {
     @Test
     void v170ReplacesMd5IndexesWithProjectDimension() throws Exception {
         prepareV98Baseline();
-        assertTrue(flyway("162").migrate().success);
+        assertTrue(flyway("163").migrate().success);
         // V166 依赖 V158 的 dm_meeting、V169 依赖 V88 的 dm_target_table（均被测试基线覆盖），
         // 复用现有桩表补齐后再迁移到 V170，避免依赖被基线跳过的历史版本。
         prepareV169Baseline();
-        assertTrue(flyway("170").migrate().success);
+        assertTrue(flyway("171").migrate().success);
         try (Connection connection = connection()) {
             String[] fileTables = {"dm_plan", "dm_mapping_doc", "dm_dependency",
                                    "dm_script", "dm_topic", "dm_release_drill", "dm_report"};
@@ -300,7 +300,7 @@ class ContentAssetMigrationMySqlTest {
             }
         }
 
-        assertTrue(flywayFromBaseline("173", "174").migrate().success);
+        assertTrue(flywayFromBaseline("174", "175").migrate().success);
         try (Connection connection = connection()) {
             for (String table : new String[]{"dm_plan", "dm_mapping_doc", "dm_dependency", "dm_script",
                     "dm_topic", "dm_release_drill", "dm_report"}) {
@@ -319,7 +319,7 @@ class ContentAssetMigrationMySqlTest {
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
                 .baselineOnMigrate(true)
-                .baselineVersion(MigrationVersion.fromVersion("161"))
+                .baselineVersion(MigrationVersion.fromVersion("162"))
                 .target(MigrationVersion.fromVersion(target))
                 .cleanDisabled(false)
                 .load();

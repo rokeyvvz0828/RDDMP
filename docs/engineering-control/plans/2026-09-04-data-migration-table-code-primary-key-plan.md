@@ -18,7 +18,7 @@
 
 ## 迁移（V177，information_schema 条件式、幂等、只追加）
 
-文件：`server/src/platform/infrastructure/src/main/resources/db/migration/V177__data_migration_target_table_code_pk.sql`
+文件：`server/src/platform/infrastructure/src/main/resources/db/migration/V178__data_migration_target_table_code_pk.sql`
 
 主表（`id` 列存在时执行转换段）：
 1. `DROP KEY uk_target_table_active_code` → `DROP COLUMN active_table_code`（基列类型变化前先释放依赖）

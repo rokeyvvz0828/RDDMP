@@ -48,19 +48,25 @@ DEALLOCATE PREPARE dm_component_subsystem_id_stmt;
 -- 回填：code -> id（按租户匹配 arch_physical_subsystem 有效行；仅回填仍为 NULL 的行，保留人工修正值）
 UPDATE dm_issue i
    JOIN arch_physical_subsystem s
-     ON s.tenant_id = i.tenant_id AND s.code = i.system_code AND s.deleted = 0
+     ON s.tenant_id = i.tenant_id
+    AND s.code COLLATE utf8mb4_unicode_ci = i.system_code COLLATE utf8mb4_unicode_ci
+    AND s.deleted = 0
    SET i.system_id = s.id
  WHERE i.system_id IS NULL AND i.system_code IS NOT NULL AND i.system_code <> '';
 
 UPDATE dm_target_table t
    JOIN arch_physical_subsystem s
-     ON s.tenant_id = t.tenant_id AND s.code = t.system_code AND s.deleted = 0
+     ON s.tenant_id = t.tenant_id
+    AND s.code COLLATE utf8mb4_unicode_ci = t.system_code COLLATE utf8mb4_unicode_ci
+    AND s.deleted = 0
    SET t.system_id = s.id
  WHERE t.system_id IS NULL AND t.system_code IS NOT NULL AND t.system_code <> '';
 
 UPDATE dm_component c
    JOIN arch_physical_subsystem s
-     ON s.tenant_id = c.tenant_id AND s.code = c.physical_subsystem_code AND s.deleted = 0
+     ON s.tenant_id = c.tenant_id
+    AND s.code COLLATE utf8mb4_unicode_ci = c.physical_subsystem_code COLLATE utf8mb4_unicode_ci
+    AND s.deleted = 0
    SET c.physical_subsystem_id = s.id
  WHERE c.physical_subsystem_id IS NULL AND c.physical_subsystem_code IS NOT NULL AND c.physical_subsystem_code <> '';
 

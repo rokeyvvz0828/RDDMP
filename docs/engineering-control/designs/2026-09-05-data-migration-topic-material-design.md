@@ -71,7 +71,7 @@
 ## 不变量与约束
 
 - 单租户；每个查询和写入绑定当前项目与 `tenant_id`。
-- Flyway 只追加，建议使用 `V180__data_migration_topic_domain.sql`。
+- Flyway 只追加，建议使用 `V181__data_migration_topic_domain.sql`。
 - 不读取或写入 `biz_form_*`；不修改 `platform/system` 私有实现。
 - 文件单个不超过 50MB；对象引用不返回前端。
 - 软删行仍占用 `(tenant_id, project_id, doc_code)` 唯一名额，彻底清理后才能重建相同编号。

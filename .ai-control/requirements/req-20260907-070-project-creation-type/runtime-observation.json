@@ -1,0 +1,16 @@
+{
+  "sample_label": "current-development-database-preflight",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "local MySQL information_schema", "result": "fail", "raw_evidence": "pm_project.creation_type column count is 0; V199 absent from migration history", "limitation": ["No authenticated browser save was replayed"]},
+    {"requirement_id": "R4", "sensor": "migration history and source filename comparison", "result": "blocked", "raw_evidence": "Applied V156 is rename_release_drill_plan_menu; source also includes platform_operation_audit at V156. Applied V35-V50 include absent project migration filenames; pending migrations include cross-module drop operations.", "limitation": ["Filename comparison is not a schema or checksum equivalence proof"]}
+  ],
+  "feedback": [
+    {"requirement_id": "R1", "expected": "Current development backend persists creation_type", "observed": "Current development schema lacks the column", "reproduction": "Query information_schema.columns for pm_project.creation_type", "evidence": "Read-only query returned 0", "severity": "P1", "confidence": "high", "sensor_limit": "Database only; no browser replay", "causal_hypothesis": "Implementation has not been deployed to current backend and database", "correction_check": "Migrate safely, restart, and verify authenticated save/read after refresh", "classification": "deviation"}
+  ],
+  "disturbances": ["Current database migration lineage differs from source beyond the originally identified V156 collision"],
+  "coverage_gaps": ["Cross-module historical migration reconciliation requires a separately bounded backup and recovery plan", "No database write, history repair, migration disabling, process stop or restart performed", "Observation is not independent"],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

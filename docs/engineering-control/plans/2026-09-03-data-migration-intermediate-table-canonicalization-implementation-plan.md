@@ -24,7 +24,7 @@
 **前置任务：** 无
 
 **文件：**
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V169__data_migration_intermediate_table_canonicalization.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V170__data_migration_intermediate_table_canonicalization.sql`
 - 修改：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java`
 
 **接口：**

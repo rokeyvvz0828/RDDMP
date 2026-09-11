@@ -1,0 +1,28 @@
+{
+  "sample_label": "T1 migration contract observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R2",
+      "sensor": "Focused JUnit migration contract test",
+      "result": "pass",
+      "raw_evidence": "ProjectRolePermissionMigrationTest ran 2 tests with 0 failures and reactor BUILD SUCCESS.",
+      "limitation": ["Static resource contract test does not execute MySQL DDL."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Independent fixed-string SQL semantic probe",
+      "result": "pass",
+      "raw_evidence": "Probe found the composite primary key, PM/all rule, non-PM/read rule, system exclusion and /system/permissions route.",
+      "limitation": ["Row counts require the isolated local database integration sample in T5."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "The first Node command-line semantic probe was invalid because of shell escaping; it was discarded as a sensor fault and replaced by an rg fixed-string probe."
+  ],
+  "coverage_gaps": ["V201 has not yet been executed against isolated local MySQL."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

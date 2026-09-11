@@ -13,7 +13,7 @@ module: business/data-migration
 
 ### T37 当前口径：移除 MD5 字段并关闭查重
 
-数据迁移模块尚未投产，当前模型不保存文件摘要，不计算或上传 MD5，不提供内容或汇报材料查重接口。7 张文件型内容表通过追加迁移 `V174__data_migration_remove_checksum_md5.sql` 移除 `checksum_md5` 列及 `idx_*_md5` 索引；附件绑定、对象存储、文件替换、权限和审计保持不变。相同内容文件按普通文件允许重复入库。本文后续 T31/T32/T50 段落中的 MD5 内容均为历史决策或缺陷记录，以本节为当前有效口径。
+数据迁移模块尚未投产，当前模型不保存文件摘要，不计算或上传 MD5，不提供内容或汇报材料查重接口。7 张文件型内容表通过追加迁移 `V175__data_migration_remove_checksum_md5.sql` 移除 `checksum_md5` 列及 `idx_*_md5` 索引；附件绑定、对象存储、文件替换、权限和审计保持不变。相同内容文件按普通文件允许重复入库。本文后续 T31/T32/T50 段落中的 MD5 内容均为历史决策或缺陷记录，以本节为当前有效口径。
 
 ## 使用者与入口
 
@@ -138,7 +138,7 @@ module: business/data-migration
 > 2026-09-05 经用户确认，REQ-20260903-064 作为本需求的数据模型治理增量并入 REQ-20260820-031。原需求、scope 和 schema 4 账本作为历史证据保留，不删除、不回写历史执行时间；活动交付、范围审计和最终收敛统一由本需求前缀承担。
 
 - 中间表唯一使用 `dm_target_table(table_category='INTERMEDIATE')` 与 `dm_target_table_field`，应用不再读写 `dm_intermediate_table`。
-- 追加迁移 `V169__data_migration_intermediate_table_canonicalization.sql` 在删除旧表前断言其为空；非空时 fail-closed 并保留数据。
+- 追加迁移 `V170__data_migration_intermediate_table_canonicalization.sql` 在删除旧表前断言其为空；非空时 fail-closed 并保留数据。
 - 中间表菜单、列表、字段编辑、导入导出、回收站、看板和关联校验统一走目标表/字段服务，保持既有权限码、租户隔离、项目可达性、实体授权和审计规则。
 - REQ-064 的 R1–R5 分别并入本需求 R2、R3、R5、R7、R8 的现有验收链；原四项任务及 convergence 证据继续保留在 `req-20260903-064-data-migration-intermediate-table-canonicalization` 历史目录。
 - 回退仍为应用版本回退与测试数据库重建，不执行反向 Flyway；发现旧表非空时必须停止并由人工处理。
@@ -163,7 +163,7 @@ module: business/data-migration
 ### 范围与接口
 
 - 后端：`server/src/modules/data-migration/**` 新增 `PlanService`/`PlanController`/`PlanRecycleBinSource`，`/api/data-migration/plans*`；`PLAN` 从 `ContentFileAssetService.MANAGED_TYPES` 与 `ContentAssetController.RESOURCE_TYPES` 移除（`dm_plan` 仍留在 `FILE_TABLES`，看板计数不变；T37 后不再执行 MD5 查重）。
-- 迁移：`V168__data_migration_plan_domain.sql`（`dm_plan` 加 `granularity/plan_type/system_id/plan_summary` + 活动维度唯一键 + 查询索引；`system_id` 为历史旧口径，已由 V175 下线，系统关联统一按 `(project_id, system_code)`，见数据库关系文档基线说明）。
+- 迁移：`V169__data_migration_plan_domain.sql`（`dm_plan` 加 `granularity/plan_type/system_id/plan_summary` + 活动维度唯一键 + 查询索引；`system_id` 为历史旧口径，已由 V175 下线，系统关联统一按 `(project_id, system_code)`，见数据库关系文档基线说明）。
 - 前端：`web/src/api/data-migration.ts` 新增 Plan 契约；重写 `PlansPage.vue` 为专属页；`RecycleBinPage` 的 PLAN 分发经统一类型派生，无需改动。
 - 权限：沿用 `data-migration:content:plans` 菜单码 + 动作码 `:create/:update/:delete`（未单独播种，回退 `data-migration:write/manage/system:admin`），服务端强制认证/RBAC/上传人实体授权。
 
@@ -304,7 +304,7 @@ module: business/data-migration
 
 ### 数据、权限与回退
 
-- T36 历史口径为不新增 Flyway；T37 已追加 `V174__data_migration_remove_checksum_md5.sql`，现有 `doc_code`、`active_doc_code` 和 `(tenant_id, project_id, active_doc_code)` 活动唯一键保持不变。
+- T36 历史口径为不新增 Flyway；T37 已追加 `V175__data_migration_remove_checksum_md5.sql`，现有 `doc_code`、`active_doc_code` 和 `(tenant_id, project_id, active_doc_code)` 活动唯一键保持不变。
 - 复用 T32 的服务端项目隔离、RBAC、实体授权，以及附件生命周期和操作审计；T37 已移除 MD5 字段与查重能力，本次不修改 platform/shared。
 - 应用回退即可恢复旧实现；模块未投产，无历史数据转换或双写期。
 
@@ -339,7 +339,7 @@ module: business/data-migration
 
 ### 数据与接口
 
-- 迁移：`V184__data_migration_release_drill_domain.sql` 为 `dm_release_drill` 追加 `granularity/material_type_code/drill_round` 及索引，并幂等初始化上术两个参数类别和 10 个初始参数项。
+- 迁移：`V185__data_migration_release_drill_domain.sql` 为 `dm_release_drill` 追加 `granularity/material_type_code/drill_round` 及索引，并幂等初始化上术两个参数类别和 10 个初始参数项。
 - 后端：新增 `ReleaseDrillService`/`ReleaseDrillController`/`ReleaseDrillRecycleBinSource`；路由 `/api/data-migration/release-drills*`；`RELEASE_DRILL` 从通用文件资产链路上摘除，`ContentAssetTables` 保留类型标签供看板识别。
 - 前端：`web/src/api/data-migration.ts` 新增 ReleaseDrill 契约；重写 `ReleaseDrillsPage.vue` 为专属页面。
 
@@ -373,7 +373,7 @@ module: business/data-migration
 
 ### 数据与接口
 
-- 迁移：`V186__data_migration_mapping_domain.sql` 为 `dm_mapping_doc` 追加非空 `mapping_type` 与查询索引，并幂等初始化 `DM_MAPPING_TYPE` 参数类别和迁出/迁入两个初始项；用户已确认当前无历史数据，不执行历史回填或兼容默认值。
+- 迁移：`V187__data_migration_mapping_domain.sql` 为 `dm_mapping_doc` 追加非空 `mapping_type` 与查询索引，并幂等初始化 `DM_MAPPING_TYPE` 参数类别和迁出/迁入两个初始项；用户已确认当前无历史数据，不执行历史回填或兼容默认值。
 - 后端：新增 `MappingService`/`MappingController`/`MappingRecycleBinSource`；路由 `/api/data-migration/mappings*`；`MAPPING_DOC` 从通用文件资产链路上摘除，`ContentAssetTables` 保留类型标签供看板识别。
 - 前端：`web/src/api/data-migration.ts` 新增 Mapping 契约；重写 `MappingsPage.vue` 为专属页面，桌面/移动端遵循 `design-h5.md`。
 
@@ -408,7 +408,7 @@ module: business/data-migration
 
 ### 数据与接口
 
-- 迁移：`V194__data_migration_rule_domain.sql` 删除 `dm_rule.doc_code/doc_name/structured_data` 并重建专属列、查询/关键字索引与两个参数类别；`V195`/`V196` 补齐统一回收站管理权限与 `data-migration:manage` 管理员豁免，保证回收站恢复/彻底删除可用（权限仍由 RBAC 管控，不硬编码）。
+- 迁移：`V195__data_migration_rule_domain.sql` 删除 `dm_rule.doc_code/doc_name/structured_data` 并重建专属列、查询/关键字索引与两个参数类别；`V195`/`V196` 补齐统一回收站管理权限与 `data-migration:manage` 管理员豁免，保证回收站恢复/彻底删除可用（权限仍由 RBAC 管控，不硬编码）。
 - 后端：新增 `RuleService`/`RuleController`/`RuleRecycleBinSource`；路由 `/api/data-migration/rules*`（list/detail/create/update/delete/template/import/export）；`RULE` 从通用结构化资产链路摘除，`ContentAssetTables` 保留类型标签供看板与回收站识别。
 - 系统下拉统一入口：数据迁移各页面（规则、迁移方案、映射、问题、会议纪要、专题材料、投产及演练、迁移程序、目标/中间表、系统/组件清单）的“关联系统”下拉统一走 `GET /api/data-migration/components/options/systems?projectId=`，由 `DataMigrationSystemOptionsController` 调用 `ProjectComponentService.getSystemOptions` 实现，口径为当前项目 `dm_component` 启用清单；各页面旧 `/xxx/options/systems` 端点已下线，前端 `web/src/api/data-migration.ts` 仅保留 `getSystemOptions` 一个取数函数（方案B）。
 - 前端：`web/src/api/data-migration.ts` 新增 Rule 契约；重写 `ValidationRulesPage.vue` 为专属页面，桌面/移动端遵循 `design-h5.md`。

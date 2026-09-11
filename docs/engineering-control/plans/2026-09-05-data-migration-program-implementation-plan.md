@@ -26,7 +26,7 @@
 **前置任务：** 无
 
 **文件：**
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_program_domain.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_program_domain.sql`
 - 修改：`server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java`
 - 新建：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java`
 

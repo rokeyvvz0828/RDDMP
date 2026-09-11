@@ -1,0 +1,1769 @@
+{
+  "schema_version": 4,
+  "revision": 7,
+  "created_at": "2026-09-10T06:39:24+00:00",
+  "updated_at": "2026-09-10T06:42:45+00:00",
+  "mode": "standard",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User reviewed and confirmed the landed design revision.；计划确认=User reviewed and confirmed the landed implementation plan.",
+      "recorded_at": "2026-09-10T06:39:24+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline has three measurable must requirements and no blocking unknowns",
+      "recorded_at": "2026-09-10T06:40:21+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All must requirements are observable and controllable within approved paths",
+      "recorded_at": "2026-09-10T06:41:38+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Controlled task plan is complete, authorized, acyclic, and accepted",
+      "recorded_at": "2026-09-10T06:42:45+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User reviewed and confirmed the landed design revision.；计划确认=User reviewed and confirmed the landed implementation plan.",
+        "recorded_at": "2026-09-10T06:39:24+00:00",
+        "data": {
+          "objective": "Make project management and system menus global without weakening project-scoped authorization.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Global routes hide and do not initialize project context.",
+              "acceptance": [
+                "/projects and /system/** hide selectors",
+                "stored selection remains available for project routes"
+              ],
+              "priority": "must",
+              "source": "user confirmation",
+              "counterexample": [
+                "global navigation initializes project context"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Project management visibility derives from project-management permission in any accessible project.",
+              "acceptance": [
+                "project:project:list in one accessible project includes /projects",
+                "other project permissions alone do not include /projects"
+              ],
+              "priority": "must",
+              "source": "user confirmation",
+              "counterexample": [
+                "missing current selection hides an authorized entry"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Project business authorization remains project-scoped.",
+              "acceptance": [
+                "project routes still initialize context",
+                "project APIs retain X-Project-Id validation"
+              ],
+              "priority": "must",
+              "source": "repository constraints",
+              "counterexample": [
+                "project API accepts a missing context"
+              ]
+            }
+          ],
+          "invariants": [
+            "No JWT, API, database, or project-data changes",
+            "System menus remain system-permission based",
+            "Project APIs retain server-side authorization"
+          ],
+          "constraints": [
+            "Only REQ-20260909-075 writable paths",
+            "Preserve user worktree changes",
+            "No production access"
+          ],
+          "non_goals": [
+            "Changing project members or roles",
+            "Clearing stored project selection",
+            "Changing V202"
+          ],
+          "assumptions": [
+            {
+              "text": "project:project:list is the project-management permission",
+              "basis": "user confirmed project-management permission rule",
+              "falsifier": "menu catalog maps /projects to another leaf permission"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use global-route metadata and aggregate project-management permission",
+              "reason": "Removes selector dependency without weakening project APIs",
+              "source": "user confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1"
+              ],
+              "signal": "selector visibility and no initialization",
+              "method": "browser at desktop and 390x844"
+            },
+            {
+              "requirement_ids": [
+                "R2"
+              ],
+              "signal": "route tree cases",
+              "method": "Security tests and API probe"
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "project requests remain scoped",
+              "method": "existing permission/API regression"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "User-approved R1-R3 baseline reviewed against current route, authorization, and governance facts",
+        "recorded_at": "2026-09-10T06:40:21+00:00",
+        "data": {
+          "objective": "Users can access project management and system menus as global pages without a project selector while project business authorization remains scoped to the selected project.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Project management and system routes must not initialize or display the project context selector.",
+              "acceptance": [
+                "At /projects and /system/**, no desktop, standard-header, or mobile-drawer selector is rendered",
+                "A previously stored project selection remains available when returning to a project business route"
+              ],
+              "priority": "must",
+              "source": "user-confirmed design",
+              "counterexample": [
+                "A system page invokes project initialization or renders a project selector"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "The project management route must be visible without a current project only when the user has project:project:list in at least one accessible project.",
+              "acceptance": [
+                "The no-project authorization route tree includes /projects for a user with project:project:list in one accessible project",
+                "The route tree excludes /projects for users with only other project permissions or no project-management permission"
+              ],
+              "priority": "must",
+              "source": "user-confirmed design",
+              "counterexample": [
+                "A project:plan:list-only user receives /projects, or an authorized user loses it without a selected project"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Project business routes and APIs must retain project-context initialization and server-side X-Project-Id authorization.",
+              "acceptance": [
+                "A project business route still initializes context and displays the selector",
+                "Project APIs still reject missing or forged project context"
+              ],
+              "priority": "must",
+              "source": "repository governance and user-confirmed design",
+              "counterexample": [
+                "A project API succeeds without valid X-Project-Id after the change"
+              ]
+            }
+          ],
+          "invariants": [
+            "System menus remain system-permission based",
+            "No JWT, public API, database, project data, or V202 migration changes",
+            "Existing stored project selection is not cleared",
+            "Project data scope and entity authorization remain server-enforced"
+          ],
+          "constraints": [
+            "Only REQ-20260909-075 writable paths",
+            "No production access or sensitive configuration",
+            "Use existing Vue Router, Pinia, Element Plus, Spring and JdbcTemplate patterns"
+          ],
+          "non_goals": [
+            "Changing project membership or role data",
+            "Changing project APIs or HTTP header contract",
+            "Refactoring the route tree or shared UI components",
+            "Changing the V202 menu text migration"
+          ],
+          "assumptions": [
+            {
+              "text": "project:project:list is the leaf permission for the /projects menu",
+              "basis": "user-confirmed design and existing project permission naming",
+              "falsifier": "menu catalog or focused test shows a different permission mapping"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Whether existing focused tests can represent an active membership in another project without a current project",
+              "impact": "May require expanding test fixtures but not the product requirement",
+              "owner": "modeling",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "How global menus are identified",
+              "options": [
+                "explicit route metadata",
+                "layout-only path checks",
+                "disable context globally"
+              ],
+              "selected": "explicit route metadata",
+              "blocking": false,
+              "source": "user-confirmed design"
+            },
+            {
+              "question": "What grants project management without a selected project",
+              "options": [
+                "any project permission",
+                "project:project:list in any accessible project",
+                "system permission only"
+              ],
+              "selected": "project:project:list in any accessible project",
+              "blocking": false,
+              "source": "user confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "global-route initialization and selector visibility at desktop/mobile",
+              "candidate_sensor": "route inspection and browser verification"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "no-project dynamic route tree for positive and negative permission cases",
+              "candidate_sensor": "AuthService focused tests and local API probe"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "project route initialization and invalid-context API rejection",
+              "candidate_sensor": "existing security tests, API probe, and browser verification"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Code-backed causal paths, sensors, actuators, delays, and R1-R3 observability/control assessment reviewed",
+        "recorded_at": "2026-09-10T06:41:38+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "AuthRepository permission queries",
+              "AuthService dynamic route filtering",
+              "Vue Router child route metadata and beforeEach guard",
+              "AppLayout project selector rendering",
+              "AuthStore authorization snapshot"
+            ],
+            "environment": [
+              "localStorage project selection",
+              "local MySQL permission data",
+              "browser viewport and Element Plus rendering",
+              "existing project APIs and JWT filter"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "route_context_mode",
+              "owner": "Vue Router route meta",
+              "valid_values": [
+                "global",
+                "project"
+              ]
+            },
+            {
+              "name": "stored_project_id",
+              "owner": "project-context store/localStorage",
+              "valid_values": [
+                "absent",
+                "accessible project ID"
+              ]
+            },
+            {
+              "name": "authorization_project_id",
+              "owner": "AuthStore",
+              "valid_values": [
+                "null",
+                "accessible project ID"
+              ]
+            },
+            {
+              "name": "dynamic_route_tree",
+              "owner": "AuthService",
+              "valid_values": [
+                "system-only plus allowed global routes",
+                "system plus current-project routes"
+              ]
+            },
+            {
+              "name": "project_selector_visible",
+              "owner": "AppLayout",
+              "valid_values": [
+                "true",
+                "false"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Navigation to a route marked projectContext=global",
+              "transitions": [
+                "router guard branches before projectContext.initialize",
+                "AuthStore refreshes authorization without project ID",
+                "AppLayout reads matched route metadata",
+                "three selector sites use one computed visibility condition"
+              ],
+              "outputs": [
+                "No project initialization and no selector on /projects or /system/**",
+                "stored project ID remains unchanged"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "GET /api/auth/routes without X-Project-Id",
+              "transitions": [
+                "AuthService requests system permissions",
+                "AuthRepository aggregates project:project:list from any tenant-accessible active project",
+                "AuthService includes /projects only for this aggregate leaf permission"
+              ],
+              "outputs": [
+                "Authorized user receives /projects",
+                "other-project-permission-only and no-permission users do not receive /projects"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Navigation to a project business route or request to a project API",
+              "transitions": [
+                "router guard retains projectContext.initialize for project routes",
+                "HTTP interceptor provides stored X-Project-Id",
+                "JwtAuthenticationFilter/AuthService validate accessible project context"
+              ],
+              "outputs": [
+                "Project route retains selector",
+                "missing or forged project context remains rejected"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET /api/auth/routes",
+              "producers": [
+                "AuthService",
+                "AuthRepository"
+              ],
+              "consumers": [
+                "AuthStore",
+                "AppLayout route menu"
+              ],
+              "invariant": "Response shape remains RouteNode tree; only /projects eligibility changes"
+            },
+            {
+              "name": "route.meta.projectContext",
+              "producers": [
+                "router route records"
+              ],
+              "consumers": [
+                "router beforeEach",
+                "AppLayout"
+              ],
+              "invariant": "Only /projects and /system/** use global"
+            },
+            {
+              "name": "X-Project-Id",
+              "producers": [
+                "HTTP interceptor"
+              ],
+              "consumers": [
+                "JwtAuthenticationFilter",
+                "project APIs"
+              ],
+              "invariant": "Project APIs require an accessible matching project ID"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R2 dynamic route tree cases",
+              "method": "AuthServiceProjectContextTest with mocked repository permission cases",
+              "blind_spots": [
+                "actual SQL membership query behavior"
+              ],
+              "independence": "direct service-level route output assertion"
+            },
+            {
+              "id": "S2",
+              "target": "R1/R3 TypeScript integration",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "browser rendering and runtime navigation"
+              ],
+              "independence": "Vue type checker and Vite compiler"
+            },
+            {
+              "id": "S3",
+              "target": "R1/R2/R3 runtime behavior",
+              "method": "isolated local API probes and browser routes at desktop/mobile",
+              "blind_spots": [
+                "production-only configuration"
+              ],
+              "independence": "HTTP responses and rendered DOM"
+            },
+            {
+              "id": "S4",
+              "target": "scope and whitespace integrity",
+              "method": "git diff --check and task-scope review",
+              "blind_spots": [
+                "runtime authorization semantics"
+              ],
+              "independence": "Git static validation"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "No-project dynamic route permission set",
+              "action": "Add a tenant/accessibility-filtered aggregate project-management query and narrow project:access matching",
+              "authority": "REQ-20260909-075 writable AuthRepository/AuthService paths",
+              "impact_radius": "security dynamic routes",
+              "rollback": "Revert T1 source and test changes"
+            },
+            {
+              "id": "A2",
+              "target": "Global route initialization and selector rendering",
+              "action": "Add explicit route metadata, guard branch, and shared selector condition",
+              "authority": "REQ-20260909-075 writable router/AppLayout paths",
+              "impact_radius": "frontend application shell",
+              "rollback": "Revert T2 router and AppLayout changes"
+            },
+            {
+              "id": "A3",
+              "target": "Acceptance evidence",
+              "action": "Run focused tests, build, API probes, and browser checks",
+              "authority": "local shell and browser without production access",
+              "impact_radius": "local verification only",
+              "rollback": "No product rollback required"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "stale stored project selection",
+              "effect": "authorization snapshot may reflect prior project until global refresh",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "inactive member role or deleted project",
+              "effect": "aggregate query may over-grant if filters diverge",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "unrelated user worktree changes",
+              "effect": "baseline or build output can contain unrelated differences",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "local backend/browser environment unavailable",
+              "effect": "runtime sensor S3 unavailable",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "async project context initialization and authorization refresh",
+              "consequence": "navigation can briefly retain prior authorization snapshot",
+              "sampling_rule": "await authorization refresh before inspecting dynamic routes"
+            },
+            {
+              "source": "browser reactive render after route navigation",
+              "consequence": "selector DOM can lag route meta",
+              "sampling_rule": "sample after navigation settles and DOM is rendered"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "The /projects menu catalog node has permission code project:access and project:project:list is its intended leaf grant",
+              "evidence": "existing AuthService namespace matcher and approved design",
+              "falsifier": "focused test or catalog data identifies another mapping"
+            },
+            {
+              "text": "Route meta is accessible through route.meta to both guard and AppLayout",
+              "evidence": "existing router uses route meta for titles and permissions",
+              "falsifier": "build or browser test shows metadata not propagated for a route"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Plan A2 with S2/S3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Plan A1 with S1/S3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Preserve existing paths and sample S1/S3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Three bounded serial tasks cover R1-R3 with independent service, build, API/browser samples",
+        "recorded_at": "2026-09-10T06:42:45+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Make /projects authorization global only for project:project:list in any accessible project.",
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "AuthService.routes(user,null) currently gets only system permissions",
+                "AuthService's project:access matcher accepts any project namespace permission",
+                "AuthRepository owns tenant/project/member permission queries"
+              ],
+              "write_scope": [
+                "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+                "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+                "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java"
+              ],
+              "invariants": [
+                "Dynamic route response shape remains unchanged",
+                "System menus remain system-permission based",
+                "Project API authorization is unchanged"
+              ],
+              "interface_contracts": [
+                "GET /api/auth/routes remains a RouteNode tree",
+                "Only project:project:list may activate project:access"
+              ],
+              "non_goals": [
+                "No JWT/API/database migration change",
+                "No project member or role data modification"
+              ],
+              "action_bounds": [
+                "Add one aggregate permission query bounded by tenant, active project/member role and existing owner/PM/super-admin semantics",
+                "Narrow only project:access route matching",
+                "Update direct focused tests"
+              ],
+              "acceptance_checks": [
+                "No-project route tree contains /projects for project:project:list positive case",
+                "It excludes /projects for project:plan:list-only and no-permission cases",
+                "Focused Security test passes"
+              ],
+              "evidence_required": [
+                "Actual diff",
+                "focused test command with exit code and assertions",
+                "git diff --check output",
+                "any test-fixture limitation"
+              ],
+              "rollback": "Revert only T1 source and test hunks.",
+              "stop_conditions": [
+                "Need to alter GET /api/auth/routes shape, JWT, project API context validation, or database schema"
+              ],
+              "escalation_conditions": [
+                "Catalog mapping for /projects differs from project:access/project:project:list",
+                "Aggregate query requires a non-writable data owner"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Render project management and system pages as global routes without project initialization or selectors.",
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "router.beforeEach currently initializes project context for every authenticated route",
+                "AppLayout has desktop-top, normal-header, and mobile-drawer selector render sites",
+                "Vue routes already use meta for title and permission data"
+              ],
+              "write_scope": [
+                "web/src/router/index.ts",
+                "web/src/views/AppLayout.vue"
+              ],
+              "invariants": [
+                "Stored project selection is not cleared",
+                "Project routes retain context initialization",
+                "Project APIs retain X-Project-Id behavior"
+              ],
+              "interface_contracts": [
+                "route.meta.projectContext is consumed by guard and AppLayout",
+                "auth.fetchAuthorization() without project ID yields global dynamic routes"
+              ],
+              "non_goals": [
+                "No route tree refactor",
+                "No shared component or HTTP interceptor change"
+              ],
+              "action_bounds": [
+                "Mark /projects including detail and each /system/** route as global",
+                "Branch guard only on that meta",
+                "Use one computed selector condition at all existing selector sites"
+              ],
+              "acceptance_checks": [
+                "Global paths hide all selector placements",
+                "Project business route still displays selector and initializes context",
+                "Frontend build passes"
+              ],
+              "evidence_required": [
+                "Actual diff",
+                "rg baseline/output",
+                "frontend build exit code",
+                "git diff --check output"
+              ],
+              "rollback": "Revert only T2 router and AppLayout hunks.",
+              "stop_conditions": [
+                "Route meta cannot represent all global routes without restructuring unrelated routes"
+              ],
+              "escalation_conditions": [
+                "Global authorization refresh removes system menu routes or fails type checking"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Independently observe combined authorization, project API isolation, and responsive global-menu behavior.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1 produces no-project menu authorization behavior",
+                "T2 produces global route/selector behavior",
+                "S1-S4 provide service, compile, API/browser, and static sensors"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json"
+              ],
+              "invariants": [
+                "No production system access",
+                "No sensitive configuration read",
+                "No product source changes in this verification task"
+              ],
+              "interface_contracts": [
+                "GET /api/auth/routes has unchanged shape",
+                "Project APIs require a valid X-Project-Id"
+              ],
+              "non_goals": [
+                "No new feature work",
+                "No database migration change"
+              ],
+              "action_bounds": [
+                "Run Security and frontend regressions",
+                "Use only isolated local API/browser evidence",
+                "Record execution and independent observation evidence"
+              ],
+              "acceptance_checks": [
+                "Authorized and negative no-project route cases are distinguishable",
+                "Project API rejects missing/forged context",
+                "At 1280x800 and 390x844 global routes hide selector and project route restores it"
+              ],
+              "evidence_required": [
+                "command exit codes and summaries",
+                "redacted API status/route assertions",
+                "browser path/viewport/console/scrollWidth observations",
+                "final scope diff"
+              ],
+              "rollback": "No product code written by T3; use T1/T2 rollback if observation finds a defect.",
+              "stop_conditions": [
+                "Any project API accepts invalid context",
+                "Any no-permission user receives /projects"
+              ],
+              "escalation_conditions": [
+                "Isolated local runtime cannot be started without confidential configuration",
+                "browser cannot access the local application"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 consumes the settled no-project authorization contract"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "T3 samples route visibility"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 samples rendered route behavior"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "focused AuthServiceProjectContextTest",
+                "scope diff check"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "scope diff check"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "Security regression",
+                "frontend build",
+                "local API probe",
+                "desktop/mobile browser"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "S-1 authorization unit sample",
+              "trigger": "T1 implementation report",
+              "observer": "independent focused test",
+              "sensors": [
+                "S1",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "S-2 frontend integration sample",
+              "trigger": "T2 implementation report",
+              "observer": "compiler/static check",
+              "sensors": [
+                "S2",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ]
+            },
+            {
+              "label": "S-3 final runtime sample",
+              "trigger": "T3 verification",
+              "observer": "API and browser",
+              "sensors": [
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Users can access project management and system menus as global pages without a project selector while project business authorization remains scoped to the selected project.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Project management and system routes must not initialize or display the project context selector.",
+      "acceptance": [
+        "At /projects and /system/**, no desktop, standard-header, or mobile-drawer selector is rendered",
+        "A previously stored project selection remains available when returning to a project business route"
+      ],
+      "priority": "must",
+      "source": "user-confirmed design",
+      "counterexample": [
+        "A system page invokes project initialization or renders a project selector"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "The project management route must be visible without a current project only when the user has project:project:list in at least one accessible project.",
+      "acceptance": [
+        "The no-project authorization route tree includes /projects for a user with project:project:list in one accessible project",
+        "The route tree excludes /projects for users with only other project permissions or no project-management permission"
+      ],
+      "priority": "must",
+      "source": "user-confirmed design",
+      "counterexample": [
+        "A project:plan:list-only user receives /projects, or an authorized user loses it without a selected project"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Project business routes and APIs must retain project-context initialization and server-side X-Project-Id authorization.",
+      "acceptance": [
+        "A project business route still initializes context and displays the selector",
+        "Project APIs still reject missing or forged project context"
+      ],
+      "priority": "must",
+      "source": "repository governance and user-confirmed design",
+      "counterexample": [
+        "A project API succeeds without valid X-Project-Id after the change"
+      ]
+    }
+  ],
+  "invariants": [
+    "System menus remain system-permission based",
+    "No JWT, public API, database, project data, or V202 migration changes",
+    "Existing stored project selection is not cleared",
+    "Project data scope and entity authorization remain server-enforced"
+  ],
+  "constraints": [
+    "Only REQ-20260909-075 writable paths",
+    "No production access or sensitive configuration",
+    "Use existing Vue Router, Pinia, Element Plus, Spring and JdbcTemplate patterns"
+  ],
+  "non_goals": [
+    "Changing project membership or role data",
+    "Changing project APIs or HTTP header contract",
+    "Refactoring the route tree or shared UI components",
+    "Changing the V202 menu text migration"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260909-075-menu-regression-fix\\global-menu-project-context-handoff.json",
+    "imported_at": "2026-09-10T06:39:24+00:00",
+    "topic": "global-menu-project-context",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "global-menu-project-context",
+      "handoff_status": "approved",
+      "created_at": "2026-09-10T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "global-menu-project-context",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-10-global-menu-project-context-design.md",
+        "objective": "Make project management and system menus global without weakening project-scoped authorization.",
+        "users": [
+          "System-permission users",
+          "Users with project-management permission in any accessible project"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Global routes hide and do not initialize project context.",
+            "acceptance": [
+              "/projects and /system/** hide selectors",
+              "stored selection remains available for project routes"
+            ],
+            "priority": "must",
+            "source": "user confirmation",
+            "counterexample": [
+              "global navigation initializes project context"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Project management visibility derives from project-management permission in any accessible project.",
+            "acceptance": [
+              "project:project:list in one accessible project includes /projects",
+              "other project permissions alone do not include /projects"
+            ],
+            "priority": "must",
+            "source": "user confirmation",
+            "counterexample": [
+              "missing current selection hides an authorized entry"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Project business authorization remains project-scoped.",
+            "acceptance": [
+              "project routes still initialize context",
+              "project APIs retain X-Project-Id validation"
+            ],
+            "priority": "must",
+            "source": "repository constraints",
+            "counterexample": [
+              "project API accepts a missing context"
+            ]
+          }
+        ],
+        "invariants": [
+          "No JWT, API, database, or project-data changes",
+          "System menus remain system-permission based",
+          "Project APIs retain server-side authorization"
+        ],
+        "constraints": [
+          "Only REQ-20260909-075 writable paths",
+          "Preserve user worktree changes",
+          "No production access"
+        ],
+        "non_goals": [
+          "Changing project members or roles",
+          "Clearing stored project selection",
+          "Changing V202"
+        ],
+        "selected_approach": {
+          "name": "explicit global-route metadata",
+          "reason": "A single route classification governs the guard and all selector placements.",
+          "alternatives": [
+            {
+              "name": "AppLayout path list",
+              "rejected_because": "It hides UI but still initializes project context."
+            },
+            {
+              "name": "disable context globally",
+              "rejected_because": "It weakens project workflows."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "router metadata",
+              "AppLayout selector visibility",
+              "AuthService/AuthRepository aggregate route permission"
+            ],
+            "outside": [
+              "project APIs",
+              "database schema",
+              "JWT"
+            ]
+          },
+          "components": [
+            {
+              "name": "router",
+              "responsibility": "classify global routes",
+              "depends_on": []
+            },
+            {
+              "name": "AppLayout",
+              "responsibility": "render selector only for project-scoped routes",
+              "depends_on": [
+                "router metadata"
+              ]
+            },
+            {
+              "name": "AuthService/AuthRepository",
+              "responsibility": "derive global project-management route access",
+              "depends_on": [
+                "active project memberships and roles"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET /api/auth/routes",
+              "producer": "AuthService",
+              "consumers": [
+                "auth store"
+              ],
+              "contract": "response remains unchanged; /projects may be included without a current project"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "global route navigation",
+              "transitions": [
+                "guard detects metadata",
+                "skip project initialization",
+                "AppLayout hides selector"
+              ],
+              "output": "global page without project context UI"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "aggregate permission query fails",
+            "behavior": "omit /projects",
+            "recovery": "existing authorization refresh/retry"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "tenant and active-membership filtering",
+            "fail closed"
+          ],
+          "performance": [
+            "one bounded aggregate permission query during authorization refresh"
+          ],
+          "compatibility": [
+            "response and project API contracts unchanged"
+          ],
+          "operations": [
+            "no migration or deployment configuration change"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1"
+            ],
+            "signal": "selector visibility and no initialization",
+            "method": "browser at desktop and 390x844"
+          },
+          {
+            "requirement_ids": [
+              "R2"
+            ],
+            "signal": "route tree cases",
+            "method": "Security tests and API probe"
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "project requests remain scoped",
+            "method": "existing permission/API regression"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "project:project:list is the project-management permission",
+            "basis": "user confirmed project-management permission rule",
+            "falsifier": "menu catalog maps /projects to another leaf permission"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use global-route metadata and aggregate project-management permission",
+            "reason": "Removes selector dependency without weakening project APIs",
+            "source": "user confirmation"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "aggregate query over-grants menu visibility",
+            "impact": "unauthorized project management entry",
+            "mitigation": "test project-management-only permission and filter active accessible projects"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed and confirmed the landed design revision.",
+          "confirmed_at": "2026-09-10T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-10-global-menu-project-context-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Only REQ-20260909-075 writable paths",
+          "No JWT/API/database/project-data changes",
+          "Project APIs retain X-Project-Id authorization"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+            "status": "existing",
+            "responsibility": "permission aggregation",
+            "evidence": "existing findPermissions implementation"
+          },
+          {
+            "path": "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+            "status": "existing",
+            "responsibility": "route visibility",
+            "evidence": "existing routes and hasRoutePermission methods"
+          },
+          {
+            "path": "web/src/router/index.ts",
+            "status": "existing",
+            "responsibility": "route metadata and navigation guard",
+            "evidence": "existing AppLayout child routes and beforeEach"
+          },
+          {
+            "path": "web/src/views/AppLayout.vue",
+            "status": "existing",
+            "responsibility": "project selector rendering",
+            "evidence": "three project-context-select occurrences"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Authorize project management globally only for project-management permission",
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "routes(user,null) uses system permissions",
+              "project:access currently accepts namespace matches"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+                "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java"
+              ],
+              "test": [
+                "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "findPermissions",
+                "RouteNode.permissionCode"
+              ],
+              "produces": [
+                "aggregate project-management permission",
+                "global /projects route decision"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add positive and negative global route tests",
+                "command": "mvn -pl :ccb-security -am -Dtest=AuthServiceProjectContextTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "New test fails before implementation",
+                "evidence": "exit code and assertion"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Add tenant- and membership-filtered aggregate permission query and narrow project:access matching",
+                "command": null,
+                "expected": "Only project:project:list activates /projects without or with current project context",
+                "evidence": "diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Run focused Security regression",
+                "command": "mvn -pl :ccb-security -am -Dtest=AuthServiceProjectContextTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "All focused tests pass",
+                "evidence": "test count and exit code"
+              }
+            ],
+            "acceptance_checks": [
+              "Any accessible project-management permission includes /projects",
+              "Other project permissions and no permission exclude /projects"
+            ],
+            "risks": [
+              "over-broad aggregate query"
+            ],
+            "rollback": "Revert T1 files",
+            "stop_conditions": [
+              "JWT, API, or project API change required"
+            ],
+            "escalation_conditions": [
+              "menu catalog does not map /projects to project:access"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Mark global routes and hide all project selectors",
+            "requirement_ids": [
+              "R1",
+              "R3"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "router guard always initializes project context",
+              "AppLayout has three selectors"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/router/index.ts",
+                "web/src/views/AppLayout.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "RouteMeta",
+                "auth.fetchAuthorization(projectId?)"
+              ],
+              "produces": [
+                "projectContext=global route metadata",
+                "single selector visibility condition"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Record existing unconditional guard and selector locations",
+                "command": "rg -n \"projectContext.initialize|project-context-select\" web/src/router/index.ts web/src/views/AppLayout.vue",
+                "expected": "Unconditional initialization and three selector locations found",
+                "evidence": "line output"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Add global route metadata, guard branch and shared AppLayout condition",
+                "command": null,
+                "expected": "Global routes skip initialization; project routes preserve it",
+                "evidence": "diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "Run frontend build",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc and Vite succeed",
+                "evidence": "exit code and build summary"
+              }
+            ],
+            "acceptance_checks": [
+              "/projects and /system/** hide selectors",
+              "project routes still show selectors"
+            ],
+            "risks": [
+              "metadata missed by wildcard system route"
+            ],
+            "rollback": "Revert T2 files",
+            "stop_conditions": [
+              "route tree must be restructured"
+            ],
+            "escalation_conditions": [
+              "global authorization snapshot removes system routes"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Verify combined authorization and responsive behavior",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "T1 and T2 are integrated"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "GET /api/auth/routes",
+                "X-Project-Id project APIs"
+              ],
+              "produces": [
+                "execution, observation, and convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Run Security and frontend regressions",
+                "command": "mvn -pl :ccb-security -am test; npm --prefix web run build",
+                "expected": "Both commands pass",
+                "evidence": "exit codes and summaries"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Probe global routes and project API boundary in isolated local environment",
+                "command": "local API probes",
+                "expected": "Global routes behave by permission and project APIs reject missing or forged context",
+                "evidence": "status codes and route assertions"
+              },
+              {
+                "id": "T3-S3",
+                "action": "Verify desktop and mobile browser routes",
+                "command": "browser 1280x800 and 390x844",
+                "expected": "Selectors hidden only on global routes with no page overflow",
+                "evidence": "path, viewport, console, scrollWidth"
+              }
+            ],
+            "acceptance_checks": [
+              "All R1-R3 have automated and runtime/browser evidence"
+            ],
+            "risks": [
+              "local runtime unavailable"
+            ],
+            "rollback": "Revert T1/T2 increments while retaining V202",
+            "stop_conditions": [
+              "project API accepts invalid context",
+              "unauthorized route is visible"
+            ],
+            "escalation_conditions": [
+              "local isolated runtime cannot be started without sensitive configuration"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Frontend consumes global authorization semantics"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "Integration needs route visibility"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Integration needs global route rendering"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "git diff --check; mvn -pl :ccb-security -am test; npm --prefix web run build",
+            "expected": "No whitespace errors and all commands pass"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed and confirmed the landed implementation plan.",
+          "confirmed_at": "2026-09-10T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "dynamic route generation",
+          "router guard",
+          "AppLayout selector rendering"
+        ],
+        "state_variable_candidates": [
+          "route project-context classification",
+          "stored project ID",
+          "authorization snapshot",
+          "selector visibility"
+        ],
+        "interface_candidates": [
+          "GET /api/auth/routes",
+          "X-Project-Id"
+        ],
+        "sensor_candidates": [
+          "Security tests",
+          "frontend build",
+          "API probes",
+          "desktop/mobile browser"
+        ],
+        "actuator_candidates": [
+          "aggregate permission query",
+          "route metadata",
+          "selector condition"
+        ],
+        "disturbance_candidates": [
+          "no selected project",
+          "only non-management project permissions",
+          "expired membership",
+          "route refresh"
+        ],
+        "delay_candidates": [
+          "authorization refresh",
+          "project context initialization"
+        ],
+        "assumptions": [
+          {
+            "text": "project:project:list is the correct project-management leaf permission",
+            "basis": "user-confirmed design",
+            "falsifier": "menu catalog disagrees"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"localStorage project selection\", \"local MySQL permission data\", \"browser viewport and Element Plus rendering\", \"existing project APIs and JWT filter\"], \"inside\": [\"AuthRepository permission queries\", \"AuthService dynamic route filtering\", \"Vue Router child route metadata and beforeEach guard\", \"AppLayout project selector rendering\", \"AuthStore authorization snapshot\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"actual SQL membership query behavior\"], \"id\": \"S1\", \"independence\": \"direct service-level route output assertion\", \"method\": \"AuthServiceProjectContextTest with mocked repository permission cases\", \"target\": \"R2 dynamic route tree cases\"}",
+      "{\"blind_spots\": [\"browser rendering and runtime navigation\"], \"id\": \"S2\", \"independence\": \"Vue type checker and Vite compiler\", \"method\": \"npm --prefix web run build\", \"target\": \"R1/R3 TypeScript integration\"}",
+      "{\"blind_spots\": [\"production-only configuration\"], \"id\": \"S3\", \"independence\": \"HTTP responses and rendered DOM\", \"method\": \"isolated local API probes and browser routes at desktop/mobile\", \"target\": \"R1/R2/R3 runtime behavior\"}",
+      "{\"blind_spots\": [\"runtime authorization semantics\"], \"id\": \"S4\", \"independence\": \"Git static validation\", \"method\": \"git diff --check and task-scope review\", \"target\": \"scope and whitespace integrity\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Add a tenant/accessibility-filtered aggregate project-management query and narrow project:access matching\", \"authority\": \"REQ-20260909-075 writable AuthRepository/AuthService paths\", \"id\": \"A1\", \"impact_radius\": \"security dynamic routes\", \"rollback\": \"Revert T1 source and test changes\", \"target\": \"No-project dynamic route permission set\"}",
+      "{\"action\": \"Add explicit route metadata, guard branch, and shared selector condition\", \"authority\": \"REQ-20260909-075 writable router/AppLayout paths\", \"id\": \"A2\", \"impact_radius\": \"frontend application shell\", \"rollback\": \"Revert T2 router and AppLayout changes\", \"target\": \"Global route initialization and selector rendering\"}",
+      "{\"action\": \"Run focused tests, build, API probes, and browser checks\", \"authority\": \"local shell and browser without production access\", \"id\": \"A3\", \"impact_radius\": \"local verification only\", \"rollback\": \"No product rollback required\", \"target\": \"Acceptance evidence\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"authorization snapshot may reflect prior project until global refresh\", \"source\": \"stale stored project selection\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"aggregate query may over-grant if filters diverge\", \"source\": \"inactive member role or deleted project\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"baseline or build output can contain unrelated differences\", \"source\": \"unrelated user worktree changes\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"runtime sensor S3 unavailable\", \"source\": \"local backend/browser environment unavailable\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"existing AuthService namespace matcher and approved design\", \"falsifier\": \"focused test or catalog data identifies another mapping\", \"text\": \"The /projects menu catalog node has permission code project:access and project:project:list is its intended leaf grant\"}",
+      "{\"evidence\": \"existing router uses route meta for titles and permissions\", \"falsifier\": \"build or browser test shows metadata not propagated for a route\", \"text\": \"Route meta is accessible through route.meta to both guard and AppLayout\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Make /projects authorization global only for project:project:list in any accessible project.",
+      "requirements": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "AuthService.routes(user,null) currently gets only system permissions",
+        "AuthService's project:access matcher accepts any project namespace permission",
+        "AuthRepository owns tenant/project/member permission queries"
+      ],
+      "write_scope": [
+        "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+        "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+        "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java"
+      ],
+      "invariants": [
+        "Dynamic route response shape remains unchanged",
+        "System menus remain system-permission based",
+        "Project API authorization is unchanged"
+      ],
+      "interface_contracts": [
+        "GET /api/auth/routes remains a RouteNode tree",
+        "Only project:project:list may activate project:access"
+      ],
+      "non_goals": [
+        "No JWT/API/database migration change",
+        "No project member or role data modification"
+      ],
+      "action_bounds": [
+        "Add one aggregate permission query bounded by tenant, active project/member role and existing owner/PM/super-admin semantics",
+        "Narrow only project:access route matching",
+        "Update direct focused tests"
+      ],
+      "acceptance": [
+        "No-project route tree contains /projects for project:project:list positive case",
+        "It excludes /projects for project:plan:list-only and no-permission cases",
+        "Focused Security test passes"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "focused test command with exit code and assertions",
+        "git diff --check output",
+        "any test-fixture limitation"
+      ],
+      "rollback": "Revert only T1 source and test hunks.",
+      "stop_conditions": [
+        "Need to alter GET /api/auth/routes shape, JWT, project API context validation, or database schema"
+      ],
+      "escalation_conditions": [
+        "Catalog mapping for /projects differs from project:access/project:project:list",
+        "Aggregate query requires a non-writable data owner"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-10T06:42:45+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Render project management and system pages as global routes without project initialization or selectors.",
+      "requirements": [
+        "R1",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "router.beforeEach currently initializes project context for every authenticated route",
+        "AppLayout has desktop-top, normal-header, and mobile-drawer selector render sites",
+        "Vue routes already use meta for title and permission data"
+      ],
+      "write_scope": [
+        "web/src/router/index.ts",
+        "web/src/views/AppLayout.vue"
+      ],
+      "invariants": [
+        "Stored project selection is not cleared",
+        "Project routes retain context initialization",
+        "Project APIs retain X-Project-Id behavior"
+      ],
+      "interface_contracts": [
+        "route.meta.projectContext is consumed by guard and AppLayout",
+        "auth.fetchAuthorization() without project ID yields global dynamic routes"
+      ],
+      "non_goals": [
+        "No route tree refactor",
+        "No shared component or HTTP interceptor change"
+      ],
+      "action_bounds": [
+        "Mark /projects including detail and each /system/** route as global",
+        "Branch guard only on that meta",
+        "Use one computed selector condition at all existing selector sites"
+      ],
+      "acceptance": [
+        "Global paths hide all selector placements",
+        "Project business route still displays selector and initializes context",
+        "Frontend build passes"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "rg baseline/output",
+        "frontend build exit code",
+        "git diff --check output"
+      ],
+      "rollback": "Revert only T2 router and AppLayout hunks.",
+      "stop_conditions": [
+        "Route meta cannot represent all global routes without restructuring unrelated routes"
+      ],
+      "escalation_conditions": [
+        "Global authorization refresh removes system menu routes or fails type checking"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-10T06:42:45+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Independently observe combined authorization, project API isolation, and responsive global-menu behavior.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 produces no-project menu authorization behavior",
+        "T2 produces global route/selector behavior",
+        "S1-S4 provide service, compile, API/browser, and static sensors"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json"
+      ],
+      "invariants": [
+        "No production system access",
+        "No sensitive configuration read",
+        "No product source changes in this verification task"
+      ],
+      "interface_contracts": [
+        "GET /api/auth/routes has unchanged shape",
+        "Project APIs require a valid X-Project-Id"
+      ],
+      "non_goals": [
+        "No new feature work",
+        "No database migration change"
+      ],
+      "action_bounds": [
+        "Run Security and frontend regressions",
+        "Use only isolated local API/browser evidence",
+        "Record execution and independent observation evidence"
+      ],
+      "acceptance": [
+        "Authorized and negative no-project route cases are distinguishable",
+        "Project API rejects missing/forged context",
+        "At 1280x800 and 390x844 global routes hide selector and project route restores it"
+      ],
+      "evidence_required": [
+        "command exit codes and summaries",
+        "redacted API status/route assertions",
+        "browser path/viewport/console/scrollWidth observations",
+        "final scope diff"
+      ],
+      "rollback": "No product code written by T3; use T1/T2 rollback if observation finds a defect.",
+      "stop_conditions": [
+        "Any project API accepts invalid context",
+        "Any no-permission user receives /projects"
+      ],
+      "escalation_conditions": [
+        "Isolated local runtime cannot be started without confidential configuration",
+        "browser cannot access the local application"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-10T06:42:45+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

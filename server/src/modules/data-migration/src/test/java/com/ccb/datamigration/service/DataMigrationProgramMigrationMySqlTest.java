@@ -36,7 +36,7 @@ class DataMigrationProgramMigrationMySqlTest {
             createConfig(connection);
             createScriptTable(connection);
 
-            List<String> statements = readMigrationStatements("V185__data_migration_program_domain.sql");
+            List<String> statements = readMigrationStatements("V186__data_migration_program_domain.sql");
             for (String statement : statements) {
                 execute(connection, statement);
             }

@@ -1,0 +1,45 @@
+{
+  "sample_label": "fresh-database-readback",
+  "task_ids": [
+    "T1"
+  ],
+  "baseline_revision": "baseline-1",
+  "observer": "Main agent self-verification with fresh mysql processes; not independent human review",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1",
+      "result": "pass",
+      "raw_evidence": "database-evidence.json verify:6 rounds36 steps, A roundNo5-7,B4-6;each6 steps with seq1-6, ordered datetime ranges and expected status",
+      "limitation": [
+        "Rendered UI not measured"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1/S2",
+      "result": "pass",
+      "raw_evidence": "before/after hashes identical for10 original rounds and1 original step; repeat inserts0; project/tenant/plan/environment joins pass",
+      "limitation": [
+        "Independent reviewer not available; current data remains editable by user"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "Mock account401; no authenticated API verification"
+  ],
+  "coverage_gaps": [
+    "Browser refresh/select A/B not tested",
+    "Independent review pending",
+    "Maven/Vue builds not run: no product source changed"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete",
+  "conclusion": "No blocking deviation observed in persisted-data checks. Do not claim browser acceptance or independent convergence."
+}

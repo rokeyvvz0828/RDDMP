@@ -5,6 +5,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.SystemPage;
+import com.ccb.common.audit.OperationAuditContext;
 import com.ccb.system.notification.NotificationArchiveResult;
 import com.ccb.system.notification.NotificationLevel;
 import com.ccb.system.notification.NotificationModuleSummary;
@@ -293,6 +294,8 @@ public class SystemNotificationService implements SystemNotificationPublisher {
     }
 
     private void audit(ValidatedNotification notification, long notificationId) {
+        if (OperationAuditContext.capture("system:notification:publish", "notification",
+                String.valueOf(notificationId), null)) return;
         jdbc.update(
                 "INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, 'system:notification:publish', 'SYSTEM', ?, 1)",
                 nextId(),

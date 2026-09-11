@@ -37,7 +37,7 @@ class DataMigrationMappingMigrationMySqlTest {
             createConfig(connection);
             createMappingTable(connection);
 
-            List<String> statements = readMigrationStatements("V186__data_migration_mapping_domain.sql");
+            List<String> statements = readMigrationStatements("V187__data_migration_mapping_domain.sql");
             for (String statement : statements) execute(connection, statement);
 
             assertEquals(1, count(connection,

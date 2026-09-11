@@ -59,7 +59,7 @@ class DataMigrationCodeValuesMigrationMySqlTest {
                     )
                     """);
 
-            List<String> statements = readMigrationStatements("V183__data_migration_code_values_parameter_management.sql");
+            List<String> statements = readMigrationStatements("V184__data_migration_code_values_parameter_management.sql");
             for (String statement : statements) {
                 execute(connection, statement);
             }

@@ -11,6 +11,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectMemberRemovalGuard;
+import com.ccb.common.audit.OperationAuditContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -35,6 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /** 项目域服务：权限和项目可见范围都在服务端执行。 */
 @Service
 public class ProjectService {
+    private static final Set<String> PROJECT_CREATION_TYPES = Set.of("NEW", "CONTINUATION");
     private static final Set<String> PROJECT_STATUSES = Set.of("PLANNING", "RUNNING", "COMPLETED", "SUSPENDED");
     private static final Set<String> PLAN_STATUSES = Set.of("NOT_STARTED", "IN_PROGRESS", "COMPLETED", "BLOCKED");
     private static final Set<String> PLAN_PARTY_TYPES = Set.of("LEAD", "COOPERATING");
@@ -75,15 +77,14 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> workbench(AuthUser user) {
-        requireAction("project", "read", user);
         String scope = projectScope(user);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, project_code, project_name, description, status, plan_number_rule, child_plan_number_rule, next_plan_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE tenant_id = ? AND deleted = 0 AND " + scope + " ORDER BY updated_at DESC, id DESC", user.tenantId());
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, project_code, project_name, description, status, creation_type, plan_number_rule, child_plan_number_rule, next_plan_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE tenant_id = ? AND deleted = 0 AND " + scope + " ORDER BY updated_at DESC, id DESC", user.tenantId());
         rows.forEach(row -> decorateProject(row, user.tenantId()));
         return rows;
     }
 
     public Map<String, Object> detail(long projectId, AuthUser user) {
-        requireAction("project", "read", user);
+        requireProjectAction(projectId, "project", "read", user);
         requireProjectAccess(projectId, user, false);
         Map<String, Object> project = project(projectId, user.tenantId());
         decorateProject(project, user.tenantId());
@@ -99,7 +100,7 @@ public class ProjectService {
 
     public PageResult<AttachmentItem> attachments(long projectId, long page, long size, String keyword,
                                                   Long categoryId, AuthUser user) {
-        requireAction("project", "read", user);
+        requireProjectAction(projectId, "project", "read", user);
         requireProjectAccess(projectId, user, false);
         PageResult<AttachmentItem> result = attachmentService().list("PROJECT", projectId, user.tenantId(),
                 new PageQuery(page, size), keyword, categoryId);
@@ -110,14 +111,14 @@ public class ProjectService {
     }
 
     public List<AttachmentCategory> attachmentCategories(long projectId, AuthUser user) {
-        requireAction("project", "read", user);
+        requireProjectAction(projectId, "project", "read", user);
         requireProjectAccess(projectId, user, false);
         return attachmentService().listCategories("PROJECT", projectId, user.tenantId());
     }
 
     @Transactional
     public AttachmentCategory createAttachmentCategory(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, false);
         String name = required(input == null ? Map.of() : input, "name", "分类名称", 128);
         AttachmentCategory category = attachmentService().createCategory("PROJECT", projectId, name,
@@ -128,7 +129,7 @@ public class ProjectService {
 
     @Transactional
     public AttachmentItem uploadAttachment(long projectId, MultipartFile file, Long categoryId, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, false);
         AttachmentItem item = attachmentService().uploadAndBind("PROJECT", projectId, file, categoryId,
                 user.tenantId(), user.id());
@@ -138,7 +139,7 @@ public class ProjectService {
 
     @Transactional
     public AttachmentItem updateAttachmentCategory(long projectId, long attachmentId, Long categoryId, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, false);
         AttachmentItem item = attachmentService().updateCategory(attachmentId, "PROJECT", projectId, categoryId,
                 user.tenantId());
@@ -147,20 +148,20 @@ public class ProjectService {
     }
 
     public AttachmentLink previewAttachment(long projectId, long attachmentId, AuthUser user) {
-        requireAction("project", "read", user);
+        requireProjectAction(projectId, "project", "read", user);
         requireProjectAccess(projectId, user, false);
         return attachmentService().preview(attachmentId, "PROJECT", projectId, user.tenantId());
     }
 
     public AttachmentLink downloadAttachment(long projectId, long attachmentId, AuthUser user) {
-        requireAction("project", "read", user);
+        requireProjectAction(projectId, "project", "read", user);
         requireProjectAccess(projectId, user, false);
         return attachmentService().download(attachmentId, "PROJECT", projectId, user.tenantId());
     }
 
     @Transactional
     public void deleteAttachment(long projectId, long attachmentId, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, false);
         attachmentService().delete(attachmentId, "PROJECT", projectId, user.tenantId());
         audit(user, "project:attachment:delete", attachmentId);
@@ -168,7 +169,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updateSettings(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, true);
         String rule = optional(input, "plan_number_rule", DEFAULT_PLAN_NUMBER_RULE);
         validatePlanNumberRule(rule);
@@ -190,13 +191,16 @@ public class ProjectService {
         validateUser(ownerId, user.tenantId());
         String status = optional(input, "status", "PLANNING");
         validateStatus(status, PROJECT_STATUSES, "项目状态");
+        String creationType = input.containsKey("creation_type")
+                ? required(input, "creation_type", "创建类型", 16) : "NEW";
+        validateStatus(creationType, PROJECT_CREATION_TYPES, "创建类型");
         Date projectStart = date(input.get("planned_start_date"));
         Date projectEnd = date(input.get("planned_end_date"));
         validateDateRange(projectStart, projectEnd, "项目计划");
         Date actualEnd = date(input.get("actual_end_date"));
         validateDateRange(projectStart, actualEnd, "项目实际");
         long id = nextId();
-        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, description, status, owner_id, planned_start_date, planned_end_date, actual_end_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, name, optional(input, "description", null), status, ownerId, projectStart, projectEnd, actualEnd, user.id());
+        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, description, status, creation_type, owner_id, planned_start_date, planned_end_date, actual_end_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), code, name, optional(input, "description", null), status, creationType, ownerId, projectStart, projectEnd, actualEnd, user.id());
         initializeDefaultStages(id, user.tenantId());
         long roleId = nextId();
         jdbc.update("INSERT INTO pm_project_role (id, tenant_id, project_id, role_code, role_name, description) VALUES (?, ?, ?, 'PM', '项目负责人', '项目创建时自动初始化的项目负责人角色')", roleId, user.tenantId(), id);
@@ -208,12 +212,18 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> update(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, true);
         List<String> assignments = new ArrayList<>();
         List<Object> args = new ArrayList<>();
         if (input.containsKey("project_code")) { assignments.add("project_code = ?"); args.add(required(input, "project_code", "项目编号", 64)); }
         if (input.containsKey("project_name")) { assignments.add("project_name = ?"); args.add(required(input, "project_name", "项目名称", 128)); }
+        if (input.containsKey("creation_type")) {
+            String value = required(input, "creation_type", "创建类型", 16);
+            validateStatus(value, PROJECT_CREATION_TYPES, "创建类型");
+            assignments.add("creation_type = ?");
+            args.add(value);
+        }
         if (input.containsKey("description")) { assignments.add("description = ?"); args.add(optional(input, "description", null)); }
         if (input.containsKey("status")) { String value = optional(input, "status", "PLANNING"); validateStatus(value, PROJECT_STATUSES, "项目状态"); assignments.add("status = ?"); args.add(value); }
         if (input.containsKey("owner_id")) { long ownerId = longValue(input.get("owner_id"), 0); validateUser(ownerId, user.tenantId()); assignments.add("owner_id = ?"); args.add(ownerId); }
@@ -235,7 +245,7 @@ public class ProjectService {
 
     @Transactional
     public void delete(long projectId, AuthUser user) {
-        requireAction("project", "delete", user);
+        requireProjectAction(projectId, "project", "delete", user);
         requireProjectAccess(projectId, user, true);
         if (attachmentPort != null) {
             PageResult<AttachmentItem> attachmentPage;
@@ -253,6 +263,7 @@ public class ProjectService {
         jdbc.update("UPDATE pm_project_risk SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
         jdbc.update("DELETE FROM pm_project_member_role WHERE tenant_id = ? AND member_id IN (SELECT id FROM pm_project_member WHERE project_id = ? AND tenant_id = ?)", user.tenantId(), projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_member SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
+        jdbc.update("DELETE FROM pm_project_role_permission WHERE project_id = ? AND tenant_id = ?", projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_role SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_org SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_stage SET deleted = 1 WHERE project_id = ? AND tenant_id = ? AND deleted = 0", projectId, user.tenantId());
@@ -260,14 +271,14 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> stages(long projectId, AuthUser user) {
-        requireAction("project", "read", user);
+        requireProjectAction(projectId, "project", "read", user);
         requireProjectAccess(projectId, user, false);
         return projectStages(projectId, user.tenantId());
     }
 
     @Transactional
     public Map<String, Object> createStage(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, true);
         String name = required(input == null ? Map.of() : input, "stage_name", "阶段名称", 128);
         projectForUpdate(projectId, user.tenantId());
@@ -286,7 +297,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updateStage(long projectId, long stageId, Map<String, Object> input, AuthUser user) {
-        requireAction("project", "update", user);
+        requireProjectAction(projectId, "project", "update", user);
         requireProjectAccess(projectId, user, true);
         Map<String, Object> current = projectStageForUpdate(projectId, stageId, user.tenantId());
         ensureStageHasNoMasterPlans(projectId, stageId, user.tenantId());
@@ -303,7 +314,7 @@ public class ProjectService {
 
     @Transactional
     public void deleteStage(long projectId, long stageId, AuthUser user) {
-        requireAction("project", "delete", user);
+        requireProjectAction(projectId, "project", "delete", user);
         requireProjectAccess(projectId, user, true);
         projectStageForUpdate(projectId, stageId, user.tenantId());
         ensureStageHasNoMasterPlans(projectId, stageId, user.tenantId());
@@ -313,7 +324,7 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> plans(long projectId, AuthUser user) {
-        requireAction("plan", "read", user);
+        requireProjectAction(projectId, "plan", "read", user);
         requireProjectAccess(projectId, user, false);
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT p.id, p.project_id, p.group_id, g.group_name, p.parent_id, p.plan_name, p.plan_code, p.description, p.owner_id, u.display_name AS owner_name, p.planned_start_date, p.planned_end_date, p.progress, p.status, p.phase, s.stage_name AS phase_name, p.sort_no, p.created_at, p.updated_at FROM pm_project_plan p LEFT JOIN pm_project_plan_group g ON g.id = p.group_id AND g.project_id = p.project_id AND g.tenant_id = p.tenant_id AND g.deleted = 0 LEFT JOIN pm_project_stage s ON s.project_id = p.project_id AND s.tenant_id = p.tenant_id AND s.stage_code = p.phase LEFT JOIN sys_user u ON u.id = p.owner_id AND u.tenant_id = p.tenant_id AND u.deleted = 0 WHERE p.project_id = ? AND p.tenant_id = ? AND p.deleted = 0 ORDER BY COALESCE(p.group_id, 0), p.parent_id, p.sort_no, p.id", projectId, user.tenantId());
         rows.forEach(row -> decoratePlanOrganizations(row, user.tenantId()));
@@ -321,7 +332,7 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> planGroups(long projectId, AuthUser user) {
-        requireAction("plan", "read", user);
+        requireProjectAction(projectId, "plan", "read", user);
         requireProjectAccess(projectId, user, false);
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT g.id, g.project_id, g.phase, g.group_name, s.stage_name AS phase_name, CASE WHEN g.color_key IN ('brand', 'accent', 'success', 'warning', 'danger', 'muted') THEN g.color_key ELSE 'brand' END AS color_key, g.description, g.sort_no, g.created_at, g.updated_at FROM pm_project_plan_group g LEFT JOIN pm_project_stage s ON s.project_id = g.project_id AND s.tenant_id = g.tenant_id AND s.stage_code = g.phase WHERE g.project_id = ? AND g.tenant_id = ? AND g.deleted = 0 ORDER BY COALESCE(s.sort_no, 2147483647), g.sort_no, g.id", projectId, user.tenantId());
         rows.forEach(row -> {
@@ -333,7 +344,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> createPlanGroup(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("plan", "create", user);
+        requireProjectAction(projectId, "plan", "create", user);
         requireProjectAccess(projectId, user, false);
         String phase = input.containsKey("phase") ? optional(input, "phase", null) : null;
         validateProjectStage(projectId, phase, user.tenantId(), true);
@@ -349,7 +360,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updatePlanGroup(long projectId, long groupId, Map<String, Object> input, AuthUser user) {
-        requireAction("plan", "update", user);
+        requireProjectAction(projectId, "plan", "update", user);
         requireProjectAccess(projectId, user, false);
         ensureGroup(projectId, groupId, user.tenantId());
         Map<String, Object> currentGroup = planGroup(groupId, projectId, user.tenantId());
@@ -388,7 +399,7 @@ public class ProjectService {
 
     @Transactional
     public void deletePlanGroup(long projectId, long groupId, AuthUser user) {
-        requireAction("plan", "delete", user);
+        requireProjectAction(projectId, "plan", "delete", user);
         requireProjectAccess(projectId, user, false);
         ensureGroup(projectId, groupId, user.tenantId());
         jdbc.update("UPDATE pm_project_plan SET group_id = NULL WHERE group_id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", groupId, projectId, user.tenantId());
@@ -398,7 +409,7 @@ public class ProjectService {
 
     @Transactional
     public void movePlanToGroup(long projectId, long planId, Map<String, Object> input, AuthUser user) {
-        requireAction("plan", "update", user);
+        requireProjectAction(projectId, "plan", "update", user);
         requireProjectAccess(projectId, user, false);
         Map<String, Object> source = planForUpdate(planId, projectId, user.tenantId());
         long parentId = optionalLong(source.get("parent_id"), 0);
@@ -423,7 +434,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> createPlan(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("plan", "create", user); requireProjectAccess(projectId, user, false);
+        requireProjectAction(projectId, "plan", "create", user); requireProjectAccess(projectId, user, false);
         String name = required(input, "plan_name", "计划名称", 128);
         long ownerId = optionalLong(input.get("owner_id"), 0); if (ownerId != 0) validateUser(ownerId, user.tenantId());
         long parentId = optionalLong(input.get("parent_id"), 0); validatePlanParent(projectId, parentId, user.tenantId());
@@ -487,7 +498,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updatePlan(long projectId, long planId, Map<String, Object> input, AuthUser user) {
-        requireAction("plan", "update", user); requireProjectAccess(projectId, user, false); ensurePlan(projectId, planId, user.tenantId());
+        requireProjectAction(projectId, "plan", "update", user); requireProjectAccess(projectId, user, false); ensurePlan(projectId, planId, user.tenantId());
         List<String> assignments = new ArrayList<>(); List<Object> args = new ArrayList<>();
         if (input.containsKey("plan_name")) { assignments.add("plan_name = ?"); args.add(required(input, "plan_name", "计划名称", 128)); }
         if (input.containsKey("description")) { assignments.add("description = ?"); args.add(optional(input, "description", null)); }
@@ -531,7 +542,7 @@ public class ProjectService {
 
     @Transactional
     public void deletePlan(long projectId, long planId, AuthUser user) {
-        requireAction("plan", "delete", user); requireProjectAccess(projectId, user, false); ensurePlan(projectId, planId, user.tenantId());
+        requireProjectAction(projectId, "plan", "delete", user); requireProjectAccess(projectId, user, false); ensurePlan(projectId, planId, user.tenantId());
         jdbc.update("DELETE FROM pm_project_plan_org WHERE tenant_id = ? AND plan_id IN (SELECT id FROM pm_project_plan WHERE id = ? OR parent_id = ? AND project_id = ? AND tenant_id = ?)", user.tenantId(), planId, planId, projectId, user.tenantId());
         jdbc.update("UPDATE pm_project_plan SET deleted = 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", planId, projectId, user.tenantId());
         deletePlanTree(projectId, planId, user.tenantId());
@@ -539,13 +550,13 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> risks(long projectId, AuthUser user) {
-        requireAction("project", "read", user); requireProjectAccess(projectId, user, false);
+        requireProjectAction(projectId, "project", "read", user); requireProjectAccess(projectId, user, false);
         return jdbc.queryForList("SELECT r.id, r.project_id, r.risk_code, r.occurred_date, r.project_phase, r.urgency, r.report_level, r.current_status, r.proposer_org_id, po.org_name AS proposer_org_name, r.proposer_subsystem, r.proposer_contact_name, r.proposer_contact_phone, r.involved_org_id, io.org_name AS involved_org_name, r.involved_subsystem, r.problem_description, r.expected_resolution_date, r.suggested_solution, r.current_handler_name, r.current_handler_phone, r.progress_description, r.attention_level, r.problem_nature, r.problem_domain, r.pmo_contact, r.escalation_level, r.current_problem_level, r.planned_resolution_date, r.actual_resolution_date, r.resolution_solution, r.created_by, r.created_at, r.updated_at FROM pm_project_risk r LEFT JOIN sys_org po ON po.id = r.proposer_org_id AND po.tenant_id = r.tenant_id AND po.deleted = 0 LEFT JOIN sys_org io ON io.id = r.involved_org_id AND io.tenant_id = r.tenant_id AND io.deleted = 0 WHERE r.project_id = ? AND r.tenant_id = ? AND r.deleted = 0 ORDER BY COALESCE(r.occurred_date, '9999-12-31') DESC, r.id DESC", projectId, user.tenantId()).stream().peek(row -> decorateRisk(row, user.tenantId())).toList();
     }
 
     @Transactional
     public Map<String, Object> createRisk(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("risk", "create", user); requireProjectAccess(projectId, user, true);
+        requireProjectAction(projectId, "risk", "create", user); requireProjectAccess(projectId, user, true);
         validateRiskInput(input, user.tenantId());
         Map<String, Object> projectRow = projectForUpdate(projectId, user.tenantId());
         String rule = nonBlankOrDefault(projectRow.get("risk_number_rule"), DEFAULT_RISK_NUMBER_RULE);
@@ -561,7 +572,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updateRisk(long projectId, long riskId, Map<String, Object> input, AuthUser user) {
-        requireAction("risk", "update", user); requireProjectAccess(projectId, user, true); ensureRisk(projectId, riskId, user.tenantId());
+        requireProjectAction(projectId, "risk", "update", user); requireProjectAccess(projectId, user, true); ensureRisk(projectId, riskId, user.tenantId());
         validateRiskInput(input, user.tenantId());
         List<String> assignments = new ArrayList<>(); List<Object> args = new ArrayList<>();
         addRiskAssignments(input, assignments, args);
@@ -574,14 +585,14 @@ public class ProjectService {
 
     @Transactional
     public void deleteRisk(long projectId, long riskId, AuthUser user) {
-        requireAction("risk", "delete", user); requireProjectAccess(projectId, user, true); ensureRisk(projectId, riskId, user.tenantId());
+        requireProjectAction(projectId, "risk", "delete", user); requireProjectAccess(projectId, user, true); ensureRisk(projectId, riskId, user.tenantId());
         jdbc.update("UPDATE pm_project_risk SET deleted = 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", riskId, projectId, user.tenantId());
         audit(user, "project:risk:delete", riskId);
     }
 
     /** 评论沿用项目成员可见范围，但不授予任何风险字段修改权限。 */
     public List<Map<String, Object>> riskComments(long projectId, long riskId, AuthUser user) {
-        requireAction("project", "read", user); requireProjectAccess(projectId, user, false); ensureRisk(projectId, riskId, user.tenantId());
+        requireProjectAction(projectId, "project", "read", user); requireProjectAccess(projectId, user, false); ensureRisk(projectId, riskId, user.tenantId());
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT c.id, c.project_id, c.risk_id, c.user_id, u.username, u.display_name, u.avatar_object_key, o.org_name, c.comment_text, c.created_at, c.updated_at FROM pm_project_risk_comment c JOIN sys_user u ON u.id = c.user_id AND u.tenant_id = c.tenant_id AND u.deleted = 0 LEFT JOIN sys_org o ON o.id = u.org_id AND o.tenant_id = u.tenant_id AND o.deleted = 0 WHERE c.project_id = ? AND c.risk_id = ? AND c.tenant_id = ? AND c.deleted = 0 ORDER BY c.created_at DESC, c.id DESC", projectId, riskId, user.tenantId());
         rows.forEach(row -> row.put("avatar_url", storage.presignedUrl((String) row.remove("avatar_object_key"))));
         return rows;
@@ -589,7 +600,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> createRiskComment(long projectId, long riskId, Map<String, Object> input, AuthUser user) {
-        requireAction("project", "read", user); requireProjectAccess(projectId, user, false); ensureRisk(projectId, riskId, user.tenantId());
+        requireProjectAction(projectId, "project", "read", user); requireProjectAccess(projectId, user, false); ensureRisk(projectId, riskId, user.tenantId());
         String comment = required(input, "comment_text", "评论内容", 2000);
         long id = nextId();
         jdbc.update("INSERT INTO pm_project_risk_comment (id, tenant_id, project_id, risk_id, user_id, comment_text) VALUES (?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, riskId, user.id(), comment);
@@ -760,20 +771,20 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> members(long projectId, AuthUser user) {
-        requireAction("member", "read", user); requireProjectAccess(projectId, user, false);
+        requireProjectAction(projectId, "member", "read", user); requireProjectAccess(projectId, user, false);
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT m.id, m.project_id, m.user_id, m.org_id, po.org_name, u.username, u.display_name, u.avatar_object_key, m.status, m.joined_at FROM pm_project_member m JOIN sys_user u ON u.id = m.user_id AND u.tenant_id = m.tenant_id AND u.deleted = 0 LEFT JOIN pm_project_org po ON po.id = m.org_id AND po.project_id = m.project_id AND po.tenant_id = m.tenant_id AND po.deleted = 0 WHERE m.project_id = ? AND m.tenant_id = ? AND m.deleted = 0 ORDER BY m.joined_at, m.id", projectId, user.tenantId());
         for (Map<String, Object> row : rows) { row.put("avatar_url", storage.presignedUrl((String) row.remove("avatar_object_key"))); row.put("roles", jdbc.queryForList("SELECT r.id, r.role_code, r.role_name FROM pm_project_member_role mr JOIN pm_project_role r ON r.id = mr.role_id AND r.tenant_id = mr.tenant_id AND r.deleted = 0 WHERE mr.member_id = ? AND mr.tenant_id = ? ORDER BY r.id", row.get("id"), user.tenantId())); }
         return rows;
     }
 
     public List<Map<String, Object>> organizations(long projectId, AuthUser user) {
-        requireAction("member", "read", user); requireProjectAccess(projectId, user, false);
+        requireProjectAction(projectId, "member", "read", user); requireProjectAccess(projectId, user, false);
         return jdbc.queryForList("SELECT id, project_id, parent_id, org_code, org_name, sort_no, status, created_at, updated_at FROM pm_project_org WHERE project_id = ? AND tenant_id = ? AND deleted = 0 ORDER BY parent_id, sort_no, id", projectId, user.tenantId());
     }
 
     @Transactional
     public Map<String, Object> createOrganization(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("member", "create", user); requireProjectAccess(projectId, user, true);
+        requireProjectAction(projectId, "member", "create", user); requireProjectAccess(projectId, user, true);
         String code = required(input, "org_code", "项目组织编码", 64);
         String name = required(input, "org_name", "项目组织名称", 128);
         long parentId = optionalLong(input.get("parent_id"), 0);
@@ -787,7 +798,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updateOrganization(long projectId, long organizationId, Map<String, Object> input, AuthUser user) {
-        requireAction("member", "update", user); requireProjectAccess(projectId, user, true); ensureProjectOrganization(projectId, organizationId, user.tenantId());
+        requireProjectAction(projectId, "member", "update", user); requireProjectAccess(projectId, user, true); ensureProjectOrganization(projectId, organizationId, user.tenantId());
         List<String> assignments = new ArrayList<>(); List<Object> args = new ArrayList<>();
         if (input.containsKey("org_code")) { String code = required(input, "org_code", "项目组织编码", 64); ensureProjectOrganizationCodeAvailable(projectId, code, organizationId, user.tenantId()); assignments.add("org_code = ?"); args.add(code); }
         if (input.containsKey("org_name")) { assignments.add("org_name = ?"); args.add(required(input, "org_name", "项目组织名称", 128)); }
@@ -803,7 +814,7 @@ public class ProjectService {
 
     @Transactional
     public void deleteOrganization(long projectId, long organizationId, AuthUser user) {
-        requireAction("member", "delete", user); requireProjectAccess(projectId, user, true); ensureProjectOrganization(projectId, organizationId, user.tenantId());
+        requireProjectAction(projectId, "member", "delete", user); requireProjectAccess(projectId, user, true); ensureProjectOrganization(projectId, organizationId, user.tenantId());
         Integer children = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_org WHERE parent_id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Integer.class, organizationId, projectId, user.tenantId());
         if (children != null && children > 0) throw badRequest("该项目组织仍有下级节点，不能删除");
         Integer members = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_member WHERE org_id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Integer.class, organizationId, projectId, user.tenantId());
@@ -814,7 +825,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> createMember(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("member", "create", user); requireProjectAccess(projectId, user, true);
+        requireProjectAction(projectId, "member", "create", user); requireProjectAccess(projectId, user, true);
         long userId = longValue(input.get("user_id"), 0); validateUser(userId, user.tenantId());
         Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_member WHERE project_id = ? AND user_id = ? AND tenant_id = ? AND deleted = 0", Integer.class, projectId, userId, user.tenantId());
         if (exists != null && exists > 0) throw badRequest("该用户已经是项目成员");
@@ -825,7 +836,7 @@ public class ProjectService {
 
     @Transactional
     public Map<String, Object> updateMember(long projectId, long memberId, Map<String, Object> input, AuthUser user) {
-        requireAction("member", "update", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
+        requireProjectAction(projectId, "member", "update", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
         if (input.containsKey("status")) {
             long status = optionalLong(input.get("status"), 1);
             if (status == 0) memberRemovalGuard.requireNoPendingTasks(user.tenantId(), projectId, memberUserId(memberId, projectId, user.tenantId()));
@@ -838,7 +849,7 @@ public class ProjectService {
 
     @Transactional
     public void deleteMember(long projectId, long memberId, AuthUser user) {
-        requireAction("member", "delete", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
+        requireProjectAction(projectId, "member", "delete", user); requireProjectAccess(projectId, user, true); ensureMember(projectId, memberId, user.tenantId());
         Long memberUserId = jdbc.queryForObject("SELECT user_id FROM pm_project_member WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", Long.class, memberId, projectId, user.tenantId());
         Long ownerId = jdbc.queryForObject("SELECT owner_id FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Long.class, projectId, user.tenantId());
         if (memberUserId != null && memberUserId.equals(ownerId)) throw badRequest("项目负责人不能移出项目");
@@ -854,22 +865,69 @@ public class ProjectService {
     }
 
     public List<Map<String, Object>> roles(long projectId, AuthUser user) {
-        requireAction("role", "read", user); requireProjectAccess(projectId, user, false);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT r.id, r.project_id, r.role_code, r.role_name, r.description, r.created_at, (SELECT COUNT(*) FROM pm_project_member_role mr JOIN pm_project_member m ON m.id = mr.member_id AND m.tenant_id = mr.tenant_id AND m.deleted = 0 WHERE mr.role_id = r.id AND mr.tenant_id = r.tenant_id) AS member_count FROM pm_project_role r WHERE r.project_id = ? AND r.tenant_id = ? AND r.deleted = 0 ORDER BY r.id", projectId, user.tenantId());
+        requireProjectAction(projectId, "role", "read", user); requireProjectAccess(projectId, user, false);
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT r.id, r.project_id, r.role_code, r.role_name, r.description, r.created_at, (SELECT COUNT(*) FROM pm_project_member_role mr JOIN pm_project_member m ON m.id = mr.member_id AND m.tenant_id = mr.tenant_id AND m.deleted = 0 WHERE mr.role_id = r.id AND mr.tenant_id = r.tenant_id) AS member_count, (SELECT COUNT(*) FROM pm_project_role_permission rp WHERE rp.project_id = r.project_id AND rp.role_id = r.id AND rp.tenant_id = r.tenant_id) AS permission_count FROM pm_project_role r WHERE r.project_id = ? AND r.tenant_id = ? AND r.deleted = 0 ORDER BY r.id", projectId, user.tenantId());
         rows.forEach(row -> decorateRoleMembers(row, projectId, user.tenantId()));
         return rows;
     }
 
     @Transactional
     public Map<String, Object> createRole(long projectId, Map<String, Object> input, AuthUser user) {
-        requireAction("role", "create", user); requireProjectAccess(projectId, user, true);
+        requireProjectAction(projectId, "role", "create", user); requireProjectAccess(projectId, user, true);
         String code = required(input, "role_code", "角色编码", 64); String name = required(input, "role_name", "角色名称", 128);
         long id = nextId(); jdbc.update("INSERT INTO pm_project_role (id, tenant_id, project_id, role_code, role_name, description) VALUES (?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, code, name, optional(input, "description", null)); saveRoleMembers(id, projectId, ids(input.get("member_ids")), user.tenantId()); audit(user, "project:role:create", id); return role(id, projectId, user.tenantId());
     }
 
+    public Map<String, Object> rolePermissions(long projectId, long roleId, AuthUser user) {
+        requireProjectAction(projectId, "role", "read", user);
+        requireProjectAccess(projectId, user, false);
+        ensureRole(projectId, roleId, user.tenantId());
+        List<Map<String, Object>> menus = jdbc.queryForList(
+                "SELECT id, parent_id, menu_name, menu_type, route_path, permission_code, icon, sort_no FROM sys_menu " +
+                        "WHERE tenant_id = ? AND deleted = 0 AND (permission_code IS NULL OR permission_code NOT LIKE 'system:%') ORDER BY parent_id, sort_no, id",
+                user.tenantId());
+        for (Map<String, Object> menu : menus) {
+            menu.put("actions", jdbc.queryForList(
+                    "SELECT id, action_code, permission_code, permission_name FROM sys_menu_permission " +
+                            "WHERE tenant_id = ? AND menu_id = ? AND status = 1 AND permission_code NOT LIKE 'system:%' ORDER BY id",
+                    user.tenantId(), menu.get("id")));
+        }
+        List<Long> permissionIds = jdbc.queryForList(
+                "SELECT permission_id FROM pm_project_role_permission WHERE tenant_id = ? AND project_id = ? AND role_id = ? ORDER BY permission_id",
+                Long.class, user.tenantId(), projectId, roleId);
+        return Map.of("menus", menus, "permissionIds", permissionIds);
+    }
+
+    @Transactional
+    public void saveRolePermissions(long projectId, long roleId, List<?> permissionIds, AuthUser user) {
+        requireProjectAction(projectId, "role", "update", user);
+        requireProjectAccess(projectId, user, true);
+        ensureRole(projectId, roleId, user.tenantId());
+        Set<Long> ids = new HashSet<>();
+        if (permissionIds != null) {
+            for (Object value : permissionIds) ids.add(requiredLong(value, "权限编号"));
+        }
+        if (!ids.isEmpty()) {
+            String placeholders = String.join(", ", java.util.Collections.nCopies(ids.size(), "?"));
+            List<Object> args = new ArrayList<>(List.of(user.tenantId()));
+            args.addAll(ids);
+            Integer valid = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM sys_menu_permission WHERE tenant_id = ? AND status = 1 AND permission_code NOT LIKE 'system:%' AND id IN (" + placeholders + ")",
+                    Integer.class, args.toArray());
+            if (valid == null || valid != ids.size()) throw badRequest("权限不存在、已停用或不允许分配给项目角色");
+        }
+        jdbc.update("DELETE FROM pm_project_role_permission WHERE tenant_id = ? AND project_id = ? AND role_id = ?",
+                user.tenantId(), projectId, roleId);
+        for (Long permissionId : ids) {
+            jdbc.update("INSERT INTO pm_project_role_permission (tenant_id, project_id, role_id, permission_id) VALUES (?, ?, ?, ?)",
+                    user.tenantId(), projectId, roleId, permissionId);
+        }
+        audit(user, "project:role:permissions", roleId);
+    }
+
     @Transactional
     public Map<String, Object> updateRole(long projectId, long roleId, Map<String, Object> input, AuthUser user) {
-        requireAction("role", "update", user); requireProjectAccess(projectId, user, true); ensureRole(projectId, roleId, user.tenantId());
+        requireProjectAction(projectId, "role", "update", user); requireProjectAccess(projectId, user, true); ensureRole(projectId, roleId, user.tenantId());
         List<String> assignments = new ArrayList<>(); List<Object> args = new ArrayList<>();
         if (input.containsKey("role_code")) { assignments.add("role_code = ?"); args.add(required(input, "role_code", "角色编码", 64)); }
         if (input.containsKey("role_name")) { assignments.add("role_name = ?"); args.add(required(input, "role_name", "角色名称", 128)); }
@@ -882,8 +940,9 @@ public class ProjectService {
 
     @Transactional
     public void deleteRole(long projectId, long roleId, AuthUser user) {
-        requireAction("role", "delete", user); requireProjectAccess(projectId, user, true); ensureRole(projectId, roleId, user.tenantId());
+        requireProjectAction(projectId, "role", "delete", user); requireProjectAccess(projectId, user, true); ensureRole(projectId, roleId, user.tenantId());
         Integer used = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project_member_role WHERE role_id = ? AND tenant_id = ?", Integer.class, roleId, user.tenantId()); if (used != null && used > 0) throw badRequest("该角色仍被项目成员使用，不能删除");
+        jdbc.update("DELETE FROM pm_project_role_permission WHERE project_id = ? AND role_id = ? AND tenant_id = ?", projectId, roleId, user.tenantId());
         jdbc.update("UPDATE pm_project_role SET deleted = 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", roleId, projectId, user.tenantId()); audit(user, "project:role:delete", roleId);
     }
 
@@ -892,7 +951,7 @@ public class ProjectService {
         args.add(100); return jdbc.queryForList("SELECT u.id, u.username, u.display_name, u.org_id FROM sys_user u WHERE u.tenant_id = ? AND u.status = 1 AND u.deleted = 0" + filter + " ORDER BY u.display_name, u.id LIMIT ?", args.toArray());
     }
 
-     private Map<String, Object> project(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
+     private Map<String, Object> project(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, project_name, description, status, creation_type, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence, owner_id, planned_start_date, planned_end_date, actual_end_date, created_at, updated_at FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
      private Map<String, Object> projectForUpdate(long id, long tenantId) { try { return jdbc.queryForMap("SELECT id, project_code, plan_number_rule, child_plan_number_rule, risk_number_rule, next_plan_sequence, next_risk_sequence FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0 FOR UPDATE", id, tenantId); } catch (EmptyResultDataAccessException exception) { throw badRequest("项目不存在"); } }
     private List<Map<String, Object>> projectStages(long projectId, long tenantId) {
         ensureDefaultStages(projectId, tenantId);
@@ -1016,8 +1075,23 @@ public class ProjectService {
     }
 
     private String projectScope(AuthUser user) { return isSuperAdmin(user) ? "1 = 1" : "EXISTS (SELECT 1 FROM pm_project_member pm WHERE pm.project_id = pm_project.id AND pm.tenant_id = pm_project.tenant_id AND pm.user_id = " + user.id() + " AND pm.status = 1 AND pm.deleted = 0)"; }
-    private void requireProjectAccess(long projectId, AuthUser user, boolean ownerOnly) { Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, projectId, user.tenantId()); if (exists == null || exists == 0) throw badRequest("项目不存在"); if (isSuperAdmin(user)) return; String sql = ownerOnly ? "SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND owner_id = ? AND deleted = 0" : "SELECT COUNT(*) FROM pm_project_member WHERE project_id = ? AND tenant_id = ? AND user_id = ? AND status = 1 AND deleted = 0"; Integer allowed = jdbc.queryForObject(sql, Integer.class, projectId, user.tenantId(), user.id()); if (allowed == null || allowed == 0) throw new BusinessException(ErrorCode.FORBIDDEN, "没有该项目的操作权限"); }
-     private void requireAction(String resource, String action, AuthUser user) { if (isSuperAdmin(user)) return; String base = switch (resource) { case "project" -> "project:project:list"; case "plan" -> "project:plan:list"; case "risk" -> "project:risk:list"; case "member" -> "project:member:list"; case "role" -> "project:role:list"; default -> throw badRequest("项目资源无效"); }; String permission = "read".equals(action) ? base : base + ":" + action; Integer allowed = jdbc.queryForObject("SELECT COUNT(*) FROM sys_menu_permission p JOIN sys_role_permission rp ON rp.permission_id = p.id AND rp.tenant_id = p.tenant_id JOIN sys_user_role ur ON ur.role_id = rp.role_id AND ur.tenant_id = rp.tenant_id JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id WHERE ur.user_id = ? AND p.tenant_id = ? AND p.permission_code = ? AND p.action_code = ? AND p.status = 1 AND r.status = 1", Integer.class, user.id(), user.tenantId(), permission, action); if (allowed == null || allowed == 0) throw new BusinessException(ErrorCode.FORBIDDEN, "没有" + resourceLabel(resource) + actionLabel(action) + "权限"); }
+    private void requireProjectAccess(long projectId, AuthUser user, boolean ownerOnly) { Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Integer.class, projectId, user.tenantId()); if (exists == null || exists == 0) throw badRequest("项目不存在"); if (isSuperAdmin(user)) return; String sql = ownerOnly ? "SELECT COUNT(*) FROM pm_project p WHERE p.id = ? AND p.tenant_id = ? AND p.deleted = 0 AND (p.owner_id = ? OR EXISTS (SELECT 1 FROM pm_project_member m JOIN pm_project_member_role mr ON mr.member_id = m.id AND mr.tenant_id = m.tenant_id JOIN pm_project_role r ON r.id = mr.role_id AND r.project_id = m.project_id AND r.tenant_id = m.tenant_id AND r.deleted = 0 WHERE m.project_id = p.id AND m.tenant_id = p.tenant_id AND m.user_id = ? AND m.status = 1 AND m.deleted = 0 AND r.role_code = 'PM'))" : "SELECT COUNT(*) FROM pm_project_member WHERE project_id = ? AND tenant_id = ? AND user_id = ? AND status = 1 AND deleted = 0"; Integer allowed = ownerOnly ? jdbc.queryForObject(sql, Integer.class, projectId, user.tenantId(), user.id(), user.id()) : jdbc.queryForObject(sql, Integer.class, projectId, user.tenantId(), user.id()); if (allowed == null || allowed == 0) throw new BusinessException(ErrorCode.FORBIDDEN, "没有该项目的操作权限"); }
+    private void requireProjectAction(long projectId, String resource, String action, AuthUser user) {
+        if (isSuperAdmin(user)) return;
+        String base = switch (resource) { case "project" -> "project:project:list"; case "plan" -> "project:plan:list"; case "risk" -> "project:risk:list"; case "member" -> "project:member:list"; case "role" -> "project:role:list"; default -> throw badRequest("项目资源无效"); };
+        String permission = "read".equals(action) ? base : base + ":" + action;
+        Integer allowed = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pm_project p WHERE p.id = ? AND p.tenant_id = ? AND p.deleted = 0 AND (p.owner_id = ? OR EXISTS (" +
+                        "SELECT 1 FROM pm_project_member m JOIN pm_project_member_role mr ON mr.member_id = m.id AND mr.tenant_id = m.tenant_id " +
+                        "JOIN pm_project_role r ON r.id = mr.role_id AND r.project_id = m.project_id AND r.tenant_id = m.tenant_id AND r.deleted = 0 " +
+                        "LEFT JOIN pm_project_role_permission rp ON rp.project_id = r.project_id AND rp.role_id = r.id AND rp.tenant_id = r.tenant_id " +
+                        "LEFT JOIN sys_menu_permission permission ON permission.id = rp.permission_id AND permission.tenant_id = rp.tenant_id AND permission.status = 1 " +
+                        "WHERE m.project_id = p.id AND m.tenant_id = p.tenant_id AND m.user_id = ? AND m.status = 1 AND m.deleted = 0 " +
+                        "AND (r.role_code = 'PM' OR (permission.permission_code = ? AND permission.action_code = ?))))",
+                Integer.class, projectId, user.tenantId(), user.id(), user.id(), permission, action);
+        if (allowed == null || allowed == 0) throw new BusinessException(ErrorCode.FORBIDDEN, "没有" + resourceLabel(resource) + actionLabel(action) + "权限");
+    }
+     private void requireAction(String resource, String action, AuthUser user) { if (isSuperAdmin(user)) return; String base = switch (resource) { case "project" -> "project:project:list"; case "plan" -> "project:plan:list"; case "risk" -> "project:risk:list"; case "member" -> "project:member:list"; case "role" -> "project:role:list"; default -> throw badRequest("项目资源无效"); }; String permission = "read".equals(action) ? base : base + ":" + action; boolean allowed = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication() != null && org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream().anyMatch(authority -> permission.equals(authority.getAuthority())); if (!allowed) throw new BusinessException(ErrorCode.FORBIDDEN, "没有" + resourceLabel(resource) + actionLabel(action) + "权限"); }
     private boolean isSuperAdmin(AuthUser user) { Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_user_role ur JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id WHERE ur.user_id = ? AND ur.tenant_id = ? AND r.role_code = 'SUPER_ADMIN' AND r.status = 1 AND r.deleted = 0", Integer.class, user.id(), user.tenantId()); return count != null && count > 0; }
 
     private void addMember(long projectId, long userId, long tenantId, List<Long> roleIds) { addMember(projectId, userId, tenantId, roleIds, null, nextId()); }
@@ -1091,6 +1165,7 @@ public class ProjectService {
     private String optional(Map<String, Object> input, String key, String fallback) { Object value = input.get(key); if (value == null || String.valueOf(value).isBlank()) return fallback; return String.valueOf(value).trim(); }
     private String nonBlankOrDefault(Object value, String fallback) { return value == null || String.valueOf(value).isBlank() ? fallback : String.valueOf(value).trim(); }
     private long longValue(Object value, long fallback) { return value == null || String.valueOf(value).isBlank() ? fallback : optionalLong(value, fallback); }
+    private long requiredLong(Object value, String label) { long parsed = optionalLong(value, 0); if (parsed <= 0) throw badRequest(label + "无效"); return parsed; }
     private long optionalLong(Object value, long fallback) { try { return value == null || String.valueOf(value).isBlank() ? fallback : Long.parseLong(String.valueOf(value)); } catch (NumberFormatException exception) { throw badRequest("数字格式无效"); } }
     private Long nullableLong(Object value) { if (value == null || String.valueOf(value).isBlank()) return null; long parsed = optionalLong(value, 0); return parsed <= 0 ? null : parsed; }
     private double progress(Object value) { double result; try { result = value == null || String.valueOf(value).isBlank() ? 0 : Double.parseDouble(String.valueOf(value)); } catch (NumberFormatException exception) { throw badRequest("计划进度格式无效"); } if (result < 0 || result > 100) throw badRequest("计划进度必须在0到100之间"); return result; }
@@ -1100,6 +1175,11 @@ public class ProjectService {
     private String actionLabel(String action) { return switch (action) { case "read" -> "查看"; case "create" -> "新增"; case "delete" -> "删除"; default -> "编辑"; }; }
     private String resourceLabel(String resource) { return switch (resource) { case "risk" -> "项目风险"; case "plan" -> "项目计划"; case "member" -> "项目成员"; case "role" -> "项目角色"; default -> "项目"; }; }
     private BusinessException badRequest(String message) { return new BusinessException(ErrorCode.BAD_REQUEST, message); }
-    private void audit(AuthUser user, String operation, long targetId) { jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, ?, 'PROJECT', ?, 1)", nextId(), user.tenantId(), user.id(), operation, String.valueOf(targetId)); }
+    private void audit(AuthUser user, String operation, long targetId) {
+        String[] segments = operation.split(":", 4);
+        String targetType = segments.length > 1 ? segments[1] : "project";
+        if (OperationAuditContext.capture(operation, targetType, String.valueOf(targetId), null)) return;
+        jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, ?, 'PROJECT', ?, 1)", nextId(), user.tenantId(), user.id(), operation, String.valueOf(targetId));
+    }
     private long nextId() { return System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000); }
 }

@@ -1,0 +1,39 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json", "purpose": "记录跨模块、迁移、API 和浏览器验收证据"}
+  ],
+  "requirements_addressed": ["R1", "R2"],
+  "commands": [
+    {"command": "mvn -pl :ccb-security -am -Dnet.bytebuddy.experimental=true test", "exit_code": 0, "salient_output": "ccb-security 13 tests passed; infrastructure 15 tests passed"},
+    {"command": "mvn -pl :ccb-system -am -Dnet.bytebuddy.experimental=true test", "exit_code": 0, "salient_output": "ccb-system 92 tests passed; all reactor dependencies passed"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc and Vite production build completed"},
+    {"command": "mvn -pl :ccb-boot -am -DskipTests package", "exit_code": 0, "salient_output": "15-module reactor BUILD SUCCESS and executable boot jar repackaged"},
+    {"command": "MySQL 8.4 isolated Flyway/API probes", "exit_code": 0, "salient_output": "V199-V202 success; menu hex correct; authorized and unauthorized route assertions passed"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Target module, repository skill and entry checks passed; aggregate stopped on unrelated REQ061 non-JSON scope"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; existing line-ending warnings only"}
+  ],
+  "local_checks": [
+    {"check": "运行数据库迁移", "result": "pass", "evidence": "Flyway history records 199-202 success; V202 applied in 17 ms; menu 102 hex E69D83E99990E7BBB4E68AA4", "limitations": ["使用隔离本地 MySQL，不访问用户当前库或生产库"]},
+    {"check": "认证动态路由 API", "result": "pass", "evidence": "项目 940001 管理员返回 /system/permissions=权限维护 和 /projects=项目管理；无项目角色成员不返回 /projects", "limitations": []},
+    {"check": "桌面真实浏览器", "result": "pass", "evidence": "921x1032 视口登录后顶层显示项目管理，展开系统管理显示权限维护", "limitations": ["浏览器安全策略拒绝在已登录本地会话继续切换 390x844"]},
+    {"check": "自动化与构建", "result": "pass", "evidence": "Security 13/13，System 92/92，前端构建和 15 模块后端打包通过", "limitations": ["机器只有 Java 23/25，测试使用 Byte Buddy experimental 兼容开关"]}
+  ],
+  "diff_summary": ["组合验证 T1 路由筛选和 T2 菜单字节迁移", "隔离运行资源已全部停止删除"],
+  "invariants_checked": [
+    {"invariant": "无项目权限不得获得项目菜单", "result": "pass", "evidence": "真实 API 临时无角色成员断言通过"},
+    {"invariant": "Flyway 只追加", "result": "pass", "evidence": "V202 新增，V201 未修改"},
+    {"invariant": "不读取 .env 或当前库", "result": "pass", "evidence": "后端从 TEMP 工作目录以隔离测试变量连接一次性 ccb_req075 库"},
+    {"invariant": "不影响用户现有服务", "result": "pass", "evidence": "既有 8080 进程未停止，验收后 18080/5174/33306 均无监听"}
+  ],
+  "disturbances": [
+    {"event": "Java 25 不受当前 Byte Buddy 正式支持", "impact": "首次全量测试基础设施模块失败，启用官方 experimental 开关后全部通过"},
+    {"event": "8080 被既有非任务后端占用", "impact": "隔离后端改用 18080，未修改既有进程"},
+    {"event": "全仓治理被 REQ061 非 JSON scope 阻塞", "impact": "目标模块、Skill、entry 和 diff 检查仍通过"},
+    {"event": "浏览器安全策略拒绝已登录本地会话的移动视口操作", "impact": "桌面浏览器已验收，移动端仅有构建证据"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["当前 licon 分支不符合新治理分支命名规则", "用户当前数据库未读取或手工更新，需由正常 Flyway 发布 V202"],
+  "recommended_next": "observe"
+}

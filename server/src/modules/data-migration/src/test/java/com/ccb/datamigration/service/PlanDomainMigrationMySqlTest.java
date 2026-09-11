@@ -60,7 +60,7 @@ class PlanDomainMigrationMySqlTest {
                     )
                     """);
 
-            for (String statement : readMigrationStatements("V168__data_migration_plan_domain.sql")) {
+            for (String statement : readMigrationStatements("V169__data_migration_plan_domain.sql")) {
                 execute(connection, statement);
             }
 

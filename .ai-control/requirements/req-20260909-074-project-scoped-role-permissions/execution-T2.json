@@ -1,0 +1,37 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/SystemController.java", "purpose": "Expose permission catalog CRUD endpoints."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java", "purpose": "Implement tenant-scoped permission catalog validation, immutable codes, reference protection and audit."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "purpose": "Expose project-role permission read/write endpoints."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Persist role assignments and enforce project-scoped business actions with owner/PM fallback and multi-role union."},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/service/SystemPermissionCatalogTest.java", "purpose": "Verify immutable codes and reference-protected deletion."},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionServiceTest.java", "purpose": "Verify business-only assignment and project authorization SQL."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R4", "R5"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" \"-DskipTests\" package", "exit_code": 1, "salient_output": "Initial compile found missing requiredLong helper in the in-scope ProjectService change."},
+    {"command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" \"-DskipTests\" package", "exit_code": 0, "salient_output": "Reactor build success after bounded helper correction."},
+    {"command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" test", "exit_code": 0, "salient_output": "91 tests, 0 failures, 0 errors; reactor build success."}
+  ],
+  "local_checks": [
+    {"check": "System module regression", "result": "pass", "evidence": "All 91 target and dependency tests passed.", "limitations": ["No live MySQL/API sample yet."]},
+    {"check": "Authorization decision matrix", "result": "pass", "evidence": "Project action SQL accepts super admin, owner, PM or any assigned role permission and scopes every join by tenant/project.", "limitations": ["Request header/path consistency is implemented in T3."]}
+  ],
+  "diff_summary": [
+    "Added system permission maintenance CRUD without reusing a logical-delete resource abstraction incompatible with sys_menu_permission.",
+    "Added project role permission catalog/read/save and permission counts.",
+    "Moved all project-owned service actions to project-role authorization; retained projectless workbench/create/options compatibility.",
+    "Removed role-permission rows when deleting a role or project."
+  ],
+  "invariants_checked": [
+    {"invariant": "System permissions remain global.", "result": "pass", "evidence": "SystemService continues to authorize through sys_role_permission."},
+    {"invariant": "Project roles cannot grant system permissions.", "result": "pass", "evidence": "Catalog and save validation exclude permission_code LIKE system:%."},
+    {"invariant": "Writes are audited.", "result": "pass", "evidence": "Catalog and project role assignment mutations call existing audit helpers."}
+  ],
+  "disturbances": [{"event": "Initial T2 compile exposed a missing local numeric helper.", "impact": "Corrected inside ProjectService; successful package and test runs followed."}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Header/path project-context consistency and dynamic route authority remain T3."],
+  "recommended_next": "observe"
+}

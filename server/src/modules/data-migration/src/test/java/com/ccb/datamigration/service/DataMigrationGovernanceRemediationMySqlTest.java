@@ -276,7 +276,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
 
         // 夹具按 V175（system_id 下线）+ V177（table_code/field_code 主键）收敛后的结构创建；
         // V175 的 DDL 行为由 v175MigratesPlanAndMeetingSystemToSystemCode 覆盖，此处基线即目标避免中间迁移与收敛后结构冲突。
-        assertTrue(flyway("175", "175").migrate().success);
+        assertTrue(flyway("176", "176").migrate().success);
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
@@ -448,7 +448,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
             execute(connection, "INSERT INTO dm_target_table (id, tenant_id, project_id, table_code, system_code, system_id) VALUES (1, 1, 100, 'TBL-1', 'SYS-2', 20)");
         }
 
-        assertTrue(flyway("174", "175").migrate().success);
+        assertTrue(flyway("175", "176").migrate().success);
         try (Connection connection = connection()) {
             // id 引用列全部下线
             for (String[] pair : new String[][]{
@@ -494,7 +494,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     CREATE TABLE arch_physical_subsystem (
                         id BIGINT PRIMARY KEY,
                         tenant_id BIGINT NOT NULL,
-                        code VARCHAR(32) NOT NULL,
+                        code VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                         name VARCHAR(200) NOT NULL,
                         short_name VARCHAR(100) NOT NULL,
                         deleted TINYINT NOT NULL DEFAULT 0,
@@ -507,7 +507,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
                         issue_code VARCHAR(96) NOT NULL,
-                        system_code VARCHAR(96) NULL,
+                        system_code VARCHAR(96) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
                         deleted TINYINT NOT NULL DEFAULT 0
                     )
                     """);
@@ -517,7 +517,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
                         table_code VARCHAR(64) NOT NULL,
-                        system_code VARCHAR(64) NOT NULL,
+                        system_code VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                         table_name_en VARCHAR(128) NOT NULL,
                         table_name_cn VARCHAR(128) NOT NULL,
                         table_category VARCHAR(32) NOT NULL,
@@ -529,7 +529,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                         id BIGINT PRIMARY KEY AUTO_INCREMENT,
                         tenant_id BIGINT NOT NULL DEFAULT 1,
                         project_id BIGINT NOT NULL,
-                        physical_subsystem_code VARCHAR(64) NULL,
+                        physical_subsystem_code VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
                         deleted TINYINT NOT NULL DEFAULT 0
                     )
                     """);
@@ -557,7 +557,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("170", "171").migrate().success);
+        assertTrue(flyway("171", "172").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(10L, valueLong(connection, "SELECT system_id FROM dm_issue WHERE id = 1"));
             assertEquals(null, valueLong(connection, "SELECT system_id FROM dm_issue WHERE id = 2"));
@@ -632,7 +632,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("171", "172").migrate().success);
+        assertTrue(flyway("172", "173").migrate().success);
         try (Connection connection = connection()) {
             // 旧含 deleted 唯一键已删除
             for (String[] pair : new String[][]{
@@ -713,7 +713,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("172", "173").migrate().success);
+        assertTrue(flyway("173", "174").migrate().success);
         try (Connection connection = connection()) {
             assertTrue(value(connection, """
                     SELECT column_comment FROM information_schema.columns
@@ -899,7 +899,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
             execute(connection, "INSERT INTO dm_component (tenant_id, project_id, system_code, enabled, owner_id) VALUES (1, 10, 'SYS-1', 1, 1), (1, 20, 'SYS-2', 1, 1)");
         }
 
-        assertTrue(flyway("175", "176").migrate().success);
+        assertTrue(flyway("176", "177").migrate().success);
         try (Connection connection = connection()) {
             // 迁移追加 project_id（BIGINT NOT NULL DEFAULT 0）与项目级审计索引
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'dm_operation_log' AND column_name = 'project_id' AND data_type = 'bigint' AND is_nullable = 'NO' AND column_default = '0'"));
@@ -1167,7 +1167,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
                     """);
         }
 
-        assertTrue(flyway("176", "177").migrate().success);
+        assertTrue(flyway("177", "178").migrate().success);
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
@@ -1451,7 +1451,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
             execute(connection, "INSERT INTO dm_mapping_doc (id, tenant_id, project_id, doc_code, doc_name) VALUES (7001, 1, 10, 'MAP-1', '映射一')");
         }
 
-        assertTrue(flyway("176", "178").migrate().success);
+        assertTrue(flyway("177", "179").migrate().success);
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());

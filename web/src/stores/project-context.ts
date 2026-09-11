@@ -1,46 +1,68 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getProjectWorkbench } from '../api/project'
+import { PROJECT_CONTEXT_ID_STORAGE_KEY } from '../api/http'
 import { apiErrorMessage } from '../api/error'
 import type { ProjectContextItem, ProjectContextProvider } from '../types/project-context'
+import type { Project } from '../types/project'
 
 const STORAGE_KEY = 'ccb.current_project_ref'
 
+function projectContextItem(project: Project): ProjectContextItem {
+  return {
+    ref: project.project_code,
+    name: project.project_name,
+    shortName: project.project_code,
+    status: project.status,
+    creationType: project.creation_type ?? 'NEW'
+  }
+}
+
 class ProjectApiContextProvider implements ProjectContextProvider {
+  readonly projectIds = new Map<string, number>()
   async list(): Promise<ProjectContextItem[]> {
     const response = await getProjectWorkbench()
     const projects = Array.isArray(response.data.data) ? response.data.data : []
-    return projects.map(project => ({
-      ref: project.project_code,
-      name: project.project_name,
-      shortName: project.project_code,
-      status: project.status
-    }))
+    this.projectIds.clear()
+    projects.forEach(project => this.projectIds.set(project.project_code, project.id))
+    return projects.map(projectContextItem)
   }
   readSelection() { return localStorage.getItem(STORAGE_KEY) }
-  saveSelection(projectRef: string) { localStorage.setItem(STORAGE_KEY, projectRef) }
+  saveSelection(projectRef: string) {
+    localStorage.setItem(STORAGE_KEY, projectRef)
+    const projectId = this.projectIds.get(projectRef)
+    if (projectId) localStorage.setItem(PROJECT_CONTEXT_ID_STORAGE_KEY, String(projectId))
+    else localStorage.removeItem(PROJECT_CONTEXT_ID_STORAGE_KEY)
+  }
 }
 
-const provider: ProjectContextProvider = new ProjectApiContextProvider()
+const provider = new ProjectApiContextProvider()
 
 export const useProjectContextStore = defineStore('project-context', () => {
   const projects = ref<ProjectContextItem[]>([])
   const currentRef = ref('')
   const loading = ref(false)
   const error = ref('')
+  const savedDuringLoad = new Map<string, ProjectContextItem>()
   const current = computed(() => projects.value.find(item => item.ref === currentRef.value) || projects.value[0] || null)
+  const currentId = computed(() => current.value ? provider.projectIds.get(current.value.ref) || null : null)
   async function initialize(force = false) {
     if (loading.value || (!force && projects.value.length)) return
     loading.value = true
     error.value = ''
     try {
-      projects.value = await provider.list()
+      const loaded = await provider.list()
+      // A list started before a save must not replace the confirmed metadata.
+      const merged = new Map(loaded.map(item => [item.ref, item]))
+      savedDuringLoad.forEach((item, key) => merged.set(key, item))
+      projects.value = [...merged.values()]
       const saved = provider.readSelection()
       currentRef.value = projects.value.some(item => item.ref === saved) ? String(saved) : projects.value[0]?.ref || ''
       if (currentRef.value) provider.saveSelection(currentRef.value)
     } catch (cause: unknown) {
       error.value = apiErrorMessage(cause, '项目列表加载失败，请稍后重试')
     } finally {
+      savedDuringLoad.clear()
       loading.value = false
     }
   }
@@ -56,5 +78,16 @@ export const useProjectContextStore = defineStore('project-context', () => {
   function canAccess(projectRef: string) {
     return projects.value.some(item => item.ref === projectRef)
   }
-  return { projects, currentRef, current, loading, error, initialize, retry, select, canAccess }
+  function projectIdFor(projectRef: string) {
+    return provider.projectIds.get(projectRef) || null
+  }
+  function syncProject(project: Project) {
+    const item = projectContextItem(project)
+    provider.projectIds.set(item.ref, project.id)
+    const index = projects.value.findIndex(value => value.ref === item.ref)
+    if (index < 0) projects.value.push(item)
+    else projects.value[index] = item
+    if (loading.value) savedDuringLoad.set(item.ref, item)
+  }
+  return { projects, currentRef, current, currentId, loading, error, initialize, retry, select, canAccess, projectIdFor, syncProject }
 })

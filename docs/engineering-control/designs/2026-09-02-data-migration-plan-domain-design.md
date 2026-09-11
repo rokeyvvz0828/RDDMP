@@ -13,7 +13,7 @@
 ## 方案范式
 完全对标 `ReportService`/`ReportController`/`ReportRecycleBinSource`（文件型内容从通用链路提升为专属域的先例）与 `MeetingController` 的多附件范式。
 
-## 数据库设计（V168__data_migration_plan_domain.sql，追加式）
+## 数据库设计（V169__data_migration_plan_domain.sql，追加式）
 `dm_plan` 表（V162 建表，本次域化；核实为空表，不回填）新增列：
 
 | 列 | 类型 | 说明 |

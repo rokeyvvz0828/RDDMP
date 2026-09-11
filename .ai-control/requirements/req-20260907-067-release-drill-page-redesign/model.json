@@ -1,0 +1,272 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "ReleaseDrillExecutionView local state, rendering and overlays"
+    ],
+    "environment": [
+      "Existing release CRUD APIs",
+      "Auth store",
+      "Project-key parent remount",
+      "Element Plus and semantic CSS"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "rounds",
+      "owner": "ReleaseDrillExecutionView",
+      "valid_values": [
+        "Original typed component state"
+      ]
+    },
+    {
+      "name": "selectedId",
+      "owner": "ReleaseDrillExecutionView",
+      "valid_values": [
+        "Original typed component state"
+      ]
+    },
+    {
+      "name": "roundForm/stepForm",
+      "owner": "ReleaseDrillExecutionView",
+      "valid_values": [
+        "Original typed component state"
+      ]
+    },
+    {
+      "name": "roundDialog/stepDrawer",
+      "owner": "ReleaseDrillExecutionView",
+      "valid_values": [
+        "Original typed component state"
+      ]
+    },
+    {
+      "name": "saving/stepSaving",
+      "owner": "ReleaseDrillExecutionView",
+      "valid_values": [
+        "Original typed component state"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "桌面使用窄轮次导航和宽演练详情，保持轮次选择与刷新。",
+      "transitions": [
+        "Project-scoped API state",
+        "Selection or overlay event",
+        "Vue template and component-local CSS"
+      ],
+      "outputs": [
+        "Specified round/step view and preserved write contract"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "当前轮次的方案、环境、计划时间、状态和结果清晰分区，保留轮次维护弹窗及所有原字段。",
+      "transitions": [
+        "Project-scoped API state",
+        "Selection or overlay event",
+        "Vue template and component-local CSS"
+      ],
+      "outputs": [
+        "Specified round/step view and preserved write contract"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "步骤保持顺序展示和抽屉维护，桌面扩大节点空间，保留步骤原有功能。",
+      "transitions": [
+        "Project-scoped API state",
+        "Selection or overlay event",
+        "Vue template and component-local CSS"
+      ],
+      "outputs": [
+        "Specified round/step view and preserved write contract"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "手机改为轮次选择器与纵向步骤，弹层和主题保持可用。",
+      "transitions": [
+        "Project-scoped API state",
+        "Selection or overlay event",
+        "Vue template and component-local CSS"
+      ],
+      "outputs": [
+        "Specified round/step view and preserved write contract"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "保留项目隔离、权限、CRUD 请求参数和全部原异常反馈。",
+      "transitions": [
+        "Project-scoped API state",
+        "Selection or overlay event",
+        "Vue template and component-local CSS"
+      ],
+      "outputs": [
+        "Specified round/step view and preserved write contract"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "ReleaseDrillExecutionDto/Write and ReleaseDrillStepDto/Write",
+      "producers": [
+        "api/release.ts"
+      ],
+      "consumers": [
+        "ReleaseDrillExecutionView"
+      ],
+      "invariant": "Preserve projectId/roundId/id/rowVersion, fields and CRUD routes"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "State/CRUD invariants and selection",
+      "method": "Repeatable Node assertions with Vue/TypeScript and synthetic API stubs",
+      "blind_spots": [
+        "Real backend authorization and browser layout"
+      ],
+      "independence": "Behavior assertions independent of intended CSS"
+    },
+    {
+      "id": "S2",
+      "target": "Vue/TS template correctness",
+      "method": "npm --prefix web run build; baseline passed 28.50s",
+      "blind_spots": [
+        "Runtime rendering and data"
+      ],
+      "independence": "Compiler diagnostics"
+    },
+    {
+      "id": "S3",
+      "target": "Desktop/mobile layout and actual UI",
+      "method": "Browser DOM/screenshots at specified viewports after access authorization",
+      "blind_spots": [
+        "Currently awaiting browser authorization; no evidence yet"
+      ],
+      "independence": "Actual rendered behavior"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "Local template/styles and bounded state guards",
+      "action": "Approved T1/T2 component edits",
+      "authority": "Current licon scope approved by user",
+      "impact_radius": "ReleaseDrillExecutionView only",
+      "rollback": "Reverse only current task hunks"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "observable": "partial"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "Prior browser authorization timeouts",
+      "effect": "Rendered acceptance currently uncertain",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "Global style and existing dirty files",
+      "effect": "Possible CSS interference; must preserve prior work",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "Requests and overlay animation",
+      "consequence": "Late responses or transient dimensions",
+      "sampling_rule": "Await API and final render; compare target project/round"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Original DTO covers displayed details",
+      "evidence": "Read component and API type contracts",
+      "falsifier": "Live response missing values"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Use compiler/state checks now; actual browser acceptance remains mandatory before convergence"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Use compiler/state checks now; actual browser acceptance remains mandatory before convergence"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Use compiler/state checks now; actual browser acceptance remains mandatory before convergence"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Use compiler/state checks now; actual browser acceptance remains mandatory before convergence"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "partial",
+      "controllable": "yes",
+      "action": "Use compiler/state checks now; actual browser acceptance remains mandatory before convergence"
+    }
+  ],
+  "model_status": "ready"
+}

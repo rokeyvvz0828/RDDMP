@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260907-066-release-issue-views",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-07-release-issue-views-design.md",
+  "objective": "Make release issues readable and maintainable through drawers with interchangeable card/list presentation.",
+  "users": [
+    "Project members viewing release issues",
+    "Authorized issue maintainers"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Read-only issue details are available from either view.",
+      "acceptance": [
+        "Click title or detail control and read all returned issue fields without entering an editable form."
+      ],
+      "counterexample": [
+        "Only maintainers can read issue descriptions through the edit form."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and existing project contracts"
+    },
+    {
+      "id": "R2",
+      "statement": "Create and edit issues in drawers with existing fields, validation and feedback.",
+      "acceptance": [
+        "Original required fields and CLOSED timestamp rule apply; footer is reachable; failure retains input and concurrent submits are prevented."
+      ],
+      "counterexample": [
+        "Create still opens the old dialog or cancellation mutates the source record."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and existing project contracts"
+    },
+    {
+      "id": "R3",
+      "statement": "Switch card/list presentation without losing query or pagination context.",
+      "acceptance": [
+        "Current record IDs, total, page, page size and filters remain unchanged; switching alone makes no list request."
+      ],
+      "counterexample": [
+        "Switching resets the page or shows a different data set."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and existing project contracts"
+    },
+    {
+      "id": "R4",
+      "statement": "Both views and drawers remain usable on desktop and mobile.",
+      "acceptance": [
+        "Desktop defaults to list and mobile to cards on initial entry; explicit user choice survives resize; 375x812, 390x844, 430x932 and desktop have no page overflow."
+      ],
+      "counterexample": [
+        "Mobile mode is forced after every resize, or drawer footer is clipped."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and existing project contracts"
+    },
+    {
+      "id": "R5",
+      "statement": "Preserve project isolation, service-side pagination and permission/error/cancel semantics.",
+      "acceptance": [
+        "Read-only viewers can open details without write controls; project switching clears old details; cancelled deletion sends no delete request or failure message."
+      ],
+      "counterexample": [
+        "A previous project's issue remains in the drawer after switching."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and existing project contracts"
+    }
+  ],
+  "invariants": [
+    "Permissions and project boundaries unchanged",
+    "One records and pagination state for both views",
+    "Details do not mutate the editing form or source record"
+  ],
+  "constraints": [
+    "Only modify the issue component and this task's metadata",
+    "Preserve ReleaseIssueDto/Write, projectId, rowVersion and API contracts",
+    "No backend, SQL, public UI, shared styles, router or dependency changes",
+    "No production/.env access, commit, push or branch switch",
+    "Preserve all pre-existing worktree changes"
+  ],
+  "non_goals": [
+    "New APIs or database fields",
+    "Persistent view preferences",
+    "Changes to other release pages"
+  ],
+  "selected_approach": {
+    "name": "Detail and maintenance drawers plus shared-data dual views",
+    "reason": "Preserves browsing context and avoids route changes",
+    "alternatives": [
+      {
+        "name": "Separate detail route",
+        "rejected_because": "Adds navigation and return steps without a requested permalink requirement"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+      ],
+      "outside": [
+        "release API",
+        "Parent project switch",
+        "Global UI/theme"
+      ]
+    },
+    "components": [
+      {
+        "name": "ReleaseIssueTrackingView",
+        "responsibility": "Shared query state, issue presentation and drawer modes",
+        "depends_on": [
+          "UiPageHeader",
+          "UiToolbar",
+          "UiStatusTag",
+          "UiEmptyState",
+          "Element Plus",
+          "api/release.ts",
+          "auth store"
+        ]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "ReleaseIssueDto and ReleaseIssueWrite",
+        "producer": "web/src/api/release.ts",
+        "consumers": [
+          "ReleaseIssueTrackingView"
+        ],
+        "contract": "Use full list DTO for detail; keep create/update/delete parameters and concurrency version"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "Current project and query",
+        "transitions": [
+          "Load paginated issues",
+          "Render selected view",
+          "Open details or copied edit form",
+          "Use existing API and refresh after save"
+        ],
+        "output": "Project-scoped issue data with unchanged query context"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "403 or load error",
+      "behavior": "Existing forbidden/error result",
+      "recovery": "Existing permission grant or retry"
+    },
+    {
+      "condition": "Validation or save failure",
+      "behavior": "Keep input and original validation rules",
+      "recovery": "Correct fields or retry"
+    },
+    {
+      "condition": "Dirty form dismissal",
+      "behavior": "Confirm discard; cancellation retains draft",
+      "recovery": "Continue editing or explicitly discard"
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "View entry independent of manage permission; write controls retain manage guard",
+      "Plain text detail, no v-html"
+    ],
+    "performance": [
+      "No new fetch on view switch or detail open"
+    ],
+    "compatibility": [
+      "Existing Vue/Element Plus and semantic tokens"
+    ],
+    "operations": [
+      "Local-only verification; no server restart required"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "signal": "Matching records, contexts and accessible drawer controls",
+      "method": "Build, diff review and specified desktop/mobile browser journeys including permission and write fixtures where available"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Current list responses contain full detail values",
+      "basis": "ReleaseIssueDto includes every long-text field and display name",
+      "falsifier": "Runtime list response omits or truncates detail fields"
+    },
+    {
+      "text": "Local browser test session can exercise relevant roles and fixtures",
+      "basis": "Existing local app and prior test session",
+      "falsifier": "Unavailable account, session or browser capability"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Use drawers for detail and maintenance",
+      "reason": "Avoid leaving current query",
+      "source": "User confirmed the proposed design"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Separate view state or aliased form data drifts",
+      "impact": "Wrong rows or unintended edits",
+      "mitigation": "Share records and pagination; copy values into the form"
+    },
+    {
+      "risk": "Teleport styles and small-screen dimensions",
+      "impact": "Unreachable controls or overflow",
+      "mitigation": "Component-qualified styles and multi-viewport checks"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "User replied 'confirm' to the proposed design. confirmed_at is the approval recording timestamp, not an asserted message timestamp; no separate Owner approval is claimed.",
+    "confirmed_at": "2026-09-07T14:05:44+08:00"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {"inside": ["local development schema", "preserved Flyway lineage", "ProjectService", "project selectors"], "environment": ["local MySQL8.4", "isolated restore container", "JBR17"]},
+  "state_variables": [{"name": "creation_type/schema/history/data", "owner": "development database", "valid_values": ["backed-up", "trial-verified", "migrated"]}],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "save type", "transitions": ["compatible migration", "updated service"], "outputs": ["persisted type"]},
+    {"requirement_id": "R2", "input": "existing rows", "transitions": ["add default NEW column"], "outputs": ["editable default"]},
+    {"requirement_id": "R3", "input": "saved response", "transitions": ["existing tested frontend synchronization"], "outputs": ["selector label"]},
+    {"requirement_id": "R4", "input": "schema reconciliation", "transitions": ["backup restore", "preserve all original values and release tables"], "outputs": ["unchanged authorization and business data"]}
+  ],
+  "interfaces": [{"name": "local Flyway location", "producers": ["verified historical SQL plus new additive compatibility SQL"], "consumers": ["local backend"], "invariant": "no history reset, checksum mismatch or fabricated success"}],
+  "sensors": [
+    {"id": "S1", "target": "database preservation", "method": "restore trial, schema comparison, original-column row hashes", "blind_spots": ["concurrent writes require final recheck"], "independence": "actual MySQL"},
+    {"id": "S2", "target": "backend/frontend", "method": "JUnit, frontend tests, health check", "blind_spots": ["authenticated browser remains unavailable"], "independence": "application execution"}
+  ],
+  "actuators": [{"id": "A3", "target": "local development runtime", "action": "restore exact historical scripts for validation and append compatible structural migrations", "authority": "user explicitly confirmed data retention and release-table protection", "impact_radius": "local development only", "rollback": "retain full backup; do not drop additive columns or overwrite concurrent data"}],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "partial"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2"], "observable": "partial"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2"], "observable": "partial"}
+  ],
+  "disturbances": [{"source": "divergent historical migration identities", "effect": "canonical classpath cannot validate current database", "detectable": true, "controllable": true}],
+  "delays": [{"source": "backend restart", "consequence": "old code persists until restart", "sampling_rule": "wait for healthy replacement process"}],
+  "assumptions": [{"text": "retained legacy columns can coexist with new structural contracts", "evidence": "old DM business tables empty; one snapshot row", "falsifier": "isolated migration or write-contract failure"}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "partial", "controllable": "yes", "action": "migration and service verification"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "default verification"},
+    {"requirement_id": "R3", "observable": "partial", "controllable": "yes", "action": "tests and manual acceptance disclosure"},
+    {"requirement_id": "R4", "observable": "partial", "controllable": "yes", "action": "preservation hashes and permission regression"}
+  ],
+  "model_status": "ready"
+}

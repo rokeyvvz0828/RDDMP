@@ -58,14 +58,14 @@ class IssueMigrationMySqlTest {
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'REPORT' AND asset_name = 'Keep report'"));
         }
 
-        assertTrue(flyway("156").migrate().success);
+        assertTrue(flyway("157").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'ISSUE'"));
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM dm_asset_relation WHERE source_asset_type = 'ISSUE'"));
             assertEquals(1, count(connection, "SELECT COUNT(*) FROM dm_asset WHERE asset_type = 'REPORT' AND asset_name = 'Keep report'"));
         }
 
-        assertTrue(flyway("157").migrate().success);
+        assertTrue(flyway("158").migrate().success);
         try (Connection connection = connection()) {
             assertEquals("STORED GENERATED", value(connection, """
                     SELECT EXTRA FROM information_schema.columns
@@ -137,7 +137,7 @@ class IssueMigrationMySqlTest {
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
                 .baselineOnMigrate(true)
-                .baselineVersion(MigrationVersion.fromVersion("155"))
+                .baselineVersion(MigrationVersion.fromVersion("156"))
                 .target(MigrationVersion.fromVersion(target))
                 .cleanDisabled(false)
                 .load();
@@ -153,7 +153,7 @@ class IssueMigrationMySqlTest {
 
     private void migrateFreshTo94() {
         prepareIsolatedSchema();
-        assertTrue(flyway("157").migrate().success);
+        assertTrue(flyway("158").migrate().success);
     }
 
     private void prepareIsolatedSchema() {

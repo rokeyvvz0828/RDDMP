@@ -47,7 +47,7 @@ module: business/data-migration
   统一回收站 `/api/data-migration/recycle-bin`。
 - 新建接口：`/api/data-migration/parameters` 的列表/详情/新增/编辑/删除、模板下载、导入、导出。
 - 数据 Owner：business/data-migration。
-- 数据库迁移：追加 `V197__data_migration_parameter_domain.sql`，不改历史脚本。
+- 数据库迁移：追加 `V198__data_migration_parameter_domain.sql`，不改历史脚本。
 - 脱敏示例：参数名称/说明仅使用本地虚构数据，不包含真实个人信息或生产数据。
 
 ## 验收标准
@@ -68,4 +68,3 @@ module: business/data-migration
 - 上线验证：本地启动 MySQL/MinIO/后端/前端，按角色在桌面与移动视口走通 筛选/新增/导入/编辑/删除/回收站 路径。
 - 风险与人工复核：数据库迁移属平台基础设施变更，需模块 Owner 复核；与其他未提交的 031 增量在同一工作区顺延开发，
   PR 边界由需求负责人确认。
-

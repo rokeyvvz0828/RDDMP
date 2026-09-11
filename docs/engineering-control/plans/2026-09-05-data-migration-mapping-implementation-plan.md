@@ -33,7 +33,7 @@
 
 | 路径 | 状态 | 职责与边界 |
 | --- | --- | --- |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_mapping_domain.sql` | existing-untracked | `mapping_type`、查询索引和 `DM_MAPPING_TYPE` 初始项；不得处理历史数据 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql` | existing-untracked | `mapping_type`、查询索引和 `DM_MAPPING_TYPE` 初始项；不得处理历史数据 |
 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java` | existing-untracked | 映射 CRUD、筛选、多附件、下载、授权、审计和回收站业务 |
 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java` | existing-untracked | `/api/data-migration/mappings*` HTTP 与 RBAC 边界 |
 | `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingRecycleBinSource.java` | existing-untracked | `MAPPING_DOC` 唯一统一回收站来源 |
@@ -86,7 +86,7 @@ T1 数据迁移契约
 
 #### 文件边界与接口
 
-- 修改：`server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_mapping_domain.sql`
+- 修改：`server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql`
 - 测试：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationMappingMigrationMySqlTest.java`
 - 消费：现有 `dm_mapping_doc`、`sys_dict_type`、`sys_config` 表结构。
 - 产出：非空 `mapping_type`、组合查询索引、启用的 `DM_MAPPING_TYPE.MIGRATE_OUT/MIGRATE_IN`。
@@ -94,7 +94,7 @@ T1 数据迁移契约
 - [ ] 步骤 1：建立无回填和非空字段迁移断言；执行指定 MySQL 测试，记录当前失败或基准信号。
 - [ ] 步骤 2：删除 `mapping_type DEFAULT ''` 和任何历史 `UPDATE`，保留追加、幂等的字段/索引/参数初始化。
 - [ ] 步骤 3：运行 `mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期测试通过、0 失败，若 Docker 不可用则明确记录跳过而不能宣称通过。
-- [ ] 步骤 4：检查 `rg -n "UPDATE dm_mapping_doc SET mapping_type|DEFAULT ''" V186__data_migration_mapping_domain.sql` 无命中，并保存证据。
+- [ ] 步骤 4：检查 `rg -n "UPDATE dm_mapping_doc SET mapping_type|DEFAULT ''" V187__data_migration_mapping_domain.sql` 无命中，并保存证据。
 
 #### 验收、证据与回滚
 

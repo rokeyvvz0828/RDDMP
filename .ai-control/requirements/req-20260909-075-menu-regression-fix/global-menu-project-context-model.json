@@ -1,0 +1,60 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": ["AuthRepository permission queries", "AuthService dynamic route filtering", "Vue Router child route metadata and beforeEach guard", "AppLayout project selector rendering", "AuthStore authorization snapshot"],
+    "environment": ["localStorage project selection", "local MySQL permission data", "browser viewport and Element Plus rendering", "existing project APIs and JWT filter"]
+  },
+  "state_variables": [
+    {"name": "route_context_mode", "owner": "Vue Router route meta", "valid_values": ["global", "project"]},
+    {"name": "stored_project_id", "owner": "project-context store/localStorage", "valid_values": ["absent", "accessible project ID"]},
+    {"name": "authorization_project_id", "owner": "AuthStore", "valid_values": ["null", "accessible project ID"]},
+    {"name": "dynamic_route_tree", "owner": "AuthService", "valid_values": ["system-only plus allowed global routes", "system plus current-project routes"]},
+    {"name": "project_selector_visible", "owner": "AppLayout", "valid_values": ["true", "false"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Navigation to a route marked projectContext=global", "transitions": ["router guard branches before projectContext.initialize", "AuthStore refreshes authorization without project ID", "AppLayout reads matched route metadata", "three selector sites use one computed visibility condition"], "outputs": ["No project initialization and no selector on /projects or /system/**", "stored project ID remains unchanged"]},
+    {"requirement_id": "R2", "input": "GET /api/auth/routes without X-Project-Id", "transitions": ["AuthService requests system permissions", "AuthRepository aggregates project:project:list from any tenant-accessible active project", "AuthService includes /projects only for this aggregate leaf permission"], "outputs": ["Authorized user receives /projects", "other-project-permission-only and no-permission users do not receive /projects"]},
+    {"requirement_id": "R3", "input": "Navigation to a project business route or request to a project API", "transitions": ["router guard retains projectContext.initialize for project routes", "HTTP interceptor provides stored X-Project-Id", "JwtAuthenticationFilter/AuthService validate accessible project context"], "outputs": ["Project route retains selector", "missing or forged project context remains rejected"]}
+  ],
+  "interfaces": [
+    {"name": "GET /api/auth/routes", "producers": ["AuthService", "AuthRepository"], "consumers": ["AuthStore", "AppLayout route menu"], "invariant": "Response shape remains RouteNode tree; only /projects eligibility changes"},
+    {"name": "route.meta.projectContext", "producers": ["router route records"], "consumers": ["router beforeEach", "AppLayout"], "invariant": "Only /projects and /system/** use global"},
+    {"name": "X-Project-Id", "producers": ["HTTP interceptor"], "consumers": ["JwtAuthenticationFilter", "project APIs"], "invariant": "Project APIs require an accessible matching project ID"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R2 dynamic route tree cases", "method": "AuthServiceProjectContextTest with mocked repository permission cases", "blind_spots": ["actual SQL membership query behavior"], "independence": "direct service-level route output assertion"},
+    {"id": "S2", "target": "R1/R3 TypeScript integration", "method": "npm --prefix web run build", "blind_spots": ["browser rendering and runtime navigation"], "independence": "Vue type checker and Vite compiler"},
+    {"id": "S3", "target": "R1/R2/R3 runtime behavior", "method": "isolated local API probes and browser routes at desktop/mobile", "blind_spots": ["production-only configuration"], "independence": "HTTP responses and rendered DOM"},
+    {"id": "S4", "target": "scope and whitespace integrity", "method": "git diff --check and task-scope review", "blind_spots": ["runtime authorization semantics"], "independence": "Git static validation"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "No-project dynamic route permission set", "action": "Add a tenant/accessibility-filtered aggregate project-management query and narrow project:access matching", "authority": "REQ-20260909-075 writable AuthRepository/AuthService paths", "impact_radius": "security dynamic routes", "rollback": "Revert T1 source and test changes"},
+    {"id": "A2", "target": "Global route initialization and selector rendering", "action": "Add explicit route metadata, guard branch, and shared selector condition", "authority": "REQ-20260909-075 writable router/AppLayout paths", "impact_radius": "frontend application shell", "rollback": "Revert T2 router and AppLayout changes"},
+    {"id": "A3", "target": "Acceptance evidence", "action": "Run focused tests, build, API probes, and browser checks", "authority": "local shell and browser without production access", "impact_radius": "local verification only", "rollback": "No product rollback required"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S3"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "stale stored project selection", "effect": "authorization snapshot may reflect prior project until global refresh", "detectable": true, "controllable": true},
+    {"source": "inactive member role or deleted project", "effect": "aggregate query may over-grant if filters diverge", "detectable": true, "controllable": true},
+    {"source": "unrelated user worktree changes", "effect": "baseline or build output can contain unrelated differences", "detectable": true, "controllable": false},
+    {"source": "local backend/browser environment unavailable", "effect": "runtime sensor S3 unavailable", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "async project context initialization and authorization refresh", "consequence": "navigation can briefly retain prior authorization snapshot", "sampling_rule": "await authorization refresh before inspecting dynamic routes"},
+    {"source": "browser reactive render after route navigation", "consequence": "selector DOM can lag route meta", "sampling_rule": "sample after navigation settles and DOM is rendered"}
+  ],
+  "assumptions": [
+    {"text": "The /projects menu catalog node has permission code project:access and project:project:list is its intended leaf grant", "evidence": "existing AuthService namespace matcher and approved design", "falsifier": "focused test or catalog data identifies another mapping"},
+    {"text": "Route meta is accessible through route.meta to both guard and AppLayout", "evidence": "existing router uses route meta for titles and permissions", "falsifier": "build or browser test shows metadata not propagated for a route"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Plan A2 with S2/S3"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Plan A1 with S1/S3"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Preserve existing paths and sample S1/S3"}
+  ],
+  "model_status": "ready"
+}

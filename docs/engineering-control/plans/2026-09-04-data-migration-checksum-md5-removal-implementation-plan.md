@@ -20,7 +20,7 @@
 
 ## 文件职责地图
 
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V174__data_migration_remove_checksum_md5.sql`（candidate-new）：V173 后幂等删除 7 张文件表的 MD5 索引和列。
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V175__data_migration_remove_checksum_md5.sql`（candidate-new）：V173 后幂等删除 7 张文件表的 MD5 索引和列。
 - `server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java`：文件表注册；移除 MD5 UNION SQL/参数生成。
 - `ContentFileAssetService.java`、`PlanService.java`、`ReportService.java`：移除摘要参数、校验、写入和查询投影；保留附件与业务编号流程。
 - `ContentAssetController.java`、`ReportController.java`：删除摘要参数和查重路由，保持认证/项目/实体授权。
@@ -49,7 +49,7 @@
 
 **文件：**
 - 修改：`docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml`，登记新迁移路径。
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V174__data_migration_remove_checksum_md5.sql`。
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V175__data_migration_remove_checksum_md5.sql`。
 - 修改：`server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java`、`PlanDomainMigrationMySqlTest.java`，移除对最终摘要列的正向断言并增加 V174 后列/索引缺失断言。
 
 **接口：**
@@ -58,13 +58,13 @@
 
 - [ ] **步骤 1：建立迁移基准**
 
-运行：`rg -n "checksum_md5|idx_.*_md5" server/src/platform/infrastructure/src/main/resources/db/migration/V162__data_migration_content_tables.sql server/src/platform/infrastructure/src/main/resources/db/migration/V163__data_migration_content_table_backfill.sql server/src/platform/infrastructure/src/main/resources/db/migration/V170__data_migration_md5_index_project_id.sql`
+运行：`rg -n "checksum_md5|idx_.*_md5" server/src/platform/infrastructure/src/main/resources/db/migration/V163__data_migration_content_tables.sql server/src/platform/infrastructure/src/main/resources/db/migration/V164__data_migration_content_table_backfill.sql server/src/platform/infrastructure/src/main/resources/db/migration/V171__data_migration_md5_index_project_id.sql`
 
 预期：只确认历史迁移确实创建/引用摘要列，不能修改这些脚本；记录命中和版本顺序。
 
 - [ ] **步骤 2：登记写入边界**
 
-在 `codex-task-scope.yaml` 的 `writable_paths` 增加 `V174__data_migration_remove_checksum_md5.sql`。
+在 `codex-task-scope.yaml` 的 `writable_paths` 增加 `V175__data_migration_remove_checksum_md5.sql`。
 
 预期：当前 scope 检查将允许新迁移，未授权路径仍不变；证据保存 scope diff。
 

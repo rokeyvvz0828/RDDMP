@@ -86,7 +86,7 @@ class TopicDomainMigrationMySqlTest {
             execute(connection, "INSERT INTO dm_topic (id, tenant_id, project_id, doc_code, doc_name, owner_id) " +
                     "VALUES (1, 1, 100, 'TOPIC-LEGACY-1', '存量专题', 5)");
 
-            List<String> statements = readMigrationStatements("V180__data_migration_topic_domain.sql");
+            List<String> statements = readMigrationStatements("V181__data_migration_topic_domain.sql");
             for (String statement : statements) {
                 execute(connection, statement);
             }

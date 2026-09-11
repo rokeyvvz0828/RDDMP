@@ -15,7 +15,7 @@ module: business/data-migration + platform/infrastructure
 ## 现状与根因
 1. `V84__data_migration_component_enrichment.sql` 对菜单区间 700-744 统一生成 read/create/update/delete 权限节点，
    其中包含目录 720（`/data-migration/content`）和 740（`/data-migration/base`）；
-2. 前置任务新增的 `V192__data_migration_remove_directory_write_permissions.sql` 只删除 7200-7203 / 7400-7403，
+2. 前置任务新增的 `V193__data_migration_remove_directory_write_permissions.sql` 只删除 7200-7203 / 7400-7403，
    遗漏了 `menu_id*10+4` 的删除节点（实际数据：7204、7404），因此权限管理页仍看到“删除”；
 3. `V190` 对 `sys_menu_permission` 的斜杠清理只覆盖基础权限码，未覆盖 `:create/:update/:delete` 变体，
    导致 726-731 子菜单（参数/依赖/程序/专题/投产演练/问题）仍残留 `data-migration:content/…:create` 斜杠权限码。
