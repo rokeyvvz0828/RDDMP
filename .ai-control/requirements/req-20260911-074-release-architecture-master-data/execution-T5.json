@@ -1,0 +1,31 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "goal": "将需求管理中的当前项目有效需求接入配置管理版本申请",
+  "requirements_addressed": ["R3", "R4", "R5", "R6", "R7"],
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement", "purpose": "提供按租户、项目隔离的需求只读查询契约"},
+    {"path_or_resource": "server/src/modules/release", "purpose": "消费需求目录、提供选项 API 并在写入前校验需求编号"},
+    {"path_or_resource": "server/src/platform/boot", "purpose": "在组合根适配 requirement 与 release 模块"},
+    {"path_or_resource": "web/src/modules/release/components/ReleaseApplicationDrawer.vue", "purpose": "使用项目化需求多选替代自由录入"}
+  ],
+  "commands": [
+    {"command": "Java 17 Maven compile", "exit_code": 0, "salient_output": "16 个 Maven 模块全部编译通过"},
+    {"command": "requirement/release/boot 聚焦测试", "exit_code": 0, "salient_output": "31 tests passed"},
+    {"command": "ccb-release 模块全量测试", "exit_code": 0, "salient_output": "104 tests passed"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "TypeScript 检查与 Vite 生产构建通过"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "208 migrations validated"},
+    {"command": "全 Maven reactor test", "exit_code": 1, "salient_output": "data-migration 模块 211 tests: 6 failures, 9 errors；旧迁移文件名断言和缺少 arch_physical_subsystem.project_id 的测试基线问题；其前 10 个模块通过"}
+  ],
+  "invariants_checked": [
+    "requirement 模块仍拥有需求数据，release 仅通过公共只读契约消费",
+    "租户、项目、删除状态和终止状态均在查询侧过滤",
+    "非紧急申请保存、更新和冲突预览均在持久化前校验需求",
+    "历史申请继续按已保存的需求编号快照展示"
+  ],
+  "disturbances": [
+    "data-migration 合并后测试仍引用重命名前的 V156/V157/V161/V169/V179/V180 文件",
+    "部分 data-migration Testcontainers 基线未迁移 arch_physical_subsystem.project_id，导致 BadSqlGrammarException"
+  ],
+  "recommended_next": "提交功能分支并合并到 rokey，使用 Java 17 重启后进行只读浏览器冒烟"
+}

@@ -7,6 +7,7 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.release.application.model.ReleaseApplicationModels.ArtifactType;
 import com.ccb.release.application.model.ReleaseApplicationModels.DeliveryInput;
 import com.ccb.release.integration.ReleaseArchitectureDirectory;
+import com.ccb.release.integration.ReleaseRequirementDirectory;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.ProjectAccessService;
@@ -23,11 +24,14 @@ import java.util.Set;
 public class ReleaseMasterDataService {
     private final ProjectAccessService projectAccessService;
     private final ReleaseArchitectureDirectory directory;
+    private final ReleaseRequirementDirectory requirementDirectory;
 
     public ReleaseMasterDataService(ProjectAccessService projectAccessService,
-                                    ReleaseArchitectureDirectory directory) {
+                                    ReleaseArchitectureDirectory directory,
+                                    ReleaseRequirementDirectory requirementDirectory) {
         this.projectAccessService = projectAccessService;
         this.directory = directory;
+        this.requirementDirectory = requirementDirectory;
     }
 
     public PageResult<PhysicalSubsystemOption> physicalSubsystems(String projectRef, long page, long size,
@@ -46,6 +50,34 @@ public class ReleaseMasterDataService {
         var result = directory.searchDeliveryUnits(actor, project.id(), physicalId, new PageQuery(page, size), keyword);
         return new PageResult<>(result.records().stream().map(ReleaseMasterDataService::option).toList(),
                 result.total(), result.page(), result.size());
+    }
+
+    public PageResult<RequirementOption> requirements(String projectRef, long page, long size,
+                                                       String keyword, AuthUser actor) {
+        ProjectAccess project = projectAccessService.requireAccessible(projectRef, actor);
+        var result = requirementDirectory.searchActive(actor, project.projectRef(), new PageQuery(page, size), keyword);
+        return new PageResult<>(result.records().stream()
+                .map(item -> new RequirementOption(item.id(), item.number(), item.name(), item.status()))
+                .toList(), result.total(), result.page(), result.size());
+    }
+
+    public List<String> requireActiveRequirements(ProjectAccess project, List<String> values, AuthUser actor) {
+        List<String> requested = normalizeRequirementCodes(values);
+        if (requested.isEmpty()) {
+            return List.of();
+        }
+        var resolved = requirementDirectory.resolveActive(actor, project.projectRef(), new LinkedHashSet<>(requested))
+                .orElseThrow(() -> conflict("关联需求已失效、已终止或不属于当前项目，请重新选择"));
+        Map<String, ReleaseRequirementDirectory.Requirement> byNumber = new HashMap<>();
+        resolved.forEach(item -> byNumber.put(item.number(), item));
+        List<String> ordered = new ArrayList<>();
+        for (String number : requested) {
+            if (!byNumber.containsKey(number)) {
+                throw conflict("关联需求已失效、已终止或不属于当前项目，请重新选择");
+            }
+            ordered.add(number);
+        }
+        return List.copyOf(ordered);
     }
 
     public TrustedSelection requireActiveSelection(ProjectAccess project, String physicalSubsystemId,
@@ -115,6 +147,24 @@ public class ReleaseMasterDataService {
         }
     }
 
+    private static List<String> normalizeRequirementCodes(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        if (values.size() > 100) {
+            throw badRequest("单张申请最多关联 100 个需求");
+        }
+        Set<String> unique = new LinkedHashSet<>();
+        for (String value : values) {
+            String normalized = value == null ? "" : value.trim();
+            if (normalized.isEmpty() || normalized.length() > 128) {
+                throw badRequest("需求编号无效");
+            }
+            unique.add(normalized);
+        }
+        return List.copyOf(unique);
+    }
+
     private static BusinessException badRequest(String message) {
         return new BusinessException(ErrorCode.BAD_REQUEST, message);
     }
@@ -127,6 +177,8 @@ public class ReleaseMasterDataService {
 
     public record DeliveryUnitOption(String id, String code, String name, String artifactType,
                                      boolean selectable, String unavailableReason) {}
+
+    public record RequirementOption(long id, String number, String name, String status) {}
 
     public record TrustedSelection(String subsystemId, String subsystemCode, String subsystemName,
                                    List<TrustedDeliveryUnit> deliveryUnits) {}

@@ -8,12 +8,14 @@ import {
   listReleaseApplicationAttachments,
   listReleaseDeliveryUnitOptions,
   listReleasePhysicalSubsystemOptions,
+  listReleaseRequirementOptions,
   type ProductionEntryDto,
   type ReleaseApplicationDto,
   type ReleaseApplicationWrite,
   type ReleaseAttachmentInput,
   type ReleaseDeliveryUnitOption,
   type ReleasePhysicalSubsystemOption,
+  type ReleaseRequirementOption,
   type ReleaseWindowDto
 } from '../../../api/release'
 import type { ProjectContextItem } from '../../../types/project-context'
@@ -25,6 +27,7 @@ interface DraftFileMedia { id: string; filePath: string }
 interface DraftAttachment { id: number; name: string; category: 'TEST_REPORT' | 'SUPPORTING'; bound: boolean }
 interface DisplaySubsystemOption extends ReleasePhysicalSubsystemOption { historical?: boolean }
 interface DisplayDeliveryUnitOption extends ReleaseDeliveryUnitOption { historical?: boolean }
+interface DisplayRequirementOption extends ReleaseRequirementOption { historical?: boolean }
 interface DraftState {
   emergency: boolean
   windowId?: number
@@ -64,14 +67,18 @@ const formRef = ref<FormInstance>()
 const uploadBusy = ref(false)
 const subsystemOptions = ref<ReleasePhysicalSubsystemOption[]>([])
 const deliveryUnitOptions = ref<ReleaseDeliveryUnitOption[]>([])
+const requirementOptions = ref<ReleaseRequirementOption[]>([])
 const subsystemsLoading = ref(false)
 const deliveryUnitsLoading = ref(false)
+const requirementsLoading = ref(false)
 const subsystemLoadError = ref('')
 const deliveryUnitLoadError = ref('')
+const requirementLoadError = ref('')
 const selectedUnitIds = ref<string[]>([])
 const draft = reactive<DraftState>(emptyDraft())
 let subsystemRequest = 0
 let deliveryUnitRequest = 0
+let requirementRequest = 0
 const rules: FormRules = { subsystemId: [{ required: true, message: '请选择物理子系统', trigger: 'change' }] }
 const activeSubsystem = computed(() => subsystemOptions.value.find(item => item.id === draft.subsystemId))
 const displayedSubsystemOptions = computed<DisplaySubsystemOption[]>(() => {
@@ -86,6 +93,13 @@ const displayedDeliveryUnitOptions = computed<DisplayDeliveryUnitOption[]>(() =>
       artifactType: item.artifactType, selectable: false, unavailableReason: '历史快照已失效，请重新选择', historical: true }))
   return [...historical, ...deliveryUnitOptions.value]
 })
+const displayedRequirementOptions = computed<DisplayRequirementOption[]>(() => {
+  const activeNumbers = new Set(requirementOptions.value.map(item => item.number))
+  const historical = draft.requirementCodes
+    .filter(number => !activeNumbers.has(number))
+    .map(number => ({ id: 0, number, name: '历史需求快照', status: '已失效', historical: true }))
+  return [...historical, ...requirementOptions.value]
+})
 const masterDataSelectionCurrent = computed(() => {
   if (!activeSubsystem.value || subsystemsLoading.value || subsystemLoadError.value) return false
   if (!draft.deliveries.length) return true
@@ -95,6 +109,9 @@ const masterDataSelectionCurrent = computed(() => {
 })
 const hasHistoricalMasterData = computed(() => Boolean(draft.subsystemId) && !masterDataSelectionCurrent.value
   && !subsystemsLoading.value && !deliveryUnitsLoading.value)
+const hasHistoricalRequirements = computed(() => !draft.emergency && Boolean(draft.requirementCodes.length)
+  && draft.requirementCodes.some(number => !requirementOptions.value.some(item => item.number === number))
+  && !requirementsLoading.value && !requirementLoadError.value)
 const selectedWindow = computed(() => props.windows.find(item => item.id === draft.windowId))
 const windowOptions = computed(() => [...props.windows].sort((a, b) => a.productionStart.localeCompare(b.productionStart)))
 const estimatedType = computed(() => draft.emergency ? 'EMERGENCY' : selectedWindow.value?.status === 'URGENT' ? 'URGENT' : 'REGULAR')
@@ -175,6 +192,37 @@ async function loadDeliveryUnitOptions(physicalSubsystemId: string) {
   }
 }
 
+async function loadRequirementOptions() {
+  const request = ++requirementRequest
+  const projectRef = props.project?.ref
+  requirementLoadError.value = ''
+  if (!projectRef) {
+    requirementOptions.value = []
+    requirementLoadError.value = '请先选择当前项目'
+    return
+  }
+  requirementsLoading.value = true
+  try {
+    const records: ReleaseRequirementOption[] = []
+    let page = 1
+    while (request === requirementRequest) {
+      const result = (await listReleaseRequirementOptions({ projectId: projectRef, page,
+        size: MASTER_DATA_PAGE_SIZE })).data.data
+      records.push(...result.records)
+      if (records.length >= result.total || !result.records.length) break
+      page += 1
+    }
+    if (request === requirementRequest) requirementOptions.value = records
+  } catch (error) {
+    if (request === requirementRequest) {
+      requirementOptions.value = []
+      requirementLoadError.value = apiErrorMessage(error, '需求数据加载失败')
+    }
+  } finally {
+    if (request === requirementRequest) requirementsLoading.value = false
+  }
+}
+
 function normalizeDraftMasterData() {
   if (!activeSubsystem.value) return
   draft.subsystemCode = activeSubsystem.value.code
@@ -203,10 +251,13 @@ async function retryDeliveryUnitOptions() {
 async function initialize() {
   subsystemRequest += 1
   deliveryUnitRequest += 1
+  requirementRequest += 1
   subsystemOptions.value = []
   deliveryUnitOptions.value = []
+  requirementOptions.value = []
   subsystemLoadError.value = ''
   deliveryUnitLoadError.value = ''
+  requirementLoadError.value = ''
   const source = props.application
   Object.assign(draft, source ? {
     emergency: source.emergency, windowId: source.windowId, subsystemId: source.subsystemId,
@@ -221,7 +272,7 @@ async function initialize() {
   } : emptyDraft())
   selectedUnitIds.value = draft.deliveries.map(item => item.deliveryUnitId)
   if (!source && !draft.windowId) draft.windowId = windowOptions.value.find(item => item.regularApplicationSelectable)?.id
-  await loadMasterDataForDraft()
+  await Promise.all([loadMasterDataForDraft(), draft.emergency ? Promise.resolve() : loadRequirementOptions()])
   if (source) {
     try {
       const attachments = (await listReleaseApplicationAttachments(source.applicationCode)).data.data
@@ -237,19 +288,26 @@ watch(() => props.modelValue, open => { if (open) void initialize() }, { immedia
 watch(() => props.project?.ref, (projectRef, previousProjectRef) => {
   if (!props.modelValue || projectRef === previousProjectRef) return
   deliveryUnitRequest += 1
+  requirementRequest += 1
   subsystemOptions.value = []
   deliveryUnitOptions.value = []
+  requirementOptions.value = []
   deliveryUnitLoadError.value = ''
+  requirementLoadError.value = ''
   draft.subsystemId = ''
   draft.subsystemCode = ''
   draft.subsystemName = ''
   draft.deliveries = []
+  draft.requirementCodes = []
   selectedUnitIds.value = []
-  void loadSubsystemOptions()
+  void Promise.all([loadSubsystemOptions(), draft.emergency ? Promise.resolve() : loadRequirementOptions()])
 })
 watch(() => draft.emergency, emergency => {
   if (emergency) { draft.windowId = undefined; draft.requirementCodes = [] }
-  else if (!draft.windowId) draft.windowId = windowOptions.value.find(item => item.regularApplicationSelectable)?.id
+  else {
+    if (!draft.windowId) draft.windowId = windowOptions.value.find(item => item.regularApplicationSelectable)?.id
+    if (!requirementOptions.value.length && !requirementsLoading.value) void loadRequirementOptions()
+  }
 })
 
 function changeSubsystem(id: string) {
@@ -322,6 +380,8 @@ function validateBusiness(mode: 'draft' | 'submit') {
   if (paths.some(path => path.length > 1024)) { ElMessage.warning('文件路径长度不能超过 1024 个字符'); return false }
   if (new Set(paths).size !== paths.length) { ElMessage.warning('同一申请中文件路径不能重复'); return false }
   if (!draft.emergency && !draft.requirementCodes.filter(Boolean).length) { ElMessage.warning('至少关联一个需求编号'); return false }
+  if (!draft.emergency && (requirementsLoading.value || requirementLoadError.value)) { ElMessage.warning('请等待需求数据加载完成或重新加载'); return false }
+  if (hasHistoricalRequirements.value) { ElMessage.warning('原关联需求已失效，请重新选择后再保存或提交'); return false }
   if (draft.emergency && !draft.emergencyDescription.trim()) { ElMessage.warning('应急版本必须填写测试缺陷及应急情况说明'); return false }
   if (estimatedType.value === 'URGENT' && !draft.urgentReason.trim()) { ElMessage.warning('紧急版本必须填写紧急申请原因'); return false }
   const temporary = draft.attachments.filter(item => !item.bound)
@@ -392,7 +452,8 @@ async function save(mode: 'draft' | 'submit') {
         </div>
       </section>
 
-      <section class="release-form-section"><header><span>03</span><div><strong>关联与材料</strong></div></header><div class="release-form-grid"><el-form-item v-if="!draft.emergency" label="需求编号" required class="is-wide"><el-select v-model="draft.requirementCodes" multiple filterable allow-create default-first-option placeholder="输入需求编号后回车" /></el-form-item><el-form-item v-if="draft.emergency" label="测试缺陷及应急情况说明" required class="is-wide"><el-input v-model="draft.emergencyDescription" type="textarea" :rows="3" maxlength="1000" show-word-limit /></el-form-item><el-form-item v-if="estimatedType === 'URGENT'" label="紧急申请原因" required class="is-wide"><el-input v-model="draft.urgentReason" type="textarea" :rows="3" maxlength="1000" show-word-limit /></el-form-item><el-form-item label="申请说明" class="is-wide"><el-input v-model="draft.description" type="textarea" :rows="3" maxlength="2000" show-word-limit /></el-form-item></div>
+      <section class="release-form-section"><header><span>03</span><div><strong>关联与材料</strong></div></header><div class="release-form-grid"><el-form-item v-if="!draft.emergency" label="关联需求" required class="is-wide"><el-select v-model="draft.requirementCodes" multiple filterable collapse-tags collapse-tags-tooltip :loading="requirementsLoading" :disabled="!project || requirementsLoading" placeholder="选择当前项目需求"><el-option v-for="item in displayedRequirementOptions" :key="item.number" :value="item.number" :disabled="item.historical" :label="`${item.number} · ${item.name}${item.historical ? '（历史快照，已失效）' : ''}`"><div class="release-requirement-option"><span><strong>{{ item.number }} · {{ item.name }}</strong><small>{{ item.historical ? '历史快照，已失效' : item.status }}</small></span><el-tag v-if="!item.historical" size="small" type="info">{{ item.status || '未设置状态' }}</el-tag></div></el-option></el-select><div v-if="requirementLoadError" class="release-master-data-state release-master-data-state--error"><span>{{ requirementLoadError }}</span><el-button type="primary" link @click="loadRequirementOptions">重新加载</el-button></div><div v-else-if="!requirementsLoading && !displayedRequirementOptions.length" class="release-master-data-state"><span>当前项目暂无可关联需求</span></div></el-form-item><el-form-item v-if="draft.emergency" label="测试缺陷及应急情况说明" required class="is-wide"><el-input v-model="draft.emergencyDescription" type="textarea" :rows="3" maxlength="1000" show-word-limit /></el-form-item><el-form-item v-if="estimatedType === 'URGENT'" label="紧急申请原因" required class="is-wide"><el-input v-model="draft.urgentReason" type="textarea" :rows="3" maxlength="1000" show-word-limit /></el-form-item><el-form-item label="申请说明" class="is-wide"><el-input v-model="draft.description" type="textarea" :rows="3" maxlength="2000" show-word-limit /></el-form-item></div>
+        <el-alert v-if="hasHistoricalRequirements" class="release-master-data-alert" title="原关联需求已失效、已终止或不属于当前项目，请重新选择后再保存或提交" type="warning" :closable="false" show-icon />
         <div class="release-attachment-editor"><div><strong>{{ draft.emergency ? '测试报告' : '说明附件' }}</strong><small>{{ draft.emergency ? '提交审批时必填' : '选填' }}</small></div><el-upload :auto-upload="false" :show-file-list="false" :on-change="selectAttachment" :disabled="uploadBusy"><el-button :disabled="uploadBusy"><el-icon><Loading v-if="uploadBusy" /><DocumentAdd v-else /></el-icon>{{ uploadBusy ? '上传中' : '上传附件' }}</el-button></el-upload></div><div v-if="draft.attachments.length" class="release-attachment-chips"><el-tag v-for="item in draft.attachments" :key="item.id" :closable="!item.bound || canDeleteAttachment" @close="removeAttachment(item)">{{ item.name }}{{ item.bound ? ' · 已绑定' : '' }}</el-tag></div>
       </section>
     </el-form></div>

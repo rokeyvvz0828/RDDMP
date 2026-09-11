@@ -6,6 +6,7 @@ import com.ccb.common.trace.TraceId;
 import com.ccb.release.application.service.ReleaseMasterDataService;
 import com.ccb.release.application.service.ReleaseMasterDataService.DeliveryUnitOption;
 import com.ccb.release.application.service.ReleaseMasterDataService.PhysicalSubsystemOption;
+import com.ccb.release.application.service.ReleaseMasterDataService.RequirementOption;
 import com.ccb.security.model.AuthUser;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -49,6 +50,19 @@ public class ReleaseMasterDataController {
             @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal AuthUser actor) {
         return ApiResponse.success(service.deliveryUnits(projectId, physicalSubsystemId, page, size, keyword, actor),
+                TraceId.getOrCreate());
+    }
+
+    @GetMapping("/requirements")
+    @PreAuthorize("hasAnyAuthority('release:application:view','release:application:create',"
+            + "'release:application:update','system:admin')")
+    public ApiResponse<PageResult<RequirementOption>> requirements(
+            @RequestParam String projectId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "100") long size,
+            @RequestParam(required = false) String keyword,
+            @AuthenticationPrincipal AuthUser actor) {
+        return ApiResponse.success(service.requirements(projectId, page, size, keyword, actor),
                 TraceId.getOrCreate());
     }
 }

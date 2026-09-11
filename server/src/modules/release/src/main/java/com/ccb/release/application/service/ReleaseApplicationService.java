@@ -314,6 +314,7 @@ public class ReleaseApplicationService {
             window = windowStore.findById(windowId, user.tenantId()).orElseThrow(() -> badRequest("投产窗口不存在"));
             if (!window.projectId().equals(normalizedProjectId)) throw badRequest("投产窗口与当前项目不一致");
             if (normalizedRequirements.isEmpty()) throw badRequest("非应急版本至少填写一个需求编号");
+            normalizedRequirements = masterDataService.requireActiveRequirements(project, normalizedRequirements, user);
         }
         return new Draft(emergency, windowId, normalizedProjectId, normalizedProjectCode, normalizedProjectName,
                 selection.subsystemId(), selection.subsystemCode(), selection.subsystemName(), deliveries,

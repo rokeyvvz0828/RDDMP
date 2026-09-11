@@ -5,6 +5,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.release.application.model.ReleaseApplicationModels.ArtifactType;
 import com.ccb.release.application.model.ReleaseApplicationModels.DeliveryInput;
 import com.ccb.release.integration.ReleaseArchitectureDirectory;
+import com.ccb.release.integration.ReleaseRequirementDirectory;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.ProjectAccessService;
@@ -29,13 +30,15 @@ class ReleaseMasterDataServiceTest {
     private static final ProjectAccess PROJECT = new ProjectAccess(31, "P-001", "项目");
     private ProjectAccessService projects;
     private ReleaseArchitectureDirectory directory;
+    private ReleaseRequirementDirectory requirementDirectory;
     private ReleaseMasterDataService service;
 
     @BeforeEach
     void setUp() {
         projects = mock(ProjectAccessService.class);
         directory = mock(ReleaseArchitectureDirectory.class);
-        service = new ReleaseMasterDataService(projects, directory);
+        requirementDirectory = mock(ReleaseRequirementDirectory.class);
+        service = new ReleaseMasterDataService(projects, directory, requirementDirectory);
         when(projects.requireAccessible("P-001", ACTOR)).thenReturn(PROJECT);
     }
 
@@ -75,6 +78,32 @@ class ReleaseMasterDataServiceTest {
         assertThat(selection.deliveryUnits()).extracting("id").containsExactly("102", "101");
         assertThat(selection.deliveryUnits()).extracting("artifactType")
                 .containsExactly(ArtifactType.BINARY, ArtifactType.IMAGE);
+    }
+
+    @Test
+    void listsAndResolvesOnlyProjectRequirementsInClientOrder() {
+        var first = new ReleaseRequirementDirectory.Requirement(201, "REQ-001", "统一登录改造", "软需编制");
+        var second = new ReleaseRequirementDirectory.Requirement(202, "REQ-002", "权限中心改造", "需求分析");
+        when(requirementDirectory.searchActive(ACTOR, "P-001", new com.ccb.common.api.PageQuery(1, 100), null))
+                .thenReturn(new PageResult<>(List.of(first, second), 2, 1, 100));
+        when(requirementDirectory.resolveActive(ACTOR, "P-001",
+                new LinkedHashSet<>(List.of("REQ-002", "REQ-001"))))
+                .thenReturn(Optional.of(List.of(first, second)));
+
+        assertThat(service.requirements("P-001", 1, 100, null, ACTOR).records())
+                .extracting("number").containsExactly("REQ-001", "REQ-002");
+        assertThat(service.requireActiveRequirements(PROJECT, List.of(" REQ-002 ", "REQ-001"), ACTOR))
+                .containsExactly("REQ-002", "REQ-001");
+    }
+
+    @Test
+    void rejectsRequirementsThatCannotBeResolvedInCurrentProject() {
+        when(requirementDirectory.resolveActive(ACTOR, "P-001", new LinkedHashSet<>(List.of("REQ-OTHER"))))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.requireActiveRequirements(PROJECT, List.of("REQ-OTHER"), ACTOR))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不属于当前项目");
     }
 
     @Test

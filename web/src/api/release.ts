@@ -66,6 +66,13 @@ export interface ReleaseDeliveryUnitOption {
   unavailableReason?: string
 }
 
+export interface ReleaseRequirementOption {
+  id: number
+  number: string
+  name: string
+  status: string
+}
+
 export interface ReleaseDeliveryDto {
   id: number
   deliveryUnitId: string
@@ -428,6 +435,10 @@ export function listReleasePhysicalSubsystemOptions(params: { projectId: string;
 
 export function listReleaseDeliveryUnitOptions(physicalSubsystemId: string, params: { projectId: string; page?: number; size?: number; keyword?: string }) {
   return http.get<ApiResponse<PageResult<ReleaseDeliveryUnitOption>>>(`/release/master-data/physical-subsystems/${encodeURIComponent(physicalSubsystemId)}/delivery-units`, { params })
+}
+
+export function listReleaseRequirementOptions(params: { projectId: string; page?: number; size?: number; keyword?: string }) {
+  return http.get<ApiResponse<PageResult<ReleaseRequirementOption>>>('/release/master-data/requirements', { params })
 }
 
 export function listReleaseWindows(params: { projectId: string; page?: number; size?: number; keyword?: string }) {

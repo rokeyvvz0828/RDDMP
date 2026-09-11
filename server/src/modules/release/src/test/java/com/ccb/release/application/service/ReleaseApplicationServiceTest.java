@@ -17,6 +17,7 @@ import com.ccb.release.application.model.ReleaseApplicationModels.UpdateRequest;
 import com.ccb.release.application.model.ReleaseApplicationModels.VersionType;
 import com.ccb.release.application.persistence.ReleaseApplicationStore;
 import com.ccb.release.integration.ReleaseArchitectureDirectory;
+import com.ccb.release.integration.ReleaseRequirementDirectory;
 import com.ccb.release.window.model.ReleaseWindow;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
@@ -54,6 +55,7 @@ class ReleaseApplicationServiceTest {
     private ReleaseWindowStore windows;
     private ProjectAccessService projectAccessService;
     private ReleaseArchitectureDirectory architectureDirectory;
+    private ReleaseRequirementDirectory requirementDirectory;
     private ReleaseMasterDataService masterDataService;
     private ReleaseApplicationService service;
 
@@ -63,7 +65,9 @@ class ReleaseApplicationServiceTest {
         windows = mock(ReleaseWindowStore.class);
         projectAccessService = mock(ProjectAccessService.class);
         architectureDirectory = mock(ReleaseArchitectureDirectory.class);
-        masterDataService = new ReleaseMasterDataService(projectAccessService, architectureDirectory);
+        requirementDirectory = mock(ReleaseRequirementDirectory.class);
+        masterDataService = new ReleaseMasterDataService(projectAccessService, architectureDirectory,
+                requirementDirectory);
         var clock = Clock.fixed(Instant.parse("2026-08-15T04:00:00Z"), ZoneId.of("Asia/Shanghai"));
         service = new ReleaseApplicationService(store, windows, projectAccessService, masterDataService,
                 new ReleaseScenarioPolicy(clock), new ObjectMapper().findAndRegisterModules());
@@ -79,6 +83,13 @@ class ReleaseApplicationServiceTest {
                     var units = ids.stream().map(id -> new ReleaseArchitectureDirectory.DeliveryUnit(
                             id, 42L, "UNIT-A", "用户服务", "IMAGE")).toList();
                     return Optional.of(new ReleaseArchitectureDirectory.Selection(physical, units));
+                });
+        when(requirementDirectory.resolveActive(eq(USER), any(), any()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    var numbers = (java.util.Collection<String>) invocation.getArgument(2);
+                    return Optional.of(numbers.stream().map(number -> new ReleaseRequirementDirectory.Requirement(
+                            Math.abs(number.hashCode()), number, "需求 " + number, "软需编制")).toList());
                 });
     }
 
@@ -129,6 +140,17 @@ class ReleaseApplicationServiceTest {
         assertEquals("AUTH-SVC", inserted.getValue().deliveries().get(0).deliveryUnitCode());
         assertEquals("认证服务", inserted.getValue().deliveries().get(0).deliveryUnitName());
         assertEquals(ArtifactType.BINARY, inserted.getValue().deliveries().get(0).artifactType());
+    }
+
+    @Test
+    void rejectsRequirementOutsideCurrentProjectBeforePersisting() {
+        when(requirementDirectory.resolveActive(eq(USER), eq("P-001"), any())).thenReturn(Optional.empty());
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service.create(nonEmergency("v2"), USER));
+
+        assertTrue(error.getMessage().contains("不属于当前项目"));
+        verify(store, never()).insert(any());
     }
 
     @Test
