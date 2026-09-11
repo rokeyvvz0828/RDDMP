@@ -1,0 +1,45 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java（修改）",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java（修改）",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java（修改）",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java（修改）",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java（修改）",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentFileAssetDocCodeGovernanceTest.java（重写）",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java（修改）",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java（新增 R7 用例）"
+  ],
+  "requirements_addressed": [
+    "R5",
+    "R6",
+    "R7",
+    "R8"
+  ],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am test -Dtest=DependencyServiceTest,ParameterServiceTest,DashboardMetricDefinitionTest,DataMigrationModuleRegistrationTest,ContentFileAssetDocCodeGovernanceTest -Dsurefire.failIfNoSpecifiedTests=false"
+  ],
+  "local_checks": [
+    "ContentFileAssetService.MANAGED_TYPES 为空，DEPENDENCY 不再由通用文件服务承接",
+    "通用 ContentAssetController 移除 /dependencies 上传/替换/下载/删除端点，保留空壳兼容注册",
+    "ContentAssetRecycleBinSource.supports() 不再包含 DEPENDENCY；DEPENDENCY 由 DependencyRecycleBinSource 认领",
+    "DashboardMetricDefinition.DEPENDENCY 下钻改为参数表关联表达式，不再引用 doc_code/doc_name；MySQL 看板计数与下钻测试通过",
+    "ParameterService：活动依赖阻止逻辑删除、任意依赖记录阻止彻底删除；update() 中误放的删除守卫已移除（编辑不受引用保护限制）",
+    "注册测试断言旧端点消失与新专属权限存在"
+  ],
+  "diff_summary": [
+    "DEPENDENCY 从通用附件链路剥离；参数引用保护接入删除/彻底删除路径；看板适配新结构；对应治理/注册/看板/参数测试同步更新"
+  ],
+  "invariants_checked": [
+    "通用链路剥离后仍保留其他类型归属（本模块其余类型已由专属服务承接）",
+    "参数删除保护保留租户/项目/实体权限与审计"
+  ],
+  "disturbances": [
+    "发现 ParameterService.update() 中存在误放的『活动依赖阻止删除』守卫，会错误阻止编辑；已移除，仅保留 delete/purge 的正确守卫并补测试",
+    "ContentFileAssetDocCodeGovernanceTest 原断言大小写不匹配实际异常信息，修正为大小写不敏感"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "T4 前端 API 与专属页面"
+}

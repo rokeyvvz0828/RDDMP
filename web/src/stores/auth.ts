@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import http from '../api/http'
+import http, { PROJECT_CONTEXT_ID_STORAGE_KEY, withProjectContext } from '../api/http'
 import type { ApiResponse, AuthMe, RouteNode, TokenPair } from '../types/auth'
 import { useTabsStore } from './tabs'
 
@@ -10,11 +10,17 @@ function hideOfflineRoutes(nodes: RouteNode[]): RouteNode[] {
     .map(node => ({ ...node, children: hideOfflineRoutes(node.children || []) }))
 }
 
+function storedProjectId() {
+  const value = Number(localStorage.getItem(PROJECT_CONTEXT_ID_STORAGE_KEY) || 0)
+  return Number.isSafeInteger(value) && value > 0 ? value : null
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('ccb.access_token') || '')
   const refreshToken = ref(localStorage.getItem('ccb.refresh_token') || '')
   const user = ref<AuthMe | null>(null)
   const routes = ref<RouteNode[]>([])
+  const currentProjectId = ref<number | null>(null)
   const loading = ref(false)
   const isAuthenticated = computed(() => Boolean(token.value && user.value))
 
@@ -30,6 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = ''
     user.value = null
     routes.value = []
+    currentProjectId.value = null
     useTabsStore().closeAll()
     localStorage.removeItem('ccb.access_token')
     localStorage.removeItem('ccb.refresh_token')
@@ -38,24 +45,50 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(username: string, password: string) {
     loading.value = true
     try {
-      const response = await http.post<ApiResponse<TokenPair>>('/auth/login', { username, password })
+      const response = await http.post<ApiResponse<TokenPair>>('/auth/login', { username, password }, withProjectContext(null))
       useTabsStore().closeAll()
       saveTokens(response.data.data)
-      await hydrate()
+      await hydrate(null)
     } finally {
       loading.value = false
     }
   }
 
-  async function hydrate() {
+  async function fetchAuthorization(projectId: number | null = null) {
+    const config = withProjectContext(projectId)
+    const [me, menu] = await Promise.all([
+      http.get<ApiResponse<AuthMe>>('/auth/me', config),
+      http.get<ApiResponse<RouteNode[]>>('/auth/routes', config)
+    ])
+    return { user: me.data.data, routes: hideOfflineRoutes(menu.data.data), projectId }
+  }
+
+  function applyAuthorization(snapshot: { user: AuthMe; routes: RouteNode[]; projectId: number | null }) {
+    user.value = snapshot.user
+    routes.value = snapshot.routes
+    currentProjectId.value = snapshot.projectId
+  }
+
+  async function hydrateProjectAuthorizationIfAvailable() {
+    if (currentProjectId.value) return
+    const { useProjectContextStore } = await import('./project-context')
+    const projectContext = useProjectContextStore()
+    await projectContext.initialize()
+    if (!projectContext.currentId) return
+    applyAuthorization(await fetchAuthorization(projectContext.currentId))
+  }
+
+  async function hydrate(projectId: number | null = storedProjectId()) {
     if (!token.value) return
     try {
-      const [me, menu] = await Promise.all([
-        http.get<ApiResponse<AuthMe>>('/auth/me'),
-        http.get<ApiResponse<RouteNode[]>>('/auth/routes')
-      ])
-      user.value = me.data.data
-      routes.value = hideOfflineRoutes(menu.data.data)
+      applyAuthorization(await fetchAuthorization(projectId))
+      if (!projectId) {
+        try {
+          await hydrateProjectAuthorizationIfAvailable()
+        } catch {
+          // Keep global authorization when the optional project context cannot be restored.
+        }
+      }
     } catch {
       clear()
     }
@@ -98,5 +131,5 @@ export const useAuthStore = defineStore('auth', () => {
     ].find(hasRoute)
   }
 
-  return { token, user, routes, loading, isAuthenticated, login, hydrate, logout, changePassword, updateUser, hasPermission, hasRoute, firstAccessibleReleasePath }
+  return { token, user, routes, currentProjectId, loading, isAuthenticated, login, hydrate, fetchAuthorization, applyAuthorization, logout, changePassword, updateUser, hasPermission, hasRoute, firstAccessibleReleasePath }
 })

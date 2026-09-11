@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260910-069",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260910-069-data-migration-parameter-field/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-031-data-migration",
+    "worktree": "/home/song/workspace/RDDMP"
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+      "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V200__data_migration_parameter_field.sql",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/views/content/ParametersPage.vue",
+      "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+      "docs/requirements/REQ-20260910-069-data-migration-parameter-field/**",
+      "docs/engineering-control/designs/2026-09-10-data-migration-parameter-field-design.md",
+      "docs/engineering-control/plans/2026-09-10-data-migration-parameter-field-implementation-plan.md",
+      ".ai-control/requirements/req-20260910-069-dm-param-field/*.json",
+      ".ai-control/requirements/req-20260910-069-dm-param-field/*.md"
+    ],
+    "read_only_paths": [
+      "governance/modules.yaml",
+      "docs/governance/**",
+      "docs/architecture/**",
+      "docs/engineering-control/designs/2026-09-10-data-migration-dependency-design.md",
+      "docs/engineering-control/plans/2026-09-10-data-migration-dependency-implementation-plan.md",
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V197__data_migration_parameter_domain.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      ".ai-control/original/**",
+      ".ai-control/requirements/req-20260906-067-dm-param/**",
+      ".ai-control/requirements/req-20260910-068-dm-dependency/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "**/*confidential*"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V200__data_migration_parameter_field.sql"
+    ],
+    "compatibility_and_rollback": "V200 新建 dm_parameter_field 子表并插入 DM_PARAMETER_FIELD_TYPE 码值， 全部幂等可重跑；不修改任何已发布脚本。回退为删除 V200 迁移、子表与码值，并同步回退本任务代码。"
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260910-069 在 platform/infrastructure 追加 V200 迁移脚本，为业务模块新增 dm_parameter_field 子表并登记 DM_PARAMETER_FIELD_TYPE 系统参数码值。",
+    "owner_approved": true,
+    "approval_evidence": "需求已由用户确认推荐设计（2026-09-10）并进入执行；platform/infrastructure 与 business/data-migration 的 Owner 均为 rokeyvvz0828。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260910-069-data-migration-parameter-field/codex-task-scope.yaml",
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build"
+    ]
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=ParameterServiceTest,DataMigrationParameterFieldMigrationMySqlTest",
+      "expected": "字段必填/字符规则/长度校验、同参数中英文名唯一、批量新增、创建携带字段、带字段导入与级联删除契约测试通过"
+    },
+    {
+      "name": "permission",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationModuleRegistrationTest",
+      "expected": "模块注册、RBAC 与审计断言通过"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build",
+      "expected": "TypeScript/Vite 构建通过"
+    },
+    {
+      "name": "diff-check",
+      "command": "git diff --check",
+      "expected": "无空白错误，V197/V198/V199 无 diff"
+    },
+    {
+      "name": "browser",
+      "command": "CDP 真实浏览器验收迁移参数页新增/编辑带字段、字段抽屉、导入与 375/390/430 移动视口",
+      "expected": "字段批量维护可用、导入含字段成功、无控制台错误、无可视页面级横向溢出"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "items": [
+      "工作区含 REQ-067/068 未提交改动，ParameterService/ParametersPage.vue 等文件需保护既有差异",
+      "V200 新增唯一键依赖 ascii/utf8mb4 排序规则，软删行不占用名称",
+      "浏览器验收使用请求拦截隔离旧后端版本时，需覆盖真实后端端到端"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260910-069-dm-param-field",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260910-069-dm-param-field/state.json",
+      ".ai-control/requirements/req-20260910-069-dm-param-field/execution-T1.json",
+      ".ai-control/requirements/req-20260910-069-dm-param-field/observation-T1.json",
+      ".ai-control/requirements/req-20260910-069-dm-param-field/convergence.json"
+    ],
+    "verification_steps": [
+      "参数新增/编辑可批量添加字段，同参数中英文名唯一约束生效",
+      "字段维护抽屉列表/批量新增/行编辑/批量删除可用，详情展示字段清单",
+      "Excel 十一列模板同时导入参数及字段，字段列留空兼容纯参数导入",
+      "参数逻辑删除/恢复/彻底删除与字段级联一致",
+      "权限沿用既有 RBAC，字段写操作后端校验并保留审计"
+    ],
+    "rollback": "回退本任务代码与 V200 追加迁移；V197/V198/V199 历史迁移与既有字段保持不变。"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false
+  }
+}

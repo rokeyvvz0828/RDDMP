@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260910-069-dm-param-field",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-10-data-migration-parameter-field-design.md",
+  "objective": "为迁移参数增加字段信息子表，支持批量添加字段、字段维护入口，并在同一 Excel 中同时导入参数及对应字段。",
+  "users": [
+    "迁移配置维护人员在当前项目新增参数时批量填写字段",
+    "维护人员通过列表行「字段」抽屉批量新增、行编辑、删除和批量删除字段",
+    "批量导入人员通过十一列模板同时导入参数及其字段并处理逐行错误",
+    "查询人员在列表、详情与回收站查看字段信息"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "新增 dm_parameter_field 子表记录字段英文名、中文名、类型、长度与说明，同参数内中英文名唯一。",
+      "acceptance": [
+        "V200 建表幂等且唯一键含 deleted，软删行不占用名称",
+        "同参数内字段英文名、字段中文名重复被应用与库双层拒绝"
+      ],
+      "priority": "must",
+      "source": "用户确认的推荐设计",
+      "counterexample": ["仅前端判重", "修改已发布迁移"]
+    },
+    {
+      "id": "R2",
+      "statement": "参数新增支持批量携带字段，列表提供字段数、维护入口，详情展示字段清单。",
+      "acceptance": [
+        "新增参数可带 0..N 行字段一并保存",
+        "字段抽屉可列表、批量新增、行编辑、删除与批量删除"
+      ],
+      "priority": "must",
+      "source": "用户确认的推荐设计",
+      "counterexample": ["字段只能逐条新增", "字段入口缺失"]
+    },
+    {
+      "id": "R3",
+      "statement": "Excel 模板扩展为十一列，同一文件同时导入参数及字段；字段列留空兼容纯参数导入。",
+      "acceptance": [
+        "连续同参数行归组并累加字段，组内中英文名唯一",
+        "失败行跳过并逐行报错，成功回填上传人与操作日志"
+      ],
+      "priority": "must",
+      "source": "用户确认的导入版式（方案 A：单 Sheet 每行一个字段）",
+      "counterexample": ["每参数只能导入一个字段", "破坏原六列纯参数导入"]
+    },
+    {
+      "id": "R4",
+      "statement": "字段类型为系统参数管理 DM_PARAMETER_FIELD_TYPE 码值，校验必填与启用状态。",
+      "acceptance": [
+        "码值注册于 V200 且由系统管理维护",
+        "停用或未知类型被服务端拒绝"
+      ],
+      "priority": "must",
+      "source": "用户确认的字段类型取值（推荐码值方案）",
+      "counterexample": ["前端硬编码类型列表"]
+    },
+    {
+      "id": "R5",
+      "statement": "参数逻辑删除、恢复、彻底删除与字段级联一致。",
+      "acceptance": [
+        "删参数字段软删、恢复参数字段恢复、彻底删除字段物删",
+        "回收站行为不回归"
+      ],
+      "priority": "must",
+      "source": "用户确认的回收站级联规则",
+      "counterexample": ["删除参数后字段仍可见"]
+    },
+    {
+      "id": "R6",
+      "statement": "权限沿用既有 RBAC，字段写操作后端校验并保留审计，桌面与移动端可用。",
+      "acceptance": [
+        "字段写操作沿用参数 create/update/delete 权限码",
+        "写操作记录 PARAMETER 审计 FIELD_*",
+        "375/390/430 视口无页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "项目规约与用户确认范围",
+      "counterexample": ["新增权限码", "仅前端显隐控制"]
+    }
+  ],
+  "architecture": {
+    "database": "dm_parameter_field 子表 + DM_PARAMETER_FIELD_TYPE 码值，V200 幂等迁移",
+    "backend": "扩展 ParameterService/ParameterController，字段 CRUD 与导入收口参数域",
+    "frontend": "ParametersPage.vue 增加字段批量区、字段抽屉与十一列导入，复用既有 UI 组件"
+  },
+  "constraints": [
+    "不修改系统管理/参数管理页面",
+    "不改变其他内容类型行为",
+    "不新增公共组件或新样式体系",
+    "参数导出保持参数级八列"
+  ],
+  "validation": [
+    "Testcontainers MySQL 8.4 验证 V200 幂等与唯一键",
+    "ParameterServiceTest 扩展字段唯一/批量/导入/级联场景",
+    "npm --prefix web run build",
+    "治理、范围与 git diff --check"
+  ],
+  "risks": [
+    "工作区含 REQ-067/068 未提交改动需保护",
+    "唯一键含 deleted 依赖排序规则，应用层仍需预检"
+  ]
+}

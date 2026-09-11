@@ -1,0 +1,34 @@
+{
+ "schema_version": 1,
+ "corrections": [
+  {
+   "deviation": "V200 缺 deleted_by/deleted_at 导致字段删除 500",
+   "root_cause": "建表 DDL 与服务端软删 SQL 列契约不一致（迁移测试也未断言这两列）",
+   "action": "V200 补两列；迁移测试补断言；开发库重放 V200",
+   "verification": "DELETE 接口 200；MigrationMySqlTest 2/2；浏览器删除 2 行一致",
+   "status": "closed"
+  },
+  {
+   "deviation": "迁移测试 hasIndex 用 ==1 对多列索引误判 + 中文重复用例数据未覆盖唯一键",
+   "root_cause": "information_schema.statistics 每列一行；用例中文名未与存量重复",
+   "action": "改 >=1；用例中文名改回 '金额'",
+   "verification": "测试 2/2 通过",
+   "status": "closed"
+  },
+  {
+   "deviation": "375/390/430 页面级横向溢出 87/72/32px",
+   "root_cause": "参数页分页器未套用数据迁移移动端样式（el-pagination 固定宽度弹出 jump 输入）",
+   "action": "UiPagination 外包既有 .dm-page 样式类",
+   "verification": "浏览器三视口 overflow=0",
+   "status": "closed"
+  },
+  {
+   "deviation": "069 scope 文件非 JSON 兼容",
+   "root_cause": "沿用 YAML 书写而治理读 JSON",
+   "action": "转为 JSON（内容不变）",
+   "verification": "JSON.parse + 元数据检查通过",
+   "status": "closed"
+  }
+ ],
+ "recorded_at": "2026-09-10T23:58:00+08:00"
+}

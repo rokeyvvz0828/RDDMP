@@ -1,0 +1,3536 @@
+{
+  "schema_version": 5,
+  "revision": 30,
+  "created_at": "2026-09-10T14:57:38+00:00",
+  "updated_at": "2026-09-10T15:16:55+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-10 用户逐项确认字段映射、迁移、导入、唯一性、操作、接口权限、回收站和方案 A，并确认以 REQ-20260910-068 落盘。；计划确认=2026-09-10 用户完成设计逐项确认后明确'进入开发'，随后连续下达'继续'指令，批准按已确认设计与实施计划进入受控执行。",
+      "recorded_at": "2026-09-10T14:57:38+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "基线门禁通过：8 项 must 需求全部带验收与反例，测量意图覆盖迁移/服务/前端/浏览器四类证据",
+      "recorded_at": "2026-09-10T14:57:59+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型门禁通过：8 项 must 全部映射到可重复传感器，扰动与回退边界清晰",
+      "recorded_at": "2026-09-10T15:00:05+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划门禁通过：全部 must 需求被任务覆盖，回滚/停止/升级条件完整，共享契约由 T1/T2 持有",
+      "recorded_at": "2026-09-10T15:00:22+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "全部 5 个任务执行产物已记录（T1-T4 单元/迁移/治理测试，T5 集成与浏览器 22 项验收），进入独立采样",
+      "recorded_at": "2026-09-10T15:15:47+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "8 项 must 需求均有自动化与浏览器独立观测证据；P0/P1=0；全部任务已验证，进入收敛验收",
+      "recorded_at": "2026-09-10T15:16:26+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁 PASS。P2 风险均为基线/外部数据问题并已披露：REQ-061 治理脚本格式基线故障、历史种子数据双重编码。功能改动自身 P0/P1=0，8 项 must 均有双传感器证据",
+      "recorded_at": "2026-09-10T15:16:55+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-10 用户逐项确认字段映射、迁移、导入、唯一性、操作、接口权限、回收站和方案 A，并确认以 REQ-20260910-068 落盘。；计划确认=2026-09-10 用户完成设计逐项确认后明确'进入开发'，随后连续下达'继续'指令，批准按已确认设计与实施计划进入受控执行。",
+        "recorded_at": "2026-09-10T14:57:38+00:00",
+        "data": {
+          "objective": "将迁移过程依赖文件改造为可单条维护和批量导入的迁移参数与使用方系统关系管理能力，并彻底下线文件上传下载契约。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "dm_dependency 增加 parameter_id，system_code 表示使用方，空表迁移删除 doc_code/doc_name。",
+              "acceptance": [
+                "空表应用 V199 后新列、旧列和索引符合设计",
+                "非空表在任何结构修改前失败"
+              ],
+              "priority": "must",
+              "source": "用户确认的数据模型和历史数据策略",
+              "counterexample": [
+                "为历史行生成默认参数 ID",
+                "修改已发布迁移"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "列表展示参数中英文名、使用方编号/名称、提供方编号/名称、更新时间和更新人。",
+              "acceptance": [
+                "列表数据由当前项目关系和参数、系统投影得到",
+                "桌面与移动列表均可观察全部信息"
+              ],
+              "priority": "must",
+              "source": "用户列表需求及字段映射确认",
+              "counterexample": [
+                "提供方名称显示系统编号",
+                "名称冗余写入 dm_dependency"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "提供单条新增、编辑和逻辑删除，并保证租户、项目、参数与使用方关系唯一。",
+              "acceptance": [
+                "有效关系可新增和编辑",
+                "重复、跨项目、无效参数或停用系统被服务端拒绝"
+              ],
+              "priority": "must",
+              "source": "用户确认的操作范围和唯一规则",
+              "counterexample": [
+                "仅前端判重",
+                "更新允许改变所属项目"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Excel 模板使用参数英文名和使用方系统编号，逐行校验并允许部分成功。",
+              "acceptance": [
+                "模板仅有两列",
+                "零命中、多义、无效系统和重复行报告实际行号",
+                "合法行继续写入并审计"
+              ],
+              "priority": "must",
+              "source": "用户确认的导入模板和歧义处理",
+              "counterexample": [
+                "模板暴露参数 ID",
+                "多义时任取参数",
+                "一行错误回滚所有合法行"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "取消依赖文件上传、替换和下载，DEPENDENCY 从通用附件服务与回收站来源剥离。",
+              "acceptance": [
+                "页面无文件操作",
+                "旧上传替换下载端点不可用",
+                "专属回收站来源承接 DEPENDENCY"
+              ],
+              "priority": "must",
+              "source": "用户删除文件上传功能的要求和方案 A 确认",
+              "counterexample": [
+                "隐藏按钮但保留可调用上传端点"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "菜单 750 使用查看、新增、编辑、删除细粒度权限，所有写操作执行项目/实体授权和审计。",
+              "acceptance": [
+                "V199 补充权限节点",
+                "无权限请求返回 403",
+                "写操作产生 DEPENDENCY 审计"
+              ],
+              "priority": "must",
+              "source": "用户确认的权限设计与仓库治理",
+              "counterexample": [
+                "硬编码角色",
+                "仅依赖前端按钮显隐"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "依赖关系接入统一回收站并保护参数引用完整性。",
+              "acceptance": [
+                "管理员可恢复和彻底删除",
+                "活动依赖阻止参数逻辑删除",
+                "任意依赖阻止参数彻底删除"
+              ],
+              "priority": "must",
+              "source": "用户确认的回收站范围和工程数据完整性约束",
+              "counterexample": [
+                "删除参数后活动列表无法显示参数名称"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "看板 DEPENDENCY 指标适配新结构，前端覆盖完整状态与桌面/移动验收。",
+              "acceptance": [
+                "看板计数和下钻不引用旧列",
+                "页面覆盖加载空失败无权限和提交中",
+                "三个手机视口无页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "现有看板引用事实与 RDDMP 前端规约",
+              "counterexample": [
+                "V199 后看板 SQL 因 doc_code 不存在而失败",
+                "手机仅展示被裁剪桌面表格"
+              ]
+            }
+          ],
+          "invariants": [
+            "数据 Owner 和菜单路由不变",
+            "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+            "系统名称只读投影，不在依赖表冗余",
+            "不改变迁移参数英文名唯一范围",
+            "只追加 V199，不修改已发布迁移",
+            "不读取或写入生产数据、真实附件和密钥"
+          ],
+          "constraints": [
+            "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3",
+            "只能修改 REQ-20260910-068 任务范围授权路径",
+            "当前工作区存在 REQ-20260906-067 用户改动，必须保护",
+            "V199 和新应用必须同批发布"
+          ],
+          "non_goals": [
+            "依赖关系导出",
+            "迁移参数或系统组件清单改造",
+            "历史依赖数据迁移",
+            "公共 UI 组件或主题变更",
+            "删除 component_id 兼容列"
+          ],
+          "assumptions": [
+            {
+              "text": "部署目标 dm_dependency 为空",
+              "basis": "用户确认不处理历史数据并采用空表失败关闭",
+              "falsifier": "迁移前 COUNT(*) 大于 0"
+            },
+            {
+              "text": "迁移参数 V197/V198 与专属接口在本任务实施前可用",
+              "basis": "当前工作区已有 REQ-067 实现",
+              "falsifier": "参数模块测试或 V198 迁移失败"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "提供方编号取 dm_parameter.system_code，名称取对应中文名",
+              "reason": "修正原始列表描述中的编号名称对调",
+              "source": "2026-09-10 用户确认"
+            },
+            {
+              "id": "D2",
+              "decision": "历史数据采用空表失败关闭",
+              "reason": "不静默删除或猜测关系",
+              "source": "2026-09-10 用户采纳"
+            },
+            {
+              "id": "D3",
+              "decision": "模板为参数英文名和使用方系统编号，多义参数行失败",
+              "reason": "满足业务录入习惯且不扩大参数唯一范围",
+              "source": "2026-09-10 用户确认"
+            },
+            {
+              "id": "D4",
+              "decision": "关系唯一键为租户、项目、参数 ID、使用方系统编号",
+              "reason": "防止同一使用关系重复登记",
+              "source": "2026-09-10 用户采纳"
+            },
+            {
+              "id": "D5",
+              "decision": "提供单条维护、导入、逻辑删除和回收站，不保留文件动作",
+              "reason": "依赖对象已转为结构化关系",
+              "source": "2026-09-10 用户采纳"
+            },
+            {
+              "id": "D6",
+              "decision": "采用专属领域方案 A",
+              "reason": "职责和接口边界清晰",
+              "source": "2026-09-10 用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R6"
+              ],
+              "signal": "V199 结构、空表门禁和权限节点符合设计",
+              "method": "MySQL 迁移集成测试"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R7"
+              ],
+              "signal": "关系、投影、导入、审计和引用保护行为可重复",
+              "method": "DependencyService 与 ParameterService 聚焦测试"
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R8"
+              ],
+              "signal": "旧端点消失、专属权限和看板 SQL 生效",
+              "method": "模块注册、权限和 Dashboard MySQL 测试"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R8"
+              ],
+              "signal": "桌面与手机用户路径可达且无溢出",
+              "method": "前端构建和真实浏览器验收"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "已复核已批准设计 R1-R8、不变量、约束、非目标与测量意图；无阻塞未知项",
+        "recorded_at": "2026-09-10T14:57:59+00:00",
+        "data": {
+          "objective": "将迁移过程依赖文件改造为可单条维护和批量导入的迁移参数与使用方系统关系管理能力，并彻底下线文件上传下载契约。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "dm_dependency 增加 parameter_id，system_code 表示使用方，空表迁移删除 doc_code/doc_name。",
+              "acceptance": [
+                "空表应用 V199 后新列、旧列和索引符合设计",
+                "非空表在任何结构修改前失败"
+              ],
+              "priority": "must",
+              "source": "用户确认的数据模型和历史数据策略",
+              "counterexample": [
+                "为历史行生成默认参数 ID",
+                "修改已发布迁移"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "列表展示参数中英文名、使用方编号/名称、提供方编号/名称、更新时间和更新人。",
+              "acceptance": [
+                "列表数据由当前项目关系和参数、系统投影得到",
+                "桌面与移动列表均可观察全部信息"
+              ],
+              "priority": "must",
+              "source": "用户列表需求及字段映射确认",
+              "counterexample": [
+                "提供方名称显示系统编号",
+                "名称冗余写入 dm_dependency"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "提供单条新增、编辑和逻辑删除，并保证租户、项目、参数与使用方关系唯一。",
+              "acceptance": [
+                "有效关系可新增和编辑",
+                "重复、跨项目、无效参数或停用系统被服务端拒绝"
+              ],
+              "priority": "must",
+              "source": "用户确认的操作范围和唯一规则",
+              "counterexample": [
+                "仅前端判重",
+                "更新允许改变所属项目"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Excel 模板使用参数英文名和使用方系统编号，逐行校验并允许部分成功。",
+              "acceptance": [
+                "模板仅有两列",
+                "零命中、多义、无效系统和重复行报告实际行号",
+                "合法行继续写入并审计"
+              ],
+              "priority": "must",
+              "source": "用户确认的导入模板和歧义处理",
+              "counterexample": [
+                "模板暴露参数 ID",
+                "多义时任取参数",
+                "一行错误回滚所有合法行"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "取消依赖文件上传、替换和下载，DEPENDENCY 从通用附件服务与回收站来源剥离。",
+              "acceptance": [
+                "页面无文件操作",
+                "旧上传替换下载端点不可用",
+                "专属回收站来源承接 DEPENDENCY"
+              ],
+              "priority": "must",
+              "source": "用户删除文件上传功能的要求和方案 A 确认",
+              "counterexample": [
+                "隐藏按钮但保留可调用上传端点"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "菜单 750 使用查看、新增、编辑、删除细粒度权限，所有写操作执行项目/实体授权和审计。",
+              "acceptance": [
+                "V199 补充权限节点",
+                "无权限请求返回 403",
+                "写操作产生 DEPENDENCY 审计"
+              ],
+              "priority": "must",
+              "source": "用户确认的权限设计与仓库治理",
+              "counterexample": [
+                "硬编码角色",
+                "仅依赖前端按钮显隐"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "依赖关系接入统一回收站并保护参数引用完整性。",
+              "acceptance": [
+                "管理员可恢复和彻底删除",
+                "活动依赖阻止参数逻辑删除",
+                "任意依赖阻止参数彻底删除"
+              ],
+              "priority": "must",
+              "source": "用户确认的回收站范围和工程数据完整性约束",
+              "counterexample": [
+                "删除参数后活动列表无法显示参数名称"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "看板 DEPENDENCY 指标适配新结构，前端覆盖完整状态与桌面/移动验收。",
+              "acceptance": [
+                "看板计数和下钻不引用旧列",
+                "页面覆盖加载空失败无权限和提交中",
+                "三个手机视口无页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "现有看板引用事实与 RDDMP 前端规约",
+              "counterexample": [
+                "V199 后看板 SQL 因 doc_code 不存在而失败",
+                "手机仅展示被裁剪桌面表格"
+              ]
+            }
+          ],
+          "invariants": [
+            "数据 Owner 和菜单路由不变",
+            "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+            "系统名称只读投影，不在依赖表冗余",
+            "不改变迁移参数英文名唯一范围",
+            "只追加 V199，不修改已发布迁移",
+            "不读取或写入生产数据、真实附件和密钥"
+          ],
+          "constraints": [
+            "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3",
+            "只能修改 REQ-20260910-068 任务范围授权路径",
+            "当前工作区存在 REQ-20260906-067 用户改动，必须保护",
+            "V199 和新应用必须同批发布"
+          ],
+          "non_goals": [
+            "依赖关系导出",
+            "迁移参数或系统组件清单改造",
+            "历史依赖数据迁移",
+            "公共 UI 组件或主题变更",
+            "删除 component_id 兼容列"
+          ],
+          "assumptions": [
+            {
+              "text": "部署目标 dm_dependency 为空",
+              "basis": "用户确认不处理历史数据并采用空表失败关闭",
+              "falsifier": "迁移前 COUNT(*) 大于 0"
+            },
+            {
+              "text": "迁移参数 V197/V198 与专属接口在本任务实施前可用",
+              "basis": "当前工作区已有 REQ-067 实现",
+              "falsifier": "参数模块测试或 V198 迁移失败"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "提供方编号取 dm_parameter.system_code，名称取对应中文名",
+              "reason": "修正原始列表描述中的编号名称对调",
+              "source": "2026-09-10 用户确认"
+            },
+            {
+              "id": "D2",
+              "decision": "历史数据采用空表失败关闭",
+              "reason": "不静默删除或猜测关系",
+              "source": "2026-09-10 用户采纳"
+            },
+            {
+              "id": "D3",
+              "decision": "模板为参数英文名和使用方系统编号，多义参数行失败",
+              "reason": "满足业务录入习惯且不扩大参数唯一范围",
+              "source": "2026-09-10 用户确认"
+            },
+            {
+              "id": "D4",
+              "decision": "关系唯一键为租户、项目、参数 ID、使用方系统编号",
+              "reason": "防止同一使用关系重复登记",
+              "source": "2026-09-10 用户采纳"
+            },
+            {
+              "id": "D5",
+              "decision": "提供单条维护、导入、逻辑删除和回收站，不保留文件动作",
+              "reason": "依赖对象已转为结构化关系",
+              "source": "2026-09-10 用户采纳"
+            },
+            {
+              "id": "D6",
+              "decision": "采用专属领域方案 A",
+              "reason": "职责和接口边界清晰",
+              "source": "2026-09-10 用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R6"
+              ],
+              "signal": "V199 结构、空表门禁和权限节点符合设计",
+              "method": "MySQL 迁移集成测试"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R7"
+              ],
+              "signal": "关系、投影、导入、审计和引用保护行为可重复",
+              "method": "DependencyService 与 ParameterService 聚焦测试"
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R8"
+              ],
+              "signal": "旧端点消失、专属权限和看板 SQL 生效",
+              "method": "模块注册、权限和 Dashboard MySQL 测试"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R8"
+              ],
+              "signal": "桌面与手机用户路径可达且无溢出",
+              "method": "前端构建和真实浏览器验收"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "边界、状态变量、因果链、传感器与执行器已按实现事实复核；每项 must 均有测量信号",
+        "recorded_at": "2026-09-10T15:00:05+00:00",
+        "data": {
+          "baseline_revision": 2,
+          "plant_boundary": {
+            "components": [
+              "dm_dependency 表",
+              "data-migration 后端 REST",
+              "依赖页",
+              "统一回收站 DEPENDENCY 来源",
+              "DEPENDENCY 看板下钻"
+            ],
+            "excluded": [
+              "迁移参数/系统组件清单本体",
+              "公共 UI 组件与主题",
+              "历史依赖数据"
+            ],
+            "owners": [
+              "business/data-migration",
+              "platform/infrastructure（V199 与权限节点）"
+            ]
+          },
+          "state_variables": [
+            "迁移版本与 dm_dependency 结构（旧列/parameter_id/唯一键/索引）",
+            "依赖记录活动/软删状态",
+            "参数活动性与使用方系统启停状态",
+            "租户+项目+参数+使用方的关系唯一键",
+            "页面加载/提交/导入/回收站操作状态"
+          ],
+          "causal_paths": [
+            "V199 空表门禁 -> 结构变更 -> 新列/唯一键/权限节点可用",
+            "依赖写操作 -> 参数/系统校验 + 唯一性 + 审计 -> 持久化",
+            "参数逻辑删除 -> dm_dependency 活动依赖计数 -> 拒绝删除",
+            "菜单权限节点 -> Controller @PreAuthorize -> 403",
+            "看板 DEPENDENCY -> 参数关联子查询 -> 计数与下钻在新结构可用"
+          ],
+          "interfaces": [
+            "V199 Flyway（空表断言、删旧列/索引、parameter_id、唯一键、权限节点）",
+            "DependencyService / DependencyController (GET/POST/PUT/DELETE/import/template/options)",
+            "DependencyRecycleBinSource（countDeleted/listDeletedPage/detail/restore/purge）",
+            "ParameterService 删除与彻底删除前的依赖引用保护",
+            "web/src/api/data-migration.ts 与 DependenciesPage.vue",
+            "DashboardMetricDefinition.DEPENDENCY 下钻表达式"
+          ],
+          "sensors": [
+            "MySQL Testcontainers 迁移断言（空表/非空/结构/权限/幂等）",
+            "DependencyServiceTest（CRUD、投影、导入、审计、回收站）",
+            "ParameterServiceTest 引用保护",
+            "DataMigrationModuleRegistrationTest 旧端点消失与专属权限",
+            "DashboardMetricMySqlTest/DefinitionTest 看板计数与下钻",
+            "npm run build 前端生产构建",
+            "治理/范围检查与 git diff --check；真实浏览器（受限时记录限制）"
+          ],
+          "actuators": [
+            "追加 V199 迁移并按需修正",
+            "DependencyService/Controller/RecycleBinSource 写入",
+            "ParameterService/ContentFileAssetService/ContentAssetController/DashboardMetricDefinition 调整",
+            "前端页面与 API 修改",
+            "测试与构建命令"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "signal": "V199 在空表成功、非空失败且结构不变",
+              "sensor": "DataMigrationDependencyMigrationMySqlTest"
+            },
+            {
+              "requirement_id": "R2",
+              "signal": "列表 SQL 含项目过滤与参数/两侧系统投影字段",
+              "sensor": "DependencyServiceTest"
+            },
+            {
+              "requirement_id": "R3",
+              "signal": "重复/无效参数/停用系统被拒绝，唯一键兜底",
+              "sensor": "DependencyServiceTest"
+            },
+            {
+              "requirement_id": "R4",
+              "signal": "两列模板与逐行部分成功导入",
+              "sensor": "DependencyServiceTest"
+            },
+            {
+              "requirement_id": "R5",
+              "signal": "MANAGED_TYPES 空、通用 Controller 无旧端点",
+              "sensor": "ModuleRegistration + Governance Test"
+            },
+            {
+              "requirement_id": "R6",
+              "signal": "菜单 750 create/update/delete 节点与写权限注解",
+              "sensor": "V199 断言 + ModuleRegistrationTest"
+            },
+            {
+              "requirement_id": "R7",
+              "signal": "回收站恢复/彻底删除与参数引用保护",
+              "sensor": "DependencyServiceTest + ParameterServiceTest"
+            },
+            {
+              "requirement_id": "R8",
+              "signal": "看板新结构计数下钻、前端构建与页面状态",
+              "sensor": "DashboardMetricMySqlTest + npm build"
+            }
+          ],
+          "disturbances": [
+            "REQ-067 未提交改动与 REQ-068 共享文件差异",
+            "REQ-061 治理脚本 JSON/YAML 基线故障（check-all-governance 前置失败）",
+            "目标库 dm_dependency 非空",
+            "参数英文名跨提供方重复",
+            "旧客户端请求上传端点",
+            "浏览器环境不可用时无法完成四视口真机验收"
+          ],
+          "delays": [
+            "Flyway 在应用启动前执行",
+            "导入逐行写入与逐行错误收集",
+            "前端异步列表/导入请求",
+            "回收站恢复前重新校验"
+          ],
+          "assumptions": [
+            {
+              "text": "REQ-067 参数域可作为依赖只读数据源",
+              "basis": "当前工作区参数英文名实现与 V198 已存在",
+              "falsifier": "参数模块测试或 V198 迁移失败"
+            },
+            {
+              "text": "目标 dm_dependency 为空",
+              "basis": "用户确认不处理历史数据并采用空表失败关闭",
+              "falsifier": "部署目标迁移前 COUNT(*) 大于 0"
+            }
+          ],
+          "control_assessment": [
+            "全部 8 项 must 均有独立传感器与可复验信号",
+            "写路径受控：服务校验 + 唯一键 + 审计，回滚边界按任务划分",
+            "观测覆盖后端测试、MySQL 迁移、前端构建与治理检查四类；浏览器验收视环境记录限制",
+            "可观测性：通过；可控性：通过"
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "任务 T1-T5 写入边界、依赖无环、采样计划与需求覆盖已复核；写入范围不重叠 REQ-067",
+        "recorded_at": "2026-09-10T15:00:21+00:00",
+        "data": {
+          "baseline_revision": 2,
+          "model_revision": 1,
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "数据库结构、权限节点与失败关闭迁移",
+              "requirement_ids": [
+                "R1",
+                "R6"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V198 为当前最新迁移",
+                "V190 菜单 750 只有查看权限"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationDependencyMigrationMySqlTest.java"
+              ],
+              "invariants": [
+                "数据 Owner 和菜单路由不变",
+                "只追加 V199 不修改历史迁移",
+                "提供方/使用方名称只读投影不冗余"
+              ],
+              "interface_contracts": [
+                "dm_dependency.parameter_id/system_code/unique key",
+                "menu 750 create/update/delete"
+              ],
+              "non_goals": [
+                "依赖导出",
+                "迁移参数/系统组件清单改造",
+                "历史数据迁移",
+                "公共 UI/主题变更"
+              ],
+              "action_bounds": [
+                "编写迁移失败基线测试",
+                "运行局部迁移测试"
+              ],
+              "acceptance_checks": [
+                "空表迁移成功",
+                "非空迁移不改旧结构",
+                "旧列删除、新列和唯一键存在",
+                "菜单 750 细粒度权限存在"
+              ],
+              "evidence_required": [
+                "退出码和首个缺失断言",
+                "迁移文件和测试断言",
+                "Maven 摘要"
+              ],
+              "rollback": "未应用时删除 V199；已应用且无新关系时走 Owner 批准前向补偿",
+              "stop_conditions": [
+                "目标数据库非空",
+                "版本冲突",
+                "必须改历史脚本"
+              ],
+              "escalation_conditions": [
+                "历史数据处置变化",
+                "权限 Owner 否决"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "专属依赖后端、投影、导入和回收站来源",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "ParameterService 和 ProjectComponentService 提供可复用校验/选项模式"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DependencyServiceTest.java"
+              ],
+              "invariants": [
+                "数据 Owner 和菜单路由不变",
+                "只追加 V199 不修改历史迁移",
+                "提供方/使用方名称只读投影不冗余"
+              ],
+              "interface_contracts": [
+                "/api/data-migration/dependencies CRUD/template/import",
+                "RecycleBinSource DEPENDENCY"
+              ],
+              "non_goals": [
+                "依赖导出",
+                "迁移参数/系统组件清单改造",
+                "历史数据迁移",
+                "公共 UI/主题变更"
+              ],
+              "action_bounds": [
+                "编写服务契约和导入测试",
+                "接入回收站来源并运行测试"
+              ],
+              "acceptance_checks": [
+                "列表字段完整",
+                "单条重复返回 409",
+                "模板两列",
+                "多义参数行失败",
+                "合法行部分成功",
+                "回收站恢复/彻底删除可用",
+                "写审计存在"
+              ],
+              "evidence_required": [
+                "退出码和测试缺口",
+                "execution diff 和聚焦测试",
+                "Maven 摘要和导入结果断言"
+              ],
+              "rollback": "移除新增服务/Controller/来源和测试，保留 T1",
+              "stop_conditions": [
+                "无法逐行部分成功",
+                "必须改公共回收站契约"
+              ],
+              "escalation_conditions": [
+                "需自动选择多义参数",
+                "需新增公共 API"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "剥离文件资产链路、参数引用保护与看板适配",
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "通用文件服务和看板仍引用 DEPENDENCY 旧列"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "invariants": [
+                "数据 Owner 和菜单路由不变",
+                "只追加 V199 不修改历史迁移",
+                "提供方/使用方名称只读投影不冗余"
+              ],
+              "interface_contracts": [
+                "旧上传/替换/下载不可用",
+                "看板新投影",
+                "参数引用保护"
+              ],
+              "non_goals": [
+                "依赖导出",
+                "迁移参数/系统组件清单改造",
+                "历史数据迁移",
+                "公共 UI/主题变更"
+              ],
+              "action_bounds": [
+                "补充旧入口和引用保护回归断言",
+                "运行后端回归"
+              ],
+              "acceptance_checks": [
+                "MANAGED_TYPES 不含 DEPENDENCY",
+                "旧端点消失",
+                "看板不读旧列",
+                "参数删除受依赖保护"
+              ],
+              "evidence_required": [
+                "基线退出码",
+                "静态搜索和测试",
+                "Maven 摘要"
+              ],
+              "rollback": "V199 后保留专属服务，按修复前进",
+              "stop_conditions": [
+                "活动代码仍读旧列",
+                "删除参数绕过范围/审计"
+              ],
+              "escalation_conditions": [
+                "公共看板契约不兼容",
+                "跨模块数据 Owner 变化"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "前端 API、专属页面和响应式交互",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "ParametersPage 和 delivery-showcase 提供复用范式",
+                "AssetListView 含依赖上传入口"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/DependenciesPage.vue",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "invariants": [
+                "数据 Owner 和菜单路由不变",
+                "只追加 V199 不修改历史迁移",
+                "提供方/使用方名称只读投影不冗余"
+              ],
+              "interface_contracts": [
+                "依赖表格/卡片、表单和导入交互"
+              ],
+              "non_goals": [
+                "依赖导出",
+                "迁移参数/系统组件清单改造",
+                "历史数据迁移",
+                "公共 UI/主题变更"
+              ],
+              "action_bounds": [
+                "建立 API 和页面契约基线",
+                "运行前端构建"
+              ],
+              "acceptance_checks": [
+                "桌面八字段",
+                "移动卡片可读",
+                "两列导入和逐行结果",
+                "无上传/替换/下载",
+                "完整异步状态",
+                "四视口无溢出"
+              ],
+              "evidence_required": [
+                "构建退出码",
+                "页面静态检查和 diff",
+                "Vite 构建摘要"
+              ],
+              "rollback": "V199 后保留新契约并修复前进",
+              "stop_conditions": [
+                "整页横向滚动",
+                "仍调用附件 API",
+                "需扩大公共组件范围"
+              ],
+              "escalation_conditions": [
+                "需新增公共样式或组件",
+                "产品字段无法在移动端可读"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "集成验证、治理检查与浏览器验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "input_facts": [
+                "所有实现任务和局部测试完成"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260910-068-dm-dependency/*.json"
+              ],
+              "invariants": [
+                "数据 Owner 和菜单路由不变",
+                "只追加 V199 不修改历史迁移",
+                "提供方/使用方名称只读投影不冗余"
+              ],
+              "interface_contracts": [
+                "独立观测、收敛和交接证据"
+              ],
+              "non_goals": [
+                "依赖导出",
+                "迁移参数/系统组件清单改造",
+                "历史数据迁移",
+                "公共 UI/主题变更"
+              ],
+              "action_bounds": [
+                "运行静态/治理/范围检查",
+                "运行完整后端测试",
+                "运行前端构建",
+                "记录观测、反馈和收敛门禁"
+              ],
+              "acceptance_checks": [
+                "所有 must 覆盖",
+                "权限/审计/迁移/页面状态通过",
+                "浏览器四视口通过",
+                "反馈已裁决",
+                "范围一致"
+              ],
+              "evidence_required": [
+                "命令退出码和摘要",
+                "Maven 测试摘要",
+                "Vite 构建摘要",
+                "浏览器截图/DOM/网络记录",
+                "observation/convergence JSON"
+              ],
+              "rollback": "按任务边界回退并保留证据；V199 已应用时修复前进",
+              "stop_conditions": [
+                "P0/P1、越权、误删、白屏、关键路径不可达、范围越界"
+              ],
+              "escalation_conditions": [
+                "环境不可用",
+                "需重新决定历史数据或公共契约"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 消费 T1 的列名、唯一键、权限节点和回收站类型契约"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 需要 T2 的 DependencyService 和回收站来源接口"
+            },
+            {
+              "from": "T2",
+              "to": "T4",
+              "reason": "T4 前端 API 依赖 T2 的 REST 契约"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "T4 页面依赖 T3 下线旧文件动作后的专属接口"
+            },
+            {
+              "from": "T1",
+              "to": "T5",
+              "reason": "T5 集成验证需要 T1 迁移与权限契约"
+            },
+            {
+              "from": "T2",
+              "to": "T5",
+              "reason": "T5 需要 T2 服务实现与测试"
+            },
+            {
+              "from": "T3",
+              "to": "T5",
+              "reason": "T5 需要 T3 链路剥离与回归测试"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "T5 需要 T4 前端构建产物"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "command": "mvn -pl :ccb-data-migration -am test && npm --prefix web run build",
+              "expected": "后端测试和前端生产构建成功"
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "command": "git diff --check",
+              "expected": "无空白错误"
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1-T4 后端聚焦测试",
+              "evidence": "mvn 聚焦测试退出码 0",
+              "covers": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            },
+            {
+              "label": "完整模块测试",
+              "evidence": "mvn -pl :ccb-data-migration -am test 退出码 0",
+              "covers": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            },
+            {
+              "label": "前端生产构建",
+              "evidence": "npm --prefix web run build 退出码 0",
+              "covers": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R8"
+              ]
+            },
+            {
+              "label": "治理与范围检查",
+              "evidence": "check-codex-scope / check-all-governance / git diff --check 结果",
+              "covers": [
+                "R1",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "浏览器四视口验收",
+              "evidence": "真实浏览器截图/DOM/网络记录（环境受限时如实记录）",
+              "covers": [
+                "R2",
+                "R3",
+                "R4",
+                "R8"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T3",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "执行报告已记录，任务输出局部可测",
+        "recorded_at": "2026-09-10T15:01:15+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql（新建）",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationDependencyMigrationMySqlTest.java（新建）"
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R6"
+          ],
+          "commands": [
+            "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationDependencyMigrationMySqlTest,DashboardMetricMySqlTest -Dsurefire.failIfNoSpecifiedTests=false"
+          ],
+          "local_checks": [
+            "空表应用 V199 成功：parameter_id 新增、doc_code/doc_name/active_doc_code 删除、uk_dm_dependency_relation/idx_dm_dependency_query/idx_dm_dependency_system 生效、旧 uk_dm_dependency_code 与 idx_dm_dependency_owner 消失",
+            "非空表在执行结构修改前失败：SIGNAL 45000 且旧列/旧数据保持不变，未生成占位关系",
+            "菜单 750 新增 create/update/delete 权限节点且授权 1/200；角色 202 保持只读",
+            "V199 语句重放幂等",
+            "迁移测试 2 项 + 看板 MySQL 测试 2 项全部通过"
+          ],
+          "diff_summary": [
+            "V199 在真实升级前结构（V162+V174+V178+V182 后）上删 uk_dm_dependency_code、旧查询索引与 owner 索引，删 doc_code/doc_name，新增 parameter_id、关系唯一键与权限节点；测试按同类 MySqlTest 模式使用 Testcontainers mysql:8.4"
+          ],
+          "invariants_checked": [
+            "只追加 V199，未修改任何已发布迁移",
+            "空表门禁在任何结构修改前执行",
+            "component_id/checksum_md5 兼容列未被动用"
+          ],
+          "disturbances": [
+            "发现真实升级路径存在 V178 遗留 uk_dm_dependency_code 引用 doc_code，V199 初版删除 doc_code 会失败；已加前置删除步骤并通过迁移测试"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "T2 专属依赖服务与回收站来源"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "执行报告已记录，任务输出局部可测",
+        "recorded_at": "2026-09-10T15:01:16+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java（新建）",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java（新建）",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java（新建）",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DependencyServiceTest.java（新建）"
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R4",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            "mvn -pl :ccb-data-migration -am test -Dtest=DependencyServiceTest,ParameterServiceTest,DashboardMetricDefinitionTest,DataMigrationModuleRegistrationTest,ContentFileAssetDocCodeGovernanceTest -Dsurefire.failIfNoSpecifiedTests=false"
+          ],
+          "local_checks": [
+            "列表 SQL 恒定项目过滤并投影参数中英文名、提供方/使用方系统编号与中文名、更新人",
+            "新增/编辑校验参数存在、使用方系统启用、关系唯一（应用预检 409 + DB 唯一键兜底）",
+            "编辑不允许改变项目归属，写权限校验 Owner/管理员",
+            "模板固定两列「参数英文名、使用方系统编号」；非法表头拒绝整个文件",
+            "导入逐行部分成功：零命中/多义/停用系统/文件内重复/库内重复均报告实际行号，合法行独立写入并审计",
+            "回收站来源 DEPENDENCY 委托 DependencyService：计数/列表/详情/恢复/彻底删除，恢复前复验参数与系统有效性",
+            "写操作均产生 DEPENDENCY 审计（CREATE/UPDATE/DELETE/IMPORT/RESTORE/PURGE）"
+          ],
+          "diff_summary": [
+            "专属域服务与控制器建立，回收站来源按 ParameterRecycleBinSource 范式封装；DependencyServiceTest 覆盖列表投影、CRUD、唯一冲突、导入部分成功、多义、回收站与权限"
+          ],
+          "invariants_checked": [
+            "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+            "名称只读投影不冗余写入依赖表",
+            "参数英文名唯一范围保持租户+项目+提供方系统"
+          ],
+          "disturbances": [
+            "计划文件清单包含 DependencyRecycleBinSource.java；实现初版让 DependencyService 直接实现 RecycleBinSource，随后按设计/范式拆分为独立来源类并回归",
+            "导入表头校验初版未实现，按设计错误处理补齐"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "T3 通用链路剥离、参数引用保护与看板适配"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "执行报告已记录，任务输出局部可测",
+        "recorded_at": "2026-09-10T15:01:16+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java（修改）",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java（修改）",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java（修改）",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java（修改）",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java（修改）",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentFileAssetDocCodeGovernanceTest.java（重写）",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java（修改）",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java（新增 R7 用例）"
+          ],
+          "requirements_addressed": [
+            "R5",
+            "R6",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            "mvn -pl :ccb-data-migration -am test -Dtest=DependencyServiceTest,ParameterServiceTest,DashboardMetricDefinitionTest,DataMigrationModuleRegistrationTest,ContentFileAssetDocCodeGovernanceTest -Dsurefire.failIfNoSpecifiedTests=false"
+          ],
+          "local_checks": [
+            "ContentFileAssetService.MANAGED_TYPES 为空，DEPENDENCY 不再由通用文件服务承接",
+            "通用 ContentAssetController 移除 /dependencies 上传/替换/下载/删除端点，保留空壳兼容注册",
+            "ContentAssetRecycleBinSource.supports() 不再包含 DEPENDENCY；DEPENDENCY 由 DependencyRecycleBinSource 认领",
+            "DashboardMetricDefinition.DEPENDENCY 下钻改为参数表关联表达式，不再引用 doc_code/doc_name；MySQL 看板计数与下钻测试通过",
+            "ParameterService：活动依赖阻止逻辑删除、任意依赖记录阻止彻底删除；update() 中误放的删除守卫已移除（编辑不受引用保护限制）",
+            "注册测试断言旧端点消失与新专属权限存在"
+          ],
+          "diff_summary": [
+            "DEPENDENCY 从通用附件链路剥离；参数引用保护接入删除/彻底删除路径；看板适配新结构；对应治理/注册/看板/参数测试同步更新"
+          ],
+          "invariants_checked": [
+            "通用链路剥离后仍保留其他类型归属（本模块其余类型已由专属服务承接）",
+            "参数删除保护保留租户/项目/实体权限与审计"
+          ],
+          "disturbances": [
+            "发现 ParameterService.update() 中存在误放的『活动依赖阻止删除』守卫，会错误阻止编辑；已移除，仅保留 delete/purge 的正确守卫并补测试",
+            "ContentFileAssetDocCodeGovernanceTest 原断言大小写不匹配实际异常信息，修正为大小写不敏感"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "T4 前端 API 与专属页面"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "执行报告已记录，任务输出局部可测",
+        "recorded_at": "2026-09-10T15:01:16+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            "web/src/api/data-migration.ts（修改）",
+            "web/src/modules/data-migration/views/content/DependenciesPage.vue（重写）"
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            "npm --prefix web run build"
+          ],
+          "local_checks": [
+            "API 层新增 DependencyRecord/DependencyQuery/DependencyFormData/DependencyImportResult 等类型与 list/detail/options/create/update/delete/template/import 方法",
+            "页面不再调用附件列表/上传/下载 API，改为专属依赖接口",
+            "桌面表格展示全部 8 个字段，移动端卡片按参数/使用方/提供方/更新信息重排",
+            "新增/编辑抽屉提供参数远程搜索与使用方系统选择；导入对话框展示逐行失败结果",
+            "覆盖加载、空、筛选无结果、失败、无权限、保存中、导入中与防重复提交状态",
+            "修复模板中未注册图标（arrow-down/upload-filled/Document）与缺失的响应式类（dm-desktop-only/dm-mobile-only/dm-loading-state）",
+            "TypeScript 与 Vite 生产构建通过（built in 20.54s）"
+          ],
+          "diff_summary": [
+            "前端专属依赖页替换原附件型页面；路由与菜单不变；样式复用 data-migration.css 语义变量，页面级样式保持在组件作用域"
+          ],
+          "invariants_checked": [
+            "菜单 750 路由 /data-migration/content/dependencies 不变",
+            "未新增公共 UI 组件或主题",
+            "页面无文件选择/上传/替换/下载动作"
+          ],
+          "disturbances": [
+            "初版页面图标未导入导致编译不报错但运行时报禁用组件警告；已补齐导入与大小写用法",
+            "初版引用了不存在的 dm-desktop-only/dm-mobile-only 类导致桌面与移动同时渲染；已在本组件作用域补齐响应式规则"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实浏览器四视口验收依赖本地运行环境，待 T5 尝试"
+          ],
+          "recommended_next": "T5 集成验证与浏览器验收"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "后端/前端本地全量测试与构建通过；V199 应用成功且空表结构符合设计；真实浏览器 22 项验收全部通过（含四视口）",
+        "recorded_at": "2026-09-10T15:15:42+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            "flyway_schema_history: V199 applied on local MySQL (ccb_platform)",
+            "dm_dependency: 空表启动后结构验证（新列/唯一键/权限 7501-7503）",
+            "浏览器验收脚本 /tmp/verify_dependencies_068.mjs（22 项检查）"
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            "cd /home/song/workspace/RDDMP && mvn -pl :ccb-data-migration -am test (195 tests passed)",
+            "cd /home/song/workspace/RDDMP && npm --prefix web run build (Vite build passed)",
+            "git diff --check (clean)",
+            "docker exec ccb-platform-mysql mysql: flyway_schema_history V199 success=1; dm_dependency COUNT=0",
+            "backend-dev.sh start -> Tomcat started on 8080; frontend-dev.sh start -> Vite :5173",
+            "node /tmp/verify_dependencies_068.mjs -> SUMMARY total=22 failed=0 consoleErrors=0 pageErrors=0"
+          ],
+          "local_checks": [
+            "V199 在本地 MySQL 应用成功（flyway_schema_history version=199 success=1），空表不变量成立",
+            "启动后 dm_dependency 结构含 parameter_id/system_code/唯一键，旧 doc_code/doc_name 与旧索引不存在",
+            "菜单权限 7501/7502/7503 节点存在且绑定角色 1/200/202",
+            "浏览器验收 22/22 通过：登录、标题、GET 列表、POST 新增、重复 409、PUT 编辑、模板 xlsx、导入 3 行部分成功 1 accepted/2 failed、逻辑删除、回收站可见、彻底删除、列表不含、无控制台错误、无未捕获异常、1280/375/390/430 四视口 overflow=0",
+            "前端页面走专属依赖接口，模板列名为参数英文名/使用方系统编号",
+            "scope 检查仅含 REQ-068 可写路径与 REQ-067 基线 diff，未触碰 REQ-067 未提交改动"
+          ],
+          "diff_summary": [
+            "T5 无生产代码改动，内容为集成验证与浏览器验收，全部通过",
+            "唯一数据残留：导入成功的 PARAM_DEP_B->SYS-DEP-001 一行（验收过程产物，可随时删除）"
+          ],
+          "invariants_checked": [
+            "菜单 750 路由 /data-migration/content/dependencies 不变",
+            "V199 只追加，未修改历史 Flyway 脚本",
+            "只修改 codex-task-scope.yaml 可写路径"
+          ],
+          "disturbances": [
+            "验收脚本 xlsx/playwright 包解析需指向 web/node_modules 与仓库根 node_modules，已通过 createRequire 修正",
+            "列表显示 seed 参数中文名为双重编码乱码：源于历史种子数据本身（DB 已存摩尔字节），非本功能引入"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "进入 observing 独立采样与 verifying 收敛验收"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "8 项 must 需求全部由自动化测试与真实浏览器双重传感器观测；P0/P1=0，P2=2 为受控基线风险",
+        "recorded_at": "2026-09-10T15:16:07+00:00",
+        "data": {
+          "sample_label": "验收采样-REQ068",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5"
+          ],
+          "baseline_revision": 2,
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "DataMigrationDependencyMigrationMySqlTest + V199 实际应用",
+              "observed": "本地 MySQL 应用 V199 成功（flyway version=199 success=1）；dm_dependency 含 parameter_id/system_code、唯一键，旧 doc_code/doc_name 与旧索引不存在；空表不变量成立",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "DependencyServiceTest",
+              "observed": "列表 SQL 含项目过滤与参数中英文名/使用方编号名称/提供方编号名称/更新时间/更新人投影字段，页面 8 列表格与移动卡片渲染正确",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "DependencyServiceTest + 浏览器 API 流程",
+              "observed": "单条新增/编辑/逻辑删除通过；重复新增返回 409（同一参数与使用方系统已存在）；租户/项目/参数/使用方唯一键兜底",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "DependencyServiceTest + 浏览器导入",
+              "observed": "两列模板（参数英文名/使用方系统编号）下载为 xlsx；导入 3 行返回 rows=3 accepted=1 failed=2，逐行错误（第 3 行参数英文名不存在、第 4 行依赖关系已存在）",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "ModuleRegistration + Governance Test",
+              "observed": "DEPENDENCY 从 ContentFileAssetService/ContentAssetController/回收站来源剥离，MANAGED_TYPES 不含 DEPENDENCY，通用附件端点和页面上传/替换/下载动作消失",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "V199 断言 + DataMigrationModuleRegistrationTest",
+              "observed": "菜单 750 细粒度权限节点 7501/7502/7503 存在并绑定角色 1/200/202；写操作走项目/实体授权与审计",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "DependencyServiceTest + ParameterServiceTest + 浏览器回收站",
+              "observed": "逻辑删除后回收站 DEPENDENCY 来源可见记录，彻底删除后列表不含；参数被依赖时禁止删除（引用保护）",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "DashboardMetricMySqlTest + DashboardMetricDefinitionTest + npm build + 浏览器",
+              "observed": "DEPENDENCY 看板计数与下钻子查询适配新结构；npm run build 通过；页面无控制台错误/未捕获异常，1280/375/390/430 四视口 overflow=0",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "REQ-061 治理脚本 codex-task-scope.yaml 非 JSON/YAML 导致 check-all-governance 前置失败：基线故障，与本需求改动无关，已在执行期隔离",
+            "长期未清理的种子参数中文名为双重编码乱码（DB 存储层面），会影响本地页面显示但与本功能代码无关",
+            "浏览器验收脚本依赖包需指向 web/node_modules 与仓库根 node_modules（createRequire 修正）"
+          ],
+          "coverage_gaps": [
+            "生产/预发环境未部署验证（仅本地库）",
+            "非空 dm_dependency 库的 V199 失败路径已由自动化测试覆盖，未在真实非空库重复执行",
+            "check-all-governance 前置阻塞未复跑（REQ-061 基线）"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 2,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛验收：must 需求全覆盖双传感器证据、任务全部 verified、采样 P0/P1=0、不变量与范围审计通过、残余风险披露",
+        "recorded_at": "2026-09-10T15:16:46+00:00",
+        "data": {
+          "baseline_revision": 2,
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": [
+                "DataMigrationDependencyMigrationMySqlTest 空表/非空/结构断言通过",
+                "本地 MySQL V199 success=1；SHOW COLUMNS 新列与唯一键在、旧列与旧索引无"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": [
+                "DependencyServiceTest 列表投影字段断言",
+                "浏览器表格/卡片渲染与 8 字段展示"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": [
+                "DependencyServiceTest 新增/编辑/逻辑删除/唯一性",
+                "浏览器重复新增返回 409 且消息准确"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": [
+                "DependencyServiceTest 逐行校验/部分成功",
+                "浏览器模板下载 xlsx（3414B）+ 导入 3 行 accepted=1 failed=2 逐行错误"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": [
+                "ContentFileAssetDocCodeGovernanceTest 与模块注册测试 DEPENDENCY 剥离",
+                "页面不再存在上传/替换/下载动作"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": [
+                "V199 权限 7501-7503 与角色 1/200/202 断言",
+                "DataMigrationModuleRegistrationTest 写权限注解"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "result": "pass",
+              "evidence": [
+                "DependencyServiceTest 回收站恢复/彻底删除",
+                "ParameterServiceTest 参数引用保护",
+                "浏览器回收站可见软删记录、purge 后列表不含"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": [
+                "DashboardMetricMySqlTest/DefinitionTest 计数下钻",
+                "npm run build 通过",
+                "浏览器四视口 overflow=0、无控制台/未捕获错误"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": [
+                "V199 迁移测试与实库应用"
+              ]
+            },
+            {
+              "task_id": "T2",
+              "result": "verified",
+              "evidence": [
+                "DependencyService/Controller/RecycleBinSource 测试与浏览器流程"
+              ]
+            },
+            {
+              "task_id": "T3",
+              "result": "verified",
+              "evidence": [
+                "引用保护/资产剥离/看板适配测试"
+              ]
+            },
+            {
+              "task_id": "T4",
+              "result": "verified",
+              "evidence": [
+                "前端构建与页面验收"
+              ]
+            },
+            {
+              "task_id": "T5",
+              "result": "verified",
+              "evidence": [
+                "195 Maven 测试 + Vite 构建 + 浏览器 22/22 集成验收"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "open": 0,
+            "resolved": 0,
+            "deferred": []
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 2,
+                "P3": 0
+              },
+              "score": 10,
+              "stage": "后端测试与构建"
+            },
+            {
+              "sample_id": "S-0002",
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 2,
+                "P3": 0
+              },
+              "score": 10,
+              "stage": "V199 应用与结构断言"
+            },
+            {
+              "sample_id": "S-0003",
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 2,
+                "P3": 0
+              },
+              "score": 10,
+              "stage": "真实浏览器验收"
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "ccb-data-migration 模块与依赖模块全量测试",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-data-migration -am test 195 通过（含新增 DependencyServiceTest/DataMigrationDependencyMigrationMySqlTest 与增强 ParameterServiceTest/DashboardMetric 测试）"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "npm run build 通过"
+            },
+            {
+              "check": "diff 质量",
+              "result": "pass",
+              "evidence": "git diff --check 干净"
+            },
+            {
+              "check": "REQ-067 未提交改动保护",
+              "result": "pass",
+              "evidence": "scope 检查仅显示 REQ-067 基线 diff，REQ-068 未触碰其文件"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "菜单 750 路由 /data-migration/content/dependencies 不变",
+              "result": "pass",
+              "evidence": "前端路由与菜单未改名"
+            },
+            {
+              "invariant": "V199 只追加不修改历史 Flyway 脚本",
+              "result": "pass",
+              "evidence": "仅新增 V199__data_migration_dependency_domain.sql"
+            },
+            {
+              "invariant": "范围仅限 codex-task-scope.yaml 可写路径",
+              "result": "pass",
+              "evidence": "scope 检查通过（唯一基线 diff 为 REQ-067）"
+            },
+            {
+              "invariant": "提供方/使用方名称只读投影不冗余",
+              "result": "pass",
+              "evidence": "DependencyService 使用 JOIN 投影，无冗余列"
+            }
+          ],
+          "scope_audit": {
+            "writable_paths_only": true,
+            "read_only_touched": [],
+            "forbidden_touched": [],
+            "non_req_files_touched": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "REQ-067 与 REQ-068 共享文件差异",
+              "resilience": "scope 隔离验证通过，未覆盖或回退 REQ-067 改动"
+            },
+            {
+              "disturbance": "REQ-061 治理脚本基线故障",
+              "resilience": "已隔离并记录，不属于本需求改动；check-all-governance 为前置基线故障"
+            },
+            {
+              "disturbance": "目标库 dm_dependency 非空",
+              "resilience": "V199 设计为空表迁移并在非空时失败，测试覆盖失败路径"
+            },
+            {
+              "disturbance": "浏览器环境包解析",
+              "resilience": "createRequire 修正后完成真实浏览器四视口验收"
+            }
+          ],
+          "residual_risks": [
+            {
+              "risk": "生产/预发环境未部署验证，仅本地 MySQL 实库",
+              "mitigation": "上线前按发布流程执行 V199 与回归验收，失败路径有自动化覆盖",
+              "owner": "发布负责人"
+            },
+            {
+              "risk": "check-all-governance 因 REQ-061 已提交的 codex-task-scope.yaml 格式（非 JSON/YAML）前置失败，非本需求引入",
+              "mitigation": "由 REQ-061 或治理脚本后续需求修复后复跑",
+              "owner": "REQ-061 负责人"
+            },
+            {
+              "risk": "本地种子参数中文名为历史双重编码乱码，显示受影响",
+              "mitigation": "属历史数据质量问题，数据清洗需求单独处理；本功能展示 DB 原值正确",
+              "owner": "数据 Owner"
+            }
+          ],
+          "gate_result": "pass",
+          "route_reason": "8 项 must 需求全部有自动化测试与真实浏览器两类独立证据；P0/P1=0；任务全部 verified；反馈 0 未关闭；不变量全部通过；残余风险已披露"
+        }
+      }
+    ]
+  },
+  "objective": "将迁移过程依赖文件改造为可单条维护和批量导入的迁移参数与使用方系统关系管理能力，并彻底下线文件上传下载契约。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "dm_dependency 增加 parameter_id，system_code 表示使用方，空表迁移删除 doc_code/doc_name。",
+      "acceptance": [
+        "空表应用 V199 后新列、旧列和索引符合设计",
+        "非空表在任何结构修改前失败"
+      ],
+      "priority": "must",
+      "source": "用户确认的数据模型和历史数据策略",
+      "counterexample": [
+        "为历史行生成默认参数 ID",
+        "修改已发布迁移"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "列表展示参数中英文名、使用方编号/名称、提供方编号/名称、更新时间和更新人。",
+      "acceptance": [
+        "列表数据由当前项目关系和参数、系统投影得到",
+        "桌面与移动列表均可观察全部信息"
+      ],
+      "priority": "must",
+      "source": "用户列表需求及字段映射确认",
+      "counterexample": [
+        "提供方名称显示系统编号",
+        "名称冗余写入 dm_dependency"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "提供单条新增、编辑和逻辑删除，并保证租户、项目、参数与使用方关系唯一。",
+      "acceptance": [
+        "有效关系可新增和编辑",
+        "重复、跨项目、无效参数或停用系统被服务端拒绝"
+      ],
+      "priority": "must",
+      "source": "用户确认的操作范围和唯一规则",
+      "counterexample": [
+        "仅前端判重",
+        "更新允许改变所属项目"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Excel 模板使用参数英文名和使用方系统编号，逐行校验并允许部分成功。",
+      "acceptance": [
+        "模板仅有两列",
+        "零命中、多义、无效系统和重复行报告实际行号",
+        "合法行继续写入并审计"
+      ],
+      "priority": "must",
+      "source": "用户确认的导入模板和歧义处理",
+      "counterexample": [
+        "模板暴露参数 ID",
+        "多义时任取参数",
+        "一行错误回滚所有合法行"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "取消依赖文件上传、替换和下载，DEPENDENCY 从通用附件服务与回收站来源剥离。",
+      "acceptance": [
+        "页面无文件操作",
+        "旧上传替换下载端点不可用",
+        "专属回收站来源承接 DEPENDENCY"
+      ],
+      "priority": "must",
+      "source": "用户删除文件上传功能的要求和方案 A 确认",
+      "counterexample": [
+        "隐藏按钮但保留可调用上传端点"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "菜单 750 使用查看、新增、编辑、删除细粒度权限，所有写操作执行项目/实体授权和审计。",
+      "acceptance": [
+        "V199 补充权限节点",
+        "无权限请求返回 403",
+        "写操作产生 DEPENDENCY 审计"
+      ],
+      "priority": "must",
+      "source": "用户确认的权限设计与仓库治理",
+      "counterexample": [
+        "硬编码角色",
+        "仅依赖前端按钮显隐"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "依赖关系接入统一回收站并保护参数引用完整性。",
+      "acceptance": [
+        "管理员可恢复和彻底删除",
+        "活动依赖阻止参数逻辑删除",
+        "任意依赖阻止参数彻底删除"
+      ],
+      "priority": "must",
+      "source": "用户确认的回收站范围和工程数据完整性约束",
+      "counterexample": [
+        "删除参数后活动列表无法显示参数名称"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "看板 DEPENDENCY 指标适配新结构，前端覆盖完整状态与桌面/移动验收。",
+      "acceptance": [
+        "看板计数和下钻不引用旧列",
+        "页面覆盖加载空失败无权限和提交中",
+        "三个手机视口无页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "现有看板引用事实与 RDDMP 前端规约",
+      "counterexample": [
+        "V199 后看板 SQL 因 doc_code 不存在而失败",
+        "手机仅展示被裁剪桌面表格"
+      ]
+    }
+  ],
+  "invariants": [
+    "数据 Owner 和菜单路由不变",
+    "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+    "系统名称只读投影，不在依赖表冗余",
+    "不改变迁移参数英文名唯一范围",
+    "只追加 V199，不修改已发布迁移",
+    "不读取或写入生产数据、真实附件和密钥"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3",
+    "只能修改 REQ-20260910-068 任务范围授权路径",
+    "当前工作区存在 REQ-20260906-067 用户改动，必须保护",
+    "V199 和新应用必须同批发布"
+  ],
+  "non_goals": [
+    "依赖关系导出",
+    "迁移参数或系统组件清单改造",
+    "历史依赖数据迁移",
+    "公共 UI 组件或主题变更",
+    "删除 component_id 兼容列"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260910-068-dm-dependency/handoff.json",
+    "imported_at": "2026-09-10T14:57:38+00:00",
+    "topic": "data-migration-dependency",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-dependency",
+      "handoff_status": "approved",
+      "created_at": "2026-09-10T18:49:07+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-dependency",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-10-data-migration-dependency-design.md",
+        "objective": "将迁移过程依赖文件改造为可单条维护和批量导入的迁移参数与使用方系统关系管理能力，并彻底下线文件上传下载契约。",
+        "users": [
+          "迁移配置维护人员在当前项目登记和调整参数使用关系",
+          "批量维护人员通过两列 Excel 模板导入并处理逐行错误",
+          "查询人员比较参数、提供方、使用方和更新信息",
+          "管理员通过统一回收站恢复或彻底删除关系"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "dm_dependency 增加 parameter_id，system_code 表示使用方，空表迁移删除 doc_code/doc_name。",
+            "acceptance": [
+              "空表应用 V199 后新列、旧列和索引符合设计",
+              "非空表在任何结构修改前失败"
+            ],
+            "priority": "must",
+            "source": "用户确认的数据模型和历史数据策略",
+            "counterexample": [
+              "为历史行生成默认参数 ID",
+              "修改已发布迁移"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "列表展示参数中英文名、使用方编号/名称、提供方编号/名称、更新时间和更新人。",
+            "acceptance": [
+              "列表数据由当前项目关系和参数、系统投影得到",
+              "桌面与移动列表均可观察全部信息"
+            ],
+            "priority": "must",
+            "source": "用户列表需求及字段映射确认",
+            "counterexample": [
+              "提供方名称显示系统编号",
+              "名称冗余写入 dm_dependency"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "提供单条新增、编辑和逻辑删除，并保证租户、项目、参数与使用方关系唯一。",
+            "acceptance": [
+              "有效关系可新增和编辑",
+              "重复、跨项目、无效参数或停用系统被服务端拒绝"
+            ],
+            "priority": "must",
+            "source": "用户确认的操作范围和唯一规则",
+            "counterexample": [
+              "仅前端判重",
+              "更新允许改变所属项目"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Excel 模板使用参数英文名和使用方系统编号，逐行校验并允许部分成功。",
+            "acceptance": [
+              "模板仅有两列",
+              "零命中、多义、无效系统和重复行报告实际行号",
+              "合法行继续写入并审计"
+            ],
+            "priority": "must",
+            "source": "用户确认的导入模板和歧义处理",
+            "counterexample": [
+              "模板暴露参数 ID",
+              "多义时任取参数",
+              "一行错误回滚所有合法行"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "取消依赖文件上传、替换和下载，DEPENDENCY 从通用附件服务与回收站来源剥离。",
+            "acceptance": [
+              "页面无文件操作",
+              "旧上传替换下载端点不可用",
+              "专属回收站来源承接 DEPENDENCY"
+            ],
+            "priority": "must",
+            "source": "用户删除文件上传功能的要求和方案 A 确认",
+            "counterexample": [
+              "隐藏按钮但保留可调用上传端点"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "菜单 750 使用查看、新增、编辑、删除细粒度权限，所有写操作执行项目/实体授权和审计。",
+            "acceptance": [
+              "V199 补充权限节点",
+              "无权限请求返回 403",
+              "写操作产生 DEPENDENCY 审计"
+            ],
+            "priority": "must",
+            "source": "用户确认的权限设计与仓库治理",
+            "counterexample": [
+              "硬编码角色",
+              "仅依赖前端按钮显隐"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "依赖关系接入统一回收站并保护参数引用完整性。",
+            "acceptance": [
+              "管理员可恢复和彻底删除",
+              "活动依赖阻止参数逻辑删除",
+              "任意依赖阻止参数彻底删除"
+            ],
+            "priority": "must",
+            "source": "用户确认的回收站范围和工程数据完整性约束",
+            "counterexample": [
+              "删除参数后活动列表无法显示参数名称"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "看板 DEPENDENCY 指标适配新结构，前端覆盖完整状态与桌面/移动验收。",
+            "acceptance": [
+              "看板计数和下钻不引用旧列",
+              "页面覆盖加载空失败无权限和提交中",
+              "三个手机视口无页面级横向溢出"
+            ],
+            "priority": "must",
+            "source": "现有看板引用事实与 RDDMP 前端规约",
+            "counterexample": [
+              "V199 后看板 SQL 因 doc_code 不存在而失败",
+              "手机仅展示被裁剪桌面表格"
+            ]
+          }
+        ],
+        "invariants": [
+          "数据 Owner 和菜单路由不变",
+          "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+          "系统名称只读投影，不在依赖表冗余",
+          "不改变迁移参数英文名唯一范围",
+          "只追加 V199，不修改已发布迁移",
+          "不读取或写入生产数据、真实附件和密钥"
+        ],
+        "constraints": [
+          "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3",
+          "只能修改 REQ-20260910-068 任务范围授权路径",
+          "当前工作区存在 REQ-20260906-067 用户改动，必须保护",
+          "V199 和新应用必须同批发布"
+        ],
+        "non_goals": [
+          "依赖关系导出",
+          "迁移参数或系统组件清单改造",
+          "历史依赖数据迁移",
+          "公共 UI 组件或主题变更",
+          "删除 component_id 兼容列"
+        ],
+        "selected_approach": {
+          "name": "方案 A：DEPENDENCY 专属领域服务和页面",
+          "reason": "彻底隔离参数关系与附件生命周期，并复用参数和检核规则已验证的域化范式。",
+          "alternatives": [
+            {
+              "name": "通用文件服务内分支",
+              "rejected_because": "关系、Excel 与附件职责混杂且容易残留上传入口"
+            },
+            {
+              "name": "新建并行关系表",
+              "rejected_because": "违背改造 dm_dependency 的明确要求并产生双数据源"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "business/data-migration 依赖领域",
+              "V199 Flyway 迁移",
+              "依赖页面和前端 API",
+              "菜单 750 权限节点",
+              "统一回收站来源",
+              "DEPENDENCY 看板适配"
+            ],
+            "outside": [
+              "平台附件实现",
+              "系统/组件清单维护",
+              "迁移参数字段和唯一规则",
+              "其他内容菜单"
+            ]
+          },
+          "components": [
+            {
+              "name": "DependencyService",
+              "responsibility": "关系 CRUD、投影、导入、审计和回收站",
+              "depends_on": [
+                "JdbcTemplate",
+                "DataMigrationPermissionService",
+                "UserDirectoryPort"
+              ]
+            },
+            {
+              "name": "DependencyController",
+              "responsibility": "专属 REST 和 RBAC",
+              "depends_on": [
+                "DependencyService"
+              ]
+            },
+            {
+              "name": "DependencyRecycleBinSource",
+              "responsibility": "注册 DEPENDENCY 回收站能力",
+              "depends_on": [
+                "DependencyService"
+              ]
+            },
+            {
+              "name": "V199",
+              "responsibility": "空表门禁、结构和权限迁移",
+              "depends_on": [
+                "V198 后数据库结构"
+              ]
+            },
+            {
+              "name": "DependenciesPage",
+              "responsibility": "桌面/移动查询维护和导入体验",
+              "depends_on": [
+                "data-migration API",
+                "现有 Ui 组件"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "/api/data-migration/dependencies",
+              "producer": "DependencyController",
+              "consumers": [
+                "DependenciesPage"
+              ],
+              "contract": "分页、详情、CRUD、模板和逐行导入"
+            },
+            {
+              "name": "/api/data-migration/components/options/systems",
+              "producer": "ProjectComponentService",
+              "consumers": [
+                "DependenciesPage"
+              ],
+              "contract": "当前项目启用系统选项"
+            },
+            {
+              "name": "RecycleBinSource:DEPENDENCY",
+              "producer": "DependencyRecycleBinSource",
+              "consumers": [
+                "ContentRecycleBinService"
+              ],
+              "contract": "计数、列表、详情、恢复、彻底删除"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "parameterId + consumerSystemCode",
+              "transitions": [
+                "校验权限和项目",
+                "校验参数与系统",
+                "判重",
+                "写 dm_dependency",
+                "写审计"
+              ],
+              "output": "关联投影记录"
+            },
+            {
+              "input": "两列 xlsx",
+              "transitions": [
+                "文件门禁",
+                "逐行解析英文名",
+                "校验系统和重复",
+                "合法行写入并审计"
+              ],
+              "output": "rows/accepted/failed/errors"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "V199 前表非空",
+            "behavior": "迁移在改结构前失败",
+            "recovery": "停止发布并由需求负责人另行决定历史数据策略"
+          },
+          {
+            "condition": "参数英文名零命中或多义",
+            "behavior": "导入该行失败且不任取",
+            "recovery": "修正模板或先治理参数数据"
+          },
+          {
+            "condition": "关系重复",
+            "behavior": "单条请求 409，导入行失败",
+            "recovery": "编辑或恢复既有关系"
+          },
+          {
+            "condition": "参数或使用方失效",
+            "behavior": "新增编辑或恢复被拒绝",
+            "recovery": "选择活动参数和启用系统"
+          },
+          {
+            "condition": "无权限或跨项目",
+            "behavior": "403 或范围错误且不写数据",
+            "recovery": "申请权限或切换正确项目"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "服务端 RBAC、租户、项目和实体权限",
+            "写审计",
+            "不信任请求身份和项目归属"
+          ],
+          "performance": [
+            "服务端分页",
+            "关系唯一和查询索引",
+            "参数选项有界返回",
+            "导入最多 5000 行"
+          ],
+          "compatibility": [
+            "保留页面路由和接口前缀",
+            "明确移除旧文件契约",
+            "V199 与新应用同批发布"
+          ],
+          "operations": [
+            "上线前空表检查",
+            "迁移失败关闭",
+            "V199 后不可直接降级旧应用"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R6"
+            ],
+            "signal": "V199 结构、空表门禁和权限节点符合设计",
+            "method": "MySQL 迁移集成测试"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R7"
+            ],
+            "signal": "关系、投影、导入、审计和引用保护行为可重复",
+            "method": "DependencyService 与 ParameterService 聚焦测试"
+          },
+          {
+            "requirement_ids": [
+              "R5",
+              "R6",
+              "R8"
+            ],
+            "signal": "旧端点消失、专属权限和看板 SQL 生效",
+            "method": "模块注册、权限和 Dashboard MySQL 测试"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R8"
+            ],
+            "signal": "桌面与手机用户路径可达且无溢出",
+            "method": "前端构建和真实浏览器验收"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "部署目标 dm_dependency 为空",
+            "basis": "用户确认不处理历史数据并采用空表失败关闭",
+            "falsifier": "迁移前 COUNT(*) 大于 0"
+          },
+          {
+            "text": "迁移参数 V197/V198 与专属接口在本任务实施前可用",
+            "basis": "当前工作区已有 REQ-067 实现",
+            "falsifier": "参数模块测试或 V198 迁移失败"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "提供方编号取 dm_parameter.system_code，名称取对应中文名",
+            "reason": "修正原始列表描述中的编号名称对调",
+            "source": "2026-09-10 用户确认"
+          },
+          {
+            "id": "D2",
+            "decision": "历史数据采用空表失败关闭",
+            "reason": "不静默删除或猜测关系",
+            "source": "2026-09-10 用户采纳"
+          },
+          {
+            "id": "D3",
+            "decision": "模板为参数英文名和使用方系统编号，多义参数行失败",
+            "reason": "满足业务录入习惯且不扩大参数唯一范围",
+            "source": "2026-09-10 用户确认"
+          },
+          {
+            "id": "D4",
+            "decision": "关系唯一键为租户、项目、参数 ID、使用方系统编号",
+            "reason": "防止同一使用关系重复登记",
+            "source": "2026-09-10 用户采纳"
+          },
+          {
+            "id": "D5",
+            "decision": "提供单条维护、导入、逻辑删除和回收站，不保留文件动作",
+            "reason": "依赖对象已转为结构化关系",
+            "source": "2026-09-10 用户采纳"
+          },
+          {
+            "id": "D6",
+            "decision": "采用专属领域方案 A",
+            "reason": "职责和接口边界清晰",
+            "source": "2026-09-10 用户确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "V199 与旧应用不兼容",
+            "impact": "迁移后旧应用查询或写入失败",
+            "mitigation": "同批发布、上线前空表检查、执行后修复前进"
+          },
+          {
+            "risk": "参数英文名在项目内多义",
+            "impact": "两列导入模板无法解析部分行",
+            "mitigation": "逐行失败并给出治理提示"
+          },
+          {
+            "risk": "与 REQ-067 未提交改动重叠",
+            "impact": "误覆盖参数服务或前端 API",
+            "mitigation": "计划中建立文件级保护和差异归属检查"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-10 用户逐项确认字段映射、迁移、导入、唯一性、操作、接口权限、回收站和方案 A，并确认以 REQ-20260910-068 落盘。",
+          "confirmed_at": "2026-09-10T18:49:07+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-10-data-migration-dependency-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "串行执行 T1-T5",
+          "只写任务范围路径",
+          "保护 REQ-067 未提交改动",
+          "V199 空表失败关闭",
+          "不修改历史迁移"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql",
+            "status": "candidate-new",
+            "responsibility": "依赖表结构和菜单权限迁移",
+            "evidence": "设计 D2 和现有 V198 版本"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java",
+            "status": "candidate-new",
+            "responsibility": "依赖关系业务服务",
+            "evidence": "方案 A 设计"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java",
+            "status": "candidate-new",
+            "responsibility": "专属 REST",
+            "evidence": "方案 A 设计"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java",
+            "status": "candidate-new",
+            "responsibility": "回收站来源",
+            "evidence": "方案 A 设计"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/DependenciesPage.vue",
+            "status": "existing",
+            "responsibility": "迁移过程依赖文件页面",
+            "evidence": "当前路由导入文件"
+          },
+          {
+            "path": "web/src/api/data-migration.ts",
+            "status": "existing",
+            "responsibility": "数据迁移 API 请求封装",
+            "evidence": "当前依赖资产 API"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "数据库结构、权限节点与失败关闭迁移",
+            "requirement_ids": [
+              "R1",
+              "R6"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V198 为当前最新迁移",
+              "V190 菜单 750 只有查看权限"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationDependencyMigrationMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [],
+              "produces": [
+                "dm_dependency.parameter_id/system_code/unique key",
+                "menu 750 create/update/delete"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "编写迁移失败基线测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationDependencyMigrationMySqlTest,DataMigrationModuleRegistrationTest test",
+                "expected": "新增断言在旧结构下失败",
+                "evidence": "退出码和首个缺失断言"
+              },
+              {
+                "id": "T1-S2",
+                "action": "追加 V199 迁移和权限节点",
+                "command": null,
+                "expected": "空表成功、非空失败关闭、权限幂等",
+                "evidence": "迁移文件和测试断言"
+              },
+              {
+                "id": "T1-S3",
+                "action": "运行局部迁移测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationDependencyMigrationMySqlTest,DataMigrationModuleRegistrationTest test",
+                "expected": "退出码 0",
+                "evidence": "Maven 摘要"
+              }
+            ],
+            "acceptance_checks": [
+              "空表迁移成功",
+              "非空迁移不改旧结构",
+              "旧列删除、新列和唯一键存在",
+              "菜单 750 细粒度权限存在"
+            ],
+            "risks": [
+              "V199 与旧应用不兼容",
+              "目标库非空"
+            ],
+            "rollback": "未应用时删除 V199；已应用且无新关系时走 Owner 批准前向补偿",
+            "stop_conditions": [
+              "目标数据库非空",
+              "版本冲突",
+              "必须改历史脚本"
+            ],
+            "escalation_conditions": [
+              "历史数据处置变化",
+              "权限 Owner 否决"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "专属依赖后端、投影、导入和回收站来源",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "ParameterService 和 ProjectComponentService 提供可复用校验/选项模式"
+            ],
+            "files": {
+              "create": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DependencyServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 数据库和权限契约"
+              ],
+              "produces": [
+                "/api/data-migration/dependencies CRUD/template/import",
+                "RecycleBinSource DEPENDENCY"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "编写服务契约和导入测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DependencyServiceTest test",
+                "expected": "新实现前失败",
+                "evidence": "退出码和测试缺口"
+              },
+              {
+                "id": "T2-S2",
+                "action": "实现依赖服务和 Controller",
+                "command": null,
+                "expected": "CRUD、投影、权限、审计和逐行导入契约存在",
+                "evidence": "execution diff 和聚焦测试"
+              },
+              {
+                "id": "T2-S3",
+                "action": "接入回收站来源并运行测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DependencyServiceTest test",
+                "expected": "退出码 0",
+                "evidence": "Maven 摘要和导入结果断言"
+              }
+            ],
+            "acceptance_checks": [
+              "列表字段完整",
+              "单条重复返回 409",
+              "模板两列",
+              "多义参数行失败",
+              "合法行部分成功",
+              "回收站恢复/彻底删除可用",
+              "写审计存在"
+            ],
+            "risks": [
+              "导入事务边界",
+              "回收站字段契约"
+            ],
+            "rollback": "移除新增服务/Controller/来源和测试，保留 T1",
+            "stop_conditions": [
+              "无法逐行部分成功",
+              "必须改公共回收站契约"
+            ],
+            "escalation_conditions": [
+              "需自动选择多义参数",
+              "需新增公共 API"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "剥离文件资产链路、参数引用保护与看板适配",
+            "requirement_ids": [
+              "R5",
+              "R6",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "通用文件服务和看板仍引用 DEPENDENCY 旧列"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T2 DependencyService"
+              ],
+              "produces": [
+                "旧上传/替换/下载不可用",
+                "看板新投影",
+                "参数引用保护"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "补充旧入口和引用保护回归断言",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,DashboardMetricDefinitionTest,DashboardMetricMySqlTest,ParameterServiceTest test",
+                "expected": "新增断言失败",
+                "evidence": "基线退出码"
+              },
+              {
+                "id": "T3-S2",
+                "action": "移除通用依赖分支并调整引用保护/看板",
+                "command": null,
+                "expected": "无旧列 SQL 和旧文件端点",
+                "evidence": "静态搜索和测试"
+              },
+              {
+                "id": "T3-S3",
+                "action": "运行后端回归",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,DashboardMetricDefinitionTest,DashboardMetricMySqlTest,ParameterServiceTest test",
+                "expected": "退出码 0",
+                "evidence": "Maven 摘要"
+              }
+            ],
+            "acceptance_checks": [
+              "MANAGED_TYPES 不含 DEPENDENCY",
+              "旧端点消失",
+              "看板不读旧列",
+              "参数删除受依赖保护"
+            ],
+            "risks": [
+              "旧回收站兼容",
+              "REQ-067 ParameterService 重叠"
+            ],
+            "rollback": "V199 后保留专属服务，按修复前进",
+            "stop_conditions": [
+              "活动代码仍读旧列",
+              "删除参数绕过范围/审计"
+            ],
+            "escalation_conditions": [
+              "公共看板契约不兼容",
+              "跨模块数据 Owner 变化"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "前端 API、专属页面和响应式交互",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T2",
+              "T3"
+            ],
+            "input_facts": [
+              "ParametersPage 和 delivery-showcase 提供复用范式",
+              "AssetListView 含依赖上传入口"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/DependenciesPage.vue"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T2 REST 字段和导入结果",
+                "系统选项端点"
+              ],
+              "produces": [
+                "依赖表格/卡片、表单和导入交互"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "建立 API 和页面契约基线",
+                "command": "npm --prefix web run build",
+                "expected": "当前专属契约缺口可定位",
+                "evidence": "构建退出码"
+              },
+              {
+                "id": "T4-S2",
+                "action": "实施依赖 API 类型和页面",
+                "command": null,
+                "expected": "无附件 API，字段和状态完整",
+                "evidence": "页面静态检查和 diff"
+              },
+              {
+                "id": "T4-S3",
+                "action": "运行前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "退出码 0",
+                "evidence": "Vite 构建摘要"
+              }
+            ],
+            "acceptance_checks": [
+              "桌面八字段",
+              "移动卡片可读",
+              "两列导入和逐行结果",
+              "无上传/替换/下载",
+              "完整异步状态",
+              "四视口无溢出"
+            ],
+            "risks": [
+              "REQ-067 data-migration.ts 重叠",
+              "公共 UI 不足"
+            ],
+            "rollback": "V199 后保留新契约并修复前进",
+            "stop_conditions": [
+              "整页横向滚动",
+              "仍调用附件 API",
+              "需扩大公共组件范围"
+            ],
+            "escalation_conditions": [
+              "需新增公共样式或组件",
+              "产品字段无法在移动端可读"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "集成验证、治理检查与浏览器验收",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "input_facts": [
+              "所有实现任务和局部测试完成"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260910-068-dm-dependency/*.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T4 实现和证据"
+              ],
+              "produces": [
+                "独立观测、收敛和交接证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "运行静态/治理/范围检查",
+                "command": "git diff --check && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260910-068-data-migration-dependency/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+                "expected": "本任务范围无越界；基线故障单独记录",
+                "evidence": "命令退出码和摘要"
+              },
+              {
+                "id": "T5-S2",
+                "action": "运行完整后端测试",
+                "command": "mvn -pl :ccb-data-migration -am test",
+                "expected": "退出码 0",
+                "evidence": "Maven 测试摘要"
+              },
+              {
+                "id": "T5-S3",
+                "action": "运行前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "退出码 0",
+                "evidence": "Vite 构建摘要"
+              },
+              {
+                "id": "T5-S4",
+                "action": "真实浏览器四视口验收",
+                "command": null,
+                "expected": "关键路径可达、无页面级溢出和控制台错误",
+                "evidence": "浏览器截图/DOM/网络记录"
+              },
+              {
+                "id": "T5-S5",
+                "action": "记录观测、反馈和收敛门禁",
+                "command": "python .agents/skills/control-engineering/scripts/control_loop.py status --state .ai-control/requirements/req-20260910-068-dm-dependency/state.json",
+                "expected": "按阶段脚本转移，P0/P1 为零",
+                "evidence": "observation/convergence JSON"
+              }
+            ],
+            "acceptance_checks": [
+              "所有 must 覆盖",
+              "权限/审计/迁移/页面状态通过",
+              "浏览器四视口通过",
+              "反馈已裁决",
+              "范围一致"
+            ],
+            "risks": [
+              "治理基线故障",
+              "MySQL/浏览器不可用",
+              "旧客户端请求上传"
+            ],
+            "rollback": "按任务边界回退并保留证据；V199 已应用时修复前进",
+            "stop_conditions": [
+              "P0/P1、越权、误删、白屏、关键路径不可达、范围越界"
+            ],
+            "escalation_conditions": [
+              "环境不可用",
+              "需重新决定历史数据或公共契约"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "T2 消费 T1 的列名、唯一键、权限节点和回收站类型契约"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 需要 T2 的 DependencyService 和回收站来源接口"
+          },
+          {
+            "from": "T2",
+            "to": "T4",
+            "reason": "T4 前端 API 依赖 T2 的 REST 契约"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "T4 页面依赖 T3 下线旧文件动作后的专属接口"
+          },
+          {
+            "from": "T1",
+            "to": "T5",
+            "reason": "T5 集成验证需要 T1 迁移与权限契约"
+          },
+          {
+            "from": "T2",
+            "to": "T5",
+            "reason": "T5 需要 T2 服务实现与测试"
+          },
+          {
+            "from": "T3",
+            "to": "T5",
+            "reason": "T5 需要 T3 链路剥离与回归测试"
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "T5 需要 T4 前端构建产物"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am test && npm --prefix web run build",
+            "expected": "后端测试和前端生产构建成功"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "git diff --check",
+            "expected": "无空白错误"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T3",
+              "T4",
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-10 用户完成设计逐项确认后明确'进入开发'，随后连续下达'继续'指令，批准按已确认设计与实施计划进入受控执行。",
+          "confirmed_at": "2026-09-10T22:35:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "dm_dependency 表、data-migration 后端 REST、依赖页、统一回收站和 DEPENDENCY 看板下钻"
+        ],
+        "state_variable_candidates": [
+          "迁移版本",
+          "依赖活动/删除状态",
+          "参数与系统有效性",
+          "关系唯一键",
+          "页面加载/提交状态"
+        ],
+        "interface_candidates": [
+          "V199 Flyway",
+          "DependencyService/Controller",
+          "ParameterService 删除保护",
+          "前端 API",
+          "RecycleBinSource",
+          "DashboardMetricDefinition"
+        ],
+        "sensor_candidates": [
+          "MySQL Testcontainers/迁移断言",
+          "JUnit/JdbcTemplate 行为测试",
+          "静态路由检查",
+          "Vue 构建",
+          "真实浏览器网络/DOM/控制台采样"
+        ],
+        "actuator_candidates": [
+          "追加迁移",
+          "服务和 Controller 写入",
+          "前端页面/API 修改",
+          "测试和浏览器命令"
+        ],
+        "disturbance_candidates": [
+          "REQ-067 未提交改动",
+          "目标库非空",
+          "参数英文名多义",
+          "MySQL/浏览器不可用",
+          "旧客户端请求上传端点"
+        ],
+        "delay_candidates": [
+          "Flyway 启动前执行",
+          "导入逐行写入",
+          "前端异步请求",
+          "回收站恢复重新校验"
+        ],
+        "assumptions": [
+          {
+            "text": "目标 dm_dependency 为空",
+            "basis": "用户确认不处理历史数据",
+            "falsifier": "迁移前 COUNT(*) 大于 0"
+          },
+          {
+            "text": "REQ-067 参数域可作为依赖只读数据源",
+            "basis": "当前工作区已有专属参数实现",
+            "falsifier": "参数测试或 V198 迁移失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"components\": [\"dm_dependency 表\", \"data-migration 后端 REST\", \"依赖页\", \"统一回收站 DEPENDENCY 来源\", \"DEPENDENCY 看板下钻\"], \"excluded\": [\"迁移参数/系统组件清单本体\", \"公共 UI 组件与主题\", \"历史依赖数据\"], \"owners\": [\"business/data-migration\", \"platform/infrastructure（V199 与权限节点）\"]}",
+    "sensors": [
+      "MySQL Testcontainers 迁移断言（空表/非空/结构/权限/幂等）",
+      "DependencyServiceTest（CRUD、投影、导入、审计、回收站）",
+      "ParameterServiceTest 引用保护",
+      "DataMigrationModuleRegistrationTest 旧端点消失与专属权限",
+      "DashboardMetricMySqlTest/DefinitionTest 看板计数与下钻",
+      "npm run build 前端生产构建",
+      "治理/范围检查与 git diff --check；真实浏览器（受限时记录限制）"
+    ],
+    "actuators": [
+      "追加 V199 迁移并按需修正",
+      "DependencyService/Controller/RecycleBinSource 写入",
+      "ParameterService/ContentFileAssetService/ContentAssetController/DashboardMetricDefinition 调整",
+      "前端页面与 API 修改",
+      "测试与构建命令"
+    ],
+    "disturbances": [
+      "REQ-067 未提交改动与 REQ-068 共享文件差异",
+      "REQ-061 治理脚本 JSON/YAML 基线故障（check-all-governance 前置失败）",
+      "目标库 dm_dependency 非空",
+      "参数英文名跨提供方重复",
+      "旧客户端请求上传端点",
+      "浏览器环境不可用时无法完成四视口真机验收"
+    ],
+    "assumptions": [
+      "{\"basis\": \"当前工作区参数英文名实现与 V198 已存在\", \"falsifier\": \"参数模块测试或 V198 迁移失败\", \"text\": \"REQ-067 参数域可作为依赖只读数据源\"}",
+      "{\"basis\": \"用户确认不处理历史数据并采用空表失败关闭\", \"falsifier\": \"部署目标迁移前 COUNT(*) 大于 0\", \"text\": \"目标 dm_dependency 为空\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "DataMigrationDependencyMigrationMySqlTest"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "DependencyServiceTest"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "DependencyServiceTest"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "DependencyServiceTest"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "ModuleRegistration + Governance Test"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "V199 断言 + ModuleRegistrationTest"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "DependencyServiceTest + ParameterServiceTest"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "DashboardMetricMySqlTest + npm build"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "数据库结构、权限节点与失败关闭迁移",
+      "requirements": [
+        "R1",
+        "R6"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V198 为当前最新迁移",
+        "V190 菜单 750 只有查看权限"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationDependencyMigrationMySqlTest.java"
+      ],
+      "invariants": [
+        "数据 Owner 和菜单路由不变",
+        "只追加 V199 不修改历史迁移",
+        "提供方/使用方名称只读投影不冗余"
+      ],
+      "interface_contracts": [
+        "dm_dependency.parameter_id/system_code/unique key",
+        "menu 750 create/update/delete"
+      ],
+      "non_goals": [
+        "依赖导出",
+        "迁移参数/系统组件清单改造",
+        "历史数据迁移",
+        "公共 UI/主题变更"
+      ],
+      "action_bounds": [
+        "编写迁移失败基线测试",
+        "运行局部迁移测试"
+      ],
+      "acceptance": [
+        "空表迁移成功",
+        "非空迁移不改旧结构",
+        "旧列删除、新列和唯一键存在",
+        "菜单 750 细粒度权限存在"
+      ],
+      "evidence_required": [
+        "退出码和首个缺失断言",
+        "迁移文件和测试断言",
+        "Maven 摘要"
+      ],
+      "rollback": "未应用时删除 V199；已应用且无新关系时走 Owner 批准前向补偿",
+      "stop_conditions": [
+        "目标数据库非空",
+        "版本冲突",
+        "必须改历史脚本"
+      ],
+      "escalation_conditions": [
+        "历史数据处置变化",
+        "权限 Owner 否决"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T15:15:47+00:00",
+          "text": "执行产物已完成，进入独立观测"
+        },
+        {
+          "recorded_at": "2026-09-10T15:16:25+00:00",
+          "text": "DataMigrationDependencyMigrationMySqlTest 空表 V199 成功/非空失败/结构断言通过；本地 MySQL 实际应用 V199 success=1"
+        }
+      ],
+      "updated_at": "2026-09-10T15:16:25+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "专属依赖后端、投影、导入和回收站来源",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ParameterService 和 ProjectComponentService 提供可复用校验/选项模式"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DependencyServiceTest.java"
+      ],
+      "invariants": [
+        "数据 Owner 和菜单路由不变",
+        "只追加 V199 不修改历史迁移",
+        "提供方/使用方名称只读投影不冗余"
+      ],
+      "interface_contracts": [
+        "/api/data-migration/dependencies CRUD/template/import",
+        "RecycleBinSource DEPENDENCY"
+      ],
+      "non_goals": [
+        "依赖导出",
+        "迁移参数/系统组件清单改造",
+        "历史数据迁移",
+        "公共 UI/主题变更"
+      ],
+      "action_bounds": [
+        "编写服务契约和导入测试",
+        "接入回收站来源并运行测试"
+      ],
+      "acceptance": [
+        "列表字段完整",
+        "单条重复返回 409",
+        "模板两列",
+        "多义参数行失败",
+        "合法行部分成功",
+        "回收站恢复/彻底删除可用",
+        "写审计存在"
+      ],
+      "evidence_required": [
+        "退出码和测试缺口",
+        "execution diff 和聚焦测试",
+        "Maven 摘要和导入结果断言"
+      ],
+      "rollback": "移除新增服务/Controller/来源和测试，保留 T1",
+      "stop_conditions": [
+        "无法逐行部分成功",
+        "必须改公共回收站契约"
+      ],
+      "escalation_conditions": [
+        "需自动选择多义参数",
+        "需新增公共 API"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T15:15:47+00:00",
+          "text": "执行产物已完成，进入独立观测"
+        },
+        {
+          "recorded_at": "2026-09-10T15:16:26+00:00",
+          "text": "DependencyServiceTest CRUD/投影/导入/审计/回收站全部通过；浏览器 GET/POST/PUT/DELETE/回收站/导入 流程通过"
+        }
+      ],
+      "updated_at": "2026-09-10T15:16:26+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "剥离文件资产链路、参数引用保护与看板适配",
+      "requirements": [
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "通用文件服务和看板仍引用 DEPENDENCY 旧列"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "数据 Owner 和菜单路由不变",
+        "只追加 V199 不修改历史迁移",
+        "提供方/使用方名称只读投影不冗余"
+      ],
+      "interface_contracts": [
+        "旧上传/替换/下载不可用",
+        "看板新投影",
+        "参数引用保护"
+      ],
+      "non_goals": [
+        "依赖导出",
+        "迁移参数/系统组件清单改造",
+        "历史数据迁移",
+        "公共 UI/主题变更"
+      ],
+      "action_bounds": [
+        "补充旧入口和引用保护回归断言",
+        "运行后端回归"
+      ],
+      "acceptance": [
+        "MANAGED_TYPES 不含 DEPENDENCY",
+        "旧端点消失",
+        "看板不读旧列",
+        "参数删除受依赖保护"
+      ],
+      "evidence_required": [
+        "基线退出码",
+        "静态搜索和测试",
+        "Maven 摘要"
+      ],
+      "rollback": "V199 后保留专属服务，按修复前进",
+      "stop_conditions": [
+        "活动代码仍读旧列",
+        "删除参数绕过范围/审计"
+      ],
+      "escalation_conditions": [
+        "公共看板契约不兼容",
+        "跨模块数据 Owner 变化"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T15:15:47+00:00",
+          "text": "执行产物已完成，进入独立观测"
+        },
+        {
+          "recorded_at": "2026-09-10T15:16:26+00:00",
+          "text": "ParameterServiceTest 引用保护、ContentFileAssetDocCodeGovernanceTest、DashboardMetricMySqlTest/DefinitionTest 通过；DEPENDENCY 已剥离"
+        }
+      ],
+      "updated_at": "2026-09-10T15:16:26+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "前端 API、专属页面和响应式交互",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "ParametersPage 和 delivery-showcase 提供复用范式",
+        "AssetListView 含依赖上传入口"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/content/DependenciesPage.vue",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "数据 Owner 和菜单路由不变",
+        "只追加 V199 不修改历史迁移",
+        "提供方/使用方名称只读投影不冗余"
+      ],
+      "interface_contracts": [
+        "依赖表格/卡片、表单和导入交互"
+      ],
+      "non_goals": [
+        "依赖导出",
+        "迁移参数/系统组件清单改造",
+        "历史数据迁移",
+        "公共 UI/主题变更"
+      ],
+      "action_bounds": [
+        "建立 API 和页面契约基线",
+        "运行前端构建"
+      ],
+      "acceptance": [
+        "桌面八字段",
+        "移动卡片可读",
+        "两列导入和逐行结果",
+        "无上传/替换/下载",
+        "完整异步状态",
+        "四视口无溢出"
+      ],
+      "evidence_required": [
+        "构建退出码",
+        "页面静态检查和 diff",
+        "Vite 构建摘要"
+      ],
+      "rollback": "V199 后保留新契约并修复前进",
+      "stop_conditions": [
+        "整页横向滚动",
+        "仍调用附件 API",
+        "需扩大公共组件范围"
+      ],
+      "escalation_conditions": [
+        "需新增公共样式或组件",
+        "产品字段无法在移动端可读"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T15:15:47+00:00",
+          "text": "执行产物已完成，进入独立观测"
+        },
+        {
+          "recorded_at": "2026-09-10T15:16:26+00:00",
+          "text": "npm run build 通过；浏览器依赖页 22 项检查通过；四视口 overflow=0 无控制台/未捕获错误"
+        }
+      ],
+      "updated_at": "2026-09-10T15:16:26+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "集成验证、治理检查与浏览器验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "所有实现任务和局部测试完成"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260910-068-dm-dependency/*.json"
+      ],
+      "invariants": [
+        "数据 Owner 和菜单路由不变",
+        "只追加 V199 不修改历史迁移",
+        "提供方/使用方名称只读投影不冗余"
+      ],
+      "interface_contracts": [
+        "独立观测、收敛和交接证据"
+      ],
+      "non_goals": [
+        "依赖导出",
+        "迁移参数/系统组件清单改造",
+        "历史数据迁移",
+        "公共 UI/主题变更"
+      ],
+      "action_bounds": [
+        "运行静态/治理/范围检查",
+        "运行完整后端测试",
+        "运行前端构建",
+        "记录观测、反馈和收敛门禁"
+      ],
+      "acceptance": [
+        "所有 must 覆盖",
+        "权限/审计/迁移/页面状态通过",
+        "浏览器四视口通过",
+        "反馈已裁决",
+        "范围一致"
+      ],
+      "evidence_required": [
+        "命令退出码和摘要",
+        "Maven 测试摘要",
+        "Vite 构建摘要",
+        "浏览器截图/DOM/网络记录",
+        "observation/convergence JSON"
+      ],
+      "rollback": "按任务边界回退并保留证据；V199 已应用时修复前进",
+      "stop_conditions": [
+        "P0/P1、越权、误删、白屏、关键路径不可达、范围越界"
+      ],
+      "escalation_conditions": [
+        "环境不可用",
+        "需重新决定历史数据或公共契约"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-10T15:15:47+00:00",
+          "text": "执行产物已完成，进入独立观测"
+        },
+        {
+          "recorded_at": "2026-09-10T15:16:26+00:00",
+          "text": "集成验收 complete：195 Maven 测试 + Vite 构建 + V199 实库应用 + 浏览器 22/22（含四视口）"
+        }
+      ],
+      "updated_at": "2026-09-10T15:16:26+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "后端全量测试与构建",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 2,
+        "P3": 0
+      },
+      "score": 10,
+      "evidence": "mvn -pl :ccb-data-migration -am test 195 通过；npm run build 通过；git diff --check 干净",
+      "recorded_at": "2026-09-10T15:16:15+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "V199 应用与结构断言",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 2,
+        "P3": 0
+      },
+      "score": 10,
+      "evidence": "flyway V199 success=1；dm_dependency 空表通过；SHOW COLUMNS 新列/唯一键在、旧列/旧索引无；权限 7501-7503 存在",
+      "recorded_at": "2026-09-10T15:16:15+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "真实浏览器验收",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 2,
+        "P3": 0
+      },
+      "score": 10,
+      "evidence": "verify_dependencies_068.mjs：total=22 failed=0 consoleErrors=0 pageErrors=0，四视口 overflow=0；P2=REQ-061 治理基线故障/历史种子数据乱码（均与本需求无关）",
+      "recorded_at": "2026-09-10T15:16:16+00:00"
+    }
+  ]
+}

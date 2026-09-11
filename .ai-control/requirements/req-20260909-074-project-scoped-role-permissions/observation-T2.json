@@ -1,0 +1,16 @@
+{
+  "sample_label": "T2 system and project permission service observation",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "Focused service tests", "result": "pass", "raw_evidence": "SystemPermissionCatalogTest passed immutable-code and dual-reference deletion checks.", "limitation": ["Live HTTP status and audit rows remain integration checks."]},
+    {"requirement_id": "R2", "sensor": "Focused project assignment tests", "result": "pass", "raw_evidence": "ProjectRolePermissionServiceTest passed valid assignment and system/disabled rejection checks.", "limitation": ["UI tree behavior is T4."]},
+    {"requirement_id": "R4", "sensor": "Authorization SQL inventory", "result": "pass", "raw_evidence": "Project-scoped service calls use one query that unions owner, PM and any matching role permission; only projectless workbench/create/options retain global checks.", "limitation": ["Database row-level behavior is sampled in T5."]},
+    {"requirement_id": "R5", "sensor": "Diff and SQL boundary probe", "result": "pass", "raw_evidence": "Assignment reads/writes include tenant_id, project_id and role_id; tests verify four-dimensional insert arguments and audit calls are present.", "limitation": ["Operation log rows are not queried from live MySQL yet."]}
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["Live HTTP, MySQL constraints and audit persistence remain for T5."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

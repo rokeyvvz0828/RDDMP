@@ -1,0 +1,15 @@
+{
+  "sample_label": "T4 frontend authorization and permission UI observation",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "Vue type check, production build and route/UI contract probe", "result": "pass", "raw_evidence": "vue-tsc and Vite passed; /system/permissions maps to catalog CRUD and the obsolete ModuleView system-role permission action is absent.", "limitation": ["Live catalog CRUD and reference-delete errors remain T5."]},
+    {"requirement_id": "R2", "sensor": "Project role drawer static interaction probe", "result": "pass", "raw_evidence": "Project role rows show permission_count; the drawer loads only scoped catalog data, supports search/menu toggles/fullscreen, saves IDs, rereads assignments and refreshes role counts.", "limitation": ["Pointer interaction and 390px geometry remain T5 browser checks."]},
+    {"requirement_id": "R3", "sensor": "Authorization state-transition review plus production build", "result": "pass", "raw_evidence": "Target me/routes are fetched before project selection; failures preserve old state; persisted project hydration avoids global overwrite; successful switches reload data and synchronize project-detail IDs.", "limitation": ["Network-failure injection and A/B live permissions remain T5."]}
+  ],
+  "feedback": [],
+  "disturbances": ["Vite required approved child-process execution because sandboxed esbuild returned EPERM."],
+  "coverage_gaps": ["Live local database, API and browser behavior are intentionally assigned to T5."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

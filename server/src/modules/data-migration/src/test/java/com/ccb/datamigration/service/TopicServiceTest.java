@@ -276,7 +276,7 @@ class TopicServiceTest {
     private TopicService service(StubJdbcTemplate jdbc, AttachmentGateway attachments, SystemReferenceQuery params) {
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
         ContentAttachmentService contentAttachments = new ContentAttachmentService(jdbc, attachments);
-        ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments, permissions);
+        ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments);
         return new TopicService(jdbc, contentAttachments, fileAssets, permissions, null,
                 new ContentDocCodeGenerator(), params, new DataMigrationCodeValueService(params));
     }

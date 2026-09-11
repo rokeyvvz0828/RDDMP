@@ -1,0 +1,116 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "数据库与后端形成可验证的参数英文名契约",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": [],
+      "input_facts": [
+        "V197 是当前参数域迁移且不可修改",
+        "ParameterService 是参数校验、SQL、Excel 和回收站的唯一业务入口",
+        "ParameterController 已提供所需 RBAC 入口且请求体使用 Map"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "V197 内容不变",
+        "现有项目范围、RBAC、Owner、逻辑删除和 PARAMETER 审计不变",
+        "中文参数名称规则继续生效",
+        "不读取或改写已有参数数据"
+      ],
+      "interface_contracts": [
+        "REST 写入键 parameterNameEn 必填，响应键 parameter_name_en",
+        "模板六列且参数英文名位于参数名称后，导出英文名位于参数名称后",
+        "同租户、项目、系统编号英文名大小写不敏感唯一",
+        "keyword 同时匹配参数名称、参数英文名和参数说明"
+      ],
+      "non_goals": ["不改系统参数管理", "不新增权限码", "不处理存量数据", "不修改其他内容类型"],
+      "action_bounds": [
+        "先扩展目标服务测试并捕获预期失败",
+        "仅追加 V198 空表断言、ASCII 非空列和唯一索引",
+        "只扩展 ParameterService 的直接字段链路、校验、唯一、Excel、搜索和回收站逻辑",
+        "仅在 Controller 确需契约说明或测试时修改"
+      ],
+      "acceptance_checks": [
+        "新增、编辑、导入拒绝空、超过 255 字符和非字母数字下划线英文名",
+        "ABC_01 与 abc_01 同范围冲突而跨项目或系统可复用",
+        "活动列表、详情、回收站、六列模板、逐行导入和导出包含英文名",
+        "活动列表和回收站 SQL 将英文名纳入关键字",
+        "V198 静态检查通过且 V197 无 diff",
+        "目标 JUnit 与模块回归通过"
+      ],
+      "evidence_required": ["失败测试输出", "实际 diff", "JUnit/Surefire 退出码", "Flyway 检查输出", "V197 无 diff 证明"],
+      "rollback": "未部署时恢复 T1 产品与测试文件并移除 V198；若 V198 已执行则停止新版本写入口并按数据库变更流程处置",
+      "stop_conditions": ["V198 编号冲突", "目标库存在参数记录", "实现需要修改 V197 或范围外文件"],
+      "escalation_conditions": ["MySQL 8.4 不支持目标排序规则", "需要保留已有参数数据", "唯一范围需要改变"]
+    },
+    {
+      "id": "T2",
+      "goal": "前端完整录入、展示和检索参数英文名",
+      "requirement_ids": ["R1", "R3", "R4", "R5", "R7"],
+      "prerequisites": ["T1"],
+      "input_facts": ["T1 固定 parameterNameEn/parameter_name_en 和 Excel 列顺序", "ParametersPage 已有完整加载、失败、无权限、提交中、导入和局部表格滚动状态"],
+      "write_scope": ["web/src/api/data-migration.ts", "web/src/modules/data-migration/views/content/ParametersPage.vue"],
+      "invariants": ["沿用现有语义主题和公共 UI", "不改变菜单权限和按钮授权", "保留页面全状态和局部滚动"],
+      "interface_contracts": ["ParameterRecord 使用 parameter_name_en", "ParameterFormData 和请求使用 parameterNameEn", "正则与后端 [A-Za-z0-9_]+ 一致"],
+      "non_goals": ["不修改公共 UI", "不增加新筛选器", "不重构页面结构"],
+      "action_bounds": ["扩展 API 类型", "增加必填表单字段、列表列和详情项", "更新关键字占位符与 Excel 模板说明", "保持响应式布局现有模式"],
+      "acceptance_checks": ["前端契约探针通过", "vue-tsc/Vite 构建通过", "表单必填、长度和字符规则提示一致", "编辑反显和请求提交字段完整"],
+      "evidence_required": ["实际 diff", "源码契约探针退出码", "前端构建退出码", "四视口浏览器结果"],
+      "rollback": "同步恢复 API 类型与 ParametersPage，避免前后端契约错配",
+      "stop_conditions": ["需要修改公共 UI 或范围外样式", "T1 接口契约变化", "检测到目标文件用户并行冲突"],
+      "escalation_conditions": ["页面级溢出无法在专属页面内修复", "产品要求新增搜索维度或权限"]
+    },
+    {
+      "id": "T3",
+      "goal": "组合验证数据库、后端和前端契约并形成收敛证据",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["T1/T2 局部检查可用", "high-assurance 要求至少三次采样和两类独立传感器"],
+      "write_scope": [".ai-control/requirements/req-20260906-067-dm-param/*.json"],
+      "invariants": ["产品代码只在 T1/T2 授权范围修改", "失败证据如实保留", "无关治理失败不通过改动其他需求消除"],
+      "interface_contracts": ["数据库、REST、Excel 和前端对同一英文名规则达成一致"],
+      "non_goals": ["不为通过检查修改无关需求", "不宣称未执行验证通过"],
+      "action_bounds": ["执行聚焦、模块、迁移、前端、范围和浏览器检查", "记录采样与原子反馈", "仅对已接受的目标偏差进入纠正"],
+      "acceptance_checks": ["三次以上异质采样完成", "最终 P0/P1 为 0", "所有 must 需求绑定原始证据", "范围一致且 V197 不变"],
+      "evidence_required": ["各命令和退出码", "MySQL 8.4 结果", "浏览器视口/console/overflow 结果", "范围审计", "残余风险"],
+      "rollback": "T3 只记录证据；若发现目标偏差则回到 correcting，不修改需求基准",
+      "stop_conditions": ["发现越权或跨租户", "V198 修改数据或 V197 变化", "唯一性运行验证失败"],
+      "escalation_conditions": ["验证需要生产数据", "需要公共平台、权限或范围外改动", "环境缺失导致关键 must 不可观测"]
+    }
+  ],
+  "dependency_edges": [
+    {"from":"T1","to":"T2","reason":"前端消费 T1 固定的 REST 与 Excel 契约"},
+    {"from":"T1","to":"T3","reason":"组合验证需要 T1 的数据库与后端输出"},
+    {"from":"T2","to":"T3","reason":"组合验证需要 T2 的前端输出"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks":["T1"],"checks":["聚焦 JUnit", "Flyway 静态检查", "V197 无 diff"]},
+    {"after_tasks":["T2"],"checks":["前端契约探针", "前端构建"]},
+    {"after_tasks":["T1","T2"],"checks":["模块回归", "MySQL 8.4", "四视口浏览器", "范围审计"]}
+  ],
+  "sampling_plan": [
+    {"label":"后端局部采样","trigger":"T1 实现完成","observer":"主 Agent 独立复跑","sensors":["S1","S5"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7"]},
+    {"label":"前端契约采样","trigger":"T2 实现完成","observer":"TypeScript 编译器与主 Agent","sensors":["S3"],"requirement_ids":["R1","R3","R4","R5","R7"]},
+    {"label":"数据库与界面集成采样","trigger":"T1/T2 局部检查通过","observer":"MySQL 引擎和真实浏览器","sensors":["S2","S4"],"requirement_ids":["R2","R3","R4","R5","R6","R7"]},
+    {"label":"最终范围与回归采样","trigger":"所有偏差关闭","observer":"主 Agent","sensors":["S1","S3","S5"],"requirement_ids":["R1","R2","R3","R4","R5","R6","R7"]}
+  ],
+  "coverage": [
+    {"requirement_id":"R1","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S3","S4"]},
+    {"requirement_id":"R2","task_ids":["T1","T3"],"sensor_ids":["S1","S2"]},
+    {"requirement_id":"R3","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S3","S4"]},
+    {"requirement_id":"R4","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S3","S4"]},
+    {"requirement_id":"R5","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S3","S4"]},
+    {"requirement_id":"R6","task_ids":["T1","T3"],"sensor_ids":["S2","S5"]},
+    {"requirement_id":"R7","task_ids":["T1","T2","T3"],"sensor_ids":["S1","S4","S5"]}
+  ],
+  "plan_status": "ready"
+}

@@ -1,0 +1,83 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java",
+      "purpose": "补充单指标、13项总量和下钻三项本地P95采样输出"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/",
+      "purpose": "记录最终组合、性能、浏览器、治理和范围验收证据"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 170, Failures: 0, Errors: 0, Skipped: 0; all reactor modules SUCCESS"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest,DashboardMetricMySqlTest,DashboardControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 11, Failures: 0, Errors: 0, Skipped: 0; local P95 single metric=8ms, 13 metrics=93ms, drilldown=15ms"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc与Vite生产构建通过，2568 modules transformed"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "任务外REQ-20260904-061 codex-task-scope.yaml不是JSON-compatible YAML；前三段检查通过"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    },
+    {
+      "command": "rg -n 'Scheduled|EnableScheduling|dm_dashboard_snapshot' server/src/modules/data-migration/src/main; rg -n 'setInterval|setTimeout' web/src/modules/data-migration/views/dashboard/OverallDashboardPage.vue",
+      "exit_code": 0,
+      "salient_output": "无运行时命中"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "全局治理脚本被任务外REQ-20260904-061格式错误阻断",
+      "impact": "不修改任务外文件；本任务scope检查和前三段治理检查仍通过",
+      "disposition": "isolated"
+    }
+  ],
+  "local_checks": [
+    {"check": "完整后端模块回归", "result": "pass", "evidence": "170 tests, 0 failures/errors"},
+    {"check": "看板聚焦后端回归", "result": "pass", "evidence": "11 tests, 0 failures/errors；单指标P95=8ms、13项P95=93ms、下钻P95=15ms"},
+    {"check": "前端生产构建", "result": "pass", "evidence": "2568 modules transformed"},
+    {"check": "浏览器响应式与交互", "result": "pass", "evidence": "六个明暗主题视口无横向溢出，13请求/4并发/按需下钻/项目切换隔离"},
+    {"check": "范围与差异", "result": "pass", "evidence": "scope check passed；git diff --check通过"},
+    {"check": "全局治理", "result": "blocked-by-external-disturbance", "evidence": "任务外REQ-20260904-061 YAML格式错误"}
+  ],
+  "diff_summary": [
+    "为DashboardMetricMySqlTest补充单指标P95采样和输出",
+    "产品实现已完成13项实时指标、4路队列、按需20条滚动下钻和快照调度退役"
+  ],
+  "invariants_checked": [
+    {"invariant": "不恢复轮询、调度或快照运行依赖", "result": "pass", "evidence": "静态搜索无命中"},
+    {"invariant": "只修改任务scope授权路径", "result": "pass", "evidence": "scope check passed"},
+    {"invariant": "任务外治理扰动不被修改", "result": "pass", "evidence": "REQ-061保持原状并记录为isolated"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "目标部署环境代表性数据量P95、生产EXPLAIN与真实网络延迟需上线前复测",
+    "任务外REQ-20260904-061格式错误需由其Owner修复后重跑全局治理"
+  ],
+  "recommended_next": "observe",
+  "rollback": "按T3、T2、T1逆序回退；无数据库反向迁移"
+}

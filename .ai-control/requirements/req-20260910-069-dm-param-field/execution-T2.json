@@ -1,0 +1,57 @@
+{
+ "schema_version": 1,
+ "task_id": "T2",
+ "status": "implemented_verified",
+ "changed_surfaces": [
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+   "purpose": "字段 listFields/batchAddFields/updateField/deleteField/deleteFields、新增携带 fields、删除/恢复/彻底删除级联、列表 field_count 子查询、详情 fields"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+   "purpose": "字段 REST（沿用参数写权限码，FIELD_* 审计）"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+   "purpose": "字段唯一/批量/编辑/删除/级联/审计用例（修正 StubJdbcTemplate 分支顺序与 excludeId 取参索引）"
+  }
+ ],
+ "requirements_addressed": [
+  "R1",
+  "R2",
+  "R5",
+  "R6"
+ ],
+ "commands": [
+  {
+   "command": "mvn -q -pl :ccb-data-migration -am test -o -Dtest=ParameterServiceTest -Dsurefire.failIfNoSpecifiedTests=false",
+   "exit_code": 0,
+   "salient_output": "21 tests, 0 failures, 0 errors"
+  },
+  {
+   "command": "curl DELETE /data-migration/parameters/{id}/fields/{fieldId}",
+   "exit_code": 0,
+   "salient_output": "修复后真实后端 status=200，列表字段数同步减少"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "同参数中英文名唯一（应用层 + 库层）",
+   "result": "pass",
+   "evidence": "CONFLICT 断言 + MySQL 1062"
+  },
+  {
+   "check": "级联删除/恢复/彻底删除",
+   "result": "pass",
+   "evidence": "ParameterServiceTest 相关用例通过；浏览器抽屉删除后 API 字段数一致"
+  },
+  {
+   "check": "审计 FIELD_CREATE/FIELD_UPDATE",
+   "result": "pass",
+   "evidence": "ParameterServiceTest audits 断言"
+  }
+ ],
+ "diff_summary": [
+  "后端字段领域全量实现并经单测 + 真实后端 API 验证"
+ ]
+}

@@ -1,0 +1,93 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DashboardController.java",
+      "purpose": "承载兼容看板路由及新单指标和下钻端点，并声明看板RBAC"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+      "purpose": "移除看板依赖和路由，保留结构化资产接口"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java",
+      "purpose": "删除每日快照调度Bean"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/DashboardControllerSecurityTest.java",
+      "purpose": "验证权限、兼容路由和请求参数契约"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "验证专用Controller存在且快照调度类不存在"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardControllerSecurityTest,DataMigrationModuleRegistrationTest,DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 29, Failures: 0, Errors: 0, Skipped: 0"
+    },
+    {
+      "command": "rg -n Scheduled|EnableScheduling|dm_dashboard_snapshot server/src/modules/data-migration/src/main",
+      "exit_code": 1,
+      "salient_output": "无匹配，数据迁移模块主源码不再含调度和快照运行时引用"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Controller路由、权限与参数契约",
+      "result": "pass",
+      "evidence": "DashboardControllerSecurityTest 2项通过",
+      "limitations": ["完整HTTP鉴权链在T4组合验收"]
+    },
+    {
+      "check": "模块注册与调度退役",
+      "result": "pass",
+      "evidence": "DataMigrationModuleRegistrationTest 20项通过且静态搜索无匹配",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "新增专用DashboardController并保留overall/component/components兼容URL",
+    "从StructuredAssetController移除看板职责",
+    "删除DashboardSnapshotScheduler且不修改快照表迁移"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "兼容看板URL和组件看板服务契约不变",
+      "result": "pass",
+      "evidence": "反射测试断言三个兼容映射，DashboardService兼容方法未改"
+    },
+    {
+      "invariant": "不修改结构化资产其他路由",
+      "result": "pass",
+      "evidence": "仅删除两项看板方法和DashboardService构造依赖"
+    },
+    {
+      "invariant": "无后台调度和快照运行时读写",
+      "result": "pass",
+      "evidence": "调度类删除且主源码静态搜索无匹配"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "首次复验在server子目录运行导致Maven聚合器无法定位模块",
+      "impact": "改在仓库根目录重跑，未反映产品代码故障"
+    },
+    {
+      "event": "RequestParam隐式参数名可运行但反射测试要求显式值",
+      "impact": "为projectId/page/size补充显式契约名后通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["HTTP真实请求与鉴权组合留到T4"],
+  "recommended_next": "observe"
+}

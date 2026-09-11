@@ -1,0 +1,39 @@
+{
+  "sample_label": "T3 project-context authorization observation",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R3",
+      "sensor": "Focused security project-context tests",
+      "result": "pass",
+      "raw_evidence": "Seven focused tests passed for project header parsing, inaccessible-project 403, project path/header mismatch 403, and shared request context across the JWT filter and authorization APIs.",
+      "limitation": ["Browser-side atomic project switching is measured in T4 and T5."]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Permission-source SQL and call-path probe",
+      "result": "pass",
+      "raw_evidence": "Repository SQL separates system:* permissions from project-scoped permissions and binds tenantId/projectId; AuthService, JwtAuthenticationFilter, /auth/me and /auth/routes resolve the same project context and effective permission set.",
+      "limitation": ["Live MySQL A/B project role rows remain an integration measurement for T5."]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "Route filtering and request rejection tests",
+      "result": "pass",
+      "raw_evidence": "Tests passed for permission-filtered routes with ancestor retention; invalid numeric headers return 400 and unauthorized or path-mismatched project context returns 403.",
+      "limitation": ["Central path/header equality currently covers /api/project/{id}; other business modules retain their existing entity authorization checks."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "The security module has no Spring-test or Mockito dependency, so the request sensor uses a JDK proxy test double.",
+    "First-login workbench compatibility required the bounded T3 plan revision already recorded in control-plan revision 2."
+  ],
+  "coverage_gaps": [
+    "Live HTTP and MySQL verification of project A/B permission differences remains for T5.",
+    "Frontend project-switch atomicity and stale-authority behavior remains for T4/T5."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

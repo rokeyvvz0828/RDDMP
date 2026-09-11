@@ -1,6 +1,6 @@
 import http from './http'
 import type { ApiResponse } from '../types/auth'
-import type { AuditCapabilities, AuditProjectOption, LoginAuditRecord, OperationAuditRecord, OrgTreeNode, PermissionMenu, RoleOption, SystemPage, SystemResource, SystemRow, UserProfile } from '../types/system'
+import type { AuditCapabilities, AuditProjectOption, LoginAuditRecord, OperationAuditRecord, OrgTreeNode, PermissionMenu, PermissionPayload, PermissionRecord, RoleOption, SystemPage, SystemResource, SystemRow, UserProfile } from '../types/system'
 
 export function listSystem(resource: SystemResource, params: { page: number; size: number; keyword?: string; orgId?: number; categoryId?: number }) {
   return http.get<ApiResponse<SystemPage<SystemRow>>>(`/system/${resource}`, { params })
@@ -69,6 +69,26 @@ export function getRolePermissions(roleId: number) {
 
 export function saveRolePermissions(roleId: number, permissionIds: number[]) {
   return http.put<ApiResponse<void>>('/system/roles/' + roleId + '/permissions', { permissionIds })
+}
+
+export function listPermissions(params: { page: number; size: number; keyword?: string; status?: number }) {
+  return http.get<ApiResponse<SystemPage<PermissionRecord>>>('/system/permissions', { params })
+}
+
+export function createPermission(data: PermissionPayload) {
+  return http.post<ApiResponse<PermissionRecord>>('/system/permissions', data)
+}
+
+export function updatePermission(id: number, data: Pick<PermissionPayload, 'menu_id' | 'permission_name' | 'status'>) {
+  return http.put<ApiResponse<PermissionRecord>>(`/system/permissions/${id}`, data)
+}
+
+export function updatePermissionStatus(id: number, value: number) {
+  return http.patch<ApiResponse<void>>(`/system/permissions/${id}/status`, null, { params: { value } })
+}
+
+export function deletePermission(id: number) {
+  return http.delete<ApiResponse<void>>(`/system/permissions/${id}`)
 }
 
 export interface OperationAuditParams {

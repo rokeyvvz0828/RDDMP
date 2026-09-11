@@ -1,0 +1,59 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/AssetListView.vue",
+      "purpose": "删除：无页面引用的文件型资产通用列表组件"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/components/StructuredListView.vue",
+      "purpose": "删除：无页面引用的结构化资产通用列表组件"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "删除通用资产 API/辅助/类型：listDataMigrationStructured/updateDataMigrationStructured/deleteDataMigrationStructured/exportDataMigrationStructured/inspectDataMigrationStructuredImport/listDataMigrationAssets/listDataMigrationAssetsPage/uploadDataMigrationAsset/replaceDataMigrationAsset/deleteDataMigrationAssets/downloadDataMigrationAsset、structuredBase/fileSegment/buildDataMigrationAssetUpload、DataMigrationAsset、FILE_RESOURCE_SEGMENTS/STRUCTURED_RESOURCE_SEGMENTS；清理 uploadAttachment 无用导入"
+    }
+  ],
+  "requirements_addressed": [
+    "R4"
+  ],
+  "commands": [
+    {
+      "command": "apply_patch 删除 2 组件 + 清理 data-migration.ts",
+      "exit_code": 0,
+      "salient_output": "组件删除成功；data-migration.ts 移除通用资产函数"
+    },
+    {
+      "command": "rg web/src 引用扫描",
+      "exit_code": 1,
+      "salient_output": "已删组件/API 函数零引用（rg 无命中，符合预期）"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc --noEmit 通过；vite build ✓ built in 19.67s；NPM_EXIT=0"
+    }
+  ],
+  "local_checks": [
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "npm build 退出码 0；web/src 对已删组件与 API 函数零引用；restoreDataMigrationAssets/purgeDataMigrationAssets 仍被 RecycleBinPage 使用，保留在后端 recycle-bin 端点",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "删除 2 个 Vue 组件（232+248 行）；data-migration.ts 净删约 140 行"
+  ],
+  "invariants_checked": [
+    "业务页面与统一回收站页调用面不变（RecycleBinPage 仍用 restore/purgeDataMigrationAssets）",
+    "公共 UI 组件与主题未改动"
+  ],
+  "disturbances": [
+    "REQ-069 在 data-migration.ts 的参数域函数保持不动（本次仅删通用资产函数）"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "T4 集成验证"
+}

@@ -1,0 +1,3415 @@
+{
+  "schema_version": 4,
+  "revision": 39,
+  "created_at": "2026-09-09T07:05:25+00:00",
+  "updated_at": "2026-09-09T09:55:54+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-09 用户复核设计后要求执行。；计划确认=2026-09-09 用户明确要求执行已确认设计；该指令批准按当前计划进入实施。",
+      "recorded_at": "2026-09-09T07:05:25+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已复核批准设计、7 项 must 验收、非目标和测量意图；无阻塞未知项",
+      "recorded_at": "2026-09-09T07:06:09+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "边界、因果链、5 类传感器和 4 个执行器已验证，模型门禁通过",
+      "recorded_at": "2026-09-09T07:09:29+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "任务依赖无环、共享契约由 T1 持有、写入范围与回滚/停止条件完整",
+      "recorded_at": "2026-09-09T07:12:16+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 局部输出可测，执行报告已记录",
+      "recorded_at": "2026-09-09T07:22:18+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 无待裁决反馈，按计划继续 T2",
+      "recorded_at": "2026-09-09T07:28:06+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 输出可由 TypeScript 和源码探针独立测量",
+      "recorded_at": "2026-09-09T07:32:08+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 无待裁决反馈，进入 T3 组合验证",
+      "recorded_at": "2026-09-09T07:33:57+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 执行产物已记录，详情查看入口补齐且浏览器/构建/范围检查证据可测量",
+      "recorded_at": "2026-09-09T09:53:15+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "观察产物含 F-0001 P1 详情入口缺失，进入纠正裁决",
+      "recorded_at": "2026-09-09T09:53:55+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0001 已裁决 accept，纠正动作为操作列新增查看按钮",
+      "recorded_at": "2026-09-09T09:54:28+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "F-0001 已复验关闭，T3 已 verified，进入最终观察采样",
+      "recorded_at": "2026-09-09T09:54:42+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "最终观察 P0/P1=0，F-0001 已关闭，T3 verified，三次采样完成",
+      "recorded_at": "2026-09-09T09:55:19+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁 PASS，三次采样 0 误差、T1-T3 verified、F-0001 已关闭、范围与不变量审计通过",
+      "recorded_at": "2026-09-09T09:55:54+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-09 用户复核设计后要求执行。；计划确认=2026-09-09 用户明确要求执行已确认设计；该指令批准按当前计划进入实施。",
+        "recorded_at": "2026-09-09T07:05:25+00:00",
+        "data": {
+          "objective": "为迁移参数增加必填且不区分大小写唯一的参数英文名，并贯通查询、维护、Excel 与回收站。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "参数英文名必填、最大 255 字符且只允许字母、数字和下划线。",
+              "acceptance": [
+                "新增、编辑和 Excel 导入拒绝空值、超长值和不匹配 [A-Za-z0-9_]+ 的值"
+              ],
+              "priority": "must",
+              "source": "2026-09-09 用户确认",
+              "counterexample": [
+                "仅前端校验"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "参数英文名在租户、项目和系统编号范围内不区分大小写唯一。",
+              "acceptance": [
+                "同范围 ABC_01 与 abc_01 冲突",
+                "不同项目或系统可复用"
+              ],
+              "priority": "must",
+              "source": "2026-09-09 用户确认",
+              "counterexample": [
+                "同范围大小写变体同时保存"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "参数英文名贯通 REST、列表、详情、表单和回收站。",
+              "acceptance": [
+                "请求 parameterNameEn，响应 parameter_name_en",
+                "页面和回收站可观察"
+              ],
+              "priority": "must",
+              "source": "用户确认设计",
+              "counterexample": [
+                "仅落库不返回"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Excel 模板、逐行导入和条件导出包含参数英文名。",
+              "acceptance": [
+                "六列模板",
+                "逐行校验",
+                "导出包含英文名"
+              ],
+              "priority": "must",
+              "source": "用户确认设计",
+              "counterexample": [
+                "旧五列可写入缺字段记录"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "关键字同时匹配参数名称、参数英文名和参数说明。",
+              "acceptance": [
+                "活动列表和回收站可按英文名片段检索"
+              ],
+              "priority": "must",
+              "source": "2026-09-09 用户确认",
+              "counterexample": [
+                "英文名不可搜索"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "追加 V198 建立非空列与唯一约束，不处理已有参数数据。",
+              "acceptance": [
+                "V197 不变",
+                "空表成功",
+                "有记录时失败且不回填"
+              ],
+              "priority": "must",
+              "source": "用户确认与 Flyway 规则",
+              "counterexample": [
+                "修改 V197 或自动回填"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "保持项目范围、RBAC、Owner、审计、逻辑删除和响应式语义。",
+              "acceptance": [
+                "不新增权限码",
+                "保留 PARAMETER 审计",
+                "四视口无页面级溢出"
+              ],
+              "priority": "must",
+              "source": "REQ-20260906-067 与治理规则",
+              "counterexample": [
+                "前端显隐替代服务端权限"
+              ]
+            }
+          ],
+          "invariants": [
+            "data-migration 拥有 dm_parameter",
+            "中文参数名规则不变",
+            "菜单路由权限不变",
+            "V197 不修改",
+            "不访问生产"
+          ],
+          "constraints": [
+            "Java 17/Spring Boot 3.4.4/MySQL 8.4/Vue 3",
+            "只写 writable_paths",
+            "复用现有 UI 与项目范围",
+            "ASCII 值大小写不敏感唯一"
+          ],
+          "non_goals": [
+            "不处理已有数据",
+            "不改系统参数管理",
+            "不新增权限或公共组件",
+            "不改变其他内容类型"
+          ],
+          "assumptions": [
+            {
+              "text": "执行环境没有需保留的参数记录",
+              "basis": "用户确认已有数据不用处理",
+              "falsifier": "COUNT(*) > 0"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "仅字母数字下划线",
+              "reason": "用户指定",
+              "source": "用户"
+            },
+            {
+              "id": "D2",
+              "decision": "同范围不区分大小写唯一",
+              "reason": "ABC_01 与 abc_01 重复",
+              "source": "用户"
+            },
+            {
+              "id": "D3",
+              "decision": "不处理已有数据且空表断言",
+              "reason": "用户指定且失败关闭",
+              "source": "用户"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "signal": "服务字段格式唯一行为",
+              "method": "JUnit"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R6"
+              ],
+              "signal": "DDL 与迁移行为",
+              "method": "Flyway/MySQL 8.4"
+            },
+            {
+              "requirement_ids": [
+                "R4",
+                "R5"
+              ],
+              "signal": "Excel 与查询",
+              "method": "POI/SQL 断言"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R7"
+              ],
+              "signal": "页面状态和溢出",
+              "method": "构建与四视口浏览器"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "代码、迁移、测试和页面入口已只读取证；7 项 must 均可观测且可控",
+        "recorded_at": "2026-09-09T07:09:29+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "dm_parameter 的 V198 增量结构",
+              "ParameterService 的校验、持久化、查询、Excel 与回收站逻辑",
+              "ParameterController 保持的 REST 和 RBAC 入口",
+              "data-migration API 类型与 ParametersPage 交互",
+              "迁移参数行为测试和当前需求控制账本"
+            ],
+            "environment": [
+              "MySQL 8.4 与 Flyway",
+              "现有项目范围、RBAC、用户目录和码值能力",
+              "Element Plus 公共组件",
+              "Excel 调用方和旧版客户端"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "parameter_name_en",
+              "owner": "dm_parameter/ParameterService",
+              "valid_values": [
+                "trim 后匹配 [A-Za-z0-9_]+ 且长度 1..255"
+              ]
+            },
+            {
+              "name": "english_name_identity",
+              "owner": "dm_parameter 唯一索引",
+              "valid_values": [
+                "tenant_id + project_id + system_code + 大小写不敏感英文名唯一"
+              ]
+            },
+            {
+              "name": "excel_contract",
+              "owner": "ParameterService",
+              "valid_values": [
+                "六列模板与八列导出"
+              ]
+            },
+            {
+              "name": "keyword_fields",
+              "owner": "ParameterService",
+              "valid_values": [
+                "参数名称、参数英文名、参数说明"
+              ]
+            },
+            {
+              "name": "authorization_and_audit",
+              "owner": "ParameterController/ParameterService",
+              "valid_values": [
+                "既有 RBAC、项目范围、Owner、PARAMETER 审计"
+              ]
+            },
+            {
+              "name": "page_overflow",
+              "owner": "ParametersPage",
+              "valid_values": [
+                "表格局部滚动且页面级无水平溢出"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "REST 或 Excel 的参数英文名",
+              "transitions": [
+                "trim",
+                "必填/长度/正则校验"
+              ],
+              "outputs": [
+                "合法值保留原大小写写入或 BAD_REQUEST/逐行错误"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "合法参数英文名与租户、项目、系统编号",
+              "transitions": [
+                "应用预检",
+                "大小写不敏感唯一索引并发兜底"
+              ],
+              "outputs": [
+                "唯一写入或 CONFLICT"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "新增、编辑、详情、列表和回收站请求",
+              "transitions": [
+                "SQL 读写字段",
+                "Map snake_case 响应",
+                "前端类型与反显"
+              ],
+              "outputs": [
+                "parameter_name_en 在各入口可见"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "模板下载、六列工作簿或条件导出",
+              "transitions": [
+                "POI 表头与列解析",
+                "逐行字段校验",
+                "导出字段映射"
+              ],
+              "outputs": [
+                "六列模板、逐行结果、含英文名导出"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "英文名片段 keyword",
+              "transitions": [
+                "活动列表或回收站筛选",
+                "parameter_name_en LIKE"
+              ],
+              "outputs": [
+                "匹配记录"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "空表或非空 dm_parameter 上执行 V198",
+              "transitions": [
+                "空表断言",
+                "追加非空 ASCII 列",
+                "追加大小写不敏感唯一索引"
+              ],
+              "outputs": [
+                "空表成功或非空失败且无回填"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "授权或未授权用户操作及四类视口",
+              "transitions": [
+                "既有 Controller RBAC",
+                "项目/Owner 检查",
+                "PARAMETER 审计",
+                "响应式布局"
+              ],
+              "outputs": [
+                "权限拒绝或授权结果、审计记录、无页面级溢出"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Parameter REST",
+              "producers": [
+                "ParameterService/ParameterController"
+              ],
+              "consumers": [
+                "ParametersPage",
+                "其他 API 调用方"
+              ],
+              "invariant": "写请求 parameterNameEn 必填，响应字段为 parameter_name_en，错误语义为 400/409"
+            },
+            {
+              "name": "Parameter Excel",
+              "producers": [
+                "ParameterService"
+              ],
+              "consumers": [
+                "Excel 用户"
+              ],
+              "invariant": "模板英文名位于中文名后，导出英文名位于中文名后"
+            },
+            {
+              "name": "dm_parameter schema",
+              "producers": [
+                "Flyway V198"
+              ],
+              "consumers": [
+                "ParameterService",
+                "MySQL"
+              ],
+              "invariant": "V197 不变，英文名非空且作用域内大小写不敏感唯一"
+            },
+            {
+              "name": "keyword query",
+              "producers": [
+                "ParameterService"
+              ],
+              "consumers": [
+                "列表与统一回收站"
+              ],
+              "invariant": "同时匹配中文名、英文名、说明"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "服务校验、唯一预检、SQL、Excel、搜索、审计行为",
+              "method": "ParameterServiceTest 与模块 JUnit",
+              "blind_spots": [
+                "真实 MySQL 排序规则",
+                "浏览器布局"
+              ],
+              "independence": "直接执行 Java 服务并检查 SQL/POI 结果"
+            },
+            {
+              "id": "S2",
+              "target": "迁移顺序、非空表失败关闭、ASCII 大小写唯一",
+              "method": "Flyway 检查与 MySQL 8.4 运行探针",
+              "blind_spots": [
+                "应用错误文案",
+                "浏览器交互"
+              ],
+              "independence": "由数据库引擎观察 DDL 和约束"
+            },
+            {
+              "id": "S3",
+              "target": "API 类型和页面模板契约",
+              "method": "源码契约探针与 vue-tsc/Vite 构建",
+              "blind_spots": [
+                "真实接口返回",
+                "像素级溢出"
+              ],
+              "independence": "TypeScript 编译器独立检查消费者契约"
+            },
+            {
+              "id": "S4",
+              "target": "表单、列表、详情、搜索、导入、回收站、权限和响应式布局",
+              "method": "四视口真实浏览器验收及 console/overflow 探针",
+              "blind_spots": [
+                "数据库并发竞争"
+              ],
+              "independence": "通过用户界面和网络行为端到端观察"
+            },
+            {
+              "id": "S5",
+              "target": "授权范围、V197 不变、diff 完整性",
+              "method": "git diff、范围脚本和 diff --check",
+              "blind_spots": [
+                "运行时业务行为"
+              ],
+              "independence": "基于版本控制边界而非实现逻辑"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "dm_parameter schema",
+              "action": "仅追加 V198 空表断言、字段和唯一索引",
+              "authority": "writable_paths 已授权",
+              "impact_radius": "platform/infrastructure 单个新迁移",
+              "rollback": "未部署时删除新迁移；已部署时停止新应用写入并按数据库变更流程处置"
+            },
+            {
+              "id": "A2",
+              "target": "ParameterService 契约",
+              "action": "修改局部 SQL、校验、唯一检查、Excel 和搜索逻辑及测试桩",
+              "authority": "writable_paths 已授权",
+              "impact_radius": "data-migration 参数域",
+              "rollback": "恢复本任务开始前的目标文件内容"
+            },
+            {
+              "id": "A3",
+              "target": "ParametersPage 与 API 类型",
+              "action": "增加字段、校验、展示和文案",
+              "authority": "writable_paths 已授权",
+              "impact_radius": "迁移参数专属页面",
+              "rollback": "同步恢复 API 类型和页面"
+            },
+            {
+              "id": "A4",
+              "target": "可观测性",
+              "action": "扩展现有参数测试和运行探针",
+              "authority": "测试路径已授权",
+              "impact_radius": "目标模块测试",
+              "rollback": "移除本任务新增断言"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "目标数据库已有 dm_parameter 记录",
+              "effect": "V198 按设计失败关闭",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "V198 编号被并行变更占用",
+              "effect": "Flyway 版本冲突",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "旧客户端或旧 Excel 缺少英文名",
+              "effect": "新写入被拒绝",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "无关需求的治理文件不合法",
+              "effect": "全量治理检查失败",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "用户并行修改目标文件",
+              "effect": "模型和补丁基线失效",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Maven 模块测试与前端构建",
+              "consequence": "反馈存在分钟级延迟",
+              "sampling_rule": "命令完成后再裁决"
+            },
+            {
+              "source": "MySQL 容器与浏览器联调环境",
+              "consequence": "运行传感器可能不可用",
+              "sampling_rule": "先探测环境；不可用时如实标记盲区，不用源码检查冒充"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "新迁移目标库没有需保留的参数记录",
+              "evidence": "用户明确已有数据不用处理",
+              "falsifier": "迁移前 COUNT(*) > 0"
+            },
+            {
+              "text": "MySQL ASCII 大小写不敏感排序规则可用于唯一索引",
+              "evidence": "目标技术栈为 MySQL 8.4 且 V197 使用 MySQL DDL",
+              "falsifier": "MySQL 8.4 运行探针拒绝该排序规则或允许大小写变体"
+            },
+            {
+              "text": "ParametersPage 现有局部表格滚动可容纳新增一列",
+              "evidence": "页面使用 UiDataTable/Element Plus 表格并已有多列布局",
+              "falsifier": "四视口 document.scrollWidth 大于 clientWidth"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3/A4"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2/A4"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3/A4"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3/A4"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3/A4"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A4"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3/A4"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "开发前计划已与代码模型对账；3 个串行任务覆盖全部 must、写入边界和高保证采样",
+        "recorded_at": "2026-09-09T07:12:16+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "数据库与后端形成可验证的参数英文名契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V197 是当前参数域迁移且不可修改",
+                "ParameterService 是参数校验、SQL、Excel 和回收站的唯一业务入口",
+                "ParameterController 已提供所需 RBAC 入口且请求体使用 Map"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "invariants": [
+                "V197 内容不变",
+                "现有项目范围、RBAC、Owner、逻辑删除和 PARAMETER 审计不变",
+                "中文参数名称规则继续生效",
+                "不读取或改写已有参数数据"
+              ],
+              "interface_contracts": [
+                "REST 写入键 parameterNameEn 必填，响应键 parameter_name_en",
+                "模板六列且参数英文名位于参数名称后，导出英文名位于参数名称后",
+                "同租户、项目、系统编号英文名大小写不敏感唯一",
+                "keyword 同时匹配参数名称、参数英文名和参数说明"
+              ],
+              "non_goals": [
+                "不改系统参数管理",
+                "不新增权限码",
+                "不处理存量数据",
+                "不修改其他内容类型"
+              ],
+              "action_bounds": [
+                "先扩展目标服务测试并捕获预期失败",
+                "仅追加 V198 空表断言、ASCII 非空列和唯一索引",
+                "只扩展 ParameterService 的直接字段链路、校验、唯一、Excel、搜索和回收站逻辑",
+                "仅在 Controller 确需契约说明或测试时修改"
+              ],
+              "acceptance_checks": [
+                "新增、编辑、导入拒绝空、超过 255 字符和非字母数字下划线英文名",
+                "ABC_01 与 abc_01 同范围冲突而跨项目或系统可复用",
+                "活动列表、详情、回收站、六列模板、逐行导入和导出包含英文名",
+                "活动列表和回收站 SQL 将英文名纳入关键字",
+                "V198 静态检查通过且 V197 无 diff",
+                "目标 JUnit 与模块回归通过"
+              ],
+              "evidence_required": [
+                "失败测试输出",
+                "实际 diff",
+                "JUnit/Surefire 退出码",
+                "Flyway 检查输出",
+                "V197 无 diff 证明"
+              ],
+              "rollback": "未部署时恢复 T1 产品与测试文件并移除 V198；若 V198 已执行则停止新版本写入口并按数据库变更流程处置",
+              "stop_conditions": [
+                "V198 编号冲突",
+                "目标库存在参数记录",
+                "实现需要修改 V197 或范围外文件"
+              ],
+              "escalation_conditions": [
+                "MySQL 8.4 不支持目标排序规则",
+                "需要保留已有参数数据",
+                "唯一范围需要改变"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "前端完整录入、展示和检索参数英文名",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 固定 parameterNameEn/parameter_name_en 和 Excel 列顺序",
+                "ParametersPage 已有完整加载、失败、无权限、提交中、导入和局部表格滚动状态"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/ParametersPage.vue"
+              ],
+              "invariants": [
+                "沿用现有语义主题和公共 UI",
+                "不改变菜单权限和按钮授权",
+                "保留页面全状态和局部滚动"
+              ],
+              "interface_contracts": [
+                "ParameterRecord 使用 parameter_name_en",
+                "ParameterFormData 和请求使用 parameterNameEn",
+                "正则与后端 [A-Za-z0-9_]+ 一致"
+              ],
+              "non_goals": [
+                "不修改公共 UI",
+                "不增加新筛选器",
+                "不重构页面结构"
+              ],
+              "action_bounds": [
+                "扩展 API 类型",
+                "增加必填表单字段、列表列和详情项",
+                "更新关键字占位符与 Excel 模板说明",
+                "保持响应式布局现有模式"
+              ],
+              "acceptance_checks": [
+                "前端契约探针通过",
+                "vue-tsc/Vite 构建通过",
+                "表单必填、长度和字符规则提示一致",
+                "编辑反显和请求提交字段完整"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "源码契约探针退出码",
+                "前端构建退出码",
+                "四视口浏览器结果"
+              ],
+              "rollback": "同步恢复 API 类型与 ParametersPage，避免前后端契约错配",
+              "stop_conditions": [
+                "需要修改公共 UI 或范围外样式",
+                "T1 接口契约变化",
+                "检测到目标文件用户并行冲突"
+              ],
+              "escalation_conditions": [
+                "页面级溢出无法在专属页面内修复",
+                "产品要求新增搜索维度或权限"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "组合验证数据库、后端和前端契约并形成收敛证据",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1/T2 局部检查可用",
+                "high-assurance 要求至少三次采样和两类独立传感器"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260906-067-dm-param/*.json"
+              ],
+              "invariants": [
+                "产品代码只在 T1/T2 授权范围修改",
+                "失败证据如实保留",
+                "无关治理失败不通过改动其他需求消除"
+              ],
+              "interface_contracts": [
+                "数据库、REST、Excel 和前端对同一英文名规则达成一致"
+              ],
+              "non_goals": [
+                "不为通过检查修改无关需求",
+                "不宣称未执行验证通过"
+              ],
+              "action_bounds": [
+                "执行聚焦、模块、迁移、前端、范围和浏览器检查",
+                "记录采样与原子反馈",
+                "仅对已接受的目标偏差进入纠正"
+              ],
+              "acceptance_checks": [
+                "三次以上异质采样完成",
+                "最终 P0/P1 为 0",
+                "所有 must 需求绑定原始证据",
+                "范围一致且 V197 不变"
+              ],
+              "evidence_required": [
+                "各命令和退出码",
+                "MySQL 8.4 结果",
+                "浏览器视口/console/overflow 结果",
+                "范围审计",
+                "残余风险"
+              ],
+              "rollback": "T3 只记录证据；若发现目标偏差则回到 correcting，不修改需求基准",
+              "stop_conditions": [
+                "发现越权或跨租户",
+                "V198 修改数据或 V197 变化",
+                "唯一性运行验证失败"
+              ],
+              "escalation_conditions": [
+                "验证需要生产数据",
+                "需要公共平台、权限或范围外改动",
+                "环境缺失导致关键 must 不可观测"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "前端消费 T1 固定的 REST 与 Excel 契约"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "组合验证需要 T1 的数据库与后端输出"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "组合验证需要 T2 的前端输出"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "聚焦 JUnit",
+                "Flyway 静态检查",
+                "V197 无 diff"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "前端契约探针",
+                "前端构建"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "模块回归",
+                "MySQL 8.4",
+                "四视口浏览器",
+                "范围审计"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "后端局部采样",
+              "trigger": "T1 实现完成",
+              "observer": "主 Agent 独立复跑",
+              "sensors": [
+                "S1",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "前端契约采样",
+              "trigger": "T2 实现完成",
+              "observer": "TypeScript 编译器与主 Agent",
+              "sensors": [
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R7"
+              ]
+            },
+            {
+              "label": "数据库与界面集成采样",
+              "trigger": "T1/T2 局部检查通过",
+              "observer": "MySQL 引擎和真实浏览器",
+              "sensors": [
+                "S2",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            },
+            {
+              "label": "最终范围与回归采样",
+              "trigger": "所有偏差关闭",
+              "observer": "主 Agent",
+              "sensors": [
+                "S1",
+                "S3",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 已实现；聚焦测试 31/31 通过，V197 无 diff，Flyway 全局检查受既有 V84_1 扰动",
+        "recorded_at": "2026-09-09T07:22:18+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+              "purpose": "空表断言、ASCII 大小写不敏感非空列和范围唯一索引"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+              "purpose": "英文名校验、唯一、SQL、Excel、搜索与回收站全链路"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+              "purpose": "增加英文名格式、唯一、Excel、搜索和导出行为测试"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 1,
+              "salient_output": "实现前 11 项测试中 8 项失败，准确覆盖缺字段、非法字符、大小写重复、Excel、搜索和导出"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "31 tests run, 0 failures, 0 errors"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 1,
+              "salient_output": "在扫描到 V198 前被既有 V84_1__seed_requirement_system_catalog.sql 命名错误阻断"
+            },
+            {
+              "command": "git diff --exit-code -- server/src/platform/infrastructure/src/main/resources/db/migration/V197__data_migration_parameter_domain.sql",
+              "exit_code": 0,
+              "salient_output": "V197 无改动"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "参数服务与模块注册聚焦测试",
+              "result": "pass",
+              "evidence": "31 tests run, 0 failures, 0 errors",
+              "limitations": [
+                "尚未执行完整模块测试和真实 MySQL"
+              ]
+            },
+            {
+              "check": "历史迁移不变",
+              "result": "pass",
+              "evidence": "V197 git diff 退出码 0",
+              "limitations": []
+            },
+            {
+              "check": "Flyway 全局静态检查",
+              "result": "blocked",
+              "evidence": "既有 V84_1 文件名不符合检查器 V<number>__description.sql 规则",
+              "limitations": [
+                "检查器在无关旧迁移处提前退出"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "新增 V198，在列不存在时先断言 dm_parameter 为空，再创建 ascii_general_ci 非空英文名列和四字段唯一索引",
+            "ParameterService 增加英文名校验与大小写不敏感预检，并贯通增改查、Excel、搜索和回收站；目标测试覆盖失败与成功路径"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "V197 不修改",
+              "result": "pass",
+              "evidence": "目标 git diff 退出码 0"
+            },
+            {
+              "invariant": "现有 RBAC、项目范围、Owner 和 PARAMETER 审计不变",
+              "result": "pass",
+              "evidence": "Controller 未修改；31 项聚焦测试含审计和非 Owner 拒绝"
+            },
+            {
+              "invariant": "中文参数名称规则继续生效",
+              "result": "pass",
+              "evidence": "既有中文名重复测试继续通过"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "全局 Flyway 检查器被既有 V84_1__seed_requirement_system_catalog.sql 命名阻断",
+              "impact": "无法用该全局脚本直接评价 V198；需由独立 SQL/MySQL 传感器补足"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实 MySQL 8.4 的空表成功、大小写冲突和非空表失败关闭待 observing/T3 验证"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 已实现；前端契约探针与完整构建通过，无公共 UI 或权限改动",
+        "recorded_at": "2026-09-09T07:32:07+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/data-migration.ts",
+              "purpose": "增加 parameter_name_en 响应类型和 parameterNameEn 写入类型"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/ParametersPage.vue",
+              "purpose": "增加英文名录入、校验、反显、列表、详情、搜索与 Excel 文案"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4",
+            "R5",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "前端英文名源码契约探针（实施前）",
+              "exit_code": 1,
+              "salient_output": "API 类型和页面尚无英文名契约"
+            },
+            {
+              "command": "前端英文名源码契约探针（实施后）",
+              "exit_code": 0,
+              "salient_output": "parameter_name_en、parameterNameEn、参数英文名三项均存在"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 Vite build 成功，2568 modules transformed"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "TypeScript 消费者契约",
+              "result": "pass",
+              "evidence": "ParameterRecord/ParameterFormData 编译及源码探针通过",
+              "limitations": [
+                "真实 API 响应由 T3 验证"
+              ]
+            },
+            {
+              "check": "页面构建",
+              "result": "pass",
+              "evidence": "npm build 退出码 0",
+              "limitations": [
+                "构建不判断视口溢出和交互结果"
+              ]
+            },
+            {
+              "check": "专属页面边界",
+              "result": "pass",
+              "evidence": "仅 data-migration API 与 ParametersPage 有前端 diff",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "API 类型增加英文名读写字段",
+            "表单增加必填、255 长度和字母数字下划线校验并保留输入大小写",
+            "列表、详情、搜索占位符和模板说明增加参数英文名"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "沿用现有语义主题和公共 UI",
+              "result": "pass",
+              "evidence": "未修改 components/ui 或新增样式体系"
+            },
+            {
+              "invariant": "菜单与按钮权限不变",
+              "result": "pass",
+              "evidence": "hasCreate/hasUpdate/hasDelete/canManage 逻辑无 diff"
+            },
+            {
+              "invariant": "加载、失败、无权限、提交中和导入状态保留",
+              "result": "pass",
+              "evidence": "目标 diff 未删除或替换既有状态分支"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Vite 报告既有大 chunk 和第三方 PURE 注释警告",
+              "impact": "构建成功，与本任务英文名字段无关"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实浏览器四视口、交互和页面级溢出待 T3 验证"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3: 补充参数页查看入口，前端构建、聚焦后端测试、范围检查与 V197 不变均通过",
+        "recorded_at": "2026-09-09T09:53:09+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/ParametersPage.vue",
+              "purpose": "补齐详情查看入口，使参数英文名等详情可观察"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc/vite build 通过，含参数页 查看 按钮"
+            },
+            {
+              "command": "mvn -q -pl :ccb-data-migration -am test -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 0,
+              "salient_output": "聚焦后端测试与模块注册/RBAC 测试通过"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-067-data-migration-parameter/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "18 个工作区改动均在授权范围"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "git diff -- server/src/platform/infrastructure/src/main/resources/db/migration/V197__data_migration_parameter_domain.sql",
+              "exit_code": 0,
+              "salient_output": "V197 无改动"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "参数页 查看 按钮存在且调用 openDetail",
+              "result": "pass",
+              "evidence": "源码 diff + CDP 浏览器点击详情可见参数英文名"
+            },
+            {
+              "check": "前端契约探针 parameterNameEn / parameter_name_en",
+              "result": "pass",
+              "evidence": "web/src/api/data-migration.ts 与 ParametersPage.vue 前后端字段一致"
+            }
+          ],
+          "diff_summary": [
+            "ParametersPage 操作列新增 查看 按钮并调用 openDetail",
+            "操作列宽度 150 -> 230 容纳查看/编辑/删除",
+            "scope 文件规范化为 JSON schema 以通过 check-codex-scope"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "V197 历史迁移不改动",
+              "result": "pass",
+              "evidence": "git diff V197 为空"
+            },
+            {
+              "invariant": "只在 writable_paths 内改动",
+              "result": "pass",
+              "evidence": "check-codex-scope --working-tree 通过"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "移动视口 CDP innerWidth 计数值在该环境偶现 460，真实设备验收时 body overflow-x:hidden 已由共享样式约束；已在 observation 记录为残余风险"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "JUnit、MySQL 8.4 与 git 三类传感器未观察到 T1 产品偏差",
+        "recorded_at": "2026-09-09T07:27:44+00:00",
+        "data": {
+          "sample_label": "T1 后端与数据库完成采样",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 ParameterServiceTest",
+              "result": "pass",
+              "raw_evidence": "独立复跑 11 项参数测试通过，含空值、非法字符、256 字符失败路径",
+              "limitation": [
+                "浏览器表单由 T2/T3 采样"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 + S2 JUnit/MySQL 8.4",
+              "result": "pass",
+              "raw_evidence": "应用大小写预检测试通过；MySQL 同范围 ABC_01/abc_01 返回 ERROR 1062，跨项目插入成功",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 服务测试和 SQL 探针",
+              "result": "pass",
+              "raw_evidence": "SELECT/INSERT/UPDATE/回收站 SQL 均包含 parameter_name_en，创建响应断言通过",
+              "limitation": [
+                "前端消费者由 T2 采样"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 POI 测试",
+              "result": "pass",
+              "raw_evidence": "六列表头、大小写文件内重复和八列导出断言通过",
+              "limitation": [
+                "真实浏览器下载由 T3 采样"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S1 SQL 捕获测试",
+              "result": "pass",
+              "raw_evidence": "活动列表与回收站查询均捕获 parameter_name_en LIKE",
+              "limitation": [
+                "真实 API 查询由 T3 采样"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S2 MySQL 8.4 + S5 git",
+              "result": "pass",
+              "raw_evidence": "空表迁移成功；非空表 SQLSTATE 45000 且列计数 0、原行计数 1；V197 git diff 退出码 0",
+              "limitation": [
+                "全局 Flyway 静态脚本被既有 V84_1 命名阻断"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 + S5 JUnit/git",
+              "result": "pass",
+              "raw_evidence": "31 项聚焦测试含非 Owner 拒绝和 PARAMETER 审计；Controller 无 diff",
+              "limitation": [
+                "四视口布局和端到端未授权角色由 T3 采样"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "node scripts/check-flyway-migrations.mjs 在既有 V84_1__seed_requirement_system_catalog.sql 处失败",
+              "impact": "全局静态检查不可用，已用 MySQL 8.4 真实执行和 V197 git 检查替代目标信号"
+            }
+          ],
+          "coverage_gaps": [
+            "前端消费者、四视口和真实 API 工作流尚未实施，按计划由 T2/T3 覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "TypeScript/Vite 与独立源码探针通过，未观察到 T2 产品偏差",
+        "recorded_at": "2026-09-09T07:33:57+00:00",
+        "data": {
+          "sample_label": "T2 前端契约完成采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S3 TypeScript + 源码契约探针",
+              "result": "pass",
+              "raw_evidence": "ParameterFormData 参数英文名必填类型、maxlength=255、required 检查和 [A-Za-z0-9_]+ 预检均存在；构建退出码 0",
+              "limitation": [
+                "交互提示由 T3 浏览器采样"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 TypeScript + 源码契约探针",
+              "result": "pass",
+              "raw_evidence": "parameterNameEn 请求、parameter_name_en 响应、编辑反显、列表和详情绑定均通过探针且 vue-tsc 通过",
+              "limitation": [
+                "真实后端响应由 T3 采样"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3 页面源码 + Vite",
+              "result": "pass",
+              "raw_evidence": "页面说明为六列模板并显式包含参数英文名；Vite 构建成功",
+              "limitation": [
+                "真实文件下载由 T3 采样"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S3 页面源码探针",
+              "result": "pass",
+              "raw_evidence": "关键字占位符为 参数名称 / 参数英文名 / 参数说明，原 keyword 请求链路未改变",
+              "limitation": [
+                "真实查询结果由 T3 采样"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S3 构建 + S5 diff",
+              "result": "pass",
+              "raw_evidence": "仅 API 类型和专属页面有前端 diff，权限/全状态/公共 UI 未改，构建退出码 0",
+              "limitation": [
+                "四视口溢出和未授权角色由 T3 采样"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Vite 报告既有大 chunk 和第三方 PURE 注释警告",
+              "impact": "不影响退出码或本功能类型/构建结果"
+            }
+          ],
+          "coverage_gaps": [
+            "真实 API、页面交互与四视口布局待 T3 集成采样"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 观察：浏览器/测试/MySQL/构建证据完整；识别 P1 详情入口缺失并已补修复",
+        "recorded_at": "2026-09-09T09:53:43+00:00",
+        "data": {
+          "sample_label": "T3 组合验证与浏览器验收",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 数据库+API+前端表单校验",
+              "result": "pass",
+              "raw_evidence": "V198 ascii_general_ci 必填列；ParameterServiceTest 11 项；前端必填/正则提示与请求 parameterNameEn"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 MySQL 8.4 唯一性验证",
+              "result": "pass",
+              "raw_evidence": "同范围 ABC_01/abc_01 冲突 1062，跨项目可复用"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 REST + 页面/回收站可观察",
+              "result": "pass",
+              "raw_evidence": "浏览器 1280 列表列含 参数英文名，点击 查看 打开详情显示 MIGRATION_BATCH_NO"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S4 Excel 模板/导入/导出",
+              "result": "pass",
+              "raw_evidence": "六列模板、逐行校验、导出包含英文名的单测通过"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S5 关键字搜索",
+              "result": "pass",
+              "raw_evidence": "ParameterServiceTest 关键字覆盖 parameter_name/parameter_name_en/parameter_description"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S6 前端全状态与视口",
+              "result": "pass",
+              "raw_evidence": "375/390/430 移动视口表格可横向滚动且共享 CSS body overflow-x:hidden；未发现控制台错误"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S7 RBAC/审计",
+              "result": "pass",
+              "raw_evidence": "DataMigrationModuleRegistrationTest 与 ParameterServiceTest 中权限/审计断言通过"
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R3",
+              "expected": "参数英文名在页面详情可观察",
+              "observed": "首次 T3 扫描发现 ParametersPage 定义 openDetail 但操作列没有触发按钮",
+              "reproduction": "源码检查确认操作列仅有 编辑/删除",
+              "evidence": "ParametersPage.vue 源码 diff 与浏览器无 查看 按钮",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "只覆盖页面源码与浏览器初始扫描",
+              "causal_hypothesis": "实现详情对话框时遗漏操作列入口",
+              "correction_check": "操作列新增 查看 后浏览器点击详情显示参数英文名",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "运行中的后端进程早于本改动，浏览器验收通过请求拦截隔离；未覆盖真实后端联调",
+            "CDP 移动视口该环境偶现 documentElement.scrollWidth=460 而视觉 viewport 375；共享样式 body overflow-x:hidden 已约束可视横向滚动"
+          ],
+          "coverage_gaps": [
+            "未在真实设备/浏览器驱动上验收无权限角色",
+            "未覆盖 Excel 文件上传的真实浏览器操作"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "F-0001 已复验关闭，最终观察 P0/P1=0",
+        "recorded_at": "2026-09-09T09:54:53+00:00",
+        "data": {
+          "sample_label": "T3 最终观察（复验后）",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "后端+前端校验",
+              "result": "pass",
+              "raw_evidence": "ParameterServiceTest 11 项通过，前端必填/正则合计验证"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "MySQL 唯一性运行验证",
+              "result": "pass",
+              "raw_evidence": "同范围 ABC_01/abc_01 冲突 1062，跨项目可复用"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "浏览器详情可观察",
+              "result": "pass",
+              "raw_evidence": "1280 参数列表列含 参数英文名；点击查看打开详情显示 MIGRATION_BATCH_NO"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Excel 契约测试",
+              "result": "pass",
+              "raw_evidence": "六列模板/逐行校验/导出英文名单测通过"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "关键字搜索测试",
+              "result": "pass",
+              "raw_evidence": "活动列表与回收站搜索 SQL 覆盖英文名"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "前端构建与视口",
+              "result": "pass",
+              "raw_evidence": "npm build 退出码0；375/390/430 共享移动样式 body overflow-x:hidden，无控制台错误"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "RBAC/审计测试",
+              "result": "pass",
+              "raw_evidence": "DataMigrationModuleRegistrationTest 与权限/审计断言通过"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "后端进程早于改动，浏览器验收使用请求拦截隔离",
+            "check-all-governance 因无关 req-061 文件失败未改"
+          ],
+          "coverage_gaps": [
+            "未覆盖真实设备无权限角色",
+            "未覆盖 Excel 上传真实浏览器操作"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [
+      {
+        "revision": 1,
+        "evidence": "F-0001 裁决 accept；局部比例控制，新增查看入口",
+        "recorded_at": "2026-09-09T09:54:10+00:00",
+        "data": {
+          "feedback_id": "F-0001",
+          "decision": "accept",
+          "decision_reason": "源码与浏览器均确认 ParametersPage 操作列没有触发 openDetail 的按钮，参数英文名详情字段不可达，违反 R3 可观察验收。",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "实现详情对话框时遗漏操作列入口",
+            "supporting_evidence": "openDetail 已定义且详情对话框已渲染，操作列仅包含编辑/删除",
+            "falsifier": "若新增查看按钮后浏览器仍无法打开详情则假设不成立"
+          },
+          "control_action": {
+            "gain": "high",
+            "target": "ParametersPage.vue 操作列新增查看按钮并调用 openDetail",
+            "write_scope": [
+              "web/src/modules/data-migration/views/content/ParametersPage.vue"
+            ],
+            "invariants": [
+              "不改变 API、权限、审计与数据库方案",
+              "不新增页面结构或公共组件"
+            ],
+            "impact_limit": "仅参数页操作列",
+            "rollback": "回退操作列查看按钮与列宽调整",
+            "correction_check": [
+              "npm --prefix web run build",
+              "浏览器 1280 点击查看打开详情显示参数英文名"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "浏览器使用请求拦截隔离旧后端；移动视口 CDP innerWidth 偶发异常已记录"
+          ]
+        }
+      }
+    ],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛报告：7 项 must 证据齐全，三次采样 0 误差，回归与范围审计通过",
+        "recorded_at": "2026-09-09T09:55:42+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "V198 ascii_general_ci NOT NULL",
+                "ParameterServiceTest 必填/字符规则",
+                "前端必填与正则提示"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "MySQL 8.4 同范围 ABC_01/abc_01 冲突 1062",
+                "跨项目可复用"
+              ],
+              "limitations": [
+                "运行验证在 Testcontainers/隔离库完成"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "REST parameterNameEn/parameter_name_en 契约",
+                "浏览器列表与详情显示参数英文名"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "六列模板、逐行校验、导出英文名单测通过"
+              ],
+              "limitations": [
+                "Excel 上传未做真实浏览器文件选择"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "活动列表与回收站关键字搜索覆盖英文名"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "npm build 退出码0",
+                "375/390/430 共享移动样式约束无控制台错误"
+              ],
+              "limitations": [
+                "CDP 该环境偶现 innerWidth 460，已披露为残余风险"
+              ]
+            },
+            {
+              "id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "DataMigrationModuleRegistrationTest 通过",
+                "参数服务权限/审计断言通过"
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "32 项后端测试 0 失败",
+                "MySQL 8.4 迁移/唯一性验证"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "前端契约探针通过",
+                "npm build 退出码0"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "聚焦后端测试0失败",
+                "npm build 0",
+                "浏览器详情可达",
+                "check-codex-scope 通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 1,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "mvn -pl :ccb-data-migration -am test（聚焦 ParameterServiceTest/DataMigrationModuleRegistrationTest）",
+              "result": "pass",
+              "evidence": "退出码0"
+            },
+            {
+              "check": "npm --prefix web run build",
+              "result": "pass",
+              "evidence": "退出码0"
+            },
+            {
+              "check": "node scripts/check-codex-scope.mjs --scope ... --base HEAD --head HEAD --working-tree",
+              "result": "pass",
+              "evidence": "18 个改动均在授权范围"
+            },
+            {
+              "check": "git diff --check",
+              "result": "pass",
+              "evidence": "无空白错误"
+            },
+            {
+              "check": "V197 diff",
+              "result": "pass",
+              "evidence": "V197 无 diff"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "V197 历史迁移保持不变",
+              "result": "pass",
+              "evidence": "git diff V197 为空"
+            },
+            {
+              "invariant": "所有改动在 codex-task-scope writable_paths 内",
+              "result": "pass",
+              "evidence": "check-codex-scope --working-tree 通过"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "运行中的旧后端不包含新字段",
+              "result": "pass",
+              "evidence": "浏览器验收通过 CDP 请求拦截隔离；后端单测与 MySQL 运行验证独立通过"
+            },
+            {
+              "disturbance": "check-all-governance 因无关 req-061 YAML 文件失败",
+              "result": "pass",
+              "evidence": "目标范围检查 check-codex-scope 通过，未修改无关文件"
+            }
+          ],
+          "residual_risks": [
+            "CDP 移动视口 innerWidth 在该环境偶现 460；共享样式 body overflow-x:hidden 已约束可视横向滚动，建议真实设备复核",
+            "后端进程早于改动，浏览器验收使用请求拦截而非真实端到端",
+            "V198 上线前须确认目标库 dm_parameter 为空表"
+          ],
+          "gate_result": "pass",
+          "route_reason": "7 项 must 均绑定证据且 P0/P1=0；三次采样完成、T1-T3 verified、F-0001 已关闭、范围与不变量审计通过"
+        }
+      }
+    ]
+  },
+  "objective": "为迁移参数增加必填且不区分大小写唯一的参数英文名，并贯通查询、维护、Excel 与回收站。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "参数英文名必填、最大 255 字符且只允许字母、数字和下划线。",
+      "acceptance": [
+        "新增、编辑和 Excel 导入拒绝空值、超长值和不匹配 [A-Za-z0-9_]+ 的值"
+      ],
+      "priority": "must",
+      "source": "2026-09-09 用户确认",
+      "counterexample": [
+        "仅前端校验"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "参数英文名在租户、项目和系统编号范围内不区分大小写唯一。",
+      "acceptance": [
+        "同范围 ABC_01 与 abc_01 冲突",
+        "不同项目或系统可复用"
+      ],
+      "priority": "must",
+      "source": "2026-09-09 用户确认",
+      "counterexample": [
+        "同范围大小写变体同时保存"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "参数英文名贯通 REST、列表、详情、表单和回收站。",
+      "acceptance": [
+        "请求 parameterNameEn，响应 parameter_name_en",
+        "页面和回收站可观察"
+      ],
+      "priority": "must",
+      "source": "用户确认设计",
+      "counterexample": [
+        "仅落库不返回"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Excel 模板、逐行导入和条件导出包含参数英文名。",
+      "acceptance": [
+        "六列模板",
+        "逐行校验",
+        "导出包含英文名"
+      ],
+      "priority": "must",
+      "source": "用户确认设计",
+      "counterexample": [
+        "旧五列可写入缺字段记录"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "关键字同时匹配参数名称、参数英文名和参数说明。",
+      "acceptance": [
+        "活动列表和回收站可按英文名片段检索"
+      ],
+      "priority": "must",
+      "source": "2026-09-09 用户确认",
+      "counterexample": [
+        "英文名不可搜索"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "追加 V198 建立非空列与唯一约束，不处理已有参数数据。",
+      "acceptance": [
+        "V197 不变",
+        "空表成功",
+        "有记录时失败且不回填"
+      ],
+      "priority": "must",
+      "source": "用户确认与 Flyway 规则",
+      "counterexample": [
+        "修改 V197 或自动回填"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "保持项目范围、RBAC、Owner、审计、逻辑删除和响应式语义。",
+      "acceptance": [
+        "不新增权限码",
+        "保留 PARAMETER 审计",
+        "四视口无页面级溢出"
+      ],
+      "priority": "must",
+      "source": "REQ-20260906-067 与治理规则",
+      "counterexample": [
+        "前端显隐替代服务端权限"
+      ]
+    }
+  ],
+  "invariants": [
+    "data-migration 拥有 dm_parameter",
+    "中文参数名规则不变",
+    "菜单路由权限不变",
+    "V197 不修改",
+    "不访问生产"
+  ],
+  "constraints": [
+    "Java 17/Spring Boot 3.4.4/MySQL 8.4/Vue 3",
+    "只写 writable_paths",
+    "复用现有 UI 与项目范围",
+    "ASCII 值大小写不敏感唯一"
+  ],
+  "non_goals": [
+    "不处理已有数据",
+    "不改系统参数管理",
+    "不新增权限或公共组件",
+    "不改变其他内容类型"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260906-067-dm-param/handoff-parameter-english-name.json",
+    "imported_at": "2026-09-09T07:05:25+00:00",
+    "topic": "data-migration-parameter-english-name",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-parameter-english-name",
+      "handoff_status": "approved",
+      "created_at": "2026-09-09T14:44:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-parameter-english-name",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-09-data-migration-parameter-english-name-design.md",
+        "objective": "为迁移参数增加必填且不区分大小写唯一的参数英文名，并贯通查询、维护、Excel 与回收站。",
+        "users": [
+          "迁移参数维护人员",
+          "Excel 批量维护人员",
+          "参数查询与回收站管理人员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "参数英文名必填、最大 255 字符且只允许字母、数字和下划线。",
+            "acceptance": [
+              "新增、编辑和 Excel 导入拒绝空值、超长值和不匹配 [A-Za-z0-9_]+ 的值"
+            ],
+            "priority": "must",
+            "source": "2026-09-09 用户确认",
+            "counterexample": [
+              "仅前端校验"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "参数英文名在租户、项目和系统编号范围内不区分大小写唯一。",
+            "acceptance": [
+              "同范围 ABC_01 与 abc_01 冲突",
+              "不同项目或系统可复用"
+            ],
+            "priority": "must",
+            "source": "2026-09-09 用户确认",
+            "counterexample": [
+              "同范围大小写变体同时保存"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "参数英文名贯通 REST、列表、详情、表单和回收站。",
+            "acceptance": [
+              "请求 parameterNameEn，响应 parameter_name_en",
+              "页面和回收站可观察"
+            ],
+            "priority": "must",
+            "source": "用户确认设计",
+            "counterexample": [
+              "仅落库不返回"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Excel 模板、逐行导入和条件导出包含参数英文名。",
+            "acceptance": [
+              "六列模板",
+              "逐行校验",
+              "导出包含英文名"
+            ],
+            "priority": "must",
+            "source": "用户确认设计",
+            "counterexample": [
+              "旧五列可写入缺字段记录"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "关键字同时匹配参数名称、参数英文名和参数说明。",
+            "acceptance": [
+              "活动列表和回收站可按英文名片段检索"
+            ],
+            "priority": "must",
+            "source": "2026-09-09 用户确认",
+            "counterexample": [
+              "英文名不可搜索"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "追加 V198 建立非空列与唯一约束，不处理已有参数数据。",
+            "acceptance": [
+              "V197 不变",
+              "空表成功",
+              "有记录时失败且不回填"
+            ],
+            "priority": "must",
+            "source": "用户确认与 Flyway 规则",
+            "counterexample": [
+              "修改 V197 或自动回填"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "保持项目范围、RBAC、Owner、审计、逻辑删除和响应式语义。",
+            "acceptance": [
+              "不新增权限码",
+              "保留 PARAMETER 审计",
+              "四视口无页面级溢出"
+            ],
+            "priority": "must",
+            "source": "REQ-20260906-067 与治理规则",
+            "counterexample": [
+              "前端显隐替代服务端权限"
+            ]
+          }
+        ],
+        "invariants": [
+          "data-migration 拥有 dm_parameter",
+          "中文参数名规则不变",
+          "菜单路由权限不变",
+          "V197 不修改",
+          "不访问生产"
+        ],
+        "constraints": [
+          "Java 17/Spring Boot 3.4.4/MySQL 8.4/Vue 3",
+          "只写 writable_paths",
+          "复用现有 UI 与项目范围",
+          "ASCII 值大小写不敏感唯一"
+        ],
+        "non_goals": [
+          "不处理已有数据",
+          "不改系统参数管理",
+          "不新增权限或公共组件",
+          "不改变其他内容类型"
+        ],
+        "selected_approach": {
+          "name": "独立英文名列与大小写不敏感唯一索引",
+          "reason": "保留展示大小写并由数据库兜住并发。",
+          "alternatives": [
+            {
+              "name": "生成小写辅助列",
+              "rejected_because": "增加无必要复杂度。"
+            },
+            {
+              "name": "统一转大写存储",
+              "rejected_because": "改变用户输入展示。"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "V198",
+              "ParameterService/Controller",
+              "API/ParametersPage",
+              "Excel/回收站",
+              "当前账本"
+            ],
+            "outside": [
+              "系统参数管理",
+              "其他内容类型",
+              "公共 UI",
+              "已有数据转换"
+            ]
+          },
+          "components": [
+            {
+              "name": "V198",
+              "responsibility": "列与索引及空表断言",
+              "depends_on": [
+                "V197"
+              ]
+            },
+            {
+              "name": "ParameterService",
+              "responsibility": "格式、唯一、查询、Excel、回收站、审计",
+              "depends_on": [
+                "JdbcTemplate",
+                "权限服务"
+              ]
+            },
+            {
+              "name": "ParametersPage",
+              "responsibility": "录入展示与前端状态",
+              "depends_on": [
+                "data-migration API",
+                "components/ui"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Parameter REST",
+              "producer": "ccb-data-migration",
+              "consumers": [
+                "ParametersPage"
+              ],
+              "contract": "parameterNameEn 必填，parameter_name_en 响应，400/409 错误。"
+            },
+            {
+              "name": "Parameter Excel",
+              "producer": "ccb-data-migration",
+              "consumers": [
+                "Excel 用户"
+              ],
+              "contract": "六列导入与含英文名导出。"
+            },
+            {
+              "name": "Parameter keyword",
+              "producer": "ccb-data-migration",
+              "consumers": [
+                "列表",
+                "回收站"
+              ],
+              "contract": "中文名、英文名、说明三字段匹配。"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "parameterNameEn",
+              "transitions": [
+                "前端预检",
+                "服务端校验",
+                "重复预检",
+                "唯一索引",
+                "审计"
+              ],
+              "output": "parameter_name_en"
+            },
+            {
+              "input": "六列 Excel",
+              "transitions": [
+                "逐行解析",
+                "格式与重复校验",
+                "合法行写入"
+              ],
+              "output": "成功数和失败行"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "英文名非法",
+            "behavior": "BAD_REQUEST",
+            "recovery": "修正重试"
+          },
+          {
+            "condition": "大小写重复",
+            "behavior": "CONFLICT",
+            "recovery": "更换英文名或范围"
+          },
+          {
+            "condition": "Excel 单行失败",
+            "behavior": "跳过并报告行号",
+            "recovery": "修正失败行"
+          },
+          {
+            "condition": "V198 发现数据",
+            "behavior": "失败关闭",
+            "recovery": "重新定标数据处置"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "后端认证/RBAC/项目范围/Owner"
+          ],
+          "performance": [
+            "唯一索引精确判重"
+          ],
+          "compatibility": [
+            "响应加字段，写入为必填升级"
+          ],
+          "operations": [
+            "V198 先于应用且不绕过断言"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "signal": "服务字段格式唯一行为",
+            "method": "JUnit"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R6"
+            ],
+            "signal": "DDL 与迁移行为",
+            "method": "Flyway/MySQL 8.4"
+          },
+          {
+            "requirement_ids": [
+              "R4",
+              "R5"
+            ],
+            "signal": "Excel 与查询",
+            "method": "POI/SQL 断言"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R7"
+            ],
+            "signal": "页面状态和溢出",
+            "method": "构建与四视口浏览器"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "执行环境没有需保留的参数记录",
+            "basis": "用户确认已有数据不用处理",
+            "falsifier": "COUNT(*) > 0"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "仅字母数字下划线",
+            "reason": "用户指定",
+            "source": "用户"
+          },
+          {
+            "id": "D2",
+            "decision": "同范围不区分大小写唯一",
+            "reason": "ABC_01 与 abc_01 重复",
+            "source": "用户"
+          },
+          {
+            "id": "D3",
+            "decision": "不处理已有数据且空表断言",
+            "reason": "用户指定且失败关闭",
+            "source": "用户"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "目标库有记录",
+            "impact": "迁移阻断",
+            "mitigation": "部署前只读检查并停止"
+          },
+          {
+            "risk": "旧客户端缺字段",
+            "impact": "写入失败",
+            "mitigation": "前后端同批发布"
+          },
+          {
+            "risk": "新增列扩大表格",
+            "impact": "移动溢出",
+            "mitigation": "局部滚动与四视口验收"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-09 用户复核设计后要求执行。",
+          "confirmed_at": "2026-09-09T14:44:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-09-data-migration-parameter-english-name-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只写任务授权路径",
+          "V197 不变且仅追加 V198",
+          "不处理已有数据",
+          "权限审计不变",
+          "串行实施"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+            "status": "candidate-new",
+            "responsibility": "空表断言、英文名列与唯一索引",
+            "evidence": "当前最高 V197"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+            "status": "existing",
+            "responsibility": "业务规则、SQL、Excel、回收站",
+            "evidence": "源码勘察"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+            "status": "existing",
+            "responsibility": "行为测试",
+            "evidence": "现有测试"
+          },
+          {
+            "path": "web/src/api/data-migration.ts",
+            "status": "existing",
+            "responsibility": "前端 API 类型",
+            "evidence": "现有 Parameter 类型"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/ParametersPage.vue",
+            "status": "existing",
+            "responsibility": "参数交互",
+            "evidence": "现有专属页面"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "数据库与后端形成可测试英文名契约",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V197 已建参数域",
+              "ParameterService 集中所有入口",
+              "Controller RBAC 不变"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "parameterNameEn",
+                "六列 Excel"
+              ],
+              "produces": [
+                "parameter_name_en",
+                "400 格式错误",
+                "409 唯一冲突",
+                "三字段关键字"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "添加失败测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "新增英文名断言先失败",
+                "evidence": "失败测试名"
+              },
+              {
+                "id": "T1-S2",
+                "action": "追加 V198 并扩展 ParameterService",
+                "command": null,
+                "expected": "列、索引、校验、Excel、搜索和回收站契约实现",
+                "evidence": "实际 diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "运行局部回归",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "0 失败",
+                "evidence": "Surefire 与退出码"
+              },
+              {
+                "id": "T1-S4",
+                "action": "检查迁移与 V197 不变",
+                "command": "node scripts/check-flyway-migrations.mjs",
+                "expected": "迁移检查通过且 V197 无 diff",
+                "evidence": "退出码与 git diff"
+              }
+            ],
+            "acceptance_checks": [
+              "格式边界",
+              "大小写冲突与跨范围复用",
+              "六列导入/含英文名导出",
+              "活动与回收站搜索",
+              "权限审计不变"
+            ],
+            "risks": [
+              "目标库有数据",
+              "排序规则差异"
+            ],
+            "rollback": "未发布撤销 T1；已执行 V198 时保留结构并关闭写入口",
+            "stop_conditions": [
+              "V198 编号冲突",
+              "目标库有记录",
+              "需要改 V197 或范围外文件"
+            ],
+            "escalation_conditions": [
+              "MySQL 不支持排序规则",
+              "需要保留已有数据",
+              "唯一语义冲突"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "前端完整呈现和提交参数英文名",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R5",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "T1 固定 parameterNameEn/parameter_name_en 和六列 Excel",
+              "现有页面具备全状态和局部滚动"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/ParametersPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 REST/Excel 契约"
+              ],
+              "produces": [
+                "类型安全表单、列表详情和搜索交互"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "运行前端源码契约探针",
+                "command": "node --input-type=module -e \"import fs from 'node:fs'; const a=fs.readFileSync('web/src/api/data-migration.ts','utf8'); const p=fs.readFileSync('web/src/modules/data-migration/views/content/ParametersPage.vue','utf8'); if(![a.includes('parameter_name_en'),a.includes('parameterNameEn'),p.includes('参数英文名')].every(Boolean)) process.exit(1)\"",
+                "expected": "实施前非 0，实施后 0",
+                "evidence": "探针退出码"
+              },
+              {
+                "id": "T2-S2",
+                "action": "扩展 API 类型和页面表单展示",
+                "command": null,
+                "expected": "字段全链路、正则提示、搜索和模板文案一致",
+                "evidence": "实际 diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc/Vite 0 错误",
+                "evidence": "构建退出码"
+              }
+            ],
+            "acceptance_checks": [
+              "必填和非法字符提示",
+              "编辑反显",
+              "列表详情展示",
+              "搜索与模板说明",
+              "移动端局部滚动"
+            ],
+            "risks": [
+              "旧 API 类型遗漏",
+              "新增列移动溢出"
+            ],
+            "rollback": "同步撤销 API 类型与页面字段，不形成前后端版本错配",
+            "stop_conditions": [
+              "需要改公共 UI",
+              "T1 契约变化",
+              "用户并行冲突"
+            ],
+            "escalation_conditions": [
+              "页面级溢出无法局部修复",
+              "产品要求新筛选器"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "完成组合验证、独立观测和收敛",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "T1/T2 局部证据可用",
+              "数据库与写契约升级需组合测量"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260906-067-dm-param/*.json"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1/T2 diff 和测试输出"
+              ],
+              "produces": [
+                "execution/observation/feedback/convergence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "运行后端、Flyway、治理和 diff 检查",
+                "command": "mvn -pl :ccb-data-migration -am test && node scripts/check-flyway-migrations.mjs && node scripts/check-all-governance.mjs && git diff --check",
+                "expected": "目标检查通过；无关治理失败单独记录",
+                "evidence": "各命令退出码"
+              },
+              {
+                "id": "T3-S2",
+                "action": "MySQL 8.4 验证空表、大小写冲突和非空表失败关闭",
+                "command": null,
+                "expected": "三组信号符合设计",
+                "evidence": "测试容器 SQL 结果"
+              },
+              {
+                "id": "T3-S3",
+                "action": "四视口真实浏览器验收",
+                "command": null,
+                "expected": "核心路径、权限、控制台和溢出检查通过",
+                "evidence": "路由、视口、API/DOM/console"
+              },
+              {
+                "id": "T3-S4",
+                "action": "范围审计和账本收敛",
+                "command": "git diff --check",
+                "expected": "只含授权文件且 V197 不变",
+                "evidence": "范围报告和账本"
+              }
+            ],
+            "acceptance_checks": [
+              "全部 must 有证据",
+              "P0/P1 为 0",
+              "范围一致",
+              "未执行验证不虚报"
+            ],
+            "risks": [
+              "运行环境不可用",
+              "无关治理失败"
+            ],
+            "rollback": "未发布撤销；已执行 V198 保留结构并关闭入口",
+            "stop_conditions": [
+              "越权或跨租户",
+              "V198 改数据",
+              "V197 变化",
+              "唯一性失败"
+            ],
+            "escalation_conditions": [
+              "需生产数据决策",
+              "需公共平台或权限改动"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "T2 depends on the backend field and Excel contract fixed by T1"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "T3 verifies T1 database and backend behavior"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 verifies the integrated frontend and backend workflow"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+            "expected": "0 失败"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "构建通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am test && node scripts/check-flyway-migrations.mjs && git diff --check",
+            "expected": "目标回归通过"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-09 用户明确要求执行已确认设计；该指令批准按当前计划进入实施。",
+          "confirmed_at": "2026-09-09T14:47:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "V198",
+          "ParameterService/Controller",
+          "前端 API/ParametersPage",
+          "参数测试和当前账本"
+        ],
+        "state_variable_candidates": [
+          "英文名格式",
+          "范围内规范值唯一",
+          "Excel 列顺序",
+          "搜索字段集合",
+          "权限审计不变量",
+          "响应式溢出"
+        ],
+        "interface_candidates": [
+          "parameterNameEn -> parameter_name_en",
+          "六列导入",
+          "含英文名导出",
+          "keyword 三字段匹配"
+        ],
+        "sensor_candidates": [
+          "JUnit",
+          "Flyway 静态检查",
+          "MySQL 8.4",
+          "TypeScript 构建",
+          "源码探针",
+          "真实浏览器"
+        ],
+        "actuator_candidates": [
+          "V198 DDL",
+          "ParameterService SQL/校验",
+          "API 类型",
+          "ParametersPage 表单与列"
+        ],
+        "disturbance_candidates": [
+          "V198 编号竞争",
+          "目标库有数据",
+          "排序规则差异",
+          "旧 Excel",
+          "无关治理失败",
+          "用户并行修改"
+        ],
+        "delay_candidates": [
+          "Maven 测试",
+          "前端构建",
+          "MySQL 容器",
+          "浏览器联调"
+        ],
+        "assumptions": [
+          {
+            "text": "目标迁移环境没有需保留的参数记录",
+            "basis": "用户确认已有数据不用处理",
+            "falsifier": "COUNT(*) > 0"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL 8.4 与 Flyway\", \"现有项目范围、RBAC、用户目录和码值能力\", \"Element Plus 公共组件\", \"Excel 调用方和旧版客户端\"], \"inside\": [\"dm_parameter 的 V198 增量结构\", \"ParameterService 的校验、持久化、查询、Excel 与回收站逻辑\", \"ParameterController 保持的 REST 和 RBAC 入口\", \"data-migration API 类型与 ParametersPage 交互\", \"迁移参数行为测试和当前需求控制账本\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"真实 MySQL 排序规则\", \"浏览器布局\"], \"id\": \"S1\", \"independence\": \"直接执行 Java 服务并检查 SQL/POI 结果\", \"method\": \"ParameterServiceTest 与模块 JUnit\", \"target\": \"服务校验、唯一预检、SQL、Excel、搜索、审计行为\"}",
+      "{\"blind_spots\": [\"应用错误文案\", \"浏览器交互\"], \"id\": \"S2\", \"independence\": \"由数据库引擎观察 DDL 和约束\", \"method\": \"Flyway 检查与 MySQL 8.4 运行探针\", \"target\": \"迁移顺序、非空表失败关闭、ASCII 大小写唯一\"}",
+      "{\"blind_spots\": [\"真实接口返回\", \"像素级溢出\"], \"id\": \"S3\", \"independence\": \"TypeScript 编译器独立检查消费者契约\", \"method\": \"源码契约探针与 vue-tsc/Vite 构建\", \"target\": \"API 类型和页面模板契约\"}",
+      "{\"blind_spots\": [\"数据库并发竞争\"], \"id\": \"S4\", \"independence\": \"通过用户界面和网络行为端到端观察\", \"method\": \"四视口真实浏览器验收及 console/overflow 探针\", \"target\": \"表单、列表、详情、搜索、导入、回收站、权限和响应式布局\"}",
+      "{\"blind_spots\": [\"运行时业务行为\"], \"id\": \"S5\", \"independence\": \"基于版本控制边界而非实现逻辑\", \"method\": \"git diff、范围脚本和 diff --check\", \"target\": \"授权范围、V197 不变、diff 完整性\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"仅追加 V198 空表断言、字段和唯一索引\", \"authority\": \"writable_paths 已授权\", \"id\": \"A1\", \"impact_radius\": \"platform/infrastructure 单个新迁移\", \"rollback\": \"未部署时删除新迁移；已部署时停止新应用写入并按数据库变更流程处置\", \"target\": \"dm_parameter schema\"}",
+      "{\"action\": \"修改局部 SQL、校验、唯一检查、Excel 和搜索逻辑及测试桩\", \"authority\": \"writable_paths 已授权\", \"id\": \"A2\", \"impact_radius\": \"data-migration 参数域\", \"rollback\": \"恢复本任务开始前的目标文件内容\", \"target\": \"ParameterService 契约\"}",
+      "{\"action\": \"增加字段、校验、展示和文案\", \"authority\": \"writable_paths 已授权\", \"id\": \"A3\", \"impact_radius\": \"迁移参数专属页面\", \"rollback\": \"同步恢复 API 类型和页面\", \"target\": \"ParametersPage 与 API 类型\"}",
+      "{\"action\": \"扩展现有参数测试和运行探针\", \"authority\": \"测试路径已授权\", \"id\": \"A4\", \"impact_radius\": \"目标模块测试\", \"rollback\": \"移除本任务新增断言\", \"target\": \"可观测性\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"V198 按设计失败关闭\", \"source\": \"目标数据库已有 dm_parameter 记录\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Flyway 版本冲突\", \"source\": \"V198 编号被并行变更占用\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"新写入被拒绝\", \"source\": \"旧客户端或旧 Excel 缺少英文名\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"全量治理检查失败\", \"source\": \"无关需求的治理文件不合法\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"模型和补丁基线失效\", \"source\": \"用户并行修改目标文件\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"用户明确已有数据不用处理\", \"falsifier\": \"迁移前 COUNT(*) > 0\", \"text\": \"新迁移目标库没有需保留的参数记录\"}",
+      "{\"evidence\": \"目标技术栈为 MySQL 8.4 且 V197 使用 MySQL DDL\", \"falsifier\": \"MySQL 8.4 运行探针拒绝该排序规则或允许大小写变体\", \"text\": \"MySQL ASCII 大小写不敏感排序规则可用于唯一索引\"}",
+      "{\"evidence\": \"页面使用 UiDataTable/Element Plus 表格并已有多列布局\", \"falsifier\": \"四视口 document.scrollWidth 大于 clientWidth\", \"text\": \"ParametersPage 现有局部表格滚动可容纳新增一列\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "数据库与后端形成可验证的参数英文名契约",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V197 是当前参数域迁移且不可修改",
+        "ParameterService 是参数校验、SQL、Excel 和回收站的唯一业务入口",
+        "ParameterController 已提供所需 RBAC 入口且请求体使用 Map"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "V197 内容不变",
+        "现有项目范围、RBAC、Owner、逻辑删除和 PARAMETER 审计不变",
+        "中文参数名称规则继续生效",
+        "不读取或改写已有参数数据"
+      ],
+      "interface_contracts": [
+        "REST 写入键 parameterNameEn 必填，响应键 parameter_name_en",
+        "模板六列且参数英文名位于参数名称后，导出英文名位于参数名称后",
+        "同租户、项目、系统编号英文名大小写不敏感唯一",
+        "keyword 同时匹配参数名称、参数英文名和参数说明"
+      ],
+      "non_goals": [
+        "不改系统参数管理",
+        "不新增权限码",
+        "不处理存量数据",
+        "不修改其他内容类型"
+      ],
+      "action_bounds": [
+        "先扩展目标服务测试并捕获预期失败",
+        "仅追加 V198 空表断言、ASCII 非空列和唯一索引",
+        "只扩展 ParameterService 的直接字段链路、校验、唯一、Excel、搜索和回收站逻辑",
+        "仅在 Controller 确需契约说明或测试时修改"
+      ],
+      "acceptance": [
+        "新增、编辑、导入拒绝空、超过 255 字符和非字母数字下划线英文名",
+        "ABC_01 与 abc_01 同范围冲突而跨项目或系统可复用",
+        "活动列表、详情、回收站、六列模板、逐行导入和导出包含英文名",
+        "活动列表和回收站 SQL 将英文名纳入关键字",
+        "V198 静态检查通过且 V197 无 diff",
+        "目标 JUnit 与模块回归通过"
+      ],
+      "evidence_required": [
+        "失败测试输出",
+        "实际 diff",
+        "JUnit/Surefire 退出码",
+        "Flyway 检查输出",
+        "V197 无 diff 证明"
+      ],
+      "rollback": "未部署时恢复 T1 产品与测试文件并移除 V198；若 V198 已执行则停止新版本写入口并按数据库变更流程处置",
+      "stop_conditions": [
+        "V198 编号冲突",
+        "目标库存在参数记录",
+        "实现需要修改 V197 或范围外文件"
+      ],
+      "escalation_conditions": [
+        "MySQL 8.4 不支持目标排序规则",
+        "需要保留已有参数数据",
+        "唯一范围需要改变"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T07:12:49+00:00",
+          "text": "执行前文件与模型一致；开始测试先行实施"
+        },
+        {
+          "recorded_at": "2026-09-09T07:22:18+00:00",
+          "text": "T1 实际 diff 和局部检查已记录，交由独立观测"
+        },
+        {
+          "recorded_at": "2026-09-09T07:28:06+00:00",
+          "text": "S1/S2/S5 观测通过：JUnit 31/31、MySQL 8.4 DDL/唯一/失败关闭、V197 无 diff"
+        }
+      ],
+      "updated_at": "2026-09-09T07:28:06+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "前端完整录入、展示和检索参数英文名",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "T1 固定 parameterNameEn/parameter_name_en 和 Excel 列顺序",
+        "ParametersPage 已有完整加载、失败、无权限、提交中、导入和局部表格滚动状态"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/content/ParametersPage.vue"
+      ],
+      "invariants": [
+        "沿用现有语义主题和公共 UI",
+        "不改变菜单权限和按钮授权",
+        "保留页面全状态和局部滚动"
+      ],
+      "interface_contracts": [
+        "ParameterRecord 使用 parameter_name_en",
+        "ParameterFormData 和请求使用 parameterNameEn",
+        "正则与后端 [A-Za-z0-9_]+ 一致"
+      ],
+      "non_goals": [
+        "不修改公共 UI",
+        "不增加新筛选器",
+        "不重构页面结构"
+      ],
+      "action_bounds": [
+        "扩展 API 类型",
+        "增加必填表单字段、列表列和详情项",
+        "更新关键字占位符与 Excel 模板说明",
+        "保持响应式布局现有模式"
+      ],
+      "acceptance": [
+        "前端契约探针通过",
+        "vue-tsc/Vite 构建通过",
+        "表单必填、长度和字符规则提示一致",
+        "编辑反显和请求提交字段完整"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "源码契约探针退出码",
+        "前端构建退出码",
+        "四视口浏览器结果"
+      ],
+      "rollback": "同步恢复 API 类型与 ParametersPage，避免前后端契约错配",
+      "stop_conditions": [
+        "需要修改公共 UI 或范围外样式",
+        "T1 接口契约变化",
+        "检测到目标文件用户并行冲突"
+      ],
+      "escalation_conditions": [
+        "页面级溢出无法在专属页面内修复",
+        "产品要求新增搜索维度或权限"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T07:28:06+00:00",
+          "text": "T1 已验证，前端契约输入稳定；开始 T2"
+        },
+        {
+          "recorded_at": "2026-09-09T07:32:07+00:00",
+          "text": "T2 diff 和局部构建证据已记录"
+        },
+        {
+          "recorded_at": "2026-09-09T07:33:57+00:00",
+          "text": "TypeScript/Vite 独立复跑和源码契约探针通过"
+        }
+      ],
+      "updated_at": "2026-09-09T07:33:57+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "组合验证数据库、后端和前端契约并形成收敛证据",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1/T2 局部检查可用",
+        "high-assurance 要求至少三次采样和两类独立传感器"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260906-067-dm-param/*.json"
+      ],
+      "invariants": [
+        "产品代码只在 T1/T2 授权范围修改",
+        "失败证据如实保留",
+        "无关治理失败不通过改动其他需求消除"
+      ],
+      "interface_contracts": [
+        "数据库、REST、Excel 和前端对同一英文名规则达成一致"
+      ],
+      "non_goals": [
+        "不为通过检查修改无关需求",
+        "不宣称未执行验证通过"
+      ],
+      "action_bounds": [
+        "执行聚焦、模块、迁移、前端、范围和浏览器检查",
+        "记录采样与原子反馈",
+        "仅对已接受的目标偏差进入纠正"
+      ],
+      "acceptance": [
+        "三次以上异质采样完成",
+        "最终 P0/P1 为 0",
+        "所有 must 需求绑定原始证据",
+        "范围一致且 V197 不变"
+      ],
+      "evidence_required": [
+        "各命令和退出码",
+        "MySQL 8.4 结果",
+        "浏览器视口/console/overflow 结果",
+        "范围审计",
+        "残余风险"
+      ],
+      "rollback": "T3 只记录证据；若发现目标偏差则回到 correcting，不修改需求基准",
+      "stop_conditions": [
+        "发现越权或跨租户",
+        "V198 修改数据或 V197 变化",
+        "唯一性运行验证失败"
+      ],
+      "escalation_conditions": [
+        "验证需要生产数据",
+        "需要公共平台、权限或范围外改动",
+        "环境缺失导致关键 must 不可观测"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T07:33:57+00:00",
+          "text": "T1/T2 均 verified，开始组合回归、浏览器与范围验证"
+        },
+        {
+          "recorded_at": "2026-09-09T09:54:34+00:00",
+          "text": "npm build 退出码0；浏览器详情可达且参数英文名可见；375/390/430 共享移动样式约束，无控制台错误"
+        }
+      ],
+      "updated_at": "2026-09-09T09:54:34+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T3",
+      "source": "T3 浏览器/源码观察",
+      "requirement": "R3",
+      "expected": "参数详情可观察",
+      "observed": "操作列无查看入口",
+      "evidence": "ParametersPage 源码与 T3 浏览器扫描",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "仅页面源码与浏览器初始扫描",
+      "causal_hypothesis": "详情对话框实现后遗漏操作列入口",
+      "correction_check": "新增查看按钮后浏览器点击详情显示参数英文名",
+      "decision": "accept",
+      "decision_reason": "确认操作列缺少查看入口导致详情不可达；已按比例控制新增按钮并完成浏览器复验",
+      "created_at": "2026-09-09T09:53:50+00:00",
+      "resolved_at": "2026-09-09T09:54:34+00:00",
+      "resolution_evidence": "操作列新增查看按钮后，浏览器点击查看成功打开详情并显示参数英文名 MIGRATION_BATCH_NO；npm build 与聚焦后端测试通过",
+      "decided_at": "2026-09-09T09:54:17+00:00"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 后端数据库采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "31/31 JUnit；MySQL 8.4 空表成功、同范围大小写重复 1062、跨项目成功、非空表 SQLSTATE 45000；V197 无 diff",
+      "recorded_at": "2026-09-09T07:28:06+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 前端契约完成采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "npm build 退出码 0；八项 API/页面契约探针全部通过；P0-P3 均为 0",
+      "recorded_at": "2026-09-09T07:33:57+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T3 最终采样（浏览器+构建+回归）",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "浏览器详情可达含参数英文名，npm build 0，聚焦后端测试 0 失败，MySQL 8.4 唯一性通过",
+      "recorded_at": "2026-09-09T09:55:13+00:00"
+    }
+  ]
+}

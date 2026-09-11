@@ -1,0 +1,45 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java", "purpose": "Resolve global system and project-scoped effective permissions and route catalog."},
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java", "purpose": "Parse/validate request project context and filter routes using the same permission set as me/authorities."},
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java", "purpose": "Apply X-Project-Id on every authenticated request and reject invalid or path-mismatched context."},
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/web/AuthController.java", "purpose": "Use request project context for me and routes."},
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java", "purpose": "Inject JSON serializer into project-context filter errors."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java", "purpose": "Allow authenticated first-login workbench discovery before a project is selected."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Keep workbench member-scoped and stop projectless helpers from reading old system business-role rows."},
+    {"path_or_resource": "server/src/platform/security/src/test/java/com/ccb/security/**", "purpose": "Verify permission separation, project context, route ancestry and path/header consistency."}
+  ],
+  "requirements_addressed": ["R3", "R4", "R5"],
+  "commands": [
+    {"command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test", "exit_code": 1, "salient_output": "Old behavior tests and a two-argument test double failed after the intentional contract change."},
+    {"command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test", "exit_code": 1, "salient_output": "New request test initially referenced unavailable Spring test support."},
+    {"command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test", "exit_code": 1, "salient_output": "Replacement request test initially referenced unavailable Mockito support."},
+    {"command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test", "exit_code": 0, "salient_output": "12 security tests passed after replacing the request double with a JDK proxy."},
+    {"command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" test", "exit_code": 0, "salient_output": "Security 12 and System 91 tests passed; reactor build success."}
+  ],
+  "local_checks": [
+    {"check": "A/B project permission source", "result": "pass", "evidence": "Repository query binds projectId and unions owner, PM, super admin and assigned project roles.", "limitations": ["Live A/B API sample remains T5."]},
+    {"check": "Forged context handling", "result": "pass", "evidence": "Tests verify inaccessible project is 403 and project path/header mismatch is 403.", "limitations": ["Only /api/project/{id} path equality is checked centrally; other modules retain their existing entity authorization."]},
+    {"check": "me/routes/authorities consistency", "result": "pass", "evidence": "All three call AuthService.permissions(user, projectId); route filtering consumes that exact set.", "limitations": []}
+  ],
+  "diff_summary": [
+    "System permissions now come only from system roles and system:* definitions.",
+    "Project permissions are computed per request project from owner/PM/super-admin fallback and multi-role assignment.",
+    "Invalid project headers and path mismatch produce JSON 400/403 responses.",
+    "First-login project discovery remains possible without project context."
+  ],
+  "invariants_checked": [
+    {"invariant": "JWT format is unchanged.", "result": "pass", "evidence": "No token service or claims changed."},
+    {"invariant": "No project context returns only system permissions.", "result": "pass", "evidence": "Two-argument repository method delegates with null and returns before project query."},
+    {"invariant": "Backend authorization is authoritative.", "result": "pass", "evidence": "Filter validates membership and ProjectService validates project action/entity scope."}
+  ],
+  "disturbances": [
+    {"event": "T3 discovered first-login workbench was outside its initial write scope.", "impact": "Control plan revision 2 added two bounded, already-authorized System compatibility files before implementation."},
+    {"event": "Security module lacks Spring-test and Mockito test dependencies.", "impact": "Used a JDK proxy request double without dependency changes."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Live API and browser A/B switching remain T4/T5."],
+  "recommended_next": "observe"
+}

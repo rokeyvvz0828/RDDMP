@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 /**
  * 迁移检核规则（{@code dm_rule}）接入统一回收站的来源（REQ-20260820-031 增量）。
  *
- * <p>RULE 从通用结构化资产链路（{@link StructuredAssetService#TYPES}）剥离后，由本来源承接其
+ * <p>RULE 已由通用结构化资产链路域化为专属业务表（{@code dm_rule}），本来源承接其
  * 软删列表、详情、恢复与彻底删除，全部委托 {@link RuleService}，保留管理员校验、规则编码唯一冲突
  * 与审计规则。
  */

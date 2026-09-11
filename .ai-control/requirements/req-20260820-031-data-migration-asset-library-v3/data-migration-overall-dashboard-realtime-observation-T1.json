@@ -1,0 +1,65 @@
+{
+  "sample_label": "T1后端指标契约完成采样",
+  "task_ids": [
+    "T1"
+  ],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 JUnit + S2 MySQL 8.4",
+      "result": "pass",
+      "raw_evidence": "DashboardMetricDefinitionTest/DashboardServiceTest/DashboardMetricMySqlTest共9项通过；13项计数与完整下钻total/records均一致",
+      "limitation": [
+        "最小测试数据不代表生产容量"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1服务分页参数 + S2真实分页",
+      "result": "pass",
+      "raw_evidence": "size非20被400拒绝；page2 offset=20；MySQL逐项第一页记录与总量一致",
+      "limitation": [
+        "浏览器滚动触发在T3/T4采样"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S1 SQL参数捕获 + S2隔离夹具 + S8范围检查",
+      "result": "pass",
+      "raw_evidence": "所有SQL含tenant_id/project_id/deleted；方案专题含granularity参数；未知注入字符串BAD_REQUEST；scope检查通过15个当前工作区文件",
+      "limitation": [
+        "HTTP RBAC由T2观测"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S2 EXPLAIN ANALYZE和20轮局部计时",
+      "result": "pass",
+      "raw_evidence": "EXPLAIN ANALYZE断言命中idx_dm_plan_dashboard；13项与下钻局部P95阈值断言通过",
+      "limitation": [
+        "测试表和小数据仅证明查询形态；目标环境P95留待T4"
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "生产规模不可用，局部性能证据不可外推；保持原R7门槛并在T4复测"
+    },
+    {
+      "event": "规则/参数最终域字段不同于V162初始表，已按当前Service和V194/V197使用rule_code/parameter_name"
+    }
+  ],
+  "coverage_gaps": [
+    "HTTP路由/RBAC尚未实现，由T2覆盖",
+    "生产代表性数据规模P95由T4覆盖"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

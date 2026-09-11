@@ -1,0 +1,44 @@
+{
+  "sample_label": "T2看板HTTP与调度退役完成采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "Controller反射测试",
+      "result": "pass",
+      "raw_evidence": "单指标GET端点存在并调用T1实时查询服务",
+      "limitation": ["前端消费由T3覆盖"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "模块注册测试和静态源码搜索",
+      "result": "pass",
+      "raw_evidence": "DashboardSnapshotScheduler源文件不存在；Scheduled/EnableScheduling/dm_dashboard_snapshot无主源码匹配",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Controller参数契约测试",
+      "result": "pass",
+      "raw_evidence": "下钻端点存在，page默认1、size默认20且projectId必填",
+      "limitation": ["滚动触发与不预取由T3/T4覆盖"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "Controller权限反射测试与T1服务回归",
+      "result": "pass",
+      "raw_evidence": "类级权限包含dashboard/access/write/manage/system:admin；DashboardService项目隔离测试继续通过",
+      "limitation": ["真实403响应由T4覆盖"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Maven首次从错误子目录执行，随后在仓库根目录获得有效样本"
+    }
+  ],
+  "coverage_gaps": ["浏览器端消费、并发、滚动和项目切换由T3/T4覆盖"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

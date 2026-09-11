@@ -22,8 +22,8 @@ import java.util.Set;
  * 只需新增一个来源实现，本类无需改动。恢复/彻底删除按类型薄分发到对应来源，管理员权限、唯一性校验、
  * 关系级联与审计均由来源及其下游服务负责，统一层不枚举业务字段。
  *
- * <p>当前来源覆盖：六种文件型 + 三种结构化型（{@link ContentAssetRecycleBinSource}）与汇报材料 REPORT
- * （{@link ReportRecycleBinSource}）。会议附件级回收站仍保留在 {@code /meetings} 下。
+ * <p>当前来源覆盖由各专属 {@link RecycleBinSource} 的 {@code supports()} 声明决定（REQ-20260911-070
+ * 已下线通用文件/结构化资产链路的回收站来源）；会议附件级回收站仍保留在 {@code /meetings} 下。
  */
 @Service
 public class ContentRecycleBinService {

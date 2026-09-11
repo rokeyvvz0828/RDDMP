@@ -1,0 +1,45 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    "web/src/api/data-migration.ts（修改）",
+    "web/src/modules/data-migration/views/content/DependenciesPage.vue（重写）"
+  ],
+  "requirements_addressed": [
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R7",
+    "R8"
+  ],
+  "commands": [
+    "npm --prefix web run build"
+  ],
+  "local_checks": [
+    "API 层新增 DependencyRecord/DependencyQuery/DependencyFormData/DependencyImportResult 等类型与 list/detail/options/create/update/delete/template/import 方法",
+    "页面不再调用附件列表/上传/下载 API，改为专属依赖接口",
+    "桌面表格展示全部 8 个字段，移动端卡片按参数/使用方/提供方/更新信息重排",
+    "新增/编辑抽屉提供参数远程搜索与使用方系统选择；导入对话框展示逐行失败结果",
+    "覆盖加载、空、筛选无结果、失败、无权限、保存中、导入中与防重复提交状态",
+    "修复模板中未注册图标（arrow-down/upload-filled/Document）与缺失的响应式类（dm-desktop-only/dm-mobile-only/dm-loading-state）",
+    "TypeScript 与 Vite 生产构建通过（built in 20.54s）"
+  ],
+  "diff_summary": [
+    "前端专属依赖页替换原附件型页面；路由与菜单不变；样式复用 data-migration.css 语义变量，页面级样式保持在组件作用域"
+  ],
+  "invariants_checked": [
+    "菜单 750 路由 /data-migration/content/dependencies 不变",
+    "未新增公共 UI 组件或主题",
+    "页面无文件选择/上传/替换/下载动作"
+  ],
+  "disturbances": [
+    "初版页面图标未导入导致编译不报错但运行时报禁用组件警告；已补齐导入与大小写用法",
+    "初版引用了不存在的 dm-desktop-only/dm-mobile-only 类导致桌面与移动同时渲染；已在本组件作用域补齐响应式规则"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实浏览器四视口验收依赖本地运行环境，待 T5 尝试"
+  ],
+  "recommended_next": "T5 集成验证与浏览器验收"
+}

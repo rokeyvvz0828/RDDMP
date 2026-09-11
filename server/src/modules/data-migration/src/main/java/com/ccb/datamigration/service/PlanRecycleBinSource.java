@@ -9,10 +9,9 @@ import org.springframework.stereotype.Component;
 /**
  * 迁移方案（{@code dm_plan}）接入统一回收站的来源（REQ-20260820-031 增量）。
  *
- * <p>PLAN 从通用文件型资产链路（{@link ContentFileAssetService#MANAGED_TYPES}）剥离后，由本来源承接其
+ * <p>PLAN 已由通用文件型资产链路域化为专属业务表（{@code dm_plan}），本来源承接其
  * 软删列表、详情、恢复与彻底删除，全部委托 {@link PlanService}，原样保留管理员校验、活动维度唯一冲突翻译、
- * 附件解绑与审计规则。{@code ContentRecycleBinService} 按各来源 {@code supports()} 建注册表并禁止重复认领，
- * 因此 {@code MANAGED_TYPES} 移除 PLAN 与本来源认领 PLAN 必须同批生效。
+ * 附件解绑与审计规则。{@code ContentRecycleBinService} 按各来源 {@code supports()} 建注册表并禁止重复认领。
  */
 @Component
 public class PlanRecycleBinSource implements RecycleBinSource {

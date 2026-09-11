@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260908-071", "status": "ready", "document": "docs/requirements/REQ-20260908-071-flyway-v156-compatibility/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "Codex", "module": "platform/infrastructure", "module_owner": "rokeyvvz0828", "branch": "licon", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "isolated-docker-test"]},
+  "external_access": {"changed": false, "systems": [], "data_classification": "local-development-only"},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260908-071-flyway-v156-compatibility/**",
+      ".ai-control/requirements/req-20260908-071-flyway-v156-compatibility/*.json",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V156__rename_release_drill_plan_menu.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V200__rename_release_drill_plan_menu.sql"
+    ],
+    "read_only_paths": [".env", "server/src/platform/infrastructure/src/main/resources/db/migration/**", "docs/governance/**", "governance/modules.yaml", ".ai-control/original/state.json"],
+    "forbidden_paths": ["**/*.pem", "**/*.key", ".runtime-logs/**"]
+  },
+  "public_capability_change": {"required": true, "issue": "REQ-20260908-071", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["Flyway version uniqueness", "known-history reconciliation", "infrastructure tests"]},
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V200__rename_release_drill_plan_menu.sql"], "planned_change": "Resolve the duplicate V156 migration while preserving both migration effects."},
+  "required_tests": [
+    {"name": "compatibility", "command": "node docs/requirements/REQ-20260908-071-flyway-v156-compatibility/verify-migration-chain.mjs"},
+    {"name": "infrastructure", "command": "mvn -pl :ccb-infrastructure -am test"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260908-071-flyway-v156-compatibility/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"}
+  ],
+  "risk": {"level": "high", "items": ["Known divergent Flyway V156 histories", "Local compatibility V200 history"]},
+  "completion": {"control_mode": "high-assurance", "control_prefix": "req-20260908-071-flyway-v156-compatibility", "rollback": "Restore the branch-only V156 menu filename and remove V200 before deployment; never reverse an applied migration without database-specific verification."}
+}
