@@ -153,17 +153,16 @@ class ArchitectureOptionsControllerTest {
     void deliveryUnitParametersExposeOnlyArtifactTypeCategory() throws Exception {
         when(referenceQuery.activeParameters(ACTOR, "ARCH_ARTIFACT_TYPE"))
                 .thenReturn(List.of(
-                        new SystemParameterReference("architecture.artifact-type.container", "容器"),
-                        new SystemParameterReference("architecture.artifact-type.archive", "压缩包"),
-                        new SystemParameterReference("architecture.artifact-type.script", "脚本")));
+                        new SystemParameterReference("IMAGE", "镜像"),
+                        new SystemParameterReference("BINARY", "二进制")));
 
         MvcResult result = mockMvc.perform(get(
                         "/api/architecture/options/delivery-unit/parameters/ARCH_ARTIFACT_TYPE")
                         .param("projectRef", "PROJECT-A"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(3))
-                .andExpect(jsonPath("$.data[0].code").value("architecture.artifact-type.container"))
-                .andExpect(jsonPath("$.data[0].label").value("容器"))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].code").value("IMAGE"))
+                .andExpect(jsonPath("$.data[0].label").value("镜像"))
                 .andReturn();
         assertExactKeys(result, "/data/0", "code", "label");
 

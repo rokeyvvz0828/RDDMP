@@ -1,0 +1,94 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "ARCH_ARTIFACT_TYPE 字典与 arch_delivery_unit.artifact_type_code",
+      "架构模块公开的版本申请主数据只读查询",
+      "Boot 层架构到配置管理的适配器",
+      "配置管理主数据查询服务和 HTTP 控制器",
+      "ReleaseApplicationService 保存与提交预览前的快照规范化",
+      "ReleaseApplicationDrawer 的项目化异步选择状态"
+    ],
+    "environment": [
+      "ProjectAccessService 提供的已授权项目映射",
+      "MySQL/Flyway 运行环境",
+      "既有版本申请、审批、投产窗口和文件介质逻辑",
+      "浏览器网络时延和项目切换"
+    ]
+  },
+  "state_variables": [
+    {"name": "artifact_type_code", "owner": "architecture", "valid_values": ["IMAGE", "BINARY", null]},
+    {"name": "master_data_scope", "owner": "architecture", "valid_values": ["tenant_id + project_id + ACTIVE + deleted=0"]},
+    {"name": "selected_physical_subsystem", "owner": "release UI", "valid_values": ["empty", "active", "legacy-invalid"]},
+    {"name": "selected_delivery_units", "owner": "release UI", "valid_values": ["empty", "active-valid", "contains-legacy-invalid"]},
+    {"name": "release_snapshot", "owner": "release", "valid_values": ["trusted", "rejected"]},
+    {"name": "request_generation", "owner": "release UI", "valid_values": ["monotonically increasing integer"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "V212 产生的容器、压缩包、脚本字典值和交付单元引用", "transitions": ["V213 身份守卫", "存量值映射", "字典项归一和旧项停用"], "outputs": ["启用字典仅提供 IMAGE/镜像和 BINARY/二进制", "存量非空旧值映射为规范 code"]},
+    {"requirement_id": "R2", "input": "已认证用户、项目数值 ID、父物理子系统 ID 和分页条件", "transitions": ["校验 actor 和项目 ID", "按 tenant_id/project_id/deleted/status 查询", "交付单元按 physical_subsystem_id 过滤"], "outputs": ["项目隔离的物理子系统和交付单元最小投影"]},
+    {"requirement_id": "R3", "input": "release:application:view/create/update 权限、projectRef 和用户", "transitions": ["Controller RBAC", "ProjectAccessService.requireAccessible", "ref 映射到架构 project_id", "Boot 适配查询"], "outputs": ["授权数据或 403"]},
+    {"requirement_id": "R4", "input": "客户端提交的项目、子系统、交付单元和展示快照", "transitions": ["项目访问校验", "解析数值主键", "批量查询 ACTIVE 父子关系", "校验 IMAGE/BINARY", "用架构权威字段重建 DeliverySnapshot", "进入既有写事务"], "outputs": ["可信快照或无副作用失败"]},
+    {"requirement_id": "R5", "input": "抽屉打开、项目变化、物理子系统变化和重试", "transitions": ["加载物理子系统", "上级变化立即清空下级", "递增请求代次", "加载交付单元", "仅最新代次写入状态"], "outputs": ["真实联动选项、加载/空/错误状态和最新选择"]},
+    {"requirement_id": "R6", "input": "历史申请或可编辑旧草稿快照", "transitions": ["详情继续读取 release 快照", "抽屉将找不到的当前值标为 legacy-invalid", "保存和提交时服务端重新解析 ACTIVE 主数据"], "outputs": ["历史原样展示", "失效草稿可识别但不可写"]},
+    {"requirement_id": "R7", "input": "实现 diff", "transitions": ["JUnit 和 Testcontainers", "Flyway/治理/范围检查", "TypeScript 生产构建", "四视口浏览器操作与网络观测"], "outputs": ["可重复的通过/失败证据"]}
+  ],
+  "interfaces": [
+    {"name": "ReleaseMasterDataQuery", "producers": ["architecture"], "consumers": ["boot adapter"], "invariant": "只读、按 actor.tenantId 和 projectId 隔离，不授予消费者业务权限"},
+    {"name": "ReleaseArchitectureDirectory", "producers": ["boot adapter"], "consumers": ["release"], "invariant": "仅暴露配置管理所需最小字段和批量精确解析"},
+    {"name": "GET /api/release/master-data/physical-subsystems", "producers": ["release"], "consumers": ["web"], "invariant": "先执行 release RBAC 与项目访问校验"},
+    {"name": "GET /api/release/master-data/physical-subsystems/{id}/delivery-units", "producers": ["release"], "consumers": ["web"], "invariant": "只返回当前项目指定 ACTIVE 父项下的 ACTIVE 交付单元"},
+    {"name": "ReleaseApplicationWrite", "producers": ["web/其他客户端"], "consumers": ["release"], "invariant": "客户端名称、编码和类型仅作兼容输入，不能成为权威写入来源"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 迁移结果", "method": "MySQL Testcontainers 执行全量 Flyway 后查询字典与交付单元", "blind_spots": ["生产库中未记录的自定义旧值"], "independence": "直接观测迁移后数据库"},
+    {"id": "S2", "target": "R2 查询隔离与父子关系", "method": "JdbcReleaseMasterDataQueryTest 构造跨租户、跨项目、停用和错父数据", "blind_spots": ["超大数据量性能"], "independence": "直接执行 JDBC 查询"},
+    {"id": "S3", "target": "R3 HTTP 权限", "method": "ReleaseMasterDataControllerSecurityTest 观测 401/403/200", "blind_spots": ["外部网关附加策略"], "independence": "Spring Security MockMvc 请求"},
+    {"id": "S4", "target": "R4/R6 快照与失败副作用", "method": "ReleaseApplicationServiceTest 使用伪造字段、错项目、错父、停用和历史数据断言", "blind_spots": ["真实数据库事务锁时序"], "independence": "服务边界输入输出与仓储交互断言"},
+    {"id": "S5", "target": "R5/R6 前端联动", "method": "真实浏览器检查请求、选项、错误重试和失效草稿", "blind_spots": ["极端弱网分布"], "independence": "从用户入口观测 DOM、网络与控制台"},
+    {"id": "S6", "target": "R7 静态和组合回归", "method": "Maven、治理脚本、范围检查和 Vite build", "blind_spots": ["生产环境外部依赖"], "independence": "不同工具链的退出码"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "制品类型数据", "action": "追加 V213 和更新受影响测试断言", "authority": "隔离工作区写权限", "impact_radius": "架构交付单元字典及其非空旧类型", "rollback": "停止发布并使用发布前数据库备份补偿"},
+    {"id": "A2", "target": "架构只读主数据边界", "action": "新增公开查询契约和 JDBC 实现", "authority": "架构模块源码写权限", "impact_radius": "新增接口，无既有写路径修改", "rollback": "删除新增契约和实现"},
+    {"id": "A3", "target": "跨模块依赖", "action": "新增 release 消费端口和 Boot 适配器", "authority": "release/boot 源码写权限", "impact_radius": "新增依赖注入链", "rollback": "删除适配器和消费端口"},
+    {"id": "A4", "target": "配置主数据与申请写入", "action": "新增查询服务/Controller，并在 prepare 中重建权威快照", "authority": "release 模块源码写权限", "impact_radius": "版本申请新建、编辑、冲突预览和提交前校验", "rollback": "回退 release 服务改动"},
+    {"id": "A5", "target": "申请抽屉选择状态", "action": "替换 Mock 为 HTTP 联动并实现请求代次和失效状态", "authority": "web 源码写权限", "impact_radius": "版本申请抽屉", "rollback": "恢复任务前抽屉和 Mock 引用"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S6"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S6"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S2", "S3", "S4", "S5", "S6"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "原始 rokey 工作区存在用户未提交改动", "effect": "直接开发可能覆盖并行修改", "detectable": true, "controllable": true},
+    {"source": "MySQL/Testcontainers 启动和全量迁移", "effect": "测试耗时长且产生大量警告输出", "detectable": true, "controllable": false},
+    {"source": "浏览器请求乱序", "effect": "旧项目或旧父项结果覆盖当前选项", "detectable": true, "controllable": true},
+    {"source": "架构主数据在用户打开抽屉后被停用", "effect": "客户端选择在保存时过期", "detectable": true, "controllable": true},
+    {"source": "存量自定义或空制品类型", "effect": "无法生成 release ArtifactType", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "远程选择查询", "consequence": "快速切换时旧响应晚到", "sampling_rule": "以请求代次为准，仅提交最后一次响应"},
+    {"source": "主数据选择到申请保存", "consequence": "数据可能已停用", "sampling_rule": "每次保存、更新和冲突预览均重新精确解析"},
+    {"source": "Flyway 全量集成测试", "consequence": "反馈需等待多个容器迁移完成", "sampling_rule": "等待 Maven 最终退出码，不以中间日志判定"}
+  ],
+  "assumptions": [
+    {"text": "ProjectAccess.id 是 arch_* 表使用的项目 ID", "evidence": "架构 Controller 当前将 ProjectAccess 直接传给按 project.id 查询的服务", "falsifier": "跨模块集成测试出现同一 projectRef 解析后查不到现有架构数据"},
+    {"text": "Boot 是 architecture 与 release 同时可见的组合根", "evidence": "ccb-boot pom 同时依赖 ccb-architecture 和 ccb-release，现有 DevelopmentSystemDirectoryAdapter 使用同模式", "falsifier": "Maven 依赖或 Spring 装配产生循环"},
+    {"text": "数值字符串可以兼容既有 release 的 subsystemId/deliveryUnitId 字段", "evidence": "ReleaseApplicationModels 当前将这些 ID 定义为 String 且无格式约束", "falsifier": "既有消费者要求非数值业务 ID"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A2"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A3+A4"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A4"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A5"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A4+A5"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "S1-S6"}
+  ],
+  "model_status": "ready"
+}

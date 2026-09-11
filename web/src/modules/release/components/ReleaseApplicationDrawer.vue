@@ -4,15 +4,27 @@ import { Delete, DocumentAdd, Loading, Plus } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules, type UploadFile } from 'element-plus'
 import { deleteTemporaryAttachment, uploadAttachment } from '../../../api/attachments'
 import { apiErrorMessage } from '../../../api/error'
-import { listReleaseApplicationAttachments, type ProductionEntryDto, type ReleaseApplicationDto, type ReleaseApplicationWrite, type ReleaseAttachmentInput, type ReleaseWindowDto } from '../../../api/release'
+import {
+  listReleaseApplicationAttachments,
+  listReleaseDeliveryUnitOptions,
+  listReleasePhysicalSubsystemOptions,
+  type ProductionEntryDto,
+  type ReleaseApplicationDto,
+  type ReleaseApplicationWrite,
+  type ReleaseAttachmentInput,
+  type ReleaseDeliveryUnitOption,
+  type ReleasePhysicalSubsystemOption,
+  type ReleaseWindowDto
+} from '../../../api/release'
 import type { ProjectContextItem } from '../../../types/project-context'
 import { useAuthStore } from '../../../stores/auth'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
-import { releaseSubsystemOptions } from '../release-master-data.mock'
 
 interface DraftDelivery { deliveryUnitId: string; deliveryUnitCode: string; deliveryUnitName: string; artifactType: 'IMAGE' | 'BINARY'; artifactVersion: string }
 interface DraftFileMedia { id: string; filePath: string }
 interface DraftAttachment { id: number; name: string; category: 'TEST_REPORT' | 'SUPPORTING'; bound: boolean }
+interface DisplaySubsystemOption extends ReleasePhysicalSubsystemOption { historical?: boolean }
+interface DisplayDeliveryUnitOption extends ReleaseDeliveryUnitOption { historical?: boolean }
 interface DraftState {
   emergency: boolean
   windowId?: number
@@ -46,13 +58,43 @@ const emit = defineEmits<{
   'delete-attachment': [application: ReleaseApplicationDto, attachmentId: number]
 }>()
 const auth = useAuthStore()
+const MASTER_DATA_PAGE_SIZE = 100
 
 const formRef = ref<FormInstance>()
 const uploadBusy = ref(false)
-const selectedUnitCodes = ref<string[]>([])
+const subsystemOptions = ref<ReleasePhysicalSubsystemOption[]>([])
+const deliveryUnitOptions = ref<ReleaseDeliveryUnitOption[]>([])
+const subsystemsLoading = ref(false)
+const deliveryUnitsLoading = ref(false)
+const subsystemLoadError = ref('')
+const deliveryUnitLoadError = ref('')
+const selectedUnitIds = ref<string[]>([])
 const draft = reactive<DraftState>(emptyDraft())
-const rules: FormRules = { subsystemCode: [{ required: true, message: '请选择物理子系统', trigger: 'change' }] }
-const subsystem = computed(() => releaseSubsystemOptions.find(item => item.id === draft.subsystemId))
+let subsystemRequest = 0
+let deliveryUnitRequest = 0
+const rules: FormRules = { subsystemId: [{ required: true, message: '请选择物理子系统', trigger: 'change' }] }
+const activeSubsystem = computed(() => subsystemOptions.value.find(item => item.id === draft.subsystemId))
+const displayedSubsystemOptions = computed<DisplaySubsystemOption[]>(() => {
+  if (!draft.subsystemId || subsystemOptions.value.some(item => item.id === draft.subsystemId)) return subsystemOptions.value
+  return [{ id: draft.subsystemId, code: draft.subsystemCode, name: draft.subsystemName, historical: true }, ...subsystemOptions.value]
+})
+const displayedDeliveryUnitOptions = computed<DisplayDeliveryUnitOption[]>(() => {
+  const activeIds = new Set(deliveryUnitOptions.value.map(item => item.id))
+  const historical = draft.deliveries
+    .filter(item => !activeIds.has(item.deliveryUnitId))
+    .map(item => ({ id: item.deliveryUnitId, code: item.deliveryUnitCode, name: item.deliveryUnitName,
+      artifactType: item.artifactType, selectable: false, unavailableReason: '历史快照已失效，请重新选择', historical: true }))
+  return [...historical, ...deliveryUnitOptions.value]
+})
+const masterDataSelectionCurrent = computed(() => {
+  if (!activeSubsystem.value || subsystemsLoading.value || subsystemLoadError.value) return false
+  if (!draft.deliveries.length) return true
+  if (deliveryUnitsLoading.value || deliveryUnitLoadError.value) return false
+  const activeIds = new Set(deliveryUnitOptions.value.filter(item => item.selectable).map(item => item.id))
+  return draft.deliveries.every(item => activeIds.has(item.deliveryUnitId))
+})
+const hasHistoricalMasterData = computed(() => Boolean(draft.subsystemId) && !masterDataSelectionCurrent.value
+  && !subsystemsLoading.value && !deliveryUnitsLoading.value)
 const selectedWindow = computed(() => props.windows.find(item => item.id === draft.windowId))
 const windowOptions = computed(() => [...props.windows].sort((a, b) => a.productionStart.localeCompare(b.productionStart)))
 const estimatedType = computed(() => draft.emergency ? 'EMERGENCY' : selectedWindow.value?.status === 'URGENT' ? 'URGENT' : 'REGULAR')
@@ -71,7 +113,100 @@ function versionTone() { return estimatedType.value === 'EMERGENCY' ? 'danger' :
 function latestVersion(unitCode: string) { return props.currentProduction.find(item => item.subsystemCode === draft.subsystemCode && item.deliveryUnitCode === unitCode) }
 function minute(value?: string) { return value ? value.replace('T', ' ').slice(0, 16) : '' }
 
+async function loadSubsystemOptions() {
+  const request = ++subsystemRequest
+  const projectRef = props.project?.ref
+  subsystemLoadError.value = ''
+  if (!projectRef) {
+    subsystemOptions.value = []
+    subsystemLoadError.value = '请先选择当前项目'
+    return
+  }
+  subsystemsLoading.value = true
+  try {
+    const records: ReleasePhysicalSubsystemOption[] = []
+    let page = 1
+    while (request === subsystemRequest) {
+      const result = (await listReleasePhysicalSubsystemOptions({ projectId: projectRef, page, size: MASTER_DATA_PAGE_SIZE })).data.data
+      records.push(...result.records)
+      if (records.length >= result.total || !result.records.length) break
+      page += 1
+    }
+    if (request === subsystemRequest) subsystemOptions.value = records
+  } catch (error) {
+    if (request === subsystemRequest) {
+      subsystemOptions.value = []
+      subsystemLoadError.value = apiErrorMessage(error, '物理子系统加载失败')
+    }
+  } finally {
+    if (request === subsystemRequest) subsystemsLoading.value = false
+  }
+}
+
+async function loadDeliveryUnitOptions(physicalSubsystemId: string) {
+  const request = ++deliveryUnitRequest
+  const projectRef = props.project?.ref
+  deliveryUnitLoadError.value = ''
+  if (!projectRef || !physicalSubsystemId) {
+    deliveryUnitOptions.value = []
+    return
+  }
+  deliveryUnitsLoading.value = true
+  try {
+    const records: ReleaseDeliveryUnitOption[] = []
+    let page = 1
+    while (request === deliveryUnitRequest) {
+      const result = (await listReleaseDeliveryUnitOptions(physicalSubsystemId,
+        { projectId: projectRef, page, size: MASTER_DATA_PAGE_SIZE })).data.data
+      records.push(...result.records)
+      if (records.length >= result.total || !result.records.length) break
+      page += 1
+    }
+    if (request === deliveryUnitRequest && draft.subsystemId === physicalSubsystemId) {
+      deliveryUnitOptions.value = records
+    }
+  } catch (error) {
+    if (request === deliveryUnitRequest && draft.subsystemId === physicalSubsystemId) {
+      deliveryUnitOptions.value = []
+      deliveryUnitLoadError.value = apiErrorMessage(error, '交付单元加载失败')
+    }
+  } finally {
+    if (request === deliveryUnitRequest) deliveryUnitsLoading.value = false
+  }
+}
+
+function normalizeDraftMasterData() {
+  if (!activeSubsystem.value) return
+  draft.subsystemCode = activeSubsystem.value.code
+  draft.subsystemName = activeSubsystem.value.name
+  const activeUnits = new Map(deliveryUnitOptions.value.map(item => [item.id, item]))
+  draft.deliveries = draft.deliveries.map(item => {
+    const current = activeUnits.get(item.deliveryUnitId)
+    if (!current?.selectable || !current.artifactType) return item
+    return { ...item, deliveryUnitCode: current.code, deliveryUnitName: current.name,
+      artifactType: current.artifactType }
+  })
+}
+
+async function loadMasterDataForDraft() {
+  await loadSubsystemOptions()
+  if (!activeSubsystem.value || !draft.subsystemId) return
+  await loadDeliveryUnitOptions(draft.subsystemId)
+  normalizeDraftMasterData()
+}
+
+async function retryDeliveryUnitOptions() {
+  await loadDeliveryUnitOptions(draft.subsystemId)
+  normalizeDraftMasterData()
+}
+
 async function initialize() {
+  subsystemRequest += 1
+  deliveryUnitRequest += 1
+  subsystemOptions.value = []
+  deliveryUnitOptions.value = []
+  subsystemLoadError.value = ''
+  deliveryUnitLoadError.value = ''
   const source = props.application
   Object.assign(draft, source ? {
     emergency: source.emergency, windowId: source.windowId, subsystemId: source.subsystemId,
@@ -84,8 +219,9 @@ async function initialize() {
     requirementCodes: [...source.requirementCodes], emergencyDescription: source.emergencyDescription || '',
     urgentReason: source.urgentReason || '', description: source.description || '', attachments: []
   } : emptyDraft())
-  selectedUnitCodes.value = draft.deliveries.map(item => item.deliveryUnitCode)
+  selectedUnitIds.value = draft.deliveries.map(item => item.deliveryUnitId)
   if (!source && !draft.windowId) draft.windowId = windowOptions.value.find(item => item.regularApplicationSelectable)?.id
+  await loadMasterDataForDraft()
   if (source) {
     try {
       const attachments = (await listReleaseApplicationAttachments(source.applicationCode)).data.data
@@ -98,38 +234,57 @@ async function initialize() {
   formRef.value?.clearValidate()
 }
 watch(() => props.modelValue, open => { if (open) void initialize() }, { immediate: true })
+watch(() => props.project?.ref, (projectRef, previousProjectRef) => {
+  if (!props.modelValue || projectRef === previousProjectRef) return
+  deliveryUnitRequest += 1
+  subsystemOptions.value = []
+  deliveryUnitOptions.value = []
+  deliveryUnitLoadError.value = ''
+  draft.subsystemId = ''
+  draft.subsystemCode = ''
+  draft.subsystemName = ''
+  draft.deliveries = []
+  selectedUnitIds.value = []
+  void loadSubsystemOptions()
+})
 watch(() => draft.emergency, emergency => {
   if (emergency) { draft.windowId = undefined; draft.requirementCodes = [] }
   else if (!draft.windowId) draft.windowId = windowOptions.value.find(item => item.regularApplicationSelectable)?.id
 })
 
 function changeSubsystem(id: string) {
-  const option = releaseSubsystemOptions.find(item => item.id === id)
+  deliveryUnitRequest += 1
+  deliveryUnitOptions.value = []
+  deliveryUnitLoadError.value = ''
+  const option = subsystemOptions.value.find(item => item.id === id)
   draft.subsystemId = option?.id || ''
   draft.subsystemCode = option?.code || ''
   draft.subsystemName = option?.name || ''
   draft.deliveries = []
-  draft.fileMedia = []
-  selectedUnitCodes.value = []
+  selectedUnitIds.value = []
+  if (option) void loadDeliveryUnitOptions(option.id)
 }
 function addFileMedia() { draft.fileMedia.push({ id: `${Date.now()}-${draft.fileMedia.length}`, filePath: '' }) }
 function removeFileMedia(id: string) { draft.fileMedia = draft.fileMedia.filter(item => item.id !== id) }
 function toggleContentTypes(values: Array<'DELIVERY_UNIT' | 'FILE_MEDIA'>) {
-  if (!values.includes('DELIVERY_UNIT')) { draft.deliveries = []; selectedUnitCodes.value = [] }
+  if (!values.includes('DELIVERY_UNIT')) { draft.deliveries = []; selectedUnitIds.value = [] }
   if (!values.includes('FILE_MEDIA')) draft.fileMedia = []
   if (values.includes('FILE_MEDIA') && !draft.fileMedia.length) addFileMedia()
 }
-function syncUnits(codes: string[]) {
-  const previous = new Map(draft.deliveries.map(item => [item.deliveryUnitCode, item]))
-  draft.deliveries = codes.map(code => {
-    const option = subsystem.value?.units.find(item => item.code === code)!
-    return previous.get(code) || { deliveryUnitId: option.id, deliveryUnitCode: option.code,
-      deliveryUnitName: option.name, artifactType: option.artifactType as 'IMAGE' | 'BINARY', artifactVersion: '' }
+function syncUnits(ids: string[]) {
+  const previous = new Map(draft.deliveries.map(item => [item.deliveryUnitId, item]))
+  draft.deliveries = ids.flatMap(id => {
+    const existing = previous.get(id)
+    if (existing) return [existing]
+    const option = deliveryUnitOptions.value.find(item => item.id === id)
+    if (!option?.selectable || !option.artifactType) return []
+    return [{ deliveryUnitId: option.id, deliveryUnitCode: option.code,
+      deliveryUnitName: option.name, artifactType: option.artifactType, artifactVersion: '' }]
   })
 }
-function removeUnit(code: string) {
-  selectedUnitCodes.value = selectedUnitCodes.value.filter(item => item !== code)
-  syncUnits(selectedUnitCodes.value)
+function removeUnit(id: string) {
+  selectedUnitIds.value = selectedUnitIds.value.filter(item => item !== id)
+  syncUnits(selectedUnitIds.value)
 }
 
 async function selectAttachment(file: UploadFile) {
@@ -155,6 +310,9 @@ async function removeAttachment(item: DraftAttachment) {
 
 function validateBusiness(mode: 'draft' | 'submit') {
   if (!draft.emergency && !selectedWindow.value?.regularApplicationSelectable) { ElMessage.warning(selectedWindow.value?.unavailableReason || '请选择可申报的投产窗口'); return false }
+  if (subsystemsLoading.value || deliveryUnitsLoading.value) { ElMessage.warning('架构主数据正在加载，请稍候'); return false }
+  if (subsystemLoadError.value || (draft.deliveries.length && deliveryUnitLoadError.value)) { ElMessage.warning('架构主数据加载失败，请重新加载后再保存'); return false }
+  if (!masterDataSelectionCurrent.value) { ElMessage.warning('物理子系统或交付单元已失效，请重新选择'); return false }
   if (!draft.contentTypes.length) { ElMessage.warning('至少选择一种交付内容'); return false }
   if (!draft.deliveries.length && !draft.fileMedia.length) { ElMessage.warning('至少添加一个交付单元或文件介质'); return false }
   if (draft.deliveries.some(item => !item.artifactVersion.trim() || /\s/.test(item.artifactVersion))) { ElMessage.warning('每个交付单元必须填写不含空格的制品版本'); return false }
@@ -199,8 +357,26 @@ async function save(mode: 'draft' | 'submit') {
         </div>
       </section>
 
-      <section class="release-form-section"><header><span>02</span><div><strong>制品登记</strong></div></header><div class="release-form-grid"><el-form-item label="物理子系统" prop="subsystemCode" class="is-wide"><el-select :model-value="draft.subsystemId" filterable placeholder="选择物理子系统" @update:model-value="changeSubsystem"><el-option v-for="item in releaseSubsystemOptions" :key="item.id" :value="item.id" :label="`${item.code} · ${item.name}`" /></el-select></el-form-item><el-form-item label="交付内容" class="is-wide"><el-checkbox-group v-model="draft.contentTypes" @change="toggleContentTypes"><el-checkbox value="DELIVERY_UNIT">交付单元</el-checkbox><el-checkbox value="FILE_MEDIA">文件介质</el-checkbox></el-checkbox-group></el-form-item><el-form-item v-if="draft.contentTypes.includes('DELIVERY_UNIT')" label="交付单元" class="is-wide"><el-select v-model="selectedUnitCodes" multiple collapse-tags collapse-tags-tooltip :disabled="!subsystem" placeholder="选择交付单元" @change="syncUnits"><el-option v-for="item in subsystem?.units || []" :key="item.code" :value="item.code" :label="`${item.code} · ${item.name}`" /></el-select></el-form-item></div>
-        <div v-if="draft.deliveries.length" class="release-unit-editor"><article v-for="unit in draft.deliveries" :key="unit.deliveryUnitCode"><div><strong>{{ unit.deliveryUnitName }}</strong><small>{{ unit.deliveryUnitCode }} · {{ artifactLabel(unit.artifactType) }}</small></div><div class="release-current-version"><span>生产版本</span><strong>{{ latestVersion(unit.deliveryUnitCode)?.artifactVersion || '暂无' }}</strong><small>{{ minute(latestVersion(unit.deliveryUnitCode)?.productionAt) || '尚无成功投产记录' }}</small></div><el-input v-model="unit.artifactVersion" placeholder="本次制品版本，不允许空格" /><el-tooltip content="移除交付单元"><el-button circle plain type="danger" aria-label="移除交付单元" @click="removeUnit(unit.deliveryUnitCode)"><el-icon><Delete /></el-icon></el-button></el-tooltip></article></div>
+      <section class="release-form-section"><header><span>02</span><div><strong>制品登记</strong></div></header>
+        <div class="release-form-grid">
+          <el-form-item label="物理子系统" prop="subsystemId" class="is-wide">
+            <el-select :model-value="draft.subsystemId" filterable :loading="subsystemsLoading" :disabled="!project || subsystemsLoading" placeholder="选择物理子系统" @update:model-value="changeSubsystem">
+              <el-option v-for="item in displayedSubsystemOptions" :key="item.id" :value="item.id" :disabled="item.historical" :label="`${item.code} · ${item.name}${item.historical ? '（历史快照，已失效）' : ''}`" />
+            </el-select>
+            <div v-if="subsystemLoadError" class="release-master-data-state release-master-data-state--error"><span>{{ subsystemLoadError }}</span><el-button type="primary" link @click="loadMasterDataForDraft">重新加载</el-button></div>
+            <div v-else-if="!subsystemsLoading && !displayedSubsystemOptions.length" class="release-master-data-state"><span>当前项目暂无启用的物理子系统</span></div>
+          </el-form-item>
+          <el-form-item label="交付内容" class="is-wide"><el-checkbox-group v-model="draft.contentTypes" @change="toggleContentTypes"><el-checkbox value="DELIVERY_UNIT">交付单元</el-checkbox><el-checkbox value="FILE_MEDIA">文件介质</el-checkbox></el-checkbox-group></el-form-item>
+          <el-form-item v-if="draft.contentTypes.includes('DELIVERY_UNIT')" label="交付单元" class="is-wide">
+            <el-select v-model="selectedUnitIds" multiple collapse-tags collapse-tags-tooltip :loading="deliveryUnitsLoading" :disabled="!activeSubsystem || deliveryUnitsLoading" placeholder="选择交付单元" @change="syncUnits">
+              <el-option v-for="item in displayedDeliveryUnitOptions" :key="item.id" :value="item.id" :disabled="!item.selectable || item.historical" :label="`${item.code} · ${item.name}${item.unavailableReason ? `（${item.unavailableReason}）` : ''}`" />
+            </el-select>
+            <div v-if="deliveryUnitLoadError" class="release-master-data-state release-master-data-state--error"><span>{{ deliveryUnitLoadError }}</span><el-button type="primary" link @click="retryDeliveryUnitOptions">重新加载</el-button></div>
+            <div v-else-if="activeSubsystem && !deliveryUnitsLoading && !displayedDeliveryUnitOptions.length" class="release-master-data-state"><span>该物理子系统暂无启用的交付单元</span></div>
+          </el-form-item>
+        </div>
+        <el-alert v-if="hasHistoricalMasterData" class="release-master-data-alert" title="原物理子系统或交付单元已失效，请重新选择后再保存或提交" type="warning" :closable="false" show-icon />
+        <div v-if="draft.deliveries.length" class="release-unit-editor"><article v-for="unit in draft.deliveries" :key="unit.deliveryUnitId"><div><strong>{{ unit.deliveryUnitName }}</strong><small>{{ unit.deliveryUnitCode }} · {{ artifactLabel(unit.artifactType) }}</small></div><div class="release-current-version"><span>生产版本</span><strong>{{ latestVersion(unit.deliveryUnitCode)?.artifactVersion || '暂无' }}</strong><small>{{ minute(latestVersion(unit.deliveryUnitCode)?.productionAt) || '尚无成功投产记录' }}</small></div><el-input v-model="unit.artifactVersion" placeholder="本次制品版本，不允许空格" /><el-tooltip content="移除交付单元"><el-button circle plain type="danger" aria-label="移除交付单元" @click="removeUnit(unit.deliveryUnitId)"><el-icon><Delete /></el-icon></el-button></el-tooltip></article></div>
         <div v-if="draft.contentTypes.includes('FILE_MEDIA')" class="release-file-media-editor">
           <div class="release-file-media-editor__head">
             <strong>文件介质</strong>

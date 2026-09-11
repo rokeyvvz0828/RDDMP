@@ -100,9 +100,19 @@ class DeliveryUnitMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .target(MigrationVersion.fromVersion("212"))
                 .cleanDisabled(false)
                 .load()
                 .migrate();
+        seedLegacyArtifactTypes();
+        Flyway.configure()
+                .dataSource(dataSource)
+                .locations("filesystem:" + migrationDirectory())
+                .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .cleanDisabled(false)
+                .load()
+                .migrate();
+        assertCanonicalArtifactTypeMigration();
 
         store = new DeliveryUnitStore(jdbc);
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
@@ -114,6 +124,25 @@ class DeliveryUnitMySqlTest {
         jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, status, owner_id, "
                         + "created_by, deleted) VALUES (?, ?, 'RDDMP-PLATFORM', '交付单元数据层测试项目', "
                         + "'RUNNING', 1, 1, 0)", 990001L, 1L);
+    }
+
+    private static void seedLegacyArtifactTypes() {
+        insertPhysical(590L, 990001L, "W0590A", "制品类型迁移测试系统");
+        jdbc.update("INSERT INTO arch_delivery_unit "
+                        + "(id, tenant_id, project_id, code, physical_subsystem_id, name, artifact_type_code, "
+                        + "status, created_by, updated_by) VALUES "
+                        + "(790001, 1, 990001, 'DUW0590A001', 590, '镜像迁移样本', "
+                        + "'architecture.artifact-type.container', 'ACTIVE', 1, 1), "
+                        + "(790002, 1, 990001, 'DUW0590A002', 590, '压缩包迁移样本', "
+                        + "'architecture.artifact-type.archive', 'ACTIVE', 1, 1), "
+                        + "(790003, 1, 990001, 'DUW0590A003', 590, '脚本迁移样本', "
+                        + "'architecture.artifact-type.script', 'ACTIVE', 1, 1)");
+    }
+
+    private static void assertCanonicalArtifactTypeMigration() {
+        List<String> migrated = jdbc.queryForList("SELECT artifact_type_code FROM arch_delivery_unit "
+                + "WHERE id IN (790001, 790002, 790003) ORDER BY id", String.class);
+        assertThat(migrated).containsExactly("IMAGE", "BINARY", "BINARY");
     }
 
     @BeforeEach
@@ -405,25 +434,23 @@ class DeliveryUnitMySqlTest {
                 + "JOIN sys_dict_type dict ON dict.id = config.category_id AND dict.tenant_id = config.tenant_id "
                 + "WHERE config.tenant_id = 1 AND dict.dict_code = 'ARCH_ARTIFACT_TYPE' "
                 + "AND config.status = 1 AND config.deleted = 0 ORDER BY config.id", String.class);
-        assertThat(keys).containsExactly("architecture.artifact-type.container",
-                "architecture.artifact-type.archive", "architecture.artifact-type.script");
+        assertThat(keys).containsExactly("IMAGE", "BINARY");
 
-        long withType = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "容器交付包",
-                "architecture.artifact-type.container");
+        long withType = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "镜像交付包", "IMAGE");
         long withoutType = insertDeliveryUnit(PROJECT.id(), PHYSICAL_ID, "无类型交付包");
         assertThat(store.findUnit(TENANT_ID, PROJECT.id(), withType).orElseThrow().artifactTypeCode())
-                .isEqualTo("architecture.artifact-type.container");
+                .isEqualTo("IMAGE");
         assertThat(store.findUnit(TENANT_ID, PROJECT.id(), withoutType).orElseThrow().artifactTypeCode()).isNull();
 
         PageResult<DeliveryUnit> filtered = store.pageUnits(TENANT_ID, PROJECT.id(), new PageQuery(1, 20),
-                new DeliveryUnitQuery(null, null, null, "architecture.artifact-type.container"));
+                new DeliveryUnitQuery(null, null, null, "IMAGE"));
         assertThat(filtered.records()).extracting(DeliveryUnit::id).containsExactly(withType);
 
         DeliveryUnit created = store.findUnit(TENANT_ID, PROJECT.id(), withType).orElseThrow();
-        assertThat(store.updateUnitContent(TENANT_ID, PROJECT.id(), withType, created.rowVersion(), "容器交付包",
-                "architecture.artifact-type.script", null, null, actor.id())).isEqualTo(1);
+        assertThat(store.updateUnitContent(TENANT_ID, PROJECT.id(), withType, created.rowVersion(), "镜像交付包",
+                "BINARY", null, null, actor.id())).isEqualTo(1);
         assertThat(store.findUnit(TENANT_ID, PROJECT.id(), withType).orElseThrow().artifactTypeCode())
-                .isEqualTo("architecture.artifact-type.script");
+                .isEqualTo("BINARY");
     }
 
     private static long nextId() {

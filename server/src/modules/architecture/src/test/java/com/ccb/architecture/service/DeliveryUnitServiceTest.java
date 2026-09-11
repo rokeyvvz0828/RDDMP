@@ -442,17 +442,17 @@ class DeliveryUnitServiceTest {
         when(store.findUnit(TENANT_ID, PROJECT.id(), UNIT_ID))
                 .thenReturn(Optional.of(new DeliveryUnit(UNIT_ID, "DUW0001A001", PHYSICAL_ID, "统一认证交付包",
                         "ACTIVE", null, null, 88L, 88L, LocalDateTime.of(2026, 9, 10, 10, 0),
-                        LocalDateTime.of(2026, 9, 10, 10, 0), 0L, "architecture.artifact-type.container")));
+                        LocalDateTime.of(2026, 9, 10, 10, 0), 0L, "IMAGE")));
         when(referenceQuery.activeParameters(operator, "ARCH_ARTIFACT_TYPE"))
                 .thenReturn(List.of(new com.ccb.system.capability.SystemParameterReference(
-                        "architecture.artifact-type.container", "容器")));
+                        "IMAGE", "镜像")));
 
         var view = service.create(operator, PROJECT, new DeliveryUnitCommand(PHYSICAL_ID, "统一认证交付包", null, null,
-                List.of(), null, "architecture.artifact-type.container"), "trace-a1");
+                List.of(), null, "IMAGE"), "trace-a1");
 
-        assertThat(view.artifactTypeCode()).isEqualTo("architecture.artifact-type.container");
+        assertThat(view.artifactTypeCode()).isEqualTo("IMAGE");
         verify(store).insertUnit(UNIT_ID, TENANT_ID, PROJECT.id(), "DUW0001A001", PHYSICAL_ID, "统一认证交付包",
-                "architecture.artifact-type.container", null, null, operator.id());
+                "IMAGE", null, null, operator.id());
     }
 
     @Test
