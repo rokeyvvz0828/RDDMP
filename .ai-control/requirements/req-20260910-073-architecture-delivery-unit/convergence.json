@@ -144,7 +144,8 @@
       ],
       "evidence": [
         "V202 在真实 MySQL 8.4 上从空库执行成功且未修改既有迁移；架构模块 449 项测试全过；npm build 通过；移动视口无横向滚动且抽屉宽度 366<=390",
-        "两处前端修复均复用既有 architecture.css 与语义变量，未新增公共组件"
+        "两处前端修复均复用既有 architecture.css 与语义变量，未新增公共组件",
+        "抽屉关闭守卫修复后 15/15 通过，五组既有浏览器验收 44 项无回归"
       ],
       "limitations": [
         "由同一 Agent 执行与观测，非独立验证"
@@ -242,7 +243,7 @@
     }
   ],
   "feedback_summary": {
-    "total": 5,
+    "total": 6,
     "accepted_open": 0,
     "escalated": 0,
     "deferred_by_severity": {
@@ -306,6 +307,14 @@
       "P2": 0,
       "P3": 3,
       "score": 3
+    },
+    {
+      "sample_id": "S-0008",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 3,
+      "score": 3
     }
   ],
   "regression_checks": [
@@ -363,6 +372,11 @@
       "check": "架构模块完整回归（制品类型后）",
       "result": "pass",
       "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 463, Failures: 0, Errors: 0, BUILD SUCCESS"
+    },
+    {
+      "check": "F-6 纠偏回归（表单抽屉关闭守卫）",
+      "result": "pass",
+      "evidence": "verify-drawer-close-guard.mjs 15/15：遮罩/ESC/取消三路径继续编辑均重开且保留内容、放弃后可再次打开且为原始值、无修改不弹确认、创建成功不弹确认"
     }
   ],
   "invariant_results": [
@@ -479,10 +493,11 @@
     "三项治理基线故障（V84_1 命名、模块越界导入、REQ-20260904-061 scope 非 JSON 兼容）为本任务之前既有问题，未修复",
     "移动端仅用 Chromium 视口模拟（390x844），未在真机验证",
     "部署单元侧的关联编辑授权复用交付单元维护权限：只有 architecture:deployment-unit:manage 而无交付单元维护权限的角色看不到编辑入口",
-    "制品类型字典项被停用或删除后，历史数据的 label 无法解析，列表与详情会回落显示原始 code（前端 optionLabel 的既有行为）"
+    "制品类型字典项被停用或删除后，历史数据的 label 无法解析，列表与详情会回落显示原始 code（前端 optionLabel 的既有行为）",
+    "UiFormDrawer 为平台公共组件，仅在业务页内通过状态同步规避其单向绑定语义；若后续其他页面用同一组件实现未保存守卫，需按同一模式处理"
   ],
   "gate_result": "blocked",
-  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量，含字典驱动的制品类型）；F-1～F-5 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
+  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量，含字典驱动制品类型与抽屉关闭守卫）；F-1～F-6 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
   "definition_revision": "definition-3",
   "open_feedback": [],
   "generated_at": "2026-09-10"

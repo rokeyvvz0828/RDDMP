@@ -1,0 +1,49 @@
+{
+  "iteration_id": "I21",
+  "task_id": "T9",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/DeliveryUnitPage.vue",
+      "purpose": "formVisible 单一状态源 + handleDrawerVisibility 关闭守卫（继续编辑时显式重开）"
+    }
+  ],
+  "commands": [
+    {
+      "command": "node /tmp/pwtest/verify-drawer-close-guard.mjs",
+      "exit_code": 0,
+      "salient_output": "15/15 PASS：遮罩/ESC/取消三路径的“继续编辑”均重开且保留内容；放弃后关闭并可再次打开且为原始值；无修改时不弹确认；创建成功不弹确认"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "构建通过"
+    },
+    {
+      "command": "node /tmp/pwtest/accept.mjs / verify-artifact-type.mjs / verify-empty-slot.mjs / accept-mobile.mjs / verify-deployment-side-relation.mjs",
+      "exit_code": 0,
+      "salient_output": "16+10+4+7+7 全 PASS，console errors none"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "抽屉四类关闭路径行为一致且状态不脱同步（verify-drawer-close-guard 15/15）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "result": "pass",
+      "evidence": "制品类型表单在修复后可正常创建与修改（verify-artifact-type 10/10）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "verifying"
+}

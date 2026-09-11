@@ -1,8 +1,8 @@
 {
   "schema_version": 5,
-  "revision": 60,
+  "revision": 68,
   "created_at": "2026-09-10T07:26:06+00:00",
-  "updated_at": "2026-09-11T01:34:30+00:00",
+  "updated_at": "2026-09-11T01:43:18+00:00",
   "mode": "standard",
   "workflow": "compact",
   "phase": "verifying",
@@ -102,6 +102,18 @@
       "to": "verifying",
       "evidence": "T8/T9/T10 均 verified，无未关闭反馈",
       "recorded_at": "2026-09-11T01:34:30+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "controlling",
+      "evidence": "UAT 发现抽屉遮罩缺陷 F-6，从 verifying 回到 controlling 处理",
+      "recorded_at": "2026-09-11T01:43:08+00:00"
+    },
+    {
+      "from": "controlling",
+      "to": "verifying",
+      "evidence": "F-6 已裁决并复验关闭",
+      "recorded_at": "2026-09-11T01:43:18+00:00"
     }
   ],
   "stage_artifacts": {
@@ -4034,6 +4046,113 @@
           "correction": null,
           "next": "verifying"
         }
+      },
+      {
+        "revision": 20,
+        "evidence": "UAT 反馈 F-6 复现并记录",
+        "recorded_at": "2026-09-11T01:43:08+00:00",
+        "data": {
+          "iteration_id": "I20",
+          "task_id": "T9",
+          "status": "feedback-open",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/DeliveryUnitPage.vue",
+              "purpose": "抽屉可见性改为单一状态源 formVisible + v-model 与关闭守卫"
+            }
+          ],
+          "commands": [
+            {
+              "command": "node /tmp/pwtest/repro-drawer-overlay.mjs",
+              "exit_code": 0,
+              "salient_output": "复现：点遮罩→抽屉关闭+确认框；继续编辑→抽屉不重开；再次修改→弹不出来"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "构建通过"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "抽屉关闭守卫在四条路径上行为一致（待纠偏后复验）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "id": "F-6",
+              "requirement_id": "R8",
+              "expected": "点遮罩/ESC/取消关闭修改抽屉并选择“继续编辑”后，抽屉保持打开且可继续编辑；再次点“修改”可正常打开",
+              "observed": "点遮罩后抽屉先自行关闭并弹出未保存确认；选“继续编辑”抽屉不重开；再次点“修改”抽屉完全弹不出来",
+              "reproduction": "node /tmp/pwtest/repro-drawer-overlay.mjs：打开修改→改名称→点遮罩→继续编辑→再点修改",
+              "evidence": "复现日志：步骤3 可见抽屉=0 确认框=1；步骤4 继续编辑后 可见抽屉=0；步骤5 再次点修改 可见抽屉=0。根因：UiFormDrawer 内部 el-drawer 单向绑定 model-value 并回发 update:modelValue，守卫只拦截未回写，父层 formOpen 停在 true 而抽屉内部已关闭，状态脱同步导致 true→true 赋值不触发重开",
+              "severity": "P1",
+              "confidence": "high",
+              "status": "open"
+            }
+          ],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 21,
+        "evidence": "F-6 纠偏后复验：抽屉关闭守卫在四条路径一致，全量浏览器回归通过",
+        "recorded_at": "2026-09-11T01:43:18+00:00",
+        "data": {
+          "iteration_id": "I21",
+          "task_id": "T9",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/DeliveryUnitPage.vue",
+              "purpose": "formVisible 单一状态源 + handleDrawerVisibility 关闭守卫（继续编辑时显式重开）"
+            }
+          ],
+          "commands": [
+            {
+              "command": "node /tmp/pwtest/verify-drawer-close-guard.mjs",
+              "exit_code": 0,
+              "salient_output": "15/15 PASS：遮罩/ESC/取消三路径的“继续编辑”均重开且保留内容；放弃后关闭并可再次打开且为原始值；无修改时不弹确认；创建成功不弹确认"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "构建通过"
+            },
+            {
+              "command": "node /tmp/pwtest/accept.mjs / verify-artifact-type.mjs / verify-empty-slot.mjs / accept-mobile.mjs / verify-deployment-side-relation.mjs",
+              "exit_code": 0,
+              "salient_output": "16+10+4+7+7 全 PASS，console errors none"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "抽屉四类关闭路径行为一致且状态不脱同步（verify-drawer-close-guard 15/15）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "result": "pass",
+              "evidence": "制品类型表单在修复后可正常创建与修改（verify-artifact-type 10/10）",
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "verifying"
+        }
       }
     ],
     "verifying": [
@@ -6340,6 +6459,515 @@
           "open_feedback": [],
           "generated_at": "2026-09-10"
         }
+      },
+      {
+        "revision": 7,
+        "evidence": "收敛报告 v6：新增 F-6 纠偏证据与第 8 次采样",
+        "recorded_at": "2026-09-11T01:43:18+00:00",
+        "data": {
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "浏览器创建成功并分配 DUPHY_PORTAL004；API 创建 DUPHY_MOBILE001；同物理子系统重名 409；DeliveryUnitMySqlTest 编号 001/002 与容量耗尽断言"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "浏览器与 API 双通道验证列表筛选分页与详情抽屉字段；DeliveryUnitMySqlTest pageUnits 跨项目隔离"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "服务测试归属变更 400 与过期 rowVersion 409；API 过期 rowVersion 409；编辑态归属选择禁用"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "浏览器二次确认删除后列表消失；API 删除后详情 404 且反查为空；MySQL 测试软删除清理关联且部署单元主记录保留"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "MySQL 测试直接插入跨物理子系统关联行被复合外键拒绝；API 跨物理子系统提交 409；浏览器关联候选仅 1 项且限定所选物理子系统",
+                "UAT 反馈 F-3 纠偏后 verify-empty-slot.mjs 4/4：空候选下拉保持打开并展示提示",
+                "F-4 纠偏后 verify-deployment-unit-select.mjs 3/3：部署单元页关联下拉在无匹配时保持打开"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5",
+                "T6",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "部署单元详情抽屉展示关联交付单元（浏览器 accept-reverse 全过）；反查接口返回列表（API）",
+                "两侧详情抽屉都可多选保存关联并双向即时可见：verify-deployment-side-relation.mjs 7/7；DeliveryUnitMySqlTest 12/12 断言两侧写同一张表且不产生部署单元版本与关系历史"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5",
+                "T6",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "登录后路由树包含 /architecture/delivery-units 且页面可访问；9 个端点 @PreAuthorize 表达式逐项断言；写操作审计调用断言",
+                "关联写入统一要求 architecture:delivery-unit:manage；三个关联端点权限表达式逐项断言；写操作审计调用断言"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4",
+                "T7",
+                "T10"
+              ],
+              "evidence": [
+                "V202 在真实 MySQL 8.4 上从空库执行成功且未修改既有迁移；架构模块 449 项测试全过；npm build 通过；移动视口无横向滚动且抽屉宽度 366<=390",
+                "两处前端修复均复用既有 architecture.css 与语义变量，未新增公共组件",
+                "抽屉关闭守卫修复后 15/15 通过，五组既有浏览器验收 44 项无回归"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "result": "pass",
+              "task_ids": [
+                "T8",
+                "T9",
+                "T10"
+              ],
+              "evidence": [
+                "字典种子 ARCH_ARTIFACT_TYPE 三项目（容器/压缩包/脚本）落地并由 DeliveryUnitMySqlTest 断言",
+                "非法或停用 code 返回 400、空值允许（DeliveryUnitServiceTest 27/27）",
+                "按钮式单选选项与字典一致、列表列与筛选生效、存量空值展示“—”（verify-artifact-type.mjs 10/10）",
+                "字典资源上下文白名单双向校验（ArchitectureOptionsControllerTest 7/7）"
+              ],
+              "limitations": [
+                "由同一 Agent 执行与观测，非独立验证"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": [
+                "提交 a02298e；DeliveryUnitMySqlTest 10/10（真实 MySQL 8.4 + Flyway v202）；既有部署单元 MySQL 测试 21 项无回归"
+              ]
+            },
+            {
+              "task_id": "T2",
+              "result": "verified",
+              "evidence": [
+                "提交 ad835da；DeliveryUnitServiceTest 19/19、DeliveryUnitControllerTest 8/8、既有 DeploymentUnitServiceTest 18/18 与 DeploymentUnitControllerTest 3/3"
+              ]
+            },
+            {
+              "task_id": "T3",
+              "result": "verified",
+              "evidence": [
+                "提交 effe9f5；npm --prefix web run build 通过（vue-tsc --noEmit + vite build），产出 DeliveryUnitPage chunk"
+              ]
+            },
+            {
+              "task_id": "T4",
+              "result": "verified",
+              "evidence": [
+                "提交 6a59cc8；架构模块 449 项全过；三组浏览器验收 25 项全 PASS、无 console 错误；F-1 复验关闭、F-2 澄清关闭"
+              ]
+            },
+            {
+              "task_id": "T5",
+              "result": "verified",
+              "evidence": [
+                "提交 acd18d3；DeliveryUnitMySqlTest 12/12、DeliveryUnitServiceTest 24/24、DeliveryUnitControllerTest 10/10"
+              ]
+            },
+            {
+              "task_id": "T6",
+              "result": "verified",
+              "evidence": [
+                "提交 1385c57；verify-deployment-side-relation 7/7、npm build 通过、F-5 修复复验"
+              ]
+            },
+            {
+              "task_id": "T7",
+              "result": "verified",
+              "evidence": [
+                "架构模块 458 项全过；六组浏览器验收 39 项全 PASS；范围审计 16 文件均在 writable_paths 内"
+              ]
+            },
+            {
+              "task_id": "T8",
+              "result": "verified",
+              "evidence": [
+                "提交 bef5972；57 项聚焦测试通过，含字典种子与制品类型校验"
+              ]
+            },
+            {
+              "task_id": "T9",
+              "result": "verified",
+              "evidence": [
+                "提交 c4a6f4f；verify-artifact-type 10/10、npm build 通过"
+              ]
+            },
+            {
+              "task_id": "T10",
+              "result": "verified",
+              "evidence": [
+                "架构模块 463 项全过；四组浏览器验收 34 项全 PASS"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 6,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 1,
+              "score": 1
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0004",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0005",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0006",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0007",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            },
+            {
+              "sample_id": "S-0008",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 3,
+              "score": 3
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "架构模块完整测试",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 449, Failures: 0, Errors: 0, BUILD SUCCESS"
+            },
+            {
+              "check": "前端生产构建",
+              "result": "pass",
+              "evidence": "npm --prefix web run build -> 退出码 0"
+            },
+            {
+              "check": "既有部署单元行为",
+              "result": "pass",
+              "evidence": "DeploymentUnitLifecycleMySqlTest 13 项、DeploymentUnitImportMySqlTest 8 项全过；options 原签名保留且行为不变"
+            },
+            {
+              "check": "治理与迁移脚本",
+              "result": "fail-baseline",
+              "evidence": "check-flyway-migrations.mjs 因 V84_1 命名基线故障失败；check-module-boundaries.mjs 因 business/requirement 与 platform/boot 5 处越界失败；check-ai-control-layout.mjs 因 REQ-20260904-061 scope 文件非 JSON 兼容 YAML 失败；三个文件均未被本任务修改"
+            },
+            {
+              "check": "F-3 纠偏回归（空候选下拉）",
+              "result": "pass",
+              "evidence": "verify-empty-slot.mjs 4/4 PASS，覆盖表单抽屉与详情抽屉"
+            },
+            {
+              "check": "三组浏览器验收复跑",
+              "result": "pass",
+              "evidence": "accept.mjs 16/16、accept-reverse.mjs 2/2、accept-mobile.mjs 7/7 全 PASS，console errors none"
+            },
+            {
+              "check": "F-4 纠偏回归（部署单元关联下拉空结果）",
+              "result": "pass",
+              "evidence": "verify-deployment-unit-select.mjs 3/3 PASS"
+            },
+            {
+              "check": "部署单元侧关联编辑（方案A）回归",
+              "result": "pass",
+              "evidence": "verify-deployment-side-relation.mjs 7/7，含双向可见与原始关联还原"
+            },
+            {
+              "check": "架构模块完整回归（方案A后）",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+            },
+            {
+              "check": "制品类型字典驱动回归",
+              "result": "pass",
+              "evidence": "verify-artifact-type.mjs 10/10：字典选项、按钮式单选、列表列、筛选、存量空值、修改联动"
+            },
+            {
+              "check": "架构模块完整回归（制品类型后）",
+              "result": "pass",
+              "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 463, Failures: 0, Errors: 0, BUILD SUCCESS"
+            },
+            {
+              "check": "F-6 纠偏回归（表单抽屉关闭守卫）",
+              "result": "pass",
+              "evidence": "verify-drawer-close-guard.mjs 15/15：遮罩/ESC/取消三路径继续编辑均重开且保留内容、放弃后可再次打开且为原始值、无修改不弹确认、创建成功不弹确认"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "交付单元归属物理子系统创建后不可变更",
+              "result": "pass",
+              "evidence": [
+                "服务测试归属变更返回 400；页面编辑态禁用归属选择并提交 null"
+              ]
+            },
+            {
+              "invariant": "关联双方必须属于同一物理子系统",
+              "result": "pass",
+              "evidence": [
+                "复合外键直接插入断言 + API 跨子系统 409 + 浏览器候选限定"
+              ]
+            },
+            {
+              "invariant": "交付单元编号创建时分配且永久不可修改，序号不回收",
+              "result": "pass",
+              "evidence": [
+                "无任何更新 code 的语句；allocateNumber 序号递增断言与容量耗尽断言"
+              ]
+            },
+            {
+              "invariant": "只读写本模块 arch_ 表，平台数据只能经公开契约访问",
+              "result": "pass",
+              "evidence": [
+                "新增语句仅涉及 arch_delivery_unit*、arch_deployment_unit、arch_physical_subsystem；项目与用户数据经 ProjectAccessService 与 SystemReferenceQuery"
+              ]
+            },
+            {
+              "invariant": "HTTP DTO 不接收或返回 tenantId",
+              "result": "pass",
+              "evidence": [
+                "DeliveryUnitControllerTest 断言 DeliveryUnitCommand 记录组件与响应 JSON 均不含 tenantId"
+              ]
+            },
+            {
+              "invariant": "Flyway 只追加，不修改已发布脚本",
+              "result": "pass",
+              "evidence": [
+                "git diff 仅新增 V202__create_architecture_delivery_units.sql，无既有迁移改动"
+              ]
+            },
+            {
+              "invariant": "部署单元作废时存在交付单元关联则拒绝（fail-closed）",
+              "result": "pass",
+              "evidence": [
+                "DeliveryUnitMySqlTest 断言有关联时 requireClear 抛 CONFLICT、软删除后恢复通过；检查器异常返回 INDETERMINATE"
+              ]
+            },
+            {
+              "invariant": "部署单元侧的关联编辑不发布部署单元新版本，也不写 arch_deployment_unit_relation_history",
+              "result": "pass",
+              "evidence": [
+                "DeliveryUnitMySqlTest 断言保存关联前后 arch_deployment_unit_version 行数不变、relation_history 为空"
+              ]
+            },
+            {
+              "invariant": "关联写入统一要求 architecture:delivery-unit:manage",
+              "result": "pass",
+              "evidence": [
+                "controller 测试断言 PUT /deployment-units/{id}/delivery-units 使用 hasAuthority(architecture:delivery-unit:manage)；GET 候选沿用部署单元查看权限；与发起侧无关"
+              ]
+            },
+            {
+              "invariant": "制品类型只存字典 code，不存显示名",
+              "result": "pass",
+              "evidence": [
+                "MySQL 断言库内存 architecture.artifact-type.* code；前端通过 optionLabel 回查字典展示"
+              ]
+            },
+            {
+              "invariant": "不新增独立字典表：复用平台 sys_dict_type / sys_config",
+              "result": "pass",
+              "evidence": [
+                "V203 仅向既有 sys_dict_type/sys_config 插入 1 个类别与 3 个字典项，未建新表"
+              ]
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": [],
+            "note": "6 个提交共 31 个文件全部落在 codex-task-scope.yaml 的 writable_paths 内；工作树中未提交的 .agents/skills/** 为本任务开始前已存在的他人改动，未触碰；唯一未通过的是公共能力授权门禁：触及 platform/infrastructure 迁移需要 issue 与 Owner 审批，当前 owner_approved=false"
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "并发编号分配",
+              "result": "pass",
+              "evidence": "DeliveryUnitMySqlTest 6 线程并发分配无重号"
+            },
+            {
+              "disturbance": "并发乐观锁",
+              "result": "pass",
+              "evidence": "过期 rowVersion 返回 409 且不写入"
+            },
+            {
+              "disturbance": "物理子系统或部署单元在提交前失效",
+              "result": "pass",
+              "evidence": "服务在同事务内重新校验并拒绝；跨子系统与停用状态均 409"
+            },
+            {
+              "disturbance": "本地依赖未完整安装",
+              "result": "pass",
+              "evidence": "@wangeditor/editor 缺失导致构建基线失败，执行 npm install 恢复声明依赖后构建通过（package.json 与 lock 未变更）"
+            }
+          ],
+          "residual_risks": [
+            "公共能力授权未闭合：V202 迁移与菜单/权限种子位于 platform/infrastructure，check-codex-scope.mjs 要求 issue 与 Owner 审批；owner_approved=false，需模块 Owner rokeyvvz0828 专项复核",
+            "未用无权限账号做端到端 403 验证，无权限页面仅在代码路径与控制器注解开层面验证",
+            "部署单元作废守卫未对本地演示数据真实执行（避免破坏数据），以真实数据库集成断言为准",
+            "全部观测由同一 Agent 执行，属非独立验证",
+            "三项治理基线故障（V84_1 命名、模块越界导入、REQ-20260904-061 scope 非 JSON 兼容）为本任务之前既有问题，未修复",
+            "移动端仅用 Chromium 视口模拟（390x844），未在真机验证",
+            "部署单元侧的关联编辑授权复用交付单元维护权限：只有 architecture:deployment-unit:manage 而无交付单元维护权限的角色看不到编辑入口",
+            "制品类型字典项被停用或删除后，历史数据的 label 无法解析，列表与详情会回落显示原始 code（前端 optionLabel 的既有行为）",
+            "UiFormDrawer 为平台公共组件，仅在业务页内通过状态同步规避其单向绑定语义；若后续其他页面用同一组件实现未保存守卫，需按同一模式处理"
+          ],
+          "gate_result": "blocked",
+          "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量，含字典驱动制品类型与抽屉关闭守卫）；F-1～F-6 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
+          "definition_revision": "definition-3",
+          "open_feedback": [],
+          "generated_at": "2026-09-10"
+        }
       }
     ]
   },
@@ -8264,9 +8892,17 @@
         {
           "recorded_at": "2026-09-11T01:34:20+00:00",
           "text": "ControlIteration I18: verified"
+        },
+        {
+          "recorded_at": "2026-09-11T01:43:08+00:00",
+          "text": "ControlIteration I20: feedback-open"
+        },
+        {
+          "recorded_at": "2026-09-11T01:43:18+00:00",
+          "text": "ControlIteration I21: verified"
         }
       ],
-      "updated_at": "2026-09-11T01:34:20+00:00"
+      "updated_at": "2026-09-11T01:43:18+00:00"
     },
     {
       "id": "T10",
@@ -8439,6 +9075,27 @@
       "resolved_at": "2026-09-10T09:45:14+00:00",
       "resolution_evidence": "diag-list 修复后 table rows=1；verify-deployment-side-relation 7/7、accept 16/16、accept-reverse 2/2、accept-mobile 7/7、verify-empty-slot 4/4、verify-deployment-unit-select 3/3 全 PASS；mvn 458 项通过",
       "decided_at": "2026-09-10T09:45:14+00:00"
+    },
+    {
+      "id": "F-6",
+      "task": "T9",
+      "source": "ControlIteration I20",
+      "requirement": "R8",
+      "expected": "点遮罩/ESC/取消关闭修改抽屉并选择“继续编辑”后，抽屉保持打开且可继续编辑；再次点“修改”可正常打开",
+      "observed": "点遮罩后抽屉先自行关闭并弹出未保存确认；选“继续编辑”抽屉不重开；再次点“修改”抽屉完全弹不出来",
+      "reproduction": "node /tmp/pwtest/repro-drawer-overlay.mjs：打开修改→改名称→点遮罩→继续编辑→再点修改",
+      "evidence": "复现日志：步骤3 可见抽屉=0 确认框=1；步骤4 继续编辑后 可见抽屉=0；步骤5 再次点修改 可见抽屉=0。根因：UiFormDrawer 内部 el-drawer 单向绑定 model-value 并回发 update:modelValue，守卫只拦截未回写，父层 formOpen 停在 true 而抽屉内部已关闭，状态脱同步导致 true→true 赋值不触发重开",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": null,
+      "correction_check": null,
+      "decision": "accept",
+      "decision_reason": "真实缺陷：共享抽屉组件单向绑定下，关闭守卫未同步父层状态导致状态脱同步",
+      "created_at": "2026-09-11T01:43:08+00:00",
+      "resolved_at": "2026-09-11T01:43:08+00:00",
+      "resolution_evidence": "verify-drawer-close-guard 15/15 PASS，覆盖遮罩/ESC/取消/放弃/无修改/创建成功六类路径；五组既有浏览器验收 44 项全 PASS；提交 13d84ea",
+      "decided_at": "2026-09-11T01:43:08+00:00"
     }
   ],
   "samples": [
@@ -8532,6 +9189,19 @@
       "score": 3,
       "evidence": "架构模块 463 项测试全过；verify-artifact-type 10/10、accept 16/16、deployment-side 7/7、empty-slot 4/4、mobile 7/7；npm build 通过",
       "recorded_at": "2026-09-11T01:34:20+00:00"
+    },
+    {
+      "id": "S-0008",
+      "label": "F-6 纠偏后复验采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 3
+      },
+      "score": 3,
+      "evidence": "verify-drawer-close-guard 15/15、accept 16/16、artifact-type 10/10、empty-slot 4/4、mobile 7/7、deployment-side 7/7；npm build 通过",
+      "recorded_at": "2026-09-11T01:43:09+00:00"
     }
   ]
 }
