@@ -1,0 +1,31 @@
+{
+ "schema_version": 1,
+ "prefix": "req-20260910-069-dm-param-field",
+ "recorded_at": "2026-09-11T01:05:00+08:00",
+ "task": "用户反馈：新增迁移参数弹框宽度太窄、内容被遮挡——纠偏",
+ "deviation": {
+  "reported": "弹框宽度太窄，有遮挡",
+  "reproduction": "桌面 1280 下弹框 720px，字段表格 min-width 720px，内容容器实测 686px，溢出 34px；操作列 fixed=right 以 sticky 形式悬浮于行上，横向滚动时覆盖字段说明等列内容",
+  "severity": "P1",
+  "confidence": "high",
+  "classification": "deviation"
+ },
+ "correction": [
+  "弹框宽度 min(720px,calc(100vw - 24px)) -> min(960px,calc(100vw - 24px))，桌面内容容器增至 926px，表格无需横向滚动（scrollWidth=clientWidth=926）",
+  "操作列移除 fixed=right，消除 sticky 悬浮列对字段说明等内容的遮挡；移动端仍可在表格容器内局部横向滚动",
+  "移动端行为不变：全局 .el-dialog 规则限宽 calc(100vw - 24px)，字段表格容器 overflow-x:auto 局部滚动"
+ ],
+ "revision_commands": [
+  { "command": "npm --prefix web run build", "exit_code": 0, "salient_output": "构建通过（仅既有 chunk 体积警告）" },
+  { "command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误" },
+  { "command": "node /tmp/probe_width.mjs（桌面 1280 弹框宽度与表格容器测量）", "exit_code": 0, "salient_output": "纠偏后 dialogWidth=960、wrapClientWidth=926、wrapScrollWidth=926、fixedRightPresent=false" },
+  { "command": "node /tmp/verify_param_dialog.mjs（Playwright 真实浏览器全量回归）", "exit_code": 0, "salient_output": "34/34 PASS" }
+ ],
+ "verification": [
+  "桌面 1280：弹框 960px 在视口内，字段表格无横向滚动、无固定列悬浮遮挡，页面级 overflow=0",
+  "移动 375/390/430：弹框宽 calc(100vw - 24px)，字段表格容器局部横向滚动（scrollWidth=720），页面级 overflow=0",
+  "新增/编辑弹框、批量添加/移除字段、带字段保存、无未捕获异常与 console error 全通过"
+ ],
+ "state_unchanged": true,
+ "state_phase": "converged"
+}

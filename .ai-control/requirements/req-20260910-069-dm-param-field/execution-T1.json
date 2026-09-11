@@ -1,0 +1,57 @@
+{
+ "schema_version": 1,
+ "task_id": "T1",
+ "status": "implemented_verified",
+ "changed_surfaces": [
+  {
+   "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V200__data_migration_parameter_field.sql",
+   "purpose": "dm_parameter_field 子表（活动生成列唯一键 en/cn + deleted 语义）、deleted_by/deleted_at、idx、FK、DM_PARAMETER_FIELD_TYPE 码值（dict 5833 / config 58331-58337）"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+   "purpose": "注册 DM_PARAMETER_FIELD_TYPE 系统码值类别"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationParameterFieldMigrationMySqlTest.java",
+   "purpose": "V200 建表/唯一键/码值/幂等与 deleted_by/deleted_at 断言（修正 hasIndex 多列 COUNT 与中文重复用例数据）"
+  }
+ ],
+ "requirements_addressed": [
+  "R1",
+  "R4",
+  "R5"
+ ],
+ "commands": [
+  {
+   "command": "mvn -q -pl :ccb-data-migration -am test -o -Dtest=DataMigrationParameterFieldMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+   "exit_code": 0,
+   "salient_output": "2 tests, 0 failures（Testcontainers mysql:8.4 真实执行 V200 两遍幂等）"
+  },
+  {
+   "command": "本地 docker mysql:8.4 独立复现建表与重复插入",
+   "exit_code": 0,
+   "salient_output": "'AMOUNT' 与 'amount' 冲突 1062 由 uk_dm_parameter_field_active_en；'金额' 冲突 1062 由 uk_dm_parameter_field_active_cn"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "V200 幂等与唯一键",
+   "result": "pass",
+   "evidence": "DataMigrationParameterFieldMigrationMySqlTest 2/2 通过"
+  },
+  {
+   "check": "软删行不占用名称",
+   "result": "pass",
+   "evidence": "活动生成列仅 deleted=0 取值，NULL 不参与唯一索引"
+  }
+ ],
+ "deviations": [
+  {
+   "issue": "服务端字段删除 SQL 引用 deleted_by/deleted_at 而 V200 建表漏两列，真实后端 DELETE 500（BadSqlGrammar）",
+   "fix": "V200 补 deleted_by BIGINT、deleted_at TIMESTAMP 两列并同步迁移测试断言；开发库重放 V200 后删除接口 200"
+  }
+ ],
+ "diff_summary": [
+  "V200 提供字段子表完整契约（含软删审计列），码值登记，迁移测试断言全量列与键"
+ ]
+}

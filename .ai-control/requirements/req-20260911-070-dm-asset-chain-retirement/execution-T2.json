@@ -1,0 +1,78 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "已删源码读取改为 Files.notExists 断言（覆盖 4 个已删后端文件 7 处）；dedicatedSourcesOwnDeletionAuditFieldsAfterGenericChainRetirement 承接原通用回收站审计断言；规则域/中间表/资源端点治理断言同步"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentFileAssetDocCodeGovernanceTest.java",
+      "purpose": "重写为通用链路下线治理断言：3 参构造、resolveAttachment 拒绝非临时附件、源码无 MANAGED_TYPES/通用 CRUD 签名"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentDocCodeGeneratorTest.java",
+      "purpose": "前缀表收敛 6 项并新增 DEPENDENCY/PARAMETER 拒绝断言"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java",
+      "purpose": "ContentFileAssetService 构造同步为 3 参"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java",
+      "purpose": "ContentFileAssetService 构造同步为 3 参"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java",
+      "purpose": "核验：仅 mock ContentFileAssetService，无需改动"
+    }
+  ],
+  "requirements_addressed": [
+    "R3",
+    "R5"
+  ],
+  "commands": [
+    {
+      "command": "apply_patch 改写 5 个测试文件",
+      "exit_code": 0,
+      "salient_output": "DataMigrationModuleRegistrationTest/GovernanceTest/DocCodeGeneratorTest/ReportServiceTest/TopicServiceTest 更新"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am test-compile",
+      "exit_code": 0,
+      "salient_output": "BUILD SUCCESS，44 个测试源文件编译通过"
+    },
+    {
+      "command": "mvn surefire:test -Dtest=8 个聚焦测试类",
+      "exit_code": 0,
+      "salient_output": "Tests run: 76, Failures: 0, Errors: 0, Skipped: 0"
+    }
+  ],
+  "local_checks": [
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "ContentDocCodeGeneratorTest 通过：6 前缀匹配 + DEPENDENCY/PARAMETER 抛 BusinessException",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "DataMigrationModuleRegistrationTest 通过：Files.notExists 断言覆盖 4 个已删后端文件；GovernanceTest/ReportServiceTest/TopicServiceTest 通过，测试不再读取已删文件",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "5 个测试文件同步；断言面从 Files.readString 已删文件收敛为 Files.notExists + 线下治理断言"
+  ],
+  "invariants_checked": [
+    "断言真实运行（聚焦 surefire 76 通过）",
+    "未触碰 REQ-067/069 在共享文件中的改动"
+  ],
+  "disturbances": [
+    "REQ-067/069 对 ParameterServiceTest/ParameterController/DashboardMetricDefinition 等未提交改动不影响本次测试面"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "T4 全量回归确认无跨模块影响"
+}

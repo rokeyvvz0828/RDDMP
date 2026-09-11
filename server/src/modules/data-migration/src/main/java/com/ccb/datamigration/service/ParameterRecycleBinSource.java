@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 /**
  * 迁移参数（{@code dm_parameter}）接入统一回收站的来源（REQ-20260906-067）。
  *
- * <p>PARAMETER 从通用结构化资产链路（{@link StructuredAssetService#TYPES}）剥离后，由本来源承接其
+ * <p>PARAMETER 已由通用结构化资产链路域化为专属业务表（{@code dm_parameter}），本来源承接其
  * 软删列表、详情、恢复与彻底删除，全部委托 {@link ParameterService}，保留管理员校验、参数名称唯一冲突
  * 与审计规则。
  */

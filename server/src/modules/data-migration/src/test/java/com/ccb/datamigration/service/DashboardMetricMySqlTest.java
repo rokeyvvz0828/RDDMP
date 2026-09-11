@@ -107,8 +107,8 @@ class DashboardMetricMySqlTest {
         jdbc.execute("CREATE TABLE dm_release_drill (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, doc_code VARCHAR(96), doc_name VARCHAR(255), granularity VARCHAR(16), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_release_dashboard (tenant_id, project_id, deleted, updated_at))");
         jdbc.execute("CREATE TABLE dm_mapping_doc (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, doc_code VARCHAR(96), doc_name VARCHAR(255), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_mapping_dashboard (tenant_id, project_id, deleted, updated_at))");
         jdbc.execute("CREATE TABLE dm_rule (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, rule_code VARCHAR(96), rule_code_desc VARCHAR(500), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_rule_dashboard (tenant_id, project_id, deleted, updated_at))");
-        jdbc.execute("CREATE TABLE dm_parameter (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, parameter_name VARCHAR(255), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_parameter_dashboard (tenant_id, project_id, deleted, updated_at))");
-        jdbc.execute("CREATE TABLE dm_dependency (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, doc_code VARCHAR(96), doc_name VARCHAR(255), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_dependency_dashboard (tenant_id, project_id, deleted, updated_at))");
+        jdbc.execute("CREATE TABLE dm_parameter (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, parameter_name VARCHAR(255), parameter_name_en VARCHAR(255), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_parameter_dashboard (tenant_id, project_id, deleted, updated_at))");
+        jdbc.execute("CREATE TABLE dm_dependency (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, parameter_id BIGINT NOT NULL, system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_dependency_dashboard (tenant_id, project_id, deleted, updated_at))");
         jdbc.execute("CREATE TABLE dm_script (id BIGINT PRIMARY KEY, tenant_id BIGINT NOT NULL, project_id BIGINT NOT NULL, doc_code VARCHAR(96), doc_name VARCHAR(255), system_code VARCHAR(96), deleted TINYINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY idx_dm_script_dashboard (tenant_id, project_id, deleted, updated_at))");
     }
 
@@ -121,8 +121,8 @@ class DashboardMetricMySqlTest {
         jdbc.update("INSERT INTO dm_release_drill VALUES (1,3,91,'DRILL-1','投产演练','SYSTEM','SYS-A',0,NOW())");
         jdbc.update("INSERT INTO dm_mapping_doc VALUES (1,3,91,'MAP-1','迁移映射','SYS-A',0,NOW())");
         jdbc.update("INSERT INTO dm_rule VALUES (1,3,91,'RULE-1','规则说明','SYS-A',0,NOW())");
-        jdbc.update("INSERT INTO dm_parameter VALUES (1,3,91,'参数一','SYS-A',0,NOW())");
-        jdbc.update("INSERT INTO dm_dependency VALUES (1,3,91,'DEP-1','依赖文件','SYS-A',0,NOW())");
+        jdbc.update("INSERT INTO dm_parameter VALUES (1,3,91,'参数一','param_one','SYS-A',0,NOW())");
+        jdbc.update("INSERT INTO dm_dependency VALUES (1,3,91,1,'SYS-A',0,NOW())");
         jdbc.update("INSERT INTO dm_script VALUES (1,3,91,'SCRIPT-1','迁移程序','SYS-A',0,NOW())");
     }
 }

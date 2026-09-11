@@ -1,0 +1,89 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "dm_parameter 的 V198 增量结构",
+      "ParameterService 的校验、持久化、查询、Excel 与回收站逻辑",
+      "ParameterController 保持的 REST 和 RBAC 入口",
+      "data-migration API 类型与 ParametersPage 交互",
+      "迁移参数行为测试和当前需求控制账本"
+    ],
+    "environment": [
+      "MySQL 8.4 与 Flyway",
+      "现有项目范围、RBAC、用户目录和码值能力",
+      "Element Plus 公共组件",
+      "Excel 调用方和旧版客户端"
+    ]
+  },
+  "state_variables": [
+    {"name":"parameter_name_en","owner":"dm_parameter/ParameterService","valid_values":["trim 后匹配 [A-Za-z0-9_]+ 且长度 1..255"]},
+    {"name":"english_name_identity","owner":"dm_parameter 唯一索引","valid_values":["tenant_id + project_id + system_code + 大小写不敏感英文名唯一"]},
+    {"name":"excel_contract","owner":"ParameterService","valid_values":["六列模板与八列导出"]},
+    {"name":"keyword_fields","owner":"ParameterService","valid_values":["参数名称、参数英文名、参数说明"]},
+    {"name":"authorization_and_audit","owner":"ParameterController/ParameterService","valid_values":["既有 RBAC、项目范围、Owner、PARAMETER 审计"]},
+    {"name":"page_overflow","owner":"ParametersPage","valid_values":["表格局部滚动且页面级无水平溢出"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"REST 或 Excel 的参数英文名","transitions":["trim","必填/长度/正则校验"],"outputs":["合法值保留原大小写写入或 BAD_REQUEST/逐行错误"]},
+    {"requirement_id":"R2","input":"合法参数英文名与租户、项目、系统编号","transitions":["应用预检","大小写不敏感唯一索引并发兜底"],"outputs":["唯一写入或 CONFLICT"]},
+    {"requirement_id":"R3","input":"新增、编辑、详情、列表和回收站请求","transitions":["SQL 读写字段","Map snake_case 响应","前端类型与反显"],"outputs":["parameter_name_en 在各入口可见"]},
+    {"requirement_id":"R4","input":"模板下载、六列工作簿或条件导出","transitions":["POI 表头与列解析","逐行字段校验","导出字段映射"],"outputs":["六列模板、逐行结果、含英文名导出"]},
+    {"requirement_id":"R5","input":"英文名片段 keyword","transitions":["活动列表或回收站筛选","parameter_name_en LIKE"],"outputs":["匹配记录"]},
+    {"requirement_id":"R6","input":"空表或非空 dm_parameter 上执行 V198","transitions":["空表断言","追加非空 ASCII 列","追加大小写不敏感唯一索引"],"outputs":["空表成功或非空失败且无回填"]},
+    {"requirement_id":"R7","input":"授权或未授权用户操作及四类视口","transitions":["既有 Controller RBAC","项目/Owner 检查","PARAMETER 审计","响应式布局"],"outputs":["权限拒绝或授权结果、审计记录、无页面级溢出"]}
+  ],
+  "interfaces": [
+    {"name":"Parameter REST","producers":["ParameterService/ParameterController"],"consumers":["ParametersPage","其他 API 调用方"],"invariant":"写请求 parameterNameEn 必填，响应字段为 parameter_name_en，错误语义为 400/409"},
+    {"name":"Parameter Excel","producers":["ParameterService"],"consumers":["Excel 用户"],"invariant":"模板英文名位于中文名后，导出英文名位于中文名后"},
+    {"name":"dm_parameter schema","producers":["Flyway V198"],"consumers":["ParameterService","MySQL"],"invariant":"V197 不变，英文名非空且作用域内大小写不敏感唯一"},
+    {"name":"keyword query","producers":["ParameterService"],"consumers":["列表与统一回收站"],"invariant":"同时匹配中文名、英文名、说明"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"服务校验、唯一预检、SQL、Excel、搜索、审计行为","method":"ParameterServiceTest 与模块 JUnit","blind_spots":["真实 MySQL 排序规则","浏览器布局"],"independence":"直接执行 Java 服务并检查 SQL/POI 结果"},
+    {"id":"S2","target":"迁移顺序、非空表失败关闭、ASCII 大小写唯一","method":"Flyway 检查与 MySQL 8.4 运行探针","blind_spots":["应用错误文案","浏览器交互"],"independence":"由数据库引擎观察 DDL 和约束"},
+    {"id":"S3","target":"API 类型和页面模板契约","method":"源码契约探针与 vue-tsc/Vite 构建","blind_spots":["真实接口返回","像素级溢出"],"independence":"TypeScript 编译器独立检查消费者契约"},
+    {"id":"S4","target":"表单、列表、详情、搜索、导入、回收站、权限和响应式布局","method":"四视口真实浏览器验收及 console/overflow 探针","blind_spots":["数据库并发竞争"],"independence":"通过用户界面和网络行为端到端观察"},
+    {"id":"S5","target":"授权范围、V197 不变、diff 完整性","method":"git diff、范围脚本和 diff --check","blind_spots":["运行时业务行为"],"independence":"基于版本控制边界而非实现逻辑"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"dm_parameter schema","action":"仅追加 V198 空表断言、字段和唯一索引","authority":"writable_paths 已授权","impact_radius":"platform/infrastructure 单个新迁移","rollback":"未部署时删除新迁移；已部署时停止新应用写入并按数据库变更流程处置"},
+    {"id":"A2","target":"ParameterService 契约","action":"修改局部 SQL、校验、唯一检查、Excel 和搜索逻辑及测试桩","authority":"writable_paths 已授权","impact_radius":"data-migration 参数域","rollback":"恢复本任务开始前的目标文件内容"},
+    {"id":"A3","target":"ParametersPage 与 API 类型","action":"增加字段、校验、展示和文案","authority":"writable_paths 已授权","impact_radius":"迁移参数专属页面","rollback":"同步恢复 API 类型和页面"},
+    {"id":"A4","target":"可观测性","action":"扩展现有参数测试和运行探针","authority":"测试路径已授权","impact_radius":"目标模块测试","rollback":"移除本任务新增断言"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S3","S4"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S2"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S1","S3","S4"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1","S3","S4"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S1","S3","S4"],"observable":"yes"},
+    {"requirement_id":"R6","sensor_ids":["S2","S5"],"observable":"yes"},
+    {"requirement_id":"R7","sensor_ids":["S1","S4","S5"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"目标数据库已有 dm_parameter 记录","effect":"V198 按设计失败关闭","detectable":true,"controllable":false},
+    {"source":"V198 编号被并行变更占用","effect":"Flyway 版本冲突","detectable":true,"controllable":true},
+    {"source":"旧客户端或旧 Excel 缺少英文名","effect":"新写入被拒绝","detectable":true,"controllable":false},
+    {"source":"无关需求的治理文件不合法","effect":"全量治理检查失败","detectable":true,"controllable":false},
+    {"source":"用户并行修改目标文件","effect":"模型和补丁基线失效","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"Maven 模块测试与前端构建","consequence":"反馈存在分钟级延迟","sampling_rule":"命令完成后再裁决"},
+    {"source":"MySQL 容器与浏览器联调环境","consequence":"运行传感器可能不可用","sampling_rule":"先探测环境；不可用时如实标记盲区，不用源码检查冒充"}
+  ],
+  "assumptions": [
+    {"text":"新迁移目标库没有需保留的参数记录","evidence":"用户明确已有数据不用处理","falsifier":"迁移前 COUNT(*) > 0"},
+    {"text":"MySQL ASCII 大小写不敏感排序规则可用于唯一索引","evidence":"目标技术栈为 MySQL 8.4 且 V197 使用 MySQL DDL","falsifier":"MySQL 8.4 运行探针拒绝该排序规则或允许大小写变体"},
+    {"text":"ParametersPage 现有局部表格滚动可容纳新增一列","evidence":"页面使用 UiDataTable/Element Plus 表格并已有多列布局","falsifier":"四视口 document.scrollWidth 大于 clientWidth"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"A2/A3/A4"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"A1/A2/A4"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"A2/A3/A4"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"A2/A3/A4"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"A2/A3/A4"},
+    {"requirement_id":"R6","observable":"yes","controllable":"yes","action":"A1/A4"},
+    {"requirement_id":"R7","observable":"yes","controllable":"yes","action":"A2/A3/A4"}
+  ],
+  "model_status": "ready"
+}

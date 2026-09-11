@@ -1,0 +1,152 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260910-068",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260910-068-data-migration-dependency/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-031-data-migration",
+    "worktree": "/home/song/workspace/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DataMigrationSystemOptionsController.java",
+      "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/views/content/DependenciesPage.vue",
+      "docs/requirements/REQ-20260910-068-data-migration-dependency/**",
+      "docs/engineering-control/designs/2026-09-10-data-migration-dependency-design.md",
+      "docs/engineering-control/plans/2026-09-10-data-migration-dependency-implementation-plan.md",
+      ".ai-control/requirements/req-20260910-068-dm-dependency/*.json",
+      ".ai-control/requirements/req-20260910-068-dm-dependency/*.md"
+    ],
+    "read_only_paths": [
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      "README.md",
+      "AGENTS.md",
+      "design-h5.md",
+      "governance/modules.yaml",
+      "docs/governance/**",
+      "docs/architecture/**",
+      ".ai-control/original/state.json",
+      "server/src/AGENTS.md",
+      "server/src/modules/AGENTS.md",
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/attachment/**",
+      "web/src/AGENTS.md",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/modules/data-migration/views/content/ParametersPage.vue"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "**/*confidential*"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260910-068 在 platform/infrastructure 追加 V199，调整 dm_dependency 结构并补齐菜单 750 的细粒度权限节点。",
+    "owner_approved": true,
+    "approval_evidence": "2026-09-10 用户确认方案 A、数据模型、接口权限、导入和回收站设计，并确认建立 ready 需求。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build",
+      "node scripts/check-all-governance.mjs"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql"
+    ],
+    "compatibility_and_rollback": "V199 先断言 dm_dependency 为空，再增加 parameter_id、删除 doc_code/doc_name 及旧索引并建立关系唯一键和权限节点；非空失败关闭。已应用 V199 后不得直接降级旧应用，需 Owner 批准的前向补偿迁移。"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=DependencyServiceTest,DataMigrationDependencyMigrationMySqlTest,DataMigrationModuleRegistrationTest,DashboardMetricDefinitionTest,DashboardMetricMySqlTest",
+      "expected": "依赖 CRUD、投影、导入、权限契约、迁移和看板回归通过"
+    },
+    {
+      "name": "permission",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationModuleRegistrationTest,DependencyServiceTest",
+      "expected": "查看、新增、编辑、删除、项目范围与实体写权限契约通过"
+    },
+    {
+      "name": "backend-module",
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "expected": "数据迁移模块及依赖模块测试通过"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build",
+      "expected": "TypeScript 与 Vite 生产构建通过"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260910-068-data-migration-dependency/codex-task-scope.yaml",
+      "expected": "治理与任务范围检查通过"
+    },
+    {
+      "name": "browser",
+      "command": "真实浏览器验收 /data-migration/content/dependencies",
+      "expected": "桌面和 375/390/430 视口走通筛选、新增、编辑、导入、删除和回收站，无页面级横向溢出或控制台错误"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "V199 删除旧列并移除旧上传下载契约，旧应用与新结构不兼容",
+      "目标库存在 dm_dependency 行时迁移按设计失败关闭",
+      "项目内跨提供方存在相同参数英文名时导入行按多义失败",
+      "当前工作区含 REQ-20260906-067 未提交改动，实施必须保护并区分其文件差异"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260910-068-dm-dependency",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260910-068-dm-dependency/state.json",
+      ".ai-control/requirements/req-20260910-068-dm-dependency/execution-T1.json",
+      ".ai-control/requirements/req-20260910-068-dm-dependency/observation-T1.json",
+      ".ai-control/requirements/req-20260910-068-dm-dependency/convergence.json"
+    ],
+    "release_verification": [
+      "目标库 dm_dependency 空表确认",
+      "V199 成功且权限节点可见",
+      "新应用健康检查与依赖页关键路径"
+    ],
+    "rollback": "V199 未执行时回退本需求代码；V199 已执行且无新记录时经 Owner 批准以前向补偿迁移恢复旧结构；存在新关系后修复前进。"
+  }
+}

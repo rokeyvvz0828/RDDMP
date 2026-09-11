@@ -1,0 +1,650 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260911-070-dm-asset-chain-retirement",
+  "handoff_status": "approved",
+  "created_at": "2026-09-11T10:30:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "data-migration-asset-chain-retirement",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-11-data-migration-asset-chain-retirement-design.md",
+    "objective": "彻底下线数据迁移模块内已无调用方的通用文件/结构化资产链路（后端服务与控制器、通用 Excel 辅助、前端通用组件与 API），保留平台附件能力、看板计数登记与全部专属服务。",
+    "users": [
+      "数据迁移开发与运维人员（死代码减少，契约面收敛）",
+      "后续新增内容类型的开发人员（只能建专属 Controller/Source）"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "删除通用文件资产链路后端残留：StructuredAssetService、StructuredAssetController、通用 ExcelService、ContentAssetController 四个文件，以及 ContentFileAssetService 的通用 CRUD/回收站方法。",
+        "acceptance": [
+          "全仓 rg 扫描对上述类型与方法零引用",
+          "mvn -pl :ccb-data-migration -am test 全量通过"
+        ],
+        "priority": "must",
+        "source": "用户指令：彻底下线文件资产通用链路",
+        "counterexample": [
+          "仍存在对已删除类的 import 或调用"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "ContentFileAssetService 精简为仅保留 BUSINESS_TYPE、resolveAttachment、replaceMainFile 及所需依赖，删除 MANAGED_TYPES/MAX_FILE_SIZE/docCodes/userDirectory/permissions 等通用链路成员。",
+        "acceptance": [
+          "ContentFileAssetService 源码不含 MANAGED_TYPES 与 list/create/replace/delete 等通用方法签名",
+          "ReportService 对 replaceMainFile、Plan/Topic/Mapping/Program/ReleaseDrill 对 resolveAttachment 的调用编译通过"
+        ],
+        "priority": "must",
+        "source": "全仓调用方核验（REQ-068 收尾分析）",
+        "counterexample": [
+          "删除了仍在使用的 resolveAttachment/replaceMainFile"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "ContentDocCodeGenerator 前缀收敛为在用 6 类型（PLAN/MAPPING_DOC/SCRIPT/TOPIC/RELEASE_DRILL/REPORT），删除 DEPENDENCY 与 PARAMETER 条目；ContentRecycleBinService 过期类注释更正。",
+        "acceptance": [
+          "ContentDocCodeGeneratorTest 前缀表为 6 项且对 DEPENDENCY/PARAMETER 抛异常",
+          "ContentRecycleBinService 注释不再提及已删除的通用来源"
+        ],
+        "priority": "must",
+        "source": "调用方核验：DEPENDENCY/PARAMETER 无任何 generate 调用方",
+        "counterexample": [
+          "仍有服务以 DEPENDENCY/PARAMETER 调用 generate"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "删除前端死代码：AssetListView.vue、StructuredListView.vue 与 data-migration.ts 中仅被它们使用的通用资产 API/辅助/类型。",
+        "acceptance": [
+          "npm --prefix web run build 通过",
+          "web/src 无对已删组件与 API 函数的引用"
+        ],
+        "priority": "must",
+        "source": "前端引用扫描：两组件无页面引用",
+        "counterexample": [
+          "存在页面仍 import 被删组件"
+        ]
+      },
+      {
+        "id": "R5",
+        "statement": "同步测试与治理断言：DataMigrationModuleRegistrationTest 对已删源码的读取改为 Files.notExists 断言；ContentFileAssetDocCodeGovernanceTest 改为通用链路下线治理断言；ReportServiceTest/TopicServiceTest 构造调用同步。",
+        "acceptance": [
+          "相关测试全部通过且不再读取已删文件",
+          "Files.notExists 断言覆盖 4 个已删后端文件"
+        ],
+        "priority": "must",
+        "source": "REQ-068 收尾遗留的测试耦合",
+        "counterexample": [
+          "测试仍 Files.readString 已删文件"
+        ]
+      },
+      {
+        "id": "R6",
+        "statement": "保留平台附件能力与 ContentAssetTables 看板/组件计数（含 dm_dependency 映射），删除链路不得影响看板计数、项目组件计数与附件访问策略。",
+        "acceptance": [
+          "DashboardMetricMySqlTest、ContentAssetMigrationMySqlTest 等计数测试通过",
+          "ContentAssetTables.java 内容不变"
+        ],
+        "priority": "must",
+        "source": "现场核验：ALL_TABLES/typeFor 供 DashboardService/ProjectComponentService/附件访问策略使用",
+        "counterexample": [
+          "删除了在用计数映射导致看板回归"
+        ]
+      }
+    ],
+    "invariants": [
+      "ContentAssetTables 及其计数 UNION SQL 保持不变",
+      "平台附件能力（ContentAttachmentService/AttachmentStreamService/AttachmentGateway/DataMigrationAssetAttachmentAccessPolicy）保持不变",
+      "全部专属 Service/Controller/RecycleBinSource 保持不变",
+      "无 Flyway 迁移、无权限/菜单/路由变更",
+      "只修改 REQ-20260911-070 writable_paths；不覆盖并行 REQ-067/069 未提交改动"
+    ],
+    "constraints": [
+      "保持 com.ccb.* 包名与现有路由语义",
+      "删除后必须全仓引用扫描零残留",
+      "测试必须真实运行，不以文本断言替代运行证据"
+    ],
+    "non_goals": [
+      "不删除平台附件能力",
+      "不修改 ContentAssetTables",
+      "不改动专属服务与业务页面",
+      "不进行数据库变更",
+      "不重构看板/组件计数实现"
+    ],
+    "selected_approach": {
+      "name": "方案 A：一次性删除 + Files.notExists 断言收敛",
+      "reason": "目标代码全部为已核验的死代码，一次性删除并以文件不存在断言锁定，防止未来静默复活通用链路；平台附件与计数能力独立保留。",
+      "alternatives": [
+        {
+          "name": "保留空壳并仅加注释",
+          "rejected_because": "仍留下死代码与过期契约，不符合『彻底下线』"
+        },
+        {
+          "name": "删除但移除全部治理断言",
+          "rejected_because": "丢失防回归护栏"
+        }
+      ]
+    },
+    "architecture": {
+      "delete_layer": [
+        "StructuredAssetService",
+        "StructuredAssetController",
+        "ExcelService",
+        "ContentAssetController",
+        "AssetListView",
+        "StructuredListView",
+        "通用 API/辅助/DataMigrationAsset"
+      ],
+      "slim_retain": [
+        "ContentFileAssetService 收敛为 resolveAttachment/replaceMainFile/BUSINESS_TYPE",
+        "ContentDocCodeGenerator 收敛 6 前缀",
+        "ContentRecycleBinService 注释修正"
+      ],
+      "retained": [
+        "ContentAssetTables（看板/组件计数）",
+        "平台附件链（ContentAttachmentService/AttachmentStreamService/AttachmentGateway/DataMigrationAssetAttachmentAccessPolicy）",
+        "全部专属 Service/Controller/RecycleBinSource"
+      ]
+    },
+    "error_handling": [
+      "已删除端点由专属 Controller 承接，不存在新错误面",
+      "若未来再次出现通用端点，Files.notExists 治理断言将失败"
+    ],
+    "quality_attributes": {
+      "maintainability": "死代码清零，契约面收敛",
+      "verifiability": "引用扫描+全量测试+构建+Files.notExists 断言",
+      "regression_safety": "计数与附件测试保持，ContentAssetTables 不动"
+    },
+    "verification_strategy": [
+      "全仓 rg 引用扫描（java/vue/ts）",
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build",
+      "git diff --check",
+      "启动后端冒烟：依赖页列表/回收站/看板接口可用"
+    ],
+    "assumptions": [
+      "ContentAssetTables 的 DEPENDENCY 映射在看板计数中仍被使用（已有 DashboardService/ProjectComponentService 调用证据）",
+      "平台附件链为平台公共能力，本期不动（REQ-070 范围外）"
+    ],
+    "unknowns": [
+      {
+        "summary": "无阻塞未知项：删除面已全仓核验",
+        "blocking": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "删除 StructuredAssetService/StructuredAssetController/ExcelService/ContentAssetController",
+        "reason": "四类均无可达调用方（TYPES/MANAGED_TYPES 空集，控制器端点不可达）"
+      },
+      {
+        "id": "D2",
+        "decision": "保留 ContentAssetTables 不动",
+        "reason": "ALL_TABLES/typeFor 仍被 DashboardService、ProjectComponentService、DataMigrationAssetAttachmentAccessPolicy 使用"
+      },
+      {
+        "id": "D3",
+        "decision": "测试以 Files.notExists 锁定删除面",
+        "reason": "防未来静默复活通用链路，同时避免读取已删文件"
+      },
+      {
+        "id": "D4",
+        "decision": "不删除平台附件能力与专属服务",
+        "reason": "仍被在用页面与业务使用，属非目标"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "并行 REQ-067/069 未提交改动引用删除类",
+        "mitigation": "事前已核验引用为零；删除后再次全仓扫描"
+      },
+      {
+        "risk": "删除后看板/组件计数回归",
+        "mitigation": "ContentAssetTables 不动 + DashboardMetricMySqlTest/ContentAssetMigrationMySqlTest 复跑"
+      },
+      {
+        "risk": "前端残留对已删组件的 import",
+        "mitigation": "npm build 类型检查 + 引用扫描"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "2026-09-11 用户指令：彻底下线文件资产通用链路",
+      "confirmed_at": "2026-09-11"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-11-data-migration-asset-chain-retirement-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "只修改 writable_paths",
+      "删除后全仓引用扫描零残留",
+      "不触碰 REQ-067/069 未提交改动"
+    ],
+    "file_map": [
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+        "status": "existing",
+        "responsibility": "T1 删除",
+        "evidence": "TYPES 空集，调用方核验为零"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+        "status": "existing",
+        "responsibility": "T1 删除",
+        "evidence": "端点全部因 TYPES 为空不可达"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+        "status": "existing",
+        "responsibility": "T1 删除",
+        "evidence": "仅被 StructuredAssetController 使用"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+        "status": "existing",
+        "responsibility": "T1 删除",
+        "evidence": "空壳类，仅测试读文件引用"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+        "status": "existing",
+        "responsibility": "T1 精简",
+        "evidence": "仅保留 resolveAttachment/replaceMainFile/BUSINESS_TYPE"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentDocCodeGenerator.java",
+        "status": "existing",
+        "responsibility": "T1 收敛",
+        "evidence": "删除 DEPENDENCY/PARAMETER 前缀"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java",
+        "status": "existing",
+        "responsibility": "T1 注释修正",
+        "evidence": "类注释过期"
+      },
+      {
+        "path": "server/src/modules/data-migration/src/test/**",
+        "status": "existing",
+        "responsibility": "T2 断言同步",
+        "evidence": "五个测试文件与删除面耦合"
+      },
+      {
+        "path": "web/src/modules/data-migration/components/AssetListView.vue",
+        "status": "existing",
+        "responsibility": "T3 删除",
+        "evidence": "仅被 StructuredListView 引用，无页面引用"
+      },
+      {
+        "path": "web/src/modules/data-migration/components/StructuredListView.vue",
+        "status": "existing",
+        "responsibility": "T3 删除",
+        "evidence": "无任何页面引用"
+      },
+      {
+        "path": "web/src/api/data-migration.ts",
+        "status": "existing",
+        "responsibility": "T3 删除通用函数/辅助/类型",
+        "evidence": "仅被两死组件使用"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "后端删除与精简（4 文件删除 + ContentFileAssetService 精简 + docCode 收敛 + 注释修正）",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "全仓引用核验：删除类零调用方",
+          "ContentFileAssetService 仅 resolveAttachment/replaceMainFile 在用"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java(删除)",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java(删除)",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java(删除)",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java(删除)",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentDocCodeGenerator.java",
+            "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [],
+          "produces": []
+        },
+        "steps": [
+          {
+            "id": "S1",
+            "action": "实施步骤",
+            "command": null,
+            "expected": "完成",
+            "evidence": "由执行记录提供"
+          }
+        ],
+        "acceptance_checks": [
+          "rg 对删除类零引用",
+          "mvn 编译通过"
+        ],
+        "risks": [
+          "并行会话引用"
+        ],
+        "rollback": "git checkout 恢复",
+        "stop_conditions": [
+          "删除面出现意外调用方"
+        ],
+        "escalation_conditions": [
+          "REQ-067/069 未提交改动依赖删除类"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "测试与治理断言同步（Files.notExists + 前缀表 + 构造调用）",
+        "requirement_ids": [
+          "R3",
+          "R5"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "五个测试文件与删除面耦合"
+        ],
+        "files": {
+          "create": [],
+          "modify": [],
+          "test": [
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentFileAssetDocCodeGovernanceTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentDocCodeGeneratorTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java",
+            "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [],
+          "produces": []
+        },
+        "steps": [
+          {
+            "id": "S1",
+            "action": "实施步骤",
+            "command": null,
+            "expected": "完成",
+            "evidence": "由执行记录提供"
+          }
+        ],
+        "acceptance_checks": [
+          "相关测试通过"
+        ],
+        "risks": [],
+        "rollback": "git checkout",
+        "stop_conditions": [
+          "出现未预期调用方则停止"
+        ],
+        "escalation_conditions": [
+          "REQ-067/069 依赖冲突则升级"
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "前端死代码删除（组件 + 11 API/辅助 + DataMigrationAsset）",
+        "requirement_ids": [
+          "R4"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "两组件无页面引用",
+          "API 函数仅被两组件使用"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "web/src/modules/data-migration/components/AssetListView.vue(删除)",
+            "web/src/modules/data-migration/components/StructuredListView.vue(删除)",
+            "web/src/api/data-migration.ts"
+          ],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": [],
+          "produces": []
+        },
+        "steps": [
+          {
+            "id": "S1",
+            "action": "实施步骤",
+            "command": null,
+            "expected": "完成",
+            "evidence": "由执行记录提供"
+          }
+        ],
+        "acceptance_checks": [
+          "npm run build 通过"
+        ],
+        "risks": [
+          "残留 import"
+        ],
+        "rollback": "git checkout",
+        "stop_conditions": [
+          "出现未预期调用方则停止"
+        ],
+        "escalation_conditions": [
+          "REQ-067/069 依赖冲突则升级"
+        ]
+      },
+      {
+        "id": "T4",
+        "goal": "集成验证（全量测试、构建、启动冒烟、治理检查）",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R4",
+          "R5",
+          "R6"
+        ],
+        "prerequisites": [
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "input_facts": [],
+        "files": {
+          "create": [],
+          "modify": [
+            "docs/engineering-control/plans/2026-09-11-data-migration-asset-chain-retirement-implementation-plan.md",
+            "docs/requirements/REQ-20260911-070-data-migration-asset-chain-retirement/requirement.md"
+          ],
+          "test": [
+            "server/src/modules/data-migration/target/surefire-reports/**"
+          ]
+        },
+        "interfaces": {
+          "consumes": [],
+          "produces": []
+        },
+        "steps": [
+          {
+            "id": "S1",
+            "action": "实施步骤",
+            "command": null,
+            "expected": "完成",
+            "evidence": "由执行记录提供"
+          }
+        ],
+        "acceptance_checks": [
+          "204+ 测试通过",
+          "build 通过",
+          "冒烟通过"
+        ],
+        "risks": [],
+        "rollback": "git checkout",
+        "stop_conditions": [
+          "出现未预期调用方则停止"
+        ],
+        "escalation_conditions": [
+          "REQ-067/069 依赖冲突则升级"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "测试断言依赖删除后的代码面"
+      },
+      {
+        "from": "T1",
+        "to": "T4",
+        "reason": "集成验证依赖删除完成"
+      },
+      {
+        "from": "T2",
+        "to": "T4",
+        "reason": "集成验证依赖测试同步"
+      },
+      {
+        "from": "T3",
+        "to": "T4",
+        "reason": "前端构建验证依赖删除完成"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1",
+        "T3"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "command": "mvn -pl :ccb-data-migration -am test",
+        "expected": "数据迁移模块及依赖模块测试全量通过"
+      },
+      {
+        "after_tasks": [
+          "T3"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "TypeScript 与 Vite 生产构建通过"
+      },
+      {
+        "after_tasks": [
+          "T4"
+        ],
+        "command": "git diff --check",
+        "expected": "diff 无空白错误"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T1",
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T1",
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T3",
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": [
+          "T2",
+          "T4"
+        ]
+      },
+      {
+        "requirement_id": "R6",
+        "task_ids": [
+          "T4"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "2026-09-11 用户指令",
+      "confirmed_at": "2026-09-11"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "data-migration 模块通用文件/结构化资产链路代码面（4 删除文件 + ContentFileAssetService 精简面 + 前端 2 组件与 API）"
+    ],
+    "state_variable_candidates": [
+      "删除类引用数",
+      "ContentFileAssetService 保留方法可用性",
+      "ContentDocCodeGenerator 前缀数",
+      "前端构建状态",
+      "看板/组件计数回归状态"
+    ],
+    "interface_candidates": [
+      "ContentFileAssetService.resolveAttachment/replaceMainFile/BUSINESS_TYPE",
+      "ContentAssetTables 计数登记",
+      "平台附件链接口"
+    ],
+    "sensor_candidates": [
+      "全仓 rg 引用扫描",
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build",
+      "git diff --check",
+      "浏览器冒烟"
+    ],
+    "actuator_candidates": [
+      "文件删除",
+      "ContentFileAssetService 成员/构造精简",
+      "ContentDocCodeGenerator 前缀收敛",
+      "测试断言改写",
+      "前端 API/组件删除"
+    ],
+    "disturbance_candidates": [
+      "并行 REQ-067/069 未提交改动",
+      "历史 target/surefire 报告残留",
+      "看板计数与 ContentAssetTables 耦合",
+      "文档/注释过期引用"
+    ],
+    "delay_candidates": [
+      "全量 mvn 测试与 Testcontainers 启动耗时",
+      "重启后端耗时"
+    ],
+    "assumptions": [
+      "ContentAssetTables 必须保留",
+      "平台附件链在用",
+      "删除面无隐藏调用方"
+    ]
+  }
+}

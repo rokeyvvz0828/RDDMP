@@ -16,12 +16,10 @@ class ContentDocCodeGeneratorTest {
         Map<String, String> prefixes = Map.ofEntries(
                 Map.entry("PLAN", "PLAN"),
                 Map.entry("MAPPING_DOC", "MAP"),
-                Map.entry("DEPENDENCY", "DEP"),
                 Map.entry("SCRIPT", "SCRIPT"),
                 Map.entry("TOPIC", "TOPIC"),
                 Map.entry("RELEASE_DRILL", "DRILL"),
-                Map.entry("REPORT", "REPORT"),
-                Map.entry("PARAMETER", "PARAM"));
+                Map.entry("REPORT", "REPORT"));
 
         prefixes.forEach((type, prefix) -> {
             String first = generator.generate(type);
@@ -29,6 +27,12 @@ class ContentDocCodeGeneratorTest {
             assertTrue(first.matches(prefix + "-[0-9a-f]{32}"), first);
             assertNotEquals(first, second);
         });
+    }
+
+    @Test
+    void rejectsDeprecatedDependencyAndParameterTypes() {
+        assertThrows(BusinessException.class, () -> generator.generate("DEPENDENCY"));
+        assertThrows(BusinessException.class, () -> generator.generate("PARAMETER"));
     }
 
     @Test

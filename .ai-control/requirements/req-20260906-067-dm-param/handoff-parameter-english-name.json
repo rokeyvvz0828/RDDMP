@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-parameter-english-name",
+  "handoff_status": "approved",
+  "created_at": "2026-09-09T14:44:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "data-migration-parameter-english-name",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-09-data-migration-parameter-english-name-design.md",
+    "objective": "为迁移参数增加必填且不区分大小写唯一的参数英文名，并贯通查询、维护、Excel 与回收站。",
+    "users": ["迁移参数维护人员", "Excel 批量维护人员", "参数查询与回收站管理人员"],
+    "requirements": [
+      {"id":"R1","statement":"参数英文名必填、最大 255 字符且只允许字母、数字和下划线。","acceptance":["新增、编辑和 Excel 导入拒绝空值、超长值和不匹配 [A-Za-z0-9_]+ 的值"],"priority":"must","source":"2026-09-09 用户确认","counterexample":["仅前端校验"]},
+      {"id":"R2","statement":"参数英文名在租户、项目和系统编号范围内不区分大小写唯一。","acceptance":["同范围 ABC_01 与 abc_01 冲突","不同项目或系统可复用"],"priority":"must","source":"2026-09-09 用户确认","counterexample":["同范围大小写变体同时保存"]},
+      {"id":"R3","statement":"参数英文名贯通 REST、列表、详情、表单和回收站。","acceptance":["请求 parameterNameEn，响应 parameter_name_en","页面和回收站可观察"],"priority":"must","source":"用户确认设计","counterexample":["仅落库不返回"]},
+      {"id":"R4","statement":"Excel 模板、逐行导入和条件导出包含参数英文名。","acceptance":["六列模板","逐行校验","导出包含英文名"],"priority":"must","source":"用户确认设计","counterexample":["旧五列可写入缺字段记录"]},
+      {"id":"R5","statement":"关键字同时匹配参数名称、参数英文名和参数说明。","acceptance":["活动列表和回收站可按英文名片段检索"],"priority":"must","source":"2026-09-09 用户确认","counterexample":["英文名不可搜索"]},
+      {"id":"R6","statement":"追加 V198 建立非空列与唯一约束，不处理已有参数数据。","acceptance":["V197 不变","空表成功","有记录时失败且不回填"],"priority":"must","source":"用户确认与 Flyway 规则","counterexample":["修改 V197 或自动回填"]},
+      {"id":"R7","statement":"保持项目范围、RBAC、Owner、审计、逻辑删除和响应式语义。","acceptance":["不新增权限码","保留 PARAMETER 审计","四视口无页面级溢出"],"priority":"must","source":"REQ-20260906-067 与治理规则","counterexample":["前端显隐替代服务端权限"]}
+    ],
+    "invariants": ["data-migration 拥有 dm_parameter", "中文参数名规则不变", "菜单路由权限不变", "V197 不修改", "不访问生产"],
+    "constraints": ["Java 17/Spring Boot 3.4.4/MySQL 8.4/Vue 3", "只写 writable_paths", "复用现有 UI 与项目范围", "ASCII 值大小写不敏感唯一"],
+    "non_goals": ["不处理已有数据", "不改系统参数管理", "不新增权限或公共组件", "不改变其他内容类型"],
+    "selected_approach": {"name":"独立英文名列与大小写不敏感唯一索引","reason":"保留展示大小写并由数据库兜住并发。","alternatives":[{"name":"生成小写辅助列","rejected_because":"增加无必要复杂度。"},{"name":"统一转大写存储","rejected_because":"改变用户输入展示。"}]},
+    "architecture": {
+      "boundary":{"inside":["V198","ParameterService/Controller","API/ParametersPage","Excel/回收站","当前账本"],"outside":["系统参数管理","其他内容类型","公共 UI","已有数据转换"]},
+      "components":[{"name":"V198","responsibility":"列与索引及空表断言","depends_on":["V197"]},{"name":"ParameterService","responsibility":"格式、唯一、查询、Excel、回收站、审计","depends_on":["JdbcTemplate","权限服务"]},{"name":"ParametersPage","responsibility":"录入展示与前端状态","depends_on":["data-migration API","components/ui"]}],
+      "interfaces":[{"name":"Parameter REST","producer":"ccb-data-migration","consumers":["ParametersPage"],"contract":"parameterNameEn 必填，parameter_name_en 响应，400/409 错误。"},{"name":"Parameter Excel","producer":"ccb-data-migration","consumers":["Excel 用户"],"contract":"六列导入与含英文名导出。"},{"name":"Parameter keyword","producer":"ccb-data-migration","consumers":["列表","回收站"],"contract":"中文名、英文名、说明三字段匹配。"}],
+      "data_flows":[{"input":"parameterNameEn","transitions":["前端预检","服务端校验","重复预检","唯一索引","审计"],"output":"parameter_name_en"},{"input":"六列 Excel","transitions":["逐行解析","格式与重复校验","合法行写入"],"output":"成功数和失败行"}]
+    },
+    "error_handling": [{"condition":"英文名非法","behavior":"BAD_REQUEST","recovery":"修正重试"},{"condition":"大小写重复","behavior":"CONFLICT","recovery":"更换英文名或范围"},{"condition":"Excel 单行失败","behavior":"跳过并报告行号","recovery":"修正失败行"},{"condition":"V198 发现数据","behavior":"失败关闭","recovery":"重新定标数据处置"}],
+    "quality_attributes": {"security":["后端认证/RBAC/项目范围/Owner"],"performance":["唯一索引精确判重"],"compatibility":["响应加字段，写入为必填升级"],"operations":["V198 先于应用且不绕过断言"]},
+    "verification_strategy": [{"requirement_ids":["R1","R2","R3"],"signal":"服务字段格式唯一行为","method":"JUnit"},{"requirement_ids":["R2","R6"],"signal":"DDL 与迁移行为","method":"Flyway/MySQL 8.4"},{"requirement_ids":["R4","R5"],"signal":"Excel 与查询","method":"POI/SQL 断言"},{"requirement_ids":["R3","R7"],"signal":"页面状态和溢出","method":"构建与四视口浏览器"}],
+    "assumptions": [{"text":"执行环境没有需保留的参数记录","basis":"用户确认已有数据不用处理","falsifier":"COUNT(*) > 0"}],
+    "unknowns": [],
+    "decisions": [{"id":"D1","decision":"仅字母数字下划线","reason":"用户指定","source":"用户"},{"id":"D2","decision":"同范围不区分大小写唯一","reason":"ABC_01 与 abc_01 重复","source":"用户"},{"id":"D3","decision":"不处理已有数据且空表断言","reason":"用户指定且失败关闭","source":"用户"}],
+    "risks": [{"risk":"目标库有记录","impact":"迁移阻断","mitigation":"部署前只读检查并停止"},{"risk":"旧客户端缺字段","impact":"写入失败","mitigation":"前后端同批发布"},{"risk":"新增列扩大表格","impact":"移动溢出","mitigation":"局部滚动与四视口验收"}],
+    "approval": {"status":"approved","evidence":"2026-09-09 用户复核设计后要求执行。","confirmed_at":"2026-09-09T14:44:00+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-09-data-migration-parameter-english-name-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["只写任务授权路径", "V197 不变且仅追加 V198", "不处理已有数据", "权限审计不变", "串行实施"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql","status":"candidate-new","responsibility":"空表断言、英文名列与唯一索引","evidence":"当前最高 V197"},
+      {"path":"server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java","status":"existing","responsibility":"业务规则、SQL、Excel、回收站","evidence":"源码勘察"},
+      {"path":"server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java","status":"existing","responsibility":"行为测试","evidence":"现有测试"},
+      {"path":"web/src/api/data-migration.ts","status":"existing","responsibility":"前端 API 类型","evidence":"现有 Parameter 类型"},
+      {"path":"web/src/modules/data-migration/views/content/ParametersPage.vue","status":"existing","responsibility":"参数交互","evidence":"现有专属页面"}
+    ],
+    "tasks": [
+      {"id":"T1","goal":"数据库与后端形成可测试英文名契约","requirement_ids":["R1","R2","R3","R4","R5","R6","R7"],"prerequisites":[],"input_facts":["V197 已建参数域","ParameterService 集中所有入口","Controller RBAC 不变"],"files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql"],"modify":["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java","server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java"],"test":["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java","server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"]},"interfaces":{"consumes":["parameterNameEn","六列 Excel"],"produces":["parameter_name_en","400 格式错误","409 唯一冲突","三字段关键字"]},"steps":[{"id":"T1-S1","action":"添加失败测试","command":"mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"新增英文名断言先失败","evidence":"失败测试名"},{"id":"T1-S2","action":"追加 V198 并扩展 ParameterService","command":null,"expected":"列、索引、校验、Excel、搜索和回收站契约实现","evidence":"实际 diff"},{"id":"T1-S3","action":"运行局部回归","command":"mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"0 失败","evidence":"Surefire 与退出码"},{"id":"T1-S4","action":"检查迁移与 V197 不变","command":"node scripts/check-flyway-migrations.mjs","expected":"迁移检查通过且 V197 无 diff","evidence":"退出码与 git diff"}],"acceptance_checks":["格式边界","大小写冲突与跨范围复用","六列导入/含英文名导出","活动与回收站搜索","权限审计不变"],"risks":["目标库有数据","排序规则差异"],"rollback":"未发布撤销 T1；已执行 V198 时保留结构并关闭写入口","stop_conditions":["V198 编号冲突","目标库有记录","需要改 V197 或范围外文件"],"escalation_conditions":["MySQL 不支持排序规则","需要保留已有数据","唯一语义冲突"]},
+      {"id":"T2","goal":"前端完整呈现和提交参数英文名","requirement_ids":["R1","R3","R4","R5","R7"],"prerequisites":["T1"],"input_facts":["T1 固定 parameterNameEn/parameter_name_en 和六列 Excel","现有页面具备全状态和局部滚动"],"files":{"create":[],"modify":["web/src/api/data-migration.ts","web/src/modules/data-migration/views/content/ParametersPage.vue"],"test":[]},"interfaces":{"consumes":["T1 REST/Excel 契约"],"produces":["类型安全表单、列表详情和搜索交互"]},"steps":[{"id":"T2-S1","action":"运行前端源码契约探针","command":"node --input-type=module -e \"import fs from 'node:fs'; const a=fs.readFileSync('web/src/api/data-migration.ts','utf8'); const p=fs.readFileSync('web/src/modules/data-migration/views/content/ParametersPage.vue','utf8'); if(![a.includes('parameter_name_en'),a.includes('parameterNameEn'),p.includes('参数英文名')].every(Boolean)) process.exit(1)\"","expected":"实施前非 0，实施后 0","evidence":"探针退出码"},{"id":"T2-S2","action":"扩展 API 类型和页面表单展示","command":null,"expected":"字段全链路、正则提示、搜索和模板文案一致","evidence":"实际 diff"},{"id":"T2-S3","action":"前端构建","command":"npm --prefix web run build","expected":"vue-tsc/Vite 0 错误","evidence":"构建退出码"}],"acceptance_checks":["必填和非法字符提示","编辑反显","列表详情展示","搜索与模板说明","移动端局部滚动"],"risks":["旧 API 类型遗漏","新增列移动溢出"],"rollback":"同步撤销 API 类型与页面字段，不形成前后端版本错配","stop_conditions":["需要改公共 UI","T1 契约变化","用户并行冲突"],"escalation_conditions":["页面级溢出无法局部修复","产品要求新筛选器"]},
+      {"id":"T3","goal":"完成组合验证、独立观测和收敛","requirement_ids":["R2","R3","R4","R5","R6","R7"],"prerequisites":["T1","T2"],"input_facts":["T1/T2 局部证据可用","数据库与写契约升级需组合测量"],"files":{"create":[],"modify":[".ai-control/requirements/req-20260906-067-dm-param/*.json"],"test":["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**"]},"interfaces":{"consumes":["T1/T2 diff 和测试输出"],"produces":["execution/observation/feedback/convergence"]},"steps":[{"id":"T3-S1","action":"运行后端、Flyway、治理和 diff 检查","command":"mvn -pl :ccb-data-migration -am test && node scripts/check-flyway-migrations.mjs && node scripts/check-all-governance.mjs && git diff --check","expected":"目标检查通过；无关治理失败单独记录","evidence":"各命令退出码"},{"id":"T3-S2","action":"MySQL 8.4 验证空表、大小写冲突和非空表失败关闭","command":null,"expected":"三组信号符合设计","evidence":"测试容器 SQL 结果"},{"id":"T3-S3","action":"四视口真实浏览器验收","command":null,"expected":"核心路径、权限、控制台和溢出检查通过","evidence":"路由、视口、API/DOM/console"},{"id":"T3-S4","action":"范围审计和账本收敛","command":"git diff --check","expected":"只含授权文件且 V197 不变","evidence":"范围报告和账本"}],"acceptance_checks":["全部 must 有证据","P0/P1 为 0","范围一致","未执行验证不虚报"],"risks":["运行环境不可用","无关治理失败"],"rollback":"未发布撤销；已执行 V198 保留结构并关闭入口","stop_conditions":["越权或跨租户","V198 改数据","V197 变化","唯一性失败"],"escalation_conditions":["需生产数据决策","需公共平台或权限改动"]}
+    ],
+    "dependency_edges": [
+      {"from":"T1","to":"T2","reason":"T2 depends on the backend field and Excel contract fixed by T1"},
+      {"from":"T1","to":"T3","reason":"T3 verifies T1 database and backend behavior"},
+      {"from":"T2","to":"T3","reason":"T3 verifies the integrated frontend and backend workflow"}
+    ],
+    "parallel_groups": [["T1"],["T2"],["T3"]],
+    "integration_checks": [{"after_tasks":["T1"],"command":"mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test","expected":"0 失败"},{"after_tasks":["T2"],"command":"npm --prefix web run build","expected":"构建通过"},{"after_tasks":["T1","T2"],"command":"mvn -pl :ccb-data-migration -am test && node scripts/check-flyway-migrations.mjs && git diff --check","expected":"目标回归通过"}],
+    "coverage": [{"requirement_id":"R1","task_ids":["T1","T2"]},{"requirement_id":"R2","task_ids":["T1","T3"]},{"requirement_id":"R3","task_ids":["T1","T2","T3"]},{"requirement_id":"R4","task_ids":["T1","T2","T3"]},{"requirement_id":"R5","task_ids":["T1","T2","T3"]},{"requirement_id":"R6","task_ids":["T1","T3"]},{"requirement_id":"R7","task_ids":["T1","T2","T3"]}],
+    "approval": {"status":"approved","evidence":"2026-09-09 用户明确要求执行已确认设计；该指令批准按当前计划进入实施。","confirmed_at":"2026-09-09T14:47:00+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["V198", "ParameterService/Controller", "前端 API/ParametersPage", "参数测试和当前账本"],
+    "state_variable_candidates": ["英文名格式", "范围内规范值唯一", "Excel 列顺序", "搜索字段集合", "权限审计不变量", "响应式溢出"],
+    "interface_candidates": ["parameterNameEn -> parameter_name_en", "六列导入", "含英文名导出", "keyword 三字段匹配"],
+    "sensor_candidates": ["JUnit", "Flyway 静态检查", "MySQL 8.4", "TypeScript 构建", "源码探针", "真实浏览器"],
+    "actuator_candidates": ["V198 DDL", "ParameterService SQL/校验", "API 类型", "ParametersPage 表单与列"],
+    "disturbance_candidates": ["V198 编号竞争", "目标库有数据", "排序规则差异", "旧 Excel", "无关治理失败", "用户并行修改"],
+    "delay_candidates": ["Maven 测试", "前端构建", "MySQL 容器", "浏览器联调"],
+    "assumptions": [{"text":"目标迁移环境没有需保留的参数记录","basis":"用户确认已有数据不用处理","falsifier":"COUNT(*) > 0"}]
+  }
+}

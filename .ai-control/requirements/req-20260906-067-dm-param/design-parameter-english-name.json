@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-parameter-english-name",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-09-data-migration-parameter-english-name-design.md",
+  "objective": "为迁移参数增加必填且不区分大小写唯一的参数英文名，并贯通查询、维护、Excel 与回收站。",
+  "users": [
+    "迁移参数维护人员通过当前项目的新增和编辑抽屉维护中英文名称",
+    "批量维护人员通过 Excel 模板导入和条件导出参数英文名",
+    "查询人员通过参数名称、参数英文名或说明检索活动及回收站记录"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "参数英文名必填、最大 255 字符且只允许字母、数字和下划线。",
+      "acceptance": ["新增、编辑和 Excel 导入均由服务端拒绝空值、超长值和不匹配 [A-Za-z0-9_]+ 的值"],
+      "priority": "must",
+      "source": "2026-09-09 用户确认",
+      "counterexample": ["仅前端 required，服务端接受中文、空格或符号"]
+    },
+    {
+      "id": "R2",
+      "statement": "参数英文名在租户、项目和系统编号范围内不区分大小写唯一。",
+      "acceptance": ["同范围已有 ABC_01 时创建或更新 abc_01 返回冲突", "不同项目或系统编号可复用同一英文名"],
+      "priority": "must",
+      "source": "2026-09-09 用户确认",
+      "counterexample": ["ABC_01 与 abc_01 在同一范围同时保存成功"]
+    },
+    {
+      "id": "R3",
+      "statement": "参数英文名贯通 REST、列表、详情、表单和回收站。",
+      "acceptance": ["请求使用 parameterNameEn，响应返回 parameter_name_en", "页面新增编辑、列表详情和回收站详情均可观察该字段"],
+      "priority": "must",
+      "source": "用户确认的完整设计",
+      "counterexample": ["字段仅落库但页面或详情不返回"]
+    },
+    {
+      "id": "R4",
+      "statement": "Excel 模板、逐行导入和条件导出包含参数英文名。",
+      "acceptance": ["模板为六列并包含参数英文名", "导入逐行校验格式和不区分大小写重复", "导出在参数名称后输出参数英文名"],
+      "priority": "must",
+      "source": "用户确认的完整设计",
+      "counterexample": ["旧五列模板仍可导入缺少英文名的记录"]
+    },
+    {
+      "id": "R5",
+      "statement": "关键字同时匹配参数名称、参数英文名和参数说明。",
+      "acceptance": ["活动列表和回收站均可通过英文名片段检索对应记录"],
+      "priority": "must",
+      "source": "2026-09-09 用户确认",
+      "counterexample": ["英文名只展示但不可搜索"]
+    },
+    {
+      "id": "R6",
+      "statement": "通过追加 V198 建立非空列与数据库唯一约束，不处理已有参数数据。",
+      "acceptance": ["V197 内容不变", "空表可应用 V198", "存在参数记录时 V198 失败且不回填占位值"],
+      "priority": "must",
+      "source": "2026-09-09 用户确认已有数据不用处理；仓库 Flyway 只追加规则",
+      "counterexample": ["修改 V197 或自动生成 PARAM_<id> 作为旧记录英文名"]
+    },
+    {
+      "id": "R7",
+      "statement": "保持既有项目范围、RBAC、Owner、审计、逻辑删除和响应式交互语义。",
+      "acceptance": ["不新增权限码", "写操作继续记录 PARAMETER 审计", "四个验收视口无页面级横向溢出"],
+      "priority": "must",
+      "source": "REQ-20260906-067 与仓库治理规则",
+      "counterexample": ["依赖前端显隐代替后端权限或引入新公共样式"]
+    }
+  ],
+  "invariants": [
+    "business/data-migration 继续拥有 dm_parameter 数据",
+    "parameter_name 的既有必填和唯一规则不变",
+    "菜单 752、路由和权限码不变",
+    "V197 不修改",
+    "不访问生产系统或生产数据"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3 和现有 Maven/Vite 模块",
+    "只修改 codex-task-scope.yaml writable_paths",
+    "复用 UiDataTable、UiFormDrawer、现有导入对话框和项目范围状态",
+    "数据库列与唯一索引必须以大小写不敏感语义比较 ASCII 值"
+  ],
+  "non_goals": [
+    "不处理或回填已有 dm_parameter 数据",
+    "不改造系统管理参数页面",
+    "不新增权限、码值、公共组件或样式体系",
+    "不改变其他数据迁移内容类型"
+  ],
+  "selected_approach": {
+    "name": "独立英文名列与大小写不敏感唯一索引",
+    "reason": "保留用户输入大小写，以最小数据模型直接满足字符规则和不区分大小写唯一，并由数据库兜住并发。",
+    "alternatives": [
+      {"name": "生成小写辅助列后建立唯一索引", "rejected_because": "值域仅 ASCII 规则字符，额外列和生成表达式增加无必要复杂度。"},
+      {"name": "统一转大写后存储", "rejected_because": "会改变用户输入的展示形式。"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["dm_parameter 参数英文名字段与索引", "ParameterService/Controller 契约", "参数页面与 API 类型", "Excel 和回收站字段传播", "当前需求与控制账本"],
+      "outside": ["系统参数管理", "其他数据迁移内容类型", "公共 UI 组件", "已有数据转换"]
+    },
+    "components": [
+      {"name": "V198 Flyway migration", "responsibility": "空表断言、非空英文名列和不区分大小写唯一索引", "depends_on": ["V197 dm_parameter"]},
+      {"name": "ParameterService", "responsibility": "格式、唯一性、查询、Excel、回收站与审计编排", "depends_on": ["JdbcTemplate", "DataMigrationPermissionService"]},
+      {"name": "ParameterController", "responsibility": "保持 REST 路由与 RBAC，传递扩展字段", "depends_on": ["ParameterService"]},
+      {"name": "ParametersPage.vue", "responsibility": "英文名录入、展示、校验提示和响应式交互", "depends_on": ["data-migration API", "components/ui"]}
+    ],
+    "interfaces": [
+      {"name": "Parameter create/update", "producer": "ccb-data-migration", "consumers": ["ParametersPage.vue"], "contract": "parameterNameEn 必填；响应 parameter_name_en；非法返回 400，重复返回 409。"},
+      {"name": "Parameter Excel", "producer": "ccb-data-migration", "consumers": ["ParametersPage.vue", "Excel 用户"], "contract": "模板和导出包含参数英文名，导入逐行验证并报告失败。"},
+      {"name": "Parameter keyword", "producer": "ccb-data-migration", "consumers": ["参数列表", "统一回收站"], "contract": "一个 keyword 匹配中文名、英文名和说明。"}
+    ],
+    "data_flows": [
+      {"input": "单条 parameterNameEn", "transitions": ["前端预检", "服务端格式校验", "范围内不区分大小写预检", "数据库唯一索引", "审计"], "output": "含 parameter_name_en 的参数记录"},
+      {"input": "六列 Excel", "transitions": ["逐行读取英文名", "格式与文件内重复校验", "数据库重复校验", "合法行写入"], "output": "成功数和带行号失败列表"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "英文名为空、超长或含非法字符", "behavior": "返回字段明确的 BAD_REQUEST，页面就近显示", "recovery": "用户修正后重试"},
+    {"condition": "大小写不敏感唯一冲突", "behavior": "应用预检或数据库异常统一转为 CONFLICT", "recovery": "用户更换英文名或范围"},
+    {"condition": "Excel 单行不合法", "behavior": "跳过该行并返回实际行号，不影响其他合法行", "recovery": "修正失败行后重新导入"},
+    {"condition": "V198 发现已有参数记录", "behavior": "迁移失败关闭且不改写数据", "recovery": "停止发布并由需求负责人重新决定数据处置"}
+  ],
+  "quality_attributes": {
+    "security": ["认证、RBAC、项目范围和 Owner 校验保持在服务端"],
+    "performance": ["唯一索引支持精确判重；关键字分页查询增加一个 LIKE 分支"],
+    "compatibility": ["查询响应加字段兼容；写请求和 Excel 模板为有意的必填契约升级"],
+    "operations": ["V198 先于新应用；失败时保持旧结构，不绕过空表断言"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R3"], "signal": "服务与 API 字段、格式和唯一行为", "method": "ParameterServiceTest 与聚焦 Maven 测试"},
+    {"requirement_ids": ["R2", "R6"], "signal": "列、排序规则、索引和空表前置条件", "method": "Flyway 静态检查和 MySQL 8.4 迁移测试"},
+    {"requirement_ids": ["R4", "R5"], "signal": "六列模板、逐行导入、导出和关键字 SQL", "method": "Apache POI 单测与查询断言"},
+    {"requirement_ids": ["R3", "R7"], "signal": "页面状态、字段可达性和无页面级溢出", "method": "Vite 构建及 1280/375/390/430 真实浏览器验收"}
+  ],
+  "assumptions": [
+    {"text": "V198 执行环境没有需要保留的 dm_parameter 记录", "basis": "用户明确确认已有数据不用处理", "falsifier": "迁移前 COUNT(*) 大于 0"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "只允许字母、数字和下划线，允许数字或下划线开头", "reason": "严格按用户给定字符范围，不附加首字符规则", "source": "2026-09-09 用户确认"},
+    {"id": "D2", "decision": "同租户、项目和系统编号内不区分大小写唯一", "reason": "ABC_01 与 abc_01 明确视为重复", "source": "2026-09-09 用户确认"},
+    {"id": "D3", "decision": "不处理已有数据，V198 采用空表断言", "reason": "不生成无业务依据的占位英文名", "source": "2026-09-09 用户确认"},
+    {"id": "D4", "decision": "字段贯通 REST、页面、Excel、回收站并纳入关键字搜索", "reason": "避免不同维护入口产生不完整记录", "source": "2026-09-09 用户确认完整设计"}
+  ],
+  "risks": [
+    {"risk": "目标环境存在参数记录", "impact": "V198 失败并阻止发布", "mitigation": "部署前执行只读行数检查；不绕过断言，必要时重新定标数据迁移需求。"},
+    {"risk": "旧客户端或旧 Excel 缺少英文名", "impact": "写入或导入失败", "mitigation": "前后端和新模板同批发布并返回明确错误。"},
+    {"risk": "新增表格列扩大移动端宽度", "impact": "局部滚动或页面溢出", "mitigation": "保持 UiDataTable 局部滚动边界并在三个手机视口检查 scrollWidth。"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "2026-09-09 用户在落盘设计交付后明确要求执行。",
+    "confirmed_at": "2026-09-09T14:44:00+08:00"
+  }
+}

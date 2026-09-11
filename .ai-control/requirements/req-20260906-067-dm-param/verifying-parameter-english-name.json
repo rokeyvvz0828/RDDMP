@@ -1,0 +1,46 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["V198 ascii_general_ci NOT NULL", "ParameterServiceTest 必填/字符规则", "前端必填与正则提示"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["MySQL 8.4 同范围 ABC_01/abc_01 冲突 1062", "跨项目可复用"], "limitations": ["运行验证在 Testcontainers/隔离库完成"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["REST parameterNameEn/parameter_name_en 契约", "浏览器列表与详情显示参数英文名"], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["六列模板、逐行校验、导出英文名单测通过"], "limitations": ["Excel 上传未做真实浏览器文件选择"]},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["活动列表与回收站关键字搜索覆盖英文名"], "limitations": []},
+    {"id": "R6", "result": "pass", "task_ids": ["T2", "T3"], "evidence": ["npm build 退出码0", "375/390/430 共享移动样式约束无控制台错误"], "limitations": ["CDP 该环境偶现 innerWidth 460，已披露为残余风险"]},
+    {"id": "R7", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["DataMigrationModuleRegistrationTest 通过", "参数服务权限/审计断言通过"], "limitations": []}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["32 项后端测试 0 失败", "MySQL 8.4 迁移/唯一性验证"]},
+    {"id": "T2", "status": "verified", "evidence": ["前端契约探针通过", "npm build 退出码0"]},
+    {"id": "T3", "status": "verified", "evidence": ["聚焦后端测试0失败", "npm build 0", "浏览器详情可达", "check-codex-scope 通过"]}
+  ],
+  "feedback_summary": {"total": 1, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "mvn -pl :ccb-data-migration -am test（聚焦 ParameterServiceTest/DataMigrationModuleRegistrationTest）", "result": "pass", "evidence": "退出码0"},
+    {"check": "npm --prefix web run build", "result": "pass", "evidence": "退出码0"},
+    {"check": "node scripts/check-codex-scope.mjs --scope ... --base HEAD --head HEAD --working-tree", "result": "pass", "evidence": "18 个改动均在授权范围"},
+    {"check": "git diff --check", "result": "pass", "evidence": "无空白错误"},
+    {"check": "V197 diff", "result": "pass", "evidence": "V197 无 diff"}
+  ],
+  "invariant_results": [
+    {"invariant": "V197 历史迁移保持不变", "result": "pass", "evidence": "git diff V197 为空"},
+    {"invariant": "所有改动在 codex-task-scope writable_paths 内", "result": "pass", "evidence": "check-codex-scope --working-tree 通过"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "运行中的旧后端不包含新字段", "result": "pass", "evidence": "浏览器验收通过 CDP 请求拦截隔离；后端单测与 MySQL 运行验证独立通过"},
+    {"disturbance": "check-all-governance 因无关 req-061 YAML 文件失败", "result": "pass", "evidence": "目标范围检查 check-codex-scope 通过，未修改无关文件"}
+  ],
+  "residual_risks": [
+    "CDP 移动视口 innerWidth 在该环境偶现 460；共享样式 body overflow-x:hidden 已约束可视横向滚动，建议真实设备复核",
+    "后端进程早于改动，浏览器验收使用请求拦截而非真实端到端",
+    "V198 上线前须确认目标库 dm_parameter 为空表"
+  ],
+  "gate_result": "pass",
+  "route_reason": "7 项 must 均绑定证据且 P0/P1=0；三次采样完成、T1-T3 verified、F-0001 已关闭、范围与不变量审计通过"
+}

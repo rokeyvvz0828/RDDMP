@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "tasks": [
+    {
+      "id": "T1",
+      "name": "数据库与码值契约",
+      "scope": ["V200__data_migration_parameter_field.sql", "DataMigrationCodeValueService.java"],
+      "outputs": {
+        "dm_parameter_field": "子表、唯一键(en/cn 含 deleted)、查询索引，幂等",
+        "code_values": "DM_PARAMETER_FIELD_TYPE 注册并可 options/requireActive",
+        "contract": "字段列名与码值类别定稿"
+      },
+      "sensors": ["DataMigrationParameterFieldMigrationMySqlTest", "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationModuleRegistrationTest"]
+    },
+    {
+      "id": "T2",
+      "name": "后端字段领域",
+      "scope": ["ParameterService.java", "ParameterController.java"],
+      "outputs": {
+        "field_crud": "列表/批量新增/行编辑/删除/批量删除",
+        "create_with_fields": "新增参数携带 fields 批量创建",
+        "cascade": "删除/恢复/彻底删除级联字段",
+        "list_detail": "列表 field_count 与详情 fields"
+      },
+      "sensors": ["ParameterServiceTest 扩展"]
+    },
+    {
+      "id": "T3",
+      "name": "导入扩展",
+      "scope": ["ParameterService.java importParameters/template"],
+      "outputs": {"import": "十一列模板、参数组解析、字段写入与行级错误"},
+      "sensors": ["ParameterServiceTest import 扩展"]
+    },
+    {
+      "id": "T4",
+      "name": "前端 API 与页面",
+      "scope": ["web/src/api/data-migration.ts", "ParametersPage.vue"],
+      "outputs": {"frontend": "字段类型与请求封装、字段批量区、字段抽屉、详情字段、导入文案"},
+      "sensors": ["npm --prefix web run build", "浏览器验收"]
+    },
+    {
+      "id": "T5",
+      "name": "集成验证与收敛",
+      "scope": ["mvn 聚焦测试", "治理/范围检查", "git diff --check"],
+      "outputs": {"evidence": "全部验证命令真实执行结果记录"},
+      "sensors": ["命令退出码与输出"]
+    }
+  ],
+  "dependency_order": ["T1", "T2", "T3", "T4", "T5"],
+  "rollback": "未应用 V200 时回退代码；已应用且无新数据删除迁移/子表/码值；有数据后修复前进。",
+  "stop_conditions": [
+    "修改了任务范围外文件",
+    "覆盖 REQ-067/068 既有差异",
+    "唯一约束失效或构建/治理失败"
+  ]
+}

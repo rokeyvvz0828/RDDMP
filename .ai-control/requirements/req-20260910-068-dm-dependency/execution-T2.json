@@ -1,0 +1,44 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyService.java（新建）",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DependencyRecycleBinSource.java（新建）",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DependencyController.java（新建）",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DependencyServiceTest.java（新建）"
+  ],
+  "requirements_addressed": [
+    "R2",
+    "R3",
+    "R4",
+    "R6",
+    "R7"
+  ],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am test -Dtest=DependencyServiceTest,ParameterServiceTest,DashboardMetricDefinitionTest,DataMigrationModuleRegistrationTest,ContentFileAssetDocCodeGovernanceTest -Dsurefire.failIfNoSpecifiedTests=false"
+  ],
+  "local_checks": [
+    "列表 SQL 恒定项目过滤并投影参数中英文名、提供方/使用方系统编号与中文名、更新人",
+    "新增/编辑校验参数存在、使用方系统启用、关系唯一（应用预检 409 + DB 唯一键兜底）",
+    "编辑不允许改变项目归属，写权限校验 Owner/管理员",
+    "模板固定两列「参数英文名、使用方系统编号」；非法表头拒绝整个文件",
+    "导入逐行部分成功：零命中/多义/停用系统/文件内重复/库内重复均报告实际行号，合法行独立写入并审计",
+    "回收站来源 DEPENDENCY 委托 DependencyService：计数/列表/详情/恢复/彻底删除，恢复前复验参数与系统有效性",
+    "写操作均产生 DEPENDENCY 审计（CREATE/UPDATE/DELETE/IMPORT/RESTORE/PURGE）"
+  ],
+  "diff_summary": [
+    "专属域服务与控制器建立，回收站来源按 ParameterRecycleBinSource 范式封装；DependencyServiceTest 覆盖列表投影、CRUD、唯一冲突、导入部分成功、多义、回收站与权限"
+  ],
+  "invariants_checked": [
+    "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+    "名称只读投影不冗余写入依赖表",
+    "参数英文名唯一范围保持租户+项目+提供方系统"
+  ],
+  "disturbances": [
+    "计划文件清单包含 DependencyRecycleBinSource.java；实现初版让 DependencyService 直接实现 RecycleBinSource，随后按设计/范式拆分为独立来源类并回归",
+    "导入表头校验初版未实现，按设计错误处理补齐"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "T3 通用链路剥离、参数引用保护与看板适配"
+}

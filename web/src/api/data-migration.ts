@@ -1,9 +1,8 @@
 import http from './http'
 import type { ApiResponse } from '../types/auth'
-import { getAttachmentDownload, uploadAttachment } from './attachments'
+import { getAttachmentDownload } from './attachments'
 
 export interface DataMigrationMenu { id: number; name: string; routePath: string }
-export interface DataMigrationAsset { id: number; project_id: number; system_code?: string; asset_type: string; asset_code: string; asset_name: string; file_size?: number; structured_data?: unknown; owner_id: number }
 export interface DataMigrationComponent {
   project_id: number
   project_code: string
@@ -77,27 +76,6 @@ export function setDataMigrationComponentEnabled(projectId: number, systemCode: 
   return http.put<ApiResponse<DataMigrationComponent>>('/data-migration/components/enabled', null, { params: { projectId, systemCode, enabled } })
 }
 
-/** 文件型内容类型 -> 资源路径段（REQ-20260831-050：一菜单一端点，替代旧 /assets/{type}）。 */
-const FILE_RESOURCE_SEGMENTS: Record<string, string> = {
-  PLAN: 'plans', MAPPING_DOC: 'mappings', DEPENDENCY: 'dependencies',
-  SCRIPT: 'programs',
-}
-/** 结构化内容类型 -> 新资源段；中间表统一使用目标表/字段接口。 */
-const STRUCTURED_RESOURCE_SEGMENTS: Record<string, string> = {
-  PARAMETER: 'parameters',
-}
-function fileSegment(type: string): string {
-  const segment = FILE_RESOURCE_SEGMENTS[type]
-  if (!segment) throw new Error(`不支持的文件内容类型：${type}`)
-  return segment
-}
-/** 结构化端点基路径：仅允许规则和参数，避免回退到旧中间表端点。 */
-function structuredBase(type: string): string {
-  const segment = STRUCTURED_RESOURCE_SEGMENTS[type]
-  if (!segment) throw new Error(`不支持的结构化内容类型：${type}`)
-  return `/data-migration/${segment}`
-}
-
 export interface DataMigrationContentRecycleRow {
   id: number
   asset_type: string
@@ -113,30 +91,8 @@ export interface DataMigrationContentRecycleRow {
 
 export type DataMigrationContentRecycleDetail = DataMigrationContentRecycleRow & Record<string, unknown>
 
-export function listDataMigrationStructured(type: string, params: ProjectScopedParams) {
-  return http.get<ApiResponse<DataMigrationAsset[]>>(`${structuredBase(type)}`, { params })
-}
-
-export function updateDataMigrationStructured(type: string, id: number, body: Record<string, unknown>) {
-  return http.put<ApiResponse<DataMigrationAsset>>(`${structuredBase(type)}/${id}`, body)
-}
-
-export function deleteDataMigrationStructured(type: string, ids: number[]) {
-  return http.post<ApiResponse<null>>(`${structuredBase(type)}/delete`, ids)
-}
-
 export function listDataMigrationMenus() {
   return http.get<ApiResponse<DataMigrationMenu[]>>('/data-migration/menus')
-}
-
-export function listDataMigrationAssets(type: string, projectId: number, keyword?: string) {
-  return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, { params: { projectId, keyword: keyword || undefined } })
-}
-
-export function listDataMigrationAssetsPage(type: string, params: { projectId: number; systemCode?: string; keyword?: string; page?: number; size?: number }) {
-  return http.get<ApiResponse<DataMigrationPage<DataMigrationAsset>>>(`/data-migration/${fileSegment(type)}`, {
-    params: { ...params, keyword: params.keyword || undefined, page: params.page ?? 1, size: params.size ?? 20 },
-  })
 }
 
 /** 统一回收站列表：contentTypes 为内容类型数组，逗号拼接传参（Spring 侧按 List 解析）；
@@ -159,30 +115,6 @@ export function getDataMigrationRecycleBinDetail(type: string, id: number) {
   return http.get<ApiResponse<DataMigrationContentRecycleDetail>>(`/data-migration/recycle-bin/${encodeURIComponent(type)}/${id}`)
 }
 
-async function buildDataMigrationAssetUpload(projectId: number, file: File, systemCode?: string, includeProjectId = true) {
-  const attachment = await uploadAttachment(file)
-  const attachmentId = attachment.data.data?.id
-  if (!attachmentId) throw new Error('公共附件上传失败')
-  const form = new FormData()
-  if (includeProjectId) form.append('projectId', String(projectId))
-  if (systemCode != null && systemCode !== '') form.append('systemCode', systemCode)
-  form.append('attachmentId', String(attachmentId))
-  return form
-}
-
-export async function uploadDataMigrationAsset(type: string, projectId: number, file: File, systemCode?: string) {
-  const form = await buildDataMigrationAssetUpload(projectId, file, systemCode)
-  return http.post<ApiResponse<DataMigrationAsset>>(`/data-migration/${fileSegment(type)}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
-}
-
-export async function replaceDataMigrationAsset(type: string, id: number, projectId: number, file: File, systemCode?: string) {
-  const form = await buildDataMigrationAssetUpload(projectId, file, systemCode, false)
-  return http.put<ApiResponse<DataMigrationAsset>>(`/data-migration/${fileSegment(type)}/${id}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
-}
-
-export function deleteDataMigrationAssets(type: string, ids: number[]) {
-  return http.post<ApiResponse<null>>(`/data-migration/${fileSegment(type)}/delete`, ids)
-}
 
 /** 统一回收站恢复：请求体携带内容类型以分发到对应服务（管理员权限、审计由后端负责）。 */
 export function restoreDataMigrationAssets(type: string, ids: number[]) {
@@ -192,20 +124,6 @@ export function restoreDataMigrationAssets(type: string, ids: number[]) {
 /** 统一回收站彻底删除：请求体携带内容类型以分发到对应服务。 */
 export function purgeDataMigrationAssets(type: string, ids: number[]) {
   return http.post<ApiResponse<null>>('/data-migration/recycle-bin/purge', { type, ids })
-}
-
-export function downloadDataMigrationAsset(type: string, id: number) {
-  return http.get<Blob>(`/data-migration/${fileSegment(type)}/${id}/download`, { responseType: 'blob' })
-}
-
-export function exportDataMigrationStructured(type: string, params: ProjectScopedParams) {
-  return http.get(`${structuredBase(type)}/export`, { params, responseType: 'blob' })
-}
-
-export function inspectDataMigrationStructuredImport(type: string, projectId: number, file: File) {
-  const form = new FormData()
-  form.append('file', file)
-  return http.post<ApiResponse<Record<string, unknown>>>(`${structuredBase(type)}/import`, form, { params: { projectId }, headers: { 'Content-Type': 'multipart/form-data' } })
 }
 
 // ============ 迁移检核规则专属接口（REQ-20260820-031 增量，对标迁移映射） ============
@@ -702,6 +620,7 @@ export const DM_CODE_CATEGORIES = {
   ruleCategory: 'DM_RULE_CATEGORY',
   parameterType: 'DM_PARAMETER_TYPE',
   parameterScope: 'DM_PARAMETER_SCOPE',
+  parameterFieldType: 'DM_PARAMETER_FIELD_TYPE',
 } as const
 
 /** 数据迁移模块参数管理选项。 */
@@ -1385,7 +1304,10 @@ export interface ParameterRecord {
   system_short_name?: string
   system_name?: string
   parameter_name: string
+  parameter_name_en: string
   parameter_description?: string | null
+  field_count?: number
+  fields?: ParameterField[]
   owner_id: number
   created_by?: number
   created_by_name?: string
@@ -1411,10 +1333,37 @@ export interface ParameterFormData {
   parameterScope: string
   systemCode: string
   parameterName: string
+  parameterNameEn: string
   parameterDescription?: string
+  fields?: ParameterFieldForm[]
 }
 
 export type ParameterUpdateData = Omit<ParameterFormData, 'projectId'>
+
+export interface ParameterField {
+  id: number
+  parameter_id: number
+  field_name_en: string
+  field_name_cn: string
+  field_type: string
+  field_type_name?: string
+  field_length?: number | null
+  field_description?: string | null
+  sort_no: number
+  owner_id: number
+  created_by?: number
+  created_at?: string
+  updated_by?: number
+  updated_at?: string
+}
+
+export interface ParameterFieldForm {
+  fieldNameEn: string
+  fieldNameCn: string
+  fieldType: string
+  fieldLength?: number | null
+  fieldDescription?: string
+}
 
 export interface ParameterImportResult {
   rows: number
@@ -1458,4 +1407,135 @@ export function importParameters(params: { projectId: number }, file: File) {
 
 export function exportParameters(params: Omit<ParameterQuery, 'page' | 'size'>) {
   return http.get('/data-migration/parameters/export', { params, responseType: 'blob' })
+}
+
+export function listParameterFields(parameterId: number) {
+  return http.get<ApiResponse<ParameterField[]>>(`/data-migration/parameters/${parameterId}/fields`)
+}
+
+export function batchCreateParameterFields(parameterId: number, fields: ParameterFieldForm[]) {
+  return http.post<ApiResponse<ParameterField[]>>(`/data-migration/parameters/${parameterId}/fields`, fields)
+}
+
+export function updateParameterField(parameterId: number, fieldId: number, body: Partial<ParameterFieldForm>) {
+  return http.put<ApiResponse<ParameterField>>(`/data-migration/parameters/${parameterId}/fields/${fieldId}`, body)
+}
+
+export function deleteParameterField(parameterId: number, fieldId: number) {
+  return http.delete<ApiResponse<null>>(`/data-migration/parameters/${parameterId}/fields/${fieldId}`)
+}
+
+export function batchDeleteParameterFields(parameterId: number, fieldIds: number[]) {
+  return http.post<ApiResponse<null>>(`/data-migration/parameters/${parameterId}/fields/batch-delete`, fieldIds)
+}
+
+
+// ==================== 迁移过程依赖关系（REQ-20260910-068） ====================
+
+export interface DependencyRecord {
+  id: number
+  project_id: number
+  parameter_id: number
+  consumer_system_code: string
+  consumer_system_name?: string
+  provider_system_code: string
+  provider_system_name?: string
+  parameter_name: string
+  parameter_name_en: string
+  owner_id: number
+  created_by?: number
+  created_by_name?: string
+  created_at?: string
+  updated_by?: number
+  updated_by_name?: string
+  updated_at?: string
+}
+
+export interface DependencyQuery {
+  projectId: number
+  consumerSystemCode?: string
+  keyword?: string
+  page?: number
+  size?: number
+}
+
+export interface DependencyFormData {
+  projectId: number
+  parameterId: number
+  consumerSystemCode: string
+}
+
+export type DependencyUpdateData = Omit<DependencyFormData, 'projectId'>
+
+export interface DependencyImportResult {
+  rows: number
+  accepted: number
+  failed: number
+  errors: string[]
+}
+
+export interface DependencyParameterOption {
+  id: number
+  parameter_name_en: string
+  parameter_name: string
+  system_code: string
+  system_name?: string
+}
+
+export function listDependencies(params: DependencyQuery) {
+  return http.get<ApiResponse<DataMigrationPage<DependencyRecord>>>('/data-migration/dependencies', { params })
+}
+
+export function listDependencyParameterOptions(params: { projectId: number; keyword?: string }) {
+  return http.get<ApiResponse<DependencyParameterOption[]>>('/data-migration/dependencies/options/parameters', { params })
+}
+
+export function listDependencyParameterPage(params: {
+  projectId: number
+  systemCode?: string
+  keyword?: string
+  page?: number
+  size?: number
+}) {
+  return http.get<ApiResponse<DataMigrationPage<DependencyParameterOption>>>('/data-migration/dependencies/parameters', { params })
+}
+
+export interface DependencyBatchCreatePayload {
+  projectId: number
+  consumerSystemCodes: string[]
+  parameterIds: number[]
+}
+
+export interface DependencyBatchCreateResult {
+  accepted: number
+  skipped: number
+}
+
+export function batchCreateDependencies(body: DependencyBatchCreatePayload) {
+  return http.post<ApiResponse<DependencyBatchCreateResult>>('/data-migration/dependencies/batch', body)
+}
+
+export function createDependency(body: DependencyFormData) {
+  return http.post<ApiResponse<DependencyRecord>>('/data-migration/dependencies', body)
+}
+
+export function updateDependency(id: number, body: DependencyUpdateData) {
+  return http.put<ApiResponse<DependencyRecord>>(`/data-migration/dependencies/${id}`, body)
+}
+
+export function deleteDependencies(ids: number[]) {
+  return http.delete<ApiResponse<null>>('/data-migration/dependencies', { data: ids })
+}
+
+export function downloadDependencyTemplate() {
+  return http.get('/data-migration/dependencies/template', { responseType: 'blob' })
+}
+
+export function importDependencies(params: { projectId: number }, file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return http.post<ApiResponse<DependencyImportResult>>('/data-migration/dependencies/import', form, {
+    params,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }

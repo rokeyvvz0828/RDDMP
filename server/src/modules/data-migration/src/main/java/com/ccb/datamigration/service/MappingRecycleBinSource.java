@@ -10,8 +10,8 @@ import java.util.Set;
 /**
  * 迁移映射（{@code dm_mapping_doc}）接入统一回收站的来源（REQ-20260820-031 增量）。
  *
- * <p>MAPPING_DOC 从通用文件型资产链路（{@link ContentFileAssetService#MANAGED_TYPES}）剥离后，
- * 由本来源承接其软删列表、详情、恢复与彻底删除，全部委托 {@link MappingService}，
+ * <p>MAPPING_DOC 已由通用文件型资产链路域化为专属业务表（{@code dm_mapping_doc}），
+ * 本来源承接其软删列表、详情、恢复与彻底删除，全部委托 {@link MappingService}，
  * 原样保留管理员校验、附件解绑与审计规则。
  */
 @Component

@@ -1,90 +1,144 @@
 {
   "schema_version": "1.0",
-  "requirement_id": "REQ-20260906-067",
-  "requirement_title": "数据迁移「迁移参数」菜单功能优化",
-  "status": "ready",
-  "created_at": "2026-09-06T16:00:00+08:00",
-  "developer": "codex",
-  "branch": "feat/REQ-20260820-031-data-migration",
-  "owner": "rokeyvvz0828",
-  "risk_level": "important",
-  "target_modules": [
-    "business/data-migration",
-    "platform/infrastructure"
-  ],
-  "writable_paths": [
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterRecycleBinSource.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
-    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**",
-    "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_domain.sql",
-    "web/src/api/data-migration.ts",
-    "web/src/modules/data-migration/views/content/ParametersPage.vue",
-    "docs/requirements/REQ-20260906-067-data-migration-parameter/**",
-    ".ai-control/requirements/req-20260906-067-dm-param/*.json",
-    ".ai-control/requirements/req-20260906-067-dm-param/*.md"
-  ],
-  "read_only_paths": [
-    "governance/modules.yaml",
-    "docs/governance/**",
-    "server/src/shared/**",
-    "server/src/platform/security/**",
-    "web/src/components/ui/**",
-    "web/src/modules/delivery-showcase/**",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RuleService.java",
-    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/RuleController.java",
-    "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
-    "web/src/modules/data-migration/views/content/PlansPage.vue"
-  ],
-  "forbidden_paths": [
-    ".env",
-    "**/*.pem",
-    "**/*.key",
-    "**/target/**",
-    "**/node_modules/**",
-    ".ai-control/original/**",
-    "server/src/platform/security/**",
-    "server/src/shared/**",
-    "**/*confidential*"
-  ],
-  "reuse_capabilities": [
-    "web/src/components/ui: UiToolbar/UiDataTable/UiFormDrawer/UiPagination/UiEmptyState/UiPageHeader",
-    "web/src/modules/data-migration/components: StructuredListView/ProjectScopeState/useProjectScope",
-    "platform/security: 既有菜单 RBAC 权限节点",
-    "business/data-migration: DataMigrationCodeValueService/DataMigrationPermissionService/ContentRecycleBinService/统一回收站源模式"
-  ],
-  "database_impact": {
-    "type": "flyway_append_only",
-    "new_migration": "V198__data_migration_parameter_domain.sql",
-    "tables_affected": [
-      "dm_parameter: 域化改造（新增参数类型/范围/系统/名称/说明列；保留逻辑删除字段）",
-      "sys_dict_type / sys_config: 登记 DM_PARAMETER_TYPE、DM_PARAMETER_SCOPE 码值"
-    ],
-    "no_schema_change": false
+  "requirement": {
+    "id": "REQ-20260906-067",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260906-067-data-migration-parameter/requirement.md",
+    "codex_allowed": true
   },
-  "permission_impact": [
-    "复用既有 752 菜单权限节点（read/create/update/delete），不新增权限码",
-    "回收站 PARAMETER 类型经 ContentRecycleBinController 既有 manage 守卫"
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-031-data-migration",
+    "worktree": "/home/song/workspace/RDDMP"
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterRecycleBinSource.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+      "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V197__data_migration_parameter_domain.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/views/content/ParametersPage.vue",
+      "docs/requirements/REQ-20260906-067-data-migration-parameter/**",
+      "docs/engineering-control/designs/2026-09-09-data-migration-parameter-english-name-design.md",
+      "docs/engineering-control/plans/2026-09-09-data-migration-parameter-english-name-implementation-plan.md",
+      ".ai-control/requirements/req-20260906-067-dm-param/*.json",
+      ".ai-control/requirements/req-20260906-067-dm-param/*.md"
+    ],
+    "read_only_paths": [
+      "governance/modules.yaml",
+      "docs/governance/**",
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RuleService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/RuleController.java",
+      "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+      "web/src/modules/data-migration/views/content/PlansPage.vue"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      ".ai-control/original/**",
+      "server/src/platform/security/**",
+      "server/src/shared/**",
+      "**/*confidential*"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V197__data_migration_parameter_domain.sql",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql"
+    ],
+    "compatibility_and_rollback": "保留 V197 历史迁移不动；V198 仅在空表中追加必填参数英文名列与大小写不敏感唯一索引，非空表失败关闭，不自动填充历史数据。回退为删除 V198 迁移与列，并同步回退本任务代码。"
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260906-067 在 platform/infrastructure 追加 V198 迁移脚本，为业务模块 dm_parameter 表增加必填参数英文名列与大小写不敏感唯一索引。",
+    "owner_approved": true,
+    "approval_evidence": "需求已由用户确认并进入执行；platform/infrastructure 与 business/data-migration 的 Owner 均为 rokeyvvz0828。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-067-data-migration-parameter/codex-task-scope.yaml",
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build"
+    ]
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=ParameterServiceTest",
+      "expected": "参数英文名必填、字符规则、大小写不敏感唯一、Excel 与搜索契约测试通过"
+    },
+    {
+      "name": "permission",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationModuleRegistrationTest",
+      "expected": "模块注册、RBAC 与审计断言通过"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build",
+      "expected": "TypeScript/Vite 构建通过"
+    },
+    {
+      "name": "diff-check",
+      "command": "git diff --check",
+      "expected": "无空白错误、V197 无 diff"
+    },
+    {
+      "name": "browser",
+      "command": "CDP 真实浏览器验收迁移参数页列表、查看详情与 375/390/430 移动视口",
+      "expected": "列表含参数英文名、查看详情可达、无控制台错误、无可视页面级横向溢出"
+    }
   ],
-  "test_plan": [
-    "后端聚焦测试: mvn -pl :ccb-data-migration -am test",
-    "数据库迁移校验: 含 dm_parameter 域化与 DM_PARAMETER_TYPE/DM_PARAMETER_SCOPE 码值断言",
-    "前端: npm --prefix web run build",
-    "治理: node scripts/check-all-governance.mjs 与任务范围检查"
-  ],
+  "risk": {
+    "level": "medium",
+    "items": [
+      "V198 在已有 dm_parameter 记录时失败关闭，上线前必须确认目标库空表",
+      "参数英文名大小写不敏感唯一依赖 ascii_general_ci 排序规则",
+      "浏览器验收使用请求拦截隔离旧后端版本，未覆盖真实后端端到端"
+    ]
+  },
   "completion": {
     "control_mode": "full",
     "control_prefix": "req-20260906-067-dm-param",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260906-067-dm-param/state-parameter-english-name.json",
+      ".ai-control/requirements/req-20260906-067-dm-param/execution-t1-parameter-english-name.json",
+      ".ai-control/requirements/req-20260906-067-dm-param/observation-t1-parameter-english-name.json",
+      ".ai-control/requirements/req-20260906-067-dm-param/execution-t2-parameter-english-name.json",
+      ".ai-control/requirements/req-20260906-067-dm-param/observation-t2-parameter-english-name.json"
+    ],
     "verification_steps": [
       "迁移参数页多维筛选与分页可用",
       "单条新增/编辑校验与唯一约束生效",
+      "参数英文名必填、字符规则与不区分大小写唯一约束生效，并纳入关键字搜索",
       "Excel 模板导入逐行校验，失败行跳过",
       "逻辑删除进入统一回收站，恢复/彻底删除可用",
       "权限沿用既有 RBAC，写操作后端强制校验"
-    ]
+    ],
+    "rollback": "回退本任务代码与 V198 追加迁移；V197 历史迁移与既有字段保持不变。"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false
   }
 }

@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 /**
  * 迁移程序（{@code dm_script}）接入统一回收站的来源（REQ-20260820-031 增量）。
  *
- * <p>SCRIPT 从通用文件型资产链路（{@link ContentFileAssetService#MANAGED_TYPES}）剥离后，
- * 由本来源承接其软删列表、详情、恢复与彻底删除，全部委托 {@link ProgramService}，原样保留管理员
+ * <p>SCRIPT 已由通用文件型资产链路域化为专属业务表（{@code dm_script}），
+ * 本来源承接其软删列表、详情、恢复与彻底删除，全部委托 {@link ProgramService}，原样保留管理员
  * 校验、多附件解绑与审计规则。
  */
 @Component

@@ -23,7 +23,10 @@ public enum DashboardMetricDefinition {
     MAPPING_DOC("dm_mapping_doc", "id", "doc_code", "doc_name", null, "system_code", null),
     RULE("dm_rule", "id", "rule_code", "COALESCE(NULLIF(rule_code_desc, ''), rule_code)", null, "system_code", null),
     PARAMETER("dm_parameter", "id", "parameter_name", "parameter_name", null, "system_code", null),
-    DEPENDENCY("dm_dependency", "id", "doc_code", "doc_name", null, "system_code", null),
+    DEPENDENCY("dm_dependency", "id",
+            "(SELECT p.parameter_name_en FROM dm_parameter p WHERE p.tenant_id = dm_dependency.tenant_id AND p.id = dm_dependency.parameter_id AND p.deleted = 0)",
+            "(SELECT p.parameter_name FROM dm_parameter p WHERE p.tenant_id = dm_dependency.tenant_id AND p.id = dm_dependency.parameter_id AND p.deleted = 0)",
+            null, "system_code", null),
     SCRIPT("dm_script", "id", "doc_code", "doc_name", null, "system_code", null);
 
     private static final Map<String, DashboardMetricDefinition> BY_CODE;

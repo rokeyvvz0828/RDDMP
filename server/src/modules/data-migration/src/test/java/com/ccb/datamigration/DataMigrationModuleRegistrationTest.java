@@ -36,12 +36,11 @@ class DataMigrationModuleRegistrationTest {
     @Test
     void intermediateTablesUseTargetTableModelOnly() throws Exception {
         String tables = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentAssetTables.java"));
-        String structured = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java"));
-        String excel = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ExcelService.java"));
-        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V170__data_migration_intermediate_table_canonicalization.sql"));
+        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V169__data_migration_intermediate_table_canonicalization.sql"));
         assertTrue(!tables.contains("dm_intermediate_table"));
-        assertTrue(!structured.contains("INTERMEDIATE_TABLE"));
-        assertTrue(!excel.contains("INTERMEDIATE_TABLE"));
+        // 通用结构化资产服务与通用 Excel 辅助已下线（REQ-20260911-070）
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java")));
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/ExcelService.java")));
         assertTrue(migration.contains("dm_v169_assert_intermediate_empty"));
         assertTrue(migration.contains("DROP TABLE dm_intermediate_table"));
     }
@@ -83,14 +82,18 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void contentResourceEndpointsRequireWriteOrManageAuthority() throws Exception {
-        String assets = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ContentAssetController.java"));
         String recycle = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ContentRecycleBinController.java"));
-        String structured = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java"));
         String plan = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/PlanController.java"));
         String releaseDrill = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java"));
         String mapping = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/MappingController.java"));
-        // PLAN/RELEASE_DRILL/MAPPING_DOC 已从通用文件控制器剥离至专属 Controller（REQ-20260820-031 增量），通用侧仅验 dependencies。
-        assertTrue(!assets.contains("/plans") && !assets.contains("/release-drills") && !assets.contains("/mappings") && assets.contains("/dependencies/upload") && assets.contains("data-migration:write"));
+        // 通用文件/结构化资产控制器已整体下线（REQ-20260911-070），端点由专属 Controller 承接。
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/ContentAssetController.java")));
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java")));
+        String dependency = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/DependencyController.java"));
+        assertTrue(dependency.contains("/api/data-migration/dependencies")
+                && dependency.contains("data-migration:content:dependencies:create")
+                && dependency.contains("data-migration:content:dependencies:delete")
+                && dependency.contains("data-migration:write"));
         assertTrue(mapping.contains("/api/data-migration/mappings")
                 && mapping.contains("data-migration:content:mappings:create")
                 && mapping.contains("data-migration:content:mappings:delete")
@@ -106,7 +109,6 @@ class DataMigrationModuleRegistrationTest {
                 && parameter.contains("data-migration:content:parameters:create")
                 && parameter.contains("data-migration:content:parameters:delete")
                 && parameter.contains("data-migration:write"));
-        assertTrue(!structured.contains("/parameters/import") && !structured.contains("/parameters/delete"));
         assertTrue(plan.contains("/api/data-migration/plans")
                 && plan.contains("data-migration:content:plans:create")
                 && plan.contains("data-migration:content:plans:delete")
@@ -121,19 +123,17 @@ class DataMigrationModuleRegistrationTest {
     void contentFileAssetsOwnTheUploadWithoutMd5Contract() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java"));
         String binding = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentAttachmentService.java"));
-        String controller = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ContentAssetController.java"));
         assertTrue(source.contains("DATA_MIGRATION_ASSET"));
         assertTrue(!source.contains("assertMd5Available"));
         assertTrue(!source.contains("checksum_md5"));
         assertTrue(binding.contains("attachmentGateway.bind"));
-        assertTrue(controller.contains("@RequestParam Long attachmentId"));
-        assertTrue(!controller.contains("@RequestParam String md5"));
-        assertTrue(!controller.contains("/content/check-md5"));
+        // 通用文件控制器已下线（REQ-20260911-070），附件契约由各专属控制器承接
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/ContentAssetController.java")));
     }
 
     @Test
     void checksumMd5RemovalMigrationIsRegistered() throws Exception {
-        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V175__data_migration_remove_checksum_md5.sql");
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V174__data_migration_remove_checksum_md5.sql");
         assertTrue(Files.exists(migration));
         String sql = Files.readString(migration);
         assertTrue(sql.contains("checksum_md5"));
@@ -150,7 +150,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void issueStorageIsIndependentAndGenericAssetTypesRejectIssue() throws Exception {
-        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V157__data_migration_issue_independent_storage.sql");
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V156__data_migration_issue_independent_storage.sql");
         String sql = Files.readString(migration);
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS dm_issue"));
         assertTrue(sql.contains("DELETE FROM dm_asset_relation"));
@@ -158,7 +158,7 @@ class DataMigrationModuleRegistrationTest {
         String issue = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
         assertTrue(issue.contains("FROM dm_issue"));
         assertTrue(!issue.contains("FROM dm_asset a"));
-        assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java")).contains("\"ISSUE\""));
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java")));
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java")).contains("\"ISSUE\""));
     }
 
@@ -174,7 +174,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void issueGovernanceUsesAdditiveActiveCodeMigrationAndServerRbac() throws Exception {
-        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V158__data_migration_issue_active_code_uniqueness.sql"));
+        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V157__data_migration_issue_active_code_uniqueness.sql"));
         String service = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
         String controller = Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/IssueController.java"));
         assertTrue(migration.contains("active_issue_code"));
@@ -203,17 +203,21 @@ class DataMigrationModuleRegistrationTest {
     }
 
     @Test
-    void genericAssetRecycleBinWritesDeletionAuditFields() throws Exception {
+    void dedicatedSourcesOwnDeletionAuditFieldsAfterGenericChainRetirement() throws Exception {
+        String topic = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/TopicService.java"));
+        assertTrue(topic.contains("deleted_by = ?"));
+        assertTrue(topic.contains("deleted_at = CURRENT_TIMESTAMP"));
+        assertTrue(topic.contains("deleted_by = NULL"));
+        assertTrue(topic.contains("deleted_at = NULL"));
+        // 通用文件资产服务不再承载回收站审计字段（REQ-20260911-070）
         String asset = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java"));
-        assertTrue(asset.contains("deleted_by = ?"));
-        assertTrue(asset.contains("deleted_at = CURRENT_TIMESTAMP"));
-        assertTrue(asset.contains("deleted_by = NULL"));
-        assertTrue(asset.contains("deleted_at = NULL"));
+        assertTrue(!asset.contains("deleted_by"));
+        assertTrue(!asset.contains("deleted_at"));
     }
 
     @Test
     void v98RemovesCompatibilityColumnsAndClosesV96V97Gaps() throws Exception {
-        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V162__data_migration_remove_compatibility_columns.sql"));
+        String migration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V161__data_migration_remove_compatibility_columns.sql"));
         assertTrue(migration.contains("DROP TABLE IF EXISTS dm_topic_type"));
         assertTrue(migration.contains("DROP COLUMN project_name"));
         assertTrue(migration.contains("DROP COLUMN attachment_id"));
@@ -227,11 +231,11 @@ class DataMigrationModuleRegistrationTest {
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java")).contains("object_key"));
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ReportService.java")).contains("object_key"));
         // V177：字段表冗余 table_code 下线后（V161），关联键改名 table_id -> table_code，服务按业务编号关联。
-        String targetTableMigration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V178__data_migration_target_table_code_pk.sql"));
+        String targetTableMigration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V177__data_migration_target_table_code_pk.sql"));
         assertTrue(targetTableMigration.contains("CHANGE COLUMN table_id table_code"));
         assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/TargetTableService.java")).contains("t.table_code = f.table_code"));
         // V178（T42）：全模块下线 active_* 活动生成列，唯一键直接建在业务列。
-        String activeRemovalMigration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V179__data_migration_active_uniqueness_columns_removal.sql"));
+        String activeRemovalMigration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V178__data_migration_active_uniqueness_columns_removal.sql"));
         assertTrue(activeRemovalMigration.contains("DROP COLUMN active_table_code"));
         assertTrue(activeRemovalMigration.contains("ADD UNIQUE KEY uk_target_table_en (tenant_id, project_id, system_code, table_name_en)"));
         assertTrue(activeRemovalMigration.contains("ADD UNIQUE KEY uk_dm_plan_dimension (tenant_id, project_id, granularity, plan_type, system_code)"));
@@ -243,7 +247,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void v180TopicDomainAddsColumnsRelationsAndParameterSeeds() throws Exception {
-        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V181__data_migration_topic_domain.sql");
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V180__data_migration_topic_domain.sql");
         assertTrue(Files.exists(migration));
         String sql = Files.readString(migration);
         assertTrue(sql.contains("dm_topic ADD COLUMN granularity"));
@@ -264,7 +268,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void dmProjectIsDroppedFromFinalModelByV179() throws Exception {
-        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V180__data_migration_drop_dm_project.sql");
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V179__data_migration_drop_dm_project.sql");
         assertTrue(Files.exists(migration));
         assertTrue(Files.readString(migration).contains("DROP TABLE IF EXISTS dm_project"));
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentAssetTables.java")).contains("dm_project"));
@@ -272,7 +276,7 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void ruleDomainUsesDedicatedStorageAndDropGenericRuleEnvelope() throws Exception {
-        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V195__data_migration_rule_domain.sql");
+        Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V194__data_migration_rule_domain.sql");
         assertTrue(Files.exists(migration));
         String sql = Files.readString(migration);
         assertTrue(sql.contains("ALTER TABLE dm_rule DROP COLUMN doc_code"));
@@ -292,11 +296,10 @@ class DataMigrationModuleRegistrationTest {
         assertTrue(service.contains("RULE_CREATE"));
         assertTrue(service.contains("RULE_IMPORT"));
 
-        String structured = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java"));
-        assertTrue(!structured.contains("PARAMETER"));
-        assertTrue(!structured.contains("RULE"));
+        // 通用结构化资产服务/控制器已下线（REQ-20260911-070），规则与参数域由专属服务承接
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java")));
         assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/ParameterController.java")).contains("/api/data-migration/parameters"));
-        assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java")).contains("/rules/import"));
+        assertTrue(!Files.exists(Path.of("src/main/java/com/ccb/datamigration/web/StructuredAssetController.java")));
         assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/RuleRecycleBinSource.java")).contains("supports()"));
     }
 

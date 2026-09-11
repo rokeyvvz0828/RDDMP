@@ -1,6 +1,7 @@
 package com.ccb.datamigration.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +44,19 @@ class DashboardMetricDefinitionTest {
 
         assertTrue(DashboardMetricDefinition.require("RULE").drilldownSql().contains("rule_code AS code"));
         assertTrue(DashboardMetricDefinition.require("PARAMETER").drilldownSql().contains("parameter_name AS name"));
+    }
+
+    @Test
+    void dependencyDrilldownProjectsParameterNamesWithoutLegacyColumns() {
+        String drill = DashboardMetricDefinition.require("DEPENDENCY").drilldownSql();
+        assertTrue(drill.contains("dm_parameter"), "DEPENDENCY 下钻应关联参数表");
+        assertTrue(drill.contains("(SELECT p.parameter_name_en"));
+        assertTrue(drill.contains("(SELECT p.parameter_name"));
+        assertTrue(drill.contains(") AS code"));
+        assertTrue(drill.contains(") AS name"));
+        assertFalse(drill.contains("doc_code"));
+        assertFalse(drill.contains("doc_name"));
+        assertTrue(drill.contains("system_code AS systemCode"));
     }
 
     @Test

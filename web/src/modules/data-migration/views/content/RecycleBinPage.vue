@@ -1,6 +1,6 @@
 <!--
   用途：数迁资产内容 - 统一回收站页（REQ-20260831-050）
-  说明：聚合 6 个文件型、3 个结构化内容菜单、汇报材料（REPORT）与会议纪要（MEETING，文档级）的软删记录，
+  说明：聚合 7 个文件型、2 个结构化内容菜单与会议纪要（MEETING，文档级）的软删记录，
         支持按内容类型筛选、关键词查询、批量/单条恢复与彻底清理（不可恢复）；
         恢复/彻底删除按类型分发到各自来源服务，保留其业务规则。
         T32：统一回收站不再跨项目聚合，列表仅包含顶部项目切换器当前项目内的软删记录；
@@ -91,7 +91,7 @@ const DETAIL_LABELS: Record<string, string> = {
   attachment_id: '附件 ID', file_name: '文件名', content_type: '文件类型', file_size: '文件大小',
   report_period: '汇报周期', report_date: '汇报日期', granularity: '颗粒度', meeting_source: '会议来源',
   meeting_content: '会议内容', meeting_conclusion: '会议结论', business_scenario: '业务场景', keywords: '关键字',
-  structured_data: '结构化内容', attachments: '附件', system_names: '关联系统', related_issue_names: '关联问题',
+  attachments: '附件', system_names: '关联系统', related_issue_names: '关联问题',
 }
 const DETAIL_HIDDEN = new Set(['id', 'asset_type', 'asset_code', 'asset_name', 'project_id', 'system_code', 'owner_id', 'deleted_by', 'deleted_at', 'created_at', 'updated_at', 'deleted', 'tenant_id'])
 

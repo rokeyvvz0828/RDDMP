@@ -1,0 +1,48 @@
+{
+ "schema_version": 1,
+ "sample_label": "T4 前端与视口观测",
+ "task_ids": [
+  "T4"
+ ],
+ "baseline_revision": "baseline-1",
+ "measurements": [
+  {
+   "requirement_id": "R6",
+   "sensor": "S9 移动视口溢出",
+   "result": "pass",
+   "raw_evidence": "1280/375/390/430 overflow=0；修复前 375 溢出 87px（分页器 462px 固定宽），套用 .dm-page 后归零"
+  },
+  {
+   "requirement_id": "R2",
+   "sensor": "S10 字段抽屉全操作",
+   "result": "pass",
+   "raw_evidence": "浏览器真实点击全流程通过"
+  },
+  {
+   "requirement_id": "R3",
+   "sensor": "S11 导入对话框与文件选择",
+   "result": "pass",
+   "raw_evidence": "真实 setInputFiles xlsx 上传与结果提示"
+  }
+ ],
+ "feedback": [
+  {
+   "requirement_id": "R6",
+   "expected": "375/390/430 无页面级横向溢出",
+   "observed": "375 overflow=87（el-pagination 固定 462px 且未套移动端样式）",
+   "reproduction": "DOM 探测 offenders 全为 .el-pagination__jump/editor",
+   "severity": "P1",
+   "confidence": "high",
+   "causal_hypothesis": "参数页分页器未复用数据迁移移动端分页样式",
+   "correction_check": "外包 .dm-page（既有 CSS）后三视口 overflow=0",
+   "classification": "deviation"
+  }
+ ],
+ "error_counts": {
+  "P0": 0,
+  "P1": 1,
+  "P2": 0,
+  "P3": 0
+ },
+ "observation_status": "complete"
+}

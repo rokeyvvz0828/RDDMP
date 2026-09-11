@@ -1,0 +1,31 @@
+{
+ "schema_version": 1,
+ "prefix": "req-20260910-069-dm-param-field",
+ "recorded_at": "2026-09-11T00:55:00+08:00",
+ "task": "069 交付后 UI 调整：新增/编辑迁移参数表单由抽屉改为弹框，字段批量录入区由卡片改为表格",
+ "scope_change": "仅修改 web/src/modules/data-migration/views/content/ParametersPage.vue（069 writable），未改后端/迁移/公共组件；既有未提交差异未覆盖",
+ "implementation": [
+  "UiFormDrawer 替换为 el-dialog：width=min(720px,calc(100vw - 24px))、destroy-on-close、保存中禁关（close-on-click-modal/escape/show-close），底部取消/保存，沿用 saving 加载态与 handleSave；drawerOpen 更名为 formDialogOpen",
+  "字段区改为 el-table 行内编辑：序号/字段英文名/字段中文名/字段类型/字段长度/字段说明/操作（移除），添加字段按钮移至表头上方，继续复用 addCreateField/removeCreateField/checkCreateFields 校验",
+  "样式：新增 dm-form-dialog-body（max-height: min(70vh,560px) 局部滚动）、dm-form-fields-table（overflow-x:auto 局部滚动，表格 min-width:720px），移除 dm-create-field 卡片样式"
+ ],
+ "commands": [
+  { "command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc + vite 构建通过（仅既有 chunk 体积警告）" },
+  { "command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误" },
+  { "command": "node /tmp/verify_param_dialog.mjs（Playwright 真实浏览器 + 真实前后端）", "exit_code": 0, "salient_output": "34/34 PASS" }
+ ],
+ "measurements": [
+  { "sensor": "新增/编辑弹框容器", "result": "pass", "raw_evidence": "新增打开 el-dialog 且无 el-drawer，标题正确；编辑同弹框且不显示字段表格" },
+  { "sensor": "字段表格批量操作", "result": "pass", "raw_evidence": "添加 3 行成表格、表头含全部字段列、移除第 1 行后剩 2 行" },
+  { "sensor": "保存端到端", "result": "pass", "raw_evidence": "提示迁移参数已新增；列表接口 field_count=2，详情 fields=2（类型/长度正确）" },
+  { "sensor": "移动视口溢出", "result": "pass", "raw_evidence": "1280/375/390/430 打开与关闭弹框均 overflow=0；字段表格容器局部横向滚动（scrollWidth=720 不撑宽页面）" },
+  { "sensor": "控制台/未捕获异常", "result": "pass", "raw_evidence": "无 pageerror、无 console error" }
+ ],
+ "environment_notes": "本地验收仅 P2026-002 项目配置了关联系统选项，脚本登录后切换到该项目完成保存流程；新增记录与 2 个字段为本地演示数据",
+ "risks": [
+  "弹框内字段类型下拉为 teleport 到 body 的 popper，桌面/移动均实测可正常展开选择",
+  "全局移动端 .el-dialog 规则（width: calc(100vw - 24px)）对新弹框生效，弹框本体最大高度由全局 body 规则与 dm-form-dialog-body 共同约束"
+ ],
+ "state_unchanged": true,
+ "state_phase": "converged"
+}

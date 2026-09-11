@@ -1,0 +1,51 @@
+{
+ "schema_version": 1,
+ "sample_label": "T1 迁移与码值观测",
+ "task_ids": [
+  "T1"
+ ],
+ "baseline_revision": "baseline-1",
+ "measurements": [
+  {
+   "requirement_id": "R1",
+   "sensor": "S1 Testcontainers MySQL 8.4 建表/唯一键/幂等",
+   "result": "pass",
+   "raw_evidence": "DataMigrationParameterFieldMigrationMySqlTest 2/2：两次执行迁移幂等；en/cn 唯一键对大小写/中文重名均 1062"
+  },
+  {
+   "requirement_id": "R4",
+   "sensor": "S2 码值注册",
+   "result": "pass",
+   "raw_evidence": "V200 幂等 INSERT IGNORE；真实后端 /options/DM_PARAMETER_FIELD_TYPE 返回 VARCHAR..BLOB 7 项"
+  },
+  {
+   "requirement_id": "R5",
+   "sensor": "S3 软删列契约",
+   "result": "pass",
+   "raw_evidence": "deleted_by/deleted_at 已入表；删除/恢复 SQL 真实执行 200"
+  }
+ ],
+ "feedback": [
+  {
+   "requirement_id": "R1",
+   "expected": "字段删除链路可用",
+   "observed": "真实后端 DELETE /fields/{id} 500：BadSqlGrammar（deleted_by/deleted_at 缺失）",
+   "reproduction": "curl 复现 500，后端日志可见 UPDATE ...deleted_by=?, deleted_at=... 语法错误",
+   "severity": "P0",
+   "confidence": "high",
+   "causal_hypothesis": "V200 建表遗漏软删审计列而服务端 SQL 引用",
+   "correction_check": "补列 + 重放后 DELETE 200",
+   "classification": "deviation"
+  }
+ ],
+ "disturbances": [
+  "V199（REQ-068 未提交）校验和不一致阻断重复启动；经 repair 仅对齐历史，未动其文件"
+ ],
+ "error_counts": {
+  "P0": 1,
+  "P1": 0,
+  "P2": 0,
+  "P3": 0
+ },
+ "observation_status": "complete"
+}

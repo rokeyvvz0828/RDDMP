@@ -1,0 +1,383 @@
+{
+  "baseline_revision": 2,
+  "model_revision": 1,
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "后端删除与精简（4 文件删除 + ContentFileAssetService 精简 + docCode 收敛 + 注释修正）",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "全仓引用核验：StructuredAssetService/StructuredAssetController/ExcelService/ContentAssetController 零调用方",
+        "ContentFileAssetService 仅 resolveAttachment/replaceMainFile/BUSINESS_TYPE 在用",
+        "ContentAssetRecycleBinSource 已被 REQ-068 剥离、仅测试注册引用"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java(删除)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java(删除)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java(删除)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java(删除)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java(精简)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentDocCodeGenerator.java(收敛前缀)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java(注释修正)",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java(删除)"
+      ],
+      "invariants": [
+        "ContentAssetTables 及其计数 UNION SQL 保持不变",
+        "平台附件能力（ContentAttachmentService/AttachmentStreamService/AttachmentGateway/DataMigrationAssetAttachmentAccessPolicy）保持不变",
+        "全部专属 Service/Controller/RecycleBinSource 保持不变",
+        "无 Flyway 迁移、无权限/菜单/路由变更"
+      ],
+      "interface_contracts": [
+        "ContentFileAssetService.resolveAttachment/replaceMainFile/BUSINESS_TYPE 保留",
+        "ContentDocCodeGenerator 仅 PLAN/MAPPING_DOC/SCRIPT/TOPIC/RELEASE_DRILL/REPORT 六个前缀",
+        "通用端点 /api/data-migration/structured/{type} 与上传/替换/下载全部下线"
+      ],
+      "non_goals": [
+        "不删除平台附件能力",
+        "不修改 ContentAssetTables",
+        "不改动专属服务与业务页面",
+        "不进行数据库变更"
+      ],
+      "action_bounds": [
+        "删除 5 个文件（StructuredAssetService/StructuredAssetController/ExcelService/ContentAssetController/ContentAssetRecycleBinSource）",
+        "精简 ContentFileAssetService 至构造 3 参与保留方法",
+        "收敛 ContentDocCodeGenerator 前缀并修正 ContentRecycleBinService 注释"
+      ],
+      "acceptance_checks": [
+        "rg 对删除类零引用",
+        "mvn -pl :ccb-data-migration -am 编译通过",
+        "ContentFileAssetService 源码不含 MANAGED_TYPES 与通用 CRUD/回收站方法签名"
+      ],
+      "evidence_required": [
+        "删除文件列表与 git 状态",
+        "rg 扫描输出（零命中）",
+        "Maven 编译摘要"
+      ],
+      "rollback": "git checkout 恢复已删文件与源文件",
+      "stop_conditions": [
+        "删除面出现未预期调用方"
+      ],
+      "escalation_conditions": [
+        "REQ-067/069 未提交改动依赖删除类"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "测试与治理断言同步（Files.notExists + 前缀表 + 构造调用）",
+      "requirement_ids": [
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "DataMigrationModuleRegistrationTest 读取将删源码（约 39-40/86-88/300-304 行）",
+        "ContentFileAssetDocCodeGovernanceTest 仍用 6 参构造并调用已删 create",
+        "ReportServiceTest/TopicServiceTest 用 4-6 参构造，ProgramServiceTest 用 mock"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentFileAssetDocCodeGovernanceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentDocCodeGeneratorTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java"
+      ],
+      "invariants": [
+        "断言必须真实运行，不以文本断言替代运行证据",
+        "不触碰并行 REQ-067/069 在共享测试中的改动"
+      ],
+      "interface_contracts": [
+        "Files.notExists 断言覆盖 4 个已删后端文件",
+        "ContentDocCodeGenerator 前缀表为 6 项且 DEPENDENCY/PARAMETER 抛异常",
+        "ContentFileAssetDocCodeGovernanceTest 改为通用链路下线治理断言"
+      ],
+      "non_goals": [
+        "不新增测试类型或框架",
+        "不改动测试文件中的 REQ-067/069 逻辑"
+      ],
+      "action_bounds": [
+        "将已删源码读取改为 Files.notExists",
+        "重写治理测试为新 3 参构造与下线断言",
+        "同步 ContentDocCodeGeneratorTest 前缀表与 ServiceTest 构造调用"
+      ],
+      "acceptance_checks": [
+        "相关测试全部通过且不再读取已删文件",
+        "Files.notExists 断言覆盖 4 个已删后端文件"
+      ],
+      "evidence_required": [
+        "测试文件 diff",
+        "聚焦测试运行摘要与退出码"
+      ],
+      "rollback": "git checkout 恢复测试改动",
+      "stop_conditions": [
+        "出现未预期调用方"
+      ],
+      "escalation_conditions": [
+        "REQ-067/069 共享测试文件冲突"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "前端死代码删除（2 组件 + 11 API/辅助 + DataMigrationAsset）",
+      "requirement_ids": [
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "AssetListView.vue 与 StructuredListView.vue 无任何页面引用",
+        "data-migration.ts 通用资产 API 仅被两组件使用",
+        "REQ-069 在 data-migration.ts 新增参数域函数须保留"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/components/AssetListView.vue(删除)",
+        "web/src/modules/data-migration/components/StructuredListView.vue(删除)",
+        "web/src/api/data-migration.ts(删除通用资产函数/辅助/类型)"
+      ],
+      "invariants": [
+        "业务页面与统一回收站页调用面不变",
+        "不触碰 REQ-069 在 data-migration.ts 的新增内容"
+      ],
+      "interface_contracts": [
+        "删除 listDataMigrationStructured/updateDataMigrationStructured/deleteDataMigrationStructured/exportDataMigrationStructured/inspectDataMigrationStructuredImport/uploadDataMigrationAsset/replaceDataMigrationAsset/deleteDataMigrationAssets/downloadDataMigrationAsset",
+        "删除 structuredBase/fileSegment/buildDataMigrationAssetUpload 与 DataMigrationAsset"
+      ],
+      "non_goals": [
+        "不改动业务前端页面",
+        "不改动公共 UI 组件与主题"
+      ],
+      "action_bounds": [
+        "删除两个死组件文件",
+        "从 data-migration.ts 移除仅死组件使用的函数/辅助/类型"
+      ],
+      "acceptance_checks": [
+        "npm --prefix web run build 通过",
+        "web/src 无对已删组件与 API 函数的引用"
+      ],
+      "evidence_required": [
+        "删除文件列表",
+        "rg 扫描零命中输出",
+        "Vite 构建摘要"
+      ],
+      "rollback": "git checkout 恢复组件与 API",
+      "stop_conditions": [
+        "出现未预期 import"
+      ],
+      "escalation_conditions": [
+        "与 REQ-069 data-migration.ts 改动冲突"
+      ]
+    },
+    {
+      "id": "T4",
+      "goal": "集成验证（全量测试、构建、启动冒烟、治理检查）",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "所有实现任务与局部测试完成",
+        "无 P0/P1 未关闭反馈"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/*.json"
+      ],
+      "invariants": [
+        "ContentAssetTables.java 内容不变（git diff 无该文件）",
+        "只修改 writable_paths",
+        "不触碰 REQ-067/069 未提交改动"
+      ],
+      "interface_contracts": [
+        "独立观测、收敛与交接证据"
+      ],
+      "non_goals": [
+        "不新增 Flyway 迁移",
+        "不改动平台附件与看板计数实现"
+      ],
+      "action_bounds": [
+        "运行 mvn -pl :ccb-data-migration -am test 全量回归（含 Testcontainers）",
+        "运行 npm --prefix web run build",
+        "后端启动冒烟验证（环境允许；受限时记录限制）",
+        "运行 git diff --check 与范围/治理检查",
+        "记录 3 次观测、裁决反馈并执行收敛门禁"
+      ],
+      "acceptance_checks": [
+        "204+ 测试通过",
+        "前端 build 通过",
+        "冒烟通过（受限时记录限制）",
+        "git diff --check 干净",
+        "全仓 rg 扫描零残留"
+      ],
+      "evidence_required": [
+        "命令退出码与摘要",
+        "Maven 测试摘要（按 mtime 过滤旧 surefire 报告）",
+        "Vite 构建摘要",
+        "observation/convergence JSON 与 gate 输出"
+      ],
+      "rollback": "按任务边界回退并保留证据",
+      "stop_conditions": [
+        "P0/P1 缺陷、误删在用能力、范围越界"
+      ],
+      "escalation_conditions": [
+        "REQ-067/069 依赖冲突",
+        "看板计数/附件策略回归"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "测试断言依赖删除后的代码面"
+    },
+    {
+      "from": "T1",
+      "to": "T4",
+      "reason": "集成验证依赖删除完成"
+    },
+    {
+      "from": "T2",
+      "to": "T4",
+      "reason": "集成验证依赖测试同步"
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "reason": "前端构建验证依赖删除完成"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1",
+      "T3"
+    ]
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T4"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1",
+        "T4"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T1",
+        "T2"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T3",
+        "T4"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T2",
+        "T4"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T4"
+      ]
+    }
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "expected": "数据迁移模块及依赖模块测试全量通过（含看板计数/组件计数/附件访问策略回归）"
+    },
+    {
+      "after_tasks": [
+        "T3"
+      ],
+      "command": "npm --prefix web run build",
+      "expected": "TypeScript 与 Vite 生产构建通过"
+    },
+    {
+      "after_tasks": [
+        "T4"
+      ],
+      "command": "git diff --check",
+      "expected": "diff 无空白错误"
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1 后端删除与精简后聚焦编译/引用扫描",
+      "evidence": "rg 零命中 + mvn 编译退出码 0",
+      "covers": [
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    {
+      "label": "T2 测试断言同步后聚焦测试",
+      "evidence": "聚焦测试退出码 0",
+      "covers": [
+        "R3",
+        "R5"
+      ]
+    },
+    {
+      "label": "T3 前端删除后构建与引用扫描",
+      "evidence": "npm --prefix web run build 退出码 0 + rg 零命中",
+      "covers": [
+        "R4"
+      ]
+    },
+    {
+      "label": "T4 完整模块测试（含 Testcontainers）",
+      "evidence": "mvn -pl :ccb-data-migration -am test 退出码 0（按 mtime 过滤旧 surefire 报告）",
+      "covers": [
+        "R1",
+        "R2",
+        "R4",
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "label": "T4 治理与范围检查",
+      "evidence": "check-codex-scope / git diff --check 结果",
+      "covers": [
+        "R1",
+        "R2",
+        "R4"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

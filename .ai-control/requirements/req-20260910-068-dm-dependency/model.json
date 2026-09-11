@@ -1,0 +1,134 @@
+{
+  "baseline_revision": 2,
+  "plant_boundary": {
+    "components": [
+      "dm_dependency 表",
+      "data-migration 后端 REST",
+      "依赖页",
+      "统一回收站 DEPENDENCY 来源",
+      "DEPENDENCY 看板下钻"
+    ],
+    "excluded": [
+      "迁移参数/系统组件清单本体",
+      "公共 UI 组件与主题",
+      "历史依赖数据"
+    ],
+    "owners": [
+      "business/data-migration",
+      "platform/infrastructure（V199 与权限节点）"
+    ]
+  },
+  "state_variables": [
+    "迁移版本与 dm_dependency 结构（旧列/parameter_id/唯一键/索引）",
+    "依赖记录活动/软删状态",
+    "参数活动性与使用方系统启停状态",
+    "租户+项目+参数+使用方的关系唯一键",
+    "页面加载/提交/导入/回收站操作状态"
+  ],
+  "causal_paths": [
+    "V199 空表门禁 -> 结构变更 -> 新列/唯一键/权限节点可用",
+    "依赖写操作 -> 参数/系统校验 + 唯一性 + 审计 -> 持久化",
+    "参数逻辑删除 -> dm_dependency 活动依赖计数 -> 拒绝删除",
+    "菜单权限节点 -> Controller @PreAuthorize -> 403",
+    "看板 DEPENDENCY -> 参数关联子查询 -> 计数与下钻在新结构可用"
+  ],
+  "interfaces": [
+    "V199 Flyway（空表断言、删旧列/索引、parameter_id、唯一键、权限节点）",
+    "DependencyService / DependencyController (GET/POST/PUT/DELETE/import/template/options)",
+    "DependencyRecycleBinSource（countDeleted/listDeletedPage/detail/restore/purge）",
+    "ParameterService 删除与彻底删除前的依赖引用保护",
+    "web/src/api/data-migration.ts 与 DependenciesPage.vue",
+    "DashboardMetricDefinition.DEPENDENCY 下钻表达式"
+  ],
+  "sensors": [
+    "MySQL Testcontainers 迁移断言（空表/非空/结构/权限/幂等）",
+    "DependencyServiceTest（CRUD、投影、导入、审计、回收站）",
+    "ParameterServiceTest 引用保护",
+    "DataMigrationModuleRegistrationTest 旧端点消失与专属权限",
+    "DashboardMetricMySqlTest/DefinitionTest 看板计数与下钻",
+    "npm run build 前端生产构建",
+    "治理/范围检查与 git diff --check；真实浏览器（受限时记录限制）"
+  ],
+  "actuators": [
+    "追加 V199 迁移并按需修正",
+    "DependencyService/Controller/RecycleBinSource 写入",
+    "ParameterService/ContentFileAssetService/ContentAssetController/DashboardMetricDefinition 调整",
+    "前端页面与 API 修改",
+    "测试与构建命令"
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "signal": "V199 在空表成功、非空失败且结构不变",
+      "sensor": "DataMigrationDependencyMigrationMySqlTest"
+    },
+    {
+      "requirement_id": "R2",
+      "signal": "列表 SQL 含项目过滤与参数/两侧系统投影字段",
+      "sensor": "DependencyServiceTest"
+    },
+    {
+      "requirement_id": "R3",
+      "signal": "重复/无效参数/停用系统被拒绝，唯一键兜底",
+      "sensor": "DependencyServiceTest"
+    },
+    {
+      "requirement_id": "R4",
+      "signal": "两列模板与逐行部分成功导入",
+      "sensor": "DependencyServiceTest"
+    },
+    {
+      "requirement_id": "R5",
+      "signal": "MANAGED_TYPES 空、通用 Controller 无旧端点",
+      "sensor": "ModuleRegistration + Governance Test"
+    },
+    {
+      "requirement_id": "R6",
+      "signal": "菜单 750 create/update/delete 节点与写权限注解",
+      "sensor": "V199 断言 + ModuleRegistrationTest"
+    },
+    {
+      "requirement_id": "R7",
+      "signal": "回收站恢复/彻底删除与参数引用保护",
+      "sensor": "DependencyServiceTest + ParameterServiceTest"
+    },
+    {
+      "requirement_id": "R8",
+      "signal": "看板新结构计数下钻、前端构建与页面状态",
+      "sensor": "DashboardMetricMySqlTest + npm build"
+    }
+  ],
+  "disturbances": [
+    "REQ-067 未提交改动与 REQ-068 共享文件差异",
+    "REQ-061 治理脚本 JSON/YAML 基线故障（check-all-governance 前置失败）",
+    "目标库 dm_dependency 非空",
+    "参数英文名跨提供方重复",
+    "旧客户端请求上传端点",
+    "浏览器环境不可用时无法完成四视口真机验收"
+  ],
+  "delays": [
+    "Flyway 在应用启动前执行",
+    "导入逐行写入与逐行错误收集",
+    "前端异步列表/导入请求",
+    "回收站恢复前重新校验"
+  ],
+  "assumptions": [
+    {
+      "text": "REQ-067 参数域可作为依赖只读数据源",
+      "basis": "当前工作区参数英文名实现与 V198 已存在",
+      "falsifier": "参数模块测试或 V198 迁移失败"
+    },
+    {
+      "text": "目标 dm_dependency 为空",
+      "basis": "用户确认不处理历史数据并采用空表失败关闭",
+      "falsifier": "部署目标迁移前 COUNT(*) 大于 0"
+    }
+  ],
+  "control_assessment": [
+    "全部 8 项 must 均有独立传感器与可复验信号",
+    "写路径受控：服务校验 + 唯一键 + 审计，回滚边界按任务划分",
+    "观测覆盖后端测试、MySQL 迁移、前端构建与治理检查四类；浏览器验收视环境记录限制",
+    "可观测性：通过；可控性：通过"
+  ],
+  "model_status": "ready"
+}

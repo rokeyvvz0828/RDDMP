@@ -1,0 +1,37 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_english_name.sql","purpose":"空表断言、ASCII 大小写不敏感非空列和范围唯一索引"},
+    {"path_or_resource":"server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java","purpose":"英文名校验、唯一、SQL、Excel、搜索与回收站全链路"},
+    {"path_or_resource":"server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java","purpose":"增加英文名格式、唯一、Excel、搜索和导出行为测试"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {"command":"mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":1,"salient_output":"实现前 11 项测试中 8 项失败，准确覆盖缺字段、非法字符、大小写重复、Excel、搜索和导出"},
+    {"command":"mvn -pl :ccb-data-migration -am -Dtest=ParameterServiceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"31 tests run, 0 failures, 0 errors"},
+    {"command":"node scripts/check-flyway-migrations.mjs","exit_code":1,"salient_output":"在扫描到 V198 前被既有 V84_1__seed_requirement_system_catalog.sql 命名错误阻断"},
+    {"command":"git diff --exit-code -- server/src/platform/infrastructure/src/main/resources/db/migration/V197__data_migration_parameter_domain.sql","exit_code":0,"salient_output":"V197 无改动"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误"}
+  ],
+  "local_checks": [
+    {"check":"参数服务与模块注册聚焦测试","result":"pass","evidence":"31 tests run, 0 failures, 0 errors","limitations":["尚未执行完整模块测试和真实 MySQL"]},
+    {"check":"历史迁移不变","result":"pass","evidence":"V197 git diff 退出码 0","limitations":[]},
+    {"check":"Flyway 全局静态检查","result":"blocked","evidence":"既有 V84_1 文件名不符合检查器 V<number>__description.sql 规则","limitations":["检查器在无关旧迁移处提前退出"]}
+  ],
+  "diff_summary": [
+    "新增 V198，在列不存在时先断言 dm_parameter 为空，再创建 ascii_general_ci 非空英文名列和四字段唯一索引",
+    "ParameterService 增加英文名校验与大小写不敏感预检，并贯通增改查、Excel、搜索和回收站；目标测试覆盖失败与成功路径"
+  ],
+  "invariants_checked": [
+    {"invariant":"V197 不修改","result":"pass","evidence":"目标 git diff 退出码 0"},
+    {"invariant":"现有 RBAC、项目范围、Owner 和 PARAMETER 审计不变","result":"pass","evidence":"Controller 未修改；31 项聚焦测试含审计和非 Owner 拒绝"},
+    {"invariant":"中文参数名称规则继续生效","result":"pass","evidence":"既有中文名重复测试继续通过"}
+  ],
+  "disturbances": [
+    {"event":"全局 Flyway 检查器被既有 V84_1__seed_requirement_system_catalog.sql 命名阻断","impact":"无法用该全局脚本直接评价 V198；需由独立 SQL/MySQL 传感器补足"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实 MySQL 8.4 的空表成功、大小写冲突和非空表失败关闭待 observing/T3 验证"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,106 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+      "purpose": "删除：TYPES 空集、无调用方的通用结构化资产服务"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+      "purpose": "删除：六个端点全部不可达的通用结构化控制器"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+      "purpose": "删除：仅被 StructuredAssetController 使用的通用 Excel 辅助"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+      "purpose": "删除：不再承接任何资产类型的空壳控制器"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+      "purpose": "精简：353 行收敛为 64 行，仅保留 BUSINESS_TYPE/resolveAttachment/replaceMainFile 与 3 参构造"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentDocCodeGenerator.java",
+      "purpose": "收敛：删除 DEPENDENCY/PARAMETER 前缀，保留 6 项在用前缀"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java",
+      "purpose": "修正：类注释移除已下线通用来源引用"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "commands": [
+    {
+      "command": "apply_patch 删除 4 文件（StructuredAssetService/StructuredAssetController/ExcelService/ContentAssetController）",
+      "exit_code": 0,
+      "salient_output": "4 文件删除成功"
+    },
+    {
+      "command": "apply_patch 重写 ContentFileAssetService（3 参构造 + 保留方法）",
+      "exit_code": 0,
+      "salient_output": "353->64 行"
+    },
+    {
+      "command": "apply_patch 收敛 ContentDocCodeGenerator 前缀 + ContentRecycleBinService 注释",
+      "exit_code": 0,
+      "salient_output": "8->6 前缀，注释更新"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am compile -DskipTests",
+      "exit_code": 0,
+      "salient_output": "BUILD SUCCESS（增量编译覆盖新源码；target/classes 无已删类残留）"
+    },
+    {
+      "command": "mvn surefire:test 聚焦测试（含 T2 相关测试）",
+      "exit_code": 0,
+      "salient_output": "Tests run: 76, Failures: 0, Errors: 0"
+    }
+  ],
+  "local_checks": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "rg 全仓扫描：4 个已删类仅剩专属来源 javadoc {link} 文本引用（见 unresolved_items），无代码引用；DataMigrationModuleRegistrationTest 已改为 Files.notExists 断言",
+      "limitations": [
+        "javadoc 链接属 P2 文档残留"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "mvn 编译通过；ReportService 调用 replaceMainFile、Plan/Topic/Mapping/Program/ReleaseDrill 调用 resolveAttachment 编译通过；ContentFileAssetDocCodeGovernanceTest 通过",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "ContentDocCodeGeneratorTest 3 测试通过（6 前缀 + DEPENDENCY/PARAMETER/MEETING 拒绝）",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "删除 5 文件（4 + ContentAssetRecycleBinSource 于 REQ-068 已删）；ContentFileAssetService 353->64 行；ContentDocCodeGenerator 8->6 前缀；ContentRecycleBinService 注释修正"
+  ],
+  "invariants_checked": [
+    "ContentAssetTables 未改动",
+    "专属 Service/Controller/RecycleBinSource 逻辑未改动",
+    "无 Flyway/权限/路由变更",
+    "平台附件能力未改动"
+  ],
+  "disturbances": [
+    "REQ-067/069 未提交改动共存工作区",
+    "ParameterRecycleBinSource/RuleRecycleBinSource javadoc 仍链接已删 StructuredAssetService#TYPES（只读面不可改）"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "专属来源 javadoc 对已删类 #TYPES/#MANAGED_TYPES 的链接无法修改（不在 writable_paths），属 P2 文档残留，不影响编译/运行"
+  ],
+  "recommended_next": "T2 测试断言已同步并通过聚焦运行；进入 T4 全量回归"
+}

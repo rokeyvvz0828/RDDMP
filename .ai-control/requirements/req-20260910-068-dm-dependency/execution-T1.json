@@ -1,0 +1,36 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V199__data_migration_dependency_domain.sql（新建）",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationDependencyMigrationMySqlTest.java（新建）"
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R6"
+  ],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationDependencyMigrationMySqlTest,DashboardMetricMySqlTest -Dsurefire.failIfNoSpecifiedTests=false"
+  ],
+  "local_checks": [
+    "空表应用 V199 成功：parameter_id 新增、doc_code/doc_name/active_doc_code 删除、uk_dm_dependency_relation/idx_dm_dependency_query/idx_dm_dependency_system 生效、旧 uk_dm_dependency_code 与 idx_dm_dependency_owner 消失",
+    "非空表在执行结构修改前失败：SIGNAL 45000 且旧列/旧数据保持不变，未生成占位关系",
+    "菜单 750 新增 create/update/delete 权限节点且授权 1/200；角色 202 保持只读",
+    "V199 语句重放幂等",
+    "迁移测试 2 项 + 看板 MySQL 测试 2 项全部通过"
+  ],
+  "diff_summary": [
+    "V199 在真实升级前结构（V162+V174+V178+V182 后）上删 uk_dm_dependency_code、旧查询索引与 owner 索引，删 doc_code/doc_name，新增 parameter_id、关系唯一键与权限节点；测试按同类 MySqlTest 模式使用 Testcontainers mysql:8.4"
+  ],
+  "invariants_checked": [
+    "只追加 V199，未修改任何已发布迁移",
+    "空表门禁在任何结构修改前执行",
+    "component_id/checksum_md5 兼容列未被动用"
+  ],
+  "disturbances": [
+    "发现真实升级路径存在 V178 遗留 uk_dm_dependency_code 引用 doc_code，V199 初版删除 doc_code 会失败；已加前置删除步骤并通过迁移测试"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "T2 专属依赖服务与回收站来源"
+}

@@ -9,11 +9,10 @@ import org.springframework.stereotype.Component;
 /**
  * 投产及演练资料（{@code dm_release_drill}）接入统一回收站的来源（REQ-20260820-031 增量）。
  *
- * <p>RELEASE_DRILL 从通用文件型资产链路（{@link ContentFileAssetService#MANAGED_TYPES}）剥离后，
- * 由本来源承接其软删列表、详情、恢复与彻底删除，全部委托 {@link ReleaseDrillService}，
+ * <p>RELEASE_DRILL 已由通用文件型资产链路域化为专属业务表（{@code dm_release_drill}），
+ * 本来源承接其软删列表、详情、恢复与彻底删除，全部委托 {@link ReleaseDrillService}，
  * 原样保留管理员校验、附件解绑与审计规则。{@code ContentRecycleBinService} 按各来源
- * {@code supports()} 建注册表并禁止重复认领，因此 MANAGED_TYPES 移除 RELEASE_DRILL 与本来源
- * 认领 RELEASE_DRILL 必须同批生效。
+ * {@code supports()} 建注册表并禁止重复认领。
  */
 @Component
 public class ReleaseDrillRecycleBinSource implements RecycleBinSource {

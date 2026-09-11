@@ -1,0 +1,21 @@
+{
+  "sample_label": "T1 后端与数据库完成采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id":"R1","sensor":"S1 ParameterServiceTest","result":"pass","raw_evidence":"独立复跑 11 项参数测试通过，含空值、非法字符、256 字符失败路径","limitation":["浏览器表单由 T2/T3 采样"]},
+    {"requirement_id":"R2","sensor":"S1 + S2 JUnit/MySQL 8.4","result":"pass","raw_evidence":"应用大小写预检测试通过；MySQL 同范围 ABC_01/abc_01 返回 ERROR 1062，跨项目插入成功","limitation":[]},
+    {"requirement_id":"R3","sensor":"S1 服务测试和 SQL 探针","result":"pass","raw_evidence":"SELECT/INSERT/UPDATE/回收站 SQL 均包含 parameter_name_en，创建响应断言通过","limitation":["前端消费者由 T2 采样"]},
+    {"requirement_id":"R4","sensor":"S1 POI 测试","result":"pass","raw_evidence":"六列表头、大小写文件内重复和八列导出断言通过","limitation":["真实浏览器下载由 T3 采样"]},
+    {"requirement_id":"R5","sensor":"S1 SQL 捕获测试","result":"pass","raw_evidence":"活动列表与回收站查询均捕获 parameter_name_en LIKE","limitation":["真实 API 查询由 T3 采样"]},
+    {"requirement_id":"R6","sensor":"S2 MySQL 8.4 + S5 git","result":"pass","raw_evidence":"空表迁移成功；非空表 SQLSTATE 45000 且列计数 0、原行计数 1；V197 git diff 退出码 0","limitation":["全局 Flyway 静态脚本被既有 V84_1 命名阻断"]},
+    {"requirement_id":"R7","sensor":"S1 + S5 JUnit/git","result":"pass","raw_evidence":"31 项聚焦测试含非 Owner 拒绝和 PARAMETER 审计；Controller 无 diff","limitation":["四视口布局和端到端未授权角色由 T3 采样"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event":"node scripts/check-flyway-migrations.mjs 在既有 V84_1__seed_requirement_system_catalog.sql 处失败","impact":"全局静态检查不可用，已用 MySQL 8.4 真实执行和 V197 git 检查替代目标信号"}
+  ],
+  "coverage_gaps": ["前端消费者、四视口和真实 API 工作流尚未实施，按计划由 T2/T3 覆盖"],
+  "error_counts": {"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status": "complete"
+}
