@@ -1,0 +1,123 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "local MySQL ccb_platform_licon",
+      "purpose": "Apply and inspect V201 against local development data without altering the known broken Flyway history."
+    },
+    {
+      "path_or_resource": "local backend and frontend processes",
+      "purpose": "Exercise authenticated project-aware APIs and browser behavior on the assembled application."
+    },
+    {
+      "path_or_resource": "web/src/views/ProjectView.vue",
+      "purpose": "Replace the invalid null Element Plus option value found by the browser sensor while preserving the all-categories attachment query."
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-security -am test",
+      "exit_code": 0,
+      "salient_output": "12 security tests passed."
+    },
+    {
+      "command": "mvn -pl :ccb-system -am test",
+      "exit_code": 0,
+      "salient_output": "91 system tests passed."
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc passed and Vite transformed 2584 modules; only existing dependency annotation and chunk-size warnings remain."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors; Git reported only line-ending notices."
+    },
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "V201 local development data",
+      "result": "pass",
+      "evidence": "pm_project_role_permission contains 1030 rows, zero system:* assignments and zero orphan relations; PM has 392 permissions and existing DEV/QA/DATA roles have 82 read permissions.",
+      "limitations": ["V201 was applied directly to the local development database because its pre-existing V159 Flyway history entry is failed."]
+    },
+    {
+      "check": "Project-aware API authorization",
+      "result": "pass",
+      "evidence": "One temporary user received 78 permissions in project A and 376 in project B; route sets differed; non-member context and path/header mismatch both returned 403; temporary user and permission rows were removed.",
+      "limitations": []
+    },
+    {
+      "check": "Permission catalog and audit",
+      "result": "pass",
+      "evidence": "Catalog create/update/status/delete and role permission save/readback succeeded; database audit rows exist for every write action.",
+      "limitations": ["The audit-list API is unavailable to the current local admin because of an existing system-role grant issue; audit persistence was verified by a read-only database query."]
+    },
+    {
+      "check": "Desktop and 390x844 browser acceptance",
+      "result": "pass",
+      "evidence": "Catalog search/create/edit/status/delete-cancel, immutable codes, project switch URL synchronization, role counts, drawer search/menu toggles/save/fullscreen, zero horizontal overflow and reachable mobile footer controls were exercised in the real browser.",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "The assembled permission catalog, project-role assignments and request-scoped authorization were verified against local services and data.",
+    "A browser-detected null option warning was corrected with a string sentinel and normalized before API requests.",
+    "No project authorization was changed by browser acceptance; DEV was saved with its original 82 permissions."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "System administration permissions remain global and cannot be assigned through project roles.",
+      "result": "pass",
+      "evidence": "Database and API candidate checks found zero system:* project-role assignments."
+    },
+    {
+      "invariant": "Backend authorization remains authoritative and project-scoped.",
+      "result": "pass",
+      "evidence": "Forged and non-member project contexts were rejected with 403 by the backend."
+    },
+    {
+      "invariant": "Flyway remains append-only.",
+      "result": "pass",
+      "evidence": "Only V201 was added; no published migration was modified."
+    },
+    {
+      "invariant": "REQ074 writes remain inside approved paths.",
+      "result": "pass",
+      "evidence": "Working-tree inventory is covered by codex-task-scope.yaml and git diff --check passed."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Local Flyway history has failed V159 and missing V160-V198 records even though later schemas exist.",
+      "impact": "Normal Flyway startup cannot be used as a trustworthy final sensor; V201 was applied and inspected directly in the local development database."
+    },
+    {
+      "event": "The seeded workflow publisher aborts startup because its existing approver configuration is absent.",
+      "impact": "The backend acceptance process disabled only Flyway and the seeded publisher through process environment flags."
+    },
+    {
+      "event": "Repository-wide governance parsing is blocked by the unrelated REQ061 task scope YAML.",
+      "impact": "Entry, module and repository skill checks passed, but the full aggregate governance command remains externally blocked."
+    },
+    {
+      "event": "The browser reported an Element Plus null option warning in ProjectView.",
+      "impact": "The in-scope attachment category option now uses an empty-string UI sentinel and normalizes non-number values before API requests; build and browser console rechecks passed."
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Repairing the historical V159 Flyway state and seeded workflow approver configuration requires separate environment governance.",
+    "The unrelated REQ061 YAML and legacy licon branch naming deviation remain outside REQ074."
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,52 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["AuthService 动态路由筛选", "sys_menu 菜单目录", "V202 补偿迁移", "前端动态菜单消费者"],
+    "environment": ["本地 MySQL 8", "Flyway 执行历史", "浏览器和当前项目上下文"]
+  },
+  "state_variables": [
+    {"name": "menu_102_name", "owner": "sys_menu", "valid_values": ["权限维护"]},
+    {"name": "effective_project_permissions", "owner": "AuthRepository", "valid_values": ["empty", "one-or-more project:* permissions"]},
+    {"name": "included_route_ids", "owner": "AuthService", "valid_values": ["authorized roots and ancestors only"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "V201 后的菜单 102 数据", "transitions": ["V202 使用固定 UTF-8 字节写回 menu_name", "动态路由读取 menu_name"], "outputs": ["菜单显示权限维护"]},
+    {"requirement_id": "R2", "input": "当前项目有效 project:* 权限集合", "transitions": ["AuthService 匹配叶子精确权限或命名空间 access 入口", "构建授权路由树"], "outputs": ["有权限时包含 /projects，无权限时不包含"]}
+  ],
+  "interfaces": [
+    {"name": "AuthRepository.findPermissions", "producers": ["AuthRepository"], "consumers": ["AuthService"], "invariant": "只返回当前用户当前项目的有效权限"},
+    {"name": "GET /api/auth/routes", "producers": ["AuthService"], "consumers": ["Pinia auth store 和菜单组件"], "invariant": "只包含有效权限可达导航"},
+    {"name": "sys_menu.menu_name", "producers": ["Flyway 迁移和系统菜单维护"], "consumers": ["动态路由和权限目录"], "invariant": "utf8mb4 文本可正确解码"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 菜单字节修复", "method": "JUnit 读取 V202 并断言固定 UTF-8 十六进制和目标行", "blind_spots": ["本地迁移历史阻止自动执行时无法证明运行库已更新"], "independence": "直接检查迁移输入"},
+    {"id": "S2", "target": "R2 路由授权结果", "method": "AuthService 单元测试输入有/无 project:* 权限并断言路由树", "blind_spots": ["不覆盖真实数据库角色数据"], "independence": "隔离服务逻辑"},
+    {"id": "S3", "target": "R1-R2 组装结果", "method": "本地数据库/API 与真实浏览器桌面手机验收", "blind_spots": ["不访问生产环境"], "independence": "观察最终运行输出"},
+    {"id": "S4", "target": "跨模块回归", "method": "Security/System Maven 测试与前端生产构建", "blind_spots": ["无法覆盖所有人工交互"], "independence": "编译和自动化回归"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "AuthService 路由匹配", "action": "在精确权限匹配外支持同命名空间 access 导航匹配", "authority": "REQ075 writable_paths", "impact_radius": "security 动态路由", "rollback": "恢复 AuthService 和直接测试 diff"},
+    {"id": "A2", "target": "sys_menu 菜单 102", "action": "追加 V202 固定 UTF-8 字节补偿迁移", "authority": "REQ075 writable_paths", "impact_radius": "菜单 102 名称", "rollback": "应用可回退且保留正确菜单文本"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S3", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "本地 Flyway V159 失败历史", "effect": "正常启动不能自动执行 V202", "detectable": true, "controllable": false},
+    {"source": "当前前后端服务已停止", "effect": "运行验收需重新启动", "detectable": true, "controllable": true},
+    {"source": "REQ074 未提交工作树", "effect": "修复 diff 与既有实现叠加", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "项目切换后的授权刷新", "consequence": "菜单在请求完成前保持旧快照", "sampling_rule": "等待 /auth/me 与 /auth/routes 完成后采样"}
+  ],
+  "assumptions": [
+    {"text": "access 权限码用于命名空间导航入口", "evidence": "system/workflow/release/project 等根菜单均采用 *:access", "falsifier": "发现 access 被业务写接口直接用作授权动作"},
+    {"text": "V202 是下一个未占用迁移版本", "evidence": "迁移目录最高版本为 V201", "falsifier": "实施前出现 V202 文件"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "追加补偿迁移并以静态和运行传感器检查"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "修正局部路由匹配并执行有权/无权测试"}
+  ],
+  "model_status": "ready"
+}

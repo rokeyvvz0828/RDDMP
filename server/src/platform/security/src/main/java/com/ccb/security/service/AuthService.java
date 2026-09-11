@@ -19,12 +19,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AuthService {
+    public static final String PROJECT_CONTEXT_ATTRIBUTE = AuthService.class.getName() + ".projectId";
     private final AuthRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService tokenService;
@@ -130,8 +132,12 @@ public class AuthService {
     }
 
     public AuthMe me(AuthUser user) {
+        return me(user, null);
+    }
+
+    public AuthMe me(AuthUser user, Long projectId) {
         return new AuthMe(user.id(), user.tenantId(), user.username(), user.displayName(), user.orgId(),
-                user.orgName(), avatarUrl(user), roles(user), permissions(user));
+                user.orgName(), avatarUrl(user), roles(user), permissions(user, projectId));
     }
 
     public List<String> roles(AuthUser user) {
@@ -139,7 +145,11 @@ public class AuthService {
     }
 
     public List<String> permissions(AuthUser user) {
-        return repository.findPermissions(user.id(), user.tenantId());
+        return permissions(user, null);
+    }
+
+    public List<String> permissions(AuthUser user, Long projectId) {
+        return repository.findPermissions(user.id(), user.tenantId(), projectId);
     }
 
     private String avatarUrl(AuthUser user) {
@@ -152,10 +162,62 @@ public class AuthService {
     }
 
     public List<RouteNode> routes(AuthUser user) {
-        List<RouteNode> flat = repository.findRoutes(user.id(), user.tenantId());
+        return routes(user, null);
+    }
+
+    public List<RouteNode> routes(AuthUser user, Long projectId) {
+        Set<String> permissions = new HashSet<>(permissions(user, projectId));
+        if (repository.hasAnyProjectManagementPermission(user.id(), user.tenantId())) {
+            permissions.add("project:project:list");
+        }
+        List<RouteNode> catalog = repository.findRoutes(user.id(), user.tenantId(), projectId);
+        Set<Long> included = new HashSet<>();
+        for (RouteNode node : catalog) {
+            if (hasRoutePermission(node.permissionCode(), permissions)) {
+                included.add(node.id());
+            }
+        }
+        boolean changed;
+        do {
+            changed = false;
+            for (RouteNode node : catalog) {
+                if (included.contains(node.id()) && node.parentId() != 0) {
+                    changed |= included.add(node.parentId());
+                }
+            }
+        } while (changed);
+        List<RouteNode> flat = catalog.stream().filter(node -> included.contains(node.id())).toList();
         List<RouteNode> roots = new ArrayList<>();
         for (RouteNode node : flat) if (node.parentId() == 0) roots.add(node);
         return roots.stream().map(root -> attachChildren(root, flat)).toList();
+    }
+
+    private boolean hasRoutePermission(String permissionCode, Set<String> permissions) {
+        if (permissionCode == null || permissionCode.isBlank()) return false;
+        if ("project:access".equals(permissionCode)) return permissions.contains("project:project:list");
+        if (permissions.contains(permissionCode)) return true;
+        if (!permissionCode.endsWith(":access")) return false;
+        String namespace = permissionCode.substring(0, permissionCode.length() - "access".length());
+        return permissions.stream().anyMatch(permission -> permission.startsWith(namespace));
+    }
+
+    public Long resolveProjectId(HttpServletRequest request, AuthUser user) {
+        Object resolved = request.getAttribute(PROJECT_CONTEXT_ATTRIBUTE);
+        if (resolved instanceof Long projectId) return projectId;
+        String value = request.getHeader("X-Project-Id");
+        if (value == null || value.isBlank()) return null;
+        long projectId;
+        try {
+            projectId = Long.parseLong(value.trim());
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "X-Project-Id必须是正整数");
+        }
+        if (projectId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "X-Project-Id必须是正整数");
+        if (!repository.hasProjectAccess(user.id(), user.tenantId(), projectId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "没有该项目的访问权限");
+        }
+        request.setAttribute(PROJECT_CONTEXT_ATTRIBUTE, projectId);
+        return projectId;
     }
 
     public AuthUser currentUser(Claims claims) {

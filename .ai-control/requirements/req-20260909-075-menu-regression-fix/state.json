@@ -1,0 +1,1552 @@
+{
+  "schema_version": 4,
+  "revision": 29,
+  "created_at": "2026-09-09T05:44:05+00:00",
+  "updated_at": "2026-09-09T06:57:51+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-09T05:44:05+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "R1-R2均有可判别验收条件且无阻塞未知项",
+      "recorded_at": "2026-09-09T05:44:06+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R1-R2均具备代码、迁移、自动化与运行传感器及有界执行器",
+      "recorded_at": "2026-09-09T05:46:36+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划门禁通过，开始T1和T2有界修复",
+      "recorded_at": "2026-09-09T05:46:36+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T2产生可独立测量输出",
+      "recorded_at": "2026-09-09T05:51:30+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1-T2观察无偏差，进入T3组合验收",
+      "recorded_at": "2026-09-09T06:09:49+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3具备最终运行和浏览器传感器证据",
+      "recorded_at": "2026-09-09T06:57:49+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1-T3全部验证，三个高保障样本完成且无开放反馈",
+      "recorded_at": "2026-09-09T06:57:50+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "高保障门禁通过，R1-R2稳定收敛",
+      "recorded_at": "2026-09-09T06:57:51+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "用户负反馈、V201菜单更新与AuthService路由过滤证据已核对",
+        "recorded_at": "2026-09-09T05:44:06+00:00",
+        "data": {
+          "objective": "恢复权限维护中文菜单名称，并让项目管理入口与当前项目业务权限一致显示。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "系统必须以正确中文显示权限维护菜单。",
+              "acceptance": [
+                "菜单 102 名称等于权限维护",
+                "名称 UTF-8 十六进制为 E69D83E99990E7BBB4E68AA4"
+              ],
+              "priority": "must",
+              "source": "用户反馈",
+              "counterexample": [
+                "菜单名称显示为 æƒé™ç»´æŠ¤"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "拥有当前项目任一 project 命名空间业务权限的用户必须看到项目管理菜单。",
+              "acceptance": [
+                "project:plan:list 可激活 /projects 根菜单",
+                "没有 project:* 权限时不返回 /projects"
+              ],
+              "priority": "must",
+              "source": "用户反馈与 REQ074 不变量",
+              "counterexample": [
+                "拥有 project:plan:list 但动态路由没有 /projects",
+                "无项目权限仍返回 /projects"
+              ]
+            }
+          ],
+          "invariants": [
+            "服务端权限为权威",
+            "项目权限不授予系统权限",
+            "Flyway 迁移只追加",
+            "保留全部用户现有改动"
+          ],
+          "constraints": [
+            "只修改 REQ075 writable_paths",
+            "不读取 .env 或密钥",
+            "不修改 V201"
+          ],
+          "non_goals": [
+            "不改前端布局",
+            "不改公开 API",
+            "不修复本地既有 Flyway V159 历史"
+          ],
+          "assumptions": [
+            {
+              "text": "乱码只存在于菜单 102 的数据库值",
+              "basis": "浏览器中页面静态标题正常且 V201 仅更新该中文菜单名",
+              "falsifier": "运行检查发现其他本次变更字段乱码"
+            },
+            {
+              "text": "项目菜单缺失源于 project:access 与具体 project:* 权限不匹配",
+              "basis": "V52 根菜单权限码和 AuthService 精确匹配逻辑",
+              "falsifier": "带 project:* 权限的路由服务测试仍包含 /projects"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "是否保持既有权限数据模型和 API",
+              "options": [
+                "保持兼容",
+                "改变权限模型"
+              ],
+              "selected": "保持兼容",
+              "blocking": false,
+              "source": "REQ074 与仓库约束"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "迁移 SQL 的目标字节与运行数据库菜单文本",
+              "candidate_sensor": "迁移静态测试和数据库/API探针"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "不同项目权限集合生成的动态路由树",
+              "candidate_sensor": "AuthService 单元测试和真实浏览器"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "菜单目录、权限集合、路由筛选和本地迁移扰动已建模",
+        "recorded_at": "2026-09-09T05:46:36+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "AuthService 动态路由筛选",
+              "sys_menu 菜单目录",
+              "V202 补偿迁移",
+              "前端动态菜单消费者"
+            ],
+            "environment": [
+              "本地 MySQL 8",
+              "Flyway 执行历史",
+              "浏览器和当前项目上下文"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "menu_102_name",
+              "owner": "sys_menu",
+              "valid_values": [
+                "权限维护"
+              ]
+            },
+            {
+              "name": "effective_project_permissions",
+              "owner": "AuthRepository",
+              "valid_values": [
+                "empty",
+                "one-or-more project:* permissions"
+              ]
+            },
+            {
+              "name": "included_route_ids",
+              "owner": "AuthService",
+              "valid_values": [
+                "authorized roots and ancestors only"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "V201 后的菜单 102 数据",
+              "transitions": [
+                "V202 使用固定 UTF-8 字节写回 menu_name",
+                "动态路由读取 menu_name"
+              ],
+              "outputs": [
+                "菜单显示权限维护"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "当前项目有效 project:* 权限集合",
+              "transitions": [
+                "AuthService 匹配叶子精确权限或命名空间 access 入口",
+                "构建授权路由树"
+              ],
+              "outputs": [
+                "有权限时包含 /projects，无权限时不包含"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "AuthRepository.findPermissions",
+              "producers": [
+                "AuthRepository"
+              ],
+              "consumers": [
+                "AuthService"
+              ],
+              "invariant": "只返回当前用户当前项目的有效权限"
+            },
+            {
+              "name": "GET /api/auth/routes",
+              "producers": [
+                "AuthService"
+              ],
+              "consumers": [
+                "Pinia auth store 和菜单组件"
+              ],
+              "invariant": "只包含有效权限可达导航"
+            },
+            {
+              "name": "sys_menu.menu_name",
+              "producers": [
+                "Flyway 迁移和系统菜单维护"
+              ],
+              "consumers": [
+                "动态路由和权限目录"
+              ],
+              "invariant": "utf8mb4 文本可正确解码"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1 菜单字节修复",
+              "method": "JUnit 读取 V202 并断言固定 UTF-8 十六进制和目标行",
+              "blind_spots": [
+                "本地迁移历史阻止自动执行时无法证明运行库已更新"
+              ],
+              "independence": "直接检查迁移输入"
+            },
+            {
+              "id": "S2",
+              "target": "R2 路由授权结果",
+              "method": "AuthService 单元测试输入有/无 project:* 权限并断言路由树",
+              "blind_spots": [
+                "不覆盖真实数据库角色数据"
+              ],
+              "independence": "隔离服务逻辑"
+            },
+            {
+              "id": "S3",
+              "target": "R1-R2 组装结果",
+              "method": "本地数据库/API 与真实浏览器桌面手机验收",
+              "blind_spots": [
+                "不访问生产环境"
+              ],
+              "independence": "观察最终运行输出"
+            },
+            {
+              "id": "S4",
+              "target": "跨模块回归",
+              "method": "Security/System Maven 测试与前端生产构建",
+              "blind_spots": [
+                "无法覆盖所有人工交互"
+              ],
+              "independence": "编译和自动化回归"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "AuthService 路由匹配",
+              "action": "在精确权限匹配外支持同命名空间 access 导航匹配",
+              "authority": "REQ075 writable_paths",
+              "impact_radius": "security 动态路由",
+              "rollback": "恢复 AuthService 和直接测试 diff"
+            },
+            {
+              "id": "A2",
+              "target": "sys_menu 菜单 102",
+              "action": "追加 V202 固定 UTF-8 字节补偿迁移",
+              "authority": "REQ075 writable_paths",
+              "impact_radius": "菜单 102 名称",
+              "rollback": "应用可回退且保留正确菜单文本"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "本地 Flyway V159 失败历史",
+              "effect": "正常启动不能自动执行 V202",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "当前前后端服务已停止",
+              "effect": "运行验收需重新启动",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "REQ074 未提交工作树",
+              "effect": "修复 diff 与既有实现叠加",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "项目切换后的授权刷新",
+              "consequence": "菜单在请求完成前保持旧快照",
+              "sampling_rule": "等待 /auth/me 与 /auth/routes 完成后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "access 权限码用于命名空间导航入口",
+              "evidence": "system/workflow/release/project 等根菜单均采用 *:access",
+              "falsifier": "发现 access 被业务写接口直接用作授权动作"
+            },
+            {
+              "text": "V202 是下一个未占用迁移版本",
+              "evidence": "迁移目录最高版本为 V201",
+              "falsifier": "实施前出现 V202 文件"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "追加补偿迁移并以静态和运行传感器检查"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "修正局部路由匹配并执行有权/无权测试"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3覆盖R1-R2且写入范围、回滚和采样计划完整",
+        "recorded_at": "2026-09-09T05:46:36+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "项目管理入口按当前项目具体业务权限正确显示",
+              "requirement_ids": [
+                "R2"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "项目根菜单 505 使用 project:access",
+                "可见路由目录不含 501-504 隐藏权限节点",
+                "AuthService 当前只做精确权限匹配"
+              ],
+              "write_scope": [
+                "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+                "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java"
+              ],
+              "invariants": [
+                "无 project:* 权限不得获得 /projects",
+                "具体叶子权限仍精确匹配",
+                "不改变 AuthRepository 权限数据范围"
+              ],
+              "interface_contracts": [
+                "GET /api/auth/routes 响应结构不变"
+              ],
+              "non_goals": [
+                "不修改前端",
+                "不改变项目角色权限模型"
+              ],
+              "action_bounds": [
+                "仅增加 AuthService 内部路由匹配辅助逻辑和直接测试"
+              ],
+              "acceptance_checks": [
+                "project:plan:list 激活 project:access 根菜单",
+                "无 project:* 权限不激活项目根菜单",
+                "Security 聚焦测试通过"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "JUnit 命令退出码"
+              ],
+              "rollback": "恢复 T1 两个文件的本次增量",
+              "stop_conditions": [
+                "需要修改公开 API 或 AuthRepository 数据范围"
+              ],
+              "escalation_conditions": [
+                "命名空间 access 语义与现有受保护接口冲突"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "以客户端字符集无关方式修复权限维护菜单名称",
+              "requirement_ids": [
+                "R1"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V201 文件中文字正确但本地数据库值出现 UTF-8/latin1 双重编码乱码",
+                "V202 未被占用"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectMenuRegressionMigrationTest.java"
+              ],
+              "invariants": [
+                "迁移只追加",
+                "只更新 tenant 1 菜单 102 的名称",
+                "不修改 Flyway 历史"
+              ],
+              "interface_contracts": [
+                "sys_menu 102 路由和权限码保持不变"
+              ],
+              "non_goals": [
+                "不修复 V159 历史",
+                "不修改其他菜单文本"
+              ],
+              "action_bounds": [
+                "追加单一幂等 UPDATE 和静态迁移测试"
+              ],
+              "acceptance_checks": [
+                "SQL 使用 E69D83E99990E7BBB4E68AA4",
+                "System 聚焦测试通过"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "JUnit 命令退出码",
+                "数据库字节探针或明确环境限制"
+              ],
+              "rollback": "应用回退时保留正确中文数据",
+              "stop_conditions": [
+                "发现需修改已发布迁移或其他表"
+              ],
+              "escalation_conditions": [
+                "本地数据库不是 utf8mb4 或菜单 102 不存在"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "完成菜单修复的跨模块与运行验收",
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1-T2 产生可组合修复"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json"
+              ],
+              "invariants": [
+                "P0/P1 为零",
+                "修改面位于 REQ075 范围"
+              ],
+              "interface_contracts": [
+                "最终迁移、动态路由与前端菜单组合"
+              ],
+              "non_goals": [
+                "不扩大到其他历史环境问题"
+              ],
+              "action_bounds": [
+                "执行测试、构建、运行探针和浏览器验收并记录证据"
+              ],
+              "acceptance_checks": [
+                "Security/System 测试通过",
+                "前端构建通过",
+                "数据库/API/浏览器结果满足 R1-R2"
+              ],
+              "evidence_required": [
+                "三次采样",
+                "至少两类独立传感器",
+                "范围审计"
+              ],
+              "rollback": "按 T1 回滚代码；V202 数据保留",
+              "stop_conditions": [
+                "存在未关闭 P0/P1"
+              ],
+              "escalation_conditions": [
+                "运行环境需要读取 forbidden_paths 才能启动"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "运行验收需要路由修复"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "运行验收需要菜单数据修复"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1",
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "运行 Security/System 聚焦测试",
+                "检查最终 diff"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "数据库/API/浏览器验收",
+                "范围和收敛门禁"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 路由逻辑采样",
+              "trigger": "T1 实施完成",
+              "observer": "独立测试传感器",
+              "sensors": [
+                "S2"
+              ],
+              "requirement_ids": [
+                "R2"
+              ]
+            },
+            {
+              "label": "T2 迁移字节采样",
+              "trigger": "T2 实施完成",
+              "observer": "独立静态传感器",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1"
+              ]
+            },
+            {
+              "label": "最终组合采样",
+              "trigger": "T3 验收",
+              "observer": "运行与浏览器传感器",
+              "sensors": [
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1代码与4项路由测试完成",
+        "recorded_at": "2026-09-09T05:51:29+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+              "purpose": "让命名空间具体权限激活对应的 access 导航入口"
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java",
+              "purpose": "覆盖真实 project:access 有权和无权路由场景"
+            }
+          ],
+          "requirements_addressed": [
+            "R2"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-security -am -Dtest=AuthServiceProjectContextTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "AuthServiceProjectContextTest 4 tests, 0 failures; reactor BUILD SUCCESS"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; existing CRLF conversion warnings only"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "项目动态路由单元测试",
+              "result": "pass",
+              "evidence": "4/4 tests passed",
+              "limitations": [
+                "尚未组装真实数据库和浏览器"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "精确权限匹配保持不变",
+            "*:access 可由相同命名空间的具体权限激活",
+            "无 project:* 权限反例返回空路由"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "无 project:* 权限不得获得 /projects",
+              "result": "pass",
+              "evidence": "system:user:list 输入断言 routes 为空"
+            },
+            {
+              "invariant": "公开响应结构不变",
+              "result": "pass",
+              "evidence": "仅修改 AuthService 内部筛选函数"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "首次 Maven 命令的 PowerShell -D 参数未加引号",
+              "impact": "命令在编译前退出；修正引用后测试通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实 API 和浏览器验收由 T3 执行"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2迁移与1项静态测试完成",
+        "recorded_at": "2026-09-09T05:51:29+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql",
+              "purpose": "以固定 UTF-8 字节修复菜单 102 名称"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectMenuRegressionMigrationTest.java",
+              "purpose": "锁定迁移目标、字节与非破坏性约束"
+            }
+          ],
+          "requirements_addressed": [
+            "R1"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-system -am -Dtest=ProjectMenuRegressionMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "ProjectMenuRegressionMigrationTest 1 test, 0 failures; reactor BUILD SUCCESS"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; existing CRLF conversion warnings only"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "V202 静态迁移测试",
+              "result": "pass",
+              "evidence": "1/1 test passed and UTF-8 bytes asserted",
+              "limitations": [
+                "本地 V159 失败历史使正常 Flyway 运行验收待 T3 处理"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "追加 V202",
+            "只更新 tenant 1、id 102、未删除菜单的 menu_name",
+            "不使用中文 SQL 字面量"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "迁移只追加",
+              "result": "pass",
+              "evidence": "V202 为新文件，V201 未修改"
+            },
+            {
+              "invariant": "无破坏性 SQL",
+              "result": "pass",
+              "evidence": "测试断言不含 DROP 或 DELETE"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "运行库实际字节待 T3 数据库探针"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3自动化、MySQL、API和桌面浏览器验收完成",
+        "recorded_at": "2026-09-09T06:57:49+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json",
+              "purpose": "记录跨模块、迁移、API 和浏览器验收证据"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-security -am -Dnet.bytebuddy.experimental=true test",
+              "exit_code": 0,
+              "salient_output": "ccb-security 13 tests passed; infrastructure 15 tests passed"
+            },
+            {
+              "command": "mvn -pl :ccb-system -am -Dnet.bytebuddy.experimental=true test",
+              "exit_code": 0,
+              "salient_output": "ccb-system 92 tests passed; all reactor dependencies passed"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite production build completed"
+            },
+            {
+              "command": "mvn -pl :ccb-boot -am -DskipTests package",
+              "exit_code": 0,
+              "salient_output": "15-module reactor BUILD SUCCESS and executable boot jar repackaged"
+            },
+            {
+              "command": "MySQL 8.4 isolated Flyway/API probes",
+              "exit_code": 0,
+              "salient_output": "V199-V202 success; menu hex correct; authorized and unauthorized route assertions passed"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "Target module, repository skill and entry checks passed; aggregate stopped on unrelated REQ061 non-JSON scope"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; existing line-ending warnings only"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "运行数据库迁移",
+              "result": "pass",
+              "evidence": "Flyway history records 199-202 success; V202 applied in 17 ms; menu 102 hex E69D83E99990E7BBB4E68AA4",
+              "limitations": [
+                "使用隔离本地 MySQL，不访问用户当前库或生产库"
+              ]
+            },
+            {
+              "check": "认证动态路由 API",
+              "result": "pass",
+              "evidence": "项目 940001 管理员返回 /system/permissions=权限维护 和 /projects=项目管理；无项目角色成员不返回 /projects",
+              "limitations": []
+            },
+            {
+              "check": "桌面真实浏览器",
+              "result": "pass",
+              "evidence": "921x1032 视口登录后顶层显示项目管理，展开系统管理显示权限维护",
+              "limitations": [
+                "浏览器安全策略拒绝在已登录本地会话继续切换 390x844"
+              ]
+            },
+            {
+              "check": "自动化与构建",
+              "result": "pass",
+              "evidence": "Security 13/13，System 92/92，前端构建和 15 模块后端打包通过",
+              "limitations": [
+                "机器只有 Java 23/25，测试使用 Byte Buddy experimental 兼容开关"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "组合验证 T1 路由筛选和 T2 菜单字节迁移",
+            "隔离运行资源已全部停止删除"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "无项目权限不得获得项目菜单",
+              "result": "pass",
+              "evidence": "真实 API 临时无角色成员断言通过"
+            },
+            {
+              "invariant": "Flyway 只追加",
+              "result": "pass",
+              "evidence": "V202 新增，V201 未修改"
+            },
+            {
+              "invariant": "不读取 .env 或当前库",
+              "result": "pass",
+              "evidence": "后端从 TEMP 工作目录以隔离测试变量连接一次性 ccb_req075 库"
+            },
+            {
+              "invariant": "不影响用户现有服务",
+              "result": "pass",
+              "evidence": "既有 8080 进程未停止，验收后 18080/5174/33306 均无监听"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Java 25 不受当前 Byte Buddy 正式支持",
+              "impact": "首次全量测试基础设施模块失败，启用官方 experimental 开关后全部通过"
+            },
+            {
+              "event": "8080 被既有非任务后端占用",
+              "impact": "隔离后端改用 18080，未修改既有进程"
+            },
+            {
+              "event": "全仓治理被 REQ061 非 JSON scope 阻塞",
+              "impact": "目标模块、Skill、entry 和 diff 检查仍通过"
+            },
+            {
+              "event": "浏览器安全策略拒绝已登录本地会话的移动视口操作",
+              "impact": "桌面浏览器已验收，移动端仅有构建证据"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "当前 licon 分支不符合新治理分支命名规则",
+            "用户当前数据库未读取或手工更新，需由正常 Flyway 发布 V202"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "S2独立路由测试未观察到偏差",
+        "recorded_at": "2026-09-09T05:51:30+00:00",
+        "data": {
+          "sample_label": "T1 路由逻辑采样",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 AuthService 单元测试",
+              "result": "pass",
+              "raw_evidence": "project:plan:list 输入返回 project:access 根菜单和授权叶子；仅 system:user:list 输入不返回项目菜单；4/4 tests passed",
+              "limitation": [
+                "隔离测试不包含真实数据库"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "首次未加引号的 Maven 参数在测试前退出，修正命令后稳定通过"
+          ],
+          "coverage_gaps": [
+            "真实 API 和浏览器留待最终组合采样"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "S1独立迁移静态测试未观察到偏差",
+        "recorded_at": "2026-09-09T05:51:30+00:00",
+        "data": {
+          "sample_label": "T2 迁移字节采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 V202 静态迁移测试",
+              "result": "pass",
+              "raw_evidence": "迁移包含 CONVERT(0xE69D83E99990E7BBB4E68AA4 USING utf8mb4)，目标限制为 tenant_id=1、id=102；1/1 test passed",
+              "limitation": [
+                "尚未测量运行数据库"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "本地既有 V159 Flyway 失败历史可能阻止正常自动迁移"
+          ],
+          "coverage_gaps": [
+            "运行数据库和页面文字留待最终组合采样"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "R1-R2组合观测通过且无产品偏差",
+        "recorded_at": "2026-09-09T06:57:50+00:00",
+        "data": {
+          "sample_label": "最终组合采样",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S3 MySQL 字节、API 和真实浏览器",
+              "result": "pass",
+              "raw_evidence": "MySQL 8.4 Flyway V202 success；HEX(menu_name)=E69D83E99990E7BBB4E68AA4；API 与桌面浏览器均显示权限维护",
+              "limitation": [
+                "未连接用户当前数据库"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2/S3/S4 单元、API、浏览器和回归",
+              "result": "pass",
+              "raw_evidence": "单元测试覆盖 namespace access；管理员 API 和桌面菜单包含 /projects；无角色成员 API 不包含 /projects；Security 13/13、System 92/92",
+              "limitation": [
+                "移动浏览器复验被连接器安全策略阻止"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Java 25 需要 Byte Buddy experimental",
+            "8080 端口既有占用",
+            "REQ061 阻塞全仓治理",
+            "移动浏览器安全策略拒绝"
+          ],
+          "coverage_gaps": [
+            "未在用户当前数据库和生产环境执行 V202",
+            "未完成 390x844 已登录页面复验"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "需求、任务、传感器、不变量和残余风险审计完成",
+        "recorded_at": "2026-09-09T06:57:50+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "V202 静态迁移测试通过",
+                "MySQL 8.4 实际迁移成功且目标 UTF-8 字节正确",
+                "API 与桌面浏览器显示权限维护"
+              ],
+              "limitations": [
+                "用户当前库由发布时 Flyway 应用 V202"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "AuthService 有权/无权路由测试 4/4 通过",
+                "管理员项目 API 返回项目管理",
+                "无项目角色成员 API 不返回项目管理",
+                "桌面浏览器显示项目管理"
+              ],
+              "limitations": [
+                "390x844 浏览器操作被安全策略拒绝"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "路由目标测试和无权反例通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "迁移静态测试和 MySQL 8.4 实际执行通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "自动化、构建、API、数据库和桌面浏览器组合验收通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Security",
+              "result": "pass",
+              "evidence": "13/13 tests passed"
+            },
+            {
+              "check": "System",
+              "result": "pass",
+              "evidence": "92/92 tests passed"
+            },
+            {
+              "check": "Frontend",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite production build passed"
+            },
+            {
+              "check": "Backend package",
+              "result": "pass",
+              "evidence": "15-module reactor package BUILD SUCCESS"
+            },
+            {
+              "check": "MySQL/API/browser",
+              "result": "pass",
+              "evidence": "V202 bytes, positive/negative routes and desktop menus passed"
+            },
+            {
+              "check": "Aggregate governance",
+              "result": "blocked-external",
+              "evidence": "Target checks pass; unrelated REQ061 scope is not JSON-compatible"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "无 project:* 权限不得获得 /projects",
+              "result": "pass",
+              "evidence": "单元与真实 API 反例均通过"
+            },
+            {
+              "invariant": "V201 不修改且迁移只追加",
+              "result": "pass",
+              "evidence": "仅新增 V202"
+            },
+            {
+              "invariant": "现有 API 与数据边界保持",
+              "result": "pass",
+              "evidence": "内部匹配函数变更，Security/System 回归通过"
+            },
+            {
+              "invariant": "REQ075 范围内修改",
+              "result": "pass",
+              "evidence": "新增修复面均位于 writable_paths，REQ074 既有改动被保留"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "干净 MySQL 8.4",
+              "result": "pass",
+              "evidence": "完整迁移到 V202 并健康启动"
+            },
+            {
+              "disturbance": "无项目角色权限",
+              "result": "pass",
+              "evidence": "项目成员可验证上下文但不获得项目菜单"
+            },
+            {
+              "disturbance": "8080 端口占用",
+              "result": "pass",
+              "evidence": "隔离后端在 18080 验收且未干扰用户进程"
+            }
+          ],
+          "residual_risks": [
+            "当前 licon 分支不符合仓库新治理分支命名规则，任务 scope 检查因此不能通过。",
+            "全仓治理仍被无关 REQ061 非 JSON scope 文件阻塞。",
+            "机器无 JDK 17，Java 25 回归需要 -Dnet.bytebuddy.experimental=true。",
+            "浏览器连接器拒绝继续操作已登录本地会话，390x844 复验未完成。",
+            "用户当前库未读取或手工修改；V202 需在正常发布迁移中应用。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R2均有单元、静态、MySQL、API和桌面浏览器证据，三个高保障零误差样本完成，任务全部验证且无开放反馈；剩余项为已披露的环境或治理限制。"
+        }
+      }
+    ]
+  },
+  "objective": "恢复权限维护中文菜单名称，并让项目管理入口与当前项目业务权限一致显示。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须以正确中文显示权限维护菜单。",
+      "acceptance": [
+        "菜单 102 名称等于权限维护",
+        "名称 UTF-8 十六进制为 E69D83E99990E7BBB4E68AA4"
+      ],
+      "priority": "must",
+      "source": "用户反馈",
+      "counterexample": [
+        "菜单名称显示为 æƒé™ç»´æŠ¤"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "拥有当前项目任一 project 命名空间业务权限的用户必须看到项目管理菜单。",
+      "acceptance": [
+        "project:plan:list 可激活 /projects 根菜单",
+        "没有 project:* 权限时不返回 /projects"
+      ],
+      "priority": "must",
+      "source": "用户反馈与 REQ074 不变量",
+      "counterexample": [
+        "拥有 project:plan:list 但动态路由没有 /projects",
+        "无项目权限仍返回 /projects"
+      ]
+    }
+  ],
+  "invariants": [
+    "服务端权限为权威",
+    "项目权限不授予系统权限",
+    "Flyway 迁移只追加",
+    "保留全部用户现有改动"
+  ],
+  "constraints": [
+    "只修改 REQ075 writable_paths",
+    "不读取 .env 或密钥",
+    "不修改 V201"
+  ],
+  "non_goals": [
+    "不改前端布局",
+    "不改公开 API",
+    "不修复本地既有 Flyway V159 历史"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"本地 MySQL 8\", \"Flyway 执行历史\", \"浏览器和当前项目上下文\"], \"inside\": [\"AuthService 动态路由筛选\", \"sys_menu 菜单目录\", \"V202 补偿迁移\", \"前端动态菜单消费者\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"本地迁移历史阻止自动执行时无法证明运行库已更新\"], \"id\": \"S1\", \"independence\": \"直接检查迁移输入\", \"method\": \"JUnit 读取 V202 并断言固定 UTF-8 十六进制和目标行\", \"target\": \"R1 菜单字节修复\"}",
+      "{\"blind_spots\": [\"不覆盖真实数据库角色数据\"], \"id\": \"S2\", \"independence\": \"隔离服务逻辑\", \"method\": \"AuthService 单元测试输入有/无 project:* 权限并断言路由树\", \"target\": \"R2 路由授权结果\"}",
+      "{\"blind_spots\": [\"不访问生产环境\"], \"id\": \"S3\", \"independence\": \"观察最终运行输出\", \"method\": \"本地数据库/API 与真实浏览器桌面手机验收\", \"target\": \"R1-R2 组装结果\"}",
+      "{\"blind_spots\": [\"无法覆盖所有人工交互\"], \"id\": \"S4\", \"independence\": \"编译和自动化回归\", \"method\": \"Security/System Maven 测试与前端生产构建\", \"target\": \"跨模块回归\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"在精确权限匹配外支持同命名空间 access 导航匹配\", \"authority\": \"REQ075 writable_paths\", \"id\": \"A1\", \"impact_radius\": \"security 动态路由\", \"rollback\": \"恢复 AuthService 和直接测试 diff\", \"target\": \"AuthService 路由匹配\"}",
+      "{\"action\": \"追加 V202 固定 UTF-8 字节补偿迁移\", \"authority\": \"REQ075 writable_paths\", \"id\": \"A2\", \"impact_radius\": \"菜单 102 名称\", \"rollback\": \"应用可回退且保留正确菜单文本\", \"target\": \"sys_menu 菜单 102\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"正常启动不能自动执行 V202\", \"source\": \"本地 Flyway V159 失败历史\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"运行验收需重新启动\", \"source\": \"当前前后端服务已停止\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"修复 diff 与既有实现叠加\", \"source\": \"REQ074 未提交工作树\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"system/workflow/release/project 等根菜单均采用 *:access\", \"falsifier\": \"发现 access 被业务写接口直接用作授权动作\", \"text\": \"access 权限码用于命名空间导航入口\"}",
+      "{\"evidence\": \"迁移目录最高版本为 V201\", \"falsifier\": \"实施前出现 V202 文件\", \"text\": \"V202 是下一个未占用迁移版本\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "项目管理入口按当前项目具体业务权限正确显示",
+      "requirements": [
+        "R2"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "项目根菜单 505 使用 project:access",
+        "可见路由目录不含 501-504 隐藏权限节点",
+        "AuthService 当前只做精确权限匹配"
+      ],
+      "write_scope": [
+        "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+        "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java"
+      ],
+      "invariants": [
+        "无 project:* 权限不得获得 /projects",
+        "具体叶子权限仍精确匹配",
+        "不改变 AuthRepository 权限数据范围"
+      ],
+      "interface_contracts": [
+        "GET /api/auth/routes 响应结构不变"
+      ],
+      "non_goals": [
+        "不修改前端",
+        "不改变项目角色权限模型"
+      ],
+      "action_bounds": [
+        "仅增加 AuthService 内部路由匹配辅助逻辑和直接测试"
+      ],
+      "acceptance": [
+        "project:plan:list 激活 project:access 根菜单",
+        "无 project:* 权限不激活项目根菜单",
+        "Security 聚焦测试通过"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "JUnit 命令退出码"
+      ],
+      "rollback": "恢复 T1 两个文件的本次增量",
+      "stop_conditions": [
+        "需要修改公开 API 或 AuthRepository 数据范围"
+      ],
+      "escalation_conditions": [
+        "命名空间 access 语义与现有受保护接口冲突"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T05:46:37+00:00",
+          "text": "开始修复命名空间access路由匹配"
+        },
+        {
+          "recorded_at": "2026-09-09T05:51:31+00:00",
+          "text": "S2观察通过且无反馈"
+        }
+      ],
+      "updated_at": "2026-09-09T05:51:31+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "以客户端字符集无关方式修复权限维护菜单名称",
+      "requirements": [
+        "R1"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V201 文件中文字正确但本地数据库值出现 UTF-8/latin1 双重编码乱码",
+        "V202 未被占用"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectMenuRegressionMigrationTest.java"
+      ],
+      "invariants": [
+        "迁移只追加",
+        "只更新 tenant 1 菜单 102 的名称",
+        "不修改 Flyway 历史"
+      ],
+      "interface_contracts": [
+        "sys_menu 102 路由和权限码保持不变"
+      ],
+      "non_goals": [
+        "不修复 V159 历史",
+        "不修改其他菜单文本"
+      ],
+      "action_bounds": [
+        "追加单一幂等 UPDATE 和静态迁移测试"
+      ],
+      "acceptance": [
+        "SQL 使用 E69D83E99990E7BBB4E68AA4",
+        "System 聚焦测试通过"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "JUnit 命令退出码",
+        "数据库字节探针或明确环境限制"
+      ],
+      "rollback": "应用回退时保留正确中文数据",
+      "stop_conditions": [
+        "发现需修改已发布迁移或其他表"
+      ],
+      "escalation_conditions": [
+        "本地数据库不是 utf8mb4 或菜单 102 不存在"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T05:46:37+00:00",
+          "text": "开始追加UTF-8菜单补偿迁移"
+        },
+        {
+          "recorded_at": "2026-09-09T05:51:31+00:00",
+          "text": "S1观察通过且无反馈"
+        }
+      ],
+      "updated_at": "2026-09-09T05:51:31+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "完成菜单修复的跨模块与运行验收",
+      "requirements": [
+        "R1",
+        "R2"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1-T2 产生可组合修复"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260909-075-menu-regression-fix/*.json"
+      ],
+      "invariants": [
+        "P0/P1 为零",
+        "修改面位于 REQ075 范围"
+      ],
+      "interface_contracts": [
+        "最终迁移、动态路由与前端菜单组合"
+      ],
+      "non_goals": [
+        "不扩大到其他历史环境问题"
+      ],
+      "action_bounds": [
+        "执行测试、构建、运行探针和浏览器验收并记录证据"
+      ],
+      "acceptance": [
+        "Security/System 测试通过",
+        "前端构建通过",
+        "数据库/API/浏览器结果满足 R1-R2"
+      ],
+      "evidence_required": [
+        "三次采样",
+        "至少两类独立传感器",
+        "范围审计"
+      ],
+      "rollback": "按 T1 回滚代码；V202 数据保留",
+      "stop_conditions": [
+        "存在未关闭 P0/P1"
+      ],
+      "escalation_conditions": [
+        "运行环境需要读取 forbidden_paths 才能启动"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T06:09:50+00:00",
+          "text": "开始跨模块、运行与浏览器验收"
+        },
+        {
+          "recorded_at": "2026-09-09T06:57:49+00:00",
+          "text": "组合输出交付独立观测"
+        },
+        {
+          "recorded_at": "2026-09-09T06:57:50+00:00",
+          "text": "最终组合观测无P0-P3偏差"
+        }
+      ],
+      "updated_at": "2026-09-09T06:57:50+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1路由逻辑采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "AuthServiceProjectContextTest 4/4通过，有权与无权路由断言均满足",
+      "recorded_at": "2026-09-09T06:09:49+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2迁移字节采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "ProjectMenuRegressionMigrationTest 1/1通过，UTF-8字节和目标范围满足",
+      "recorded_at": "2026-09-09T06:09:49+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "最终组合采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "MySQL V202、授权/无权API、桌面浏览器、Security13、System92和前端构建均通过",
+      "recorded_at": "2026-09-09T06:57:50+00:00"
+    }
+  ]
+}

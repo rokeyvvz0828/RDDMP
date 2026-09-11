@@ -1,0 +1,27 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java", "purpose": "让命名空间具体权限激活对应的 access 导航入口"},
+    {"path_or_resource": "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProjectContextTest.java", "purpose": "覆盖真实 project:access 有权和无权路由场景"}
+  ],
+  "requirements_addressed": ["R2"],
+  "commands": [
+    {"command": "mvn -pl :ccb-security -am -Dtest=AuthServiceProjectContextTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "AuthServiceProjectContextTest 4 tests, 0 failures; reactor BUILD SUCCESS"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; existing CRLF conversion warnings only"}
+  ],
+  "local_checks": [
+    {"check": "项目动态路由单元测试", "result": "pass", "evidence": "4/4 tests passed", "limitations": ["尚未组装真实数据库和浏览器"]}
+  ],
+  "diff_summary": ["精确权限匹配保持不变", "*:access 可由相同命名空间的具体权限激活", "无 project:* 权限反例返回空路由"],
+  "invariants_checked": [
+    {"invariant": "无 project:* 权限不得获得 /projects", "result": "pass", "evidence": "system:user:list 输入断言 routes 为空"},
+    {"invariant": "公开响应结构不变", "result": "pass", "evidence": "仅修改 AuthService 内部筛选函数"}
+  ],
+  "disturbances": [
+    {"event": "首次 Maven 命令的 PowerShell -D 参数未加引号", "impact": "命令在编译前退出；修正引用后测试通过"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["真实 API 和浏览器验收由 T3 执行"],
+  "recommended_next": "observe"
+}

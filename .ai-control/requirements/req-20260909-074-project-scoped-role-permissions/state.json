@@ -1,0 +1,5100 @@
+{
+  "schema_version": 4,
+  "revision": 55,
+  "created_at": "2026-09-09T02:48:16+00:00",
+  "updated_at": "2026-09-09T05:26:00+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the landed design revision 1；计划确认=User confirmed implementation plan revision 1 and authorized development",
+      "recorded_at": "2026-09-09T02:48:16+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "基线完整且无阻塞产品决策",
+      "recorded_at": "2026-09-09T02:50:00+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "模型可观测可控，接口与扰动已登记",
+      "recorded_at": "2026-09-09T02:51:58+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "任务边界、接口所有者、回滚和升级条件完整",
+      "recorded_at": "2026-09-09T02:54:06+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 provides measurable migration SQL and passing focused tests",
+      "recorded_at": "2026-09-09T03:04:57+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified without feedback; continue with planned T2",
+      "recorded_at": "2026-09-09T03:06:58+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 endpoints, SQL and tests are measurable",
+      "recorded_at": "2026-09-09T03:30:42+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 verified without feedback; continue with T3 request context",
+      "recorded_at": "2026-09-09T03:32:35+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "T3 integration found first-login workbench gate requires two authorized System compatibility files",
+      "recorded_at": "2026-09-09T03:49:15+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Revised T3 scope remains within REQ074 authorization and preserves project data isolation",
+      "recorded_at": "2026-09-09T03:50:23+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 has measurable security tests and request contract",
+      "recorded_at": "2026-09-09T03:55:51+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T3 verified without feedback; continue with planned frontend T4.",
+      "recorded_at": "2026-09-09T04:00:16+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "T4 direct consumer inventory found the obsolete system-role permission entry in ModuleView; replan is bounded to removing that entry.",
+      "recorded_at": "2026-09-09T04:05:58+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Bounded T4 consumer scope revision is ready and preserves all existing requirements.",
+      "recorded_at": "2026-09-09T04:05:59+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T4 has measurable build and authorization-state outputs.",
+      "recorded_at": "2026-09-09T04:29:17+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T4 verified without feedback; begin T5 integration acceptance.",
+      "recorded_at": "2026-09-09T04:29:18+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T5 execution report provides independently measurable backend, database, API and browser outputs",
+      "recorded_at": "2026-09-09T05:23:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "All T1-T5 tasks are verified, five zero-error samples exist and all must requirements have heterogeneous final evidence",
+      "recorded_at": "2026-09-09T05:24:00+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "High-assurance gate passed with all must requirements and tasks verified, zero P0/P1 and five zero-error samples",
+      "recorded_at": "2026-09-09T05:26:00+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the landed design revision 1；计划确认=User confirmed implementation plan revision 1 and authorized development",
+        "recorded_at": "2026-09-09T02:48:16+00:00",
+        "data": {
+          "objective": "Make project business permissions follow the selected project and its project roles while keeping system administration permissions global.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "System settings must maintain the permission catalog instead of assigning business permissions to system roles.",
+              "acceptance": [
+                "Authorized administrators can manage permission definitions",
+                "Permission codes are immutable and referenced permissions cannot be deleted"
+              ],
+              "priority": "must",
+              "source": "User-confirmed design",
+              "counterexample": [
+                "System settings still assigns business permissions directly to system roles"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Project roles must configure project business permissions from the central catalog.",
+              "acceptance": [
+                "Project role permissions persist",
+                "System permissions are excluded"
+              ],
+              "priority": "must",
+              "source": "User-confirmed design",
+              "counterexample": [
+                "A project role grants system administration access"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Effective business permissions must change with the active project and be enforced by the server.",
+              "acceptance": [
+                "Projects A and B produce their configured permission sets",
+                "Menus, routes, buttons and APIs agree",
+                "Forged context is rejected"
+              ],
+              "priority": "must",
+              "source": "User-confirmed design",
+              "counterexample": [
+                "Only frontend visibility changes"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Existing roles must be initialized without project administration lockout.",
+              "acceptance": [
+                "PM gets all business permissions",
+                "Other existing roles get read permissions",
+                "New roles get none",
+                "Owner has full fallback"
+              ],
+              "priority": "must",
+              "source": "User-confirmed migration decision",
+              "counterexample": [
+                "A project owner cannot configure roles after migration"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Permission changes must preserve tenant/project isolation and be audited.",
+              "acceptance": [
+                "Cross-project and cross-tenant identifiers are rejected",
+                "Writes create audit records"
+              ],
+              "priority": "must",
+              "source": "Repository security rules",
+              "counterexample": [
+                "A role from project A is changed through project B"
+              ]
+            }
+          ],
+          "invariants": [
+            "System administration permissions remain global",
+            "Project roles cannot grant system permissions",
+            "Backend authorization is authoritative",
+            "Flyway is append-only"
+          ],
+          "constraints": [
+            "Keep existing packages and JWT format",
+            "Reuse sys_menu_permission",
+            "Use X-Project-Id",
+            "No production access"
+          ],
+          "non_goals": [
+            "Organization/member redesign",
+            "JWT permission claims",
+            "Business form metadata"
+          ],
+          "assumptions": [
+            {
+              "text": "Project business actions have one owner project",
+              "basis": "Existing project-scoped APIs",
+              "falsifier": "An in-scope cross-project operation"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Which legacy calls omit project context?",
+              "impact": "Caller inventory and compatibility work",
+              "owner": "Implementation engineer",
+              "blocking": false
+            },
+            {
+              "question": "Why does plugin list return unknown error?",
+              "impact": "Entry gate blocks execution",
+              "owner": "Environment maintainer",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "System permissions global; project permissions scoped",
+              "reason": "Prevent platform elevation",
+              "source": "User"
+            },
+            {
+              "id": "D2",
+              "decision": "PM all, existing non-PM read, new none, owner fallback",
+              "reason": "Usable least-privilege migration",
+              "source": "User"
+            },
+            {
+              "id": "D3",
+              "decision": "Request-scoped context",
+              "reason": "Secure immediate switching",
+              "source": "User option 1"
+            },
+            {
+              "id": "D4",
+              "decision": "Central catalog and fullscreen project drawer",
+              "reason": "Separate ownership from assignment",
+              "source": "User"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "Catalog and assignment persist with correct scope",
+              "method": "System tests and browser"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R5"
+              ],
+              "signal": "A/B differ and forged context is 403",
+              "method": "Security tests and API"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "Migration all/read/none counts are correct",
+              "method": "Migration test and SQL queries"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户确认设计与计划，R1-R5均有可判别验收和测量意图",
+        "recorded_at": "2026-09-09T02:50:00+00:00",
+        "data": {
+          "objective": "用户切换当前项目后，系统管理权限保持全局不变，业务页面及操作权限按其在目标项目中的项目角色立即且安全地切换。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "系统设置必须提供权限目录维护，不再承担项目业务权限的系统角色分配。",
+              "acceptance": [
+                "管理员可新增、查询、编辑、启停和受引用保护地删除权限",
+                "权限编码创建后不可修改"
+              ],
+              "priority": "must",
+              "source": "用户确认设计",
+              "counterexample": [
+                "系统设置仍按系统角色配置项目业务权限"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "项目角色必须能从中央目录配置当前项目的业务权限。",
+              "acceptance": [
+                "角色权限保存后可回读",
+                "系统权限不出现在候选项"
+              ],
+              "priority": "must",
+              "source": "用户确认设计",
+              "counterexample": [
+                "项目角色可获得系统管理权限"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "业务权限必须随当前项目切换并由服务端执行。",
+              "acceptance": [
+                "同一用户在项目A/B得到各自角色权限",
+                "菜单路由按钮接口结果一致",
+                "伪造项目上下文被拒绝"
+              ],
+              "priority": "must",
+              "source": "用户确认设计",
+              "counterexample": [
+                "仅前端显隐发生变化"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "存量项目角色初始化不得导致项目管理锁死。",
+              "acceptance": [
+                "PM获得全部业务权限",
+                "其他存量角色获得查看权限",
+                "新角色默认无权限",
+                "项目负责人保持全权限"
+              ],
+              "priority": "must",
+              "source": "用户确认迁移规则",
+              "counterexample": [
+                "迁移后负责人不能维护角色"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "权限维护必须满足租户和项目隔离并记录审计。",
+              "acceptance": [
+                "跨租户和跨项目标识被拒绝",
+                "目录和角色权限写入产生审计"
+              ],
+              "priority": "must",
+              "source": "仓库安全规则",
+              "counterexample": [
+                "可通过项目B接口修改项目A角色"
+              ]
+            }
+          ],
+          "invariants": [
+            "系统管理权限始终由系统角色控制",
+            "项目角色不能授予系统权限",
+            "服务端授权为唯一权威",
+            "Flyway只追加"
+          ],
+          "constraints": [
+            "保持JWT和Java包名",
+            "复用sys_menu_permission",
+            "项目上下文使用X-Project-Id",
+            "不访问生产或外部系统",
+            "仅修改REQ074授权路径"
+          ],
+          "non_goals": [
+            "重构组织和成员管理",
+            "把权限写入JWT",
+            "恢复输入项配置"
+          ],
+          "assumptions": [
+            {
+              "text": "范围内每个项目业务操作可归属一个项目",
+              "basis": "现有项目API均使用projectId路径或实体归属",
+              "falsifier": "建模发现范围内跨项目批量操作"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "哪些既有调用未携带项目上下文",
+              "impact": "决定前端调用适配范围",
+              "owner": "modeling",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "权限上下文方案",
+              "options": [
+                "请求头实时解析",
+                "切换时换Token",
+                "仅前端"
+              ],
+              "selected": "请求头实时解析",
+              "blocking": false,
+              "source": "用户选择1"
+            },
+            {
+              "question": "存量角色初始化",
+              "options": [
+                "PM全量其他只读",
+                "全部全量",
+                "全部空"
+              ],
+              "selected": "PM全量其他只读",
+              "blocking": false,
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "目录CRUD、不可变编码和引用删除状态",
+              "candidate_sensor": "System服务测试与浏览器操作"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "角色权限保存回读及候选范围",
+              "candidate_sensor": "Project服务测试与浏览器抽屉"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "A/B权限集合与受保护API状态码",
+              "candidate_sensor": "Security集成测试和API探针"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "各类角色迁移权限数量与负责人授权结果",
+              "candidate_sensor": "迁移测试和SQL查询"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "跨项目拒绝和审计记录",
+              "candidate_sensor": "服务测试与审计查询"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "代码勘察确认目录、项目角色、Security、请求头与前端状态因果链，R1-R5均有至少两类传感器",
+        "recorded_at": "2026-09-09T02:51:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "sys_menu_permission目录",
+              "pm_project_role_permission关系",
+              "System目录与项目角色服务",
+              "Security权限与路由解析",
+              "Axios项目请求头",
+              "Pinia项目和授权状态",
+              "权限维护与项目角色界面"
+            ],
+            "environment": [
+              "MySQL/Flyway",
+              "既有业务模块调用方",
+              "浏览器localStorage",
+              "Spring Security"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "active_project_id",
+              "owner": "project-context store/request header",
+              "valid_values": [
+                "none",
+                "accessible positive id"
+              ]
+            },
+            {
+              "name": "effective_permissions",
+              "owner": "Security resolver",
+              "valid_values": [
+                "system-only",
+                "system plus project union",
+                "forbidden context"
+              ]
+            },
+            {
+              "name": "role_permission_set",
+              "owner": "System project service",
+              "valid_values": [
+                "empty",
+                "active project permissions"
+              ]
+            },
+            {
+              "name": "route_tree",
+              "owner": "AuthRepository/AuthStore",
+              "valid_values": [
+                "system routes",
+                "system plus project routes"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "管理员维护权限",
+              "transitions": [
+                "系统RBAC",
+                "目录校验",
+                "持久化",
+                "审计"
+              ],
+              "outputs": [
+                "可查询权限目录",
+                "失败语义"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "负责人保存角色权限",
+              "transitions": [
+                "项目/角色校验",
+                "排除系统权限",
+                "事务替换",
+                "审计"
+              ],
+              "outputs": [
+                "角色权限回读",
+                "权限计数"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "用户选择项目",
+              "transitions": [
+                "加载目标项目授权",
+                "验证成员关系",
+                "合并角色权限",
+                "生成路由",
+                "提交前端项目状态"
+              ],
+              "outputs": [
+                "项目化菜单按钮和API授权"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "V201迁移或新建角色",
+              "transitions": [
+                "识别PM/其他角色",
+                "初始化all/read/none",
+                "负责人运行时兜底"
+              ],
+              "outputs": [
+                "项目可继续维护"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "权限写请求",
+              "transitions": [
+                "租户校验",
+                "路径项目与角色归属校验",
+                "授权",
+                "审计"
+              ],
+              "outputs": [
+                "合法写入或403/400",
+                "审计记录"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "X-Project-Id",
+              "producers": [
+                "web/api/http.ts"
+              ],
+              "consumers": [
+                "JwtAuthenticationFilter",
+                "AuthController"
+              ],
+              "invariant": "缺失时仅系统上下文；存在时为可访问正整数项目"
+            },
+            {
+              "name": "permission catalog",
+              "producers": [
+                "SystemService"
+              ],
+              "consumers": [
+                "系统权限维护",
+                "项目角色权限选择",
+                "Security查询"
+              ],
+              "invariant": "租户隔离、编码唯一、启用状态生效"
+            },
+            {
+              "name": "project role permissions",
+              "producers": [
+                "ProjectService/V201"
+              ],
+              "consumers": [
+                "Security resolver",
+                "项目设置"
+              ],
+              "invariant": "role_id与project_id和tenant_id一致且不含系统权限"
+            },
+            {
+              "name": "auth context",
+              "producers": [
+                "AuthService"
+              ],
+              "consumers": [
+                "Jwt filter",
+                "auth store",
+                "router/AppLayout"
+              ],
+              "invariant": "me、routes和authorities使用同一项目语义"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "迁移结构与初始化",
+              "method": "Flyway迁移测试和SQL计数",
+              "blind_spots": [
+                "生产自定义数据"
+              ],
+              "independence": "直接观察数据库关系"
+            },
+            {
+              "id": "S2",
+              "target": "System/Project/Security服务行为",
+              "method": "JUnit/Mockito/JdbcTemplate聚焦测试",
+              "blind_spots": [
+                "真实浏览器时序"
+              ],
+              "independence": "进程内自动断言"
+            },
+            {
+              "id": "S3",
+              "target": "A/B项目权限和拒绝状态",
+              "method": "本地HTTP API探针",
+              "blind_spots": [
+                "视觉可用性"
+              ],
+              "independence": "跨模块运行观察"
+            },
+            {
+              "id": "S4",
+              "target": "菜单、按钮、抽屉和切换恢复",
+              "method": "真实浏览器桌面/手机验收",
+              "blind_spots": [
+                "未覆盖业务模块"
+              ],
+              "independence": "用户路径与DOM观测"
+            },
+            {
+              "id": "S5",
+              "target": "编译和范围",
+              "method": "Maven、Vite、治理与git diff检查",
+              "blind_spots": [
+                "运行语义"
+              ],
+              "independence": "静态/构建传感器"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "数据关系",
+              "action": "追加V201建表和初始化",
+              "authority": "REQ074 writable path",
+              "impact_radius": "权限目录和所有项目角色",
+              "rollback": "应用恢复旧读取，表保留"
+            },
+            {
+              "id": "A2",
+              "target": "目录与角色授权",
+              "action": "修改System服务/控制器和测试",
+              "authority": "REQ074 writable path",
+              "impact_radius": "系统权限维护和项目管理",
+              "rollback": "恢复旧服务方法"
+            },
+            {
+              "id": "A3",
+              "target": "有效权限和路由",
+              "action": "修改Security查询、服务、过滤器和测试",
+              "authority": "REQ074 approved public capability change",
+              "impact_radius": "所有认证请求",
+              "rollback": "恢复全局查询"
+            },
+            {
+              "id": "A4",
+              "target": "项目切换与界面",
+              "action": "修改HTTP/store/router/views/styles",
+              "authority": "REQ074 writable path",
+              "impact_radius": "全部前端请求和导航",
+              "rollback": "恢复旧reload切换和页面"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "旧调用未统一携带请求头",
+              "effect": "项目API 403",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "本机Java25与ByteBuddy",
+              "effect": "Mockito测试初始化失败",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "本地数据库既有迁移状态",
+              "effect": "Flyway验收受阻",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "并行用户修改",
+              "effect": "diff与模型失效",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "项目切换me/routes并发请求",
+              "consequence": "半更新授权状态",
+              "sampling_rule": "两者成功后一次性提交store"
+            },
+            {
+              "source": "权限保存后浏览器缓存",
+              "consequence": "旧权限短暂显示",
+              "sampling_rule": "保存后刷新授权上下文再采样"
+            },
+            {
+              "source": "页面reload和路由守卫",
+              "consequence": "提示丢失",
+              "sampling_rule": "使用一次性session提示并在导航完成后观察"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "项目业务操作有单一项目归属",
+              "evidence": "Project、附件、数据迁移和投产API均带项目路径或参数",
+              "falsifier": "范围内发现跨项目写操作"
+            },
+            {
+              "text": "PM为稳定项目经理编码",
+              "evidence": "AuthRepository和ProjectService现有查询使用role_code='PM'",
+              "falsifier": "测试库存在非PM经理角色"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2并用S2/S4验收"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2并用S2/S4验收"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3/A4并用S2/S3/S4验收"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1/A2/A3并用S1/S2/S3验收"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3并用S2/S3验收"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T5串行任务覆盖R1-R5并绑定高保障三次采样",
+        "recorded_at": "2026-09-09T02:54:05+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "建立并初始化项目角色权限关系",
+              "requirement_ids": [
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V200为最新迁移",
+                "PM编码被现有服务使用"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/**"
+              ],
+              "invariants": [
+                "历史迁移不修改",
+                "系统权限不进入项目角色"
+              ],
+              "interface_contracts": [
+                "pm_project_role_permission按tenant/project/role/permission唯一"
+              ],
+              "non_goals": [
+                "删除sys_role_permission"
+              ],
+              "action_bounds": [
+                "仅追加V201和迁移测试"
+              ],
+              "acceptance_checks": [
+                "PM全量、其他只读、无孤儿和系统权限关联"
+              ],
+              "evidence_required": [
+                "diff",
+                "迁移测试退出码",
+                "SQL计数"
+              ],
+              "rollback": "应用恢复旧权限读取并保留V201表",
+              "stop_conditions": [
+                "V201已存在或PM编码不稳定"
+              ],
+              "escalation_conditions": [
+                "需要修改历史迁移"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "交付权限目录与项目角色权限服务端契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "SystemService已有只读目录和系统角色分配",
+                "ProjectService已有角色CRUD"
+              ],
+              "write_scope": [
+                "server/src/platform/system/src/main/java/com/ccb/system/**",
+                "server/src/platform/system/src/test/java/com/ccb/system/**"
+              ],
+              "invariants": [
+                "系统权限全局",
+                "项目/租户隔离",
+                "写操作审计"
+              ],
+              "interface_contracts": [
+                "/api/system/permissions目录CRUD",
+                "/api/project/{projectId}/roles/{roleId}/permissions读写",
+                "项目requireAction读取项目角色关系"
+              ],
+              "non_goals": [
+                "修改业务模块"
+              ],
+              "action_bounds": [
+                "System模块和直接测试"
+              ],
+              "acceptance_checks": [
+                "编码不可变",
+                "引用删除拒绝",
+                "跨项目拒绝",
+                "负责人/PM兜底",
+                "多角色并集"
+              ],
+              "evidence_required": [
+                "diff",
+                "System测试结果",
+                "授权决策矩阵"
+              ],
+              "rollback": "恢复System旧方法和sys角色动作查询",
+              "stop_conditions": [
+                "动作无单一项目归属"
+              ],
+              "escalation_conditions": [
+                "需要shared或业务模块契约修改"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "按请求项目解析有效权限和动态路由",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "JWT过滤器每请求加载权限",
+                "me/routes共享AuthRepository"
+              ],
+              "write_scope": [
+                "server/src/platform/security/src/main/java/com/ccb/security/**",
+                "server/src/platform/security/src/test/java/com/ccb/security/**",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/**"
+              ],
+              "invariants": [
+                "JWT格式不变",
+                "无项目时仅系统上下文",
+                "me/routes/authorities一致"
+              ],
+              "interface_contracts": [
+                "X-Project-Id可选正整数",
+                "AuthService按项目返回权限与路由"
+              ],
+              "non_goals": [
+                "修改模块依赖图"
+              ],
+              "action_bounds": [
+                "Security实现和直接测试"
+              ],
+              "acceptance_checks": [
+                "A/B权限不同",
+                "非成员403",
+                "系统权限保持",
+                "父菜单保留"
+              ],
+              "evidence_required": [
+                "diff",
+                "Security/Boot测试",
+                "API样本"
+              ],
+              "rollback": "忽略项目头并恢复全局查询",
+              "stop_conditions": [
+                "出现平台反向依赖"
+              ],
+              "escalation_conditions": [
+                "需要JWT或shared变更"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "交付权限维护、项目角色授权和原子项目切换界面",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "现有RolePermissionView为角色分配树",
+                "ProjectView已有角色维护",
+                "AppLayout切换后reload"
+              ],
+              "write_scope": [
+                "web/src/api/http.ts",
+                "web/src/api/system.ts",
+                "web/src/api/project.ts",
+                "web/src/stores/auth.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/types/system.ts",
+                "web/src/types/project.ts",
+                "web/src/views/RolePermissionView.vue",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue",
+                "web/src/router/index.ts",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "失败切换保留旧项目",
+                "前端不替代服务端鉴权",
+                "桌面手机可用"
+              ],
+              "interface_contracts": [
+                "Axios附加X-Project-Id",
+                "授权成功后提交项目状态",
+                "权限抽屉可全屏"
+              ],
+              "non_goals": [
+                "批量修改业务模块"
+              ],
+              "action_bounds": [
+                "仅范围内前端公共上下文和两个页面"
+              ],
+              "acceptance_checks": [
+                "目录CRUD全状态",
+                "角色权限保存回读",
+                "A/B切换菜单按钮变化",
+                "失败恢复",
+                "无溢出"
+              ],
+              "evidence_required": [
+                "diff",
+                "Vite构建",
+                "浏览器桌面手机证据"
+              ],
+              "rollback": "恢复旧页面和reload切换",
+              "stop_conditions": [
+                "必须修改未授权业务模块"
+              ],
+              "escalation_conditions": [
+                "需要公共UI契约变更"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "集成并完成高保障收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "input_facts": [
+                "T1-T4完成后接口可组合"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/*.json"
+              ],
+              "invariants": [
+                "P0/P1归零",
+                "范围一致"
+              ],
+              "interface_contracts": [
+                "最终迁移/API/UI契约"
+              ],
+              "non_goals": [
+                "验收中扩大产品范围"
+              ],
+              "action_bounds": [
+                "证据、限幅纠偏和复验"
+              ],
+              "acceptance_checks": [
+                "Maven/Vite/Flyway/API/browser/范围检查满足R1-R5"
+              ],
+              "evidence_required": [
+                "三次采样",
+                "至少两类传感器",
+                "独立观测",
+                "convergence gate"
+              ],
+              "rollback": "按设计恢复旧权限源并保留V201",
+              "stop_conditions": [
+                "任何P0/P1未关闭"
+              ],
+              "escalation_conditions": [
+                "需要生产修复或风险接受"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "服务引用新关系"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Security消费项目授权"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "前端消费稳定Auth契约"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "集成验收需要完整实现"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "System与Security测试",
+                "A/B API权限一致"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "前端构建",
+                "浏览器项目切换"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "高保障门禁"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "后端契约采样",
+              "trigger": "T3完成",
+              "observer": "独立观察者",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "前端集成采样",
+              "trigger": "T4完成",
+              "observer": "独立观察者",
+              "sensors": [
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "最终采样",
+              "trigger": "T5验收",
+              "observer": "独立观察者/人工验收",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Plan revision adds bounded first-login workbench compatibility to T3",
+        "recorded_at": "2026-09-09T03:50:22+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "建立并初始化项目角色权限关系",
+              "requirement_ids": [
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V200为最新迁移",
+                "PM编码被现有服务使用"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/**"
+              ],
+              "invariants": [
+                "历史迁移不修改",
+                "系统权限不进入项目角色"
+              ],
+              "interface_contracts": [
+                "pm_project_role_permission按tenant/project/role/permission唯一"
+              ],
+              "non_goals": [
+                "删除sys_role_permission"
+              ],
+              "action_bounds": [
+                "仅追加V201和迁移测试"
+              ],
+              "acceptance_checks": [
+                "PM全量、其他只读、无孤儿和系统权限关联"
+              ],
+              "evidence_required": [
+                "diff",
+                "迁移测试退出码",
+                "SQL计数"
+              ],
+              "rollback": "应用恢复旧权限读取并保留V201表",
+              "stop_conditions": [
+                "V201已存在或PM编码不稳定"
+              ],
+              "escalation_conditions": [
+                "需要修改历史迁移"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "交付权限目录与项目角色权限服务端契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "SystemService已有只读目录和系统角色分配",
+                "ProjectService已有角色CRUD"
+              ],
+              "write_scope": [
+                "server/src/platform/system/src/main/java/com/ccb/system/**",
+                "server/src/platform/system/src/test/java/com/ccb/system/**"
+              ],
+              "invariants": [
+                "系统权限全局",
+                "项目/租户隔离",
+                "写操作审计"
+              ],
+              "interface_contracts": [
+                "/api/system/permissions目录CRUD",
+                "/api/project/{projectId}/roles/{roleId}/permissions读写",
+                "项目requireAction读取项目角色关系"
+              ],
+              "non_goals": [
+                "修改业务模块"
+              ],
+              "action_bounds": [
+                "System模块和直接测试"
+              ],
+              "acceptance_checks": [
+                "编码不可变",
+                "引用删除拒绝",
+                "跨项目拒绝",
+                "负责人/PM兜底",
+                "多角色并集"
+              ],
+              "evidence_required": [
+                "diff",
+                "System测试结果",
+                "授权决策矩阵"
+              ],
+              "rollback": "恢复System旧方法和sys角色动作查询",
+              "stop_conditions": [
+                "动作无单一项目归属"
+              ],
+              "escalation_conditions": [
+                "需要shared或业务模块契约修改"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "按请求项目解析有效权限和动态路由",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "JWT过滤器每请求加载权限",
+                "me/routes共享AuthRepository",
+                "首次登录必须先读取工作台项目列表才能建立项目上下文"
+              ],
+              "write_scope": [
+                "server/src/platform/security/src/main/java/com/ccb/security/**",
+                "server/src/platform/security/src/test/java/com/ccb/security/**",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/**",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+              ],
+              "invariants": [
+                "JWT格式不变",
+                "无项目时仅系统上下文",
+                "me/routes/authorities一致",
+                "工作台仅返回用户可访问项目"
+              ],
+              "interface_contracts": [
+                "X-Project-Id可选正整数",
+                "AuthService按项目返回权限与路由",
+                "/api/project/workbench仅要求认证并按成员/负责人范围过滤"
+              ],
+              "non_goals": [
+                "修改模块依赖图",
+                "放宽项目详情和写操作授权"
+              ],
+              "action_bounds": [
+                "Security实现和直接测试",
+                "仅调整工作台入口的首次登录兼容门禁"
+              ],
+              "acceptance_checks": [
+                "A/B权限不同",
+                "非成员403",
+                "系统权限保持",
+                "父菜单保留",
+                "无当前项目时可读取工作台但不能读取项目详情"
+              ],
+              "evidence_required": [
+                "diff",
+                "Security/System/Boot测试",
+                "API样本"
+              ],
+              "rollback": "忽略项目头并恢复全局查询及工作台旧门禁",
+              "stop_conditions": [
+                "出现平台反向依赖"
+              ],
+              "escalation_conditions": [
+                "需要JWT或shared变更"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "交付权限维护、项目角色授权和原子项目切换界面",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "现有RolePermissionView为角色分配树",
+                "ProjectView已有角色维护",
+                "AppLayout切换后reload"
+              ],
+              "write_scope": [
+                "web/src/api/http.ts",
+                "web/src/api/system.ts",
+                "web/src/api/project.ts",
+                "web/src/stores/auth.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/types/system.ts",
+                "web/src/types/project.ts",
+                "web/src/views/RolePermissionView.vue",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue",
+                "web/src/router/index.ts",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "失败切换保留旧项目",
+                "前端不替代服务端鉴权",
+                "桌面手机可用"
+              ],
+              "interface_contracts": [
+                "Axios附加X-Project-Id",
+                "授权成功后提交项目状态",
+                "权限抽屉可全屏"
+              ],
+              "non_goals": [
+                "批量修改业务模块"
+              ],
+              "action_bounds": [
+                "仅范围内前端公共上下文和两个页面"
+              ],
+              "acceptance_checks": [
+                "目录CRUD全状态",
+                "角色权限保存回读",
+                "A/B切换菜单按钮变化",
+                "失败恢复",
+                "无溢出"
+              ],
+              "evidence_required": [
+                "diff",
+                "Vite构建",
+                "浏览器桌面手机证据"
+              ],
+              "rollback": "恢复旧页面和reload切换",
+              "stop_conditions": [
+                "必须修改未授权业务模块"
+              ],
+              "escalation_conditions": [
+                "需要公共UI契约变更"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "集成并完成高保障收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "input_facts": [
+                "T1-T4完成后接口可组合"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/*.json"
+              ],
+              "invariants": [
+                "P0/P1归零",
+                "范围一致"
+              ],
+              "interface_contracts": [
+                "最终迁移/API/UI契约"
+              ],
+              "non_goals": [
+                "验收中扩大产品范围"
+              ],
+              "action_bounds": [
+                "证据、限幅纠偏和复验"
+              ],
+              "acceptance_checks": [
+                "Maven/Vite/Flyway/API/browser/范围检查满足R1-R5"
+              ],
+              "evidence_required": [
+                "三次采样",
+                "至少两类传感器",
+                "独立观测",
+                "convergence gate"
+              ],
+              "rollback": "按设计恢复旧权限源并保留V201",
+              "stop_conditions": [
+                "任何P0/P1未关闭"
+              ],
+              "escalation_conditions": [
+                "需要生产修复或风险接受"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "服务引用新关系"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Security消费项目授权"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "前端消费稳定Auth契约"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "集成验收需要完整实现"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "System与Security测试",
+                "A/B API权限一致"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "前端构建",
+                "浏览器项目切换"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "高保障门禁"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "后端契约采样",
+              "trigger": "T3完成",
+              "observer": "独立观察者",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "前端集成采样",
+              "trigger": "T4完成",
+              "observer": "独立观察者",
+              "sensors": [
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "最终采样",
+              "trigger": "T5验收",
+              "observer": "独立观察者/人工验收",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Plan revision 3 adds only ModuleView to T4 for removal of the obsolete system-role permission entry.",
+        "recorded_at": "2026-09-09T04:05:58+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "建立并初始化项目角色权限关系",
+              "requirement_ids": [
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V200为最新迁移",
+                "PM编码被现有服务使用"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/**"
+              ],
+              "invariants": [
+                "历史迁移不修改",
+                "系统权限不进入项目角色"
+              ],
+              "interface_contracts": [
+                "pm_project_role_permission按tenant/project/role/permission唯一"
+              ],
+              "non_goals": [
+                "删除sys_role_permission"
+              ],
+              "action_bounds": [
+                "仅追加V201和迁移测试"
+              ],
+              "acceptance_checks": [
+                "PM全量、其他只读、无孤儿和系统权限关联"
+              ],
+              "evidence_required": [
+                "diff",
+                "迁移测试退出码",
+                "SQL计数"
+              ],
+              "rollback": "应用恢复旧权限读取并保留V201表",
+              "stop_conditions": [
+                "V201已存在或PM编码不稳定"
+              ],
+              "escalation_conditions": [
+                "需要修改历史迁移"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "交付权限目录与项目角色权限服务端契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "SystemService已有只读目录和系统角色分配",
+                "ProjectService已有角色CRUD"
+              ],
+              "write_scope": [
+                "server/src/platform/system/src/main/java/com/ccb/system/**",
+                "server/src/platform/system/src/test/java/com/ccb/system/**"
+              ],
+              "invariants": [
+                "系统权限全局",
+                "项目/租户隔离",
+                "写操作审计"
+              ],
+              "interface_contracts": [
+                "/api/system/permissions目录CRUD",
+                "/api/project/{projectId}/roles/{roleId}/permissions读写",
+                "项目requireAction读取项目角色关系"
+              ],
+              "non_goals": [
+                "修改业务模块"
+              ],
+              "action_bounds": [
+                "System模块和直接测试"
+              ],
+              "acceptance_checks": [
+                "编码不可变",
+                "引用删除拒绝",
+                "跨项目拒绝",
+                "负责人/PM兜底",
+                "多角色并集"
+              ],
+              "evidence_required": [
+                "diff",
+                "System测试结果",
+                "授权决策矩阵"
+              ],
+              "rollback": "恢复System旧方法和sys角色动作查询",
+              "stop_conditions": [
+                "动作无单一项目归属"
+              ],
+              "escalation_conditions": [
+                "需要shared或业务模块契约修改"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "按请求项目解析有效权限和动态路由",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "JWT过滤器每请求加载权限",
+                "me/routes共享AuthRepository",
+                "首次登录必须先读取工作台项目列表才能建立项目上下文"
+              ],
+              "write_scope": [
+                "server/src/platform/security/src/main/java/com/ccb/security/**",
+                "server/src/platform/security/src/test/java/com/ccb/security/**",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/**",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+              ],
+              "invariants": [
+                "JWT格式不变",
+                "无项目时仅系统上下文",
+                "me/routes/authorities一致",
+                "工作台仅返回用户可访问项目"
+              ],
+              "interface_contracts": [
+                "X-Project-Id可选正整数",
+                "AuthService按项目返回权限与路由",
+                "/api/project/workbench仅要求认证并按成员/负责人范围过滤"
+              ],
+              "non_goals": [
+                "修改模块依赖图",
+                "放宽项目详情和写操作授权"
+              ],
+              "action_bounds": [
+                "Security实现和直接测试",
+                "仅调整工作台入口的首次登录兼容门禁"
+              ],
+              "acceptance_checks": [
+                "A/B权限不同",
+                "非成员403",
+                "系统权限保持",
+                "父菜单保留",
+                "无当前项目时可读取工作台但不能读取项目详情"
+              ],
+              "evidence_required": [
+                "diff",
+                "Security/System/Boot测试",
+                "API样本"
+              ],
+              "rollback": "忽略项目头并恢复全局查询及工作台旧门禁",
+              "stop_conditions": [
+                "出现平台反向依赖"
+              ],
+              "escalation_conditions": [
+                "需要JWT或shared变更"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "交付权限维护、项目角色授权和原子项目切换界面",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "现有RolePermissionView为角色分配树",
+                "ProjectView已有角色维护",
+                "AppLayout切换后reload",
+                "系统角色列表仍暴露旧角色权限入口"
+              ],
+              "write_scope": [
+                "web/src/api/http.ts",
+                "web/src/api/system.ts",
+                "web/src/api/project.ts",
+                "web/src/stores/auth.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/types/system.ts",
+                "web/src/types/project.ts",
+                "web/src/views/RolePermissionView.vue",
+                "web/src/views/ModuleView.vue",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue",
+                "web/src/router/index.ts",
+                "web/src/styles.css"
+              ],
+              "invariants": [
+                "失败切换保留旧项目",
+                "前端不替代服务端鉴权",
+                "桌面手机可用",
+                "系统角色不再维护业务权限"
+              ],
+              "interface_contracts": [
+                "Axios附加X-Project-Id",
+                "授权成功后提交项目状态",
+                "权限抽屉可全屏"
+              ],
+              "non_goals": [
+                "批量修改业务模块"
+              ],
+              "action_bounds": [
+                "仅范围内前端公共上下文、权限页面和系统角色旧入口"
+              ],
+              "acceptance_checks": [
+                "目录CRUD全状态",
+                "系统角色旧权限入口移除",
+                "角色权限保存回读",
+                "A/B切换菜单按钮变化",
+                "失败恢复",
+                "无溢出"
+              ],
+              "evidence_required": [
+                "diff",
+                "Vite构建",
+                "浏览器桌面手机证据"
+              ],
+              "rollback": "恢复旧页面和reload切换",
+              "stop_conditions": [
+                "必须修改其他未授权业务模块"
+              ],
+              "escalation_conditions": [
+                "需要公共UI契约变更"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "集成并完成高保障收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "input_facts": [
+                "T1-T4完成后接口可组合"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/*.json"
+              ],
+              "invariants": [
+                "P0/P1归零",
+                "范围一致"
+              ],
+              "interface_contracts": [
+                "最终迁移/API/UI契约"
+              ],
+              "non_goals": [
+                "验收中扩大产品范围"
+              ],
+              "action_bounds": [
+                "证据、限幅纠偏和复验"
+              ],
+              "acceptance_checks": [
+                "Maven/Vite/Flyway/API/browser/范围检查满足R1-R5"
+              ],
+              "evidence_required": [
+                "三次采样",
+                "至少两类传感器",
+                "独立观测",
+                "convergence gate"
+              ],
+              "rollback": "按设计恢复旧权限源并保留V201",
+              "stop_conditions": [
+                "任何P0/P1未关闭"
+              ],
+              "escalation_conditions": [
+                "需要生产修复或风险接受"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "服务引用新关系"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Security消费项目授权"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "前端消费稳定Auth契约"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "集成验收需要完整实现"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "System与Security测试",
+                "A/B API权限一致"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "前端构建",
+                "浏览器项目切换"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "checks": [
+                "高保障门禁"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "后端契约采样",
+              "trigger": "T3完成",
+              "observer": "独立观察者",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "前端集成采样",
+              "trigger": "T4完成",
+              "observer": "独立观察者",
+              "sensors": [
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "最终采样",
+              "trigger": "T5验收",
+              "observer": "独立观察者/人工验收",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 migration implementation and focused test complete",
+        "recorded_at": "2026-09-09T03:04:53+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+              "purpose": "Create and initialize the tenant/project-scoped project-role permission relation."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionMigrationTest.java",
+              "purpose": "Lock down the migration structure, initialization policy, exclusions, and menu update."
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260909-074-project-scoped-role-permissions/codex-task-scope.yaml",
+              "purpose": "Correct the approved implementation plan filename in the writable-path declaration."
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-system -am -Dnet.bytebuddy.experimental=true -Dtest=ProjectRolePermissionMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 1,
+              "salient_output": "PowerShell parsed the unquoted -D property as an invalid lifecycle phase; no tests ran."
+            },
+            {
+              "command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" \"-Dtest=ProjectRolePermissionMigrationTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+              "exit_code": 0,
+              "salient_output": "ProjectRolePermissionMigrationTest: 2 tests, 0 failures, 0 errors; reactor build success."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Migration contract test",
+              "result": "pass",
+              "evidence": "Composite tenant/project/role/permission primary key; PM-all, non-PM-read, system exclusion and menu move assertions passed.",
+              "limitations": [
+                "The SQL has not yet been executed against the local MySQL instance; that is reserved for integration verification."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added append-only V201 relation and deterministic existing-role initialization.",
+            "Kept sys_role_permission untouched for rollback.",
+            "Corrected the task scope's approved plan path."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Historical migrations are not modified.",
+              "result": "pass",
+              "evidence": "Only V201 was added."
+            },
+            {
+              "invariant": "Project roles cannot receive system permissions.",
+              "result": "pass",
+              "evidence": "Both initialization statements exclude permission_code LIKE 'system:%'."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "PowerShell requires Maven -D arguments containing dots to be quoted in this environment.",
+              "impact": "The first test invocation failed before execution; the quoted retry passed."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Execute V201 against isolated local MySQL and verify migration row counts during T5."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 service contracts implemented and 91 tests pass",
+        "recorded_at": "2026-09-09T03:30:38+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/SystemController.java",
+              "purpose": "Expose permission catalog CRUD endpoints."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java",
+              "purpose": "Implement tenant-scoped permission catalog validation, immutable codes, reference protection and audit."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+              "purpose": "Expose project-role permission read/write endpoints."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "Persist role assignments and enforce project-scoped business actions with owner/PM fallback and multi-role union."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/service/SystemPermissionCatalogTest.java",
+              "purpose": "Verify immutable codes and reference-protected deletion."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionServiceTest.java",
+              "purpose": "Verify business-only assignment and project authorization SQL."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" \"-DskipTests\" package",
+              "exit_code": 1,
+              "salient_output": "Initial compile found missing requiredLong helper in the in-scope ProjectService change."
+            },
+            {
+              "command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" \"-DskipTests\" package",
+              "exit_code": 0,
+              "salient_output": "Reactor build success after bounded helper correction."
+            },
+            {
+              "command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" test",
+              "exit_code": 0,
+              "salient_output": "91 tests, 0 failures, 0 errors; reactor build success."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "System module regression",
+              "result": "pass",
+              "evidence": "All 91 target and dependency tests passed.",
+              "limitations": [
+                "No live MySQL/API sample yet."
+              ]
+            },
+            {
+              "check": "Authorization decision matrix",
+              "result": "pass",
+              "evidence": "Project action SQL accepts super admin, owner, PM or any assigned role permission and scopes every join by tenant/project.",
+              "limitations": [
+                "Request header/path consistency is implemented in T3."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added system permission maintenance CRUD without reusing a logical-delete resource abstraction incompatible with sys_menu_permission.",
+            "Added project role permission catalog/read/save and permission counts.",
+            "Moved all project-owned service actions to project-role authorization; retained projectless workbench/create/options compatibility.",
+            "Removed role-permission rows when deleting a role or project."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "System permissions remain global.",
+              "result": "pass",
+              "evidence": "SystemService continues to authorize through sys_role_permission."
+            },
+            {
+              "invariant": "Project roles cannot grant system permissions.",
+              "result": "pass",
+              "evidence": "Catalog and save validation exclude permission_code LIKE system:%."
+            },
+            {
+              "invariant": "Writes are audited.",
+              "result": "pass",
+              "evidence": "Catalog and project role assignment mutations call existing audit helpers."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Initial T2 compile exposed a missing local numeric helper.",
+              "impact": "Corrected inside ProjectService; successful package and test runs followed."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Header/path project-context consistency and dynamic route authority remain T3."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 request-scoped security implemented; Security/System regressions pass",
+        "recorded_at": "2026-09-09T03:55:47+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+              "purpose": "Resolve global system and project-scoped effective permissions and route catalog."
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+              "purpose": "Parse/validate request project context and filter routes using the same permission set as me/authorities."
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java",
+              "purpose": "Apply X-Project-Id on every authenticated request and reject invalid or path-mismatched context."
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/web/AuthController.java",
+              "purpose": "Use request project context for me and routes."
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java",
+              "purpose": "Inject JSON serializer into project-context filter errors."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+              "purpose": "Allow authenticated first-login workbench discovery before a project is selected."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "Keep workbench member-scoped and stop projectless helpers from reading old system business-role rows."
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/test/java/com/ccb/security/**",
+              "purpose": "Verify permission separation, project context, route ancestry and path/header consistency."
+            }
+          ],
+          "requirements_addressed": [
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test",
+              "exit_code": 1,
+              "salient_output": "Old behavior tests and a two-argument test double failed after the intentional contract change."
+            },
+            {
+              "command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test",
+              "exit_code": 1,
+              "salient_output": "New request test initially referenced unavailable Spring test support."
+            },
+            {
+              "command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test",
+              "exit_code": 1,
+              "salient_output": "Replacement request test initially referenced unavailable Mockito support."
+            },
+            {
+              "command": "mvn -pl :ccb-security -am \"-Dnet.bytebuddy.experimental=true\" test",
+              "exit_code": 0,
+              "salient_output": "12 security tests passed after replacing the request double with a JDK proxy."
+            },
+            {
+              "command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" test",
+              "exit_code": 0,
+              "salient_output": "Security 12 and System 91 tests passed; reactor build success."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "A/B project permission source",
+              "result": "pass",
+              "evidence": "Repository query binds projectId and unions owner, PM, super admin and assigned project roles.",
+              "limitations": [
+                "Live A/B API sample remains T5."
+              ]
+            },
+            {
+              "check": "Forged context handling",
+              "result": "pass",
+              "evidence": "Tests verify inaccessible project is 403 and project path/header mismatch is 403.",
+              "limitations": [
+                "Only /api/project/{id} path equality is checked centrally; other modules retain their existing entity authorization."
+              ]
+            },
+            {
+              "check": "me/routes/authorities consistency",
+              "result": "pass",
+              "evidence": "All three call AuthService.permissions(user, projectId); route filtering consumes that exact set.",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "System permissions now come only from system roles and system:* definitions.",
+            "Project permissions are computed per request project from owner/PM/super-admin fallback and multi-role assignment.",
+            "Invalid project headers and path mismatch produce JSON 400/403 responses.",
+            "First-login project discovery remains possible without project context."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "JWT format is unchanged.",
+              "result": "pass",
+              "evidence": "No token service or claims changed."
+            },
+            {
+              "invariant": "No project context returns only system permissions.",
+              "result": "pass",
+              "evidence": "Two-argument repository method delegates with null and returns before project query."
+            },
+            {
+              "invariant": "Backend authorization is authoritative.",
+              "result": "pass",
+              "evidence": "Filter validates membership and ProjectService validates project action/entity scope."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "T3 discovered first-login workbench was outside its initial write scope.",
+              "impact": "Control plan revision 2 added two bounded, already-authorized System compatibility files before implementation."
+            },
+            {
+              "event": "Security module lacks Spring-test and Mockito test dependencies.",
+              "impact": "Used a JDK proxy request double without dependency changes."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Live API and browser A/B switching remain T4/T5."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 frontend implementation completed; final vue-tsc and Vite build passed.",
+        "recorded_at": "2026-09-09T04:29:16+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/http.ts, web/src/stores/auth.ts, web/src/stores/project-context.ts",
+              "purpose": "Persist project ID, attach X-Project-Id, and prefetch/apply authorization snapshots atomically."
+            },
+            {
+              "path_or_resource": "web/src/views/AppLayout.vue, web/src/router/index.ts",
+              "purpose": "Switch project only after target authorization succeeds, restore authorization on reload, and redirect unauthorized routes."
+            },
+            {
+              "path_or_resource": "web/src/views/RolePermissionView.vue, web/src/views/ModuleView.vue",
+              "purpose": "Replace system-role assignment UI with permission catalog CRUD and remove the obsolete system-role permission entry."
+            },
+            {
+              "path_or_resource": "web/src/views/ProjectView.vue",
+              "purpose": "Display project-role permission counts and provide searchable, fullscreen-capable permission assignment drawer."
+            },
+            {
+              "path_or_resource": "web/src/api/system.ts, web/src/api/project.ts, web/src/types/system.ts, web/src/types/project.ts, web/src/styles.css",
+              "purpose": "Frontend API contracts, domain types, responsive layout and drawer states."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 1,
+              "salient_output": "vue-tsc found ProjectContextProvider did not expose the concrete projectIds map."
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 1,
+              "salient_output": "vue-tsc passed; sandbox blocked Vite esbuild spawn with EPERM."
+            },
+            {
+              "command": "npm --prefix web run build (approved outside sandbox)",
+              "exit_code": 0,
+              "salient_output": "2584 modules transformed and production bundle built."
+            },
+            {
+              "command": "npm --prefix web run build after hydration-race correction",
+              "exit_code": 0,
+              "salient_output": "vue-tsc and Vite completed; only existing chunk-size and dependency annotation warnings remained."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; only line-ending notices."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Atomic project switch order",
+              "result": "pass",
+              "evidence": "AppLayout fetches target authorization before select/apply; failures only reset the select widget and leave old state intact.",
+              "limitations": [
+                "Live failed-request behavior remains T5 browser coverage."
+              ]
+            },
+            {
+              "check": "Initial hydration ordering",
+              "result": "pass",
+              "evidence": "Login and router discovery explicitly hydrate without a project; normal application remount restores the persisted project ID, preventing a global snapshot from overwriting project permissions.",
+              "limitations": []
+            },
+            {
+              "check": "Permission ownership UI",
+              "result": "pass",
+              "evidence": "System page maintains catalog entries; system-role table no longer links to assignments; project role drawer consumes the project-scoped endpoint.",
+              "limitations": [
+                "Live save/readback remains T5."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Permission catalog CRUD replaces system role assignment UI.",
+            "Project roles expose permission count and searchable fullscreen assignment drawer.",
+            "Project context is sent on authenticated requests and authorization is replaced only after successful target prefetch.",
+            "Successful project switches reload business data; project detail URLs follow the target project ID."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Workbench discovery is projectless.",
+              "result": "pass",
+              "evidence": "getProjectWorkbench explicitly uses withProjectContext(null)."
+            },
+            {
+              "invariant": "Failed switching preserves old project and authorization.",
+              "result": "pass",
+              "evidence": "select/apply occur only after Promise.all for target me/routes succeeds."
+            },
+            {
+              "invariant": "Frontend does not grant system permissions to project roles.",
+              "result": "pass",
+              "evidence": "Drawer renders only the server-filtered project role catalog and submits permission IDs to the scoped endpoint."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "T4 consumer inventory found ModuleView's obsolete system-role permission link outside the initial task list.",
+              "impact": "Planning revision 3 added only ModuleView and removed that link."
+            },
+            {
+              "event": "Independent ordering review found App.vue could rehydrate a global snapshot after router project hydration.",
+              "impact": "Auth store default hydration now restores the persisted project while login/router discovery remain explicitly projectless."
+            },
+            {
+              "event": "Sandbox denied esbuild child-process creation.",
+              "impact": "The identical build was rerun with approved build permissions and passed."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Live API, database and desktop/mobile browser acceptance remain T5."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "T5 assembled runtime, API, database and browser execution evidence recorded",
+        "recorded_at": "2026-09-09T05:23:29+00:00",
+        "data": {
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "local MySQL ccb_platform_licon",
+              "purpose": "Apply and inspect V201 against local development data without altering the known broken Flyway history."
+            },
+            {
+              "path_or_resource": "local backend and frontend processes",
+              "purpose": "Exercise authenticated project-aware APIs and browser behavior on the assembled application."
+            },
+            {
+              "path_or_resource": "web/src/views/ProjectView.vue",
+              "purpose": "Replace the invalid null Element Plus option value found by the browser sensor while preserving the all-categories attachment query."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-security -am test",
+              "exit_code": 0,
+              "salient_output": "12 security tests passed."
+            },
+            {
+              "command": "mvn -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "91 system tests passed."
+            },
+            {
+              "command": "npm run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc passed and Vite transformed 2584 modules; only existing dependency annotation and chunk-size warnings remain."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; Git reported only line-ending notices."
+            },
+            {
+              "command": "node scripts/check-development-entry.mjs --require-plugin",
+              "exit_code": 0,
+              "salient_output": "Development entry check passed."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "V201 local development data",
+              "result": "pass",
+              "evidence": "pm_project_role_permission contains 1030 rows, zero system:* assignments and zero orphan relations; PM has 392 permissions and existing DEV/QA/DATA roles have 82 read permissions.",
+              "limitations": [
+                "V201 was applied directly to the local development database because its pre-existing V159 Flyway history entry is failed."
+              ]
+            },
+            {
+              "check": "Project-aware API authorization",
+              "result": "pass",
+              "evidence": "One temporary user received 78 permissions in project A and 376 in project B; route sets differed; non-member context and path/header mismatch both returned 403; temporary user and permission rows were removed.",
+              "limitations": []
+            },
+            {
+              "check": "Permission catalog and audit",
+              "result": "pass",
+              "evidence": "Catalog create/update/status/delete and role permission save/readback succeeded; database audit rows exist for every write action.",
+              "limitations": [
+                "The audit-list API is unavailable to the current local admin because of an existing system-role grant issue; audit persistence was verified by a read-only database query."
+              ]
+            },
+            {
+              "check": "Desktop and 390x844 browser acceptance",
+              "result": "pass",
+              "evidence": "Catalog search/create/edit/status/delete-cancel, immutable codes, project switch URL synchronization, role counts, drawer search/menu toggles/save/fullscreen, zero horizontal overflow and reachable mobile footer controls were exercised in the real browser.",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "The assembled permission catalog, project-role assignments and request-scoped authorization were verified against local services and data.",
+            "A browser-detected null option warning was corrected with a string sentinel and normalized before API requests.",
+            "No project authorization was changed by browser acceptance; DEV was saved with its original 82 permissions."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "System administration permissions remain global and cannot be assigned through project roles.",
+              "result": "pass",
+              "evidence": "Database and API candidate checks found zero system:* project-role assignments."
+            },
+            {
+              "invariant": "Backend authorization remains authoritative and project-scoped.",
+              "result": "pass",
+              "evidence": "Forged and non-member project contexts were rejected with 403 by the backend."
+            },
+            {
+              "invariant": "Flyway remains append-only.",
+              "result": "pass",
+              "evidence": "Only V201 was added; no published migration was modified."
+            },
+            {
+              "invariant": "REQ074 writes remain inside approved paths.",
+              "result": "pass",
+              "evidence": "Working-tree inventory is covered by codex-task-scope.yaml and git diff --check passed."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Local Flyway history has failed V159 and missing V160-V198 records even though later schemas exist.",
+              "impact": "Normal Flyway startup cannot be used as a trustworthy final sensor; V201 was applied and inspected directly in the local development database."
+            },
+            {
+              "event": "The seeded workflow publisher aborts startup because its existing approver configuration is absent.",
+              "impact": "The backend acceptance process disabled only Flyway and the seeded publisher through process environment flags."
+            },
+            {
+              "event": "Repository-wide governance parsing is blocked by the unrelated REQ061 task scope YAML.",
+              "impact": "Entry, module and repository skill checks passed, but the full aggregate governance command remains externally blocked."
+            },
+            {
+              "event": "The browser reported an Element Plus null option warning in ProjectView.",
+              "impact": "The in-scope attachment category option now uses an empty-string UI sentinel and normalizes non-number values before API requests; build and browser console rechecks passed."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Repairing the historical V159 Flyway state and seeded workflow approver configuration requires separate environment governance.",
+            "The unrelated REQ061 YAML and legacy licon branch naming deviation remain outside REQ074."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1 observed with JUnit and independent SQL semantic probe; no deviations",
+        "recorded_at": "2026-09-09T03:06:52+00:00",
+        "data": {
+          "sample_label": "T1 migration contract observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "Focused JUnit migration contract test",
+              "result": "pass",
+              "raw_evidence": "ProjectRolePermissionMigrationTest ran 2 tests with 0 failures and reactor BUILD SUCCESS.",
+              "limitation": [
+                "Static resource contract test does not execute MySQL DDL."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Independent fixed-string SQL semantic probe",
+              "result": "pass",
+              "raw_evidence": "Probe found the composite primary key, PM/all rule, non-PM/read rule, system exclusion and /system/permissions route.",
+              "limitation": [
+                "Row counts require the isolated local database integration sample in T5."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "The first Node command-line semantic probe was invalid because of shell escaping; it was discarded as a sensor fault and replaced by an rg fixed-string probe."
+          ],
+          "coverage_gaps": [
+            "V201 has not yet been executed against isolated local MySQL."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 observed by focused tests and authorization SQL inventory; no deviations",
+        "recorded_at": "2026-09-09T03:32:30+00:00",
+        "data": {
+          "sample_label": "T2 system and project permission service observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Focused service tests",
+              "result": "pass",
+              "raw_evidence": "SystemPermissionCatalogTest passed immutable-code and dual-reference deletion checks.",
+              "limitation": [
+                "Live HTTP status and audit rows remain integration checks."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Focused project assignment tests",
+              "result": "pass",
+              "raw_evidence": "ProjectRolePermissionServiceTest passed valid assignment and system/disabled rejection checks.",
+              "limitation": [
+                "UI tree behavior is T4."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Authorization SQL inventory",
+              "result": "pass",
+              "raw_evidence": "Project-scoped service calls use one query that unions owner, PM and any matching role permission; only projectless workbench/create/options retain global checks.",
+              "limitation": [
+                "Database row-level behavior is sampled in T5."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "Diff and SQL boundary probe",
+              "result": "pass",
+              "raw_evidence": "Assignment reads/writes include tenant_id, project_id and role_id; tests verify four-dimensional insert arguments and audit calls are present.",
+              "limitation": [
+                "Operation log rows are not queried from live MySQL yet."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Live HTTP, MySQL constraints and audit persistence remain for T5."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 independent focused tests and static authorization probes passed",
+        "recorded_at": "2026-09-09T03:59:46+00:00",
+        "data": {
+          "sample_label": "T3 project-context authorization observation",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R3",
+              "sensor": "Focused security project-context tests",
+              "result": "pass",
+              "raw_evidence": "Seven focused tests passed for project header parsing, inaccessible-project 403, project path/header mismatch 403, and shared request context across the JWT filter and authorization APIs.",
+              "limitation": [
+                "Browser-side atomic project switching is measured in T4 and T5."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Permission-source SQL and call-path probe",
+              "result": "pass",
+              "raw_evidence": "Repository SQL separates system:* permissions from project-scoped permissions and binds tenantId/projectId; AuthService, JwtAuthenticationFilter, /auth/me and /auth/routes resolve the same project context and effective permission set.",
+              "limitation": [
+                "Live MySQL A/B project role rows remain an integration measurement for T5."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "Route filtering and request rejection tests",
+              "result": "pass",
+              "raw_evidence": "Tests passed for permission-filtered routes with ancestor retention; invalid numeric headers return 400 and unauthorized or path-mismatched project context returns 403.",
+              "limitation": [
+                "Central path/header equality currently covers /api/project/{id}; other business modules retain their existing entity authorization checks."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "The security module has no Spring-test or Mockito dependency, so the request sensor uses a JDK proxy test double.",
+            "First-login workbench compatibility required the bounded T3 plan revision already recorded in control-plan revision 2."
+          ],
+          "coverage_gaps": [
+            "Live HTTP and MySQL verification of project A/B permission differences remains for T5.",
+            "Frontend project-switch atomicity and stale-authority behavior remains for T4/T5."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "Independent build, route, state-transition and UI contract probes passed.",
+        "recorded_at": "2026-09-09T04:29:17+00:00",
+        "data": {
+          "sample_label": "T4 frontend authorization and permission UI observation",
+          "task_ids": [
+            "T4"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Vue type check, production build and route/UI contract probe",
+              "result": "pass",
+              "raw_evidence": "vue-tsc and Vite passed; /system/permissions maps to catalog CRUD and the obsolete ModuleView system-role permission action is absent.",
+              "limitation": [
+                "Live catalog CRUD and reference-delete errors remain T5."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Project role drawer static interaction probe",
+              "result": "pass",
+              "raw_evidence": "Project role rows show permission_count; the drawer loads only scoped catalog data, supports search/menu toggles/fullscreen, saves IDs, rereads assignments and refreshes role counts.",
+              "limitation": [
+                "Pointer interaction and 390px geometry remain T5 browser checks."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Authorization state-transition review plus production build",
+              "result": "pass",
+              "raw_evidence": "Target me/routes are fetched before project selection; failures preserve old state; persisted project hydration avoids global overwrite; successful switches reload data and synchronize project-detail IDs.",
+              "limitation": [
+                "Network-failure injection and A/B live permissions remain T5."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Vite required approved child-process execution because sandboxed esbuild returned EPERM."
+          ],
+          "coverage_gaps": [
+            "Live local database, API and browser behavior are intentionally assigned to T5."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "T5 independent heterogeneous observation covers R1-R5 with zero open deviations",
+        "recorded_at": "2026-09-09T05:23:55+00:00",
+        "data": {
+          "sample_label": "T5 assembled project-scoped permission acceptance",
+          "task_ids": [
+            "T5"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "System tests, local API probe and real browser",
+              "result": "pass",
+              "raw_evidence": "91 System tests passed; permission catalog CRUD succeeded; search, create drawer, immutable edit codes, status confirmation and delete cancellation were exercised; audit rows were persisted.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Database relation query, scoped API and real browser drawer",
+              "result": "pass",
+              "raw_evidence": "Zero system:* project-role relations; role counts render as PM 392 and DEV/QA 82; DEV assignment search, menu toggle, fullscreen and original-value save/readback succeeded.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Security tests, two-project API identity and browser project switch",
+              "result": "pass",
+              "raw_evidence": "12 Security tests passed; one temporary identity produced different A/B permission and route sets; forged contexts returned 403; browser switch committed only after confirmation and synchronized the project detail URL.",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Local MySQL counts and role authorization API",
+              "result": "pass",
+              "raw_evidence": "V201 created 1030 relations with PM 392 and existing non-PM roles 82 read permissions; project owner/admin could open and save role permissions.",
+              "limitation": [
+                "Local migration execution bypassed Flyway because the database has a pre-existing failed V159 history row; SQL outcomes were inspected directly."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "Security/System tests, negative API probes and database audit query",
+              "result": "pass",
+              "raw_evidence": "Non-member and path/header mismatch requests returned 403; no orphan relations exist; catalog and role assignment actions produced audit rows.",
+              "limitation": [
+                "Audit rows were read directly because the local admin's unrelated audit-list permission is missing."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Local Flyway V159 history failure and seeded workflow publisher configuration prevent an unmodified backend startup.",
+            "Full repository governance is blocked by unrelated REQ061 YAML; approved-path and entry checks remain green.",
+            "The browser-found null option warning was corrected in scope and produced zero new warn/error logs on recheck."
+          ],
+          "coverage_gaps": [
+            "No production data, identity or environment was accessed.",
+            "Historical Flyway repair, seeded workflow configuration and the unrelated audit-list grant are outside REQ074."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final convergence audit covers R1-R5, T1-T5, five samples, regression, invariants, scope and residual risks",
+        "recorded_at": "2026-09-09T05:25:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "System permission catalog tests are included in the 91/91 passing System suite.",
+                "Local API catalog CRUD and audit persistence passed.",
+                "Browser search, create drawer, immutable edit codes, status confirmation and delete cancellation passed."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "V201 created project-scoped role relations with zero system:* assignments.",
+                "Project role permission API save/readback passed.",
+                "Browser role counts, search, menu toggle, fullscreen and original 82-permission save passed."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "Security suite passed 12/12 including request-context behavior.",
+                "A temporary identity received 78 and 376 effective permissions in two projects and different dynamic routes.",
+                "Browser project switching synchronized authorization, selected project and project-detail URL."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "Local V201 result contains 1030 role-permission rows with zero orphans.",
+                "PM roles have 392 business permissions and existing DEV/QA/DATA roles have 82 read permissions.",
+                "Project owner/admin retained access to role permission maintenance."
+              ],
+              "limitations": [
+                "The local database's pre-existing failed V159 Flyway history required direct local execution and SQL inspection of V201."
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "Non-member project context and path/header mismatch both returned 403.",
+                "Database checks found zero orphan role-permission relations.",
+                "Catalog and project-role permission writes produced audit records."
+              ],
+              "limitations": [
+                "Audit persistence was verified through a direct local database query because the local admin lacks an unrelated audit-list grant."
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "Migration tests and static SQL probes passed."
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "System service contract tests and authorization inventory passed."
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "Security tests and project-context call-path probes passed."
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "Frontend production build and authorization-state contract checks passed."
+              ]
+            },
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": [
+                "Local database, API, desktop browser, 390x844 browser and final build acceptance passed."
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0004",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0005",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Security module",
+              "result": "pass",
+              "evidence": "12/12 tests passed."
+            },
+            {
+              "check": "System module",
+              "result": "pass",
+              "evidence": "91/91 tests passed."
+            },
+            {
+              "check": "Frontend type and production build",
+              "result": "pass",
+              "evidence": "vue-tsc and Vite completed with 2584 modules transformed."
+            },
+            {
+              "check": "Assembled authenticated API",
+              "result": "pass",
+              "evidence": "Catalog, role assignment, A/B authorization and negative context probes passed."
+            },
+            {
+              "check": "Real browser desktop/mobile",
+              "result": "pass",
+              "evidence": "Required flows passed with no horizontal overflow and no new warn/error console entries after correction."
+            },
+            {
+              "check": "Whitespace and entry governance",
+              "result": "pass",
+              "evidence": "git diff --check and development entry check passed."
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "System administration permissions remain global.",
+              "result": "pass",
+              "evidence": "System permissions are excluded from project-role candidates and relations."
+            },
+            {
+              "invariant": "Project roles cannot grant system permissions.",
+              "result": "pass",
+              "evidence": "Zero system:* project-role assignments in local data."
+            },
+            {
+              "invariant": "Backend authorization is authoritative.",
+              "result": "pass",
+              "evidence": "Negative project-context requests were rejected by the server with 403."
+            },
+            {
+              "invariant": "Flyway migrations are append-only.",
+              "result": "pass",
+              "evidence": "V201 is new and no published migration was edited."
+            },
+            {
+              "invariant": "Writes stay in the approved REQ074 scope.",
+              "result": "pass",
+              "evidence": "Final working-tree inventory is covered by writable_paths; forbidden paths were not read or changed."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "Project switch reload and route replacement",
+              "result": "pass",
+              "evidence": "Browser switched from project 940001 to 910000000003001 and synchronized the detail URL after authorization prefetch."
+            },
+            {
+              "disturbance": "Failed or forged project context",
+              "result": "pass",
+              "evidence": "Old selection is retained on failed switching by contract; forged and mismatched contexts returned 403."
+            },
+            {
+              "disturbance": "390x844 viewport",
+              "result": "pass",
+              "evidence": "Permission catalog and role drawer had document scrollWidth 390, with footer actions inside the viewport."
+            },
+            {
+              "disturbance": "Invalid Element Plus null option",
+              "result": "pass",
+              "evidence": "The UI sentinel was normalized and a fresh project-settings/drawer browser run produced zero warn/error logs."
+            }
+          ],
+          "residual_risks": [
+            "The local ccb_platform_licon Flyway history has a failed V159 and missing V160-V198 records; this environment must be repaired through a separate governed database task before normal Flyway startup is trusted.",
+            "The existing seeded workflow publisher requires approver configuration and was disabled only for the local acceptance process.",
+            "The aggregate repository governance command is blocked by an unrelated non-JSON-compatible REQ061 task scope file.",
+            "The legacy licon branch name does not satisfy the repository's newer <type>/REQ-* naming convention.",
+            "The current local admin cannot list audit records through the UI/API because of an unrelated global system-role grant; audit writes themselves are present."
+          ],
+          "gate_result": "pass",
+          "route_reason": "All five must requirements have complete task-to-change-to-sensor evidence, T1-T5 are verified, five high-assurance zero-error samples exist, automated plus API/database/browser sensors pass, scope and invariants hold, and remaining issues are disclosed external environment or governance disturbances."
+        }
+      }
+    ]
+  },
+  "objective": "用户切换当前项目后，系统管理权限保持全局不变，业务页面及操作权限按其在目标项目中的项目角色立即且安全地切换。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统设置必须提供权限目录维护，不再承担项目业务权限的系统角色分配。",
+      "acceptance": [
+        "管理员可新增、查询、编辑、启停和受引用保护地删除权限",
+        "权限编码创建后不可修改"
+      ],
+      "priority": "must",
+      "source": "用户确认设计",
+      "counterexample": [
+        "系统设置仍按系统角色配置项目业务权限"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "项目角色必须能从中央目录配置当前项目的业务权限。",
+      "acceptance": [
+        "角色权限保存后可回读",
+        "系统权限不出现在候选项"
+      ],
+      "priority": "must",
+      "source": "用户确认设计",
+      "counterexample": [
+        "项目角色可获得系统管理权限"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "业务权限必须随当前项目切换并由服务端执行。",
+      "acceptance": [
+        "同一用户在项目A/B得到各自角色权限",
+        "菜单路由按钮接口结果一致",
+        "伪造项目上下文被拒绝"
+      ],
+      "priority": "must",
+      "source": "用户确认设计",
+      "counterexample": [
+        "仅前端显隐发生变化"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "存量项目角色初始化不得导致项目管理锁死。",
+      "acceptance": [
+        "PM获得全部业务权限",
+        "其他存量角色获得查看权限",
+        "新角色默认无权限",
+        "项目负责人保持全权限"
+      ],
+      "priority": "must",
+      "source": "用户确认迁移规则",
+      "counterexample": [
+        "迁移后负责人不能维护角色"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "权限维护必须满足租户和项目隔离并记录审计。",
+      "acceptance": [
+        "跨租户和跨项目标识被拒绝",
+        "目录和角色权限写入产生审计"
+      ],
+      "priority": "must",
+      "source": "仓库安全规则",
+      "counterexample": [
+        "可通过项目B接口修改项目A角色"
+      ]
+    }
+  ],
+  "invariants": [
+    "系统管理权限始终由系统角色控制",
+    "项目角色不能授予系统权限",
+    "服务端授权为唯一权威",
+    "Flyway只追加"
+  ],
+  "constraints": [
+    "保持JWT和Java包名",
+    "复用sys_menu_permission",
+    "项目上下文使用X-Project-Id",
+    "不访问生产或外部系统",
+    "仅修改REQ074授权路径"
+  ],
+  "non_goals": [
+    "重构组织和成员管理",
+    "把权限写入JWT",
+    "恢复输入项配置"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260909-074-project-scoped-role-permissions\\handoff.json",
+    "imported_at": "2026-09-09T02:48:16+00:00",
+    "topic": "project-scoped-role-permissions",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "project-scoped-role-permissions",
+      "handoff_status": "approved",
+      "created_at": "2026-09-09T09:30:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "project-scoped-role-permissions",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-09-project-scoped-role-permissions-design.md",
+        "objective": "Make project business permissions follow the selected project and its project roles while keeping system administration permissions global.",
+        "users": [
+          "System administrators",
+          "Project owners",
+          "Project members"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "System settings must maintain the permission catalog instead of assigning business permissions to system roles.",
+            "acceptance": [
+              "Authorized administrators can manage permission definitions",
+              "Permission codes are immutable and referenced permissions cannot be deleted"
+            ],
+            "priority": "must",
+            "source": "User-confirmed design",
+            "counterexample": [
+              "System settings still assigns business permissions directly to system roles"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Project roles must configure project business permissions from the central catalog.",
+            "acceptance": [
+              "Project role permissions persist",
+              "System permissions are excluded"
+            ],
+            "priority": "must",
+            "source": "User-confirmed design",
+            "counterexample": [
+              "A project role grants system administration access"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Effective business permissions must change with the active project and be enforced by the server.",
+            "acceptance": [
+              "Projects A and B produce their configured permission sets",
+              "Menus, routes, buttons and APIs agree",
+              "Forged context is rejected"
+            ],
+            "priority": "must",
+            "source": "User-confirmed design",
+            "counterexample": [
+              "Only frontend visibility changes"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Existing roles must be initialized without project administration lockout.",
+            "acceptance": [
+              "PM gets all business permissions",
+              "Other existing roles get read permissions",
+              "New roles get none",
+              "Owner has full fallback"
+            ],
+            "priority": "must",
+            "source": "User-confirmed migration decision",
+            "counterexample": [
+              "A project owner cannot configure roles after migration"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Permission changes must preserve tenant/project isolation and be audited.",
+            "acceptance": [
+              "Cross-project and cross-tenant identifiers are rejected",
+              "Writes create audit records"
+            ],
+            "priority": "must",
+            "source": "Repository security rules",
+            "counterexample": [
+              "A role from project A is changed through project B"
+            ]
+          }
+        ],
+        "invariants": [
+          "System administration permissions remain global",
+          "Project roles cannot grant system permissions",
+          "Backend authorization is authoritative",
+          "Flyway is append-only"
+        ],
+        "constraints": [
+          "Keep existing packages and JWT format",
+          "Reuse sys_menu_permission",
+          "Use X-Project-Id",
+          "No production access"
+        ],
+        "non_goals": [
+          "Organization/member redesign",
+          "JWT permission claims",
+          "Business form metadata"
+        ],
+        "selected_approach": {
+          "name": "Request-scoped project context with server-side permission union",
+          "reason": "Immediate secure switching without token churn",
+          "alternatives": [
+            {
+              "name": "Token reissue",
+              "rejected_because": "Multi-tab and rotation complexity"
+            },
+            {
+              "name": "Frontend-only permissions",
+              "rejected_because": "No backend enforcement"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Permission catalog",
+              "Project role permissions",
+              "Request context",
+              "Effective permissions/routes",
+              "V201",
+              "Frontend configuration"
+            ],
+            "outside": [
+              "JWT schema",
+              "Organization data",
+              "Non-project data"
+            ]
+          },
+          "components": [
+            {
+              "name": "System permission catalog",
+              "responsibility": "Own definitions and lifecycle",
+              "depends_on": [
+                "sys_menu_permission",
+                "audit"
+              ]
+            },
+            {
+              "name": "Project role authorization",
+              "responsibility": "Persist project role selections",
+              "depends_on": [
+                "pm_project_role_permission"
+              ]
+            },
+            {
+              "name": "Security resolver",
+              "responsibility": "Union system and active-project permissions",
+              "depends_on": [
+                "user",
+                "project context",
+                "membership"
+              ]
+            },
+            {
+              "name": "Frontend auth context",
+              "responsibility": "Attach context and atomically switch authorization",
+              "depends_on": [
+                "project store",
+                "auth store",
+                "Axios"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Permission catalog API",
+              "producer": "platform/system",
+              "consumers": [
+                "System settings",
+                "Project role drawer"
+              ],
+              "contract": "Tenant-scoped definitions with immutable code and reference-safe deletion"
+            },
+            {
+              "name": "Project role permission API",
+              "producer": "platform/system",
+              "consumers": [
+                "Project settings"
+              ],
+              "contract": "Read and transactionally replace permissions for a role in the path project"
+            },
+            {
+              "name": "Effective authorization",
+              "producer": "platform/security",
+              "consumers": [
+                "JWT filter",
+                "Auth UI",
+                "Routes"
+              ],
+              "contract": "Global system plus active-project business permissions after scope validation"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Select project B",
+              "transitions": [
+                "load B auth",
+                "validate membership",
+                "resolve role union",
+                "replace auth",
+                "commit selection"
+              ],
+              "output": "B-specific routes and actions"
+            },
+            {
+              "input": "Save role permissions",
+              "transitions": [
+                "validate manager",
+                "validate role and catalog",
+                "replace relations",
+                "audit"
+              ],
+              "output": "New permissions effective on next request"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Invalid project context",
+            "behavior": "Return 403",
+            "recovery": "Select an accessible project"
+          },
+          {
+            "condition": "Switch load fails",
+            "behavior": "Keep old project and permissions",
+            "recovery": "Retry"
+          },
+          {
+            "condition": "Save fails",
+            "behavior": "Keep selections open and show error",
+            "recovery": "Correct or retry"
+          },
+          {
+            "condition": "Permission referenced",
+            "behavior": "Reject delete",
+            "recovery": "Unassign or disable"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Tenant/project isolation",
+            "Server RBAC",
+            "Audited writes"
+          ],
+          "performance": [
+            "Indexed lookup",
+            "No per-row queries"
+          ],
+          "compatibility": [
+            "Existing JWT remains valid",
+            "System roles remain"
+          ],
+          "operations": [
+            "Append-only migration",
+            "Count and access verification"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "Catalog and assignment persist with correct scope",
+            "method": "System tests and browser"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R5"
+            ],
+            "signal": "A/B differ and forged context is 403",
+            "method": "Security tests and API"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "Migration all/read/none counts are correct",
+            "method": "Migration test and SQL queries"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Project business actions have one owner project",
+            "basis": "Existing project-scoped APIs",
+            "falsifier": "An in-scope cross-project operation"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "Which legacy calls omit project context?",
+            "impact": "Caller inventory and compatibility work",
+            "owner": "Implementation engineer",
+            "blocking": false
+          },
+          {
+            "question": "Why does plugin list return unknown error?",
+            "impact": "Entry gate blocks execution",
+            "owner": "Environment maintainer",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "System permissions global; project permissions scoped",
+            "reason": "Prevent platform elevation",
+            "source": "User"
+          },
+          {
+            "id": "D2",
+            "decision": "PM all, existing non-PM read, new none, owner fallback",
+            "reason": "Usable least-privilege migration",
+            "source": "User"
+          },
+          {
+            "id": "D3",
+            "decision": "Request-scoped context",
+            "reason": "Secure immediate switching",
+            "source": "User option 1"
+          },
+          {
+            "id": "D4",
+            "decision": "Central catalog and fullscreen project drawer",
+            "reason": "Separate ownership from assignment",
+            "source": "User"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Legacy calls omit context",
+            "impact": "403 regression",
+            "mitigation": "Inventory and contract tests"
+          },
+          {
+            "risk": "Route/API divergence",
+            "impact": "Broken or insecure UX",
+            "mitigation": "One resolver and agreement tests"
+          },
+          {
+            "risk": "Migration over-grants",
+            "impact": "Privilege escalation",
+            "mitigation": "Read-only non-PM seed and count checks"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the landed design revision 1",
+          "confirmed_at": "2026-09-09T09:20:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-09-project-scoped-role-permissions-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Append-only V201",
+          "Server-side project RBAC",
+          "System permissions stay global",
+          "No production data",
+          "Entry plugin check must pass before execution"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+            "status": "candidate-new",
+            "responsibility": "Role-permission schema and seed",
+            "evidence": "Latest migration is V200"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java",
+            "status": "existing",
+            "responsibility": "Permission catalog",
+            "evidence": "Existing permissionCatalog and rolePermissions"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "Project role permissions",
+            "evidence": "Existing role CRUD and sys-role requireAction"
+          },
+          {
+            "path": "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+            "status": "existing",
+            "responsibility": "Effective permission queries",
+            "evidence": "Existing global findPermissions/findRoutes"
+          },
+          {
+            "path": "web/src/stores/project-context.ts",
+            "status": "existing",
+            "responsibility": "Active project identity",
+            "evidence": "Existing ref-only selection"
+          },
+          {
+            "path": "web/src/views/RolePermissionView.vue",
+            "status": "existing",
+            "responsibility": "Replace assignment page with catalog maintenance",
+            "evidence": "Existing system role permission tree"
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "existing",
+            "responsibility": "Project role permission drawer",
+            "evidence": "Existing project role CRUD"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Create and seed project role permission schema",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V200 is latest migration",
+              "Project roles and permission catalog already exist"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionMigrationTest.java"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionMigrationTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "sys_menu_permission",
+                "pm_project_role"
+              ],
+              "produces": [
+                "pm_project_role_permission"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add failing migration assertions",
+                "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-system -am -Dtest=ProjectRolePermissionMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "Fails because V201/table is absent",
+                "evidence": "Test output"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Add V201 and seed PM/all and non-PM/read",
+                "command": null,
+                "expected": "No system permission is assigned to project roles",
+                "evidence": "Migration diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "Rerun migration test",
+                "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-system -am -Dtest=ProjectRolePermissionMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "Exit 0",
+                "evidence": "Test output"
+              }
+            ],
+            "acceptance_checks": [
+              "Unique relation",
+              "Correct seed",
+              "No historical migration edit"
+            ],
+            "risks": [
+              "Permission misclassification"
+            ],
+            "rollback": "Retain table and restore old read path",
+            "stop_conditions": [
+              "V201 exists",
+              "PM code is not stable"
+            ],
+            "escalation_conditions": [
+              "Historical migration modification required"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Provide audited system permission catalog maintenance",
+            "requirement_ids": [
+              "R1",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "SystemService owns current read-only catalog"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/system/src/test/java/com/ccb/system/service/SystemPermissionCatalogTest.java"
+              ],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/web/SystemController.java"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/service/SystemPermissionCatalogTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "pm_project_role_permission"
+              ],
+              "produces": [
+                "GET/POST/PUT/DELETE /api/system/permissions"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Add lifecycle and isolation tests",
+                "command": null,
+                "expected": "Current missing endpoints fail",
+                "evidence": "Focused failure"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Implement catalog APIs and audit",
+                "command": null,
+                "expected": "Immutable code and reference protection",
+                "evidence": "Diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "Run focused tests",
+                "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-system -am -Dtest=SystemPermissionCatalogTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "Exit 0",
+                "evidence": "Test output"
+              }
+            ],
+            "acceptance_checks": [
+              "CRUD",
+              "403 unauthorized",
+              "Referenced delete rejected",
+              "Audit written"
+            ],
+            "risks": [
+              "Catalog deletion breaks assignments"
+            ],
+            "rollback": "Restore read-only catalog endpoints",
+            "stop_conditions": [
+              "Audit cannot represent changes"
+            ],
+            "escalation_conditions": [
+              "Shared error model change required"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Provide project role permission APIs and project action checks",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "ProjectService currently reads sys_role_permission",
+              "Project role CRUD already validates project ownership"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionServiceTest.java"
+              ],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "pm_project_role_permission"
+              ],
+              "produces": [
+                "GET/PUT /api/project/{projectId}/roles/{roleId}/permissions",
+                "project-aware requireAction"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Add role scope and union tests",
+                "command": null,
+                "expected": "Current global permission behavior fails expectations",
+                "evidence": "Focused failure"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Implement APIs, counts, audit and project action checks",
+                "command": null,
+                "expected": "Only current project role permissions grant actions",
+                "evidence": "Diff"
+              },
+              {
+                "id": "T3-S3",
+                "action": "Run ProjectService tests",
+                "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-system -am test",
+                "expected": "Exit 0",
+                "evidence": "Test output"
+              }
+            ],
+            "acceptance_checks": [
+              "Multi-role union",
+              "Owner/PM fallback",
+              "Cross-project rejected"
+            ],
+            "risks": [
+              "Global create action lacks project"
+            ],
+            "rollback": "Restore sys role action query",
+            "stop_conditions": [
+              "Action has no unique project"
+            ],
+            "escalation_conditions": [
+              "Business modules require modification"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "Resolve effective authorities and routes by request project",
+            "requirement_ids": [
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "JWT filter currently loads global permissions each request",
+              "Auth me/routes share AuthRepository"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/security/src/test/java/com/ccb/security/repository/AuthRepositoryProjectPermissionTest.java"
+              ],
+              "modify": [
+                "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java",
+                "server/src/platform/security/src/main/java/com/ccb/security/service/AuthService.java",
+                "server/src/platform/security/src/main/java/com/ccb/security/web/JwtAuthenticationFilter.java",
+                "server/src/platform/security/src/main/java/com/ccb/security/web/AuthController.java",
+                "server/src/platform/security/src/test/java/com/ccb/security/service/AuthServiceProfileTest.java"
+              ],
+              "test": [
+                "server/src/platform/security/src/test/java/com/ccb/security/repository/AuthRepositoryProjectPermissionTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "X-Project-Id",
+                "pm_project_role_permission"
+              ],
+              "produces": [
+                "project-aware me, permissions and routes"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "Add A/B and invalid context tests",
+                "command": null,
+                "expected": "Current signatures fail",
+                "evidence": "Focused failure"
+              },
+              {
+                "id": "T4-S2",
+                "action": "Implement one project-context parser and effective resolver",
+                "command": null,
+                "expected": "Filter, me and routes agree",
+                "evidence": "Diff"
+              },
+              {
+                "id": "T4-S3",
+                "action": "Run security and boot tests",
+                "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-security,:ccb-boot -am test",
+                "expected": "Exit 0",
+                "evidence": "Test output"
+              }
+            ],
+            "acceptance_checks": [
+              "No-project system-only",
+              "A/B differ",
+              "Non-member 403",
+              "Parent routes retained"
+            ],
+            "risks": [
+              "Filter/API divergence"
+            ],
+            "rollback": "Ignore project header and restore global queries",
+            "stop_conditions": [
+              "Platform dependency boundary breaks"
+            ],
+            "escalation_conditions": [
+              "JWT/shared contract change required"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "Deliver permission maintenance, role assignment and atomic project switching UI",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [
+              "T4"
+            ],
+            "input_facts": [
+              "RolePermissionView is existing assignment tree",
+              "AppLayout currently selects then reloads",
+              "Project store persists ref only"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/http.ts",
+                "web/src/api/system.ts",
+                "web/src/api/project.ts",
+                "web/src/stores/auth.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/types/system.ts",
+                "web/src/types/project.ts",
+                "web/src/views/RolePermissionView.vue",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue",
+                "web/src/router/index.ts",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T2-T4 APIs"
+              ],
+              "produces": [
+                "X-Project-Id injection",
+                "loadProjectAuthorization",
+                "Permission maintenance UI",
+                "Project role permission drawer"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "Add types, API functions and project ID persistence",
+                "command": null,
+                "expected": "Type contracts match backend",
+                "evidence": "Diff"
+              },
+              {
+                "id": "T5-S2",
+                "action": "Replace system assignment UI and extend project roles",
+                "command": null,
+                "expected": "Full state UX and fullscreen drawer",
+                "evidence": "Browser DOM/screenshots"
+              },
+              {
+                "id": "T5-S3",
+                "action": "Make project switch authorization-first and recover failures",
+                "command": null,
+                "expected": "Failed switch retains old state",
+                "evidence": "Browser/API evidence"
+              },
+              {
+                "id": "T5-S4",
+                "action": "Build frontend",
+                "command": "npm --prefix web run build",
+                "expected": "Exit 0",
+                "evidence": "Build output"
+              }
+            ],
+            "acceptance_checks": [
+              "Search and grouped selection",
+              "No system permissions in role drawer",
+              "Desktop/mobile no overflow",
+              "No false success"
+            ],
+            "risks": [
+              "Legacy views need reload"
+            ],
+            "rollback": "Restore old view and reload switch",
+            "stop_conditions": [
+              "Broad business module edits required"
+            ],
+            "escalation_conditions": [
+              "Public UI component change required"
+            ]
+          },
+          {
+            "id": "T6",
+            "goal": "Converge migration, API and browser authorization evidence",
+            "requirement_ids": [
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T5"
+            ],
+            "input_facts": [
+              "All producers and consumers are integrated"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/execution-T1.json",
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/observation-T1.json",
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/convergence.json",
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/state.json"
+              ],
+              "modify": [
+                ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/handoff.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T5 final state"
+              ],
+              "produces": [
+                "Convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T6-S1",
+                "action": "Run backend, frontend, whitespace and scope checks",
+                "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-system,:ccb-security,:ccb-boot -am test; npm --prefix web run build; git diff --check",
+                "expected": "All requirement-owned checks exit 0",
+                "evidence": "Command outputs"
+              },
+              {
+                "id": "T6-S2",
+                "action": "Run Flyway and SQL relation checks",
+                "command": null,
+                "expected": "No orphan or system permission assignment",
+                "evidence": "Sanitized counts"
+              },
+              {
+                "id": "T6-S3",
+                "action": "Run A/B API and browser matrix",
+                "command": null,
+                "expected": "Permissions differ and unauthorized requests are 403",
+                "evidence": "Sanitized responses and screenshots"
+              },
+              {
+                "id": "T6-S4",
+                "action": "Run independent observation and convergence gate",
+                "command": null,
+                "expected": "P0=0, P1=0 and gate pass",
+                "evidence": "Observation and convergence JSON"
+              }
+            ],
+            "acceptance_checks": [
+              "R1-R5 traced",
+              "No cross-project access",
+              "All states verified"
+            ],
+            "risks": [
+              "Environment and local data disturbances"
+            ],
+            "rollback": "Restore old permission source and keep V201 data",
+            "stop_conditions": [
+              "Entry gate fails",
+              "Any P0/P1 remains"
+            ],
+            "escalation_conditions": [
+              "Production repair or risk acceptance required"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "The catalog lifecycle must reference the new project-role relation."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Project role assignment consumes the validated central catalog contract."
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "Security resolution consumes persisted project role permissions and project action semantics."
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "The frontend switch and guards require stable project-aware auth endpoints."
+          },
+          {
+            "from": "T5",
+            "to": "T6",
+            "reason": "End-to-end verification requires all backend and frontend consumers integrated."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ],
+          [
+            "T6"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T3",
+              "T4"
+            ],
+            "command": "mvn -q \"-Dnet.bytebuddy.experimental=true\" -pl :ccb-system,:ccb-security -am test",
+            "expected": "Exit 0"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Exit 0"
+          },
+          {
+            "after_tasks": [
+              "T6"
+            ],
+            "command": "git diff --check",
+            "expected": "Exit 0 and convergence gate passes"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3",
+              "T4",
+              "T5",
+              "T6"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4",
+              "T6"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4",
+              "T6"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed implementation plan revision 1 and authorized development",
+          "confirmed_at": "2026-09-09T09:35:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Permission catalog",
+          "Project role relations",
+          "Request project context",
+          "Security authorities",
+          "Dynamic routes",
+          "Frontend controls"
+        ],
+        "state_variable_candidates": [
+          "active project ID",
+          "system permissions",
+          "project permissions",
+          "effective union",
+          "route tree",
+          "role permission version"
+        ],
+        "interface_candidates": [
+          "X-Project-Id",
+          "Permission catalog API",
+          "Project role permission API",
+          "Auth me/routes"
+        ],
+        "sensor_candidates": [
+          "Maven tests",
+          "migration SQL queries",
+          "auth responses",
+          "protected API status",
+          "browser menu/button state"
+        ],
+        "actuator_candidates": [
+          "V201 seed",
+          "catalog CRUD",
+          "role relation replacement",
+          "request header",
+          "auth store replacement",
+          "route guard"
+        ],
+        "disturbance_candidates": [
+          "legacy call without header",
+          "multiple roles",
+          "disabled permission",
+          "multi-tab project difference",
+          "custom roles"
+        ],
+        "delay_candidates": [
+          "parallel auth requests on switch",
+          "next-request permission effect",
+          "reload and route guard order"
+        ],
+        "assumptions": [
+          {
+            "text": "Every project business action has one project context",
+            "basis": "Existing project APIs",
+            "falsifier": "An in-scope cross-project action"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL/Flyway\", \"既有业务模块调用方\", \"浏览器localStorage\", \"Spring Security\"], \"inside\": [\"sys_menu_permission目录\", \"pm_project_role_permission关系\", \"System目录与项目角色服务\", \"Security权限与路由解析\", \"Axios项目请求头\", \"Pinia项目和授权状态\", \"权限维护与项目角色界面\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"生产自定义数据\"], \"id\": \"S1\", \"independence\": \"直接观察数据库关系\", \"method\": \"Flyway迁移测试和SQL计数\", \"target\": \"迁移结构与初始化\"}",
+      "{\"blind_spots\": [\"真实浏览器时序\"], \"id\": \"S2\", \"independence\": \"进程内自动断言\", \"method\": \"JUnit/Mockito/JdbcTemplate聚焦测试\", \"target\": \"System/Project/Security服务行为\"}",
+      "{\"blind_spots\": [\"视觉可用性\"], \"id\": \"S3\", \"independence\": \"跨模块运行观察\", \"method\": \"本地HTTP API探针\", \"target\": \"A/B项目权限和拒绝状态\"}",
+      "{\"blind_spots\": [\"未覆盖业务模块\"], \"id\": \"S4\", \"independence\": \"用户路径与DOM观测\", \"method\": \"真实浏览器桌面/手机验收\", \"target\": \"菜单、按钮、抽屉和切换恢复\"}",
+      "{\"blind_spots\": [\"运行语义\"], \"id\": \"S5\", \"independence\": \"静态/构建传感器\", \"method\": \"Maven、Vite、治理与git diff检查\", \"target\": \"编译和范围\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"追加V201建表和初始化\", \"authority\": \"REQ074 writable path\", \"id\": \"A1\", \"impact_radius\": \"权限目录和所有项目角色\", \"rollback\": \"应用恢复旧读取，表保留\", \"target\": \"数据关系\"}",
+      "{\"action\": \"修改System服务/控制器和测试\", \"authority\": \"REQ074 writable path\", \"id\": \"A2\", \"impact_radius\": \"系统权限维护和项目管理\", \"rollback\": \"恢复旧服务方法\", \"target\": \"目录与角色授权\"}",
+      "{\"action\": \"修改Security查询、服务、过滤器和测试\", \"authority\": \"REQ074 approved public capability change\", \"id\": \"A3\", \"impact_radius\": \"所有认证请求\", \"rollback\": \"恢复全局查询\", \"target\": \"有效权限和路由\"}",
+      "{\"action\": \"修改HTTP/store/router/views/styles\", \"authority\": \"REQ074 writable path\", \"id\": \"A4\", \"impact_radius\": \"全部前端请求和导航\", \"rollback\": \"恢复旧reload切换和页面\", \"target\": \"项目切换与界面\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"项目API 403\", \"source\": \"旧调用未统一携带请求头\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Mockito测试初始化失败\", \"source\": \"本机Java25与ByteBuddy\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Flyway验收受阻\", \"source\": \"本地数据库既有迁移状态\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"diff与模型失效\", \"source\": \"并行用户修改\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"Project、附件、数据迁移和投产API均带项目路径或参数\", \"falsifier\": \"范围内发现跨项目写操作\", \"text\": \"项目业务操作有单一项目归属\"}",
+      "{\"evidence\": \"AuthRepository和ProjectService现有查询使用role_code='PM'\", \"falsifier\": \"测试库存在非PM经理角色\", \"text\": \"PM为稳定项目经理编码\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立并初始化项目角色权限关系",
+      "requirements": [
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V200为最新迁移",
+        "PM编码被现有服务使用"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/**"
+      ],
+      "invariants": [
+        "历史迁移不修改",
+        "系统权限不进入项目角色"
+      ],
+      "interface_contracts": [
+        "pm_project_role_permission按tenant/project/role/permission唯一"
+      ],
+      "non_goals": [
+        "删除sys_role_permission"
+      ],
+      "action_bounds": [
+        "仅追加V201和迁移测试"
+      ],
+      "acceptance": [
+        "PM全量、其他只读、无孤儿和系统权限关联"
+      ],
+      "evidence_required": [
+        "diff",
+        "迁移测试退出码",
+        "SQL计数"
+      ],
+      "rollback": "应用恢复旧权限读取并保留V201表",
+      "stop_conditions": [
+        "V201已存在或PM编码不稳定"
+      ],
+      "escalation_conditions": [
+        "需要修改历史迁移"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T02:56:34+00:00",
+          "text": "V201新增完成，结构与初始化规则静态检查通过"
+        },
+        {
+          "recorded_at": "2026-09-09T03:04:55+00:00",
+          "text": "T1 implementation report recorded; ready for independent measurement"
+        },
+        {
+          "recorded_at": "2026-09-09T03:06:56+00:00",
+          "text": "Migration structure and initialization policy observed by two sensors"
+        }
+      ],
+      "updated_at": "2026-09-09T04:05:58+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "交付权限目录与项目角色权限服务端契约",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "SystemService已有只读目录和系统角色分配",
+        "ProjectService已有角色CRUD"
+      ],
+      "write_scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/**",
+        "server/src/platform/system/src/test/java/com/ccb/system/**"
+      ],
+      "invariants": [
+        "系统权限全局",
+        "项目/租户隔离",
+        "写操作审计"
+      ],
+      "interface_contracts": [
+        "/api/system/permissions目录CRUD",
+        "/api/project/{projectId}/roles/{roleId}/permissions读写",
+        "项目requireAction读取项目角色关系"
+      ],
+      "non_goals": [
+        "修改业务模块"
+      ],
+      "action_bounds": [
+        "System模块和直接测试"
+      ],
+      "acceptance": [
+        "编码不可变",
+        "引用删除拒绝",
+        "跨项目拒绝",
+        "负责人/PM兜底",
+        "多角色并集"
+      ],
+      "evidence_required": [
+        "diff",
+        "System测试结果",
+        "授权决策矩阵"
+      ],
+      "rollback": "恢复System旧方法和sys角色动作查询",
+      "stop_conditions": [
+        "动作无单一项目归属"
+      ],
+      "escalation_conditions": [
+        "需要shared或业务模块契约修改"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T03:07:00+00:00",
+          "text": "T1 prerequisite verified; starting server permission catalog and project-role assignment"
+        },
+        {
+          "recorded_at": "2026-09-09T03:30:40+00:00",
+          "text": "T2 report recorded for independent contract observation"
+        },
+        {
+          "recorded_at": "2026-09-09T03:32:33+00:00",
+          "text": "R1/R2/R4/R5 service checks passed"
+        }
+      ],
+      "updated_at": "2026-09-09T04:05:58+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "按请求项目解析有效权限和动态路由",
+      "requirements": [
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "JWT过滤器每请求加载权限",
+        "me/routes共享AuthRepository",
+        "首次登录必须先读取工作台项目列表才能建立项目上下文"
+      ],
+      "write_scope": [
+        "server/src/platform/security/src/main/java/com/ccb/security/**",
+        "server/src/platform/security/src/test/java/com/ccb/security/**",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/**",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectController.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+      ],
+      "invariants": [
+        "JWT格式不变",
+        "无项目时仅系统上下文",
+        "me/routes/authorities一致",
+        "工作台仅返回用户可访问项目"
+      ],
+      "interface_contracts": [
+        "X-Project-Id可选正整数",
+        "AuthService按项目返回权限与路由",
+        "/api/project/workbench仅要求认证并按成员/负责人范围过滤"
+      ],
+      "non_goals": [
+        "修改模块依赖图",
+        "放宽项目详情和写操作授权"
+      ],
+      "action_bounds": [
+        "Security实现和直接测试",
+        "仅调整工作台入口的首次登录兼容门禁"
+      ],
+      "acceptance": [
+        "A/B权限不同",
+        "非成员403",
+        "系统权限保持",
+        "父菜单保留",
+        "无当前项目时可读取工作台但不能读取项目详情"
+      ],
+      "evidence_required": [
+        "diff",
+        "Security/System/Boot测试",
+        "API样本"
+      ],
+      "rollback": "忽略项目头并恢复全局查询及工作台旧门禁",
+      "stop_conditions": [
+        "出现平台反向依赖"
+      ],
+      "escalation_conditions": [
+        "需要JWT或shared变更"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T03:32:37+00:00",
+          "text": "T2 service contract verified; starting project-aware Security"
+        },
+        {
+          "recorded_at": "2026-09-09T03:50:25+00:00",
+          "text": "Resume T3 with first-login workbench compatibility"
+        },
+        {
+          "recorded_at": "2026-09-09T03:55:49+00:00",
+          "text": "T3 implementation report ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-09T04:00:16+00:00",
+          "text": "T3 independent observation passed with seven focused tests and two static authorization probes; no deviations."
+        }
+      ],
+      "updated_at": "2026-09-09T04:05:58+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "交付权限维护、项目角色授权和原子项目切换界面",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "现有RolePermissionView为角色分配树",
+        "ProjectView已有角色维护",
+        "AppLayout切换后reload",
+        "系统角色列表仍暴露旧角色权限入口"
+      ],
+      "write_scope": [
+        "web/src/api/http.ts",
+        "web/src/api/system.ts",
+        "web/src/api/project.ts",
+        "web/src/stores/auth.ts",
+        "web/src/stores/project-context.ts",
+        "web/src/types/system.ts",
+        "web/src/types/project.ts",
+        "web/src/views/RolePermissionView.vue",
+        "web/src/views/ModuleView.vue",
+        "web/src/views/ProjectView.vue",
+        "web/src/views/AppLayout.vue",
+        "web/src/router/index.ts",
+        "web/src/styles.css"
+      ],
+      "invariants": [
+        "失败切换保留旧项目",
+        "前端不替代服务端鉴权",
+        "桌面手机可用",
+        "系统角色不再维护业务权限"
+      ],
+      "interface_contracts": [
+        "Axios附加X-Project-Id",
+        "授权成功后提交项目状态",
+        "权限抽屉可全屏"
+      ],
+      "non_goals": [
+        "批量修改业务模块"
+      ],
+      "action_bounds": [
+        "仅范围内前端公共上下文、权限页面和系统角色旧入口"
+      ],
+      "acceptance": [
+        "目录CRUD全状态",
+        "系统角色旧权限入口移除",
+        "角色权限保存回读",
+        "A/B切换菜单按钮变化",
+        "失败恢复",
+        "无溢出"
+      ],
+      "evidence_required": [
+        "diff",
+        "Vite构建",
+        "浏览器桌面手机证据"
+      ],
+      "rollback": "恢复旧页面和reload切换",
+      "stop_conditions": [
+        "必须修改其他未授权业务模块"
+      ],
+      "escalation_conditions": [
+        "需要公共UI契约变更"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T04:00:16+00:00",
+          "text": "Starting frontend permission catalog, project role drawer, and atomic project switching implementation."
+        },
+        {
+          "recorded_at": "2026-09-09T04:29:17+00:00",
+          "text": "Frontend build and static contract checks are ready for independent observation."
+        },
+        {
+          "recorded_at": "2026-09-09T04:29:18+00:00",
+          "text": "T4 observation passed with no deviations; live integration remains bounded to T5."
+        }
+      ],
+      "updated_at": "2026-09-09T04:29:18+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "集成并完成高保障收敛验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T4"
+      ],
+      "input_facts": [
+        "T1-T4完成后接口可组合"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260909-074-project-scoped-role-permissions/*.json"
+      ],
+      "invariants": [
+        "P0/P1归零",
+        "范围一致"
+      ],
+      "interface_contracts": [
+        "最终迁移/API/UI契约"
+      ],
+      "non_goals": [
+        "验收中扩大产品范围"
+      ],
+      "action_bounds": [
+        "证据、限幅纠偏和复验"
+      ],
+      "acceptance": [
+        "Maven/Vite/Flyway/API/browser/范围检查满足R1-R5"
+      ],
+      "evidence_required": [
+        "三次采样",
+        "至少两类传感器",
+        "独立观测",
+        "convergence gate"
+      ],
+      "rollback": "按设计恢复旧权限源并保留V201",
+      "stop_conditions": [
+        "任何P0/P1未关闭"
+      ],
+      "escalation_conditions": [
+        "需要生产修复或风险接受"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T04:29:18+00:00",
+          "text": "Starting full backend, migration, API, governance and browser integration acceptance."
+        },
+        {
+          "recorded_at": "2026-09-09T05:23:58+00:00",
+          "text": "R1-R5 passed database, automated, API and real-browser acceptance; residual environment disturbances are disclosed"
+        }
+      ],
+      "updated_at": "2026-09-09T05:23:58+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 migration contract observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "JUnit 2/2 passed; independent SQL fixed-string probe passed; no product deviations",
+      "recorded_at": "2026-09-09T03:06:54+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 service permission observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "5 focused tests pass; project action inventory leaves only projectless entries on global RBAC",
+      "recorded_at": "2026-09-09T03:32:31+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S-0003 T3 project-context authorization",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Seven focused security tests passed; SQL and call-path probes confirmed system/project permission separation and consistent request context; no P0-P3 deviations.",
+      "recorded_at": "2026-09-09T03:59:59+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "S-0004 T4 frontend authorization UI",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Production build passed and independent probes found no R1-R3 deviation after hydration-race correction.",
+      "recorded_at": "2026-09-09T04:29:17+00:00"
+    },
+    {
+      "id": "S-0005",
+      "label": "S-0005 T5 assembled runtime and browser acceptance",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Security 12/12, System 91/91, frontend build pass, local V201 counts pass, A/B API isolation pass, desktop and 390x844 browser pass, no new browser warnings",
+      "recorded_at": "2026-09-09T05:23:57+00:00"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql",
+      "purpose": "Create and initialize the tenant/project-scoped project-role permission relation."
+    },
+    {
+      "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionMigrationTest.java",
+      "purpose": "Lock down the migration structure, initialization policy, exclusions, and menu update."
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260909-074-project-scoped-role-permissions/codex-task-scope.yaml",
+      "purpose": "Correct the approved implementation plan filename in the writable-path declaration."
+    }
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-system -am -Dnet.bytebuddy.experimental=true -Dtest=ProjectRolePermissionMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "PowerShell parsed the unquoted -D property as an invalid lifecycle phase; no tests ran."
+    },
+    {
+      "command": "mvn -pl :ccb-system -am \"-Dnet.bytebuddy.experimental=true\" \"-Dtest=ProjectRolePermissionMigrationTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" test",
+      "exit_code": 0,
+      "salient_output": "ProjectRolePermissionMigrationTest: 2 tests, 0 failures, 0 errors; reactor build success."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Migration contract test",
+      "result": "pass",
+      "evidence": "Composite tenant/project/role/permission primary key; PM-all, non-PM-read, system exclusion and menu move assertions passed.",
+      "limitations": ["The SQL has not yet been executed against the local MySQL instance; that is reserved for integration verification."]
+    }
+  ],
+  "diff_summary": [
+    "Added append-only V201 relation and deterministic existing-role initialization.",
+    "Kept sys_role_permission untouched for rollback.",
+    "Corrected the task scope's approved plan path."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Historical migrations are not modified.",
+      "result": "pass",
+      "evidence": "Only V201 was added."
+    },
+    {
+      "invariant": "Project roles cannot receive system permissions.",
+      "result": "pass",
+      "evidence": "Both initialization statements exclude permission_code LIKE 'system:%'."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "PowerShell requires Maven -D arguments containing dots to be quoted in this environment.",
+      "impact": "The first test invocation failed before execution; the quoted retry passed."
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Execute V201 against isolated local MySQL and verify migration row counts during T5."],
+  "recommended_next": "observe"
+}

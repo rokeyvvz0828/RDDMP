@@ -1,0 +1,25 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V202__repair_dynamic_menu_regressions.sql", "purpose": "以固定 UTF-8 字节修复菜单 102 名称"},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectMenuRegressionMigrationTest.java", "purpose": "锁定迁移目标、字节与非破坏性约束"}
+  ],
+  "requirements_addressed": ["R1"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system -am -Dtest=ProjectMenuRegressionMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "ProjectMenuRegressionMigrationTest 1 test, 0 failures; reactor BUILD SUCCESS"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; existing CRLF conversion warnings only"}
+  ],
+  "local_checks": [
+    {"check": "V202 静态迁移测试", "result": "pass", "evidence": "1/1 test passed and UTF-8 bytes asserted", "limitations": ["本地 V159 失败历史使正常 Flyway 运行验收待 T3 处理"]}
+  ],
+  "diff_summary": ["追加 V202", "只更新 tenant 1、id 102、未删除菜单的 menu_name", "不使用中文 SQL 字面量"],
+  "invariants_checked": [
+    {"invariant": "迁移只追加", "result": "pass", "evidence": "V202 为新文件，V201 未修改"},
+    {"invariant": "无破坏性 SQL", "result": "pass", "evidence": "测试断言不含 DROP 或 DELETE"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["运行库实际字节待 T3 数据库探针"],
+  "recommended_next": "observe"
+}

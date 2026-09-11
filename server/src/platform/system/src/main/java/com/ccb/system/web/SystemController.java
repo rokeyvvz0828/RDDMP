@@ -81,6 +81,41 @@ public class SystemController {
         return ApiResponse.success(service.permissionCatalog(user), TraceId.getOrCreate());
     }
 
+    @GetMapping("/permissions")
+    public ApiResponse<SystemPage<Map<String, Object>>> permissions(@RequestParam(defaultValue = "1") long page,
+                                                                    @RequestParam(defaultValue = "20") long size,
+                                                                    @RequestParam(required = false) String keyword,
+                                                                    @RequestParam(required = false) Integer status,
+                                                                    @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.permissions(new PageQuery(page, size), keyword, status, user), TraceId.getOrCreate());
+    }
+
+    @PostMapping("/permissions")
+    public ApiResponse<Map<String, Object>> createPermission(@RequestBody Map<String, Object> input,
+                                                             @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.createPermission(input, user), TraceId.getOrCreate());
+    }
+
+    @PutMapping("/permissions/{permissionId}")
+    public ApiResponse<Map<String, Object>> updatePermission(@PathVariable long permissionId,
+                                                             @RequestBody Map<String, Object> input,
+                                                             @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.updatePermission(permissionId, input, user), TraceId.getOrCreate());
+    }
+
+    @PatchMapping("/permissions/{permissionId}/status")
+    public ApiResponse<Void> updatePermissionStatus(@PathVariable long permissionId, @RequestParam int value,
+                                                    @AuthenticationPrincipal AuthUser user) {
+        service.updatePermissionStatus(permissionId, value, user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
+    @DeleteMapping("/permissions/{permissionId}")
+    public ApiResponse<Void> deletePermission(@PathVariable long permissionId, @AuthenticationPrincipal AuthUser user) {
+        service.deletePermission(permissionId, user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
     @GetMapping("/roles/{roleId}/permissions")
     public ApiResponse<Map<String, Object>> rolePermissions(@PathVariable long roleId, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.rolePermissions(roleId, user), TraceId.getOrCreate());
