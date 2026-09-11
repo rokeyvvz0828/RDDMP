@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "topic": "global-menu-project-context",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-10-global-menu-project-context-design.md",
+  "objective": "Make project management and system menus global without weakening project-scoped authorization.",
+  "users": ["System-permission users", "Users with project-management permission in any accessible project"],
+  "requirements": [
+    {"id": "R1", "statement": "Global routes hide and do not initialize project context.", "acceptance": ["/projects and /system/** hide selectors", "stored selection remains available for project routes"], "priority": "must", "source": "user confirmation", "counterexample": ["global navigation initializes project context"]},
+    {"id": "R2", "statement": "Project management visibility derives from project-management permission in any accessible project.", "acceptance": ["project:project:list in one accessible project includes /projects", "other project permissions alone do not include /projects"], "priority": "must", "source": "user confirmation", "counterexample": ["missing current selection hides an authorized entry"]},
+    {"id": "R3", "statement": "Project business authorization remains project-scoped.", "acceptance": ["project routes still initialize context", "project APIs retain X-Project-Id validation"], "priority": "must", "source": "repository constraints", "counterexample": ["project API accepts a missing context"]}
+  ],
+  "invariants": ["No JWT, API, database, or project-data changes", "System menus remain system-permission based", "Project APIs retain server-side authorization"],
+  "constraints": ["Only REQ-20260909-075 writable paths", "Preserve user worktree changes", "No production access"],
+  "non_goals": ["Changing project members or roles", "Clearing stored project selection", "Changing V202"],
+  "selected_approach": {"name": "explicit global-route metadata", "reason": "A single route classification governs the guard and all selector placements.", "alternatives": [{"name": "AppLayout path list", "rejected_because": "It hides UI but still initializes project context."}, {"name": "disable context globally", "rejected_because": "It weakens project workflows."}]},
+  "architecture": {"boundary": {"inside": ["router metadata", "AppLayout selector visibility", "AuthService/AuthRepository aggregate route permission"], "outside": ["project APIs", "database schema", "JWT"]}, "components": [{"name": "router", "responsibility": "classify global routes", "depends_on": []}, {"name": "AppLayout", "responsibility": "render selector only for project-scoped routes", "depends_on": ["router metadata"]}, {"name": "AuthService/AuthRepository", "responsibility": "derive global project-management route access", "depends_on": ["active project memberships and roles"]}], "interfaces": [{"name": "GET /api/auth/routes", "producer": "AuthService", "consumers": ["auth store"], "contract": "response remains unchanged; /projects may be included without a current project"}], "data_flows": [{"input": "global route navigation", "transitions": ["guard detects metadata", "skip project initialization", "AppLayout hides selector"], "output": "global page without project context UI"}]},
+  "error_handling": [{"condition": "aggregate permission query fails", "behavior": "omit /projects", "recovery": "existing authorization refresh/retry"}],
+  "quality_attributes": {"security": ["tenant and active-membership filtering", "fail closed"], "performance": ["one bounded aggregate permission query during authorization refresh"], "compatibility": ["response and project API contracts unchanged"], "operations": ["no migration or deployment configuration change"]},
+  "verification_strategy": [{"requirement_ids": ["R1"], "signal": "selector visibility and no initialization", "method": "browser at desktop and 390x844"}, {"requirement_ids": ["R2"], "signal": "route tree cases", "method": "Security tests and API probe"}, {"requirement_ids": ["R3"], "signal": "project requests remain scoped", "method": "existing permission/API regression"}],
+  "assumptions": [{"text": "project:project:list is the project-management permission", "basis": "user confirmed project-management permission rule", "falsifier": "menu catalog maps /projects to another leaf permission"}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "Use global-route metadata and aggregate project-management permission", "reason": "Removes selector dependency without weakening project APIs", "source": "user confirmation"}],
+  "risks": [{"risk": "aggregate query over-grants menu visibility", "impact": "unauthorized project management entry", "mitigation": "test project-management-only permission and filter active accessible projects"}],
+  "approval": {"status": "approved", "evidence": "User reviewed and confirmed the landed design revision.", "confirmed_at": "2026-09-10T00:00:00+08:00"}
+}

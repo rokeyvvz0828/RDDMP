@@ -37,6 +37,7 @@ import BusinessDayManagement from '../modules/test-management/business-day/Busin
 import TestConfigurationPage from '../modules/test-management/configuration/TestConfigurationPage.vue'
 import { getWorkflowTaskContext } from '../api/workflow'
 import { useAuthStore } from '../stores/auth'
+import { useProjectContextStore } from '../stores/project-context'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -67,19 +68,19 @@ const router = createRouter({
           path: 'projects',
           name: 'projects',
           component: ProjectView,
-          meta: { title: '项目管理' }
+          meta: { title: '项目管理', projectContext: 'global' }
         },
         {
           path: 'projects/:projectId',
           name: 'project-detail',
           component: ProjectView,
-          meta: { title: '项目详情' }
+          meta: { title: '项目详情', projectContext: 'global' }
         },
         {
           path: 'system/params',
           name: 'system-params',
           component: ParameterView,
-          meta: { title: '参数管理' }
+          meta: { title: '参数管理', projectContext: 'global' }
         },
         // {
         //   path: 'system/form-metadata',
@@ -89,21 +90,26 @@ const router = createRouter({
         // },
         {
           path: 'system/role-permissions',
-          name: 'role-permissions',
+          redirect: '/system/permissions'
+        },
+        {
+          path: 'system/permissions',
+          name: 'permissions',
           component: RolePermissionView,
-          meta: { title: '角色权限配置' }
+          meta: { title: '权限维护', permission: 'system:role:list', menuPath: '/system/permissions', projectContext: 'global' }
         },
         {
           path: 'system/audit',
           name: 'system-audit',
           component: () => import('../views/AuditLogView.vue'),
-          meta: { title: '审计日志', permission: 'system:audit:list', menuPath: '/system/audit' }
+          meta: { title: '审计日志', permission: 'system:audit:list', menuPath: '/system/audit', projectContext: 'global' }
         },
         {
           path: 'system/:section',
           name: 'module',
           component: ModuleView,
-          props: true
+          props: true,
+          meta: { projectContext: 'global' }
         },
         {
           path: 'workflow',
@@ -475,7 +481,7 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (!auth.user) {
-    await auth.hydrate()
+    await auth.hydrate(null)
   }
 
   if (!auth.token) {
@@ -487,6 +493,18 @@ router.beforeEach(async (to) => {
 
   if (to.name === 'login') {
     return { name: 'dashboard' }
+  }
+
+  if (to.meta.projectContext !== 'global') {
+    const projectContext = useProjectContextStore()
+    await projectContext.initialize()
+    if (projectContext.currentId && auth.currentProjectId !== projectContext.currentId) {
+      try {
+        auth.applyAuthorization(await auth.fetchAuthorization(projectContext.currentId))
+      } catch {
+        // Keep the last valid authorization snapshot; explicit project switching reports failures in AppLayout.
+      }
+    }
   }
 
   if (to.path === '/dashboard') {

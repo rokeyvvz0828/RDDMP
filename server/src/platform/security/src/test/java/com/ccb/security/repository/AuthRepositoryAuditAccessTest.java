@@ -4,48 +4,67 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthRepositoryAuditAccessTest {
     @Test
-    void permissionsIncludeDynamicOwnerAndProjectManagerRule() {
+    void systemPermissionsRemainGlobalAndExcludeProjectBusinessPermissions() {
         RecordingJdbcTemplate jdbc = new RecordingJdbcTemplate();
         AuthRepository repository = new AuthRepository(jdbc);
 
         repository.findPermissions(7L, 1L);
 
-        assertTrue(jdbc.sql.contains("'system:audit:list'"));
-        assertTrue(jdbc.sql.contains("p.owner_id = ?"));
-        assertTrue(jdbc.sql.contains("pr.role_code = 'PM'"));
+        assertTrue(jdbc.joinedSql().contains("permission_code LIKE 'system:%'"));
+        assertFalse(jdbc.joinedSql().contains("pm_project_role_permission"));
     }
 
     @Test
-    void routesIncludeOnlySystemParentAndAuditChildDynamically() {
+    void projectPermissionsUnionOwnerPmAndAssignedRoleWithoutSystemPermissions() {
         RecordingJdbcTemplate jdbc = new RecordingJdbcTemplate();
         AuthRepository repository = new AuthRepository(jdbc);
 
-        repository.findRoutes(7L, 1L);
+        repository.findPermissions(7L, 1L, 9001L);
 
-        assertTrue(jdbc.sql.contains("m.route_path = '/system'"));
-        assertTrue(jdbc.sql.contains("m.route_path = '/system/audit'"));
-        assertTrue(jdbc.sql.contains("pr.role_code = 'PM'"));
+        String sql = jdbc.joinedSql();
+        assertTrue(sql.contains("project.owner_id = ?"));
+        assertTrue(sql.contains("role.role_code = 'PM'"));
+        assertTrue(sql.contains("pm_project_role_permission"));
+        assertTrue(sql.contains("permission.permission_code NOT LIKE 'system:%'"));
+    }
+
+    @Test
+    void routeCatalogIsFilteredByTheSamePermissionSetInAuthService() {
+        RecordingJdbcTemplate jdbc = new RecordingJdbcTemplate();
+        AuthRepository repository = new AuthRepository(jdbc);
+
+        repository.findRoutes(7L, 1L, 9001L);
+
+        assertTrue(jdbc.joinedSql().contains("FROM sys_menu"));
+        assertTrue(jdbc.joinedSql().contains("status = 1 AND visible = 1 AND deleted = 0"));
+        assertFalse(jdbc.joinedSql().contains("pm_project"));
     }
 
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
-        private String sql = "";
+        private final List<String> statements = new ArrayList<>();
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            this.sql = sql;
+            statements.add(sql);
             return List.of();
         }
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            this.sql = sql;
+            statements.add(sql);
             return List.of();
+        }
+
+        private String joinedSql() {
+            return String.join("\n", statements);
         }
     }
 }

@@ -58,6 +58,7 @@ const topNavigationVisible = computed(() => theme.layout === 'top' || theme.layo
 const sideNavigationVisible = computed(() => theme.layout === 'side' || theme.layout === 'mixed')
 const mobileNavigationVisible = computed(() => mobileView.value)
 const sidebarCollapsed = computed(() => theme.sidebarCollapsed || mobileView.value)
+const projectSelectorVisible = computed(() => route.meta.projectContext !== 'global')
 const fallbackTitles: Record<string, string> = {
   dashboard: '工作台',
   'task-center': '任务中心',
@@ -68,7 +69,7 @@ const fallbackTitles: Record<string, string> = {
   menus: '菜单路由',
   params: '参数管理',
   'form-metadata': '输入项配置',
-  'role-permissions': '角色权限配置',
+  permissions: '权限维护',
   definitions: '流程定义',
   monitor: '流程监控',
   inbox: '待办审批',
@@ -176,13 +177,29 @@ async function confirmProjectSwitch(projectRef: string) {
       }
     )
 
+    const projectId = projectContext.projectIdFor(projectRef)
+    if (!projectId) {
+      projectSelectVersion.value += 1
+      return
+    }
+    const nextAuthorization = await auth.fetchAuthorization(projectId)
     if (!projectContext.select(projectRef)) {
       projectSelectVersion.value += 1
       return
     }
-    window.location.reload()
-  } catch {
+    auth.applyAuthorization(nextAuthorization)
+    const permission = typeof route.meta.permission === 'string' ? route.meta.permission : ''
+    const menuPath = typeof route.meta.menuPath === 'string' ? route.meta.menuPath : ''
+    if ((permission && !auth.hasPermission(permission)) || (menuPath && !auth.hasRoute(menuPath))) {
+      await router.replace('/dashboard')
+      ElMessage.warning('当前项目无权访问原页面，已返回工作台')
+    } else {
+      if (route.name === 'project-detail') await router.replace({ name: 'project-detail', params: { projectId } })
+      window.location.reload()
+    }
+  } catch (error) {
     projectSelectVersion.value += 1
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '项目切换失败，仍保留当前项目'))
   } finally {
     projectSwitching.value = false
   }
@@ -254,12 +271,12 @@ function updateMobileView(event?: MediaQueryListEvent) {
   mobileView.value = event?.matches ?? mobileMedia?.matches ?? false
   if (!mobileView.value) mobileMenuOpen.value = false
 }
-onMounted(() => { void projectContext.initialize(); mobileMedia = window.matchMedia('(max-width: 760px)'); updateMobileView(); mobileMedia.addEventListener('change', updateMobileView) })
+onMounted(() => { if (projectSelectorVisible.value) void projectContext.initialize(); mobileMedia = window.matchMedia('(max-width: 760px)'); updateMobileView(); mobileMedia.addEventListener('change', updateMobileView) })
 onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileView))
 </script>
 
 <template>
-  <div class="app-shell" :class="`layout-${theme.layout}`">
+  <div class="app-shell" :class="[`layout-${theme.layout}`, { 'app-shell--global-context': !projectSelectorVisible }]">
     <header v-if="topNavigationVisible" class="app-top-navigation">
       <el-button v-if="mobileNavigationVisible" class="mobile-menu-trigger" text circle title="打开导航菜单" @click="mobileMenuOpen = true"><el-icon :size="20"><Menu /></el-icon></el-button>
       <router-link to="/dashboard" class="app-logo" aria-label="工程交付平台工作台">
@@ -323,4 +340,5 @@ onBeforeUnmount(() => mobileMedia?.removeEventListener('change', updateMobileVie
 .project-creation-option__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-creation-option :deep(.el-tag) { flex-shrink: 0; }
 .project-context-select :deep(.el-select__selected-item) { max-width: 100%; }
+.app-shell--global-context .project-context-select { display: none; }
 </style>

@@ -27,7 +27,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/project")
-@PreAuthorize("hasAuthority('project:access')")
+@PreAuthorize("isAuthenticated()")
 public class ProjectController {
     private final ProjectService service;
 
@@ -173,6 +173,18 @@ public class ProjectController {
     public ApiResponse<Map<String, Object>> updateRole(@PathVariable long projectId, @PathVariable long roleId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.updateRole(projectId, roleId, input, user)); }
     @DeleteMapping("/{projectId}/roles/{roleId}")
     public ApiResponse<Void> deleteRole(@PathVariable long projectId, @PathVariable long roleId, @AuthenticationPrincipal AuthUser user) { service.deleteRole(projectId, roleId, user); return ok(null); }
+    @GetMapping("/{projectId}/roles/{roleId}/permissions")
+    public ApiResponse<Map<String, Object>> rolePermissions(@PathVariable long projectId, @PathVariable long roleId,
+                                                            @AuthenticationPrincipal AuthUser user) {
+        return ok(service.rolePermissions(projectId, roleId, user));
+    }
+    @PutMapping("/{projectId}/roles/{roleId}/permissions")
+    public ApiResponse<Void> saveRolePermissions(@PathVariable long projectId, @PathVariable long roleId,
+                                                 @RequestBody Map<String, Object> input,
+                                                 @AuthenticationPrincipal AuthUser user) {
+        service.saveRolePermissions(projectId, roleId, input == null ? null : (List<?>) input.get("permissionIds"), user);
+        return ok(null);
+    }
 
     private <T> ApiResponse<T> ok(T data) { return ApiResponse.success(data, TraceId.getOrCreate()); }
 
