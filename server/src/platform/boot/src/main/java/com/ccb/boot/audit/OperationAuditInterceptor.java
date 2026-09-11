@@ -1,6 +1,7 @@
 package com.ccb.boot.audit;
 
 import com.ccb.common.trace.TraceId;
+import com.ccb.common.web.ClientIpResolver;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemOperationLogCommand;
 import com.ccb.system.capability.SystemOperationLogWriter;
@@ -72,7 +73,7 @@ public class OperationAuditInterceptor implements HandlerInterceptor {
                     success,
                     status,
                     errorMessage(context, exception, status, success),
-                    request.getRemoteAddr(),
+                    ClientIpResolver.resolve(request.getHeader("X-Forwarded-For"), request.getRemoteAddr()),
                     request.getHeader("User-Agent"),
                     TraceId.getOrCreate(),
                     elapsedMillis(request),

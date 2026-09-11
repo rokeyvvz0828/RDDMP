@@ -2,6 +2,7 @@ package com.ccb.security.service;
 
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.common.web.ClientIpResolver;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.jwt.JwtTokenService;
 import com.ccb.security.model.AuthMe;
@@ -172,6 +173,9 @@ public class AuthService {
                 parent.routePath(), parent.componentPath(), parent.permissionCode(), parent.icon(), parent.sortNo(), children);
     }
 
-    private String clientIp(HttpServletRequest request) { return request == null ? null : request.getRemoteAddr(); }
+    private String clientIp(HttpServletRequest request) {
+        return request == null ? null
+                : ClientIpResolver.resolve(request.getHeader("X-Forwarded-For"), request.getRemoteAddr());
+    }
     private String userAgent(HttpServletRequest request) { return request == null ? null : request.getHeader("User-Agent"); }
 }
