@@ -80,6 +80,17 @@ module: business/architecture
 - 未闭合项：V202 迁移与菜单/权限种子位于 `platform/infrastructure`，`check-codex-scope.mjs` 要求 issue 与 Owner 审批；`owner_approved=false`，需模块 Owner `rokeyvvz0828` 专项复核后方可启动收敛。
 - 三项治理基线故障（`V84_1` 命名、模块越界导入、`REQ-20260904-061` 的 scope 文件非 JSON 兼容 YAML）在本任务之前既已存在，本次未修复。
 
+## 实施状态（2026-09-11 收敛）
+
+已完成实施、验收与 Owner 复核，账本已进入 `converged`。
+
+- 提交：`0ee2764`（需求/设计/计划）、`a02298e`（T1 数据层与 V202）、`ad835da`（T2 服务/接口/作废守卫）、`effe9f5`（T3 前端）、`6a59cc8`（T4 纠偏）、`29ea23a`/`19236fc`（F-3/F-4 远程下拉空结果）、`acd18d3`/`1385c57`（方案A 双侧关联）、`bef5972`/`c4a6f4f`（制品类型与字典）、`13d84ea`（F-6 抽屉状态同步）、`88d612f`（复核申请）及若干账本提交。实际开发分支为 `dev-ivanh`（经用户确认，未建独立需求分支）。
+- 证据：`mvn -pl :ccb-architecture -am test` 463 项通过；`npm --prefix web run build` 通过；真实 Chromium 桌面与移动视口六组验收共 59 项全 PASS 且无控制台错误。
+- 需求变更：设计修订 3 轮（① 关联同物理子系统且无方向；② 部署单元侧也可编辑关联，方案 A；③ 制品类型字段接入统一字典）。
+- 纠偏：F-1～F-6 六条反馈全部裁决并复验关闭（P1 两条：保存后误弹未保存确认、部署单元页 TDZ 白屏、抽屉遮罩状态脱同步）。
+- **Owner 复核**：`rokeyvvz0828` 于 2026-09-11T10:18:00+08:00 回复“结论：通过；issue 全部豁免；Q1—Q6 全部同意”，依据见 `owner-review-request.md`。范围门禁由失败转为 `Codex scope check passed`。
+- 三项治理基线故障（`V84_1` 命名、模块越界导入、`REQ-20260904-061` 的 scope 非 JSON 兼容 YAML）在本任务之前既已存在，本次未修复。
+
 ## 测试与发布
 - 必须执行的测试：`mvn -pl :ccb-architecture -am test`、`node scripts/check-all-governance.mjs`、`node scripts/check-flyway-migrations.mjs`、`node scripts/check-codex-scope.mjs`、`npm --prefix web run build`，以及真实浏览器桌面/手机视口验收。
 - 上线验证：确认菜单与权限种子在目标环境生效，管理员与架构角色可访问，其他角色无越权入口。

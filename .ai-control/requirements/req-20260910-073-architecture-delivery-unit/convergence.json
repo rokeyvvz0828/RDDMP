@@ -315,6 +315,14 @@
       "P2": 0,
       "P3": 3,
       "score": 3
+    },
+    {
+      "sample_id": "S-0009",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 3,
+      "score": 3
     }
   ],
   "regression_checks": [
@@ -377,6 +385,16 @@
       "check": "F-6 纠偏回归（表单抽屉关闭守卫）",
       "result": "pass",
       "evidence": "verify-drawer-close-guard.mjs 15/15：遮罩/ESC/取消三路径继续编辑均重开且保留内容、放弃后可再次打开且为原始值、无修改不弹确认、创建成功不弹确认"
+    },
+    {
+      "check": "Owner 审批后冻结态最终回归",
+      "result": "pass",
+      "evidence": "mvn -pl :ccb-architecture -am test -> 463 项 0 失败 BUILD SUCCESS；npm --prefix web run build 通过"
+    },
+    {
+      "check": "公共能力审批门禁",
+      "result": "pass",
+      "evidence": "check-codex-scope.mjs -> Codex scope check passed for REQ-20260910-073; 63 changed file(s)（issue 全部豁免，审批人 rokeyvvz0828，2026-09-11T10:18:00+08:00）"
     }
   ],
   "invariant_results": [
@@ -486,7 +504,6 @@
     }
   ],
   "residual_risks": [
-    "公共能力授权未闭合：V202 迁移与菜单/权限种子位于 platform/infrastructure，check-codex-scope.mjs 要求 issue 与 Owner 审批；owner_approved=false，需模块 Owner rokeyvvz0828 专项复核",
     "未用无权限账号做端到端 403 验证，无权限页面仅在代码路径与控制器注解开层面验证",
     "部署单元作废守卫未对本地演示数据真实执行（避免破坏数据），以真实数据库集成断言为准",
     "全部观测由同一 Agent 执行，属非独立验证",
@@ -496,8 +513,8 @@
     "制品类型字典项被停用或删除后，历史数据的 label 无法解析，列表与详情会回落显示原始 code（前端 optionLabel 的既有行为）",
     "UiFormDrawer 为平台公共组件，仅在业务页内通过状态同步规避其单向绑定语义；若后续其他页面用同一组件实现未保存守卫，需按同一模式处理"
   ],
-  "gate_result": "blocked",
-  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量，含字典驱动制品类型与抽屉关闭守卫）；F-1～F-6 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
+  "gate_result": "pass",
+  "route_reason": "全部 must 需求（R1—R9）由已验证任务覆盖且有独立证据；9 次采样最终 P0=0、P1=0；F-1～F-6 全部裁决并复验关闭；Owner 已完成 platform/infrastructure 迁移与权限种子复核（结论：通过，issue 全部豁免）；范围门禁与完整回归通过。",
   "definition_revision": "definition-3",
   "open_feedback": [],
   "generated_at": "2026-09-10"

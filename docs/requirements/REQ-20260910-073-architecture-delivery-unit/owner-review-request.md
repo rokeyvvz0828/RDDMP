@@ -95,21 +95,24 @@ A  V203__delivery_unit_artifact_type.sql          +85
 
 UAT：`docs/requirements/REQ-20260910-073-architecture-delivery-unit/uat-checklist.md`（19 项清单 + 记录栏），本地真实环境执行中。
 
-## 6. Owner 结论（请填写）
-
-请明确选择一种结论，并填写必要信息。**豁免也请写明依据**，不要留空。
+## 6. Owner 结论（已填写）
 
 ```text
-结论：通过 / 有条件通过（附条件） / 驳回
-条件（如有）：
-issue 引用：<GitHub Issue 编号或链接；若豁免，写“豁免：<文件路径>#<锚点>”>
+结论：通过
+条件（如有）：无
+issue 引用：全部豁免
 审批人 GitHub 账号：rokeyvvz0828
-审批时间：<ISO-8601，例如 2026-09-11T14:30:00+08:00>
+审批时间：2026-09-11T10:18:00+08:00
 审批原文摘要（可公开引用，1—3 句）：
-Q1—Q6 逐项意见（不同意请写明）：
+结论：通过；条件（如有）：无；issue 引用：全部豁免；审批人 GitHub 账号：rokeyvvz0828；审批时间：2026-09-11T10:18:00+08:00。
+Q1—Q6 逐项意见（不同意请写明）：全部同意
 ```
 
-> 只需把上面这段填好回传，我据此更新 `codex-task-scope.yaml`、收敛报告与需求文档，并按第 7 节命令完成收敛。
+回传原文已登记到 `codex-task-scope.yaml` 的 `public_capability_change`（`issue="豁免：owner-review-request.md#6-Owner-结论"`、`owner_approved=true`、`owner_approved_by`、`owner_approved_at`、`owner_approval_evidence`），范围门禁由失败转为通过：
+
+```text
+Codex scope check passed for REQ-20260910-073; 63 changed file(s).
+```
 
 ## 7. 批准后我执行的命令（供 Owner 核对将要发生什么）
 

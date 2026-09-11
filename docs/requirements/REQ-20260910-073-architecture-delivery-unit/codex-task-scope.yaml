@@ -77,8 +77,8 @@
   },
   "public_capability_change": {
     "required": true,
-    "issue": null,
-    "owner_approved": false,
+    "issue": "豁免：owner-review-request.md#6-Owner-结论",
+    "owner_approved": true,
     "old_behavior_preserved": true,
     "regression_tests": [
       "mvn -pl :ccb-architecture -am test",
@@ -86,7 +86,9 @@
       "npm --prefix web run build"
     ],
     "compatibility": "只新增 platform/infrastructure 下的 V202 迁移：三张新表、一处由主键蕴含的追加唯一键 (tenant_id, physical_subsystem_id, id)、菜单 816 与权限 8161/8162 种子；不修改既有表数据、既有迁移、既有接口契约与既有权限语义。业务侧 DeploymentUnitStore.searchActiveOptions 保留原 5 参重载、DeploymentUnitService.options 保留原签名，既有调用行为不变。",
-    "issue_note": "本需求当前没有对应 GitHub Issue 编号；Owner 审批尚未取得，因此 owner_approved 保持 false，待模块 Owner rokeyvvz0828 专项复核后更新。"
+    "owner_approved_by": "rokeyvvz0828",
+    "owner_approved_at": "2026-09-11T10:18:00+08:00",
+    "owner_approval_evidence": "结论：通过；issue 全部豁免；Q1—Q6 全部同意。审批人 rokeyvvz0828，2026-09-11T10:18:00+08:00。"
   },
   "database": {
     "changed": true,
@@ -121,7 +123,7 @@
   "risk": {
     "level": "high",
     "items": [
-      "V202 迁移与菜单/权限种子属于较高风险面，上线前须模块 Owner 专项复核；当前 owner_approved=false。",
+      "V202 迁移与菜单/权限种子属于较高风险面，上线前须模块 Owner 专项复核；Owner rokeyvvz0828 已于 2026-09-11T10:18:00+08:00 复核通过（issue 全部豁免）。",
       "关联表通过复合外键保证“同一物理子系统”，需给 arch_deployment_unit 追加唯一键；该键在存量数据上天然唯一。",
       "只做加法，不修改既有契约、存量数据和历史迁移；不连接生产。"
     ]
