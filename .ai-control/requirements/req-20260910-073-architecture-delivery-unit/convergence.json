@@ -8,7 +8,8 @@
         "T2",
         "T3",
         "T4",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "浏览器创建成功并分配 DUPHY_PORTAL004；API 创建 DUPHY_MOBILE001；同物理子系统重名 409；DeliveryUnitMySqlTest 编号 001/002 与容量耗尽断言"
@@ -25,7 +26,8 @@
         "T2",
         "T3",
         "T4",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "浏览器与 API 双通道验证列表筛选分页与详情抽屉字段；DeliveryUnitMySqlTest pageUnits 跨项目隔离"
@@ -42,7 +44,8 @@
         "T2",
         "T3",
         "T4",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "服务测试归属变更 400 与过期 rowVersion 409；API 过期 rowVersion 409；编辑态归属选择禁用"
@@ -59,7 +62,8 @@
         "T2",
         "T3",
         "T4",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "浏览器二次确认删除后列表消失；API 删除后详情 404 且反查为空；MySQL 测试软删除清理关联且部署单元主记录保留"
@@ -76,7 +80,8 @@
         "T2",
         "T3",
         "T4",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "MySQL 测试直接插入跨物理子系统关联行被复合外键拒绝；API 跨物理子系统提交 409；浏览器关联候选仅 1 项且限定所选物理子系统",
@@ -96,7 +101,8 @@
         "T4",
         "T5",
         "T6",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "部署单元详情抽屉展示关联交付单元（浏览器 accept-reverse 全过）；反查接口返回列表（API）",
@@ -115,7 +121,8 @@
         "T4",
         "T5",
         "T6",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "登录后路由树包含 /architecture/delivery-units 且页面可访问；9 个端点 @PreAuthorize 表达式逐项断言；写操作审计调用断言",
@@ -132,11 +139,30 @@
         "T1",
         "T3",
         "T4",
-        "T7"
+        "T7",
+        "T10"
       ],
       "evidence": [
         "V202 在真实 MySQL 8.4 上从空库执行成功且未修改既有迁移；架构模块 449 项测试全过；npm build 通过；移动视口无横向滚动且抽屉宽度 366<=390",
         "两处前端修复均复用既有 architecture.css 与语义变量，未新增公共组件"
+      ],
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "result": "pass",
+      "task_ids": [
+        "T8",
+        "T9",
+        "T10"
+      ],
+      "evidence": [
+        "字典种子 ARCH_ARTIFACT_TYPE 三项目（容器/压缩包/脚本）落地并由 DeliveryUnitMySqlTest 断言",
+        "非法或停用 code 返回 400、空值允许（DeliveryUnitServiceTest 27/27）",
+        "按钮式单选选项与字典一致、列表列与筛选生效、存量空值展示“—”（verify-artifact-type.mjs 10/10）",
+        "字典资源上下文白名单双向校验（ArchitectureOptionsControllerTest 7/7）"
       ],
       "limitations": [
         "由同一 Agent 执行与观测，非独立验证"
@@ -191,6 +217,27 @@
       "result": "verified",
       "evidence": [
         "架构模块 458 项全过；六组浏览器验收 39 项全 PASS；范围审计 16 文件均在 writable_paths 内"
+      ]
+    },
+    {
+      "task_id": "T8",
+      "result": "verified",
+      "evidence": [
+        "提交 bef5972；57 项聚焦测试通过，含字典种子与制品类型校验"
+      ]
+    },
+    {
+      "task_id": "T9",
+      "result": "verified",
+      "evidence": [
+        "提交 c4a6f4f；verify-artifact-type 10/10、npm build 通过"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "result": "verified",
+      "evidence": [
+        "架构模块 463 项全过；四组浏览器验收 34 项全 PASS"
       ]
     }
   ],
@@ -251,6 +298,14 @@
       "P2": 0,
       "P3": 3,
       "score": 3
+    },
+    {
+      "sample_id": "S-0007",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 3,
+      "score": 3
     }
   ],
   "regression_checks": [
@@ -298,6 +353,16 @@
       "check": "架构模块完整回归（方案A后）",
       "result": "pass",
       "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+    },
+    {
+      "check": "制品类型字典驱动回归",
+      "result": "pass",
+      "evidence": "verify-artifact-type.mjs 10/10：字典选项、按钮式单选、列表列、筛选、存量空值、修改联动"
+    },
+    {
+      "check": "架构模块完整回归（制品类型后）",
+      "result": "pass",
+      "evidence": "mvn -pl :ccb-architecture -am test -> Tests run: 463, Failures: 0, Errors: 0, BUILD SUCCESS"
     }
   ],
   "invariant_results": [
@@ -363,6 +428,20 @@
       "evidence": [
         "controller 测试断言 PUT /deployment-units/{id}/delivery-units 使用 hasAuthority(architecture:delivery-unit:manage)；GET 候选沿用部署单元查看权限；与发起侧无关"
       ]
+    },
+    {
+      "invariant": "制品类型只存字典 code，不存显示名",
+      "result": "pass",
+      "evidence": [
+        "MySQL 断言库内存 architecture.artifact-type.* code；前端通过 optionLabel 回查字典展示"
+      ]
+    },
+    {
+      "invariant": "不新增独立字典表：复用平台 sys_dict_type / sys_config",
+      "result": "pass",
+      "evidence": [
+        "V203 仅向既有 sys_dict_type/sys_config 插入 1 个类别与 3 个字典项，未建新表"
+      ]
     }
   ],
   "scope_audit": {
@@ -399,11 +478,12 @@
     "全部观测由同一 Agent 执行，属非独立验证",
     "三项治理基线故障（V84_1 命名、模块越界导入、REQ-20260904-061 scope 非 JSON 兼容）为本任务之前既有问题，未修复",
     "移动端仅用 Chromium 视口模拟（390x844），未在真机验证",
-    "部署单元侧的关联编辑授权复用交付单元维护权限：只有 architecture:deployment-unit:manage 而无交付单元维护权限的角色看不到编辑入口"
+    "部署单元侧的关联编辑授权复用交付单元维护权限：只有 architecture:deployment-unit:manage 而无交付单元维护权限的角色看不到编辑入口",
+    "制品类型字典项被停用或删除后，历史数据的 label 无法解析，列表与详情会回落显示原始 code（前端 optionLabel 的既有行为）"
   ],
   "gate_result": "blocked",
-  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量、双向关联与方案A约束）；F-1～F-5 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
-  "definition_revision": "definition-2",
+  "route_reason": "技术门禁全部通过（must 需求、任务、反馈、采样、回归、不变量，含字典驱动的制品类型）；F-1～F-5 均已裁决并复验关闭；仍因公共能力变更缺少 issue 与 Owner 审批，按契约返回 blocked 并升级给用户",
+  "definition_revision": "definition-3",
   "open_feedback": [],
   "generated_at": "2026-09-10"
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "topic": "architecture-delivery-unit",
-  "design_revision": 2,
+  "design_revision": 3,
   "design_status": "approved",
   "human_document": "docs/engineering-control/designs/2026-09-10-architecture-delivery-unit-design.md",
   "objective": "在架构管理菜单下提供交付单元（名称 + 归属物理子系统）的增删改查，并与同一物理子系统下的部署单元建立无方向、双向可查的关联。",
@@ -124,6 +124,22 @@
         "修改历史 Flyway 脚本",
         "移动视口出现整页横向滚动"
       ]
+    },
+    {
+      "id": "R9",
+      "statement": "交付单元具有可选的单值「制品类型」，选项来自平台统一字典（sys_dict_type/sys_config），前端以按钮式单选呈现，写入由服务端校验 code 有效且启用。",
+      "acceptance": [
+        "表单选项与字典启用项一致",
+        "字典项停用后不再出现在选项且提交该 code 返回 400",
+        "存量数据为空时列表与详情展示“—”",
+        "列表可按制品类型筛选"
+      ],
+      "priority": "must",
+      "source": "2026-09-10 用户需求与字典初始值确认",
+      "counterexample": [
+        "前端硬编码制品类型选项",
+        "字典停用后仍能提交该 code"
+      ]
     }
   ],
   "invariants": [
@@ -135,14 +151,16 @@
     "Flyway 只追加，不修改已发布脚本",
     "部署单元作废时存在交付单元关联则拒绝（fail-closed）",
     "关联写入统一要求 architecture:delivery-unit:manage",
-    "部署单元侧的关联编辑不发布部署单元新版本，也不写 arch_deployment_unit_relation_history"
+    "部署单元侧的关联编辑不发布部署单元新版本，也不写 arch_deployment_unit_relation_history",
+    "制品类型只存字典 code，不存显示名"
   ],
   "constraints": [
     "模块 business/architecture，Owner rokeyvvz0828",
     "只允许修改 codex-task-scope.yaml 中 writable_paths 覆盖的文件",
     "复用 web/src/components/ui 与语义主题变量，不新增平台公共组件",
     "编号容量上限每个物理子系统 999，用尽即失败不回退复用",
-    "部署单元侧关联接口复用同一张 arch_delivery_unit_deployment_unit 表与同一套授权规则"
+    "部署单元侧关联接口复用同一张 arch_delivery_unit_deployment_unit 表与同一套授权规则",
+    "制品类型字典类别为 ARCH_ARTIFACT_TYPE，初始项 容器/压缩包/脚本，后续在平台参数管理内维护"
   ],
   "non_goals": [
     "不修改 release 模块 mock 交付单元主数据",
@@ -150,7 +168,8 @@
     "不恢复逻辑子系统模型",
     "不调整物理子系统与部署单元既有契约",
     "不新增或修改平台公共组件、公共包与公共 API",
-    "不在部署单元的新建/修改表单中增加交付单元选择（避免只改关联也发布新版本）"
+    "不在部署单元的新建/修改表单中增加交付单元选择（避免只改关联也发布新版本）",
+    "不新增独立的字典/参数表，不修改平台参数管理实现"
   ],
   "selected_approach": {
     "name": "架构模块内新增独立交付单元聚合 + 单张无方向关联表 + 复合外键强制同物理子系统",
@@ -294,6 +313,14 @@
           "DeploymentUnitDetailDrawer.vue"
         ],
         "contract": "返回同物理子系统下启用且未删除的交付单元候选，支持关键字分页"
+      },
+      {
+        "name": "/api/architecture/options/delivery-unit/parameters/{categoryCode}（GET）",
+        "producer": "ArchitectureOptionsController",
+        "consumers": [
+          "DeliveryUnitPage.vue"
+        ],
+        "contract": "交付单元可用字典类别的启用项；白名单仅 ARCH_ARTIFACT_TYPE；要求交付单元查看权限"
       }
     ],
     "data_flows": [
@@ -449,6 +476,13 @@
       ],
       "signal": "迁移与治理检查通过、前端构建通过、四视口可用",
       "method": "check-flyway-migrations.mjs、check-all-governance.mjs、npm --prefix web run build、真实浏览器验收"
+    },
+    {
+      "requirement_ids": [
+        "R9"
+      ],
+      "signal": "字典启用项与表单选项一致、非法/停用 code 400、存量空值展示“—”",
+      "method": "DeliveryUnitServiceTest + DeliveryUnitMySqlTest + ArchitectureOptionsControllerTest + 浏览器验收"
     }
   ],
   "assumptions": [
@@ -519,6 +553,18 @@
       "decision": "关联写入统一要求 architecture:delivery-unit:manage，与发起侧无关",
       "reason": "同一份关系只有一套授权规则，避免两侧权限语义分歧",
       "source": "主 Agent 设计取舍，已写入设计修订2"
+    },
+    {
+      "id": "D9",
+      "decision": "制品类型使用平台统一字典（参数管理）作为唯一选项来源，代码不硬编码取值",
+      "reason": "用户要求选项由统一字典管理，取值变化不应改代码",
+      "source": "2026-09-10 用户需求"
+    },
+    {
+      "id": "D10",
+      "decision": "制品类型为可选、可改的单值字段，库内存 code，列表展示并按该字段筛选",
+      "reason": "避免破坏存量数据；与物理子系统既有 code 字段模式一致",
+      "source": "2026-09-10 用户确认按推荐执行"
     }
   ],
   "risks": [
@@ -540,7 +586,7 @@
   ],
   "approval": {
     "status": "approved",
-    "evidence": "2026-09-10 用户确认关联范围 B、关系无方向、逻辑子系统已删除并复核设计回复“可以”；同日追加“部署单元菜单也可以关联交付单元，和交付单元页面使用同样的逻辑”，在方案 A/B 对比后明确“按 A 执行”",
+    "evidence": "2026-09-10 用户依次确认：关联范围 B、关系无方向、逻辑子系统已删除→“可以”；部署单元侧可关联交付单元→“按 A 执行”；交付单元新增制品类型（按钮式单选、选项由统一字典管理），初始字典值“容器/压缩包/脚本”，其余按推荐",
     "confirmed_at": "2026-09-10T00:00:00+08:00"
   }
 }
