@@ -27,7 +27,7 @@
 - `arch_plan_template*`、`arch_task_template*` 保持租户共享，不增加 `project_id`。
 - 不修改 Flowable `ACT_*`、历史 Flyway、Java 包名、数据库表名和 `/api/architecture/environments` 路径。
 - “具体环境”只改用户可见文案为“环境管理”。
-- 迁移候选为 `V156__scope_architecture_by_project.sql`；执行前重新扫描最高版本，冲突时顺延并同步控制记录。
+- 迁移候选为 `V207__scope_architecture_by_project.sql`；执行前重新扫描最高版本，冲突时顺延并同步控制记录。
 - 存量数据只归入同租户唯一活动项目 `RDDMP-PLATFORM`；存在待迁移数据但项目缺失或不唯一时失败。
 - 计划批准前不扩展产品代码写入范围，不访问生产或敏感数据。
 
@@ -37,7 +37,7 @@
 
 ### 数据库
 
-- 候选新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V156__scope_architecture_by_project.sql`。
+- 候选新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V207__scope_architecture_by_project.sql`。
 - 修改：`ArchitectureMigrationMySqlTest.java`、`EmptyDatabaseMigrationBaselineMySqlTest.java`、`mock/mock-data.json`。
 - 物理子系统链：`arch_physical_subsystem`、`arch_subsystem_change_application`、`arch_subsystem_physical_draft`、`arch_subsystem_change_history`、`arch_subsystem_change_lock`、`arch_subsystem_value_reservation`、`arch_subsystem_replacement`、`arch_subsystem_workflow_round`、`arch_subsystem_workflow_receipt`。
 - 部署单元链：`arch_deployment_unit`、`arch_deployment_unit_version`、`arch_deployment_unit_number_seq`、`arch_deployment_unit_import_batch`、`arch_deployment_unit_import_item`、`arch_deployment_unit_relation`、`arch_deployment_unit_relation_history`。

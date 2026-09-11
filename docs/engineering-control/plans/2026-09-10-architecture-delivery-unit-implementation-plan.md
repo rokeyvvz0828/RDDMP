@@ -19,7 +19,7 @@
 ## 全局约束
 - 只允许修改 `docs/requirements/REQ-20260910-073-architecture-delivery-unit/codex-task-scope.yaml` 中 `writable_paths` 覆盖的文件。
 - 模块 `business/architecture`，Owner `rokeyvvz0828`；只读写本模块 `arch_` 表；平台数据只经 `com.ccb.system.capability` 公开契约访问。
-- 不修改已发布 Flyway 迁移；只追加 `V202__create_architecture_delivery_units.sql`。
+- 不修改已发布 Flyway 迁移；只追加 `V211__create_architecture_delivery_units.sql`。
 - HTTP DTO 不接收或返回 `tenantId`；租户与项目只能来自 `AuthUser` 与 `ProjectAccess`。
 - Java 包名保持 `com.ccb.architecture`；不重构既有包、目录与类名。
 - 交付单元归属物理子系统创建后不可变更；关联双方必须属于同一物理子系统；编号创建时分配且不可修改。
@@ -32,7 +32,7 @@
 
 | 路径 | 状态 | 职责 |
 | --- | --- | --- |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql` | candidate-new | 交付单元三张表、部署单元复合外键所需唯一键、菜单 816 与权限 8161/8162 种子及守卫 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V211__create_architecture_delivery_units.sql` | candidate-new | 交付单元三张表、部署单元复合外键所需唯一键、菜单 816 与权限 8161/8162 种子及守卫 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java` | candidate-new | 交付单元领域值、命令/查询 DTO、状态枚举、部署单元投影 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java` | candidate-new | 主记录 CRUD、编号分配、关联读写、正反向分页查询 |
 | `server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitNumberCapacityExceededException.java` | candidate-new | 编号容量耗尽异常（服务层转换为 409） |
@@ -92,7 +92,7 @@ T1 (数据层) --> T2 (应用与 Web 层) --> T3 (前端) --> T4 (端到端验�
 - `sys_menu` 800 下已占用 801—815；`sys_role` 已存在 1（超级管理员）与 111（技术架构师）。
 
 **文件：**
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V211__create_architecture_delivery_units.sql`
 - 新建：`server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java`
 - 新建：`server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitNumberCapacityExceededException.java`
 - 新建：`server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java`
@@ -162,7 +162,7 @@ assertThat(store.findRelatedDeliveryUnits(TENANT_ID, PROJECT_B.id(), deploymentU
 预期：编译失败或迁移失败（不存在 `arch_delivery_unit` 表 / 不存在 `DeliveryUnitStore`）。
 证据：保存退出码与首个错误行。
 
-- [ ] **步骤 3：编写迁移 `V202__create_architecture_delivery_units.sql`**
+- [ ] **步骤 3：编写迁移 `V211__create_architecture_delivery_units.sql`**
 
 文件头部注释写明 `-- REQ-20260910-073：架构管理交付单元、编号序列与部署单元无方向关联。` 并说明只追加。DDL：
 
@@ -289,7 +289,7 @@ public void softDelete(long tenantId, long projectId, long id, long actorId) {
 - [ ] **步骤 6：建立提交检查点**
 
 ```bash
-git add server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql \
+git add server/src/platform/infrastructure/src/main/resources/db/migration/V211__create_architecture_delivery_units.sql \
         server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java \
         server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/ \
         server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java
@@ -778,7 +778,7 @@ npm --prefix web run build
 ## 约束与边界
 - 复用平台既有 `sys_dict_type` / `sys_config`，不新增字典表、不修改平台参数管理实现。
 - 只新增可空列与字典行；`config_key` 使用命名空间（`architecture.artifact-type.*`）以满足 `sys_config` 租户级唯一键。
-- 仅追加 `V203__delivery_unit_artifact_type.sql`，不改既有迁移。
+- 仅追加 `V212__delivery_unit_artifact_type.sql`，不改既有迁移。
 
 ## 后续纠偏（同批次）
 - F-6：交付单元修改抽屉点遮罩后状态脱同步（`UiFormDrawer` 单向绑定语义），在业务页内以 `formVisible` 单一状态源修复；新增 `verify-drawer-close-guard.mjs` 15 项回归。

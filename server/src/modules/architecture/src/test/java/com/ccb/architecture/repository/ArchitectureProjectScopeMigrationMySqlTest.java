@@ -30,7 +30,7 @@ class ArchitectureProjectScopeMigrationMySqlTest {
 
     @BeforeEach
     void cleanDatabase() throws Exception {
-        flyway("155").clean();
+        flyway("206").clean();
         try (Connection connection = connection()) {
             execute(connection, "ALTER DATABASE `architecture_project_scope` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         }
@@ -38,7 +38,7 @@ class ArchitectureProjectScopeMigrationMySqlTest {
 
     @Test
     void migratesEmptyDatabaseWithoutInventingDefaultProject() throws Exception {
-        assertTrue(flyway("156").migrate().success);
+        assertTrue(flyway("207").migrate().success);
 
         try (Connection connection = connection()) {
             assertColumnNullable(connection, "arch_physical_subsystem", "project_id", "NO");
@@ -52,14 +52,14 @@ class ArchitectureProjectScopeMigrationMySqlTest {
 
     @Test
     void assignsLegacyRowsAndScopesPermanentUniquenessToProject() throws Exception {
-        assertTrue(flyway("155").migrate().success);
+        assertTrue(flyway("206").migrate().success);
         try (Connection connection = connection()) {
             insertProject(connection, 101, "RDDMP-PLATFORM", "平台项目");
             insertProject(connection, 102, "PROJECT-B", "项目B");
             execute(connection, "INSERT INTO arch_physical_subsystem (id,tenant_id,code,short_name,name,logical_subsystem_name,responsible_team_org_id,responsible_team_name_snapshot,status,row_version,created_by,updated_by) VALUES (501,1,'PAYMENT_AP','支付','支付系统','支付域',1,'支付团队','ACTIVE',0,1,1)");
         }
 
-        assertTrue(flyway("156").migrate().success);
+        assertTrue(flyway("207").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(101, count(connection, "SELECT project_id FROM arch_physical_subsystem WHERE id = 501"));
             execute(connection, "INSERT INTO arch_physical_subsystem (id,tenant_id,project_id,code,short_name,name,logical_subsystem_name,responsible_team_org_id,responsible_team_name_snapshot,status,row_version,created_by,updated_by) VALUES (502,1,102,'PAYMENT_AP','支付B','支付系统','支付域',1,'支付团队','ACTIVE',0,1,1)");
@@ -71,12 +71,12 @@ class ArchitectureProjectScopeMigrationMySqlTest {
 
     @Test
     void failsBeforeSchemaChangesWhenLegacyTenantHasNoDefaultProject() throws Exception {
-        assertTrue(flyway("155").migrate().success);
+        assertTrue(flyway("206").migrate().success);
         try (Connection connection = connection()) {
             execute(connection, "INSERT INTO arch_physical_subsystem (id,tenant_id,code,short_name,name,logical_subsystem_name,responsible_team_org_id,responsible_team_name_snapshot,status,row_version,created_by,updated_by) VALUES (601,1,'LEGACY','存量','存量系统','存量域',1,'存量团队','ACTIVE',0,1,1)");
         }
 
-        assertThrows(FlywayException.class, () -> flyway("156").migrate());
+        assertThrows(FlywayException.class, () -> flyway("207").migrate());
         try (Connection connection = connection()) {
             assertEquals(0, count(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'arch_physical_subsystem' AND column_name = 'project_id'"));
         }

@@ -52,7 +52,7 @@ module: business/architecture
 ## 接口与数据
 - API 契约：`/api/architecture/delivery-units`（列表、详情、新增、修改、删除、停用/启用、覆盖式更新关联），`/api/architecture/deployment-units/{id}/delivery-units`（部署单元反查，只读）。
 - 数据 Owner：`business/architecture`。新增表 `arch_delivery_unit`、`arch_delivery_unit_number_seq`、`arch_delivery_unit_deployment_unit`。
-- 数据库迁移与存量兼容：仅追加 `V202__create_architecture_delivery_units.sql`，不修改已发布迁移；纯新增表与新增菜单/权限行，不改写存量数据；回退为停用入口 + 回退代码，新表可保留或按发布流程删除。
+- 数据库迁移与存量兼容：仅追加 `V211__create_architecture_delivery_units.sql`，不修改已发布迁移；纯新增表与新增菜单/权限行，不改写存量数据；回退为停用入口 + 回退代码，新表可保留或按发布流程删除。
 - 脱敏输入输出示例：`{"name":"统一认证交付包","physicalSubsystemId":12,"relatedDeploymentUnitIds":[31,32]}`。
 
 ## 验收标准

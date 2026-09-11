@@ -30,7 +30,7 @@ class ArchitectureRemainingProjectScopeMigrationMySqlTest {
 
     @BeforeEach
     void cleanDatabase() throws Exception {
-        flyway("157").clean();
+        flyway("208").clean();
         try (Connection connection = connection()) {
             execute(connection, "ALTER DATABASE `architecture_remaining_project_scope` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         }
@@ -38,14 +38,14 @@ class ArchitectureRemainingProjectScopeMigrationMySqlTest {
 
     @Test
     void migratesRemainingArchitectureTablesAndKeepsSharedTablesUnscoped() throws Exception {
-        assertTrue(flyway("157").migrate().success);
+        assertTrue(flyway("208").migrate().success);
         try (Connection connection = connection()) {
             ensureProject(connection, 101, "RDDMP-PLATFORM", "平台项目");
             execute(connection, "INSERT INTO arch_network_work_order (id,tenant_id,kind,action_type,subject,applicant_id,status,business_payload,created_by,updated_by) VALUES (501,1,'DNS','ADD','uat.example.test',1,'DRAFT',JSON_OBJECT('domainName','uat.example.test'),1,1)");
             execute(connection, "INSERT INTO arch_decision_matter (id,tenant_id,matter_no,title,problem,status,received_at,first_handling_deadline,proposer_id,proposer_name,submitter_id,submitter_name,created_by,updated_by) VALUES (601,1,'AD-2026-0001','项目隔离决策','验证项目隔离','SUBMITTED',NOW(),CURRENT_DATE,1,'管理员',1,'管理员',1,1)");
         }
 
-        assertTrue(flyway("158").migrate().success);
+        assertTrue(flyway("209").migrate().success);
         try (Connection connection = connection()) {
             assertEquals(101, scalar(connection, "SELECT project_id FROM arch_network_work_order WHERE id = 501"));
             assertEquals(101, scalar(connection, "SELECT project_id FROM arch_decision_matter WHERE id = 601"));
@@ -62,13 +62,13 @@ class ArchitectureRemainingProjectScopeMigrationMySqlTest {
 
     @Test
     void failsBeforeSchemaChangesWhenTargetTenantHasNoDefaultProject() throws Exception {
-        assertTrue(flyway("157").migrate().success);
+        assertTrue(flyway("208").migrate().success);
         try (Connection connection = connection()) {
             execute(connection, "DELETE FROM pm_project WHERE tenant_id = 1");
             execute(connection, "INSERT INTO arch_network_work_order (id,tenant_id,kind,action_type,subject,applicant_id,status,business_payload,created_by,updated_by) VALUES (701,1,'CLB','OPEN','legacy-clb',1,'DRAFT',JSON_OBJECT('clbName','legacy-clb'),1,1)");
         }
 
-        assertThrows(FlywayException.class, () -> flyway("158").migrate());
+        assertThrows(FlywayException.class, () -> flyway("209").migrate());
         try (Connection connection = connection()) {
             assertEquals(0, scalar(connection, "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'arch_network_work_order' AND column_name = 'project_id'"));
         }

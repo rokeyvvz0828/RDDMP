@@ -76,7 +76,7 @@
 
 ## 接口、数据和状态流
 
-### 数据模型（新增迁移 `V202__create_architecture_delivery_units.sql`）
+### 数据模型（新增迁移 `V211__create_architecture_delivery_units.sql`）
 `arch_delivery_unit`
 - `id, tenant_id, project_id, code, physical_subsystem_id, name, artifact_type_code, status, description, remark, deleted, row_version, created_by, updated_by, created_at, updated_at`
 - `artifact_type_code` 可为空，只存字典 code（`sys_dict_type.dict_code = 'ARCH_ARTIFACT_TYPE'` 下的 `sys_config.config_key`）；存量行为 NULL，不回填。

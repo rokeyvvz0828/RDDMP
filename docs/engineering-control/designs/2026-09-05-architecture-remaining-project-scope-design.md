@@ -96,7 +96,7 @@
 
 ### 迁移顺序
 
-1. 新增 `V158__scope_remaining_architecture_by_project.sql`，先为目标表增加可空 `project_id`。
+1. 新增 `V209__scope_remaining_architecture_by_project.sql`，先为目标表增加可空 `project_id`。
 2. 对存在目标数据的每个租户查找唯一活动 `RDDMP-PLATFORM`；零个或多个均失败。
 3. 主表回填默认项目，从表按父链回填并校验不存在孤立记录。
 4. 校验网络分区与已项目化部署单元、资源申请、环境部署实例的引用项目一致。

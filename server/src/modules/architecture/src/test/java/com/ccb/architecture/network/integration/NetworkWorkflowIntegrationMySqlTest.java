@@ -72,11 +72,11 @@ class NetworkWorkflowIntegrationMySqlTest {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-        Flyway v157 = flyway(dataSource, "157");
-        v157.clean();
-        assertThat(v157.migrate().success).isTrue();
+        Flyway v208 = flyway(dataSource, "208");
+        v208.clean();
+        assertThat(v208.migrate().success).isTrue();
         ensureProject(jdbc);
-        assertThat(flyway(dataSource, "158").migrate().success).isTrue();
+        assertThat(flyway(dataSource, "209").migrate().success).isTrue();
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     }
 

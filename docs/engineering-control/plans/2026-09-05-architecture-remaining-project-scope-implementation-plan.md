@@ -26,7 +26,7 @@
 - 工作流定义保持租户共享；业务实例、轮次、回执和生命周期回调项目必须一致。
 - 架构规范、搭建计划模板、环境类型和平台字典不增加 `project_id`，共享接口不强制 `projectRef`。
 - 不修改 Flowable `ACT_*`、历史 Flyway、Java 包名、数据库表名和 API 根路径。
-- 迁移固定为 `V158__scope_remaining_architecture_by_project.sql`；执行前重新扫描版本，若被占用则停止并修订需求范围和计划，不自行换号。
+- 迁移固定为 `V209__scope_remaining_architecture_by_project.sql`；执行前重新扫描版本，若被占用则停止并修订需求范围和计划，不自行换号。
 - 存量数据只归入同租户唯一活动 `RDDMP-PLATFORM`；缺失、不唯一或关系无法确定时失败关闭。
 - 当前工作区包含 `REQ-20260905-064` 未提交实现；所有编辑必须保留其差异，不得回退、覆盖或批量格式化。
 - 提交检查点只允许暂存本任务可独立识别的差异；同一文件无法与 `064` 安全拆分时不提交，以 execution 证据代替。
@@ -38,7 +38,7 @@
 
 ### 数据库与模型
 
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V158__scope_remaining_architecture_by_project.sql`，负责项目列、历史回填、校验、唯一索引和组合约束。
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V209__scope_remaining_architecture_by_project.sql`，负责项目列、历史回填、校验、唯一索引和组合约束。
 - 修改：`NetworkWorkOrderModels.java`、`NetworkAccessModels.java`、`DecisionModels.java`，为根实体、流程轮次和回执增加 `projectId`。
 - 新建测试：`ArchitectureRemainingProjectScopeMigrationMySqlTest.java`，覆盖空库、既有库、默认项目异常、项目内唯一和跨项目重复。
 
@@ -95,7 +95,7 @@ T1 -> T2 -> T3 -> T4 -> T5 -> T6 -> T7
 **前置任务：** 无
 
 **文件：**
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V158__scope_remaining_architecture_by_project.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V209__scope_remaining_architecture_by_project.sql`
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkWorkOrderModels.java`
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/network/model/NetworkAccessModels.java`
 - 修改：`server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/model/DecisionModels.java`

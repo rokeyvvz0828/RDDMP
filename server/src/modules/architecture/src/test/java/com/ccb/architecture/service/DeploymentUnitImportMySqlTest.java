@@ -69,21 +69,21 @@ class DeploymentUnitImportMySqlTest {
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        Flyway v157 = Flyway.configure()
+        Flyway v208 = Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("157"))
+                .target(MigrationVersion.fromVersion("208"))
                 .cleanDisabled(false)
                 .load();
-        v157.clean();
-        v157.migrate();
+        v208.clean();
+        v208.migrate();
         prepareDefaultProject();
         Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("158"))
+                .target(MigrationVersion.fromVersion("209"))
                 .cleanDisabled(false)
                 .load()
                 .migrate();

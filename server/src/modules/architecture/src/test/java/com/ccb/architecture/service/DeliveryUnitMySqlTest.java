@@ -83,7 +83,7 @@ class DeliveryUnitMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("157"))
+                .target(MigrationVersion.fromVersion("208"))
                 .cleanDisabled(false)
                 .load()
                 .clean();
@@ -91,7 +91,7 @@ class DeliveryUnitMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("157"))
+                .target(MigrationVersion.fromVersion("208"))
                 .cleanDisabled(false)
                 .load()
                 .migrate();

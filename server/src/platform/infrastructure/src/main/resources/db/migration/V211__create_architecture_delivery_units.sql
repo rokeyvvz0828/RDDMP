@@ -142,12 +142,12 @@ WHERE role_permission.tenant_id = 1
   AND role_permission.permission_id = 8161;
 
 -- 对已存在但不符合本迁移身份的稳定 ID 失败关闭，避免静默复用其他菜单、角色或权限。
-CREATE TEMPORARY TABLE tmp_arch_v202_seed_guard (
+CREATE TEMPORARY TABLE tmp_arch_v211_seed_guard (
     marker TINYINT NOT NULL,
-    CONSTRAINT chk_tmp_arch_v202_seed_guard CHECK (marker = 0)
+    CONSTRAINT chk_tmp_arch_v211_seed_guard CHECK (marker = 0)
 ) ENGINE=InnoDB;
 
-INSERT INTO tmp_arch_v202_seed_guard (marker)
+INSERT INTO tmp_arch_v211_seed_guard (marker)
 SELECT 1
 WHERE NOT EXISTS (
           SELECT 1 FROM sys_menu
@@ -204,4 +204,4 @@ WHERE NOT EXISTS (
           WHERE role_id = 111 AND menu_id = 816 AND tenant_id = 1
       );
 
-DROP TEMPORARY TABLE tmp_arch_v202_seed_guard;
+DROP TEMPORARY TABLE tmp_arch_v211_seed_guard;

@@ -34,8 +34,8 @@ public capability change requires issue, owner approval, compatibility and regre
 ### 3.1 `platform/**` 下只有 2 个文件，且均为新增（无既有文件修改）
 
 ```text
-A  V202__create_architecture_delivery_units.sql   +207
-A  V203__delivery_unit_artifact_type.sql          +85
+A  V211__create_architecture_delivery_units.sql   +207
+A  V212__delivery_unit_artifact_type.sql          +85
 ```
 
 `git diff --name-status 3f0098b..71a20ae -- server/src/platform/.../db/migration/` 仅输出上述两个 `A`（新增），**未修改任何已发布迁移**；`shared/**`、`platform/system`、`platform/security`、平台参数管理实现均未改动。

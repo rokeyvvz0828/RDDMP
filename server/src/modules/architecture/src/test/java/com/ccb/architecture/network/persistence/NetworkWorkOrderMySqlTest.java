@@ -68,15 +68,15 @@ class NetworkWorkOrderMySqlTest {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-        Flyway v157 = Flyway.configure()
+        Flyway v208 = Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("157"))
+                .target(MigrationVersion.fromVersion("208"))
                 .cleanDisabled(false)
                 .load();
-        v157.clean();
-        assertThat(v157.migrate().success).isTrue();
+        v208.clean();
+        assertThat(v208.migrate().success).isTrue();
         jdbc.update("DELETE FROM pm_project WHERE tenant_id = ? AND project_code = 'RDDMP-PLATFORM'",
                 TENANT_ID);
         jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, status, owner_id, "
@@ -88,7 +88,7 @@ class NetworkWorkOrderMySqlTest {
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("158"))
+                .target(MigrationVersion.fromVersion("209"))
                 .cleanDisabled(false)
                 .load()
                 .migrate().success).isTrue();

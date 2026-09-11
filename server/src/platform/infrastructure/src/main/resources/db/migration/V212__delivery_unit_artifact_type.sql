@@ -32,12 +32,12 @@ WHERE dict.tenant_id = 1 AND dict.dict_code = 'ARCH_ARTIFACT_TYPE' AND dict.dele
   AND NOT EXISTS (SELECT 1 FROM sys_config WHERE id = 360109);
 
 -- 身份不符时失败关闭，避免静默复用其他字典类别或参数项。
-CREATE TEMPORARY TABLE tmp_arch_v203_seed_guard (
+CREATE TEMPORARY TABLE tmp_arch_v212_seed_guard (
     marker TINYINT NOT NULL,
-    CONSTRAINT chk_tmp_arch_v203_seed_guard CHECK (marker = 0)
+    CONSTRAINT chk_tmp_arch_v212_seed_guard CHECK (marker = 0)
 ) ENGINE=InnoDB;
 
-INSERT INTO tmp_arch_v203_seed_guard (marker)
+INSERT INTO tmp_arch_v212_seed_guard (marker)
 SELECT 1
 WHERE NOT EXISTS (
           SELECT 1 FROM sys_dict_type
@@ -82,4 +82,4 @@ WHERE NOT EXISTS (
             AND config.deleted = 0
       );
 
-DROP TEMPORARY TABLE tmp_arch_v203_seed_guard;
+DROP TEMPORARY TABLE tmp_arch_v212_seed_guard;
