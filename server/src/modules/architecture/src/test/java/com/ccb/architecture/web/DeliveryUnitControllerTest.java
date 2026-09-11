@@ -103,7 +103,7 @@ class DeliveryUnitControllerTest {
                                 {
                                   "physicalSubsystemId": 501,
                                   "name": "统一认证交付包",
-                                  "artifactTypeCode": "architecture.artifact-type.container",
+                                  "artifactTypeCode": "IMAGE",
                                   "relatedDeploymentUnitIds": [31, 32],
                                   "description": "交付内容",
                                   "remark": "测试"
@@ -115,7 +115,7 @@ class DeliveryUnitControllerTest {
         verify(service).create(eq(ACTOR), eq(PROJECT), command.capture(), any());
         assertThat(command.getValue().physicalSubsystemId()).isEqualTo(501L);
         assertThat(command.getValue().name()).isEqualTo("统一认证交付包");
-        assertThat(command.getValue().artifactTypeCode()).isEqualTo("architecture.artifact-type.container");
+        assertThat(command.getValue().artifactTypeCode()).isEqualTo("IMAGE");
         assertThat(command.getValue().relatedDeploymentUnitIds()).containsExactly(31L, 32L);
 
         List<String> componentNames = Arrays.stream(DeliveryUnitCommand.class.getRecordComponents())

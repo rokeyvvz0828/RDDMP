@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260911-074-release-architecture-master-data",
+  "handoff_status": "approved",
+  "created_at": "2026-09-11T15:17:06+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260911-074-release-architecture-master-data",
+    "design_revision": 2,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-11-release-architecture-master-data-design.md",
+    "objective": "配置管理版本申请使用当前项目的架构物理子系统和交付单元真实主数据，并由服务端保存可信快照。",
+    "users": ["版本申请人", "配置管理人员", "技术架构师", "审批人员"],
+    "requirements": [
+      {"id":"R1","statement":"架构交付单元制品类型统一为 IMAGE/BINARY，存量旧类型按确认规则迁移。","acceptance":["新增维护只使用 IMAGE/BINARY","存量值映射正确"],"priority":"must","source":"用户确认","counterexample":["配置管理保留二次映射"]},
+      {"id":"R2","statement":"架构公开项目隔离的 ACTIVE 物理子系统和交付单元最小查询。","acceptance":["跨项目无泄漏","状态和父子过滤正确"],"priority":"must","source":"用户确认设计","counterexample":["配置直接读 arch 表"]},
+      {"id":"R3","statement":"配置管理使用自身权限提供项目化选择 API。","acceptance":["配置用户可查","无项目权限被拒"],"priority":"must","source":"用户确认设计","counterexample":["要求架构维护权限"]},
+      {"id":"R4","statement":"申请保存前服务端规范化可信快照并拒绝失效引用。","acceptance":["伪造快照被覆盖","错项目错父子失败无副作用"],"priority":"must","source":"用户确认设计","counterexample":["信任客户端名称和类型"]},
+      {"id":"R5","statement":"申请抽屉移除 Mock 并实现异步联动和全状态。","acceptance":["无 Mock 引用","切换清空且防乱序"],"priority":"must","source":"用户原始需求","counterexample":["旧项目选项残留"]},
+      {"id":"R6","statement":"历史快照不变，失效草稿反显但必须重新选择。","acceptance":["只读历史不变","失效草稿不可保存"],"priority":"must","source":"用户确认","counterexample":["重写审批历史"]},
+      {"id":"R7","statement":"自动化与浏览器验证覆盖安全、回归和移动端。","acceptance":["目标门禁通过","四视口可用"],"priority":"must","source":"仓库规范","counterexample":["只做静态检查"]}
+    ],
+    "invariants": ["架构是主数据 Owner", "配置不读架构私有表", "写入按租户项目状态父子关系校验", "历史快照不可回写"],
+    "constraints": ["只追加 V213", "保持申请 DTO 兼容", "遵循模块治理和 H5 规范"],
+    "non_goals": ["调整审批、窗口、文件介质和投产逻辑", "授予架构维护权限", "迁移历史申请快照"],
+    "selected_approach": {"name":"消费者端口 + Boot 适配器","reason":"保持模块和权限边界并支持服务端校验","alternatives":["前端直连架构 API","配置直接依赖架构实现"]},
+    "architecture": {
+      "boundary":{"inside":["架构查询","Boot 适配","配置选择与写校验","申请抽屉"],"outside":["审批、窗口、文件介质、投产"]},
+      "components":["ReleaseMasterDataQuery","ReleaseArchitectureDirectory","ReleaseArchitectureDirectoryAdapter","ReleaseMasterDataService","ReleaseApplicationDrawer"],
+      "interfaces":["GET /api/release/master-data/physical-subsystems","GET /api/release/master-data/physical-subsystems/{id}/delivery-units"],
+      "data_flows":["项目 -> 配置权限 -> 适配器 -> 架构查询","请求 ID -> 精确校验 -> 可信快照 -> 写事务"]
+    },
+    "error_handling": ["401/403/400/409 分层", "失败不进入写事务", "前端持续错误与重试"],
+    "quality_attributes": {"security":["RBAC、项目和租户隔离"],"performance":["分页与批量校验"],"compatibility":["历史快照和 DTO 保持"],"operations":["V213、备份和健康验证"]},
+    "verification_strategy": ["JUnit", "Flyway 与治理检查", "前端构建", "四视口浏览器验收"],
+    "assumptions": ["平台项目 ID 对应架构 project_id"],
+    "unknowns": [],
+    "decisions": ["ACTIVE only", "失效草稿重选", "IMAGE/BINARY 统一"],
+    "risks": ["共享字典迁移", "旧 Mock 草稿", "公共契约权限边界"],
+    "approval": {"status":"approved","evidence":"2026-09-11 用户确认规则、方案及制品类型统一。","confirmed_at":"2026-09-11T15:17:06+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-11-release-architecture-master-data-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["仅追加 V213", "不跨业务模块私有实现", "服务端失败关闭", "历史快照不变", "移动端全状态"],
+    "file_map": [
+      {"path":"server/src/platform/infrastructure/src/main/resources/db/migration/V213__normalize_delivery_unit_artifact_types.sql","status":"candidate-new","responsibility":"制品类型迁移","evidence":"当前最新迁移为 V212"},
+      {"path":"server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java","status":"candidate-new","responsibility":"架构公共查询契约","evidence":"架构 public_packages 仅 integration"},
+      {"path":"server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java","status":"candidate-new","responsibility":"配置消费端口","evidence":"现有 release integration 公共包"},
+      {"path":"server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java","status":"candidate-new","responsibility":"跨模块适配","evidence":"DevelopmentSystemDirectoryAdapter 既有模式"},
+      {"path":"server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java","status":"existing","responsibility":"申请写入规范化","evidence":"现有 create/update 共用服务"},
+      {"path":"web/src/modules/release/components/ReleaseApplicationDrawer.vue","status":"existing","responsibility":"申请选择交互","evidence":"当前唯一 Mock 消费点"}
+    ],
+    "tasks": [
+      {
+        "id":"T1","goal":"统一架构交付单元制品类型","requirement_ids":["R1","R7"],"prerequisites":[],
+        "input_facts":["V212 当前提供容器、压缩包、脚本"],
+        "files":{"create":["server/src/platform/infrastructure/src/main/resources/db/migration/V213__normalize_delivery_unit_artifact_types.sql"],"modify":["server/src/test/java/com/ccb/ArchitectureTest.java","server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/FlywayMigrationTest.java"],"test":[]},
+        "interfaces":{"consumes":["ARCH_ARTIFACT_TYPE","arch_delivery_unit.artifact_type_code"],"produces":["IMAGE/BINARY canonical codes"]},
+        "steps":[{"id":"T1-S1","action":"建立迁移基线","command":"node scripts/check-flyway-migrations.mjs","expected":"V212 基线通过","evidence":"退出码和迁移清单"},{"id":"T1-S2","action":"追加 V213 并更新必要断言","command":null,"expected":"旧值映射且旧字典项停用","evidence":"迁移 diff"},{"id":"T1-S3","action":"验证迁移和架构服务","command":"mvn -pl :ccb-architecture -am test -Dtest=DeliveryUnitServiceTest,DeliveryUnitMySqlTest -Dsurefire.failIfNoSpecifiedTests=false","expected":"测试通过","evidence":"Surefire 结果"}],
+        "acceptance_checks":["IMAGE/BINARY 启用","旧值映射正确","V213 顺序合法"],"risks":["共享字典数据修改"],"rollback":"回退代码并按备份补偿数据","stop_conditions":["稳定 ID 冲突"],"escalation_conditions":["其他业务表依赖旧 code"]
+      },
+      {
+        "id":"T2","goal":"建立架构查询与 Boot 适配","requirement_ids":["R2","R7"],"prerequisites":[],
+        "input_facts":["Boot 已有跨业务模块适配模式","架构主数据按 tenant/project 隔离"],
+        "files":{"create":["server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java","server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcReleaseMasterDataQuery.java","server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java","server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java"],"modify":[],"test":["server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcReleaseMasterDataQueryTest.java","server/src/platform/boot/src/test/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapterTest.java"]},
+        "interfaces":{"consumes":["架构表和认证用户"],"produces":["项目隔离的最小只读投影"]},
+        "steps":[{"id":"T2-S1","action":"建立隔离和转换失败测试","command":null,"expected":"新契约缺失导致红灯","evidence":"测试断言"},{"id":"T2-S2","action":"实现查询契约和适配器","command":null,"expected":"ACTIVE、项目和父子过滤生效","evidence":"实现 diff"},{"id":"T2-S3","action":"运行聚焦测试","command":"mvn -pl :ccb-architecture,:ccb-boot -am test -Dtest=JdbcReleaseMasterDataQueryTest,ReleaseArchitectureDirectoryAdapterTest -Dsurefire.failIfNoSpecifiedTests=false","expected":"全部通过","evidence":"Surefire 结果"}],
+        "acceptance_checks":["无跨项目数据","适配字段完整","无私有实现依赖"],"risks":["公共契约耦合"],"rollback":"删除新增契约和适配器","stop_conditions":["出现 Maven 循环依赖"],"escalation_conditions":["需要修改模块治理依赖"]
+      },
+      {
+        "id":"T3","goal":"配置选择 API 和申请写入防伪","requirement_ids":["R3","R4","R6","R7"],"prerequisites":["T1","T2"],
+        "input_facts":["现有申请服务信任客户端快照","项目访问由 ProjectAccessService 校验"],
+        "files":{"create":["server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseMasterDataService.java","server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseMasterDataController.java"],"modify":["server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java"],"test":["server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseMasterDataServiceTest.java","server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseMasterDataControllerSecurityTest.java","server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java"]},
+        "interfaces":{"consumes":["ReleaseArchitectureDirectory","CreateRequest/UpdateRequest"],"produces":["release master-data GET APIs","可信 DeliverySnapshot"]},
+        "steps":[{"id":"T3-S1","action":"建立权限和防伪失败测试","command":null,"expected":"旧实现无法满足断言","evidence":"安全反例"},{"id":"T3-S2","action":"实现选择服务和 Controller","command":null,"expected":"配置权限与项目权限同时生效","evidence":"API diff"},{"id":"T3-S3","action":"规范化申请快照","command":null,"expected":"伪造字段被覆盖且失效引用被拒","evidence":"服务 diff"},{"id":"T3-S4","action":"运行聚焦测试","command":"mvn -pl :ccb-release -am test -Dtest=ReleaseMasterDataServiceTest,ReleaseMasterDataControllerSecurityTest,ReleaseApplicationServiceTest -Dsurefire.failIfNoSpecifiedTests=false","expected":"全部通过","evidence":"Surefire 结果"}],
+        "acceptance_checks":["401/403/400/409 分层","失败无部分写入","文件介质不变"],"risks":["旧客户端兼容"],"rollback":"回退配置服务端改动","stop_conditions":["必须改历史申请读取语义"],"escalation_conditions":["发现外部客户端依赖伪造快照"]
+      },
+      {
+        "id":"T4","goal":"前端联动和组合验收","requirement_ids":["R5","R6","R7"],"prerequisites":["T3"],
+        "input_facts":["ReleaseApplicationDrawer 是 Mock 唯一消费点","前端修改前构建通过"],
+        "files":{"create":[],"modify":["web/src/api/release.ts","web/src/modules/release/components/ReleaseApplicationDrawer.vue","web/src/modules/release/release-prototype.css"],"test":["web/src/modules/release/release-master-data.mock.ts"]},
+        "interfaces":{"consumes":["release master-data GET APIs","申请历史快照"],"produces":["项目化联动选择和全状态 UI"]},
+        "steps":[{"id":"T4-S1","action":"增加 API 类型和请求","command":null,"expected":"类型与后端一致","evidence":"TypeScript diff"},{"id":"T4-S2","action":"替换 Mock 并实现异步状态","command":null,"expected":"切换清空、防乱序、错误可重试","evidence":"Vue diff"},{"id":"T4-S3","action":"实现失效草稿反显","command":null,"expected":"失效标记且不可保存","evidence":"交互断言"},{"id":"T4-S4","action":"运行组合检查","command":"npm --prefix web run build && node scripts/check-all-governance.mjs","expected":"构建和治理通过","evidence":"退出码"},{"id":"T4-S5","action":"执行四视口真实浏览器验收","command":null,"expected":"新建编辑及全状态可用且无横向溢出","evidence":"截图、网络和控制台结果"}],
+        "acceptance_checks":["无 Mock 引用","四视口可用","请求状态可恢复","组合回归通过"],"risks":["慢请求和失效草稿"],"rollback":"恢复 Mock 文件和原抽屉引用","stop_conditions":["需修改非申请页面"],"escalation_conditions":["需修改公共抽屉组件"]
+      }
+    ],
+    "dependency_edges": [
+      {"from":"T1","to":"T3","reason":"申请快照规范化必须以统一后的 IMAGE/BINARY 类型为准。"},
+      {"from":"T2","to":"T3","reason":"配置选择与写入校验依赖架构查询端口和 Boot 适配器。"},
+      {"from":"T3","to":"T4","reason":"前端联动必须消费已经完成权限与防伪约束的配置主数据 API。"}
+    ],
+    "parallel_groups": [["T1","T2"],["T3"],["T4"]],
+    "integration_checks": [
+      {"after_tasks":["T1","T2","T3"],"command":"mvn -pl :ccb-release,:ccb-architecture,:ccb-boot -am test","expected":"目标模块测试通过"},
+      {"after_tasks":["T4"],"command":"node scripts/check-flyway-migrations.mjs && node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs && npm --prefix web run build","expected":"迁移、治理、范围和前端门禁通过"}
+    ],
+    "coverage": [{"requirement_id":"R1","task_ids":["T1"]},{"requirement_id":"R2","task_ids":["T2"]},{"requirement_id":"R3","task_ids":["T3"]},{"requirement_id":"R4","task_ids":["T3"]},{"requirement_id":"R5","task_ids":["T4"]},{"requirement_id":"R6","task_ids":["T3","T4"]},{"requirement_id":"R7","task_ids":["T1","T2","T3","T4"]}],
+    "approval": {"status":"approved","evidence":"2026-09-11 用户确认实施计划并同意开始开发。","confirmed_at":"2026-09-11T15:28:00+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["架构主数据查询", "Boot 适配", "配置选择与申请写入", "申请抽屉"],
+    "state_variable_candidates": ["tenant/project", "selected subsystem", "delivery options", "request revision", "draft validity", "artifact type"],
+    "interface_candidates": ["ReleaseMasterDataQuery", "ReleaseArchitectureDirectory", "release master-data HTTP APIs"],
+    "sensor_candidates": ["JUnit", "Flyway/governance checks", "frontend build", "HTTP/database assertions", "browser console and overflow"],
+    "actuator_candidates": ["V213", "JDBC query", "Boot adapter", "release validation", "Vue async state"],
+    "disturbance_candidates": ["project switch", "request reordering", "concurrent deactivation", "legacy mock draft", "restricted JVM attach"],
+    "delay_candidates": ["remote select query", "project refresh", "migration", "UI rendering"],
+    "assumptions": [{"text":"平台项目 ID 是架构 project_id 权威值","basis":"ProjectAccess 和架构现有项目化实现","falsifier":"同一 projectRef 解析到与架构数据不同的 ID"}]
+  }
+}

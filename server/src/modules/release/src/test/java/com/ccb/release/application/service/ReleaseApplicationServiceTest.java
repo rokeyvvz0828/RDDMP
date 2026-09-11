@@ -16,6 +16,7 @@ import com.ccb.release.application.model.ReleaseApplicationModels.Status;
 import com.ccb.release.application.model.ReleaseApplicationModels.UpdateRequest;
 import com.ccb.release.application.model.ReleaseApplicationModels.VersionType;
 import com.ccb.release.application.persistence.ReleaseApplicationStore;
+import com.ccb.release.integration.ReleaseArchitectureDirectory;
 import com.ccb.release.window.model.ReleaseWindow;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
@@ -52,6 +53,8 @@ class ReleaseApplicationServiceTest {
     private ReleaseApplicationStore store;
     private ReleaseWindowStore windows;
     private ProjectAccessService projectAccessService;
+    private ReleaseArchitectureDirectory architectureDirectory;
+    private ReleaseMasterDataService masterDataService;
     private ReleaseApplicationService service;
 
     @BeforeEach
@@ -59,13 +62,24 @@ class ReleaseApplicationServiceTest {
         store = mock(ReleaseApplicationStore.class);
         windows = mock(ReleaseWindowStore.class);
         projectAccessService = mock(ProjectAccessService.class);
+        architectureDirectory = mock(ReleaseArchitectureDirectory.class);
+        masterDataService = new ReleaseMasterDataService(projectAccessService, architectureDirectory);
         var clock = Clock.fixed(Instant.parse("2026-08-15T04:00:00Z"), ZoneId.of("Asia/Shanghai"));
-        service = new ReleaseApplicationService(store, windows, projectAccessService, new ReleaseScenarioPolicy(clock),
-                new ObjectMapper().findAndRegisterModules());
+        service = new ReleaseApplicationService(store, windows, projectAccessService, masterDataService,
+                new ReleaseScenarioPolicy(clock), new ObjectMapper().findAndRegisterModules());
         when(projectAccessService.requireAccessible(any(), eq(USER)))
                 .thenAnswer(invocation -> new ProjectAccess(1L, invocation.getArgument(0), "项目"));
         when(windows.findById(20L, 1L)).thenReturn(Optional.of(window()));
         when(store.nextMonthlySequence(eq(1L), any())).thenReturn(1);
+        when(architectureDirectory.resolveActiveSelection(eq(USER), eq(1L), eq(42L), any()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    var ids = (java.util.Collection<Long>) invocation.getArgument(3);
+                    var physical = new ReleaseArchitectureDirectory.PhysicalSubsystem(42L, "SYS1", "用户中心");
+                    var units = ids.stream().map(id -> new ReleaseArchitectureDirectory.DeliveryUnit(
+                            id, 42L, "UNIT-A", "用户服务", "IMAGE")).toList();
+                    return Optional.of(new ReleaseArchitectureDirectory.Selection(physical, units));
+                });
     }
 
     @Test
@@ -92,6 +106,40 @@ class ReleaseApplicationServiceTest {
         verify(store).insertRelation(anyLong(), eq(1L), anyLong(), eq(80L), eq("UNIT-A"),
                 eq(DeliveryItemType.DELIVERY_UNIT), eq("UNIT:UNIT-A"), eq(null), eq("ADDITIONAL"),
                 eq("v1"), eq("v2"), any(), eq(7L));
+    }
+
+    @Test
+    void replacesClientSnapshotsWithCurrentArchitectureMasterData() {
+        var trustedPhysical = new ReleaseArchitectureDirectory.PhysicalSubsystem(42L, "AUTH", "统一认证子系统");
+        var trustedUnit = new ReleaseArchitectureDirectory.DeliveryUnit(101L, 42L, "AUTH-SVC", "认证服务", "BINARY");
+        when(architectureDirectory.resolveActiveSelection(eq(USER), eq(1L), eq(42L), any()))
+                .thenReturn(Optional.of(new ReleaseArchitectureDirectory.Selection(trustedPhysical, List.of(trustedUnit))));
+        when(store.findByCode(any(), eq(1L))).thenReturn(Optional.empty());
+        CreateRequest request = new CreateRequest(false, 20L, "P-001", "P-001", "项目",
+                "42", "FORGED-SYSTEM", "伪造子系统", List.of(new DeliveryInput(
+                "101", "FORGED-UNIT", "伪造交付单元", "IMAGE", "v1")), List.of("REQ-001"), null,
+                "超过申报截止时间", "版本说明");
+
+        service.create(request, USER);
+
+        ArgumentCaptor<Application> inserted = ArgumentCaptor.forClass(Application.class);
+        verify(store).insert(inserted.capture());
+        assertEquals("AUTH", inserted.getValue().subsystemCode());
+        assertEquals("统一认证子系统", inserted.getValue().subsystemName());
+        assertEquals("AUTH-SVC", inserted.getValue().deliveries().get(0).deliveryUnitCode());
+        assertEquals("认证服务", inserted.getValue().deliveries().get(0).deliveryUnitName());
+        assertEquals(ArtifactType.BINARY, inserted.getValue().deliveries().get(0).artifactType());
+    }
+
+    @Test
+    void rejectsStaleArchitectureReferencesBeforeAnyPersistence() {
+        when(architectureDirectory.resolveActiveSelection(eq(USER), eq(1L), eq(42L), any()))
+                .thenReturn(Optional.empty());
+
+        assertCode(ErrorCode.CONFLICT, () -> service.create(nonEmergency("v1"), USER));
+
+        verify(store, never()).nextMonthlySequence(anyLong(), any());
+        verify(store, never()).insert(any());
     }
 
     @Test
@@ -155,11 +203,11 @@ class ReleaseApplicationServiceTest {
 
     @Test
     void emergencyRequiresDescriptionAndIgnoresHistoricalConflicts() {
-        CreateRequest invalid = new CreateRequest(true, null, "P-001", "P-001", "项目", "SYS-1", "SYS1", "系统",
+        CreateRequest invalid = new CreateRequest(true, null, "P-001", "P-001", "项目", "42", "SYS1", "系统",
                 deliveries("v1"), List.of(), null, null, null);
         assertCode(ErrorCode.BAD_REQUEST, () -> service.create(invalid, USER));
 
-        CreateRequest valid = new CreateRequest(true, null, "P-001", "P-001", "项目", "SYS-1", "SYS1", "系统",
+        CreateRequest valid = new CreateRequest(true, null, "P-001", "P-001", "项目", "42", "SYS1", "系统",
                 deliveries("v1"), List.of(), "P0故障应急修复", null, null);
         when(store.findByCode(any(), eq(1L))).thenReturn(Optional.empty());
         var response = service.create(valid, USER);
@@ -172,15 +220,15 @@ class ReleaseApplicationServiceTest {
 
     @Test
     void rejectsDuplicateUnitsWhitespaceVersionAndMissingRequirements() {
-        CreateRequest duplicate = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "系统",
+        CreateRequest duplicate = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "系统",
                 List.of(deliveries("v1").get(0), deliveries("v2").get(0)), List.of("REQ-1"), null, "紧急", null);
         assertCode(ErrorCode.BAD_REQUEST, () -> service.create(duplicate, USER));
 
-        CreateRequest whitespace = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "系统",
+        CreateRequest whitespace = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "系统",
                 deliveries("v 1"), List.of("REQ-1"), null, "紧急", null);
         assertCode(ErrorCode.BAD_REQUEST, () -> service.create(whitespace, USER));
 
-        CreateRequest missingRequirement = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "系统",
+        CreateRequest missingRequirement = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "系统",
                 deliveries("v1"), List.of(), null, "紧急", null);
         assertCode(ErrorCode.BAD_REQUEST, () -> service.create(missingRequirement, USER));
     }
@@ -206,7 +254,7 @@ class ReleaseApplicationServiceTest {
         assertTrue(response.deliveries().isEmpty());
         assertEquals(List.of("/deploy/packages/app.zip"), response.fileMedia().stream().map(item -> item.filePath()).toList());
 
-        CreateRequest mixed = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "用户中心",
+        CreateRequest mixed = new CreateRequest(false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "用户中心",
                 deliveries("v1"), List.of(new FileMediaInput("/deploy/config.yml")), List.of("REQ-001"),
                 null, "超过申报截止时间", "版本说明");
         service.create(mixed, USER);
@@ -364,22 +412,22 @@ class ReleaseApplicationServiceTest {
     }
 
     private CreateRequest nonEmergency(String version) {
-        return new CreateRequest(false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "用户中心",
+        return new CreateRequest(false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "用户中心",
                 deliveries(version), List.of("REQ-001", "REQ-001"), null, "超过申报截止时间", "版本说明");
     }
 
     private UpdateRequest update(String version, long rowVersion) {
-        return new UpdateRequest(rowVersion, false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "用户中心",
+        return new UpdateRequest(rowVersion, false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "用户中心",
                 deliveries(version), List.of("REQ-001"), null, "超过申报截止时间", "版本说明");
     }
 
     private CreateRequest fileRequest(List<FileMediaInput> fileMedia) {
-        return new CreateRequest(false, 20L, "P-001", "P-001", "项目", "SYS-1", "SYS1", "用户中心",
+        return new CreateRequest(false, 20L, "P-001", "P-001", "项目", "42", "SYS1", "用户中心",
                 List.of(), fileMedia, List.of("REQ-001"), null, "超过申报截止时间", "版本说明");
     }
 
     private List<DeliveryInput> deliveries(String version) {
-        return List.of(new DeliveryInput("DU-1", "UNIT-A", "用户服务", "IMAGE", version));
+        return List.of(new DeliveryInput("101", "UNIT-A", "用户服务", "IMAGE", version));
     }
 
     private Application application(String code, Status status, String version, long rowVersion, long requesterId) {

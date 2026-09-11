@@ -26,6 +26,8 @@ import com.ccb.release.application.model.ReleaseApplicationModels.UpdateRequest;
 import com.ccb.release.application.model.ReleaseApplicationModels.VersionChange;
 import com.ccb.release.application.model.ReleaseApplicationModels.VersionType;
 import com.ccb.release.application.persistence.ReleaseApplicationStore;
+import com.ccb.release.application.service.ReleaseMasterDataService.TrustedDeliveryUnit;
+import com.ccb.release.application.service.ReleaseMasterDataService.TrustedSelection;
 import com.ccb.release.window.model.ReleaseWindow;
 import com.ccb.release.window.persistence.ReleaseWindowStore;
 import com.ccb.security.model.AuthUser;
@@ -61,15 +63,18 @@ public class ReleaseApplicationService {
     private final ReleaseApplicationStore store;
     private final ReleaseWindowStore windowStore;
     private final ProjectAccessService projectAccessService;
+    private final ReleaseMasterDataService masterDataService;
     private final ReleaseScenarioPolicy scenarioPolicy;
     private final ObjectMapper objectMapper;
 
     public ReleaseApplicationService(ReleaseApplicationStore store, ReleaseWindowStore windowStore,
-                                     ProjectAccessService projectAccessService, ReleaseScenarioPolicy scenarioPolicy,
-                                     ObjectMapper objectMapper) {
+                                     ProjectAccessService projectAccessService,
+                                     ReleaseMasterDataService masterDataService,
+                                     ReleaseScenarioPolicy scenarioPolicy, ObjectMapper objectMapper) {
         this.store = store;
         this.windowStore = windowStore;
         this.projectAccessService = projectAccessService;
+        this.masterDataService = masterDataService;
         this.scenarioPolicy = scenarioPolicy;
         this.objectMapper = objectMapper;
     }
@@ -272,28 +277,24 @@ public class ReleaseApplicationService {
         String normalizedProjectId = project.projectRef();
         String normalizedProjectCode = project.projectRef();
         String normalizedProjectName = project.projectName();
-        String normalizedSubsystemId = required(subsystemId, "物理子系统标识", 64);
-        String normalizedSubsystemCode = required(subsystemCode, "物理子系统编码", 64);
-        String normalizedSubsystemName = required(subsystemName, "物理子系统名称", 128);
         List<DeliveryInput> normalizedDeliveryInputs = deliveryInputs == null ? List.of() : deliveryInputs;
         List<FileMediaInput> normalizedFileMediaInputs = fileMediaInputs == null ? List.of() : fileMediaInputs;
         if (normalizedDeliveryInputs.isEmpty() && normalizedFileMediaInputs.isEmpty()) {
             throw badRequest("至少添加一个交付单元或文件介质");
         }
+        TrustedSelection selection = masterDataService.requireActiveSelection(project, subsystemId,
+                normalizedDeliveryInputs, user);
         Set<String> deliveryCodes = new LinkedHashSet<>();
         List<DeliverySnapshot> deliveries = new ArrayList<>();
-        for (DeliveryInput input : normalizedDeliveryInputs) {
-            if (input == null) throw badRequest("交付单元信息不能为空");
-            String code = required(input.deliveryUnitCode(), "交付单元编码", 64);
+        for (int index = 0; index < normalizedDeliveryInputs.size(); index++) {
+            DeliveryInput input = normalizedDeliveryInputs.get(index);
+            TrustedDeliveryUnit trusted = selection.deliveryUnits().get(index);
+            String code = trusted.code();
             if (!deliveryCodes.add(code)) throw badRequest("同一申请中交付单元不能重复：" + code);
             String version = required(input.artifactVersion(), "制品版本", 128);
             if (version.chars().anyMatch(Character::isWhitespace)) throw badRequest("制品版本不允许包含空格");
-            ArtifactType artifactType;
-            try { artifactType = ArtifactType.valueOf(required(input.artifactType(), "制品类型", 24).toUpperCase()); }
-            catch (IllegalArgumentException exception) { throw badRequest("制品类型只支持 IMAGE 或 BINARY"); }
-            if (artifactType == ArtifactType.FILE) throw badRequest("普通交付单元的制品类型只支持 IMAGE 或 BINARY");
-            deliveries.add(new DeliverySnapshot(nextId(), required(input.deliveryUnitId(), "交付单元标识", 64), code,
-                    required(input.deliveryUnitName(), "交付单元名称", 128), artifactType, version));
+            deliveries.add(new DeliverySnapshot(nextId(), trusted.id(), code, trusted.name(),
+                    trusted.artifactType(), version));
         }
         Set<String> filePaths = new LinkedHashSet<>();
         for (FileMediaInput input : normalizedFileMediaInputs) {
@@ -315,7 +316,7 @@ public class ReleaseApplicationService {
             if (normalizedRequirements.isEmpty()) throw badRequest("非应急版本至少填写一个需求编号");
         }
         return new Draft(emergency, windowId, normalizedProjectId, normalizedProjectCode, normalizedProjectName,
-                normalizedSubsystemId, normalizedSubsystemCode, normalizedSubsystemName, deliveries,
+                selection.subsystemId(), selection.subsystemCode(), selection.subsystemName(), deliveries,
                 normalizedRequirements, optional(emergencyDescription, 1000), optional(urgentReason, 1000),
                 optional(description, 2000), window);
     }

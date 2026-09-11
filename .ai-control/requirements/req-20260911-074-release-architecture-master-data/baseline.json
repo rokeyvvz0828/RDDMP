@@ -1,0 +1,100 @@
+{
+  "objective": "版本申请人能够在当前项目中选择有效的架构物理子系统和交付单元，并让系统保存可验证、可信且可长期反显的申请快照。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "系统必须将架构交付单元的制品类型统一为 IMAGE 和 BINARY，并按已确认规则迁移存量类型。",
+      "acceptance": ["新增和维护交付单元时仅使用 IMAGE 或 BINARY", "容器存量值迁移为 IMAGE，压缩包和脚本存量值迁移为 BINARY"],
+      "priority": "must",
+      "source": "用户已批准设计",
+      "counterexample": ["配置管理继续维护独立的制品类型映射", "迁移后仍存在启用的容器、压缩包或脚本类型"]
+    },
+    {
+      "id": "R2",
+      "statement": "系统必须按租户和项目返回 ACTIVE 物理子系统及其 ACTIVE 交付单元，且交付单元必须属于指定物理子系统。",
+      "acceptance": ["项目查询不返回其他项目数据", "停用数据不进入可选列表", "按父物理子系统过滤交付单元"],
+      "priority": "must",
+      "source": "用户已批准设计",
+      "counterexample": ["跨项目泄漏架构主数据", "返回属于其他物理子系统的交付单元"]
+    },
+    {
+      "id": "R3",
+      "statement": "系统必须允许具有配置管理权限和当前项目访问权的用户读取版本申请主数据，并拒绝无项目访问权的用户。",
+      "acceptance": ["有权限用户无需架构维护权限即可查询", "无当前项目权限时返回拒绝结果"],
+      "priority": "must",
+      "source": "用户已批准设计",
+      "counterexample": ["查询依赖架构维护菜单权限", "用户可以查询无权访问的项目"]
+    },
+    {
+      "id": "R4",
+      "statement": "系统必须在保存或提交版本申请前重新验证架构引用并使用服务端权威数据生成快照。",
+      "acceptance": ["客户端伪造的名称和类型不会写入", "错项目、错父子关系或失效引用被拒绝且不产生部分写入"],
+      "priority": "must",
+      "source": "用户已批准设计",
+      "counterexample": ["服务端直接信任客户端提交的子系统名或制品类型"]
+    },
+    {
+      "id": "R5",
+      "statement": "版本申请抽屉必须使用服务端真实主数据，并在项目、物理子系统变化时正确更新交付单元选项和异步状态。",
+      "acceptance": ["产品代码不再引用主数据 Mock", "切换上级选择后清空失效下级值", "慢请求乱序不会覆盖最新选择", "加载、空、失败和重试状态可见可用"],
+      "priority": "must",
+      "source": "用户原始请求与已批准设计",
+      "counterexample": ["切换项目后保留旧项目交付单元", "旧请求晚返回并覆盖新请求结果"]
+    },
+    {
+      "id": "R6",
+      "statement": "系统必须保持已提交及历史申请快照不变；旧草稿可以反显失效快照，但保存或提交前必须重新选择有效主数据。",
+      "acceptance": ["已提交、审批中和已完成申请继续显示原快照", "失效草稿标明不可用且保存和提交均被拒绝"],
+      "priority": "must",
+      "source": "用户已批准设计",
+      "counterexample": ["主数据改名后自动改写历史申请", "失效草稿可以继续保存"]
+    },
+    {
+      "id": "R7",
+      "statement": "系统必须通过后端安全与迁移测试、前端构建和桌面及移动端浏览器验收。",
+      "acceptance": ["目标 Maven 测试通过", "Flyway 和治理检查通过", "前端生产构建通过", "四个约定视口无关键交互阻塞和横向溢出"],
+      "priority": "must",
+      "source": "仓库工程约束",
+      "counterexample": ["仅静态检查通过但真实接口或移动端不可用"]
+    }
+  ],
+  "invariants": [
+    "架构模块始终是物理子系统和交付单元主数据的唯一所有者",
+    "配置管理不得直接读取或修改架构私有表",
+    "每次申请写入均按租户、项目、状态和父子关系校验",
+    "历史申请快照不得因主数据变化而被回写"
+  ],
+  "constraints": [
+    "数据库迁移只能追加 V213，不修改既有 V212",
+    "保持现有版本申请 DTO 的兼容读取能力",
+    "遵循模块治理、RBAC、项目隔离和 H5 响应式规范"
+  ],
+  "non_goals": [
+    "调整版本审批、投产窗口、文件介质或投产执行逻辑",
+    "向配置管理用户授予架构维护权限",
+    "迁移或重写历史申请快照"
+  ],
+  "assumptions": [
+    {
+      "text": "平台项目标识可以权威映射到架构数据的 project_id",
+      "basis": "现有 ProjectAccessService 与架构项目化实现使用同一项目域",
+      "falsifier": "建模阶段发现版本申请 projectRef 无法唯一解析到架构 project_id"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"question": "新建申请可选择哪些主数据", "options": ["仅 ACTIVE", "包含停用"], "selected": "仅 ACTIVE", "blocking": false, "source": "用户确认"},
+    {"question": "存量制品类型如何归一", "options": ["容器到 IMAGE、压缩包和脚本到 BINARY", "保留旧类型"], "selected": "容器到 IMAGE、压缩包和脚本到 BINARY", "blocking": false, "source": "用户确认"},
+    {"question": "失效草稿如何处理", "options": ["反显但禁止保存提交", "自动替换", "直接隐藏"], "selected": "反显但禁止保存提交", "blocking": false, "source": "用户确认"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "字典启用值和存量交付单元类型", "candidate_sensor": "Flyway 集成测试和 SQL 断言"},
+    {"requirement_id": "R2", "observable": "按租户、项目、状态和父子关系返回的查询结果", "candidate_sensor": "架构 JDBC 查询测试"},
+    {"requirement_id": "R3", "observable": "授权与未授权 HTTP 响应", "candidate_sensor": "Controller 安全测试"},
+    {"requirement_id": "R4", "observable": "写入后的快照和失败事务状态", "candidate_sensor": "版本申请服务测试"},
+    {"requirement_id": "R5", "observable": "请求序列、选择值和页面状态", "candidate_sensor": "前端构建与浏览器网络/交互验收"},
+    {"requirement_id": "R6", "observable": "历史详情与失效草稿保存结果", "candidate_sensor": "服务测试与浏览器验收"},
+    {"requirement_id": "R7", "observable": "测试、治理、构建退出码和四视口页面状态", "candidate_sensor": "Maven、Node 脚本、Vite 和 Playwright/浏览器工具"}
+  ],
+  "baseline_status": "ready"
+}
