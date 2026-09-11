@@ -5,8 +5,8 @@ import { ElMessage } from 'element-plus'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
 import { apiErrorMessage } from '../../../api/error'
 import { replaceDeliveryUnitDeploymentUnits, searchDeliveryUnitDeploymentUnitOptions } from '../api'
-import type { DeliveryUnit, RelatedDeploymentUnit } from '../types'
-import { deliveryUnitStatusLabels, deliveryUnitStatusTone, deploymentUnitKindLabels, deploymentUnitStatusLabels, formatDateTime } from '../utils'
+import type { DeliveryUnit, ParameterOption, RelatedDeploymentUnit } from '../types'
+import { deliveryUnitStatusLabels, deliveryUnitStatusTone, deploymentUnitKindLabels, deploymentUnitStatusLabels, formatDateTime, optionLabel } from '../utils'
 import '../architecture.css'
 
 const props = defineProps<{
@@ -15,6 +15,7 @@ const props = defineProps<{
   title: string
   unit: DeliveryUnit | null
   canManage?: boolean
+  artifactTypeOptions?: ParameterOption[]
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +48,7 @@ function item(label: string, value: string | null | undefined, wide = false, ton
 
 const items = computed(() => props.unit ? [
   item('交付单元编号', props.unit.code),
+  item('制品类型', optionLabel(props.artifactTypeOptions || [], props.unit.artifactTypeCode)),
   item('状态', deliveryUnitStatusLabels[props.unit.status], false, props.unit.status === 'INACTIVE' ? 'warning' : undefined),
   item('归属物理子系统', props.unit.physicalSubsystemName
     ? `${props.unit.physicalSubsystemName}（${props.unit.physicalSubsystemCode}）` : '—'),

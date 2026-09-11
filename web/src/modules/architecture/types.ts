@@ -136,7 +136,7 @@ export interface OrganizationOption { id: number; name: string; parentId: number
 export interface UserOption { id: number; displayName: string; username: string; phone: string | null }
 export interface ParameterOption { code: string; label: string }
 
-export type ArchitectureResource = 'physical-subsystem'
+export type ArchitectureResource = 'physical-subsystem' | 'delivery-unit'
 export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
 
 // ---------- 架构规范 ----------
@@ -436,6 +436,7 @@ export interface DeliveryUnit {
   physicalSubsystemStatus: string | null
   name: string
   status: DeliveryUnitStatus
+  artifactTypeCode: string | null
   relatedDeploymentUnits: RelatedDeploymentUnit[]
   description: string | null
   remark: string | null
@@ -455,6 +456,7 @@ export interface DeliveryUnitPayload {
   remark: string | null
   relatedDeploymentUnitIds: number[]
   rowVersion?: number | null
+  artifactTypeCode: string | null
 }
 
 /** 部署单元侧反查到的交付单元只读引用。 */

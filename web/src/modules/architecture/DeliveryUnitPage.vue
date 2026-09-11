@@ -18,6 +18,7 @@ import {
   getDeliveryUnit,
   listDeliveryUnits,
   loadDeliveryUnitPhysicalSubsystemOptions,
+  loadParameterOptions,
   reactivateDeliveryUnit,
   searchDeliveryUnitDeploymentUnitOptions,
   updateDeliveryUnit
@@ -27,6 +28,7 @@ import type {
   DeliveryUnit,
   DeliveryUnitPayload,
   DeliveryUnitStatus,
+  ParameterOption,
   PhysicalSubsystemOption,
   RelatedDeploymentUnit
 } from './types'
@@ -34,7 +36,8 @@ import {
   deliveryUnitStatusLabels,
   deliveryUnitStatusTone,
   formatDateTime,
-  httpStatus
+  httpStatus,
+  optionLabel
 } from './utils'
 import './architecture.css'
 
@@ -52,10 +55,12 @@ const advanced = ref(false)
 const filters = reactive({
   name: '',
   physicalSubsystemId: null as number | null,
-  status: '' as DeliveryUnitStatus | ''
+  status: '' as DeliveryUnitStatus | '',
+  artifactTypeCode: ''
 })
 const statusOptions: DeliveryUnitStatus[] = ['ACTIVE', 'INACTIVE']
 const physicalOptions = ref<PhysicalSubsystemOption[]>([])
+const artifactTypeOptions = ref<ParameterOption[]>([])
 
 const drawerOpen = ref(false)
 const detail = ref<DeliveryUnit | null>(null)
@@ -72,7 +77,8 @@ const form = reactive<DeliveryUnitPayload>({
   description: null,
   remark: null,
   relatedDeploymentUnitIds: [],
-  rowVersion: null
+  rowVersion: null,
+  artifactTypeCode: null
 })
 const relatedOptions = ref<RelatedDeploymentUnit[]>([])
 const relatedLoading = ref(false)
@@ -162,6 +168,15 @@ async function loadPhysicals() {
   }
 }
 
+async function loadArtifactTypes() {
+  if (!projectContext.currentRef) return
+  try {
+    artifactTypeOptions.value = await loadParameterOptions('delivery-unit', 'ARCH_ARTIFACT_TYPE')
+  } catch (error) {
+    if (httpStatus(error) !== 403) ElMessage.warning(apiErrorMessage(error, '制品类型字典加载失败'))
+  }
+}
+
 async function load() {
   if (!canView.value || !projectContext.currentRef) return
   const request = ++listRequest
@@ -204,7 +219,8 @@ function openCreate() {
     description: null,
     remark: null,
     relatedDeploymentUnitIds: [],
-    rowVersion: null
+    rowVersion: null,
+    artifactTypeCode: null
   })
   formMode.value = 'create'
   formError.value = ''
@@ -223,7 +239,8 @@ function openEdit(unit: DeliveryUnit) {
     description: unit.description,
     remark: unit.remark,
     relatedDeploymentUnitIds: unit.relatedDeploymentUnits.map(item => item.id),
-    rowVersion: unit.rowVersion
+    rowVersion: unit.rowVersion,
+    artifactTypeCode: unit.artifactTypeCode
   })
   formMode.value = 'edit'
   formError.value = ''
@@ -255,7 +272,8 @@ async function submitForm() {
       description: text(form.description),
       remark: text(form.remark),
       relatedDeploymentUnitIds: [...form.relatedDeploymentUnitIds],
-      rowVersion: form.rowVersion
+      rowVersion: form.rowVersion,
+      artifactTypeCode: text(form.artifactTypeCode)
     }
     if (formMode.value === 'create') {
       const created = await createDeliveryUnit(payload)
@@ -335,12 +353,12 @@ function handleMaintainCommand(command: string | number | object, unit: Delivery
 
 function search() { page.value = 1; void load() }
 function reset() {
-  Object.assign(filters, { name: '', physicalSubsystemId: null, status: '' })
+  Object.assign(filters, { name: '', physicalSubsystemId: null, status: '', artifactTypeCode: '' })
   page.value = 1
   void load()
 }
 async function refresh() {
-  await Promise.all([load(), loadPhysicals()])
+  await Promise.all([load(), loadPhysicals(), loadArtifactTypes()])
   if (!loadError.value && !forbidden.value) ElMessage.success('列表已刷新')
 }
 function changePage(value: number) { page.value = value; void load() }
@@ -352,7 +370,7 @@ function physicalLabel(row: { physicalSubsystemName: string | null; physicalSubs
 }
 
 watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
-  if (allowed && projectRef) void Promise.all([load(), loadPhysicals()])
+  if (allowed && projectRef) void Promise.all([load(), loadPhysicals(), loadArtifactTypes()])
 }, { immediate: true })
 </script>
 
@@ -369,6 +387,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
       <UiToolbar>
         <el-input v-model="filters.name" clearable placeholder="交付单元名称" class="architecture-filter-input" @keyup.enter="search"><template #prefix><el-icon><Search /></el-icon></template></el-input>
         <el-select v-model="filters.status" clearable placeholder="状态" class="architecture-filter-select"><el-option v-for="status in statusOptions" :key="status" :label="deliveryUnitStatusLabels[status]" :value="status" /></el-select>
+        <el-select v-model="filters.artifactTypeCode" clearable placeholder="制品类型" class="architecture-filter-select"><el-option v-for="option in artifactTypeOptions" :key="option.code" :label="option.label" :value="option.code" /></el-select>
         <el-button :type="advanced ? 'primary' : 'default'" plain @click="advanced = !advanced"><el-icon><Filter /></el-icon>更多筛选</el-button>
         <el-button type="primary" @click="search">查询</el-button><el-button @click="reset">重置</el-button>
         <template #actions><el-tooltip content="刷新列表"><el-button circle :loading="loading" aria-label="刷新交付单元列表" @click="refresh"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
@@ -378,6 +397,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
       <UiDataTable v-if="rows.length || loading" class="architecture-desktop-table" :data="rows" :loading="loading" row-key="id" border>
         <el-table-column label="交付单元" min-width="220"><template #default="scope"><button type="button" class="architecture-table-identity" @click="showDetail(scope.row)"><strong>{{ scope.row.name }}</strong><small>{{ scope.row.code }}</small></button></template></el-table-column>
         <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="deliveryUnitStatusLabels" :tone="deliveryUnitStatusTone(scope.row.status)" /></template></el-table-column>
+        <el-table-column label="制品类型" width="120"><template #default="scope">{{ optionLabel(artifactTypeOptions, scope.row.artifactTypeCode) }}</template></el-table-column>
         <el-table-column label="归属物理子系统" min-width="200"><template #default="scope">{{ scope.row.physicalSubsystemName }}<small class="architecture-inline-code">{{ scope.row.physicalSubsystemCode }}</small></template></el-table-column>
         <el-table-column label="关联部署单元" width="130"><template #default="scope">{{ scope.row.relatedDeploymentUnits.length }} 个</template></el-table-column>
         <el-table-column label="最后更新" width="145"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
@@ -386,7 +406,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
       </UiDataTable>
 
       <div v-if="rows.length || loading" v-loading="loading" class="architecture-mobile-list" :class="{ 'is-loading': loading }">
-        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div><UiStatusTag :value="row.status" :labels="deliveryUnitStatusLabels" :tone="deliveryUnitStatusTone(row.status)" /></header><dl><div><dt>归属物理子系统</dt><dd>{{ physicalLabel(row) }}</dd></div><div><dt>关联部署单元</dt><dd>{{ row.relatedDeploymentUnits.length }} 个</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canManage" @command="(command: string | number | object) => handleMaintainCommand(command, row)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>维护</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="edit">修改</el-dropdown-item><el-dropdown-item v-if="row.status === 'ACTIVE'" command="deactivate" divided>停用</el-dropdown-item><el-dropdown-item v-if="row.status === 'INACTIVE'" command="reactivate">重新启用</el-dropdown-item><el-dropdown-item command="delete" divided>删除</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
+        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }}</small></div><UiStatusTag :value="row.status" :labels="deliveryUnitStatusLabels" :tone="deliveryUnitStatusTone(row.status)" /></header><dl><div><dt>制品类型</dt><dd>{{ optionLabel(artifactTypeOptions, row.artifactTypeCode) }}</dd></div><div><dt>归属物理子系统</dt><dd>{{ physicalLabel(row) }}</dd></div><div><dt>关联部署单元</dt><dd>{{ row.relatedDeploymentUnits.length }} 个</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canManage" @command="(command: string | number | object) => handleMaintainCommand(command, row)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>维护</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item command="edit">修改</el-dropdown-item><el-dropdown-item v-if="row.status === 'ACTIVE'" command="deactivate" divided>停用</el-dropdown-item><el-dropdown-item v-if="row.status === 'INACTIVE'" command="reactivate">重新启用</el-dropdown-item><el-dropdown-item command="delete" divided>删除</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
         <div class="architecture-table-footer"><el-pagination :current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="changePage" /></div>
       </div>
       <UiEmptyState v-if="!loading && !rows.length" title="暂无交付单元" description="选择归属物理子系统并填写交付单元名称后创建，创建后可在详情抽屉关联部署单元。"><template #action><el-button v-if="canManage" type="primary" @click="openCreate">新建交付单元</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
@@ -397,6 +417,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
       :loading="detailLoading"
       :can-manage="canManage"
       :unit="detail"
+      :artifact-type-options="artifactTypeOptions"
       :title="detail?.name || '交付单元详情'"
       @edit="detail && openEdit(detail)"
       @deactivate="detail && confirmLifecycle('deactivate', detail)"
@@ -423,6 +444,13 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
         </el-form-item>
         <el-form-item label="交付单元名称">
           <el-input v-model="form.name" maxlength="200" show-word-limit placeholder="如 统一认证交付包" />
+        </el-form-item>
+        <el-form-item label="制品类型">
+          <el-radio-group v-model="form.artifactTypeCode">
+            <el-radio-button :value="''">未设置</el-radio-button>
+            <el-radio-button v-for="option in artifactTypeOptions" :key="option.code" :value="option.code">{{ option.label }}</el-radio-button>
+          </el-radio-group>
+          <p class="architecture-form-hint">选项来自平台参数管理的「制品类型」字典（{{ artifactTypeOptions.length }} 项），可在系统管理中维护。</p>
         </el-form-item>
         <el-form-item label="关联部署单元">
           <el-select
