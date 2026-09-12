@@ -1,0 +1,423 @@
+{
+  "definition_revision": "definition-1",
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": [
+        "组件示范页三档实例分别渲染 1、2、3 行：小 [张统筹]、中 [张统筹,13800001001]、大 [张统筹,13800001001,平台总部]",
+        "三个开关覆盖实测：关闭电话后 [张统筹,平台总部] 且不留占位空隙；再关闭团队后 [张统筹]；关闭头像后无头像且姓名不塌陷",
+        "档位切换会把开关重置为该档位默认值，档位示例不再被开关恒定覆盖"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": [
+        "强制 hover 能力的真实浏览器 matchMedia hover=true、pointer:fine=true，鼠标移入后浮层可见且含姓名、账号、启用、电话、团队、角色七项，移出后关闭",
+        "375px 触屏视口 matchMedia('(hover: none)')=true，点击卡片后出现同一浮层"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": [
+        "桌面浮层宽度 300px；320px 视口下宽度 296px 等于 min(300px, 100vw-24px)",
+        "超长团队名换行为 2 行、超长角色名 chip 换行为 2.4 行，浮层内部无横向滚动，文档无横向溢出"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": [
+        "Testcontainers MySQL 8.4 真库断言跨租户不返回且不报错、软删除不返回、停用用户返回且 status=0、角色只聚合启用未删除项",
+        "端到端 HTTP：51 个标识返回 HTTP 400 与业务码 40000；空数组返回 HTTP 200 且两个列表为空；未登录返回 HTTP 401；真实响应字段集合恰为白名单",
+        "类级 PreAuthorize 经反射断言恰为 isAuthenticated() 且不含 system:access"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": [
+        "注入 120 个标识产生恰好 3 条批量查询请求；重复同一批新增 0 条；再注入 1 个新标识产生 1 条",
+        "CDP 阻断接口后状态为 error 且尝试次数为 2（首发 1 次加自动重试恰好 1 次）；解除阻断后 retry 1 次请求恢复到 ready 并取到姓名",
+        "状态机区分 ready 与 missing，未命中不标记为 error"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": [
+        "git diff --name-only 845388f..HEAD 对 ModuleView.vue、AppLayout.vue、ProjectView.vue 为空输出",
+        "生产构建改造前后触发态对照：用户列表 17→17 差异 0、项目管理 1→1 差异 0、开发任务既有项差异 0",
+        "无可解析标识时不渲染 el-popover 且不调用 ensure"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": [
+        "26 个文件新增 52 个人员卡片实例",
+        "穷尽检索人员纯文本渲染与原始 ID 插值结果为 0 命中",
+        "三个选人控件文件 git diff 为空",
+        "真实浏览器走查：物理子系统、交付单元、部署单元、资源申请、子系统变更、网络工单、环境部署实例、架构决策、架构规范、开发任务与工作项看板均观察到卡片渲染且悬停取到权威档案",
+        "任务范围门禁按提交区间通过（47 文件）"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": [
+        "架构模块专项测试 4 项通过，先取得缺少 proposerId/createdBy 访问器的编译失败基线",
+        "运行时响应实测：决策列表含 proposerId=1，标准详情含 createdBy=1",
+        "决策列表与详情页面通过 proposerId 在浮层中取到完整档案"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "result": "pass",
+      "evidence": [
+        "人员类裸 ID 插值检索 0 命中",
+        "子系统变更列表原 #id 列、网络工单列表与详情的申请人、环境部署实例的下线操作人均观察到渲染为人员卡片",
+        "实例页标签由「下线操作人 ID」改为「下线操作人」，与内容语义一致"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "result": "pass",
+      "evidence": [
+        "CDP Fetch 拦截逐一复现加载中（骨架且头部保留兜底姓名）、加载失败（含重试入口）、未找到、无角色（虚线 chip）、停用（已停用标记）、超长文本（换行）六种状态",
+        "暗色主题下浮层文字 rgb(238,245,255) 于背景 rgb(20,39,70)，对比度可读",
+        "1440 与 375 视口无遮挡与横向溢出",
+        "F-2 修复后空人员字段渲染占位符「—」而不是「未登录用户」"
+      ]
+    },
+    {
+      "requirement_id": "R11",
+      "result": "pass",
+      "evidence": [
+        "组件示范页同时可见三档实例，档位单选即时改变预览渲染",
+        "三个开关即时覆盖档位结果且可恢复",
+        "示例样式为页面局部 scoped，未新增公共样式类；既有 UiUserIdentity 调用行未改动"
+      ]
+    }
+  ],
+  "task_results": [
+    {
+      "task_id": "T1",
+      "result": "verified",
+      "evidence": [
+        "ccb-system Tests run: 86, Failures: 0, Errors: 0",
+        "端到端 HTTP 验证真实 400/401/200 与白名单字段"
+      ]
+    },
+    {
+      "task_id": "T2",
+      "result": "verified",
+      "evidence": [
+        "CDP Network 事件计数实测 120 个标识 3 条、重复 0 条、新增 1 条",
+        "阻断与恢复实测 error→ready 且自动重试恰好 1 次"
+      ]
+    },
+    {
+      "task_id": "T3",
+      "result": "verified",
+      "evidence": [
+        "真实浏览器桌面悬停开启与移出关闭、触屏点击开启",
+        "生产构建触发态对照确认既有调用点差异为 0",
+        "F-2 修复后复验占位语义"
+      ]
+    },
+    {
+      "task_id": "T4",
+      "result": "verified",
+      "evidence": [
+        "三档与三个开关在真实浏览器中逐项点选验证",
+        "既有无改动对比"
+      ]
+    },
+    {
+      "task_id": "T5",
+      "result": "verified",
+      "evidence": [
+        "专项测试 4 项通过且先有编译失败基线",
+        "ccb-architecture 全量 467 项通过",
+        "运行时响应含 proposerId 与 createdBy"
+      ]
+    },
+    {
+      "task_id": "T6",
+      "result": "verified",
+      "evidence": [
+        "物理子系统列表 3 张可见卡片、详情抽屉内出现卡片、悬停取到电话与团队与角色",
+        "交付单元与部署单元详情抽屉出现创建人卡片"
+      ]
+    },
+    {
+      "task_id": "T7",
+      "result": "verified",
+      "evidence": [
+        "决策列表 1 行 2 张卡片且浮层取到档案；决策详情 2 张卡片",
+        "规范列表未发布文档的发布人渲染占位符",
+        "grep 确认 userName 与 userLabel 等失效函数已删除"
+      ]
+    },
+    {
+      "task_id": "T8",
+      "result": "verified",
+      "evidence": [
+        "子系统变更列表 2 张、详情 5 张；资源申请列表 9 张、详情 11 张；网络工单列表与详情各 2 张，均悬停取到档案",
+        "环境部署实例详情抽屉出现卡片",
+        "裸 ID 检索 0 命中"
+      ]
+    },
+    {
+      "task_id": "T9",
+      "result": "verified",
+      "evidence": [
+        "开发任务列表 4 张、详情 6 张、工作项看板 5 张，浮层取到 mock.product 与 mock.qa 的完整档案",
+        "两个表单抽屉零改动"
+      ]
+    },
+    {
+      "task_id": "T10",
+      "result": "verified",
+      "evidence": [
+        "构建与两次 Maven 全量回归通过；范围门禁按提交区间通过；空白检查无错误",
+        "集成采样记录写入 observation-T1.json"
+      ]
+    }
+  ],
+  "open_feedback": [],
+  "invariant_results": [
+    {
+      "invariant": "现有 12 处 UiUserIdentity 调用点的外部行为不变",
+      "result": "pass",
+      "evidence": [
+        "三个既有调用文件 git diff 为空输出",
+        "生产构建触发态对照差异为 0（组件示范页 1 处演示姓名差异已在 F-1 裁决为刻意行为）"
+      ]
+    },
+    {
+      "invariant": "组件在无可解析 userId 时不发起任何网络请求",
+      "result": "pass",
+      "evidence": [
+        "profileEnabled 为 false 时不渲染 el-popover，loadProfile 直接返回",
+        "六种状态观测中无标识场景未产生请求"
+      ]
+    },
+    {
+      "invariant": "查询接口不返回 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+      "result": "pass",
+      "evidence": [
+        "单元测试断言响应键集合等于白名单",
+        "端到端响应的键集合实测为 avatarUrl、displayName、id、mobilePhone、orgName、roles、status、username"
+      ]
+    },
+    {
+      "invariant": "跨租户用户 id 不得泄漏存在性，统一进入 missingIds",
+      "result": "pass",
+      "evidence": [
+        "Testcontainers 真库断言跨租户标识不返回且不报错"
+      ]
+    },
+    {
+      "invariant": "business/architecture 与 business/development 不新增对 sys_user 的直接 SQL，平台数据只通过 com.ccb.system.capability 公开契约访问",
+      "result": "pass",
+      "evidence": [
+        "git diff 对 server/src/modules 检索 sys_user、sys_org、sys_role 的新增行结果为 0"
+      ]
+    },
+    {
+      "invariant": "人员展示统一走 UiUserIdentity，不建立平行组件",
+      "result": "pass",
+      "evidence": [
+        "26 个改动文件均为在同一组件内替换而非新增展示组件；浮层内容由设计内的 UiPersonProfileCard 承担"
+      ]
+    },
+    {
+      "invariant": "人员列固定宽小于 130px 时改为 min-width，且不调整非人员列宽度",
+      "result": "pass",
+      "evidence": [
+        "涉及的人员列均改为 min-width 130 或保持足够宽度；走查中无姓名被挤压，非人员列宽未改动"
+      ]
+    },
+    {
+      "invariant": "本次无数据库迁移，Flyway 脚本零改动",
+      "result": "pass",
+      "evidence": [
+        "git diff 对 db/migration 目录文件数为 0"
+      ]
+    },
+    {
+      "invariant": "worktree 中 20 项他人在途改动始终保留且不被本次提交纳入",
+      "result": "pass",
+      "evidence": [
+        "control-engineering Skill 的 5 个改动文件仍为未提交状态；每次提交均按文件显式 add，未使用 git add -A 或 git add ."
+      ]
+    }
+  ],
+  "residual_risks": [
+    {
+      "risk": "网络访问关系的申请人与联系人、部署单元导入的操作人共 4 处展示点在本地数据下无记录可观察，只有构建、穷尽检索（0 残留）与同一组件在 8 个以上页面已实测的证据",
+      "impact": "若这些页面的 userId 接线有误，现有传感器不会发现",
+      "mitigation": "给出可复现的复核步骤：在本地产生网络访问申请与导入批次后按同样方法走查该 4 处"
+    },
+    {
+      "risk": "搭建计划详情的责任人、完成人与操作人共 4 处位于需展开的任务与检查项区域内，未逐处截图",
+      "impact": "同上",
+      "mitigation": "展开计划的任一任务与检查项即可复核"
+    },
+    {
+      "risk": "架构决策材料时间线的创建人 1 处未在页面分支中观察到",
+      "impact": "同上",
+      "mitigation": "在决策详情中补录材料后复核"
+    },
+    {
+      "risk": "120ms 悬停延迟、明暗主题对比度与外观一致性为人工判读，未接自动化判定",
+      "impact": "细微视觉差异可能未被发现",
+      "mitigation": "已留存全部截图与触发态快照，可按需人工复核"
+    },
+    {
+      "risk": "既有基线故障：docs/requirements/REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 非 JSON 兼容 YAML，导致 check-ai-control-layout.mjs 失败",
+      "impact": "治理门禁无法全绿，无法以全绿作为完成信号",
+      "mitigation": "用户已明确本次不修复；其余治理检查（check-governance.mjs）通过 18 个模块"
+    },
+    {
+      "risk": "既有 dev 环境缺陷：dev server 把 web/src/styles.css 下发为空 CSS，与本次改动无关",
+      "impact": "使用 dev server 会看到未应用全局样式的页面，可能误判为本次回归",
+      "mitigation": "本次全部 CSS 与主题验收改在生产构建上完成，并已定位证据（__vite__css 为空串）"
+    },
+    {
+      "risk": "实施期范围扩展：SubsystemDetailDrawer.vue 原不在 writable_paths 内，因其为物理子系统详情负责人条目的渲染载体而追加授权",
+      "impact": "授权范围与开发前计划不一致",
+      "mitigation": "已追加到 writable_paths 并在任务范围风险项与收敛报告中披露，范围门禁按提交区间通过"
+    },
+    {
+      "risk": "设计附录的替换清单不完整（记为 F-3）：实际 26 文件 52 个卡片实例，多于附录记录的 24 文件 38 处",
+      "impact": "后续以附录作为验收清单会漏项",
+      "mitigation": "以穷尽检索为准补齐并更正计数，建议后续设计阶段改用『人员字段插值加模板字符串 fallback 加裸 ID 插值』作为检索信号"
+    }
+  ],
+  "gate_result": "pass",
+  "route_reason": "11 条 must 需求全部由已验证任务覆盖并各自具备独立证据：R4 用 Testcontainers 真库与端到端 HTTP 双重传感器，R5 用 CDP Network 事件计数，R6 用 git diff 空输出与生产构建触发态对照，R7 用穷尽检索零残留加真实浏览器多页走查，R8 用专项测试加运行时响应实测，R10 用 CDP Fetch 构造的六种状态。10 个任务全部为 verified；3 条反馈全部裁决完毕（F-1 拒绝并关闭，F-2 与 F-3 接受并附闭合证据后关闭），不存在 P0/P1 延期或升级项；最终样本 P0=0、P1=0。标准工作流要求至少两次采样，本需求共记录 13 次迭代。最终修改位于批准范围（含已披露并经任务范围文件确认的一处扩展），9 条不变量全部通过。残余风险已逐项披露，均为本地数据不足导致的观测盲区而非已证实偏差。",
+  "feedback_summary": {
+    "total": 3,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": 0
+  },
+  "sample_trend": [
+    {
+      "sample_id": "I2",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1,
+      "score": 1
+    },
+    {
+      "sample_id": "I3",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0
+    },
+    {
+      "sample_id": "I4-I6",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0
+    },
+    {
+      "sample_id": "I8",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1,
+      "score": 1
+    },
+    {
+      "sample_id": "I9",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0
+    },
+    {
+      "sample_id": "I12",
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "score": 0
+    },
+    {
+      "sample_id": "I13",
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 1,
+      "score": 6
+    }
+  ],
+  "regression_checks": [
+    {
+      "check": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "exit 0"
+    },
+    {
+      "check": "mvn -pl :ccb-system -am test",
+      "result": "pass",
+      "evidence": "86 项 0 失败"
+    },
+    {
+      "check": "mvn -pl :ccb-architecture,:ccb-development -am test",
+      "result": "pass",
+      "evidence": "467 项与 89 项均 0 失败"
+    },
+    {
+      "check": "git diff --check",
+      "result": "pass",
+      "evidence": "无空白错误"
+    },
+    {
+      "check": "node scripts/check-codex-scope.mjs --base 845388f --head HEAD",
+      "result": "pass",
+      "evidence": "47 个改动文件全部在授权内"
+    },
+    {
+      "check": "node scripts/check-all-governance.mjs",
+      "result": "fail",
+      "evidence": "check-governance.mjs 通过 18 个模块；check-ai-control-layout.mjs 仍只失败于用户确认不修的既有基线故障"
+    }
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": [],
+    "noted_extension": "web/src/modules/architecture/components/SubsystemDetailDrawer.vue 在实施期加入 writable_paths（原清单遗漏该渲染载体），已在任务范围风险项与本报告中披露"
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "接口不可用（CDP 阻断）",
+      "behavior": "浮层显示失败态与重试入口，卡片本体不受影响；恢复后重试成功"
+    },
+    {
+      "disturbance": "令牌过期",
+      "behavior": "页面重定向登录页，刷新令牌后恢复"
+    },
+    {
+      "disturbance": "本地数据为空",
+      "behavior": "列表显示空状态，不产生错误渲染；缺数据的功能已在残余风险中披露并给出复核步骤"
+    },
+    {
+      "disturbance": "两处既有环境缺陷（dev server 空 CSS、治理基线故障）",
+      "behavior": "已定位、与本次改动区分，并改用生产构建验收与如实标注门禁状态"
+    }
+  ]
+}
