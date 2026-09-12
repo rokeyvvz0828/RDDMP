@@ -153,7 +153,7 @@ class PhysicalSubsystemServiceTest {
                 12L, "平台研发团队快照", "architecture.runtime.7x24", "A", "Spring", 30L,
                 "描述", null, 9L, 9L,
                 LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
-                "Mall Platform", status, 4L);
+                "Mall Platform", status, 4L, null, null);
     }
 
     private OrgTreeNode organization(long id, String name, int status) {

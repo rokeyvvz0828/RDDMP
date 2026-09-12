@@ -116,7 +116,9 @@ function toInput(source: SubsystemChangeApplicationDetail['physicalDrafts'][numb
     ownerUserId: source.ownerUserId,
     description: source.description,
     remark: source.remark,
-    sourceRowVersion: source.sourceRowVersion
+    sourceRowVersion: source.sourceRowVersion,
+    securityNodeNo: source.securityNodeNo,
+    fileTransferNodeNo: source.fileTransferNodeNo
   }
 }
 
@@ -272,7 +274,7 @@ onMounted(() => { void load() })
           <h2>{{ actionTypeLabels[application.actionType] }}{{ targetKindLabels[application.targetKind] }}</h2>
           <p>{{ application.reason }}</p>
         </div>
-        <UiStatusTag :value="application.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(application.status)" />
+        <UiStatusTag :value="application.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(application.status)" indicator />
         <dl>
           <div><dt>申请人</dt><dd>{{ userLabel(application.applicantId) }}</dd></div>
           <div><dt>业务轮次</dt><dd>第 {{ application.currentBusinessRound }} 轮</dd></div>

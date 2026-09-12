@@ -67,14 +67,26 @@ class SubsystemChangeStoreMySqlTest {
         dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        Flyway baseline = Flyway.configure()
+                .dataSource(dataSource)
+                .locations("filesystem:" + migrationDirectory())
+                .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
+                .target(MigrationVersion.fromVersion("157"))
+                .cleanDisabled(false)
+                .load();
+        baseline.clean();
+        baseline.migrate();
+        // V158 起要求存量网络数据所属租户存在唯一 RDDMP-PLATFORM 项目；测试库先补默认项目再继续迁移。
+        jdbc.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, status, owner_id, created_by, deleted) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                900000000000001L, 1L, "RDDMP-PLATFORM", "RDDMP 平台项目", "RUNNING", 1L, 1L, 0);
         Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
                 .locations("filesystem:" + migrationDirectory())
                 .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("156"))
+                .target(MigrationVersion.fromVersion("205"))
                 .cleanDisabled(false)
                 .load();
-        flyway.clean();
         flyway.migrate();
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     }

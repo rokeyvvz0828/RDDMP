@@ -26,7 +26,9 @@ public record PhysicalSubsystem(
         LocalDateTime updatedAt,
         String englishName,
         String status,
-        long rowVersion) {
+        long rowVersion,
+        String securityNodeNo,
+        String fileTransferNodeNo) {
 
     /** 兼容既有主数据查询调用，新增生命周期字段使用发布默认值。 */
     public PhysicalSubsystem(long id, String code, String shortName, String name, String logicalSubsystemName,
@@ -37,7 +39,7 @@ public record PhysicalSubsystem(
         this(id, code, shortName, name, logicalSubsystemName, null, businessGroupName, null, null,
                 responsibleTeamOrgId,
                 responsibleTeamNameSnapshot, runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId,
-                description, remark, createdBy, updatedBy, createdAt, updatedAt, null, "ACTIVE", 0);
+                description, remark, createdBy, updatedBy, createdAt, updatedAt, null, "ACTIVE", 0, null, null);
     }
 
     /** 兼容既有主数据查询调用，登记表来源字段使用空值。 */
@@ -50,6 +52,6 @@ public record PhysicalSubsystem(
         this(id, code, shortName, name, logicalSubsystemName, null, businessGroupName, null, null,
                 responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
                 developmentFrameworkCode, ownerUserId, description, remark, createdBy, updatedBy,
-                createdAt, updatedAt, englishName, status, rowVersion);
+                createdAt, updatedAt, englishName, status, rowVersion, null, null);
     }
 }

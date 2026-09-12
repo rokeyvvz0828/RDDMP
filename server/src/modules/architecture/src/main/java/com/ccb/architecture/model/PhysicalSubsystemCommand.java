@@ -15,7 +15,9 @@ public record PhysicalSubsystemCommand(
         String developmentFrameworkCode,
         Long ownerUserId,
         String description,
-        String remark) {
+        String remark,
+        String securityNodeNo,
+        String fileTransferNodeNo) {
 
     public PhysicalSubsystemCommand(String code, String shortName, String name, String logicalSubsystemName,
                                     String businessGroupName, Long responsibleTeamOrgId,
@@ -24,6 +26,6 @@ public record PhysicalSubsystemCommand(
                                     String description, String remark) {
         this(code, shortName, name, logicalSubsystemName, null, businessGroupName, null, null,
                 responsibleTeamOrgId, runtimeCode, systemLevelCode, developmentFrameworkCode, ownerUserId,
-                description, remark);
+                description, remark, null, null);
     }
 }

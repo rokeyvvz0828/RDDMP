@@ -427,7 +427,8 @@ public class SubsystemChangeService {
                                      Long responsibleTeamOrgId, String responsibleTeamNameSnapshot,
                                      String runtimeCode, String systemLevelCode,
                                      String developmentFrameworkCode, Long ownerUserId,
-                                     String description, String remark, Long sourceRowVersion) {
+                                     String description, String remark, String securityNodeNo,
+                                     String fileTransferNodeNo, Long sourceRowVersion) {
 
         public PhysicalDraftInput(int lineNo, String code, String shortName, String name,
                                   String logicalSubsystemName, String businessComponentCode,
@@ -439,7 +440,7 @@ public class SubsystemChangeService {
             this(lineNo, code, shortName, name, logicalSubsystemName, businessComponentCode,
                     englishName, businessGroupName, null, null,
                     responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
-                    developmentFrameworkCode, ownerUserId, description, remark, sourceRowVersion);
+                    developmentFrameworkCode, ownerUserId, description, remark, null, null, sourceRowVersion);
         }
     }
 
@@ -516,6 +517,8 @@ public class SubsystemChangeService {
                 ownerUserId,
                 optional(input.description(), "描述", 2_000),
                 optional(input.remark(), "备注", 1_000),
+                optional(input.securityNodeNo(), "安全节点号", 64),
+                optional(input.fileTransferNodeNo(), "文件传输节点号", 64),
                 sourceRowVersion);
     }
 
@@ -531,7 +534,7 @@ public class SubsystemChangeService {
                 input.responsibleTeamOrgId(), input.responsibleTeamNameSnapshot(),
                 input.runtimeCode(), input.systemLevelCode(), input.developmentFrameworkCode(), input.ownerUserId(),
                 input.description(), input.remark(), sourceVersion, draftRevision, submittedSnapshotJson,
-                existing == null ? now() : existing.createdAt(), now());
+                existing == null ? now() : existing.createdAt(), now(), input.securityNodeNo(), input.fileTransferNodeNo());
     }
 
     private ChangeApplication newApplication(AuthUser actor, ProjectAccess project, TargetKind targetKind,
@@ -686,7 +689,8 @@ public class SubsystemChangeService {
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
-                draft.sourceRowVersion(), draft.draftRevision(), snapshot, draft.createdAt(), now());
+                draft.sourceRowVersion(), draft.draftRevision(), snapshot, draft.createdAt(), now(),
+                draft.securityNodeNo(), draft.fileTransferNodeNo());
     }
 
     private List<PhysicalDraft> sortedPhysicalDrafts(List<PhysicalDraft> drafts) {
@@ -722,6 +726,8 @@ public class SubsystemChangeService {
         appendCanonical(canonical, prefix + "ownerUserId", physicalDraft.ownerUserId());
         appendCanonical(canonical, prefix + "description", physicalDraft.description());
         appendCanonical(canonical, prefix + "remark", physicalDraft.remark());
+        appendCanonical(canonical, prefix + "securityNodeNo", physicalDraft.securityNodeNo());
+        appendCanonical(canonical, prefix + "fileTransferNodeNo", physicalDraft.fileTransferNodeNo());
         appendCanonical(canonical, prefix + "sourceRowVersion", physicalDraft.sourceRowVersion());
         return "{\"canonical\":\"" + jsonEscape(canonical.toString()) + "\"}";
     }

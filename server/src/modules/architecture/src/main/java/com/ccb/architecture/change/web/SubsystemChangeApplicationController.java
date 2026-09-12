@@ -301,7 +301,8 @@ public class SubsystemChangeApplicationController {
                 draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(), draft.runtimeCode(),
                 draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
                 draft.description(), draft.remark(), draft.sourceRowVersion(), draft.draftRevision(),
-                draft.submittedSnapshotJson(), draft.createdAt(), draft.updatedAt());
+                draft.submittedSnapshotJson(), draft.createdAt(), draft.updatedAt(),
+                draft.securityNodeNo(), draft.fileTransferNodeNo());
     }
 
     private ChangeHistoryResponse toHistory(ChangeHistoryEvent event) {
@@ -363,7 +364,8 @@ public class SubsystemChangeApplicationController {
                                         String developmentFrameworkCode, Long ownerUserId,
                                         String description, String remark, Long sourceRowVersion,
                                         int draftRevision, String submittedSnapshotJson,
-                                        LocalDateTime createdAt, LocalDateTime updatedAt) {
+                                        LocalDateTime createdAt, LocalDateTime updatedAt,
+                                        String securityNodeNo, String fileTransferNodeNo) {
     }
 
     public record ChangeHistoryResponse(long id, String eventType, ApplicationStatus fromStatus,

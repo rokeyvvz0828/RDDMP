@@ -105,7 +105,9 @@ function emptyPhysicalDraft(lineNo: number): PhysicalDraftInput {
     ownerUserId: null,
     description: null,
     remark: null,
-    sourceRowVersion: null
+    sourceRowVersion: null,
+    securityNodeNo: null,
+    fileTransferNodeNo: null
   }
 }
 
@@ -129,7 +131,9 @@ function physicalInput(source: SubsystemChangeApplicationDetail['physicalDrafts'
     ownerUserId: source.ownerUserId,
     description: source.description,
     remark: source.remark,
-    sourceRowVersion: source.sourceRowVersion
+    sourceRowVersion: source.sourceRowVersion,
+    securityNodeNo: source.securityNodeNo,
+    fileTransferNodeNo: source.fileTransferNodeNo
   }
 }
 
@@ -192,7 +196,9 @@ async function initializeFromPublished() {
     ownerUserId: source.ownerUserId,
     description: source.description,
     remark: source.remark,
-    sourceRowVersion: source.rowVersion
+    sourceRowVersion: source.rowVersion,
+    securityNodeNo: source.securityNodeNo,
+    fileTransferNodeNo: source.fileTransferNodeNo
   }]
 }
 
@@ -229,7 +235,9 @@ function normalizeDrafts() {
     disasterRecoveryMode: normalizeText(item.disasterRecoveryMode),
     responsibleTeamNameSnapshot: item.responsibleTeamNameSnapshot.trim(),
     description: normalizeText(item.description),
-    remark: normalizeText(item.remark)
+    remark: normalizeText(item.remark),
+    securityNodeNo: normalizeText(item.securityNodeNo),
+    fileTransferNodeNo: normalizeText(item.fileTransferNodeNo)
   }))
 }
 

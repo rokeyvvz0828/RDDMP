@@ -169,7 +169,7 @@ watch(canView, allowed => {
         <el-table-column prop="reason" label="申请原因" min-width="240" show-overflow-tooltip />
         <el-table-column label="状态" width="110">
           <template #default="scope">
-            <UiStatusTag :value="scope.row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(scope.row.status)" />
+            <UiStatusTag :value="scope.row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(scope.row.status)" indicator />
           </template>
         </el-table-column>
         <el-table-column label="申请人" width="100"><template #default="scope">#{{ scope.row.applicantId }}</template></el-table-column>
@@ -188,7 +188,7 @@ watch(canView, allowed => {
         <article v-for="row in rows" :key="row.id">
           <header>
             <div><strong>#{{ row.id }} · {{ targetKindLabel(row.targetKind) }}</strong><small>{{ actionTypeLabel(row.actionType) }} · 第 {{ row.currentBusinessRound }} 轮</small></div>
-            <UiStatusTag :value="row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(row.status)" />
+            <UiStatusTag :value="row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(row.status)" indicator />
           </header>
           <p class="architecture-mobile-card__reason">{{ row.reason }}</p>
           <dl>

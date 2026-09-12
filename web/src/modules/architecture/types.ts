@@ -38,6 +38,8 @@ export interface PhysicalSubsystem {
   englishName: string | null
   status: PublishedSubsystemStatus
   rowVersion: number
+  securityNodeNo: string | null
+  fileTransferNodeNo: string | null
 }
 
 export interface PhysicalDraftInput {
@@ -60,6 +62,8 @@ export interface PhysicalDraftInput {
   description: string | null
   remark: string | null
   sourceRowVersion: number | null
+  securityNodeNo: string | null
+  fileTransferNodeNo: string | null
 }
 
 export interface PhysicalDraft extends Omit<PhysicalDraftInput, 'responsibleTeamOrgId'> {
@@ -137,7 +141,15 @@ export interface UserOption { id: number; displayName: string; username: string;
 export interface ParameterOption { code: string; label: string }
 
 export type ArchitectureResource = 'physical-subsystem' | 'delivery-unit'
-export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
+export type StatusTone = 'primary' | 'success' | 'warning' | 'danger' | 'info'
+export type DetailItem = {
+  label: string
+  value: string
+  wide?: boolean
+  tone?: 'warning' | 'danger'
+  tag?: { value: string | number | boolean; labels?: Record<string, string>; tone?: StatusTone }
+}
+export type DetailSection = { title: string; items: DetailItem[] }
 
 // ---------- 架构规范 ----------
 export type StandardDocumentStatus = 'DRAFT' | 'PUBLISHED' | 'OFFLINE'

@@ -193,7 +193,7 @@ class SubsystemPublicationServiceTest {
                 "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",
                 12L, "平台研发团队",
                 "RUNTIME", "A", "Spring", 30L, "描述", null, sourceRowVersion,
-                0, submittedSnapshot, TIME, TIME);
+                0, submittedSnapshot, TIME, TIME, null, null);
     }
 
     private PhysicalPublishedState physicalState(long id, String code, PublishedStatus status, long rowVersion) {

@@ -148,7 +148,9 @@ public class PhysicalSubsystemService {
                 deploymentPlatform, disasterRecoveryMode,
                 responsibleTeamOrgId, runtimeCode, systemLevelCode, developmentFrameworkCode,
                 ownerUserId, optional(command.description(), "系统描述", 2000),
-                optional(command.remark(), "备注", 1000));
+                optional(command.remark(), "备注", 1000),
+                optional(command.securityNodeNo(), "安全节点号", 64),
+                optional(command.fileTransferNodeNo(), "文件传输节点号", 64));
         return new PreparedCommand(normalized, responsibleTeam.orgName());
     }
 
@@ -167,7 +169,7 @@ public class PhysicalSubsystemService {
                 item.ownerUserId(), owner == null ? null : owner.displayName(),
                 item.description(), item.remark(), item.createdBy(), creator == null ? null : creator.displayName(),
                 item.updatedBy(), item.createdAt(), item.updatedAt(), item.englishName(),
-                item.status(), item.rowVersion());
+                item.status(), item.rowVersion(), item.securityNodeNo(), item.fileTransferNodeNo());
     }
 
     private SystemUserReference userReference(AuthUser actor, Long userId, Map<Long, Optional<SystemUserReference>> cache) {
@@ -410,6 +412,8 @@ public class PhysicalSubsystemService {
             LocalDateTime updatedAt,
             String englishName,
             String status,
-            long rowVersion) {
+            long rowVersion,
+            String securityNodeNo,
+            String fileTransferNodeNo) {
     }
 }
