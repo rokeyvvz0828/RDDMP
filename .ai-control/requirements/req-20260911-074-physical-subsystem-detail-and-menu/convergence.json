@@ -1,0 +1,32 @@
+{
+  "definition_revision": "definition-1",
+  "phase": "converged",
+  "requirement_coverage": [
+    {"requirement_id": "R1", "status": "covered", "evidence": ["observation-T1.json#R1-browser-drawer", "web/src/modules/architecture/components/SubsystemDetailDrawer.vue"]},
+    {"requirement_id": "R2", "status": "covered", "evidence": ["V204", "SubsystemChangeStoreMySqlTest", "observation-T1.json#R2-draft-roundtrip"]},
+    {"requirement_id": "R3", "status": "covered", "evidence": ["V204", "V205", "observation-T1.json#R3-routes"]},
+    {"requirement_id": "R4", "status": "covered", "evidence": ["UiStatusTag.vue", "observation-T1.json#R4-status-indicator"]}
+  ],
+  "feedback_closure": [
+    {"id": "F1", "status": "open", "severity": "cosmetic", "summary": "环境管理分组与叶子菜单同名；按需求字面保留，已在 requirement.md 记录，等待产品确认是否改名。不影响功能与权限。"}
+  ],
+  "regression": "最终回归：架构聚焦测试与 MySQL 存储测试共 33 项全部通过；Mock 初始化测试 16 项通过；前端 vue-tsc 与生产构建通过；浏览器验收完成。真实基线治理检查（V84_1 命名、REQ-20260904-061 scope YAML、既有模块边界违规）仍为 fail-baseline，由 Owner 豁免。",
+  "owner_approval": {
+    "approver": "rokeyvvz0828",
+    "approved_at": "2026-09-11",
+    "source": "用户在本次会话中确认 Owner 已审批并提供豁免",
+    "exemption_scope": "公共能力变更审批、分支命名规则、基线治理检查失败"
+  },
+  "invariants_checked": [
+    "既有路由路径、组件路径与权限代码未变（SQL 对比 sys_menu 行）",
+    "物理子系统写入仍只经审批工作流",
+    "V204 只追加，历史迁移未修改",
+    "新字段可空，存量数据兼容"
+  ],
+  "residual_risk": [
+    "菜单分组改变架构角色的可见层级；已按既有子菜单授权逐目录补齐，但新增角色或历史异常授权（仅授权子菜单未授权 800）不在本次范围。",
+    "两阶段迁移的测试补种仅用于测试库，不影响生产迁移顺序。"
+  ],
+  "verdict": "converged",
+  "notes": "静态检查、单元/集成测试、前端构建、API 运行验证与真实浏览器桌面/移动视口验收均完成；Owner 已审批并豁免基线治理失败；唯一未决项是环境管理同名菜单的产品命名确认。"
+}

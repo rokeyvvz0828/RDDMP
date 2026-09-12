@@ -1,0 +1,46 @@
+{
+  "task_id": "T1",
+  "definition_revision": "definition-1",
+  "status": "verified",
+  "actions": [
+    "追加 V204：为 arch_physical_subsystem 与 arch_subsystem_physical_draft 增加 security_node_no、file_transfer_node_no（VARCHAR(64) NULL）。",
+    "V204 追加 817 架构资产管理 / 818 环境管理 / 819 架构决策管理三个目录，重排架构菜单 parent_id 与 sort_no，并按既有子菜单授权逐目录补齐 sys_role_menu，最后用临时表守卫失败关闭；V205 按用户追加要求将 806 架构规范移入 819 并修正排序，清理空分组授权。",
+    "PhysicalSubsystem、PhysicalSubsystemCommand、PhysicalSubsystemView、PhysicalDraft、PhysicalDraftInput、PhysicalDraftResponse 增加两个字段；仓储与 change 存储在 INSERT/UPDATE/SELECT 中贯通；提交摘要 canonical 覆盖两个新字段。",
+    "MockDataInitializer 白名单与校验补充两列，mock/mock-data.json 三条物理子系统演示数据补充节点号。",
+    "SubsystemChangeStoreMySqlTest 目标版本由 156 提升到 205，并在 V157 后补种 RDDMP-PLATFORM 默认项目以通过 V158 起的历史守卫。",
+    "UiStatusTag 新增可选 indicator 指示灯能力（默认关闭），并在物理子系统发布状态、变更工单状态的表格与详情中启用。"
+  ],
+  "files_changed": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V204__physical_subsystem_node_numbers_and_menu_groups.sql",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V205__move_architecture_standards_to_decision_group.sql",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/model/SubsystemChangeModels.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/persistence/SubsystemChangeStore.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/service/SubsystemChangeService.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/change/web/SubsystemChangeApplicationController.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystem.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/PhysicalSubsystemCommand.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/repository/ArchitectureSubsystemRepository.java",
+    "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+    "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/persistence/SubsystemChangeStoreMySqlTest.java",
+    "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemChangeServiceTest.java",
+    "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/service/SubsystemPublicationServiceTest.java",
+    "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/PhysicalSubsystemServiceTest.java",
+    "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/PhysicalSubsystemControllerTest.java",
+    "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+    "mock/mock-data.json",
+    "web/src/components/ui/UiStatusTag.vue",
+    "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue"
+  ],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-architecture -am -DskipTests test-compile", "result": "exit 0"},
+    {"command": "mvn -pl :ccb-architecture test -Dtest=SubsystemChangeStoreMySqlTest -DfailIfNoTests=false", "result": "Tests run: 8, Failures: 0, Errors: 0; 迁移至 v205 成功"},
+    {"command": "mvn -pl :ccb-architecture test -Dtest='PhysicalSubsystemServiceTest,PhysicalSubsystemControllerTest,SubsystemChangeServiceTest,SubsystemPublicationServiceTest,SubsystemChangeApplicationControllerTest' -DfailIfNoTests=false", "result": "Tests run: 25, Failures: 0, Errors: 0"},
+    {"command": "mvn -pl :ccb-infrastructure test -Dtest=MockDataInitializerTest -DfailIfNoTests=false", "result": "Tests run: 16, Failures: 0, Errors: 0"},
+    {"command": "npm --prefix web run build", "result": "vue-tsc + vite build 通过"}
+  ],
+  "deviations": [
+    "SubsystemChangeStoreMySqlTest 原先只迁移到 V156，新增列后必须提升到 V205；因 V158 守卫要求默认项目，测试改为两阶段迁移并在中间补种 RDDMP-PLATFORM。",
+    "首版 V205 清理语句使用同表子查询触发 MySQL 1093，改为派生表写法后在真实库与测试库均通过。"
+  ],
+  "open_items": ["环境管理分组与同名叶子菜单待产品确认是否改名。"]
+}

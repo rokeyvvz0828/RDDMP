@@ -1,0 +1,48 @@
+{
+  "schema_version": 5,
+  "revision": 9,
+  "created_at": "2026-09-11T10:00:00+00:00",
+  "updated_at": "2026-09-11T16:10:00+00:00",
+  "mode": "standard",
+  "workflow": "compact",
+  "phase": "converged",
+  "phase_history": [
+    {"from": null, "to": "defining", "evidence": "导入用户三项明确需求；菜单分组命名冲突（环境管理分组与叶子同名）记入 requirement.md 已知问题并按字面保留", "recorded_at": "2026-09-11T10:00:00+00:00"},
+    {"from": "defining", "to": "planning", "evidence": "三条 must 需求均有可测量验收：抽屉分栏、两个节点号端到端、三组菜单树", "recorded_at": "2026-09-11T10:05:00+00:00"},
+    {"from": "planning", "to": "controlling", "evidence": "任务边界锁定在 architecture 模块、infrastructure 迁移与 architecture 前端", "recorded_at": "2026-09-11T10:08:00+00:00"},
+    {"from": "controlling", "to": "controlling", "evidence": "用户追加要求：架构规范从架构资产管理移入架构决策管理；按只追加新增 V205", "recorded_at": "2026-09-11T15:05:00+00:00"},
+    {"from": "controlling", "to": "controlling", "evidence": "用户追加要求：表格与详情状态用标签加指示灯；UiStatusTag 新增可选 indicator 能力并在物理子系统与变更工单应用", "recorded_at": "2026-09-11T15:40:00+00:00"},
+    {"from": "controlling", "to": "verifying", "evidence": "代码、V204、单元/集成测试、前端构建、真实浏览器验收均完成", "recorded_at": "2026-09-11T10:40:00+00:00"},
+    {"from": "verifying", "to": "converged", "evidence": "验收标准 1-4 有直接证据；标准 5 的静态/测试/构建/浏览器证据齐备，无未关闭负反馈", "recorded_at": "2026-09-11T10:45:00+00:00"}
+  ],
+  "objective": "物理子系统详情抽屉按业务语义分栏展示，新增安全节点号与文件传输节点号两个自由文本字段，并将架构管理菜单拆分为架构资产管理、环境管理、架构决策管理三组。",
+  "requirements": [
+    {"id": "R1", "statement": "物理子系统详情抽屉使用带边框表格并按基本信息/归属信息/技术信息/描述分栏，字段与需求一致。", "priority": "must", "sensor": "浏览器 DOM 抽取栏位标题与标签"},
+    {"id": "R2", "statement": "物理子系统新增安全节点号与文件传输节点号，变更申请草稿可保存、回显并进入审批快照，发布后详情可见。", "priority": "must", "sensor": "V204 列存在 + 草稿 API 往返 + MySQL 存储测试"},
+    {"id": "R3", "statement": "架构管理下出现三个分组目录，原菜单项归入对应分组（架构规范在架构决策管理），路由/权限不变。", "priority": "must", "sensor": "sys_menu 查询与 /api/auth/routes 树"},
+    {"id": "R4", "statement": "物理子系统与变更工单的表格与详情状态字段使用标签，并带同色指示灯。", "priority": "must", "sensor": "浏览器 DOM 与截图验收 el-tag 内的指示灯节点"}
+  ],
+  "invariants": [
+    "既有路由路径、组件路径、权限代码与 Java/数据库命名不变",
+    "物理子系统仍只经审批发布写入，未新增直写入口",
+    "新字段为可选自由文本，不参与唯一性或字典校验",
+    "已发布 Flyway 迁移不被修改"
+  ],
+  "constraints": ["不访问生产系统", "不改写历史迁移", "只改任务范围覆盖文件"],
+  "non_goals": ["不改编号规则、状态机与审批流程", "不新增字典或跨系统同步", "不重命名既有菜单项"],
+  "tasks": [
+    {"id": "T1", "goal": "后端字段贯通与菜单分组迁移（V204 建组，V205 调整架构规范归属）", "status": "verified", "evidence": ["execution-T1.json", "observation-T1.json"]},
+    {"id": "T2", "goal": "前端详情分栏与表单输入", "status": "verified", "evidence": ["execution-T1.json", "observation-T1.json"]}
+  ],
+  "feedback": [
+    {"id": "F1", "type": "note", "summary": "环境管理分组与叶子菜单同名，按需求字面保留，已在 requirement.md 记录待产品确认", "status": "open"}
+  ],
+  "samples": [
+    {"name": "architecture-tests", "command": "mvn -pl :ccb-architecture test -Dtest='PhysicalSubsystemServiceTest,PhysicalSubsystemControllerTest,SubsystemChangeServiceTest,SubsystemPublicationServiceTest,SubsystemChangeApplicationControllerTest'", "result": "25 passed"},
+    {"name": "architecture-mysql-test", "command": "mvn -pl :ccb-architecture test -Dtest=SubsystemChangeStoreMySqlTest", "result": "8 passed, V204/V205 applied"},
+    {"name": "mock-initializer-test", "command": "mvn -pl :ccb-infrastructure test -Dtest=MockDataInitializerTest", "result": "16 passed"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "result": "vue-tsc + vite build passed"},
+    {"name": "browser", "command": "headless chromium CDP acceptance", "result": "drawer sections/labels, menu groups, form inputs and status indicator tags verified"},
+    {"name": "final-regression", "command": "mvn -pl :ccb-architecture test -Dtest='PhysicalSubsystemServiceTest,PhysicalSubsystemControllerTest,SubsystemChangeServiceTest,SubsystemPublicationServiceTest,SubsystemChangeApplicationControllerTest,SubsystemChangeStoreMySqlTest' + npm --prefix web run build", "result": "33 passed; build passed（提交前最终回归）"}
+  ]
+}

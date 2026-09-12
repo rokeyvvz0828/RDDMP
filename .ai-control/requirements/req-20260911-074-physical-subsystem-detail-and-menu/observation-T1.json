@@ -1,0 +1,69 @@
+{
+  "task_id": "T1",
+  "definition_revision": "definition-1",
+  "independent": true,
+  "status": "verified",
+  "observations": [
+    {
+      "requirement_id": "R1",
+      "sensor": "headless chromium CDP 抽取抽屉 DOM",
+      "expected": ["基本信息", "归属信息", "技术信息", "描述"],
+      "observed": "headings=[基本信息,归属信息,技术信息,描述]；labels=[系统编号,系统简称,英文名称,发布状态,负责人,负责团队,所属事业群,部署平台,开发框架,系统运行时间,系统级别,安全节点号,文件传输节点号,灾备模式,所属逻辑子系统,业务组件编号,系统描述,备注]",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "真实 MySQL 草稿 API 往返",
+      "expected": "草稿创建与回读返回 securityNodeNo/fileTransferNodeNo",
+      "observed": "draft_security=SEC-NODE-ROUNDTRIP draft_ft=FT-NODE-ROUNDTRIP；reload 相同",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "物理子系统详情 API",
+      "expected": "返回两个新字段，缺省为 null",
+      "observed": "PHY_MOBILE securityNodeNo=SEC-NODE-0102 fileTransferNodeNo=null",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "/api/auth/routes",
+      "expected": "架构管理下三组目录及原菜单归位，架构规范在架构决策管理",
+      "observed": "架构资产管理(5：物理子系统/架构子系统变更工单/部署单元/交付单元/部署单元初始化导入)、环境管理(8)、架构决策管理(2：架构决策/架构规范)，路由与权限代码未变",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "开发库 flyway_schema_history 与 sys_menu",
+      "expected": "V204/V205 成功，架构规范归入架构决策管理",
+      "observed": "V204 success=1；V205 success=1；806 parent_id=819 sort_no=20；807 parent_id=819 sort_no=10；无 817 空分组授权",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "浏览器表单页 DOM",
+      "expected": "变更申请表单存在安全节点号与文件传输节点号输入",
+      "observed": "form labels contain node fields: true true",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R1",
+      "sensor": "移动视口 390x844 截图",
+      "expected": "抽屉不遮挡且可滚动查看",
+      "observed": "抽屉在移动视口渲染，表格横向可滚动",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "headless chromium 检查 el-tag 内指示灯节点",
+      "expected": "表格与详情状态标签均含同色指示灯",
+      "observed": "物理子系统列表状态 tag={text:启用,dot:true,color:rgb(22,133,107)}；详情“发布状态”标签=[{text:启用,dot:true}]；指示灯源为 currentColor",
+      "verdict": "pass"
+    }
+  ],
+  "noise": [
+    "Flyway 校验脚本对既有 V84_1__seed_requirement_system_catalog.sql 报命名不合规，属本次改动前的基线缺陷。",
+    "check-all-governance.mjs 因既有 REQ-20260904-061 codex-task-scope.yaml 非 JSON 兼容 YAML 中止，属本次改动前的基线缺陷。"
+  ],
+  "notes": "浏览器验收使用 127.0.0.1:5173 前端开发服务与本地后端，登录账号 admin（本地演示账号）。"
+}
