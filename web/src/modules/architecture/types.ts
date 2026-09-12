@@ -148,6 +148,8 @@ export type DetailItem = {
   wide?: boolean
   tone?: 'warning' | 'danger'
   tag?: { value: string | number | boolean; labels?: Record<string, string>; tone?: StatusTone }
+  /** 带人员标识的条目改由人员卡片渲染，value 作为未取到档案时的姓名兜底。 */
+  userId?: number | string | null
 }
 export type DetailSection = { title: string; items: DetailItem[] }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import { computed } from 'vue'
 import type { DashboardView } from '../planApi'
 const props = defineProps<{ dashboard: DashboardView; all: boolean; manager: boolean; loading: boolean }>()
@@ -27,7 +28,7 @@ function inColumn(task: { status: string; hasBlocked: boolean }, key: string) {
         <button v-for="task in tasks.filter(t => inColumn(t, column.key))" :key="task.id" class="personal-board__card" @click="emit('open', task.id)">
           <strong>{{ task.name }}</strong><span>{{ task.targetName || '公共任务' }}</span>
           <span>{{ task.stageName }} · {{ task.progress ?? 0 }}%</span>
-          <span>负责人：{{ task.ownerName }}</span>
+          <span class="personal-board__owner">负责人：<UiUserIdentity :user-id="task.ownerUserId" :fallback-name="task.ownerName" variant="standard" /></span>
           <span>检查项：{{ task.completedChecks }}/{{ task.totalChecks }} · 截止：{{ task.plannedEnd?.slice(0, 10) || '未设置' }}</span>
           <span v-if="task.assignmentNeedsAttention">待处理：任务分工资格已失效，请重新分派</span>
           <span v-if="task.hasBlocked && task.status === 'COMPLETED'">状态异常：已完成任务仍有未解除阻塞，请核查</span>

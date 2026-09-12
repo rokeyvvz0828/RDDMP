@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DetailSection } from '../types'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
 
 withDefaults(defineProps<{
@@ -30,6 +31,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
             :span="item.wide ? 2 : 1"
           >
             <UiStatusTag v-if="item.tag" :value="item.tag.value" :labels="item.tag.labels" :tone="item.tag.tone" indicator />
+            <UiUserIdentity v-else-if="item.userId" :user-id="item.userId" :fallback-name="item.value" variant="standard" />
             <span v-else :class="item.tone ? `is-${item.tone}` : ''">{{ item.value || '—' }}</span>
           </el-descriptions-item>
         </el-descriptions>

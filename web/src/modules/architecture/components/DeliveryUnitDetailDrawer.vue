@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { Edit, Check, Close } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../../api/error'
 import { replaceDeliveryUnitDeploymentUnits, searchDeliveryUnitDeploymentUnitOptions } from '../api'
 import type { DeliveryUnit, ParameterOption, RelatedDeploymentUnit } from '../types'
@@ -42,8 +43,9 @@ let relatedRequest = 0
 
 watch(() => props.unit?.id, () => cancelEdit())
 
-function item(label: string, value: string | null | undefined, wide = false, tone?: 'warning') {
-  return { label, value: value || '—', wide, tone }
+function item(label: string, value: string | null | undefined, wide = false, tone?: 'warning',
+              userId?: number | string | null) {
+  return { label, value: value || '—', wide, tone, userId }
 }
 
 const items = computed(() => props.unit ? [
@@ -53,7 +55,7 @@ const items = computed(() => props.unit ? [
   item('归属物理子系统', props.unit.physicalSubsystemName
     ? `${props.unit.physicalSubsystemName}（${props.unit.physicalSubsystemCode}）` : '—'),
   item('物理子系统状态', props.unit.physicalSubsystemStatus),
-  item('创建人', props.unit.createdByDisplayName || `用户 #${props.unit.createdBy}`),
+  item('创建人', props.unit.createdByDisplayName || `用户 #${props.unit.createdBy}`, false, undefined, props.unit.createdBy),
   item('创建时间', formatDateTime(props.unit.createdAt)),
   item('最后更新', formatDateTime(props.unit.updatedAt)),
   item('数据版本', String(props.unit.rowVersion)),
@@ -135,7 +137,10 @@ function canEditRelations() {
         <dl class="architecture-detail-list">
           <div v-for="row in items" :key="row.label" :class="{ 'is-wide': row.wide }">
             <dt>{{ row.label }}</dt>
-            <dd :class="row.tone ? `is-${row.tone}` : ''">{{ row.value }}</dd>
+            <dd :class="row.tone ? `is-${row.tone}` : ''">
+              <UiUserIdentity v-if="row.userId" :user-id="row.userId" :fallback-name="row.value" variant="compact" />
+              <template v-else>{{ row.value }}</template>
+            </dd>
           </div>
         </dl>
 
