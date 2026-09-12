@@ -1187,14 +1187,12 @@ body,
 .ui-user-identity { display: inline-flex; align-items: center; gap: 9px; min-width: 0; color: var(--text); }
 .ui-user-identity strong { overflow: hidden; max-width: 160px; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
 .ui-user-identity .el-avatar { flex: 0 0 auto; background: color-mix(in srgb, var(--brand) 18%, var(--panel-bg)); color: var(--brand-strong); }
-.ui-user-profile { color: var(--text); }
-.ui-user-profile__head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-.ui-user-profile__head > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.ui-user-profile__head strong { font-size: 14px; }
-.ui-user-profile__head span { color: var(--muted); font-size: 12px; }
-.ui-user-profile dl { display: grid; grid-template-columns: 64px 1fr; gap: 8px 10px; margin: 12px 0 0; font-size: 12px; }
-.ui-user-profile dt { color: var(--muted); }
-.ui-user-profile dd { overflow: hidden; margin: 0; text-overflow: ellipsis; white-space: nowrap; }
+/* 两行堆叠：第一行姓名，后续行为电话与团队；窄列下省略而不是撑破列宽。 */
+.ui-user-identity__lines { display: grid; gap: 2px; min-width: 0; }
+.ui-user-identity__sub { overflow: hidden; max-width: 160px; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ui-user-identity--full .ui-user-identity__sub { max-width: 200px; }
+/* 浮层在窄屏收窄，留出 12px 安全边，不产生横向滚动。 */
+@media (max-width: 760px) { .ui-person-popover.el-popover { max-width: calc(100vw - 24px); } }
 .ui-avatar-upload { display: inline-flex; align-items: center; gap: 12px; color: var(--muted); }
 .ui-avatar-upload .el-avatar { background: var(--panel-muted); color: var(--brand); }
 .ui-avatar-upload__actions { display: flex; align-items: center; gap: 8px; }
