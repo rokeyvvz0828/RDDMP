@@ -40,7 +40,9 @@ const state = computed(() => store.stateOf(resolvedId.value))
 const showAvatarFinal = computed(() => props.showAvatar ?? true)
 const showPhoneFinal = computed(() => props.showPhone ?? props.variant !== 'compact')
 const showTeamFinal = computed(() => props.showTeam ?? props.variant === 'full')
-const displayName = computed(() => profile.value?.displayName || props.user?.displayName || props.fallbackName || '未登录用户')
+const displayName = computed(() => profile.value?.displayName || props.user?.displayName || props.fallbackName
+  // 未解析出档案时：传了标识说明是人员字段，显示占位符；完全未传 user 与 userId 时保持旧的「未登录用户」。
+  || (resolvedId.value === null && props.user === null ? '未登录用户' : '—'))
 const initial = computed(() => (profile.value?.displayName || props.user?.displayName || '用').slice(0, 1))
 const avatarUrl = computed(() => profile.value?.avatarUrl || props.user?.avatarUrl || undefined)
 const phone = computed(() => (showPhoneFinal.value ? profile.value?.mobilePhone || null : null))
