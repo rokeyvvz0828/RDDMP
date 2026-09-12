@@ -178,6 +178,7 @@ export interface StandardDocumentDetail {
   publishedByName: string | null
   rowVersion: number
   createdByName: string | null
+  createdBy: number
   createdAt: string
   updatedAt: string
 }
@@ -226,6 +227,7 @@ export interface DecisionMatterSummary {
   firstHandlingOutcome: FirstHandlingOutcome | null
   reviewMode: ReviewMethod | null
   proposerName: string
+  proposerId: number
   updatedAt: string
 }
 
@@ -265,6 +267,7 @@ export interface DecisionMaterial {
   kind: MaterialKind
   content: string
   createdByName: string | null
+  createdBy: number
   createdAt: string
 }
 
