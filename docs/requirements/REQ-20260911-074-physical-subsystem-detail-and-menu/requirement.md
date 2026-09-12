@@ -71,7 +71,9 @@ module: business/architecture
 
 ## 交付与审批
 
-- 实施分支：`feat/REQ-20260911-074-physical-subsystem-detail-and-menu`（合并回 `dev-ivanh` 并推送）。
+- 实施分支：`feat/REQ-20260911-074-physical-subsystem-detail-and-menu`，已 fast-forward 合并回 `dev-ivanh` 并推送 `origin/dev-ivanh`（`1183981..01832cd`）。
+- 提交：`c3a7867`（代码与迁移）、`01832cd`（需求、范围与账本）。
+- 未合并 `origin/main`、未推送 `main`、未创建 PR；工作区中与本需求无关的 `.agents/skills` 改动未提交。
 - Owner 复核：`rokeyvvz0828` 于 2026-09-11 确认审批通过。
 - 豁免：Owner 对本需求涉及的公共能力变更及基线治理检查失败（`V84_1` 命名、`REQ-20260904-061` scope YAML、既有模块边界违规）与分支命名给出口头豁免，豁免不改变代码内容。
 
