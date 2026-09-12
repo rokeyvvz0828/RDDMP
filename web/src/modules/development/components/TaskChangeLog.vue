@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
 import UiPagination from '../../../components/ui/UiPagination.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import { developmentApi } from '../api'
 import { apiErrorMessage } from '../../../api/error'
 import { ACTION_LABELS, SOURCE_ROLE_LABELS, TASK_STATUS_LABELS, WORK_ITEM_STATUS_LABELS, type TaskChange } from '../types'
@@ -56,7 +57,7 @@ onBeforeUnmount(() => { ticket++ })
     <div class="dev-section-heading"><h3>修改记录</h3><el-tooltip content="刷新修改记录"><el-button :icon="Refresh" circle :loading="loading" aria-label="刷新修改记录" @click="load" /></el-tooltip></div>
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
     <article v-for="event in rows" :key="event.id" class="dev-change-row">
-      <header><strong>{{ event.actor.name }} · {{ changeActionLabels[event.action] || event.action }}{{ objectLabels[event.objectType] || '' }}</strong><time>{{ event.createdAt.replace('T', ' ').slice(0, 19) }}</time></header>
+      <header><UiUserIdentity :user-id="event.actor.id" :fallback-name="event.actor.name" variant="compact" /><strong>· {{ changeActionLabels[event.action] || event.action }}{{ objectLabels[event.objectType] || '' }}</strong><time>{{ event.createdAt.replace('T', ' ').slice(0, 19) }}</time></header>
       <dl class="dev-change-fields"><div v-for="(change, index) in differences(event)" :key="index"><dt>{{ change.label }}</dt><dd><del v-if="event.before">{{ change.before }}</del><span>{{ change.after }}</span></dd></div></dl>
       <small class="dev-muted">追踪号：{{ event.traceId }}</small>
     </article>

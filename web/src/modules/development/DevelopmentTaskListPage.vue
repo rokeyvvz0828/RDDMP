@@ -7,6 +7,7 @@ import UiToolbar from '../../components/ui/UiToolbar.vue'
 import UiDataTable from '../../components/ui/UiDataTable.vue'
 import UiPagination from '../../components/ui/UiPagination.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import { useProjectContextStore } from '../../stores/project-context'
 import { apiErrorMessage } from '../../api/error'
@@ -62,7 +63,7 @@ onMounted(() => { void project.initialize() })
       <UiDataTable class="dev-desktop-table" :data="rows" :loading="loading" row-key="id">
         <el-table-column label="任务" min-width="200"><template #default="{ row }"><button type="button" class="dev-record-link" @click="open(row)"><strong>{{ row.title }}</strong><small>{{ row.number }}</small></button></template></el-table-column>
         <el-table-column label="系统 / 来源" min-width="145"><template #default="{ row }"><span>{{ row.system.name }}</span><small class="dev-block dev-muted">{{ row.source?.number || '自主创建' }}</small></template></el-table-column>
-        <el-table-column label="负责人" min-width="110"><template #default="{ row }">{{ row.owner.name }}</template></el-table-column>
+        <el-table-column label="负责人" min-width="130"><template #default="{ row }"><UiUserIdentity :user-id="row.owner.id" :fallback-name="row.owner.name" variant="compact" /></template></el-table-column>
         <el-table-column label="状态" width="90"><template #default="{ row }"><UiStatusTag :value="row.status" :labels="TASK_STATUS_LABELS" :tone="statusTone(row.status)" /></template></el-table-column>
         <el-table-column label="开发 / 测试排期" min-width="195"><template #default="{ row }"><small class="dev-block">{{ dateRange(row.developmentPlanStart, row.developmentPlanEnd) }}</small><small class="dev-muted">{{ dateRange(row.testPlanStart, row.testPlanEnd) }}</small></template></el-table-column>
         <el-table-column label="工作项" width="75"><template #default="{ row }">{{ row.completedWorkItemCount }} / {{ row.workItemCount }}</template></el-table-column>
@@ -71,7 +72,7 @@ onMounted(() => { void project.initialize() })
       <div v-loading="loading" class="dev-mobile-cards">
         <article v-for="task in rows" :key="task.id" class="dev-record-card">
           <header><button class="dev-record-link" type="button" @click="open(task)"><strong>{{ task.title }}</strong><small>{{ task.number }}</small></button><UiStatusTag :value="task.status" :labels="TASK_STATUS_LABELS" :tone="statusTone(task.status)" /></header>
-          <dl><div><dt>系统</dt><dd>{{ task.system.name }}</dd></div><div><dt>负责人</dt><dd>{{ task.owner.name }}</dd></div><div><dt>开发排期</dt><dd>{{ dateRange(task.developmentPlanStart, task.developmentPlanEnd) }}</dd></div><div><dt>工作项</dt><dd>{{ task.completedWorkItemCount }} / {{ task.workItemCount }}</dd></div></dl>
+          <dl><div><dt>系统</dt><dd>{{ task.system.name }}</dd></div><div><dt>负责人</dt><dd><UiUserIdentity :user-id="task.owner.id" :fallback-name="task.owner.name" variant="full" /></dd></div><div><dt>开发排期</dt><dd>{{ dateRange(task.developmentPlanStart, task.developmentPlanEnd) }}</dd></div><div><dt>工作项</dt><dd>{{ task.completedWorkItemCount }} / {{ task.workItemCount }}</dd></div></dl>
           <footer><el-button type="primary" link :icon="View" @click="open(task)">查看详情</el-button><el-button v-if="task.allowedActions.includes('UPDATE') && can('development:task:update')" link :icon="Edit" @click="edit(task)">编辑</el-button></footer>
         </article>
         <UiEmptyState v-if="!loading && !error && !rows.length" title="暂无开发任务" description="当前范围内没有匹配记录" />

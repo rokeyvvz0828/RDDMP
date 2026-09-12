@@ -5,6 +5,7 @@ import { ArrowLeft, Edit, MoreFilled, Refresh, Select, VideoPlay } from '@elemen
 import { ElMessageBox } from 'element-plus'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { useProjectContextStore } from '../../stores/project-context'
 import { apiErrorMessage } from '../../api/error'
 import { developmentApi } from './api'
@@ -78,7 +79,7 @@ onBeforeUnmount(() => { ticket++ })
         <el-dropdown v-if="moreActions.length" @command="perform"><el-button :icon="MoreFilled" :disabled="busy || stageDirty" aria-label="更多任务操作" /><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in moreActions" :key="action" :command="action">{{ ACTION_LABELS[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown>
       </template></UiPageHeader>
       <div class="dev-identity"><code>{{ task.number }}</code><UiStatusTag :value="task.status" :labels="TASK_STATUS_LABELS" :tone="statusTone(task.status)" /><span v-for="role in task.source?.roles || []" :key="role" class="dev-muted">{{ SOURCE_ROLE_LABELS[role] || role }}</span></div>
-      <dl class="dev-facts"><div><dt>所属系统</dt><dd>{{ task.system.name }}</dd></div><div><dt>任务负责人</dt><dd>{{ task.owner.name }}</dd></div><div><dt>来源需求</dt><dd>{{ task.source?.number || '自主创建' }}</dd></div><div><dt>已完成工作项</dt><dd>{{ task.completedWorkItemCount }} / {{ task.workItemCount }}</dd></div><div><dt>开发排期</dt><dd>{{ dateRange(task.developmentPlanStart, task.developmentPlanEnd) }}</dd></div><div><dt>测试排期</dt><dd>{{ dateRange(task.testPlanStart, task.testPlanEnd) }}</dd></div></dl>
+      <dl class="dev-facts"><div><dt>所属系统</dt><dd>{{ task.system.name }}</dd></div><div><dt>任务负责人</dt><dd><UiUserIdentity :user-id="task.owner.id" :fallback-name="task.owner.name" variant="standard" /></dd></div><div><dt>来源需求</dt><dd>{{ task.source?.number || '自主创建' }}</dd></div><div><dt>已完成工作项</dt><dd>{{ task.completedWorkItemCount }} / {{ task.workItemCount }}</dd></div><div><dt>开发排期</dt><dd>{{ dateRange(task.developmentPlanStart, task.developmentPlanEnd) }}</dd></div><div><dt>测试排期</dt><dd>{{ dateRange(task.testPlanStart, task.testPlanEnd) }}</dd></div></dl>
       <div v-if="task.description" class="dev-description"><p>{{ expanded ? task.description : task.description.slice(0, 240) }}</p><el-button v-if="task.description.length > 240" link @click="expanded = !expanded">{{ expanded ? '收起' : '展开' }}</el-button></div>
       <el-alert v-if="actionError" :title="actionError" type="error" show-icon :closable="false" />
       <el-tabs v-model="tab" :before-leave="beforeTabLeave" class="dev-detail-tabs">
