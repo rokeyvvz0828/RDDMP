@@ -8,6 +8,7 @@ import { useRoute, useRouter } from 'vue-router'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import { useProjectContextStore } from '../../stores/project-context'
@@ -55,7 +56,6 @@ import {
   setTaskDependencies,
   startTask,
   suggestCancelCheckItem,
-  loadPlanUserOptions,
   getNewTaskAssignment,
   updatePlanSchedule,
   updateTaskSchedule
@@ -174,7 +174,6 @@ async function loadAll() {
     const loadedDetail = await getPlan(planId)
     if (!isCurrent()) return
     detail.value = loadedDetail
-    void loadUserMap()
     if (currentTask.value && !detail.value.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
       currentTask.value = null
       taskDrawerVisible.value = false
@@ -822,29 +821,6 @@ async function onRejectSuggestion(suggestion: SuggestionView) {
 }
 
 // ---------- 看板/时间视图/报告 ----------
-const users = ref<Record<number, string>>({})
-
-async function loadUserMap() {
-  try {
-    let page = 1
-    while (page <= 5) {
-      const result = await loadPlanUserOptions('', 100)
-      for (const user of result.records) {
-        users.value[user.id] = user.displayName
-      }
-      if (page * 100 >= result.total || result.records.length === 0) break
-      page += 1
-    }
-  } catch {
-    // 映射加载失败不阻断页面，仅显示原始 id
-  }
-}
-
-function userName(userId: number | null | undefined) {
-  if (!userId) return '—'
-  return users.value[userId] || String(userId)
-}
-
 const reportLoading = ref(false)
 const reportData = ref<Awaited<ReturnType<typeof getPlanReport>> | null>(null)
 
@@ -1314,8 +1290,8 @@ function formatRange(start: string | null, end: string | null) {
             <el-table-column prop="occurredAt" label="时间" width="170" />
             <el-table-column prop="objectType" label="对象类型" width="110" />
             <el-table-column prop="eventType" label="事件" width="110" />
-            <el-table-column label="操作人" width="120">
-              <template #default="{ row }">{{ userName(row.operatorUserId) }}</template>
+            <el-table-column label="操作人" min-width="130">
+              <template #default="{ row }"><UiUserIdentity :user-id="row.operatorUserId" variant="compact" /></template>
             </el-table-column>
             <el-table-column prop="reason" label="原因/说明" min-width="180" show-overflow-tooltip />
             <el-table-column label="操作" width="110">
@@ -1434,7 +1410,7 @@ function formatRange(start: string | null, end: string | null) {
           </el-descriptions-item>
           <el-descriptions-item label="目标">{{ currentTask.targetName ?? '计划级' }}</el-descriptions-item>
           <el-descriptions-item label="进度">{{ currentTask.progress ?? 0 }}%</el-descriptions-item>
-          <el-descriptions-item label="责任人">{{ userName(currentTask.ownerUserId) }}</el-descriptions-item>
+          <el-descriptions-item label="责任人"><UiUserIdentity :user-id="currentTask.ownerUserId" variant="standard" /></el-descriptions-item>
           <el-descriptions-item label="计划时间">{{ currentTask.plannedStart ?? '—' }} ~ {{ currentTask.plannedEnd ?? '—' }}</el-descriptions-item>
           <el-descriptions-item label="实际时间">{{ currentTask.actualStart ?? '—' }} ~ {{ currentTask.actualEnd ?? '—' }}</el-descriptions-item>
         </el-descriptions>
@@ -1465,7 +1441,7 @@ function formatRange(start: string | null, end: string | null) {
             </header>
             <p v-if="item.guide" class="plan-detail-check__guide">{{ item.guide }}</p>
             <dl v-if="item.completedBy || item.completedAt || item.cancelReason" class="plan-detail-check__meta">
-              <div v-if="item.completedBy"><dt>完成人</dt><dd>{{ userName(item.completedBy) }}</dd></div>
+              <div v-if="item.completedBy"><dt>完成人</dt><dd><UiUserIdentity :user-id="item.completedBy" variant="compact" /></dd></div>
               <div v-if="item.completedAt"><dt>完成时间</dt><dd>{{ item.completedAt?.replace('T', ' ').slice(0, 19) }}</dd></div>
               <div v-if="item.cancelReason"><dt>取消原因</dt><dd>{{ item.cancelReason }}</dd></div>
             </dl>
@@ -1523,7 +1499,7 @@ function formatRange(start: string | null, end: string | null) {
         <el-table :data="currentTask.events" size="small">
           <el-table-column prop="occurredAt" label="时间" width="170" />
           <el-table-column prop="eventType" label="事件" width="110" />
-          <el-table-column prop="operatorUserId" label="操作人" width="90" />
+          <el-table-column label="操作人" min-width="130"><template #default="{ row }"><UiUserIdentity :user-id="row.operatorUserId" variant="compact" /></template></el-table-column>
           <el-table-column prop="reason" label="原因" min-width="150" show-overflow-tooltip />
         </el-table>
       </template>
