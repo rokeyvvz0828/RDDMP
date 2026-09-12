@@ -1,0 +1,3778 @@
+{
+  "schema_version": 5,
+  "revision": 6,
+  "created_at": "2026-09-12T07:43:33+00:00",
+  "updated_at": "2026-09-12T12:25:16+00:00",
+  "mode": "standard",
+  "workflow": "compact",
+  "phase": "controlling",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "defining",
+      "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=1；设计确认=修订 1 的用户确认：范围（只读展示）、数据来源（平台批量接口且已获 Owner 批准）、触屏点击、三档形态（两行堆叠）、浮层布局（分区卡片加角色 chips）、段 3 清单与档位分配、段 4 数据流权限失败行为与验证策略、补齐 3 处后端字段，复核落盘文件后回复「可以」。修订 2 的增量（R11 组件示范页示例、D8、D9、文件计数更正）在复核计划时一并获批，用户回复「批准，本次不修历史问题」。用户同时明确了基线故障的处理方向：本次不修复，声明为已知例外，完成报告需如实标注门禁未全绿的原因。；计划确认=用户复核设计修订 2 与实施计划后回复「批准，本次不修历史问题」，并明确基线故障声明为已知例外、本次不修复",
+      "recorded_at": "2026-09-12T07:43:33+00:00"
+    },
+    {
+      "from": "defining",
+      "to": "planning",
+      "evidence": "defining 退出门禁核对：目标唯一且不含实现方案；11 条 must 需求均有稳定 ID、可判别验收与至少一个反例；不变量 9 条、约束 6 条、非目标见设计文档，已分开记录；假设 3 条均带可证伪条件（Owner 批准、手机号可见性、el-popover teleport 定位），未知项 4 条均 blocking=false 且未被伪装成事实；11 条 must 需求各绑定一个 measurements 条目与一个 action_bounds 条目。measurements 的判别力经逐条检查：R4 用 Testcontainers 真实库断言字段集合与租户隔离，R5 用 Network 面板请求条数，R6 用 git diff 空输出与零请求，R8 显式要求断言浮层状态非 missing 以避免把「未找到」误判为通过。已披露 R1 与 R11 共用同一传感器、截图类传感器无法机器判定对比度、断网模拟覆盖不到 500 与超时等盲区。",
+      "recorded_at": "2026-09-12T12:20:08+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "controlling",
+      "evidence": "planning 退出门禁核对：11 条 must 需求全部由任务覆盖（R1→T3,T4；R2→T3；R3→T3；R4→T1；R5→T2；R6→T3,T10；R7→T6,T7,T8,T9,T10；R8→T5,T6,T7；R9→T6,T7,T8；R10→T3,T10；R11→T4）。每个任务都有 write_scope、checks、evidence_required、rollback、stop_conditions、escalation_conditions，无空项。依赖图无环且已剔除开发前计划的错误边 T5→T6。并行任务 T6/T7/T8/T9 的写入路径两两不相交，且不共享新增接口或运行资源。共享契约 UiUserIdentity 的 prop 由 T3 唯一持有，集成点见第 4 条 integration_checks。采样频率与风险相称：高风险动作（平台新增接口、公共组件改造、响应 DTO 追加）各自独立成任务并在任务完成后立即采样，T10 做最终验收，不采用全部完成后才首次测量。所有动作位于用户授权与定义阶段确认的 action_bounds 范围内。",
+      "recorded_at": "2026-09-12T12:20:46+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "defining": [
+      {
+        "revision": 1,
+        "evidence": "defining 检查点：-requirement-baseline 复核已批准设计的 11 条 must 需求设定值（未改动任何产品决策，仅把验收条件改写为可判别信号）；-engineering-system 逐项对照代码与运行环境验证 handoff.control_seed：已验证 sys_user 含 mobile_phone 且既有页面已展示（SystemService users 资源、ModuleView.vue:257、SystemUserReference.phone）、已提交的 control_loop.py 为 SCHEMA_VERSION=4 不支持 compact 而账本为 v5、check-ai-control-layout.mjs 因 REQ-20260904-061 基线故障失败、--working-tree 模式在 20 项他人在途改动下无法通过；未验证项保留为盲区或非阻塞未知项。11 条 must 需求各绑定一个测量与一个受权动作边界。",
+        "recorded_at": "2026-09-12T12:19:59+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "objective": "把架构管理与开发管理两个菜单下的 38 处人员展示统一替换为同一个可配置三档、桌面悬停或触屏点击展示完整信息的人员卡片，使人员身份、联系方式、团队归属与角色在任意列表、详情和时间线处就地可读。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "三档卡片：variant 取 compact/standard/full 分别默认显示「头像+姓名」「头像+姓名+电话」「头像+姓名+电话+团队」，且 show-avatar/show-phone/show-team 可独立覆盖档位默认值。",
+              "acceptance": [
+                "compact 触发器只渲染头像与姓名；standard 增加一行电话；full 再增加一行团队",
+                "关闭 show-phone 后 standard 不渲染电话行且不留占位空隙",
+                "关闭 show-avatar 后不渲染头像且姓名不塌陷",
+                "三档与三个开关的组合可在组件示范页就地复现"
+              ],
+              "priority": "must",
+              "source": "用户确认「A，顺便留出可配置的空间，头像、团队、电话可以选择性展示」",
+              "counterexample": [
+                "三档差异只体现在字号",
+                "开关被档位默认值覆盖而无效",
+                "关掉开关后仍留有占位空隙"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "完整信息浮层：桌面 hover 触发（约 120ms 延迟），@media (hover: none) 下改为点击触发；内容含头像、姓名、账号、电话、归属团队、角色、启用状态。",
+              "acceptance": [
+                "桌面悬停后浮层出现且七项内容齐全",
+                "手机 375px 视口点击卡片出现同一浮层",
+                "点击浮层外部可关闭"
+              ],
+              "priority": "must",
+              "source": "用户确认触屏点击触发方案 A",
+              "counterexample": [
+                "触屏无法打开浮层",
+                "浮层缺少电话或账号",
+                "桌面悬停无延迟导致扫过即弹出"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "浮层布局为头部身份区加联系方式、组织归属、角色三个分区，分区之间细虚线分隔，角色渲染为可换行 chip；桌面宽 300px，窄屏 min(300px, calc(100vw - 24px))。",
+              "acceptance": [
+                "1440 与 375 视口下浮层不超出视口，document.documentElement.scrollWidth 不大于 clientWidth",
+                "超长团队名与角色名换行显示（元素高度大于单行行高）而非省略号截断"
+              ],
+              "priority": "must",
+              "source": "用户确认浮层方案 B 及 5 条共同约定",
+              "counterexample": [
+                "浮层固定 300px 在窄屏溢出",
+                "角色拼接为一串文字",
+                "超长文本被省略号截断"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "新增平台人员档案批量查询接口：POST、登录即可访问、强制租户隔离、字段白名单、单次最多 50 个 id、返回 missingIds、包含停用用户状态。",
+              "acceptance": [
+                "跨租户 id 落入 missingIds 且接口不报错、不暴露存在性",
+                "userIds 去重后超过 50 返回 400；空数组返回成功且两个列表均为空",
+                "响应字段集合等于 { id, username, displayName, mobilePhone, orgName, avatarUrl, roles, status }，不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+                "停用用户被返回且 status 为 0",
+                "UserProfileController 类级 PreAuthorize 恰为 isAuthenticated() 且不含 system:access"
+              ],
+              "priority": "must",
+              "source": "用户确认数据来源方案 1 并声明已获 Owner 批准",
+              "counterexample": [
+                "跨租户用户被返回",
+                "跨租户查询抛错并暴露存在性",
+                "响应体带非白名单字段",
+                "停用责任人被静默丢弃"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "前端目录 store 负责 ensure(ids) 入队、同一微任务内去重合并、按 50 分批、同一 id 飞行中不重复入队、TTL 10 分钟缓存、单批失败标记与重试（自动重试最多 1 次）、项目切换与登出时清空。",
+              "acceptance": [
+                "注入 120 个 id 时请求恰好 3 条",
+                "重复注入同一批 id 时新增请求为 0 条",
+                "断网后浮层显示失败态与重试入口，恢复网络点重试后成功",
+                "状态机区分 missing（未命中，非错误）与 error（请求失败）"
+              ],
+              "priority": "must",
+              "source": "用户确认工程方案乙",
+              "counterexample": [
+                "每行各发一次请求",
+                "同一用户被重复请求",
+                "失败后缓存被永久标记为错误且无法恢复"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "向后兼容：现有 12 处 UiUserIdentity 调用点零代码改动即可运行；组件在无可解析 userId 时不发起任何网络请求，行为与改造前一致。",
+              "acceptance": [
+                "git diff --name-only 对 ModuleView.vue、AppLayout.vue、ProjectView.vue 无输出",
+                "三个既有调用页面外观与改造前一致且控制台无报错",
+                "既无 userId 也无 user 时渲染兜底文本、不渲染 el-popover、Network 面板中该接口请求数为 0"
+              ],
+              "priority": "must",
+              "source": "工程事实：现有 12 处调用点外部行为不变是本次唯一强制兼容边界",
+              "counterexample": [
+                "现有调用点被迫传入新 prop 才能编译",
+                "无 id 时仍发请求或弹出空浮层"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "替换清单落地：两个菜单下 24 个文件、38 处人员展示全部替换为人员卡片；人员选择器（el-select）保持不动；人员列固定宽小于 130px 时改为 min-width。",
+              "acceptance": [
+                "38 处逐处核对全部渲染为卡片，无纯文本与卡片混排",
+                "git diff --name-only 对 TaskFormDrawer.vue、WorkItemFormDrawer.vue、SubsystemChangePhysicalCard.vue 无输出",
+                "人员列未出现姓名被挤压或换行截断"
+              ],
+              "priority": "must",
+              "source": "用户确认替换范围为只读展示并复核段 3 清单与设计修订 2 的计数更正",
+              "counterexample": [
+                "漏替换任意一处造成纯文本与卡片混排",
+                "把选人控件改成卡片导致多选 tag 与远程搜索行为变化"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "补齐 3 处缺少 userId 的后端字段：DecisionMatterSummary.proposerId、DecisionMaterial.createdBy、StandardDocumentDetail.createdBy。",
+              "acceptance": [
+                "ArchitecturePersonReferenceFieldTest 断言三个响应暴露的 id 与模型一致",
+                "DecisionMatterListPage、DecisionMatterDetailPage 材料时间线、StandardDocumentListPage 详情三处悬浮出完整信息且状态不是「未找到」"
+              ],
+              "priority": "must",
+              "source": "用户确认「补齐后端字段，其他无问题」",
+              "counterexample": [
+                "这 3 处只能显示纯文本且永远无法悬浮",
+                "浮层显示「未找到」却被误判为通过"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "原始 ID 展示改为人员卡片：申请人 #123、操作人 #123、下线操作人 ID 等共 7 处渲染为「头像 + 姓名」。",
+              "acceptance": [
+                "grep 检索 applicantId、operatorId、offlinedBy 的裸插值结果为空",
+                "7 处逐一渲染为卡片",
+                "用户不存在时显示「未找到该人员信息」而不是空白或报错"
+              ],
+              "priority": "must",
+              "source": "用户复核段 3 清单时未提出异议，属「所有人员展示」的组成部分",
+              "counterexample": [
+                "仍渲染原始数字 ID",
+                "用户不存在时整块空白或抛错"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "全状态与主题：浮层覆盖加载中、加载失败加重试、未找到、无角色、停用、超长文本六种状态；明暗主题可读；桌面 1440 与手机 375 视口无遮挡与溢出。",
+              "acceptance": [
+                "六种状态逐一可复现并有对应文案或骨架",
+                "切换 data-theme 后浮层与卡片文字保持可读对比度",
+                "表格固定列内的浮层不被 overflow:hidden 裁剪"
+              ],
+              "priority": "must",
+              "source": "docs/governance/PROJECT-RULES.md 前端交付规则与 design-h5.md 移动端验收要求",
+              "counterexample": [
+                "加载中清空已显示的姓名",
+                "失败态没有重试入口",
+                "暗色主题下浮层文字不可读",
+                "固定列内浮层被裁剪"
+              ]
+            },
+            {
+              "id": "R11",
+              "statement": "组件示范页新增人员卡片示例区：三档各一个实例加 show-avatar/show-phone/show-team 三个开关的即时切换演示。",
+              "acceptance": [
+                "ComponentShowcaseView 同时可见三档实例",
+                "三个开关即时改变 full 实例的渲染结果"
+              ],
+              "priority": "must",
+              "source": "设计修订 2：计划阶段自检发现 R1 的开关行为缺少可观测载体，用户批准时一并确认",
+              "counterexample": [
+                "只替换业务页面而不留下任何可复现的档位与开关示例"
+              ]
+            }
+          ],
+          "boundary": {
+            "inside": [
+              "web/src/components/ui/UiUserIdentity.vue（触发器）与 web/src/components/ui/UiPersonProfileCard.vue（浮层）",
+              "web/src/stores/person-directory.ts（缓存与批处理状态持有者）",
+              "web/src/api/user-profile.ts",
+              "server/src/platform/system 新增的 UserProfileService 与 UserProfileController 及其两个测试",
+              "web/src/modules/architecture 的 18 个 .vue 与 web/src/modules/development 的 6 个 .vue 共 38 处渲染点",
+              "架构模块 ArchitectureDecisionController 与 ArchitectureStandardController 的 3 个响应 DTO",
+              "web/src/styles.css 的 1187-1197 区间与新增浮层类",
+              "web/src/views/ComponentShowcaseView.vue 的既有「用户身份」卡片",
+              "web/src/types/system.ts 与 web/src/modules/architecture/types.ts 的追加类型"
+            ],
+            "environment": [
+              "Element Plus el-popover 的定位与 teleport 行为（外部依赖，不在授权修改范围）",
+              "MinioStorageService.presignedUrl 头像地址生成（只读消费）",
+              "浏览器的 matchMedia('(hover: none)') 与视口尺寸",
+              "本地开发环境 MockDataInitializer 生成的 sys_user、sys_org、sys_role、sys_user_role 数据（平台数据，只读）",
+              "使用者的鼠标悬停与触屏点击输入",
+              "未提交的 control-engineering Skill v5（compact 工作流工具链）与工作区中 20 项他人在途改动"
+            ]
+          },
+          "invariants": [
+            "现有 12 处 UiUserIdentity 调用点的外部行为不变",
+            "组件在无可解析 userId 时不发起任何网络请求",
+            "查询接口不返回 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+            "跨租户用户 id 不得泄漏存在性，统一进入 missingIds",
+            "business/architecture 与 business/development 不新增对 sys_user 的直接 SQL，平台数据只通过 com.ccb.system.capability 公开契约访问",
+            "人员展示统一走 UiUserIdentity，不建立平行组件",
+            "人员列固定宽小于 130px 时改为 min-width，且不调整非人员列宽度",
+            "本次无数据库迁移，Flyway 脚本零改动",
+            "worktree 中 20 项他人在途改动始终保留且不被本次提交纳入"
+          ],
+          "constraints": [
+            "platform/system 与 frontend/application 的 codex_default_access 均为 read_only，本次属公共能力变更，需 Owner 审批（用户声明已获批）",
+            "前端没有单元测试框架，web/package.json 只有 dev/build/preview；前端门禁由 vue-tsc、vite 生产构建与真实浏览器验收承担",
+            "documents 与账本写入受 .ai-control 布局允许名单限制，阶段产物暂存文件不得使用未允许的文件名",
+            "git 纪律：只 git add 任务范围内文件，禁止 git add -A、git add .、git stash、git checkout -- .",
+            "只读接口不写审计表；审计针对写操作",
+            "根 AGENTS.md 要求所有前端任务按 design-h5.md 做手机视口验收"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "组件示范页三档实例与三个开关切换后的截图（明暗各一组）+ UiUserIdentity 模板中条件渲染分支的代码路径检查",
+              "expected": "compact 仅头像与姓名；standard 增一行电话；full 再增一行团队；关闭 show-phone 后 standard 第二行不存在且容器高度不增加；关闭 show-avatar 后无头像且姓名左移无空隙",
+              "blind_spots": [
+                "截图无法覆盖未纳入示范页的 variant 与 size 组合",
+                "无法发现 375px 视口下的挤压，需配合 R10 的视口传感器",
+                "与 R11 共用同一传感器，存在共享错误假设"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "桌面 1440 鼠标悬停后的截图 + 375 视口点击后的截图 + window.matchMedia('(hover: none)').matches 的实测值",
+              "expected": "桌面悬停后浮层出现且含头像、姓名、账号、电话、团队、角色、状态七项；375 视口 matchMedia 为 true 且点击后出现同一浮层；点击浮层外部关闭",
+              "blind_spots": [
+                "120ms 延迟只能目测，无机器判定",
+                "模拟器触屏与真机触屏行为可能不同"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "浮层在 1440 与 375 下的截图 + 浏览器控制台读取 document.documentElement.scrollWidth 与 clientWidth + 超长团队名与角色名元素的 getClientRects().length",
+              "expected": "两个视口下 scrollWidth 不大于 clientWidth；浮层宽度分别为 300px 与 min(300px, calc(100vw - 24px))；超长文本所在元素行数大于 1",
+              "blind_spots": [
+                "只覆盖被构造的超长文本，不能穷举所有长度分布",
+                "明暗主题对比度需人工判定，未接自动化对比度检查"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest,UserProfileControllerTest 的退出码与断言，含 Testcontainers MySQL 8.4 真实库",
+              "expected": "退出码 0；断言显式覆盖跨租户不返回、51 个 id 返回 400、空数组成功、响应字段集合等于白名单、停用用户 status=0、类级 PreAuthorize 为 isAuthenticated()",
+              "blind_spots": [
+                "单测数据分布不能代表生产数据",
+                "MinioStorageService 不可用时的 avatarUrl 行为未覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "浏览器 Network 面板按 /platform/user-profiles/query 过滤统计的请求条数 + 断网模拟下的浮层状态截图与恢复后重试截图",
+              "expected": "注入 120 个 id 时恰好 3 条请求；重复同一批新增 0 条；断网时浮层显示失败态与重试入口，恢复后重试成功",
+              "blind_spots": [
+                "请求条数依赖人工读取 Network 面板，非自动化断言",
+                "断网模拟覆盖不到服务端 500 与请求超时两类失败路径"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "git diff --name-only <开发前提交>..HEAD -- 三个既有调用文件 的输出 + 三个页面浏览器走查截图 + 「无 userId 且无 user」场景的 Network 面板请求数",
+              "expected": "diff 无输出；三页外观与改造前一致且控制台无报错；无 id 场景请求数为 0 且不渲染 el-popover",
+              "blind_spots": [
+                "外观一致是人工比对，存在主观性",
+                "依赖 grep -rn UiUserIdentity web/src 的消费点全集，若存在动态渲染调用点会漏检"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "grep 检索裸 ID 插值、el-avatar、userName() 的结果 + git diff --name-only 对 4 个选择器与输入控件文件的空结果 + 按设计附录 A 的 38 行逐处截图清单",
+              "expected": "人员相关纯文本与裸 ID 检索为零；4 个选择器文件未出现在 diff；38 项逐处核对全部为卡片且列未挤压",
+              "blind_spots": [
+                "grep 只能发现已知模板模式，新写法的纯文本人员渲染会漏检",
+                "逐处核对依赖人工，38 项存在遗漏风险"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "mvn -pl :ccb-architecture -am test -Dtest=ArchitecturePersonReferenceFieldTest 的退出码与断言 + 三个页面的悬浮截图",
+              "expected": "退出码 0 且断言三个响应 id 与模型值一致；三处浮层状态为 ready 而非 missing",
+              "blind_spots": [
+                "若这三个用户不存在于当前租户，浮层会显示「未找到」而被误判为通过，必须显式断言状态非 missing",
+                "不覆盖这 3 个字段在其它响应中的使用"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "grep -rn \"applicantId }}\\|operatorId }}\\|offlinedBy }}\" web/src/modules/architecture 的结果 + 7 处截图 + 通过 store 控制台注入不存在 id 后的浮层截图",
+              "expected": "检索结果为空；7 处渲染为头像与姓名；不存在 id 显示「未找到该人员信息」",
+              "blind_spots": [
+                "注入不存在 id 依赖能在浏览器控制台访问 store，若失败则该项不可验证",
+                "不覆盖这些 id 为 null 或 undefined 的类型边界"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "六种状态在明暗主题与 1440 和 375 视口下的截图集合 + getComputedStyle 读取的文字色与背景色 + 两个视口的 scrollWidth 检查",
+              "expected": "六种状态各有对应文案或骨架；明暗主题下文字与背景对比度可读；两视口无横向滚动；表格固定列内浮层不被裁剪",
+              "blind_spots": [
+                "对比度靠人工判定，未接自动化检查",
+                "停用用户与无角色两种状态依赖能构造出相应 Mock 数据，若构造失败则不可验证"
+              ]
+            },
+            {
+              "requirement_id": "R11",
+              "sensor": "组件示范页同时展示三档与三个开关前后的截图",
+              "expected": "三档实例同时可见；切换开关后 full 实例渲染即时变化",
+              "blind_spots": [
+                "与 R1 共用同一传感器与同一错误假设，不是独立观测",
+                "不能发现示范页之外的档位误用"
+              ]
+            }
+          ],
+          "action_bounds": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R10",
+                "R11"
+              ],
+              "target": "前端公共组件与样式表面：web/src/components/ui/UiUserIdentity.vue、web/src/components/ui/UiPersonProfileCard.vue、web/src/styles.css 的 1187-1197 区间与新增浮层类、web/src/views/ComponentShowcaseView.vue 的既有用户身份卡片",
+              "authority": "只允许在这三个组件文件、styles.css 指定区间与示范页该卡片内修改；不允许改动 UiUserIdentity 既有 prop 的语义、不允许新增公共样式类之外的全局样式、不允许改动示范页既有调用行",
+              "impact_limit": "只影响使用 UiUserIdentity 的页面与组件示范页；不影响其它公共组件",
+              "rollback": "git revert T3 与 T4 的提交；浮层与档位样式内聚在新增文件与 styles.css 该区间"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "target": "平台只读查询表面：新增 UserProfileService.java、UserProfileController.java 与两个测试文件",
+              "authority": "只允许新增这 4 个文件；不允许修改任何既有 platform/system 类、不允许新增数据库迁移、不允许修改 SecurityConfiguration",
+              "impact_limit": "只新增一个登录可访问的只读接口，不改变任何既有接口行为",
+              "rollback": "删除 4 个新增文件；git revert T1 提交"
+            },
+            {
+              "requirement_ids": [
+                "R5"
+              ],
+              "target": "前端取数表面：web/src/stores/person-directory.ts、web/src/api/user-profile.ts、web/src/types/system.ts 的追加类型",
+              "authority": "只允许在这两个新文件内实现取数、合并、缓存与降级；不允许在组件内直接调用接口；不允许改动 web/src/api/http.ts 的拦截器与错误处理",
+              "impact_limit": "只影响人员档案的取数与缓存，不影响其它 api 与 store",
+              "rollback": "删除两个新文件并还原 web/src/types/system.ts 的追加段"
+            },
+            {
+              "requirement_ids": [
+                "R6"
+              ],
+              "target": "既有 prop 契约与 12 处调用点",
+              "authority": "只允许向 UiUserIdentity 追加 prop 且默认值保持现有观感；不允许修改既有 prop 语义、不允许改动 ModuleView.vue 与 AppLayout.vue 与 ProjectView.vue",
+              "impact_limit": "兼容边界限于 12 处既有调用点与四个既有页面",
+              "rollback": "git revert T3 提交并复核三个既有页面"
+            },
+            {
+              "requirement_ids": [
+                "R7",
+                "R9"
+              ],
+              "target": "24 个 .vue 的模板渲染表面",
+              "authority": "只允许修改人员展示部位；不允许改动 el-select 选人控件、el-input 输入控件、非人员列宽度与业务提示文案",
+              "impact_limit": "限于 24 个文件的渲染输出，不改变任何数据请求与业务规则",
+              "rollback": "按 T6、T7、T8、T9 分组 git revert"
+            },
+            {
+              "requirement_ids": [
+                "R8"
+              ],
+              "target": "架构模块 3 个响应 DTO：MatterSummaryResponse、MaterialResponse、DocumentDetailResponse",
+              "authority": "只允许在 record 组件列表末尾追加字段并在 from() 补实参；不允许改 SQL、模型、迁移或既有字段",
+              "impact_limit": "限于 3 个响应的字段集合，追加为向后兼容变更",
+              "rollback": "git revert T5 提交"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "用户已取得 Owner 对 platform/system 新增接口与 frontend/application 公共组件改造的批准",
+              "basis": "用户在会话中口述「已申报 owner 获批」",
+              "falsifier": "Owner 未批准，或批准范围不含 frontend/application 公共契约"
+            },
+            {
+              "text": "sys_user.mobile_phone 在当前租户内对已登录用户可见",
+              "basis": "已核实 SystemService 的 users 资源含 mobile_phone；ModuleView.vue:257 在系统管理用户列表展示手机号；JdbcSystemReferenceQuery 把 phone 作为业务模块可读引用字段 SystemUserReference.phone",
+              "falsifier": "安全评审要求对无 system:access 的用户脱敏手机号"
+            },
+            {
+              "text": "Element Plus el-popover 的 teleport 定位在表格固定列与横向滚动容器内正确",
+              "basis": "Element Plus 默认 teleported=true，浮层挂载到 body",
+              "falsifier": "验收中出现浮层被 overflow:hidden 裁剪或错位"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "含 100 行且人员各不相同的大列表实际产生的批次数",
+              "impact": "若超过 1 批，需要补充页面级批大小或预取策略；影响 R5 的性能面",
+              "owner": "研发",
+              "blocking": false
+            },
+            {
+              "question": "真机触屏下 (hover: none) 与点击触发浮层的实际行为",
+              "impact": "若与模拟器不一致，R2 的移动端验收证据不足",
+              "owner": "研发",
+              "blocking": false
+            },
+            {
+              "question": "本地 Mock 数据是否包含停用用户、无角色用户与原样超长团队名，以便构造 R10 的六种状态",
+              "impact": "若缺失，R10 的部分状态不可验证，需要补充本地 Mock 数据（属本次可写范围外的数据调整）",
+              "owner": "研发",
+              "blocking": false
+            },
+            {
+              "question": "node scripts/check-codex-scope.mjs --working-tree 在工作区存在 20 项他人在途改动时无法通过，需改用提交区间模式",
+              "impact": "任务范围门禁的执行方式需在 planning 检查点调整为按提交区间校验",
+              "owner": "研发",
+              "blocking": false
+            }
+          ],
+          "status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "planning 检查点：-controlled-tasks 对账 handoff.implementation_plan 的 10 个任务与已验证的 ControlDefinition。修正两处：① 删除开发前计划中 T5→T6 的依赖边——T6 五个位置所需的 ownerUserId 与 createdBy 在改造前已存在（PhysicalSubsystemPage:240 与 :96、SubsystemParticipants:134、DeliveryUnitDetailDrawer:56、DeploymentUnitDetailDrawer:50、PersonalTaskBoard:30 对应的 types.ts:29/33/93/290 字段），T5 只服务 T7 的三处；② 集成检查改为按提交区间校验 codex scope，因为已实测 --working-tree 在 20 项他人在途改动下必失败。任务写入面两两不相交，T6/T7/T8/T9 可并行；共享契约 UiUserIdentity prop 由 T3 唯一持有，集成点在第 4 条集成检查。11 条 must 需求全部被任务覆盖。",
+        "recorded_at": "2026-09-12T12:20:42+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "平台人员档案批量查询接口可用：登录即可访问、租户隔离、单次上限 50、字段白名单、返回 missingIds、包含停用用户状态",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [],
+              "write_scope": [
+                "server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java（新建）",
+                "server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java（新建）",
+                "server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java（新建）",
+                "server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java（新建）"
+              ],
+              "checks": [
+                "先运行 mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest 并确认因 UserProfileService 不存在而编译失败，作为失败基线",
+                "Testcontainers MySQL 8.4 下跨租户 id 不返回并落入 missingIds",
+                "软删除用户不返回；停用用户返回且 status 为 0；组织为空时 orgName 为空串；角色为空返回空列表",
+                "51 个 id 返回 400；空数组返回成功且 profiles 与 missingIds 均为空",
+                "UserProfileController 类级 PreAuthorize 恰为 isAuthenticated() 且不含 system:access",
+                "响应字段集合等于白名单，不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+                "mvn -pl :ccb-system -am test 全量回归通过"
+              ],
+              "evidence_required": [
+                "失败基线的命令与报错首行",
+                "UserProfileServiceMySqlTest 与 UserProfileControllerTest 的 Tests run 汇总",
+                "mvn -pl :ccb-system -am test 的 Tests run 汇总",
+                "两个新增主类的 SQL 与响应 record 定义"
+              ],
+              "rollback": "删除 4 个新增文件，git revert 该提交；无数据库迁移、无数据补偿",
+              "stop_conditions": [
+                "ccb-system 中不存在把参数校验异常映射为 400 的既有机制，且新增 Advice 会触碰公共行为时停止"
+              ],
+              "escalation_conditions": [
+                "Owner 要求改接口路径、要求手机号脱敏或要求按数据范围过滤非项目成员时，停止并回到设计"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "前端人员档案接口封装与目录 store 可用：去重合并、50 一批、TTL 10 分钟、失败降级与重试、会话重置",
+              "requirement_ids": [
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "write_scope": [
+                "web/src/api/user-profile.ts（新建）",
+                "web/src/stores/person-directory.ts（新建）",
+                "web/src/types/system.ts（仅追加 PersonRole、PersonProfile、PersonProfileQueryResult）"
+              ],
+              "checks": [
+                "npm --prefix web run build 通过，0 个类型错误",
+                "浏览器控制台注入 120 个 id 时 Network 面板中 /platform/user-profiles/query 恰好 3 条请求",
+                "重复注入同一批 id 时新增请求为 0 条",
+                "同一 id 在飞行中不重复入队",
+                "单批失败只标记该批为 error，且自动重试不超过 1 次",
+                "missingIds 对应条目状态为 missing 而非 error",
+                "reset() 后缓存为空"
+              ],
+              "evidence_required": [
+                "npm --prefix web run build 的命令与退出码",
+                "Network 面板请求条数与重复调用后的条数截图或 HAR 片段",
+                "store 源码中的批大小、TTL、重试上限常量定义"
+              ],
+              "rollback": "删除两个新建文件并还原 web/src/types/system.ts 的追加段",
+              "stop_conditions": [
+                "vue-tsc 报错来自既有代码而非本次改动时停止，不得顺手修复"
+              ],
+              "escalation_conditions": [
+                "120 个 id 的实测批次数不是 3，说明合并逻辑失效，升级并重新建模"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "UiUserIdentity 触发器与 UiPersonProfileCard 浮层完成：三档可配置、桌面悬停与触屏点击出完整信息、六种状态与明暗主题可用、无可解析 id 时不发请求",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R6",
+                "R10"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "write_scope": [
+                "web/src/components/ui/UiUserIdentity.vue（改造）",
+                "web/src/components/ui/UiPersonProfileCard.vue（新建）",
+                "web/src/styles.css 的 1187-1197 区间与新增三档及浮层类"
+              ],
+              "checks": [
+                "记录改造前 UiUserIdentity 外观截图作为 R6 对照基线",
+                "compact 只渲染头像与姓名；standard 增加电话行；full 再增加团队行",
+                "关闭 show-phone 后 standard 不渲染电话行且容器高度不增加",
+                "关闭 show-avatar 后不渲染头像且姓名不塌陷",
+                "桌面悬停约 120ms 后浮层出现且含头像、姓名、账号、电话、团队、角色、状态七项",
+                "375 视口下 matchMedia('(hover: none)').matches 为 true 且点击后出现同一浮层",
+                "无可解析 userId 且无 user 时不渲染 el-popover 且请求数为 0",
+                "loading 用骨架且不清空头部；missing 显示未找到；error 显示失败与重试入口",
+                "grep -rn ui-user-profile web/src 无残留引用",
+                "npm --prefix web run build 通过",
+                "不改动任何既有调用文件时，开发管理任务列表页姓名与头像渲染正常且悬停出浮层"
+              ],
+              "evidence_required": [
+                "改造前后对照截图",
+                "三档与三个开关的截图",
+                "375 视口点击触发截图与 matchMedia 实测值",
+                "无 id 场景的零请求截图",
+                "loading、missing、error 三种状态截图",
+                "npm --prefix web run build 退出码与 grep 输出"
+              ],
+              "rollback": "git revert T3 提交；浮层与档位样式内聚在新增文件与 styles.css 该区间",
+              "stop_conditions": [
+                "Element Plus el-popover 在表格固定列内被裁剪且调整 placement 无效时停止"
+              ],
+              "escalation_conditions": [
+                "R6 回归失败，即现有调用点行为发生变化时立即停止并回到设计"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "组件示范页可见三档与三个显示开关的组合结果，作为档位与开关行为的可复现验收载体",
+              "requirement_ids": [
+                "R11"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "write_scope": [
+                "web/src/views/ComponentShowcaseView.vue 的既有「用户身份」卡片内"
+              ],
+              "checks": [
+                "示范页同时可见三档实例",
+                "三个开关即时改变 full 实例的渲染结果",
+                "未新增公共样式类，复用 T3 已有类",
+                "未改动该页既有的 UiUserIdentity 调用行",
+                "npm --prefix web run build 通过",
+                "明暗主题下示例均可读"
+              ],
+              "evidence_required": [
+                "至少 3 张开关切换截图",
+                "该卡片 diff",
+                "构建退出码"
+              ],
+              "rollback": "git revert T4 提交；改动局限在单个卡片内",
+              "stop_conditions": [
+                "示范页需要引入新的公共样式类才能成立时停止并回到设计"
+              ],
+              "escalation_conditions": [
+                "必须改动示范页既有调用行才能容纳示例，说明 R6 兼容边界被突破，升级给用户",
+                "需要新增公共样式类，说明 T3 的样式边界不完整，升级并回到设计修订"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "架构模块三处响应补齐人员 id：事项列表 proposerId、材料 createdBy、标准文档详情 createdBy，使这三处也能悬浮出完整信息",
+              "requirement_ids": [
+                "R8"
+              ],
+              "prerequisites": [],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java（仅 MatterSummaryResponse 与 MaterialResponse 追加字段）",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java（仅 DocumentDetailResponse 追加字段）",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitecturePersonReferenceFieldTest.java（新建）",
+                "web/src/modules/architecture/types.ts（仅追加三个 number 字段）"
+              ],
+              "checks": [
+                "先运行 ArchitecturePersonReferenceFieldTest 并确认因缺少 proposerId() 而编译失败，作为失败基线",
+                "三个响应暴露的 id 与模型值一致",
+                "既有字段值不变，未改 SQL 与模型",
+                "mvn -pl :ccb-architecture -am test 全量回归通过",
+                "npm --prefix web run build 通过"
+              ],
+              "evidence_required": [
+                "失败基线的命令与报错首行",
+                "ArchitecturePersonReferenceFieldTest 的 Tests run 汇总",
+                "mvn -pl :ccb-architecture -am test 的 Tests run 汇总",
+                "三个 record 的 diff"
+              ],
+              "rollback": "git revert T5 提交",
+              "stop_conditions": [
+                "某处模型实际没有 id 时停止并升级，那意味着需要改 SQL 与模型，超出本任务边界"
+              ],
+              "escalation_conditions": [
+                "架构模块全量测试出现既有失败时作为基线故障如实记录并升级，不得顺手修复"
+              ]
+            },
+            {
+              "id": "T6",
+              "goal": "架构管理的物理子系统、参与人员、交付与部署单元、个人任务板共 5 个文件 8 处人员展示替换为人员卡片",
+              "requirement_ids": [
+                "R7",
+                "R8",
+                "R9"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+                "web/src/modules/architecture/components/PersonalTaskBoard.vue"
+              ],
+              "checks": [
+                "8 处全部渲染为人员卡片",
+                "表格人员列固定宽小于 130px 的改为 min-width 且姓名未被挤压",
+                "SubsystemParticipants 的「默认参与」el-tag 与业务提示文案原样保留",
+                "npm --prefix web run build 通过",
+                "桌面与手机视口下六个位置无遮挡溢出"
+              ],
+              "evidence_required": [
+                "8 处 diff",
+                "每个页面至少一张截图（含手机视口）",
+                "构建退出码与 grep 输出"
+              ],
+              "rollback": "git revert T6 提交",
+              "stop_conditions": [
+                "某处当前只有姓名没有 id 且不在 R8 三处清单内时停止并升级，说明设计清单有遗漏"
+              ],
+              "escalation_conditions": [
+                "SubsystemParticipants 的可编辑语义因替换被改变时立即停止"
+              ]
+            },
+            {
+              "id": "T7",
+              "goal": "架构管理的决策事项、标准文档、搭建计划共 4 个文件 11 处人员展示替换，含三处 R8 场景",
+              "requirement_ids": [
+                "R7",
+                "R8",
+                "R9"
+              ],
+              "prerequisites": [
+                "T3",
+                "T5"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/DecisionMatterListPage.vue",
+                "web/src/modules/architecture/DecisionMatterDetailPage.vue",
+                "web/src/modules/architecture/StandardDocumentListPage.vue",
+                "web/src/modules/architecture/PlanDetailPage.vue"
+              ],
+              "checks": [
+                "11 处全部渲染为人员卡片",
+                "DecisionMatterDetailPage 材料时间线保留时间戳文本且创建人为独立卡片，不在时间线内堆两行卡片",
+                "DecisionMatterListPage、材料时间线、StandardDocumentListPage 详情三处悬浮出的状态为 ready 而非 missing",
+                "PlanDetailPage 的 el-select 与 DecisionMatterDetailPage 的 el-select 和 el-input 未被改动",
+                "替换后若 userName() 不再被引用则删除，且选人控件下拉项仍保留文案",
+                "npm --prefix web run build 通过",
+                "新建计划向导的选人控件行为不变"
+              ],
+              "evidence_required": [
+                "11 处 diff",
+                "PlanDetailPage 的 userName() grep 输出",
+                "选人控件区间的空 diff",
+                "每页至少一张截图，含向导选人控件对照图",
+                "构建退出码"
+              ],
+              "rollback": "git revert T7 提交",
+              "stop_conditions": [
+                "删除 userName() 导致选人控件下拉项失去文案时停止并回退该删除动作"
+              ],
+              "escalation_conditions": [
+                "DecisionMatterDetail 的时间线结构不支持在 timestamp 槽内放两个元素时，停止并回到设计确认降级形态"
+              ]
+            },
+            {
+              "id": "T8",
+              "goal": "架构管理的网络工单、子系统变更、实例、资源申请、网络访问、部署单元导入共 9 个文件 11 处人员展示替换，其中 7 处为原始数字 ID",
+              "requirement_ids": [
+                "R7",
+                "R9"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+                "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue",
+                "web/src/modules/architecture/NetworkWorkOrderListPage.vue",
+                "web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue",
+                "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+                "web/src/modules/architecture/components/SubsystemChangeTimeline.vue",
+                "web/src/modules/architecture/InstanceListPage.vue",
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/NetworkAccessPage.vue"
+              ],
+              "checks": [
+                "11 处全部渲染为人员卡片",
+                "grep -rn 裸 ID 插值的结果为空，7 处原始 ID 消失",
+                "InstanceListPage 的标签文案由「下线操作人 ID」改为「下线操作人」",
+                "userLabel() 的回退语义在删除前已被 store 的 missing 态覆盖，否则保留回退",
+                "非人员列的固定宽未被改动",
+                "npm --prefix web run build 通过",
+                "桌面与手机视口下各页面无遮挡溢出"
+              ],
+              "evidence_required": [
+                "11 处 diff",
+                "裸 ID 插值的 grep 输出为空",
+                "7 处逐一截图",
+                "构建退出码"
+              ],
+              "rollback": "git revert T8 提交",
+              "stop_conditions": [
+                "某处 applicantId 在类型上可能为 null 或 undefined 时停止，并确认组件对空 id 的降级渲染符合 R6"
+              ],
+              "escalation_conditions": [
+                "替换后暴露出后端未返回申请人姓名而前端既有 userLabel 依赖额外查询时，升级给用户",
+                "网络访问页或网络工单页的移动卡片因新增团队行导致纵向溢出时，升级并回到设计调整档位分配"
+              ]
+            },
+            {
+              "id": "T9",
+              "goal": "开发管理的任务列表、任务详情、阶段面板、工作项看板与列表、变更日志共 6 个文件 8 处人员展示替换，且两个表单抽屉零改动",
+              "requirement_ids": [
+                "R7",
+                "R9"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "write_scope": [
+                "web/src/modules/development/DevelopmentTaskListPage.vue",
+                "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+                "web/src/modules/development/components/TaskStagePanel.vue",
+                "web/src/modules/development/components/WorkItemsView.vue",
+                "web/src/modules/development/components/WorkItemCard.vue",
+                "web/src/modules/development/components/TaskChangeLog.vue"
+              ],
+              "checks": [
+                "8 处全部渲染为人员卡片，字符串 id 未被错误转成数字",
+                "git diff --stat 对 TaskFormDrawer.vue 与 WorkItemFormDrawer.vue 无输出",
+                "TaskChangeLog 的动作文案与 objectLabels 拼接逻辑不变",
+                "npm --prefix web run build 通过",
+                "桌面与手机视口下五个页面无遮挡溢出",
+                "浮层不出现恒为「未找到」的 id 解析失败"
+              ],
+              "evidence_required": [
+                "8 处 diff",
+                "两个表单抽屉的空 diff",
+                "每页至少一张截图",
+                "构建退出码"
+              ],
+              "rollback": "git revert T9 提交",
+              "stop_conditions": [
+                "无任何开发任务数据可走查时停止并先解决数据前置，不得以无法验证结项"
+              ],
+              "escalation_conditions": [
+                "字符串 id 走查出现 id 解析失败、浮层恒为未找到时升级并检查 toId 实现"
+              ]
+            },
+            {
+              "id": "T10",
+              "goal": "集成验收与回归完成：R1–R11 全部有通过或明确失败的记录，治理与任务范围检查结果如实归档",
+              "requirement_ids": [
+                "R6",
+                "R7",
+                "R10"
+              ],
+              "prerequisites": [
+                "T4",
+                "T5",
+                "T6",
+                "T7",
+                "T8",
+                "T9"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260912-075-person-card/observation-T1.json（新建）",
+                ".ai-control/requirements/req-20260912-075-person-card/convergence.json（新建）"
+              ],
+              "checks": [
+                "npm --prefix web run build 通过，0 个类型错误",
+                "mvn -pl :ccb-system -am test 与 mvn -pl :ccb-architecture,:ccb-development -am test 通过",
+                "git diff --name-only 对 ModuleView.vue、AppLayout.vue、ProjectView.vue 无输出",
+                "按设计附录 A 的 38 行逐处核对全部为卡片，无纯文本混排与裸 ID",
+                "六种状态在明暗主题与 1440 和 375 视口下逐一可复现",
+                "node scripts/check-codex-scope.mjs 按提交区间模式通过",
+                "git diff --check 无空白错误",
+                "check-all-governance.mjs 若仍因 REQ-20260904-061 基线故障失败则如实记录，不得声称门禁全绿"
+              ],
+              "evidence_required": [
+                "构建退出码",
+                "两次 Maven 的 Tests run 汇总",
+                "三个既有调用文件的空 diff 输出",
+                "38 行逐处核对清单",
+                "六种状态的状态截图集合",
+                "治理与范围检查的三条命令输出",
+                "observation-T1.json 与 convergence.json"
+              ],
+              "rollback": "账本与代码分别 git revert；无数据库变更",
+              "stop_conditions": [
+                "任一 must 需求未通过时停止并回到偏差纠正，不得收敛"
+              ],
+              "escalation_conditions": [
+                "出现需要改公共契约、迁移或超出 writable_paths 的修复时，升级给 Owner 并回到设计"
+              ]
+            }
+          ],
+          "dependencies": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 的 api 封装与 store 消费 T1 的请求与响应契约；契约未定稿会让前端类型与真实响应漂移"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 的触发器与浮层消费 T2 的 store API（ensure/get/stateOf/retry）与状态枚举"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "T4 复用 T3 的 UiUserIdentity prop 契约与三档样式类，不得自行定义档位"
+            },
+            {
+              "from": "T3",
+              "to": "T6",
+              "reason": "T6 消费 T3 的组件；T6 各位置所需的 ownerUserId 与 createdBy 在改造前已存在，故不依赖 T5"
+            },
+            {
+              "from": "T3",
+              "to": "T7",
+              "reason": "T7 消费 T3 的组件"
+            },
+            {
+              "from": "T5",
+              "to": "T7",
+              "reason": "T7 的提出人与创建人三处必须使用 T5 新增的 proposerId 与 createdBy，否则取不到 userId"
+            },
+            {
+              "from": "T3",
+              "to": "T8",
+              "reason": "T8 消费 T3 的组件；T8 所需的 applicantId、operatorId 与 offlinedBy 在改造前已存在"
+            },
+            {
+              "from": "T3",
+              "to": "T9",
+              "reason": "T9 消费 T3 的组件；开发模块的 UserRef 已含字符串 id"
+            },
+            {
+              "from": "T4",
+              "to": "T10",
+              "reason": "T10 的 R11 验收必须以 T4 的示范页示例为观测载体"
+            },
+            {
+              "from": "T5",
+              "to": "T10",
+              "reason": "T10 的 R8 验收必须以 T5 补齐的三个响应字段为前置"
+            },
+            {
+              "from": "T6",
+              "to": "T10",
+              "reason": "T10 的 R7 与 R9 逐处走查必须覆盖 T6 的 8 处"
+            },
+            {
+              "from": "T7",
+              "to": "T10",
+              "reason": "T10 的 R7 与 R8 逐处走查必须覆盖 T7 的 11 处"
+            },
+            {
+              "from": "T8",
+              "to": "T10",
+              "reason": "T10 的 R7 与 R9 逐处走查必须覆盖 T8 的 11 处"
+            },
+            {
+              "from": "T9",
+              "to": "T10",
+              "reason": "T10 的 R7 逐处走查必须覆盖 T9 的 8 处"
+            }
+          ],
+          "integration_checks": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "check": "mvn -pl :ccb-system -am test 通过，0 个失败"
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "check": "npm --prefix web run build 通过，且 Network 面板实测 120 个 id 为 3 条请求、重复调用为 0 条"
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "check": "npm --prefix web run build 通过，且不改动任何既有调用文件时三个既有页面外观与行为不变"
+            },
+            {
+              "after_tasks": [
+                "T4",
+                "T6",
+                "T7",
+                "T8",
+                "T9"
+              ],
+              "check": "前端构建通过；git diff --name-only 对 ModuleView.vue、AppLayout.vue、ProjectView.vue 及四个选人控件文件无输出"
+            },
+            {
+              "after_tasks": [
+                "T5",
+                "T7"
+              ],
+              "check": "mvn -pl :ccb-architecture -am test 通过，且三处 R8 场景浮层状态为 ready 而非 missing"
+            },
+            {
+              "after_tasks": [
+                "T4",
+                "T5",
+                "T6",
+                "T7",
+                "T8",
+                "T9"
+              ],
+              "check": "npm --prefix web run build 与两次 Maven 全量测试通过；node scripts/check-codex-scope.mjs 按提交区间模式通过；git diff --check 无空白错误；check-all-governance.mjs 的 REQ-20260904-061 基线故障如实记录"
+            }
+          ],
+          "status": "ready"
+        }
+      }
+    ],
+    "controlling": [
+      {
+        "revision": 1,
+        "evidence": "-controlled-task 实施 T1 的 4 个文件；-engineering-output 用 5 次 Maven 命令作为独立传感器测量，其中前两次为编译失败基线。无有效偏差，correction 为 null。观测限制已如实记录：HTTP 400 由 ccb-boot 的 GlobalExceptionHandler 提供且不可在本模块导入，端到端状态码待 T10 验证。",
+        "recorded_at": "2026-09-12T12:25:16+00:00",
+        "data": {
+          "iteration_id": "I1",
+          "task_id": "T1",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java",
+              "purpose": "新增租户范围的人员档案与角色只读批量查询服务，先批量查用户再一次性查角色并在内存聚合，避免按人查询"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java",
+              "purpose": "新增 POST /api/platform/user-profiles/query，只要求登录，做去重与 50 上限校验并组装白名单响应"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java",
+              "purpose": "在 Testcontainers MySQL 8.4 上验证租户隔离、软删除过滤、停用用户返回、组织关联与角色过滤"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java",
+              "purpose": "验证权限声明恰为 isAuthenticated、50 上限拒绝、空标识成功、missingIds 与响应字段白名单"
+            }
+          ],
+          "commands": [
+            {
+              "command": "mvn -q -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 1,
+              "salient_output": "编译失败基线：UserProfileServiceMySqlTest.java cannot find symbol；package UserProfileService does not exist"
+            },
+            {
+              "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 0,
+              "salient_output": "Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in com.ccb.system.service.UserProfileServiceMySqlTest；BUILD SUCCESS"
+            },
+            {
+              "command": "mvn -q -pl :ccb-system -am test -Dtest=UserProfileControllerTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 1,
+              "salient_output": "编译失败基线：UserProfileControllerTest.java cannot find symbol；package UserProfileController does not exist"
+            },
+            {
+              "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileControllerTest -Dsurefire.failIfNoSpecifiedTests=false",
+              "exit_code": 0,
+              "salient_output": "Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in com.ccb.system.web.UserProfileControllerTest；BUILD SUCCESS"
+            },
+            {
+              "command": "mvn -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "ccb-system 全量 Tests run: 86, Failures: 0, Errors: 0, Skipped: 0；Reactor Summary ccb-system SUCCESS；BUILD SUCCESS"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": "Testcontainers MySQL 8.4 真库断言：query(租户1, [1,2,3,4,5]) 只返回 [1,2,4]，软删除用户 3 与跨租户用户 5 均不返回且不报错（跨租户单查返回空列表）；空标识返回空列表、重复标识去重后只返回一行；停用用户仍返回且 status=0、缺失手机号与组织为空串、无头像 key 为 null；角色只聚合 status=1 且 deleted=0 的角色（架构管理员），停用角色与已删除角色被排除；无角色用户返回空列表。MockMvc 断言：类级 PreAuthorize 恰为 isAuthenticated() 且不含 system:access，路径为 /api/platform/user-profiles，query 映射 POST /query；51 个标识抛出 BusinessException 且 ErrorCode 为 BAD_REQUEST 且服务零调用；空标识返回 code=0 且 profiles 与 missingIds 均空；请求 [1,7] 时 missingIds=[7]；响应 profile 的键集合等于 {id, username, displayName, mobilePhone, orgName, avatarUrl, roles, status} 且不含 passwordHash、tenantId、deleted、lastLoginAt、avatarObjectKey；停用用户 status=0 且 avatarUrl 为空时未调用 presignedUrl。全量回归 Tests run: 86, Failures: 0, Errors: 0。",
+              "limitations": [
+                "HTTP 400 状态码本身由 com.ccb.boot.web.GlobalExceptionHandler 提供，而 ccb-boot 依赖 ccb-system、不可反向导入，因此 ccb-system 的 standalone MockMvc 无法注册该 Advice；本测试断言的是控制器抛出 BusinessException(ErrorCode.BAD_REQUEST)，真实 HTTP 响应码需端到端验证",
+                "测试数据为自建最小表结构，不代表生产数据分布",
+                "MinioStorageService 不可用时 avatarUrl 的降级行为未覆盖",
+                "接口尚未在运行中的服务上做过真实 HTTP 调用，运行可达性未验证"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      }
+    ],
+    "verifying": []
+  },
+  "objective": "把架构管理与开发管理两个菜单下的 38 处人员展示统一替换为同一个可配置三档、桌面悬停或触屏点击展示完整信息的人员卡片，使人员身份、联系方式、团队归属与角色在任意列表、详情和时间线处就地可读。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "三档卡片：variant 取 compact/standard/full 分别默认显示「头像+姓名」「头像+姓名+电话」「头像+姓名+电话+团队」，且 show-avatar/show-phone/show-team 可独立覆盖档位默认值。",
+      "acceptance": [
+        "compact 触发器只渲染头像与姓名；standard 增加一行电话；full 再增加一行团队",
+        "关闭 show-phone 后 standard 不渲染电话行且不留占位空隙",
+        "关闭 show-avatar 后不渲染头像且姓名不塌陷",
+        "三档与三个开关的组合可在组件示范页就地复现"
+      ],
+      "priority": "must",
+      "source": "用户确认「A，顺便留出可配置的空间，头像、团队、电话可以选择性展示」",
+      "counterexample": [
+        "三档差异只体现在字号",
+        "开关被档位默认值覆盖而无效",
+        "关掉开关后仍留有占位空隙"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "完整信息浮层：桌面 hover 触发（约 120ms 延迟），@media (hover: none) 下改为点击触发；内容含头像、姓名、账号、电话、归属团队、角色、启用状态。",
+      "acceptance": [
+        "桌面悬停后浮层出现且七项内容齐全",
+        "手机 375px 视口点击卡片出现同一浮层",
+        "点击浮层外部可关闭"
+      ],
+      "priority": "must",
+      "source": "用户确认触屏点击触发方案 A",
+      "counterexample": [
+        "触屏无法打开浮层",
+        "浮层缺少电话或账号",
+        "桌面悬停无延迟导致扫过即弹出"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "浮层布局为头部身份区加联系方式、组织归属、角色三个分区，分区之间细虚线分隔，角色渲染为可换行 chip；桌面宽 300px，窄屏 min(300px, calc(100vw - 24px))。",
+      "acceptance": [
+        "1440 与 375 视口下浮层不超出视口，document.documentElement.scrollWidth 不大于 clientWidth",
+        "超长团队名与角色名换行显示（元素高度大于单行行高）而非省略号截断"
+      ],
+      "priority": "must",
+      "source": "用户确认浮层方案 B 及 5 条共同约定",
+      "counterexample": [
+        "浮层固定 300px 在窄屏溢出",
+        "角色拼接为一串文字",
+        "超长文本被省略号截断"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "新增平台人员档案批量查询接口：POST、登录即可访问、强制租户隔离、字段白名单、单次最多 50 个 id、返回 missingIds、包含停用用户状态。",
+      "acceptance": [
+        "跨租户 id 落入 missingIds 且接口不报错、不暴露存在性",
+        "userIds 去重后超过 50 返回 400；空数组返回成功且两个列表均为空",
+        "响应字段集合等于 { id, username, displayName, mobilePhone, orgName, avatarUrl, roles, status }，不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+        "停用用户被返回且 status 为 0",
+        "UserProfileController 类级 PreAuthorize 恰为 isAuthenticated() 且不含 system:access"
+      ],
+      "priority": "must",
+      "source": "用户确认数据来源方案 1 并声明已获 Owner 批准",
+      "counterexample": [
+        "跨租户用户被返回",
+        "跨租户查询抛错并暴露存在性",
+        "响应体带非白名单字段",
+        "停用责任人被静默丢弃"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "前端目录 store 负责 ensure(ids) 入队、同一微任务内去重合并、按 50 分批、同一 id 飞行中不重复入队、TTL 10 分钟缓存、单批失败标记与重试（自动重试最多 1 次）、项目切换与登出时清空。",
+      "acceptance": [
+        "注入 120 个 id 时请求恰好 3 条",
+        "重复注入同一批 id 时新增请求为 0 条",
+        "断网后浮层显示失败态与重试入口，恢复网络点重试后成功",
+        "状态机区分 missing（未命中，非错误）与 error（请求失败）"
+      ],
+      "priority": "must",
+      "source": "用户确认工程方案乙",
+      "counterexample": [
+        "每行各发一次请求",
+        "同一用户被重复请求",
+        "失败后缓存被永久标记为错误且无法恢复"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "向后兼容：现有 12 处 UiUserIdentity 调用点零代码改动即可运行；组件在无可解析 userId 时不发起任何网络请求，行为与改造前一致。",
+      "acceptance": [
+        "git diff --name-only 对 ModuleView.vue、AppLayout.vue、ProjectView.vue 无输出",
+        "三个既有调用页面外观与改造前一致且控制台无报错",
+        "既无 userId 也无 user 时渲染兜底文本、不渲染 el-popover、Network 面板中该接口请求数为 0"
+      ],
+      "priority": "must",
+      "source": "工程事实：现有 12 处调用点外部行为不变是本次唯一强制兼容边界",
+      "counterexample": [
+        "现有调用点被迫传入新 prop 才能编译",
+        "无 id 时仍发请求或弹出空浮层"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "替换清单落地：两个菜单下 24 个文件、38 处人员展示全部替换为人员卡片；人员选择器（el-select）保持不动；人员列固定宽小于 130px 时改为 min-width。",
+      "acceptance": [
+        "38 处逐处核对全部渲染为卡片，无纯文本与卡片混排",
+        "git diff --name-only 对 TaskFormDrawer.vue、WorkItemFormDrawer.vue、SubsystemChangePhysicalCard.vue 无输出",
+        "人员列未出现姓名被挤压或换行截断"
+      ],
+      "priority": "must",
+      "source": "用户确认替换范围为只读展示并复核段 3 清单与设计修订 2 的计数更正",
+      "counterexample": [
+        "漏替换任意一处造成纯文本与卡片混排",
+        "把选人控件改成卡片导致多选 tag 与远程搜索行为变化"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "补齐 3 处缺少 userId 的后端字段：DecisionMatterSummary.proposerId、DecisionMaterial.createdBy、StandardDocumentDetail.createdBy。",
+      "acceptance": [
+        "ArchitecturePersonReferenceFieldTest 断言三个响应暴露的 id 与模型一致",
+        "DecisionMatterListPage、DecisionMatterDetailPage 材料时间线、StandardDocumentListPage 详情三处悬浮出完整信息且状态不是「未找到」"
+      ],
+      "priority": "must",
+      "source": "用户确认「补齐后端字段，其他无问题」",
+      "counterexample": [
+        "这 3 处只能显示纯文本且永远无法悬浮",
+        "浮层显示「未找到」却被误判为通过"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "原始 ID 展示改为人员卡片：申请人 #123、操作人 #123、下线操作人 ID 等共 7 处渲染为「头像 + 姓名」。",
+      "acceptance": [
+        "grep 检索 applicantId、operatorId、offlinedBy 的裸插值结果为空",
+        "7 处逐一渲染为卡片",
+        "用户不存在时显示「未找到该人员信息」而不是空白或报错"
+      ],
+      "priority": "must",
+      "source": "用户复核段 3 清单时未提出异议，属「所有人员展示」的组成部分",
+      "counterexample": [
+        "仍渲染原始数字 ID",
+        "用户不存在时整块空白或抛错"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "全状态与主题：浮层覆盖加载中、加载失败加重试、未找到、无角色、停用、超长文本六种状态；明暗主题可读；桌面 1440 与手机 375 视口无遮挡与溢出。",
+      "acceptance": [
+        "六种状态逐一可复现并有对应文案或骨架",
+        "切换 data-theme 后浮层与卡片文字保持可读对比度",
+        "表格固定列内的浮层不被 overflow:hidden 裁剪"
+      ],
+      "priority": "must",
+      "source": "docs/governance/PROJECT-RULES.md 前端交付规则与 design-h5.md 移动端验收要求",
+      "counterexample": [
+        "加载中清空已显示的姓名",
+        "失败态没有重试入口",
+        "暗色主题下浮层文字不可读",
+        "固定列内浮层被裁剪"
+      ]
+    },
+    {
+      "id": "R11",
+      "statement": "组件示范页新增人员卡片示例区：三档各一个实例加 show-avatar/show-phone/show-team 三个开关的即时切换演示。",
+      "acceptance": [
+        "ComponentShowcaseView 同时可见三档实例",
+        "三个开关即时改变 full 实例的渲染结果"
+      ],
+      "priority": "must",
+      "source": "设计修订 2：计划阶段自检发现 R1 的开关行为缺少可观测载体，用户批准时一并确认",
+      "counterexample": [
+        "只替换业务页面而不留下任何可复现的档位与开关示例"
+      ]
+    }
+  ],
+  "invariants": [
+    "现有 12 处 UiUserIdentity 调用点的外部行为不变",
+    "组件在无可解析 userId 时不发起任何网络请求",
+    "查询接口不返回 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+    "跨租户用户 id 不得泄漏存在性，统一进入 missingIds",
+    "business/architecture 与 business/development 不新增对 sys_user 的直接 SQL，平台数据只通过 com.ccb.system.capability 公开契约访问",
+    "人员展示统一走 UiUserIdentity，不建立平行组件",
+    "人员列固定宽小于 130px 时改为 min-width，且不调整非人员列宽度",
+    "本次无数据库迁移，Flyway 脚本零改动",
+    "worktree 中 20 项他人在途改动始终保留且不被本次提交纳入"
+  ],
+  "constraints": [
+    "platform/system 与 frontend/application 的 codex_default_access 均为 read_only，本次属公共能力变更，需 Owner 审批（用户声明已获批）",
+    "前端没有单元测试框架，web/package.json 只有 dev/build/preview；前端门禁由 vue-tsc、vite 生产构建与真实浏览器验收承担",
+    "documents 与账本写入受 .ai-control 布局允许名单限制，阶段产物暂存文件不得使用未允许的文件名",
+    "git 纪律：只 git add 任务范围内文件，禁止 git add -A、git add .、git stash、git checkout -- .",
+    "只读接口不写审计表；审计针对写操作",
+    "根 AGENTS.md 要求所有前端任务按 design-h5.md 做手机视口验收"
+  ],
+  "non_goals": [
+    "不替换人员选择器（el-select 及其 el-option 下拉项）",
+    "不替换系统管理、角色维护、项目管理、测试管理、发布管理、数据迁移等其它菜单下的人员展示",
+    "不新增人员编辑、头像上传、角色分配、导入导出能力",
+    "不做虚拟滚动或表格分页策略优化",
+    "不引入前端单元测试框架",
+    "不给电话做脱敏或按权限分级"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260912-075-person-card/handoff.json",
+    "imported_at": "2026-09-12T07:43:33+00:00",
+    "topic": "person-card",
+    "design_revision": 2,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "person-card",
+      "handoff_status": "approved",
+      "created_at": "2026-09-12T07:43:31.959Z",
+      "design": {
+        "schema_version": 1,
+        "topic": "person-card",
+        "design_revision": 2,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-12-person-card-design.md",
+        "objective": "把架构管理与开发管理两个菜单下的 38 处人员展示统一替换为同一个可配置三档、悬停或点击展示完整信息的人员卡片，使人员身份、联系方式、团队归属与角色在任意列表、详情和时间线处就地可读。",
+        "users": [
+          "技术架构师与架构相关角色（architecture:view/apply/manage）：在物理子系统、决策事项、标准文档、搭建计划、交付与部署单元、网络工单、子系统变更、实例、资源申请、网络访问页面查看人员",
+          "开发管理角色（development:task:read、development:admin）：在开发任务列表与详情、阶段面板、工作项看板与列表、变更日志中查看负责人与指定人员",
+          "现有 UiUserIdentity 调用页面（ModuleView、AppLayout、ProjectView、ComponentShowcaseView）：作为兼容性回归对象"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "三档卡片：variant 取 compact/standard/full，分别默认显示「头像+姓名」「头像+姓名+电话」「头像+姓名+电话+团队」，且 show-avatar/show-phone/show-team 可独立覆盖档位默认值。",
+            "acceptance": [
+              "三档在约 130～180px 的表格列宽内渲染正确且不撑破列",
+              "关闭 show-phone 后中档不再渲染电话行，且不留下占位空隙",
+              "关闭 show-avatar 后不再渲染头像",
+              "三档与三个开关的组合可在组件示范页就地复现"
+            ],
+            "priority": "must",
+            "source": "用户确认「A，顺便留出可配置的空间，头像、团队、电话可以选择性展示」",
+            "counterexample": [
+              "三档差异只体现在字号大小",
+              "开关被档位默认值覆盖而无效",
+              "关掉开关后仍留有占位空隙"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "完整信息浮层：桌面 hover 触发（延迟约 120ms 防误触），@media (hover: none) 下改为点击触发；内容包含头像、姓名、账号、电话、归属团队、角色与启用状态。",
+            "acceptance": [
+              "桌面悬停后浮层出现且内容完整",
+              "手机视口点击卡片出现同一浮层",
+              "触屏下 hover 不会误触，点击浮层外部可关闭"
+            ],
+            "priority": "must",
+            "source": "用户确认触屏点击触发方案 A",
+            "counterexample": [
+              "触屏无法打开浮层",
+              "浮层缺少电话或账号",
+              "桌面悬停无延迟导致扫过即弹出"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "浮层布局为头部身份区加「联系方式」「组织归属」「角色」三个分区，分区之间细虚线分隔，角色渲染为可换行 chip；桌面宽 300px，窄屏使用 min(300px, calc(100vw - 24px))。",
+            "acceptance": [
+              "1440 与 375 视口下浮层不超出视口且不产生横向滚动",
+              "超长团队名与角色名换行显示而非省略号截断"
+            ],
+            "priority": "must",
+            "source": "用户确认浮层方案 B 及 5 条共同约定",
+            "counterexample": [
+              "浮层固定 300px 在窄屏溢出",
+              "角色拼接为一串文字",
+              "超长文本被省略号截断"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "新增平台人员档案批量查询接口：POST、登录即可访问、强制租户隔离、字段白名单、单次最多 50 个 id、返回 missingIds、包含停用用户状态。",
+            "acceptance": [
+              "跨租户 id 落入 missingIds 且接口不报错、不暴露存在性",
+              "userIds 超过 50 个返回 400，空数组返回空结果而非错误",
+              "响应体不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+              "停用用户被返回并带 status 标记"
+            ],
+            "priority": "must",
+            "source": "用户确认数据来源方案 1 并声明已获 Owner 批准",
+            "counterexample": [
+              "跨租户用户被返回",
+              "跨租户查询抛错并暴露存在性",
+              "响应体带非白名单字段",
+              "停用责任人被静默丢弃"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "前端目录 store 负责 ensure(ids) 入队、同一微任务内去重合并、按 50 分批、同一 id 飞行中不重复入队、TTL 10 分钟缓存、单批失败标记与重试（自动重试最多 1 次）、项目切换与登出时清空。",
+            "acceptance": [
+              "含 100 行且每行 1 个唯一负责人的列表页总请求数为 2 批",
+              "重复渲染同一用户不产生新请求",
+              "断网后浮层显示失败态与重试入口，恢复网络后可重试成功"
+            ],
+            "priority": "must",
+            "source": "用户确认工程方案乙",
+            "counterexample": [
+              "每行各发一次请求",
+              "同一用户被重复请求",
+              "失败后缓存被永久标记为错误且无法恢复"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "向后兼容：现有 12 处 UiUserIdentity 调用点零代码改动即可运行；组件在无可解析 userId 时不发起任何网络请求，行为与改造前一致。",
+            "acceptance": [
+              "ModuleView、AppLayout、ProjectView、ComponentShowcaseView 四个文件不做改动即可通过 vue-tsc 与生产构建",
+              "既无 userId 也无 user 时只渲染兜底文本，不弹浮层、不发请求"
+            ],
+            "priority": "must",
+            "source": "工程事实：现有 12 处调用点的外部行为不变是本次唯一强制兼容边界",
+            "counterexample": [
+              "现有调用点被迫传入新 prop 才能编译",
+              "无 id 时仍发请求或弹出空浮层"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "替换清单落地：两个菜单下 24 个文件、38 处人员展示全部替换为人员卡片；人员选择器（el-select）保持不动。",
+            "acceptance": [
+              "附录 A 的 38 处逐处走查通过",
+              "TaskFormDrawer、WorkItemFormDrawer、SubsystemChangePhysicalCard 及各页 el-select 选人控件未被改动",
+              "固定宽小于 130px 的人员列改为 min-width，姓名不被挤压"
+            ],
+            "priority": "must",
+            "source": "用户确认替换范围为只读展示并复核段 3 清单",
+            "counterexample": [
+              "漏替换任意一处造成纯文本与卡片混排",
+              "把选人控件改成卡片导致多选 tag 与远程搜索行为变化"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "补齐 3 处缺少 userId 的后端字段：DecisionMatterListItem.proposerId、DecisionMaterial.createdBy、StandardDocumentDetail.createdBy。",
+            "acceptance": [
+              "DecisionMatterListPage:152、DecisionMatterDetailPage:621、StandardDocumentListPage:353 三处可以悬浮出完整信息",
+              "mvn -pl :ccb-architecture -am test 通过"
+            ],
+            "priority": "must",
+            "source": "用户确认「补齐后端字段」",
+            "counterexample": [
+              "这 3 处只能显示纯文本且永远无法悬浮"
+            ]
+          },
+          {
+            "id": "R9",
+            "statement": "原始 ID 展示改为人员卡片：申请人 #123、操作人 #123、下线操作人 ID 等共 7 处渲染为「头像 + 姓名」。",
+            "acceptance": [
+              "这 7 处不再出现 #加数字的原始 ID",
+              "用户不存在时显示「未找到该人员信息」而不是空白或报错"
+            ],
+            "priority": "must",
+            "source": "用户复核段 3 清单时未提出异议，属「所有人员展示」的组成部分",
+            "counterexample": [
+              "仍渲染原始数字 ID",
+              "用户不存在时整块空白或抛错"
+            ]
+          },
+          {
+            "id": "R10",
+            "statement": "全状态与主题：浮层覆盖加载中、加载失败加重试、未找到、无角色、停用、超长文本六种状态；明暗主题可读；桌面 1440 与手机 375 视口无遮挡与溢出。",
+            "acceptance": [
+              "六种状态逐一可复现",
+              "切换 data-theme 后浮层与卡片文字保持可读对比度",
+              "表格固定列内的浮层不被 overflow:hidden 裁剪"
+            ],
+            "priority": "must",
+            "source": "docs/governance/PROJECT-RULES.md 前端交付规则与 design-h5.md 移动端验收要求",
+            "counterexample": [
+              "加载中清空已显示的姓名",
+              "失败态没有重试入口",
+              "暗色主题下浮层文字不可读",
+              "固定列内浮层被裁剪"
+            ]
+          },
+          {
+            "id": "R11",
+            "statement": "组件示范页新增人员卡片示例区：三档各一个实例加 show-avatar/show-phone/show-team 三个开关的即时切换演示。",
+            "acceptance": [
+              "ComponentShowcaseView 可见三档与开关组合结果",
+              "该示例作为 R1 的可复现验收载体供后续参考"
+            ],
+            "priority": "must",
+            "source": "设计修订 2：计划阶段自检发现 R1 的开关行为缺少可观测载体",
+            "counterexample": [
+              "只替换业务页面而不留下任何可复现的档位与开关示例"
+            ]
+          }
+        ],
+        "invariants": [
+          "现有 12 处 UiUserIdentity 调用点的外部行为不变",
+          "组件在无可解析 userId 时不发起任何网络请求",
+          "查询接口不返回 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+          "跨租户用户 id 不得泄漏存在性，统一进入 missingIds",
+          "business/architecture 与 business/development 不新增对 sys_user 的直接 SQL，平台数据只通过 com.ccb.system.capability 公开契约访问",
+          "人员展示统一走 UiUserIdentity，不建立平行组件",
+          "人员列固定宽小于 130px 时改为 min-width（下限 130px），且不调整非人员列的宽度",
+          "本次无数据库迁移，Flyway 脚本零改动"
+        ],
+        "constraints": [
+          "platform/system 与 frontend/application 的 codex_default_access 均为 read_only，本次修改属公共能力变更，需要 public_capability_change 声明、关联已批准需求与 Owner 审批（用户声明已获批）",
+          "前端没有单元测试框架，package.json 只有 dev/build/preview；前端门禁由 vue-tsc 类型检查、vite 生产构建与真实浏览器验收承担",
+          "Flyway 迁移只追加，本次不新增迁移",
+          "根 AGENTS.md 要求所有前端任务按 design-h5.md 做手机视口验收",
+          "只读接口不写审计表，项目规约要求审计针对写操作"
+        ],
+        "non_goals": [
+          "不替换人员选择器（el-select 及其 el-option 下拉项）",
+          "不替换系统管理、角色维护、项目管理、测试管理、发布管理、数据迁移等其它菜单下的人员展示",
+          "不新增人员编辑、头像上传、角色分配、导入导出能力",
+          "不做虚拟滚动或表格分页策略优化",
+          "不引入前端单元测试框架",
+          "不给电话做脱敏或按权限分级"
+        ],
+        "selected_approach": {
+          "name": "方案乙：触发器 + 浮层卡片 + 共享目录 store 三层分离",
+          "reason": "触发器只渲染并在需要时把 id 交给 store，store 在同一微任务内去重合并成最多 50 个一批的请求；避免大列表每行一次请求的放大，取数逻辑集中后可用单测覆盖合并、去重、TTL 与失败降级，符合优先复用公共能力的规约。",
+          "alternatives": [
+            {
+              "name": "方案甲：组件自治，组件内 hover 时单点请求",
+              "rejected_because": "100 行列表最坏产生 100 次请求，是最容易被观测打回的误差；缓存与去重需在组件内手写，无法集中测试。"
+            },
+            {
+              "name": "方案丙：组件纯展示，各调用页面自行预取后传 prop",
+              "rejected_because": "把成本平摊到 22 个调用点并重复实现缓存与失败重试，改动面最大且与优先复用公共能力相反。"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "server/src/platform/system：人员档案批量查询接口与角色查询能力",
+              "web/src/api/user-profile.ts：接口封装",
+              "web/src/stores/person-directory.ts：批量合并、去重、缓存与失败降级",
+              "web/src/components/ui/UiUserIdentity.vue：触发器改造",
+              "web/src/components/ui/UiPersonProfileCard.vue：浮层内容新增",
+              "web/src/styles.css：三档尺寸语义与浮层样式",
+              "web/src/modules/architecture 与 web/src/modules/development：38 处模板替换与 3 处 DTO 字段补齐",
+              "web/src/views/ComponentShowcaseView.vue：新增三档与开关示例区"
+            ],
+            "outside": [
+              "人员选择器与其它菜单的人员展示",
+              "人员写操作（编辑、头像上传、角色分配）",
+              "数据库迁移",
+              "平台账号与权限模型"
+            ]
+          },
+          "components": [
+            {
+              "name": "UiUserIdentity.vue",
+              "responsibility": "渲染触发器（头像、姓名、按档位的电话与团队），在需要补全数据时把 id 交给 store，不直接调用接口",
+              "depends_on": [
+                "person-directory store",
+                "UiPersonProfileCard.vue"
+              ]
+            },
+            {
+              "name": "UiPersonProfileCard.vue",
+              "responsibility": "渲染浮层内容与六种状态，从 store 读数据",
+              "depends_on": [
+                "person-directory store"
+              ]
+            },
+            {
+              "name": "person-directory store",
+              "responsibility": "入队、同微任务去重合并、50 个一批、TTL 缓存、失败标记与重试、会话重置",
+              "depends_on": [
+                "api/user-profile.ts"
+              ]
+            },
+            {
+              "name": "api/user-profile.ts",
+              "responsibility": "批量查询接口的类型化封装",
+              "depends_on": [
+                "api/http.ts"
+              ]
+            },
+            {
+              "name": "人员档案查询接口",
+              "responsibility": "租户隔离的只读批量查询，只返回白名单字段",
+              "depends_on": [
+                "SystemUserDirectory",
+                "sys_org",
+                "sys_user_role",
+                "sys_role"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "POST /api/platform/user-profiles/query",
+              "producer": "server/src/platform/system",
+              "consumers": [
+                "web/src/api/user-profile.ts"
+              ],
+              "contract": "登录即可访问；请求体 { userIds: number[] } 去重、忽略 null、上限 50；响应 { code, message, data: { profiles: [{ id, username, displayName, mobilePhone, orgName, avatarUrl, roles: [{id, code, name}], status }], missingIds } }；强制 tenant_id = actor.tenantId()；超限返回 400；空数组返回空结果；停用用户也返回并由 status 标记"
+            },
+            {
+              "name": "UiUserIdentity props",
+              "producer": "web/src/components/ui/UiUserIdentity.vue",
+              "consumers": [
+                "web/src/modules/architecture 与 web/src/modules/development 的 38 处调用",
+                "web/src/views/ModuleView.vue、AppLayout.vue、ProjectView.vue、ComponentShowcaseView.vue 共 12 处现有调用"
+              ],
+              "contract": "user（既有，保持）、userId（新增）、variant（compact/standard/full，默认 standard）、showAvatar（默认 true）、showPhone 与 showTeam（默认按 variant 推导）、size 与 showName 与 showProfile（既有，保持）、fallbackName；无可解析 userId 时不发请求且 showProfile 自动降级"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "页面模板传入 userId 与 variant，或传入既有 user 对象",
+              "transitions": [
+                "组件判断是否缺电话/团队/角色",
+                "缺则调用 store.ensure(ids) 入队",
+                "store 在同一微任务内去重合并并按 50 分批",
+                "api/user-profile 发起 POST 查询",
+                "响应对应写回 Map<id, { status, profile }>（TTL 10 分钟）"
+              ],
+              "output": "响应式缓存更新，UiPersonProfileCard 渲染完整信息浮层"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "电话或团队字段缺失",
+            "behavior": "该行不渲染，不留空行、不显示占位；浮层内显示破折号",
+            "recovery": "数据补齐后随缓存刷新自动出现"
+          },
+          {
+            "condition": "角色为空",
+            "behavior": "渲染虚线 chip「暂无角色」",
+            "recovery": "角色变更后随 TTL 刷新"
+          },
+          {
+            "condition": "用户不存在或跨租户",
+            "behavior": "浮层显示「未找到该人员信息」，卡片本体仍用已知姓名渲染",
+            "recovery": "无需恢复"
+          },
+          {
+            "condition": "接口 4xx 或 5xx",
+            "behavior": "浮层显示「人员信息加载失败」加「重试」链接，卡片本体不受影响",
+            "recovery": "点击重试或下次 ensure 重发，自动重试最多 1 次"
+          },
+          {
+            "condition": "数据加载中",
+            "behavior": "头部先用已知姓名渲染，下方显示 2 行骨架，不清空已显示内容",
+            "recovery": "数据到达后替换骨架"
+          },
+          {
+            "condition": "既无 userId 也无 user",
+            "behavior": "纯文本兜底，不发请求，showProfile 自动降级为 false",
+            "recovery": "无需恢复"
+          },
+          {
+            "condition": "项目切换、登出或租户变化",
+            "behavior": "store 清空缓存，避免跨项目脏数据",
+            "recovery": "重新 ensure"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "接口要求登录并强制租户隔离",
+            "响应只含白名单字段，不返回口令、租户、删除标记、登录时间与对象存储 key",
+            "跨租户 id 不暴露存在性，统一进入 missingIds",
+            "暴露面与现有系统管理用户列表、测试管理提出人一致，已含在 Owner 审批范围"
+          ],
+          "performance": [
+            "同微任务去重合并并按 50 分批，请求数由页面上不同人员数决定",
+            "同一 id 飞行中不重复入队",
+            "TTL 10 分钟缓存减少重复请求"
+          ],
+          "compatibility": [
+            "UiUserIdentity 现有 prop 全部保留且默认值保持现有观感",
+            "无可解析 id 时不发请求，行为与改造前一致",
+            "不新增平行组件，人员展示统一收敛到 UiUserIdentity"
+          ],
+          "operations": [
+            "无数据库迁移、无新配置项、无外部系统接入、无新增定时任务",
+            "接口为无状态只读查询",
+            "接口失败只影响浮层内容，不影响页面主流程"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1"
+            ],
+            "signal": "三档渲染结果与三个独立开关的覆盖行为正确",
+            "method": "真实浏览器走查三档与开关组合；npm --prefix web run build 中的 vue-tsc 类型检查"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "signal": "桌面 hover 与触屏点击都能打开浮层，1440 与 375 视口不溢出",
+            "method": "桌面鼠标悬停与移动视口点击对照；长团队名与长角色名数据验证换行"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "租户隔离、50 上限、字段白名单、missingIds、停用用户状态均正确",
+            "method": "mvn -pl :ccb-system -am test 接口单元测试"
+          },
+          {
+            "requirement_ids": [
+              "R5"
+            ],
+            "signal": "含 100 行唯一负责人的列表页请求数为 2 批；断网后显示失败态并可重试",
+            "method": "store 行为验收：实测请求数；断网模拟失败与重试"
+          },
+          {
+            "requirement_ids": [
+              "R6"
+            ],
+            "signal": "现有四个调用文件不改动即可编译运行且外观行为不变",
+            "method": "不改动现有调用点执行构建；浏览器回归四个页面"
+          },
+          {
+            "requirement_ids": [
+              "R7",
+              "R9"
+            ],
+            "signal": "38 处全部替换、7 处原始 ID 变为卡片、选人控件未被改动",
+            "method": "按附录 A 逐处走查；git diff 核对未触及 el-select；构造用户不存在场景"
+          },
+          {
+            "requirement_ids": [
+              "R8"
+            ],
+            "signal": "3 处补齐后可以悬浮出完整信息，架构模块回归通过",
+            "method": "mvn -pl :ccb-architecture -am test 加页面走查"
+          },
+          {
+            "requirement_ids": [
+              "R10"
+            ],
+            "signal": "六种状态逐一可复现，明暗主题可读，两个视口无遮挡溢出",
+            "method": "断网、构造空角色与停用用户与超长文本；切换 data-theme 与视口"
+          },
+          {
+            "requirement_ids": [
+              "R11"
+            ],
+            "signal": "组件示范页可见三档与三个开关的组合结果",
+            "method": "浏览器打开组件示范页走查三档与开关组合"
+          },
+          {
+            "requirement_ids": [
+              "R7"
+            ],
+            "signal": "仓库治理与任务范围检查通过",
+            "method": "node scripts/check-all-governance.mjs；node scripts/check-codex-scope.mjs --scope <本次 codex-task-scope.yaml>"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "用户已申报并取得 Owner 对 platform/system 与 frontend/application 两处公共能力变更的批准",
+            "basis": "用户在会话中口述「已申报 owner 获批」",
+            "falsifier": "Owner 未批准或批准范围不含 frontend/application 公共组件"
+          },
+          {
+            "text": "sys_user.mobile_phone 在当前租户内对已登录用户可见，与既有页面一致",
+            "basis": "系统管理用户列表与测试管理提出人页面已对同类角色展示手机号",
+            "falsifier": "安全评审要求电话对无 system:access 的用户脱敏"
+          },
+          {
+            "text": "Element Plus el-popover 的 teleport 定位在表格固定列与横向滚动容器内正确",
+            "basis": "Element Plus 默认 teleported 为 true，浮层挂载到 body",
+            "falsifier": "验收中出现浮层被裁剪或错位"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "大列表（100 行、多人员列）预取的实际批次数",
+            "impact": "若超过 1 批，需要补充页面级批大小策略",
+            "owner": "研发",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "范围只含只读展示（表格列、详情描述、时间线操作人），不含人员选择器",
+            "reason": "选择器是选人控件，el-select 内嵌卡片会牵动多选 tag、远程搜索与失效人员提示，收益低而回归面大",
+            "source": "用户回复「A 没问题」"
+          },
+          {
+            "id": "D2",
+            "decision": "采用方案乙：触发器 + 浮层卡片 + 共享目录 store",
+            "reason": "避免大列表请求放大，取数逻辑集中可测，符合优先复用公共能力",
+            "source": "用户在方案对比后确认采用方案乙"
+          },
+          {
+            "id": "D3",
+            "decision": "三档字段显示在卡片本体上，因此必须预取",
+            "reason": "用户明确最小的有人员姓名、中等还有电话、大型还有归属团队",
+            "source": "用户回复「A，顺便留出可配置的空间」"
+          },
+          {
+            "id": "D4",
+            "decision": "三档形态采用两行堆叠",
+            "reason": "窄表格列下电话与团队可换行，信息层级清晰",
+            "source": "用户在看图后回复「B 挺好」"
+          },
+          {
+            "id": "D5",
+            "decision": "浮层采用分区卡片加角色 chips，并接受 5 条共同约定",
+            "reason": "扫读顺序自然，多角色可控，新增字段有位置可放",
+            "source": "用户在看图后回复「可以」"
+          },
+          {
+            "id": "D6",
+            "decision": "触屏使用点击触发，桌面保留 hover",
+            "reason": "hover 在触屏不存在，design-h5.md 要求移动端功能对等",
+            "source": "用户确认触屏方案 A"
+          },
+          {
+            "id": "D7",
+            "decision": "补齐 3 处缺失 userId 的后端字段",
+            "reason": "避免出现有的卡片能悬停、有的不能的认知不一致",
+            "source": "用户回复「补齐后端字段，其他无问题」"
+          },
+          {
+            "id": "D8",
+            "decision": "在组件示范页新增三档与三个开关的示例区",
+            "reason": "原设计把 ComponentShowcaseView 仅列为回归对象，导致 R1 的开关行为缺少可复现载体；该页本就是组件示例页",
+            "source": "计划阶段自检发现，随设计修订 2 一并请用户确认"
+          },
+          {
+            "id": "D9",
+            "decision": "人员列固定宽小于 130px 时改为 min-width",
+            "reason": "小档含 24px 头像，100px 列宽会挤压姓名",
+            "source": "计划阶段自检发现，随设计修订 2 一并请用户确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "新接口把电话暴露给所有已登录用户",
+            "impact": "数据暴露面扩大",
+            "mitigation": "仅同租户、白名单字段、不含口令与登录信息；暴露面与既有页面一致，已含在 Owner 审批范围"
+          },
+          {
+            "risk": "列表预取增加请求量",
+            "impact": "页面加载变慢",
+            "mitigation": "去重、50 个一批、10 分钟缓存；验收时实测请求数，超过 1 批再补批大小策略"
+          },
+          {
+            "risk": "固定列或横向滚动表格内浮层定位异常",
+            "impact": "浮层被裁剪或错位",
+            "mitigation": "依赖 Element Plus teleport；如异常只调整 placement，不改公共组件契约"
+          },
+          {
+            "risk": "38 处替换出现遗漏或误改选人控件",
+            "impact": "出现纯文本与卡片混排或交互回归",
+            "mitigation": "按附录 A 逐处走查，git diff 核对，现有 12 处调用点回归"
+          },
+          {
+            "risk": "补齐 3 处 DTO 字段影响架构模块既有查询",
+            "impact": "架构模块回归失败",
+            "mitigation": "只加字段不改语义；mvn -pl :ccb-architecture -am test 全量回归"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "修订 1 的用户确认：范围（只读展示）、数据来源（平台批量接口且已获 Owner 批准）、触屏点击、三档形态（两行堆叠）、浮层布局（分区卡片加角色 chips）、段 3 清单与档位分配、段 4 数据流权限失败行为与验证策略、补齐 3 处后端字段，复核落盘文件后回复「可以」。修订 2 的增量（R11 组件示范页示例、D8、D9、文件计数更正）在复核计划时一并获批，用户回复「批准，本次不修历史问题」。用户同时明确了基线故障的处理方向：本次不修复，声明为已知例外，完成报告需如实标注门禁未全绿的原因。",
+          "confirmed_at": "2026-09-12T15:43:11+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-12-person-card-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改 docs/requirements/REQ-20260912-075-person-card/codex-task-scope.yaml 中 writable_paths 覆盖的文件",
+          "不修改已发布的 V*__*.sql；本次无数据库迁移",
+          "保留现有 Java 包名 com.ccb.*；不调整目录、包名与既有业务逻辑",
+          "platform/system 与 frontend/application 属公共能力，public_capability_change.required=true",
+          "人员展示统一走 UiUserIdentity，不建立平行组件",
+          "人员列固定宽小于 130px 时改为 min-width；不修改非人员列宽度",
+          "不替换人员选择器（el-select）与 SubsystemChangePhysicalCard.vue",
+          "前端颜色一律使用 web/src/styles.css 的语义变量，不写死颜色",
+          "接口响应必须走统一 { code, data, message } 结构与 TraceId.getOrCreate()",
+          "未执行的验证不得写入完成报告"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java",
+            "status": "candidate-new",
+            "responsibility": "租户范围内批量查询人员档案与角色的 JDBC 只读服务",
+            "evidence": "server/src/platform/system/src/main/java/com/ccb/system/service/ 目录已存在"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java",
+            "status": "candidate-new",
+            "responsibility": "POST /api/platform/user-profiles/query 的入参校验、上限与响应组装",
+            "evidence": "同目录已有 SystemController、NotificationController、BusinessFormMetadataController"
+          },
+          {
+            "path": "server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java",
+            "status": "candidate-new",
+            "responsibility": "租户隔离、角色 JOIN、停用用户与软删除过滤",
+            "evidence": "src/test/java/com/ccb/system/service/SystemUserDirectoryTest.java 已存在"
+          },
+          {
+            "path": "server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java",
+            "status": "candidate-new",
+            "responsibility": "权限注解、上限 400、空数组、missingIds 与白名单字段",
+            "evidence": "change/web/SubsystemChangeApplicationControllerTest.java 已有 standalone MockMvc 先例"
+          },
+          {
+            "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java",
+            "status": "existing",
+            "responsibility": "为事项列表与材料响应追加 proposerId / createdBy",
+            "evidence": "已读取 :535 与 :598"
+          },
+          {
+            "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java",
+            "status": "existing",
+            "responsibility": "为文档详情响应追加 createdBy",
+            "evidence": "已读取 :266"
+          },
+          {
+            "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitecturePersonReferenceFieldTest.java",
+            "status": "candidate-new",
+            "responsibility": "断言三处响应暴露人员 id",
+            "evidence": "src/test/java/com/ccb/architecture/web/ 目录尚不存在"
+          },
+          {
+            "path": "web/src/types/system.ts",
+            "status": "existing",
+            "responsibility": "追加 PersonProfile / PersonRole 类型",
+            "evidence": "UserProfile 位于 :15"
+          },
+          {
+            "path": "web/src/api/user-profile.ts",
+            "status": "candidate-new",
+            "responsibility": "人员档案查询接口封装",
+            "evidence": "web/src/api/ 已有 14 个 api 文件"
+          },
+          {
+            "path": "web/src/stores/person-directory.ts",
+            "status": "candidate-new",
+            "responsibility": "去重合并、批大小、TTL、失败降级与会话重置",
+            "evidence": "web/src/stores/ 已有 4 个 setup 语法 store"
+          },
+          {
+            "path": "web/src/components/ui/UiUserIdentity.vue",
+            "status": "existing",
+            "responsibility": "触发器：头像、姓名与按档位的电话和团队",
+            "evidence": "已完整读取"
+          },
+          {
+            "path": "web/src/components/ui/UiPersonProfileCard.vue",
+            "status": "candidate-new",
+            "responsibility": "浮层内容与六种状态",
+            "evidence": "同目录已有 20 个 Ui 组件"
+          },
+          {
+            "path": "web/src/styles.css",
+            "status": "existing",
+            "responsibility": "三档尺寸语义与浮层分区样式",
+            "evidence": "已读取 :1187-1197"
+          },
+          {
+            "path": "web/src/views/ComponentShowcaseView.vue",
+            "status": "existing",
+            "responsibility": "三档与三个开关的示例区",
+            "evidence": "已读取 :120"
+          },
+          {
+            "path": "web/src/modules/architecture/*.vue（12 个页面）与 components/*.vue（6 个组件）",
+            "status": "existing",
+            "responsibility": "架构管理 30 处人员展示替换",
+            "evidence": "设计附录 A"
+          },
+          {
+            "path": "web/src/modules/development/*.vue（2 个页面）与 components/*.vue（4 个组件）",
+            "status": "existing",
+            "responsibility": "开发管理 8 处人员展示替换",
+            "evidence": "设计附录 A"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "平台人员档案批量查询接口可用：登录即可访问、租户隔离、单次上限 50、白名单字段、返回 missingIds、包含停用用户状态",
+            "requirement_ids": [
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java:56-57 为 permitAll 登录/刷新 + anyRequest().authenticated()，新增 isAuthenticated 接口无需改安全配置",
+              "server/src/platform/system/src/main/java/com/ccb/system/web/SystemController.java:22 类级要求 hasAuthority('system:access')，不能复用于本接口",
+              "server/src/platform/system/src/main/java/com/ccb/system/service/SystemUserDirectory.java:19-23 已存在 sys_user LEFT JOIN sys_org 的租户范围查询写法",
+              "server/src/platform/system/pom.xml:31-42 已有 spring-boot-starter-test 与 testcontainers-mysql",
+              "server/src/platform/system/src/test/java/com/ccb/system/capability/ProjectMemberReferenceLockMySqlTest.java:13-23 已有 MySQLContainer 建表先例",
+              "server/src/modules/architecture/src/test/java/com/ccb/architecture/change/web/SubsystemChangeApplicationControllerTest.java:1-40 已有 standalone MockMvc + PreAuthorize 反射断言先例",
+              "com.ccb.infrastructure.storage.MinioStorageService.presignedUrl(String) 在 MinioStorageService.java:49"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "com.ccb.security.model.AuthUser(long id, long tenantId, String username, String passwordHash, String displayName, long orgId, boolean enabled, String orgName, String avatarObjectKey)",
+                "com.ccb.common.api.ApiResponse.success(T data, String traceId)",
+                "com.ccb.common.trace.TraceId.getOrCreate()",
+                "com.ccb.infrastructure.storage.MinioStorageService.presignedUrl(String objectKey)"
+              ],
+              "produces": [
+                "POST /api/platform/user-profiles/query",
+                "请求体 { \"userIds\": [long] }",
+                "响应 data = { profiles: [{ id, username, displayName, mobilePhone, orgName, avatarUrl, roles: [{ id, code, name }], status }], missingIds: [long] }",
+                "类级注解 @PreAuthorize(\"isAuthenticated()\")"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "新建 UserProfileServiceMySqlTest，用 Testcontainers MySQL 建 sys_user/sys_org/sys_role/sys_user_role 并断言跨租户 id 不返回",
+                "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest",
+                "expected": "编译失败 cannot find symbol: class UserProfileService",
+                "evidence": "保存命令与报错首行"
+              },
+              {
+                "id": "T2-S",
+                "action": "实现 UserProfileService.query(AuthUser, List<Long>)：先按 id 查用户再一次性查角色并在内存聚合，强制 tenant_id，返回白名单字段",
+                "command": null,
+                "expected": "类可编译且不返回 password_hash/tenant_id/deleted/last_login_at/avatar_object_key",
+                "evidence": "保存最终 SQL 与返回字段清单"
+              },
+              {
+                "id": "T3-S",
+                "action": "运行服务层测试并补断言：软删除不返回、停用用户返回且 status=0、组织为空时 orgName 为空串、角色为空返回空列表",
+                "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest",
+                "expected": "通过，0 个失败",
+                "evidence": "保存测试报告路径与通过数"
+              },
+              {
+                "id": "T4-S",
+                "action": "新建 UserProfileControllerTest，用 standaloneSetup 断言类级 PreAuthorize 为 isAuthenticated() 且 userIds 长度 51 返回 400",
+                "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileControllerTest",
+                "expected": "编译失败 cannot find symbol: class UserProfileController",
+                "evidence": "保存报错首行"
+              },
+              {
+                "id": "T5-S",
+                "action": "实现 UserProfileController：去重并忽略 null、上限 50、空数组返回空结果、missingIds 为请求中未命中的 id、avatarUrl 由 presignedUrl 生成",
+                "command": null,
+                "expected": "接口可编译，响应结构与设计一致",
+                "evidence": "保存控制器响应 record 定义"
+              },
+              {
+                "id": "T6-S",
+                "action": "运行局部测试与 ccb-system 全量回归",
+                "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest,UserProfileControllerTest && mvn -pl :ccb-system -am test",
+                "expected": "两次均通过，0 个失败",
+                "evidence": "保存两次 Tests run 汇总行"
+              },
+              {
+                "id": "T7-S",
+                "action": "提交检查点",
+                "command": "git add server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java && git commit -m \"feat(postcard): 新增平台人员档案批量查询接口\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "跨租户 id 落入 missingIds 且接口不报错",
+              "userIds 去重后超过 50 返回 400",
+              "空数组返回成功且 profiles 与 missingIds 均为空",
+              "响应不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+              "停用用户被返回并带 status",
+              "类级注解恰为 isAuthenticated() 且不含 system:access"
+            ],
+            "risks": [
+              "本项目 ccb-system 中参数校验异常的 400 映射机制需在实施时确认",
+              "Testcontainers 需要本地 Docker 可用"
+            ],
+            "rollback": "删除 UserProfileService.java、UserProfileController.java 与两个测试文件，git revert 该提交",
+            "stop_conditions": [
+              "若 ccb-system 中没有把参数校验异常映射为 400 的既有机制，且新增 Advice 会触碰公共行为，停止并升级"
+            ],
+            "escalation_conditions": [
+              "Owner 要求改接口路径、要求电话脱敏或要求按数据范围过滤非项目成员时，停止实施并回到设计"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "前端人员档案接口封装与目录 store 可用：去重合并、50 一批、TTL 10 分钟、失败降级与重试、会话重置",
+            "requirement_ids": [
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "web/src/api/http.ts:4-9 定义 baseURL 为 /api 的 axios 实例",
+              "web/src/stores/project-context.ts:1-30 为 setup 语法 store 先例",
+              "web/src/types/system.ts:15 UserProfile 已存在，PersonProfile 为新增类型",
+              "web/package.json:6-9 scripts 只有 dev/build/preview，build 为 vue-tsc --noEmit && vite build"
+            ],
+            "files": {
+              "create": [
+                "web/src/api/user-profile.ts",
+                "web/src/stores/person-directory.ts"
+              ],
+              "modify": [
+                "web/src/types/system.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 的 POST /api/platform/user-profiles/query 契约",
+                "web/src/api/http.ts 默认导出的 axios 实例"
+              ],
+              "produces": [
+                "web/src/types/system.ts 新增 PersonRole、PersonProfile、PersonProfileQueryResult",
+                "web/src/api/user-profile.ts 导出 queryUserProfiles(userIds: Array<number|string>)",
+                "usePersonDirectoryStore() 暴露 ensure(ids)、get(id)、stateOf(id)、retry(ids)、reset()",
+                "web/src/stores/person-directory.ts 导出 PROFILE_BATCH_SIZE=50、PROFILE_CACHE_TTL_MS=600000、PROFILE_MAX_AUTO_RETRY=1"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "在 web/src/types/system.ts 追加 PersonRole、PersonProfile、PersonProfileQueryResult",
+                "command": null,
+                "expected": "类型可被 api 与 store 引用",
+                "evidence": "保存追加片段"
+              },
+              {
+                "id": "T2-S",
+                "action": "写 web/src/api/user-profile.ts，把 userIds 转成数字并过滤非有限值",
+                "command": null,
+                "expected": "导出 queryUserProfiles",
+                "evidence": "保存文件内容"
+              },
+              {
+                "id": "T3-S",
+                "action": "写 web/src/stores/person-directory.ts：ensure 入队并 queueMicrotask 合并 flush，按 50 分片；get 读 TTL 内缓存；stateOf 返回 idle/loading/ready/missing/error；retry 清错误后重发；reset 清空",
+                "command": null,
+                "expected": "导出常量与五个方法",
+                "evidence": "保存文件内容"
+              },
+              {
+                "id": "T4-S",
+                "action": "类型检查与构建",
+                "command": "npm --prefix web run build",
+                "expected": "通过，0 个类型错误",
+                "evidence": "保存命令与退出码"
+              },
+              {
+                "id": "T5-S",
+                "action": "在真实浏览器控制台注入 120 个 id 并观察 Network 面板请求条数，再重复同一批验证去重",
+                "command": "ensure(Array.from({length:120},(_,i)=>i+1))",
+                "expected": "首次 3 条请求；重复调用新增 0 条",
+                "evidence": "保存请求条数截图或 HAR 片段"
+              },
+              {
+                "id": "T6-S",
+                "action": "提交检查点",
+                "command": "git add web/src/types/system.ts web/src/api/user-profile.ts web/src/stores/person-directory.ts && git commit -m \"feat(person-card): 新增人员档案接口封装与目录 store\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "120 个 id 产生 3 批请求",
+              "重复同一批 id 不产生新请求",
+              "同一 id 在飞行中不重复入队",
+              "单批失败只标记该批为 error 且自动重试最多 1 次",
+              "missingIds 对应条目状态为 missing 而非 error",
+              "reset() 后缓存为空"
+            ],
+            "risks": [
+              "浏览器控制台获取 store 实例的方式依赖运行时环境，若不可行改用页面实际数据观察请求条数"
+            ],
+            "rollback": "删除两个新建文件并还原 web/src/types/system.ts 的追加段",
+            "stop_conditions": [
+              "若 vue-tsc 报错来自既有代码而非本次改动，停止并记录基线故障，不得顺手修复"
+            ],
+            "escalation_conditions": [
+              "若 120 个 id 的实测批次数不是 3，说明合并逻辑失效，升级并重新建模"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "UiUserIdentity 触发器与 UiPersonProfileCard 浮层完成：三档可配置、桌面悬停与触屏点击出完整信息、六种状态与明暗主题可用、无可解析 id 时不发请求",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R6",
+              "R10"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "web/src/components/ui/UiUserIdentity.vue 现有 props 为 user/size/showName/showProfile，template 使用 el-popover trigger=hover 与 el-avatar",
+              "web/src/styles.css:1187-1197 为 .ui-user-identity 与 .ui-user-profile 的现有样式",
+              "web/src/styles.css:8-30 定义语义变量 --page-bg/--panel-bg/--panel-muted/--line/--text/--muted/--brand/--brand-strong/--success/--shadow 与 dark 覆盖",
+              "现有 12 处调用点只传 user（web/src/views/ModuleView.vue、AppLayout.vue、ProjectView.vue、ComponentShowcaseView.vue）"
+            ],
+            "files": {
+              "create": [
+                "web/src/components/ui/UiPersonProfileCard.vue"
+              ],
+              "modify": [
+                "web/src/components/ui/UiUserIdentity.vue",
+                "web/src/styles.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "usePersonDirectoryStore 的 ensure/get/stateOf/retry"
+              ],
+              "produces": [
+                "UiUserIdentity props：user、userId、variant(compact|standard|full)、showAvatar、showPhone、showTeam、size、showName、showProfile、fallbackName",
+                "UiPersonProfileCard props：userId、fallbackName、fallbackAvatarUrl",
+                "styles.css 新增 .ui-user-identity--compact/--standard/--full、.ui-user-identity__lines、.ui-user-identity__sub、.ui-person-card 系列"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "记录改造前基准：组件示范页 UiUserIdentity 外观截图",
+                "command": null,
+                "expected": "得到 R6 的对照基线",
+                "evidence": "保存改造前截图"
+              },
+              {
+                "id": "T2-S",
+                "action": "改造 UiUserIdentity.vue：解析 resolvedId、按需调用 store.ensure、两行堆叠模板、三档与三个开关、touchTrigger 由 matchMedia(hover: none) 决定、resolvedId 为 null 时强制 showProfile=false 且不渲染 el-popover",
+                "command": null,
+                "expected": "组件保留全部既有 prop 且默认观感不变",
+                "evidence": "保存组件 diff 与 props 清单"
+              },
+              {
+                "id": "T3-S",
+                "action": "新增 UiPersonProfileCard.vue：头部身份区 + 联系方式/组织归属/角色三分区 + 角色 chips；loading 用骨架不清空头部、missing 显示未找到、error 显示失败与重试",
+                "command": null,
+                "expected": "四种数据状态均有对应渲染分支",
+                "evidence": "保存分支清单"
+              },
+              {
+                "id": "T4-S",
+                "action": "更新 styles.css:1187-1197 区间：三档类、lines/sub 类、ui-person-card 系列、760px 以下浮层宽度 min(300px, calc(100vw - 24px))；颜色全部使用语义变量；确认 .ui-user-profile 无其他引用后移除",
+                "command": "grep -rn \"ui-user-profile\" web/src",
+                "expected": "grep 无输出或仅剩新组件",
+                "evidence": "保存 grep 输出"
+              },
+              {
+                "id": "T5-S",
+                "action": "局部验证",
+                "command": "npm --prefix web run build",
+                "expected": "通过",
+                "evidence": "保存退出码"
+              },
+              {
+                "id": "T6-S",
+                "action": "浏览器验证 R6：不改动任何调用文件，打开开发管理任务列表确认姓名与头像正常且悬停出浮层",
+                "command": null,
+                "expected": "外观与改造前一致，控制台无报错",
+                "evidence": "保存截图与控制台输出"
+              },
+              {
+                "id": "T7-S",
+                "action": "提交检查点",
+                "command": "git add web/src/components/ui/UiUserIdentity.vue web/src/components/ui/UiPersonProfileCard.vue web/src/styles.css && git commit -m \"feat(person-card): 改造 UiUserIdentity 并新增人员档案浮层\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "compact 只渲染头像与姓名；standard 增加电话；full 再增加团队",
+              "show-phone 关闭后 standard 不渲染电话行且不留空隙",
+              "show-avatar 关闭后不渲染头像",
+              "桌面 hover 约 120ms 出现浮层；触屏 click 出现同一浮层",
+              "浮层三分区与角色 chips 渲染正确，超长文本换行不省略",
+              "无可解析 userId 时不发请求且不渲染 el-popover",
+              "loading/missing/error 分支均有对应文案与重试入口"
+            ],
+            "risks": [
+              "el-popover 在表格固定列或横向滚动容器内的定位",
+              "matchMedia 在服务端渲染场景下的可用性（本项目为纯前端 SPA，风险低）"
+            ],
+            "rollback": "git revert 该提交；浮层与档位样式内聚在新增文件与 styles.css 该区间",
+            "stop_conditions": [
+              "Element Plus el-popover 在表格固定列内被裁剪且调整 placement 无效时停止"
+            ],
+            "escalation_conditions": [
+              "R6 回归失败（现有调用点行为变化）时立即停止并回到设计"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "组件示范页可见三档与三个显示开关的组合结果，作为档位与开关行为的可复现验收载体",
+            "requirement_ids": [
+              "R11"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "web/src/views/ComponentShowcaseView.vue:120 已有「身份标识 / 用户身份」卡片，内含 UiUserIdentity 与 UiAvatarUpload",
+              "web/src/views/ComponentShowcaseView.vue:31 已有 demoUser: UserProfile",
+              "web/src/styles.css:1230-1232 已有 .showcase-card 系列样式"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/views/ComponentShowcaseView.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T3 的 UiUserIdentity prop 契约"
+              ],
+              "produces": [
+                "示范页「用户身份」卡片内的三档实例与三个 el-switch"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "在既有「用户身份」卡片内、UiAvatarUpload 之前追加三档实例与三个开关及其说明文案",
+                "command": null,
+                "expected": "不新增公共样式类，复用 T3 已有类",
+                "evidence": "保存该卡片 diff"
+              },
+              {
+                "id": "T2-S",
+                "action": "构建",
+                "command": "npm --prefix web run build",
+                "expected": "通过",
+                "evidence": "保存退出码"
+              },
+              {
+                "id": "T3-S",
+                "action": "浏览器切换三个开关并截图，确认关闭 show-phone 后不渲染电话行且不留空隙、关闭 show-avatar 后姓名不塌陷",
+                "command": null,
+                "expected": "开关即时生效",
+                "evidence": "保存至少 3 张截图"
+              },
+              {
+                "id": "T4-S",
+                "action": "提交检查点",
+                "command": "git add web/src/views/ComponentShowcaseView.vue && git commit -m \"docs(person-card): 组件示范页补充三档与开关示例\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "三档实例可见",
+              "三个开关即时生效",
+              "明暗主题均可读",
+              "未改动该页既有 UiUserIdentity 调用行"
+            ],
+            "risks": [
+              "可能需要在卡片内新增少量内联布局类；若必须新增公共样式类则回到设计"
+            ],
+            "rollback": "git revert 该提交",
+            "stop_conditions": [
+              "若示范页需要引入新的公共样式类才能成立，停止并回到设计"
+            ],
+            "escalation_conditions": [
+              "若示范页必须改动既有的 UiUserIdentity 调用行才能容纳示例，说明 R6 兼容边界被突破，升级给用户",
+              "若示例需要新增公共样式类，说明 T3 的样式边界不完整，升级并回到设计修订"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "架构模块三处响应补齐人员 id：事项列表 proposerId、材料 createdBy、标准文档详情 createdBy，使这三处也能悬浮出完整信息",
+            "requirement_ids": [
+              "R8"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java:535 MatterSummaryResponse 未含 proposerId，而 DecisionModels.java:70 的 DecisionMatter 已有 proposerId()",
+              "同文件 :598 MaterialResponse 未含 createdBy，而 DecisionModels.java:106-116 的 MaterialRecord 已有 createdBy()",
+              "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java:266 DocumentDetailResponse 未含 createdBy，而 StandardModels.java:20-38 的 StandardDocument 已有 createdBy()",
+              "StandardStore.java:27 与 DecisionStore.java:54-70 的 SELECT 已包含 created_by 与 proposer_id，无需改 SQL"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java",
+                "web/src/modules/architecture/types.ts"
+              ],
+              "test": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitecturePersonReferenceFieldTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "DecisionMatter.proposerId()",
+                "MaterialRecord.createdBy()",
+                "StandardDocument.createdBy()"
+              ],
+              "produces": [
+                "MatterSummaryResponse 追加 long proposerId",
+                "MaterialResponse 追加 long createdBy",
+                "DocumentDetailResponse 追加 long createdBy",
+                "web/src/modules/architecture/types.ts：DecisionMatterSummary.proposerId、DecisionMaterial.createdBy、StandardDocumentDetail.createdBy"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "新建 ArchitecturePersonReferenceFieldTest 断言三处响应暴露 id",
+                "command": "mvn -pl :ccb-architecture -am test -Dtest=ArchitecturePersonReferenceFieldTest",
+                "expected": "编译失败 cannot find symbol: method proposerId()",
+                "evidence": "保存报错首行"
+              },
+              {
+                "id": "T2-S",
+                "action": "三处在 record 组件列表末尾追加字段并在 from() 构造调用补实参，不改既有字段语义、不改 SQL",
+                "command": null,
+                "expected": "三个响应返回 id",
+                "evidence": "保存三处 diff"
+              },
+              {
+                "id": "T3-S",
+                "action": "同步前端类型：三个接口各追加一个 number 字段",
+                "command": null,
+                "expected": "vue-tsc 可解析",
+                "evidence": "保存 types.ts diff"
+              },
+              {
+                "id": "T4-S",
+                "action": "运行局部与相关回归",
+                "command": "mvn -pl :ccb-architecture -am test -Dtest=ArchitecturePersonReferenceFieldTest && mvn -pl :ccb-architecture -am test && npm --prefix web run build",
+                "expected": "三次均通过",
+                "evidence": "保存三次命令与结果汇总"
+              },
+              {
+                "id": "T5-S",
+                "action": "提交检查点",
+                "command": "git add server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitecturePersonReferenceFieldTest.java web/src/modules/architecture/types.ts && git commit -m \"feat(architecture): 响应补齐提出人与创建人标识\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "三个响应确实返回 id",
+              "既有字段值不变",
+              "ccb-architecture 全量测试通过"
+            ],
+            "risks": [
+              "record 组件顺序调整可能影响既有序列化字段顺序，实施时只追加不重排"
+            ],
+            "rollback": "git revert 该提交",
+            "stop_conditions": [
+              "若某处模型实际没有 id（与勘察结论不符），停止并升级——那意味着需要改 SQL 与模型，超出本任务边界"
+            ],
+            "escalation_conditions": [
+              "若架构模块全量测试出现既有失败，作为基线故障如实记录并升级，不得顺手修复"
+            ]
+          },
+          {
+            "id": "T6",
+            "goal": "架构管理的物理子系统、参与人员、交付与部署单元、个人任务板共 5 个文件 8 处人员展示替换为人员卡片",
+            "requirement_ids": [
+              "R7",
+              "R8",
+              "R9"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "PhysicalSubsystemPage.vue:96 详情负责人、:240 表格负责人、:247 移动卡片负责人，均可用 row.ownerUserId / detail.ownerUserId",
+              "components/SubsystemParticipants.vue:134-135 自定义 el-avatar+strong 身份块，owner.userId 可用；:160 只读 tags 使用 person.userId",
+              "components/DeliveryUnitDetailDrawer.vue:56 创建人 createdByDisplayName 且 types.ts:33 createdBy 存在",
+              "components/DeploymentUnitDetailDrawer.vue:50 同上，types.ts:93 createdBy 存在",
+              "components/PersonalTaskBoard.vue:30 task.ownerName 且 types.ts:290-291 有 ownerUserId",
+              "页面文件到公共组件的既有 import 前缀为 ../../components/ui/，components 子目录为 ../../../components/ui/"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+                "web/src/modules/architecture/components/PersonalTaskBoard.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "UiUserIdentity（T3）",
+                "PhysicalSubsystem.ownerUserId",
+                "SubsystemParticipation.ownerUserId 与 participants[].userId",
+                "DeliveryUnit.createdBy",
+                "DeploymentUnit.createdBy",
+                "PlanTask.ownerUserId"
+              ],
+              "produces": []
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "五个文件按既有前缀引入 UiUserIdentity 并注册到 script setup",
+                "command": null,
+                "expected": "import 路径与既有 UiStatusTag 等一致",
+                "evidence": "保存 import 行"
+              },
+              {
+                "id": "T2-S",
+                "action": "按档位替换 8 处：表格列小档并把固定宽小于 130px 改为 min-width；详情项中档；移动卡片大档；参与人员只读 tags 小档；SubsystemParticipants 身份块整体替换为大档并保留「默认参与」el-tag 与业务提示文案",
+                "command": null,
+                "expected": "8 处均为卡片且业务提示保留",
+                "evidence": "保存 8 处 diff"
+              },
+              {
+                "id": "T3-S",
+                "action": "构建与自检",
+                "command": "npm --prefix web run build && grep -n \"ownerDisplayName\\|el-avatar\" web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "expected": "构建通过；grep 中人员相关的纯文本渲染消失",
+                "evidence": "保存两条输出"
+              },
+              {
+                "id": "T4-S",
+                "action": "浏览器走查六个位置，桌面与手机视口各一遍",
+                "command": null,
+                "expected": "无遮挡溢出、列未被挤压",
+                "evidence": "每个页面至少一张截图"
+              },
+              {
+                "id": "T5-S",
+                "action": "提交检查点",
+                "command": "git add web/src/modules/architecture/PhysicalSubsystemPage.vue web/src/modules/architecture/components/SubsystemParticipants.vue web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue web/src/modules/architecture/components/PersonalTaskBoard.vue && git commit -m \"refactor(architecture): 物理子系统与交付单元人员展示改用人员卡片\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "8 处替换完成",
+              "表格列未被挤压",
+              "「默认参与」等业务提示保留",
+              "SubsystemParticipants 的可编辑语义未改变"
+            ],
+            "risks": [
+              "SubsystemParticipants 身份块包含业务标签与提示，整体替换时易丢失"
+            ],
+            "rollback": "git revert 该提交",
+            "stop_conditions": [
+              "若某处当前只有姓名没有 id 且不在 R8 三处清单内，停止并升级，说明设计清单有遗漏"
+            ],
+            "escalation_conditions": [
+              "SubsystemParticipants 的可编辑语义（谁能维护名单）因替换被改变时立即停止"
+            ]
+          },
+          {
+            "id": "T7",
+            "goal": "架构管理的决策事项、标准文档、搭建计划共 4 个文件 11 处人员展示替换，含三处 R8 场景",
+            "requirement_ids": [
+              "R7",
+              "R8",
+              "R9"
+            ],
+            "prerequisites": [
+              "T3",
+              "T5"
+            ],
+            "input_facts": [
+              "DecisionMatterListPage.vue:152 提出人列使用 row.proposerName，T5 追加 proposerId 后可悬浮",
+              "DecisionMatterDetailPage.vue:554 提出人 proposerId 已有；:621 材料时间线为 时间 · createdByName；:641 评审参与人 participants[].userId 已有；:653 行动项 ownerName 与 ownerUserId 已有",
+              "StandardDocumentListPage.vue:321 发布人 publishedBy 已有；:353 详情创建人 createdByName 在 T5 后可用 createdBy",
+              "PlanDetailPage.vue:1317 与 :1526 操作人列、:1437 责任人、:1468 完成人，均通过 userName() 渲染且对应 userId 字段已存在",
+              "PlanDetailPage.vue:776 与 :794 为 el-select 与 el-input，属选人控件与输入控件，不得改动"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/architecture/DecisionMatterListPage.vue",
+                "web/src/modules/architecture/DecisionMatterDetailPage.vue",
+                "web/src/modules/architecture/StandardDocumentListPage.vue",
+                "web/src/modules/architecture/PlanDetailPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "UiUserIdentity（T3）",
+                "T5 新增的 proposerId 与 createdBy",
+                "DecisionMatterDetail.firstHandlerId/submitterId",
+                "DecisionReview 参与人 userId",
+                "StandardDocumentSummary.publishedBy",
+                "PlanTask.ownerUserId/operatorUserId/completedBy"
+              ],
+              "produces": []
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "替换表格列与描述项 8 处，沿用 T6 的三种范式",
+                "command": null,
+                "expected": "8 处为卡片",
+                "evidence": "保存 diff"
+              },
+              {
+                "id": "T2-S",
+                "action": "替换 DecisionMatterDetailPage:621 材料时间线：保留时间戳文本，创建人拆为独立小档卡片",
+                "command": null,
+                "expected": "时间线内不堆两行卡片",
+                "evidence": "保存该处 diff 与截图"
+              },
+              {
+                "id": "T3-S",
+                "action": "替换 PlanDetailPage 三处 userName() 文本渲染；替换后若无引用则删除 userName() 与其专用 users 映射",
+                "command": "grep -n \"userName(\" web/src/modules/architecture/PlanDetailPage.vue",
+                "expected": "grep 无输出或仅剩 el-select 的 :label 用途",
+                "evidence": "保存 grep 输出"
+              },
+              {
+                "id": "T4-S",
+                "action": "替换评审参与人 tags 与行动项责任人；确认 :776 el-select 与 :794 el-input 未被改动",
+                "command": null,
+                "expected": "选人控件与输入控件零改动",
+                "evidence": "保存 git diff 中该区间的空结果"
+              },
+              {
+                "id": "T5-S",
+                "action": "构建与自检",
+                "command": "npm --prefix web run build",
+                "expected": "通过",
+                "evidence": "保存退出码"
+              },
+              {
+                "id": "T6-S",
+                "action": "浏览器走查四个页面与新建计划向导的选人控件",
+                "command": null,
+                "expected": "选人控件行为不变",
+                "evidence": "每个页面至少一张截图，含向导对照图"
+              },
+              {
+                "id": "T7-S",
+                "action": "提交检查点",
+                "command": "git add web/src/modules/architecture/DecisionMatterListPage.vue web/src/modules/architecture/DecisionMatterDetailPage.vue web/src/modules/architecture/StandardDocumentListPage.vue web/src/modules/architecture/PlanDetailPage.vue && git commit -m \"refactor(architecture): 决策、标准与计划页面人员展示改用人员卡片\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "11 处替换完成",
+              "三处 R8 场景可悬浮出完整信息",
+              "选人控件与输入控件未被改动",
+              "时间线语义未被破坏"
+            ],
+            "risks": [
+              "删除 userName() 可能影响 el-select 下拉文案"
+            ],
+            "rollback": "git revert 该提交",
+            "stop_conditions": [
+              "若删除 userName() 导致选人控件下拉项失去文案，停止并回退该删除动作"
+            ],
+            "escalation_conditions": [
+              "DecisionMatterDetail 的时间线结构不支持在 timestamp 槽内放两个元素时，停止并回到设计确认降级形态"
+            ]
+          },
+          {
+            "id": "T8",
+            "goal": "架构管理的网络工单、子系统变更、实例、资源申请、网络访问、部署单元导入共 9 个文件 11 处人员展示替换，其中 7 处为原始数字 ID",
+            "requirement_ids": [
+              "R7",
+              "R9"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "NetworkWorkOrderDetailPage.vue:325 申请人 #applicantId、:405 操作人 #operatorId；NetworkWorkOrderListPage.vue:229 移动卡片申请人 #applicantId",
+              "SubsystemChangeApplicationDetailPage.vue:279 userLabel(applicantId)；SubsystemChangeApplicationListPage.vue:195 申请人 #applicantId",
+              "components/SubsystemChangeTimeline.vue:32 操作人 #operatorId",
+              "InstanceListPage.vue:631 下线操作人 ID 使用 detail.offlinedBy",
+              "ResourceRequestPage.vue:1313 userLabel(applicantId)，其 :246 实现含 auth.user 回退分支",
+              "NetworkAccessPage.vue:1292 移动卡片申请人 #applicantId、:1584 详情申请人 #applicantId",
+              "DeploymentUnitImportPage.vue:269 操作人 createdByDisplayName，types.ts:399-400 已含 createdBy"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+                "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue",
+                "web/src/modules/architecture/NetworkWorkOrderListPage.vue",
+                "web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue",
+                "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+                "web/src/modules/architecture/components/SubsystemChangeTimeline.vue",
+                "web/src/modules/architecture/InstanceListPage.vue",
+                "web/src/modules/architecture/ResourceRequestPage.vue",
+                "web/src/modules/architecture/NetworkAccessPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "UiUserIdentity（T3）",
+                "NetworkWorkOrder.applicantId",
+                "SubsystemChangeApplication.applicantId",
+                "NetworkAccessApplication.applicantId",
+                "ResourceRequest.applicantId",
+                "时间线 operatorId",
+                "InstanceDetail.offlinedBy",
+                "DeploymentUnitImportBatch.createdBy"
+              ],
+              "produces": []
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "替换 7 处原始 ID：申请人 #id、操作人 #id、下线操作人 ID 改为人员卡片",
+                "command": null,
+                "expected": "不再有裸 ID 插值",
+                "evidence": "保存 7 处 diff"
+              },
+              {
+                "id": "T2-S",
+                "action": "替换其余 4 处 userLabel(id) 与操作人文本；若 userLabel() 变为未引用则删除，删除前确认 auth.user 回退语义已由 store 覆盖",
+                "command": null,
+                "expected": "构建通过且回退语义不丢失",
+                "evidence": "保存 diff 与构建结果"
+              },
+              {
+                "id": "T3-S",
+                "action": "InstanceListPage:631 标签文案「下线操作人 ID」改为「下线操作人」",
+                "command": null,
+                "expected": "标签与内容语义一致",
+                "evidence": "保存 diff"
+              },
+              {
+                "id": "T4-S",
+                "action": "构建与自检",
+                "command": "npm --prefix web run build && grep -rn \"applicantId }}\\|operatorId }}\\|offlinedBy }}\" web/src/modules/architecture",
+                "expected": "构建通过；grep 无输出",
+                "evidence": "保存输出"
+              },
+              {
+                "id": "T5-S",
+                "action": "浏览器走查六个页面与移动视口",
+                "command": null,
+                "expected": "无遮挡溢出",
+                "evidence": "每个页面至少一张截图，R9 的 7 处逐一截图"
+              },
+              {
+                "id": "T6-S",
+                "action": "提交检查点",
+                "command": "git add web/src/modules/architecture/DeploymentUnitImportPage.vue web/src/modules/architecture/NetworkWorkOrderDetailPage.vue web/src/modules/architecture/NetworkWorkOrderListPage.vue web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue web/src/modules/architecture/SubsystemChangeApplicationListPage.vue web/src/modules/architecture/components/SubsystemChangeTimeline.vue web/src/modules/architecture/InstanceListPage.vue web/src/modules/architecture/ResourceRequestPage.vue web/src/modules/architecture/NetworkAccessPage.vue && git commit -m \"refactor(architecture): 网络与变更页面人员展示改用人员卡片并替换原始ID\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "11 处替换完成",
+              "7 处原始 ID 消失",
+              "其他列的固定宽未被改动",
+              "userLabel 回退语义不丢失"
+            ],
+            "risks": [
+              "applicantId 在某些类型上可能为可选，空 id 时需走 no-id 降级渲染"
+            ],
+            "rollback": "git revert 该提交",
+            "stop_conditions": [
+              "若某处 applicantId 在类型上可能为 null 或 undefined，停止并确认组件对空 id 的降级渲染符合 R6"
+            ],
+            "escalation_conditions": [
+              "若替换后暴露出后端未返回申请人姓名，而前端既有 userLabel 依赖额外查询，说明数据契约不完整，升级给用户",
+              "若网络访问页或网络工单页的移动卡片因新增团队行导致纵向溢出，说明大档不适配该位置，升级并回到设计调整档位分配"
+            ]
+          },
+          {
+            "id": "T9",
+            "goal": "开发管理的任务列表、任务详情、阶段面板、工作项看板与列表、变更日志共 6 个文件 8 处人员展示替换，且两个表单抽屉零改动",
+            "requirement_ids": [
+              "R7",
+              "R9"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "web/src/modules/development/types.ts:5 UserRef 为 { id: string; name: string }，用户 id 是字符串",
+              "DevelopmentTaskListPage.vue:65 表格负责人 row.owner.name、:74 移动卡片负责人",
+              "DevelopmentTaskDetailPage.vue:81 详情任务负责人；components/TaskStagePanel.vue:114 需求承接负责人",
+              "components/WorkItemsView.vue:105 表格指定人员、:118 移动卡片指定人员；components/WorkItemCard.vue:27 指定人员",
+              "components/TaskChangeLog.vue:59 事件操作人 event.actor.name，types.ts:58 actor 为 UserRef",
+              "components/TaskFormDrawer.vue 与 components/WorkItemFormDrawer.vue 含 el-select 选人控件，属不替换范围"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/development/DevelopmentTaskListPage.vue",
+                "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+                "web/src/modules/development/components/TaskStagePanel.vue",
+                "web/src/modules/development/components/WorkItemsView.vue",
+                "web/src/modules/development/components/WorkItemCard.vue",
+                "web/src/modules/development/components/TaskChangeLog.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "UiUserIdentity（T3）",
+                "DevelopmentTask.owner.id（string）",
+                "WorkItem.assignee.id（string）",
+                "DevelopmentChange.actor.id（string）"
+              ],
+              "produces": []
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "引入 UiUserIdentity 并按档位替换 8 处；开发模块 id 保持字符串原样，不做数字转换",
+                "command": null,
+                "expected": "8 处为卡片且 id 仍为字符串",
+                "evidence": "保存 8 处 diff"
+              },
+              {
+                "id": "T2-S",
+                "action": "TaskChangeLog:59 改为小档卡片后接原动作文本，objectLabels 拼接逻辑不变",
+                "command": null,
+                "expected": "变更日志文案语义不变",
+                "evidence": "保存该处 diff 与截图"
+              },
+              {
+                "id": "T3-S",
+                "action": "确认两个表单抽屉零改动并构建",
+                "command": "git diff --stat web/src/modules/development/components/TaskFormDrawer.vue web/src/modules/development/components/WorkItemFormDrawer.vue && npm --prefix web run build",
+                "expected": "diff 无输出；构建通过",
+                "evidence": "保存两条输出"
+              },
+              {
+                "id": "T4-S",
+                "action": "浏览器走查五个页面，桌面与手机视口各一遍",
+                "command": null,
+                "expected": "无遮挡溢出",
+                "evidence": "每个页面至少一张截图"
+              },
+              {
+                "id": "T5-S",
+                "action": "提交检查点",
+                "command": "git add web/src/modules/development/DevelopmentTaskListPage.vue web/src/modules/development/DevelopmentTaskDetailPage.vue web/src/modules/development/components/TaskStagePanel.vue web/src/modules/development/components/WorkItemsView.vue web/src/modules/development/components/WorkItemCard.vue web/src/modules/development/components/TaskChangeLog.vue && git commit -m \"refactor(development): 开发管理人员展示改用人员卡片\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "8 处替换完成",
+              "字符串 id 未被错误转成数字",
+              "两个表单抽屉零改动",
+              "变更日志动作文案不变"
+            ],
+            "risks": [
+              "字符串 id 可能含非数字前缀导致解析失败"
+            ],
+            "rollback": "git revert 该提交",
+            "stop_conditions": [
+              "若无任何开发任务数据可走查（空列表），停止并先解决数据前置，不得以无法验证结项"
+            ],
+            "escalation_conditions": [
+              "字符串 id 走查出现 id 解析失败（浮层恒为未找到）时升级并检查 toId 实现"
+            ]
+          },
+          {
+            "id": "T10",
+            "goal": "集成验收与回归完成：R1–R11 全部有通过或明确失败的记录，治理与任务范围检查结果如实归档",
+            "requirement_ids": [
+              "R6",
+              "R7",
+              "R10"
+            ],
+            "prerequisites": [
+              "T4",
+              "T5",
+              "T6",
+              "T7",
+              "T8",
+              "T9"
+            ],
+            "input_facts": [
+              "前端无单元测试框架，web/package.json:6-9 仅有 dev/build/preview",
+              "已知基线故障：docs/requirements/REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 非 JSON 兼容 YAML，导致 scripts/check-ai-control-layout.mjs 失败，且 check-all-governance.mjs 会因此失败",
+              "现有调用点共 12 处，分布在 ModuleView.vue、AppLayout.vue、ProjectView.vue、ComponentShowcaseView.vue"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260912-075-person-card/observation-T1.json",
+                ".ai-control/requirements/req-20260912-075-person-card/convergence.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1–T9 的全部产物"
+              ],
+              "produces": [
+                "observation-T1.json",
+                "convergence.json"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S",
+                "action": "类型检查与生产构建",
+                "command": "npm --prefix web run build",
+                "expected": "通过，0 个类型错误",
+                "evidence": "保存命令与退出码"
+              },
+              {
+                "id": "T2-S",
+                "action": "后端全量测试",
+                "command": "mvn -pl :ccb-system -am test && mvn -pl :ccb-architecture,:ccb-development -am test",
+                "expected": "通过",
+                "evidence": "保存两次 Tests run 汇总"
+              },
+              {
+                "id": "T3-S",
+                "action": "现有 12 处调用点回归",
+                "command": "git diff --name-only <首个提交>..HEAD -- web/src/views/ModuleView.vue web/src/views/AppLayout.vue web/src/views/ProjectView.vue",
+                "expected": "无输出",
+                "evidence": "保存输出并在浏览器走查四个页面"
+              },
+              {
+                "id": "T4-S",
+                "action": "按设计附录 A 的 38 行逐处核对渲染结果",
+                "command": null,
+                "expected": "无纯文本与卡片混排、无原始 ID、列未被挤压",
+                "evidence": "保存逐处核对清单"
+              },
+              {
+                "id": "T5-S",
+                "action": "六种状态与主题验收：加载中、加载失败+重试、未找到、无角色、停用、超长文本，各在明暗主题与两个视口下截图",
+                "command": null,
+                "expected": "每种状态可复现且可读",
+                "evidence": "保存截图集合"
+              },
+              {
+                "id": "T6-S",
+                "action": "治理与任务范围检查",
+                "command": "node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260912-075-person-card/codex-task-scope.yaml --working-tree; git diff --check",
+                "expected": "check-codex-scope 通过；git diff --check 无空白错误；check-all-governance 若仍因 REQ-20260904-061 基线故障失败则如实记录，不得声称门禁全绿",
+                "evidence": "保存三条命令输出"
+              },
+              {
+                "id": "T7-S",
+                "action": "写入观测与收敛证据，逐条记录 R1–R11 的通过或失败、原子负反馈、未执行项与残余风险",
+                "command": null,
+                "expected": "R1–R11 全部有记录",
+                "evidence": "保存两个 JSON 文件"
+              },
+              {
+                "id": "T8-S",
+                "action": "提交检查点",
+                "command": "git add .ai-control/requirements/req-20260912-075-person-card/ && git commit -m \"chore(person-card): 记录集成验收与收敛证据\"",
+                "expected": "提交成功",
+                "evidence": "保存提交哈希"
+              }
+            ],
+            "acceptance_checks": [
+              "R1–R11 均有通过或明确失败的记录",
+              "未执行项被显式标注",
+              "基线故障与本次改动可区分"
+            ],
+            "risks": [
+              "本地无完整 Mock 数据时部分页面为空，需先解决数据前置"
+            ],
+            "rollback": "账本与代码分别 git revert；无数据库变更",
+            "stop_conditions": [
+              "任一 must 需求未通过时停止并回到偏差纠正，不得收敛"
+            ],
+            "escalation_conditions": [
+              "出现需要改公共契约、迁移或超出 writable_paths 的修复时，升级给 Owner 并回到设计"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "T2 的 api 封装与 store 消费 T1 的请求与响应契约；契约未定稿会让前端类型与真实响应漂移"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 的触发器与浮层消费 T2 的 store API（ensure/get/stateOf/retry）与状态枚举"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "T4 复用 T3 的 UiUserIdentity prop 契约与三档样式类，不得自行定义档位"
+          },
+          {
+            "from": "T3",
+            "to": "T6",
+            "reason": "T6 消费 T3 的 UiUserIdentity 组件与其档位渲染；T6 各位置所需的 ownerUserId 与 createdBy 在改造前已存在，故不依赖 T5"
+          },
+          {
+            "from": "T3",
+            "to": "T7",
+            "reason": "T7 消费 T3 的 UiUserIdentity 组件"
+          },
+          {
+            "from": "T5",
+            "to": "T7",
+            "reason": "T7 的 DecisionMatterListPage、DecisionMatterDetailPage 材料时间线与 StandardDocumentListPage 详情必须使用 T5 新增的 proposerId 与 createdBy，否则这三处无法取到 userId"
+          },
+          {
+            "from": "T3",
+            "to": "T8",
+            "reason": "T8 消费 T3 的 UiUserIdentity 组件；T8 各位置所需的 applicantId、operatorId 与 offlinedBy 在改造前已存在"
+          },
+          {
+            "from": "T3",
+            "to": "T9",
+            "reason": "T9 消费 T3 的 UiUserIdentity 组件；开发模块的 UserRef 已含字符串 id"
+          },
+          {
+            "from": "T4",
+            "to": "T10",
+            "reason": "T10 的 R11 验收必须以 T4 的示范页示例为观测载体"
+          },
+          {
+            "from": "T5",
+            "to": "T10",
+            "reason": "T10 的 R8 验收必须以 T5 补齐的三个响应字段为前置"
+          },
+          {
+            "from": "T6",
+            "to": "T10",
+            "reason": "T10 的 R7 与 R9 逐处走查必须覆盖 T6 的 8 处"
+          },
+          {
+            "from": "T7",
+            "to": "T10",
+            "reason": "T10 的 R7 与 R8 逐处走查必须覆盖 T7 的 11 处"
+          },
+          {
+            "from": "T8",
+            "to": "T10",
+            "reason": "T10 的 R7 与 R9 逐处走查必须覆盖 T8 的 11 处"
+          },
+          {
+            "from": "T9",
+            "to": "T10",
+            "reason": "T10 的 R7 逐处走查必须覆盖 T9 的 8 处"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1",
+            "T5"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4",
+            "T6",
+            "T7",
+            "T8",
+            "T9"
+          ],
+          [
+            "T10"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl :ccb-system -am test",
+            "expected": "通过，0 个失败"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "通过"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "npm --prefix web run build 并回归四个既有调用页面",
+            "expected": "通过且无行为变化"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "mvn -pl :ccb-architecture -am test",
+            "expected": "通过"
+          },
+          {
+            "after_tasks": [
+              "T9"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "通过"
+          },
+          {
+            "after_tasks": [
+              "T4",
+              "T5",
+              "T6",
+              "T7",
+              "T8",
+              "T9"
+            ],
+            "command": "npm --prefix web run build; mvn -pl :ccb-system -am test; mvn -pl :ccb-architecture,:ccb-development -am test; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260912-075-person-card/codex-task-scope.yaml --working-tree; git diff --check",
+            "expected": "全部通过；check-all-governance 的基线故障如实记录"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T3",
+              "T10"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T6",
+              "T7",
+              "T8",
+              "T9",
+              "T10"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T5",
+              "T6",
+              "T7"
+            ]
+          },
+          {
+            "requirement_id": "R9",
+            "task_ids": [
+              "T6",
+              "T7",
+              "T8"
+            ]
+          },
+          {
+            "requirement_id": "R10",
+            "task_ids": [
+              "T3",
+              "T10"
+            ]
+          },
+          {
+            "requirement_id": "R11",
+            "task_ids": [
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户复核设计修订 2 与实施计划后回复「批准，本次不修历史问题」，并明确基线故障声明为已知例外、本次不修复",
+          "confirmed_at": "2026-09-12T15:43:11+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "web/src/components/ui/UiUserIdentity.vue 的外部可观察行为（prop 契约与渲染结果）",
+          "POST /api/platform/user-profiles/query 的请求与响应契约",
+          "两个菜单下 38 处页面的渲染结果"
+        ],
+        "state_variable_candidates": [
+          "person-directory store 中的 Map<id, { status, profile, fetchedAt, retries }>",
+          "UiUserIdentity 的 resolvedId 与 needsDirectory",
+          "styles.css 中的三档类与浮层类"
+        ],
+        "interface_candidates": [
+          "POST /api/platform/user-profiles/query",
+          "UiUserIdentity 的 props",
+          "UiPersonProfileCard 的 props",
+          "person-directory store 的 ensure/get/stateOf/retry/reset"
+        ],
+        "sensor_candidates": [
+          "npm --prefix web run build 的退出码与类型错误数",
+          "mvn 测试的 Tests run 汇总",
+          "浏览器 Network 面板中 /api/platform/user-profiles/query 的请求条数",
+          "页面截图（含明暗主题与两个视口）",
+          "grep 对裸 ID 与纯文本人员渲染的检索结果"
+        ],
+        "actuator_candidates": [
+          "T1–T9 的文件变更"
+        ],
+        "disturbance_candidates": [
+          "并发请求竞态：同一 id 在飞行中被重复入队",
+          "Element Plus popover 在固定列与横向滚动容器内的定位",
+          "后端缺少测试数据导致页面为空、无法走查",
+          "既有基线故障：check-ai-control-layout.mjs 因 REQ-20260904-061 失败"
+        ],
+        "delay_candidates": [
+          "hover 到浮层出现的 120ms 延迟",
+          "批量查询的往返时间",
+          "vue-tsc 与 Maven 全量测试的执行时长"
+        ],
+        "assumptions": [
+          {
+            "text": "用户已申报并取得 Owner 对 platform/system 与 frontend/application 两处公共能力变更的批准",
+            "basis": "用户在会话中口述「已申报 owner 获批」",
+            "falsifier": "Owner 未批准或批准范围不含 frontend/application 公共组件"
+          },
+          {
+            "text": "sys_user.mobile_phone 在当前租户内对已登录用户可见，与既有页面一致",
+            "basis": "系统管理用户列表与测试管理提出人页面已对同类角色展示手机号",
+            "falsifier": "安全评审要求电话对无 system:access 的用户脱敏"
+          },
+          {
+            "text": "Element Plus el-popover 的 teleport 定位在表格固定列与横向滚动容器内正确",
+            "basis": "Element Plus 默认 teleported 为 true，浮层挂载到 body",
+            "falsifier": "验收中出现浮层被裁剪或错位"
+          }
+        ]
+      },
+      "baseline_defects": [
+        {
+          "defect": "node scripts/check-ai-control-layout.mjs 因 docs/requirements/REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 不是 JSON 兼容 YAML 而失败",
+          "evidence": "脚本报 Unexpected token 's', \"schema_ver\"... is not valid JSON；该文件最后一次改动为 0f8d76f feat: complete release operations management，本次未修改",
+          "impact": "治理门禁当前为红状态，实施阶段无法直接以全绿门禁作为完成信号",
+          "decision": "known-exception"
+        }
+      ]
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus el-popover 的定位与 teleport 行为（外部依赖，不在授权修改范围）\", \"MinioStorageService.presignedUrl 头像地址生成（只读消费）\", \"浏览器的 matchMedia('(hover: none)') 与视口尺寸\", \"本地开发环境 MockDataInitializer 生成的 sys_user、sys_org、sys_role、sys_user_role 数据（平台数据，只读）\", \"使用者的鼠标悬停与触屏点击输入\", \"未提交的 control-engineering Skill v5（compact 工作流工具链）与工作区中 20 项他人在途改动\"], \"inside\": [\"web/src/components/ui/UiUserIdentity.vue（触发器）与 web/src/components/ui/UiPersonProfileCard.vue（浮层）\", \"web/src/stores/person-directory.ts（缓存与批处理状态持有者）\", \"web/src/api/user-profile.ts\", \"server/src/platform/system 新增的 UserProfileService 与 UserProfileController 及其两个测试\", \"web/src/modules/architecture 的 18 个 .vue 与 web/src/modules/development 的 6 个 .vue 共 38 处渲染点\", \"架构模块 ArchitectureDecisionController 与 ArchitectureStandardController 的 3 个响应 DTO\", \"web/src/styles.css 的 1187-1197 区间与新增浮层类\", \"web/src/views/ComponentShowcaseView.vue 的既有「用户身份」卡片\", \"web/src/types/system.ts 与 web/src/modules/architecture/types.ts 的追加类型\"]}",
+    "sensors": [
+      "组件示范页三档实例与三个开关切换后的截图（明暗各一组）+ UiUserIdentity 模板中条件渲染分支的代码路径检查",
+      "桌面 1440 鼠标悬停后的截图 + 375 视口点击后的截图 + window.matchMedia('(hover: none)').matches 的实测值",
+      "浮层在 1440 与 375 下的截图 + 浏览器控制台读取 document.documentElement.scrollWidth 与 clientWidth + 超长团队名与角色名元素的 getClientRects().length",
+      "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest,UserProfileControllerTest 的退出码与断言，含 Testcontainers MySQL 8.4 真实库",
+      "浏览器 Network 面板按 /platform/user-profiles/query 过滤统计的请求条数 + 断网模拟下的浮层状态截图与恢复后重试截图",
+      "git diff --name-only <开发前提交>..HEAD -- 三个既有调用文件 的输出 + 三个页面浏览器走查截图 + 「无 userId 且无 user」场景的 Network 面板请求数",
+      "grep 检索裸 ID 插值、el-avatar、userName() 的结果 + git diff --name-only 对 4 个选择器与输入控件文件的空结果 + 按设计附录 A 的 38 行逐处截图清单",
+      "mvn -pl :ccb-architecture -am test -Dtest=ArchitecturePersonReferenceFieldTest 的退出码与断言 + 三个页面的悬浮截图",
+      "grep -rn \"applicantId }}\\|operatorId }}\\|offlinedBy }}\" web/src/modules/architecture 的结果 + 7 处截图 + 通过 store 控制台注入不存在 id 后的浮层截图",
+      "六种状态在明暗主题与 1440 和 375 视口下的截图集合 + getComputedStyle 读取的文字色与背景色 + 两个视口的 scrollWidth 检查",
+      "组件示范页同时展示三档与三个开关前后的截图"
+    ],
+    "actuators": [
+      "{\"authority\": \"只允许在这三个组件文件、styles.css 指定区间与示范页该卡片内修改；不允许改动 UiUserIdentity 既有 prop 的语义、不允许新增公共样式类之外的全局样式、不允许改动示范页既有调用行\", \"impact_limit\": \"只影响使用 UiUserIdentity 的页面与组件示范页；不影响其它公共组件\", \"requirement_ids\": [\"R1\", \"R2\", \"R3\", \"R10\", \"R11\"], \"rollback\": \"git revert T3 与 T4 的提交；浮层与档位样式内聚在新增文件与 styles.css 该区间\", \"target\": \"前端公共组件与样式表面：web/src/components/ui/UiUserIdentity.vue、web/src/components/ui/UiPersonProfileCard.vue、web/src/styles.css 的 1187-1197 区间与新增浮层类、web/src/views/ComponentShowcaseView.vue 的既有用户身份卡片\"}",
+      "{\"authority\": \"只允许新增这 4 个文件；不允许修改任何既有 platform/system 类、不允许新增数据库迁移、不允许修改 SecurityConfiguration\", \"impact_limit\": \"只新增一个登录可访问的只读接口，不改变任何既有接口行为\", \"requirement_ids\": [\"R4\"], \"rollback\": \"删除 4 个新增文件；git revert T1 提交\", \"target\": \"平台只读查询表面：新增 UserProfileService.java、UserProfileController.java 与两个测试文件\"}",
+      "{\"authority\": \"只允许在这两个新文件内实现取数、合并、缓存与降级；不允许在组件内直接调用接口；不允许改动 web/src/api/http.ts 的拦截器与错误处理\", \"impact_limit\": \"只影响人员档案的取数与缓存，不影响其它 api 与 store\", \"requirement_ids\": [\"R5\"], \"rollback\": \"删除两个新文件并还原 web/src/types/system.ts 的追加段\", \"target\": \"前端取数表面：web/src/stores/person-directory.ts、web/src/api/user-profile.ts、web/src/types/system.ts 的追加类型\"}",
+      "{\"authority\": \"只允许向 UiUserIdentity 追加 prop 且默认值保持现有观感；不允许修改既有 prop 语义、不允许改动 ModuleView.vue 与 AppLayout.vue 与 ProjectView.vue\", \"impact_limit\": \"兼容边界限于 12 处既有调用点与四个既有页面\", \"requirement_ids\": [\"R6\"], \"rollback\": \"git revert T3 提交并复核三个既有页面\", \"target\": \"既有 prop 契约与 12 处调用点\"}",
+      "{\"authority\": \"只允许修改人员展示部位；不允许改动 el-select 选人控件、el-input 输入控件、非人员列宽度与业务提示文案\", \"impact_limit\": \"限于 24 个文件的渲染输出，不改变任何数据请求与业务规则\", \"requirement_ids\": [\"R7\", \"R9\"], \"rollback\": \"按 T6、T7、T8、T9 分组 git revert\", \"target\": \"24 个 .vue 的模板渲染表面\"}",
+      "{\"authority\": \"只允许在 record 组件列表末尾追加字段并在 from() 补实参；不允许改 SQL、模型、迁移或既有字段\", \"impact_limit\": \"限于 3 个响应的字段集合，追加为向后兼容变更\", \"requirement_ids\": [\"R8\"], \"rollback\": \"git revert T5 提交\", \"target\": \"架构模块 3 个响应 DTO：MatterSummaryResponse、MaterialResponse、DocumentDetailResponse\"}"
+    ],
+    "disturbances": [],
+    "assumptions": [
+      "{\"basis\": \"用户在会话中口述「已申报 owner 获批」\", \"falsifier\": \"Owner 未批准，或批准范围不含 frontend/application 公共契约\", \"text\": \"用户已取得 Owner 对 platform/system 新增接口与 frontend/application 公共组件改造的批准\"}",
+      "{\"basis\": \"已核实 SystemService 的 users 资源含 mobile_phone；ModuleView.vue:257 在系统管理用户列表展示手机号；JdbcSystemReferenceQuery 把 phone 作为业务模块可读引用字段 SystemUserReference.phone\", \"falsifier\": \"安全评审要求对无 system:access 的用户脱敏手机号\", \"text\": \"sys_user.mobile_phone 在当前租户内对已登录用户可见\"}",
+      "{\"basis\": \"Element Plus 默认 teleported=true，浮层挂载到 body\", \"falsifier\": \"验收中出现浮层被 overflow:hidden 裁剪或错位\", \"text\": \"Element Plus el-popover 的 teleport 定位在表格固定列与横向滚动容器内正确\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "组件示范页三档实例与三个开关切换后的截图（明暗各一组）+ UiUserIdentity 模板中条件渲染分支的代码路径检查"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "桌面 1440 鼠标悬停后的截图 + 375 视口点击后的截图 + window.matchMedia('(hover: none)').matches 的实测值"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "浮层在 1440 与 375 下的截图 + 浏览器控制台读取 document.documentElement.scrollWidth 与 clientWidth + 超长团队名与角色名元素的 getClientRects().length"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest,UserProfileControllerTest 的退出码与断言，含 Testcontainers MySQL 8.4 真实库"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "浏览器 Network 面板按 /platform/user-profiles/query 过滤统计的请求条数 + 断网模拟下的浮层状态截图与恢复后重试截图"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "git diff --name-only <开发前提交>..HEAD -- 三个既有调用文件 的输出 + 三个页面浏览器走查截图 + 「无 userId 且无 user」场景的 Network 面板请求数"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "grep 检索裸 ID 插值、el-avatar、userName() 的结果 + git diff --name-only 对 4 个选择器与输入控件文件的空结果 + 按设计附录 A 的 38 行逐处截图清单"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "mvn -pl :ccb-architecture -am test -Dtest=ArchitecturePersonReferenceFieldTest 的退出码与断言 + 三个页面的悬浮截图"
+      },
+      {
+        "requirement": "R9",
+        "sensor": "grep -rn \"applicantId }}\\|operatorId }}\\|offlinedBy }}\" web/src/modules/architecture 的结果 + 7 处截图 + 通过 store 控制台注入不存在 id 后的浮层截图"
+      },
+      {
+        "requirement": "R10",
+        "sensor": "六种状态在明暗主题与 1440 和 375 视口下的截图集合 + getComputedStyle 读取的文字色与背景色 + 两个视口的 scrollWidth 检查"
+      },
+      {
+        "requirement": "R11",
+        "sensor": "组件示范页同时展示三档与三个开关前后的截图"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "平台人员档案批量查询接口可用：登录即可访问、租户隔离、单次上限 50、字段白名单、返回 missingIds、包含停用用户状态",
+      "requirements": [
+        "R4"
+      ],
+      "prerequisites": [],
+      "write_scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java（新建）",
+        "server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java（新建）",
+        "server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java（新建）",
+        "server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java（新建）"
+      ],
+      "acceptance": [
+        "先运行 mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest 并确认因 UserProfileService 不存在而编译失败，作为失败基线",
+        "Testcontainers MySQL 8.4 下跨租户 id 不返回并落入 missingIds",
+        "软删除用户不返回；停用用户返回且 status 为 0；组织为空时 orgName 为空串；角色为空返回空列表",
+        "51 个 id 返回 400；空数组返回成功且 profiles 与 missingIds 均为空",
+        "UserProfileController 类级 PreAuthorize 恰为 isAuthenticated() 且不含 system:access",
+        "响应字段集合等于白名单，不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+        "mvn -pl :ccb-system -am test 全量回归通过"
+      ],
+      "evidence_required": [
+        "失败基线的命令与报错首行",
+        "UserProfileServiceMySqlTest 与 UserProfileControllerTest 的 Tests run 汇总",
+        "mvn -pl :ccb-system -am test 的 Tests run 汇总",
+        "两个新增主类的 SQL 与响应 record 定义"
+      ],
+      "rollback": "删除 4 个新增文件，git revert 该提交；无数据库迁移、无数据补偿",
+      "stop_conditions": [
+        "ccb-system 中不存在把参数校验异常映射为 400 的既有机制，且新增 Advice 会触碰公共行为时停止"
+      ],
+      "escalation_conditions": [
+        "Owner 要求改接口路径、要求手机号脱敏或要求按数据范围过滤非项目成员时，停止并回到设计"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-12T12:25:16+00:00",
+          "text": "ControlIteration I1: verified"
+        }
+      ],
+      "updated_at": "2026-09-12T12:25:16+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "前端人员档案接口封装与目录 store 可用：去重合并、50 一批、TTL 10 分钟、失败降级与重试、会话重置",
+      "requirements": [
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "write_scope": [
+        "web/src/api/user-profile.ts（新建）",
+        "web/src/stores/person-directory.ts（新建）",
+        "web/src/types/system.ts（仅追加 PersonRole、PersonProfile、PersonProfileQueryResult）"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 通过，0 个类型错误",
+        "浏览器控制台注入 120 个 id 时 Network 面板中 /platform/user-profiles/query 恰好 3 条请求",
+        "重复注入同一批 id 时新增请求为 0 条",
+        "同一 id 在飞行中不重复入队",
+        "单批失败只标记该批为 error，且自动重试不超过 1 次",
+        "missingIds 对应条目状态为 missing 而非 error",
+        "reset() 后缓存为空"
+      ],
+      "evidence_required": [
+        "npm --prefix web run build 的命令与退出码",
+        "Network 面板请求条数与重复调用后的条数截图或 HAR 片段",
+        "store 源码中的批大小、TTL、重试上限常量定义"
+      ],
+      "rollback": "删除两个新建文件并还原 web/src/types/system.ts 的追加段",
+      "stop_conditions": [
+        "vue-tsc 报错来自既有代码而非本次改动时停止，不得顺手修复"
+      ],
+      "escalation_conditions": [
+        "120 个 id 的实测批次数不是 3，说明合并逻辑失效，升级并重新建模"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "UiUserIdentity 触发器与 UiPersonProfileCard 浮层完成：三档可配置、桌面悬停与触屏点击出完整信息、六种状态与明暗主题可用、无可解析 id 时不发请求",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R6",
+        "R10"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "write_scope": [
+        "web/src/components/ui/UiUserIdentity.vue（改造）",
+        "web/src/components/ui/UiPersonProfileCard.vue（新建）",
+        "web/src/styles.css 的 1187-1197 区间与新增三档及浮层类"
+      ],
+      "acceptance": [
+        "记录改造前 UiUserIdentity 外观截图作为 R6 对照基线",
+        "compact 只渲染头像与姓名；standard 增加电话行；full 再增加团队行",
+        "关闭 show-phone 后 standard 不渲染电话行且容器高度不增加",
+        "关闭 show-avatar 后不渲染头像且姓名不塌陷",
+        "桌面悬停约 120ms 后浮层出现且含头像、姓名、账号、电话、团队、角色、状态七项",
+        "375 视口下 matchMedia('(hover: none)').matches 为 true 且点击后出现同一浮层",
+        "无可解析 userId 且无 user 时不渲染 el-popover 且请求数为 0",
+        "loading 用骨架且不清空头部；missing 显示未找到；error 显示失败与重试入口",
+        "grep -rn ui-user-profile web/src 无残留引用",
+        "npm --prefix web run build 通过",
+        "不改动任何既有调用文件时，开发管理任务列表页姓名与头像渲染正常且悬停出浮层"
+      ],
+      "evidence_required": [
+        "改造前后对照截图",
+        "三档与三个开关的截图",
+        "375 视口点击触发截图与 matchMedia 实测值",
+        "无 id 场景的零请求截图",
+        "loading、missing、error 三种状态截图",
+        "npm --prefix web run build 退出码与 grep 输出"
+      ],
+      "rollback": "git revert T3 提交；浮层与档位样式内聚在新增文件与 styles.css 该区间",
+      "stop_conditions": [
+        "Element Plus el-popover 在表格固定列内被裁剪且调整 placement 无效时停止"
+      ],
+      "escalation_conditions": [
+        "R6 回归失败，即现有调用点行为发生变化时立即停止并回到设计"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "组件示范页可见三档与三个显示开关的组合结果，作为档位与开关行为的可复现验收载体",
+      "requirements": [
+        "R11"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "write_scope": [
+        "web/src/views/ComponentShowcaseView.vue 的既有「用户身份」卡片内"
+      ],
+      "acceptance": [
+        "示范页同时可见三档实例",
+        "三个开关即时改变 full 实例的渲染结果",
+        "未新增公共样式类，复用 T3 已有类",
+        "未改动该页既有的 UiUserIdentity 调用行",
+        "npm --prefix web run build 通过",
+        "明暗主题下示例均可读"
+      ],
+      "evidence_required": [
+        "至少 3 张开关切换截图",
+        "该卡片 diff",
+        "构建退出码"
+      ],
+      "rollback": "git revert T4 提交；改动局限在单个卡片内",
+      "stop_conditions": [
+        "示范页需要引入新的公共样式类才能成立时停止并回到设计"
+      ],
+      "escalation_conditions": [
+        "必须改动示范页既有调用行才能容纳示例，说明 R6 兼容边界被突破，升级给用户",
+        "需要新增公共样式类，说明 T3 的样式边界不完整，升级并回到设计修订"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "架构模块三处响应补齐人员 id：事项列表 proposerId、材料 createdBy、标准文档详情 createdBy，使这三处也能悬浮出完整信息",
+      "requirements": [
+        "R8"
+      ],
+      "prerequisites": [],
+      "write_scope": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java（仅 MatterSummaryResponse 与 MaterialResponse 追加字段）",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java（仅 DocumentDetailResponse 追加字段）",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitecturePersonReferenceFieldTest.java（新建）",
+        "web/src/modules/architecture/types.ts（仅追加三个 number 字段）"
+      ],
+      "acceptance": [
+        "先运行 ArchitecturePersonReferenceFieldTest 并确认因缺少 proposerId() 而编译失败，作为失败基线",
+        "三个响应暴露的 id 与模型值一致",
+        "既有字段值不变，未改 SQL 与模型",
+        "mvn -pl :ccb-architecture -am test 全量回归通过",
+        "npm --prefix web run build 通过"
+      ],
+      "evidence_required": [
+        "失败基线的命令与报错首行",
+        "ArchitecturePersonReferenceFieldTest 的 Tests run 汇总",
+        "mvn -pl :ccb-architecture -am test 的 Tests run 汇总",
+        "三个 record 的 diff"
+      ],
+      "rollback": "git revert T5 提交",
+      "stop_conditions": [
+        "某处模型实际没有 id 时停止并升级，那意味着需要改 SQL 与模型，超出本任务边界"
+      ],
+      "escalation_conditions": [
+        "架构模块全量测试出现既有失败时作为基线故障如实记录并升级，不得顺手修复"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T6",
+      "goal": "架构管理的物理子系统、参与人员、交付与部署单元、个人任务板共 5 个文件 8 处人员展示替换为人员卡片",
+      "requirements": [
+        "R7",
+        "R8",
+        "R9"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "web/src/modules/architecture/components/SubsystemParticipants.vue",
+        "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+        "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+        "web/src/modules/architecture/components/PersonalTaskBoard.vue"
+      ],
+      "acceptance": [
+        "8 处全部渲染为人员卡片",
+        "表格人员列固定宽小于 130px 的改为 min-width 且姓名未被挤压",
+        "SubsystemParticipants 的「默认参与」el-tag 与业务提示文案原样保留",
+        "npm --prefix web run build 通过",
+        "桌面与手机视口下六个位置无遮挡溢出"
+      ],
+      "evidence_required": [
+        "8 处 diff",
+        "每个页面至少一张截图（含手机视口）",
+        "构建退出码与 grep 输出"
+      ],
+      "rollback": "git revert T6 提交",
+      "stop_conditions": [
+        "某处当前只有姓名没有 id 且不在 R8 三处清单内时停止并升级，说明设计清单有遗漏"
+      ],
+      "escalation_conditions": [
+        "SubsystemParticipants 的可编辑语义因替换被改变时立即停止"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T7",
+      "goal": "架构管理的决策事项、标准文档、搭建计划共 4 个文件 11 处人员展示替换，含三处 R8 场景",
+      "requirements": [
+        "R7",
+        "R8",
+        "R9"
+      ],
+      "prerequisites": [
+        "T3",
+        "T5"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/DecisionMatterListPage.vue",
+        "web/src/modules/architecture/DecisionMatterDetailPage.vue",
+        "web/src/modules/architecture/StandardDocumentListPage.vue",
+        "web/src/modules/architecture/PlanDetailPage.vue"
+      ],
+      "acceptance": [
+        "11 处全部渲染为人员卡片",
+        "DecisionMatterDetailPage 材料时间线保留时间戳文本且创建人为独立卡片，不在时间线内堆两行卡片",
+        "DecisionMatterListPage、材料时间线、StandardDocumentListPage 详情三处悬浮出的状态为 ready 而非 missing",
+        "PlanDetailPage 的 el-select 与 DecisionMatterDetailPage 的 el-select 和 el-input 未被改动",
+        "替换后若 userName() 不再被引用则删除，且选人控件下拉项仍保留文案",
+        "npm --prefix web run build 通过",
+        "新建计划向导的选人控件行为不变"
+      ],
+      "evidence_required": [
+        "11 处 diff",
+        "PlanDetailPage 的 userName() grep 输出",
+        "选人控件区间的空 diff",
+        "每页至少一张截图，含向导选人控件对照图",
+        "构建退出码"
+      ],
+      "rollback": "git revert T7 提交",
+      "stop_conditions": [
+        "删除 userName() 导致选人控件下拉项失去文案时停止并回退该删除动作"
+      ],
+      "escalation_conditions": [
+        "DecisionMatterDetail 的时间线结构不支持在 timestamp 槽内放两个元素时，停止并回到设计确认降级形态"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T8",
+      "goal": "架构管理的网络工单、子系统变更、实例、资源申请、网络访问、部署单元导入共 9 个文件 11 处人员展示替换，其中 7 处为原始数字 ID",
+      "requirements": [
+        "R7",
+        "R9"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+        "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue",
+        "web/src/modules/architecture/NetworkWorkOrderListPage.vue",
+        "web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue",
+        "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+        "web/src/modules/architecture/components/SubsystemChangeTimeline.vue",
+        "web/src/modules/architecture/InstanceListPage.vue",
+        "web/src/modules/architecture/ResourceRequestPage.vue",
+        "web/src/modules/architecture/NetworkAccessPage.vue"
+      ],
+      "acceptance": [
+        "11 处全部渲染为人员卡片",
+        "grep -rn 裸 ID 插值的结果为空，7 处原始 ID 消失",
+        "InstanceListPage 的标签文案由「下线操作人 ID」改为「下线操作人」",
+        "userLabel() 的回退语义在删除前已被 store 的 missing 态覆盖，否则保留回退",
+        "非人员列的固定宽未被改动",
+        "npm --prefix web run build 通过",
+        "桌面与手机视口下各页面无遮挡溢出"
+      ],
+      "evidence_required": [
+        "11 处 diff",
+        "裸 ID 插值的 grep 输出为空",
+        "7 处逐一截图",
+        "构建退出码"
+      ],
+      "rollback": "git revert T8 提交",
+      "stop_conditions": [
+        "某处 applicantId 在类型上可能为 null 或 undefined 时停止，并确认组件对空 id 的降级渲染符合 R6"
+      ],
+      "escalation_conditions": [
+        "替换后暴露出后端未返回申请人姓名而前端既有 userLabel 依赖额外查询时，升级给用户",
+        "网络访问页或网络工单页的移动卡片因新增团队行导致纵向溢出时，升级并回到设计调整档位分配"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T9",
+      "goal": "开发管理的任务列表、任务详情、阶段面板、工作项看板与列表、变更日志共 6 个文件 8 处人员展示替换，且两个表单抽屉零改动",
+      "requirements": [
+        "R7",
+        "R9"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "write_scope": [
+        "web/src/modules/development/DevelopmentTaskListPage.vue",
+        "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+        "web/src/modules/development/components/TaskStagePanel.vue",
+        "web/src/modules/development/components/WorkItemsView.vue",
+        "web/src/modules/development/components/WorkItemCard.vue",
+        "web/src/modules/development/components/TaskChangeLog.vue"
+      ],
+      "acceptance": [
+        "8 处全部渲染为人员卡片，字符串 id 未被错误转成数字",
+        "git diff --stat 对 TaskFormDrawer.vue 与 WorkItemFormDrawer.vue 无输出",
+        "TaskChangeLog 的动作文案与 objectLabels 拼接逻辑不变",
+        "npm --prefix web run build 通过",
+        "桌面与手机视口下五个页面无遮挡溢出",
+        "浮层不出现恒为「未找到」的 id 解析失败"
+      ],
+      "evidence_required": [
+        "8 处 diff",
+        "两个表单抽屉的空 diff",
+        "每页至少一张截图",
+        "构建退出码"
+      ],
+      "rollback": "git revert T9 提交",
+      "stop_conditions": [
+        "无任何开发任务数据可走查时停止并先解决数据前置，不得以无法验证结项"
+      ],
+      "escalation_conditions": [
+        "字符串 id 走查出现 id 解析失败、浮层恒为未找到时升级并检查 toId 实现"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    },
+    {
+      "id": "T10",
+      "goal": "集成验收与回归完成：R1–R11 全部有通过或明确失败的记录，治理与任务范围检查结果如实归档",
+      "requirements": [
+        "R6",
+        "R7",
+        "R10"
+      ],
+      "prerequisites": [
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260912-075-person-card/observation-T1.json（新建）",
+        ".ai-control/requirements/req-20260912-075-person-card/convergence.json（新建）"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 通过，0 个类型错误",
+        "mvn -pl :ccb-system -am test 与 mvn -pl :ccb-architecture,:ccb-development -am test 通过",
+        "git diff --name-only 对 ModuleView.vue、AppLayout.vue、ProjectView.vue 无输出",
+        "按设计附录 A 的 38 行逐处核对全部为卡片，无纯文本混排与裸 ID",
+        "六种状态在明暗主题与 1440 和 375 视口下逐一可复现",
+        "node scripts/check-codex-scope.mjs 按提交区间模式通过",
+        "git diff --check 无空白错误",
+        "check-all-governance.mjs 若仍因 REQ-20260904-061 基线故障失败则如实记录，不得声称门禁全绿"
+      ],
+      "evidence_required": [
+        "构建退出码",
+        "两次 Maven 的 Tests run 汇总",
+        "三个既有调用文件的空 diff 输出",
+        "38 行逐处核对清单",
+        "六种状态的状态截图集合",
+        "治理与范围检查的三条命令输出",
+        "observation-T1.json 与 convergence.json"
+      ],
+      "rollback": "账本与代码分别 git revert；无数据库变更",
+      "stop_conditions": [
+        "任一 must 需求未通过时停止并回到偏差纠正，不得收敛"
+      ],
+      "escalation_conditions": [
+        "出现需要改公共契约、迁移或超出 writable_paths 的修复时，升级给 Owner 并回到设计"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-12T12:20:42+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

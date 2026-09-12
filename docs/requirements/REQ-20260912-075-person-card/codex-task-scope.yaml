@@ -1,0 +1,138 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260912-075",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260912-075-person-card/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "platform/system",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260912-075-person-card",
+    "worktree": "/home/ivanh/source/RDDMP",
+    "additional_modules": ["frontend/application", "business/architecture", "business/development"]
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260912-075-person-card/**",
+      "docs/engineering-control/designs/2026-09-12-person-card-design.md",
+      "docs/engineering-control/plans/2026-09-12-person-card-implementation-plan.md",
+      ".ai-control/requirements/req-20260912-075-person-card/*.json",
+      "server/src/platform/system/src/main/java/com/ccb/system/service/UserProfileService.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/web/UserProfileController.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/service/UserProfileServiceMySqlTest.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/web/UserProfileControllerTest.java",
+      "web/src/types/system.ts",
+      "web/src/api/user-profile.ts",
+      "web/src/stores/person-directory.ts",
+      "web/src/components/ui/UiUserIdentity.vue",
+      "web/src/components/ui/UiPersonProfileCard.vue",
+      "web/src/styles.css",
+      "web/src/views/ComponentShowcaseView.vue",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/web/ArchitectureDecisionController.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/standard/web/ArchitectureStandardController.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitecturePersonReferenceFieldTest.java",
+      "web/src/modules/architecture/types.ts",
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "web/src/modules/architecture/DecisionMatterListPage.vue",
+      "web/src/modules/architecture/DecisionMatterDetailPage.vue",
+      "web/src/modules/architecture/StandardDocumentListPage.vue",
+      "web/src/modules/architecture/PlanDetailPage.vue",
+      "web/src/modules/architecture/NetworkWorkOrderDetailPage.vue",
+      "web/src/modules/architecture/NetworkWorkOrderListPage.vue",
+      "web/src/modules/architecture/SubsystemChangeApplicationDetailPage.vue",
+      "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+      "web/src/modules/architecture/InstanceListPage.vue",
+      "web/src/modules/architecture/ResourceRequestPage.vue",
+      "web/src/modules/architecture/NetworkAccessPage.vue",
+      "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+      "web/src/modules/architecture/components/SubsystemParticipants.vue",
+      "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+      "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+      "web/src/modules/architecture/components/PersonalTaskBoard.vue",
+      "web/src/modules/architecture/components/SubsystemChangeTimeline.vue",
+      "web/src/modules/development/DevelopmentTaskListPage.vue",
+      "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+      "web/src/modules/development/components/TaskStagePanel.vue",
+      "web/src/modules/development/components/WorkItemsView.vue",
+      "web/src/modules/development/components/WorkItemCard.vue",
+      "web/src/modules/development/components/TaskChangeLog.vue"
+    ],
+    "read_only_paths": [
+      "server/src/shared/common/**",
+      "server/src/platform/security/**",
+      "server/src/platform/infrastructure/**",
+      "web/src/api/http.ts",
+      "web/src/router/**",
+      "docs/governance/**",
+      "governance/modules.yaml"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260912-075",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "现有 12 处 UiUserIdentity 调用点零代码改动回归：git diff --name-only 确认 ModuleView.vue、AppLayout.vue、ProjectView.vue 未改动，并在浏览器走查四个既有调用页面",
+      "mvn -pl :ccb-system -am test：确认平台模块既有能力未被破坏",
+      "mvn -pl :ccb-architecture,:ccb-development -am test：确认业务模块既有响应字段未被破坏",
+      "npm --prefix web run build：确认前端公共组件变更不破坏既有类型与构建"
+    ],
+    "notes": "两处公共能力变更：platform/system 新增只读接口 POST /api/platform/user-profiles/query；frontend/application 改造公共组件 UiUserIdentity.vue 与 styles.css 的样式区间。用户已声明取得 Owner 审批。"
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "not-applicable"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "unit", "command": "mvn -pl :ccb-system -am test"},
+    {"name": "api", "command": "mvn -pl :ccb-system -am test -Dtest=UserProfileServiceMySqlTest,UserProfileControllerTest 覆盖租户隔离、50 上限、字段白名单、missingIds、停用用户与空数组"},
+    {"name": "permission", "command": "UserProfileControllerTest 断言类级注解恰为 isAuthenticated() 且未要求 system:access；UserProfileServiceMySqlTest 断言跨租户 id 不返回并要求 missingIds"},
+    {"name": "module-regression", "command": "mvn -pl :ccb-architecture,:ccb-development -am test"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260912-075-person-card/codex-task-scope.yaml --working-tree"}
+  ],
+  "risk": {
+    "level": "important",
+    "items": [
+      "公共能力变更：平台新增接口与前端公共组件改造，需 Owner 复核兼容策略与回归测试",
+      "数据暴露面：电话对已登录用户可见，暴露面与既有系统管理用户列表和测试管理提出人一致，需安全评审确认",
+      "38 处列表/详情、18 个架构页面与 6 个开发页面的模板替换量大，存在遗漏或误改人员选择器的风险",
+      "已知基线故障：docs/requirements/REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 非 JSON 兼容 YAML，导致 node scripts/check-ai-control-layout.mjs 失败；本次不修复，门禁无法全绿"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260912-075-person-card",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260912-075-person-card/design.json",
+      ".ai-control/requirements/req-20260912-075-person-card/handoff.json",
+      ".ai-control/requirements/req-20260912-075-person-card/execution-T1.json",
+      ".ai-control/requirements/req-20260912-075-person-card/observation-T1.json",
+      ".ai-control/requirements/req-20260912-075-person-card/convergence.json"
+    ],
+    "release_verification": [
+      "真实浏览器按设计附录 A 的 38 处逐处走查，覆盖桌面 1440 与手机 375、明暗主题",
+      "六种浮层状态复现：加载中、加载失败+重试、未找到、无角色、停用、超长文本",
+      "断网后浮层显示失败态与重试入口，恢复网络后重试成功",
+      "现有 ModuleView、AppLayout、ProjectView 三个文件未出现在本次 git diff 中，且四个既有调用页面浏览器行为不变"
+    ],
+    "rollback": "删除 web/src/api/user-profile.ts、web/src/stores/person-directory.ts、web/src/components/ui/UiPersonProfileCard.vue、server/src/platform/system 的 UserProfileService.java 与 UserProfileController.java 及两个对应测试文件、架构模块的 ArchitecturePersonReferenceFieldTest.java；恢复 web/src/components/ui/UiUserIdentity.vue 与 web/src/styles.css；回滚 web/src/types/system.ts、web/src/modules/architecture/types.ts 的追加类型与三个架构响应 DTO 的追加字段。无数据库迁移、无数据补偿。"
+  }
+}
