@@ -7,6 +7,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import {
@@ -1289,7 +1290,7 @@ watch(() => ({
             <template #default="scope">
               <button type="button" class="architecture-table-identity" @click="openApplicationDetail(scope.row)">
                 <strong>{{ scope.row.applicationNo }}</strong>
-                <small>{{ actionTypeLabel(scope.row.actionType) }} · 申请人 #{{ scope.row.applicantId }}</small>
+                <small>{{ actionTypeLabel(scope.row.actionType) }} · 申请人 <UiUserIdentity :user-id="scope.row.applicantId" variant="compact" /></small>
               </button>
             </template>
           </el-table-column>
@@ -1581,7 +1582,7 @@ watch(() => ({
       <section v-if="selectedApplication" class="architecture-drawer-body">
         <header class="architecture-detail-heading">
           <strong>{{ selectedApplication.applicationNo }}</strong>
-          <span>申请人 #{{ selectedApplication.applicantId }} · {{ applicationStatusLabels[selectedApplication.status] }}</span>
+          <span><span class="architecture-muted">申请人</span> <UiUserIdentity :user-id="selectedApplication.applicantId" variant="standard" /> · {{ applicationStatusLabels[selectedApplication.status] }}</span>
         </header>
 
         <dl class="architecture-detail-list">

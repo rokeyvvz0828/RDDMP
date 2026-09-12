@@ -8,6 +8,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import { useProjectContextStore } from '../../stores/project-context'
@@ -628,7 +629,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, async ([allowed
             <header><strong style="color: var(--el-text-color-secondary);">下线审计事实</strong></header>
             <dl class="architecture-detail-list" style="margin-top: 8px;">
               <div><dt>下线时间</dt><dd>{{ formatDateTime(detail.offlinedAt) }}</dd></div>
-              <div><dt>下线操作人 ID</dt><dd>{{ detail.offlinedBy }}</dd></div>
+              <div><dt>下线操作人</dt><dd><UiUserIdentity :user-id="detail.offlinedBy" variant="standard" /></dd></div>
               <div class="is-wide"><dt>下线原因</dt><dd style="font-weight: 500;">{{ detail.offlineReason }}</dd></div>
             </dl>
           </section>
