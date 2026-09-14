@@ -21,6 +21,7 @@ INSERT INTO tmp_tm_report_mock_prerequisite VALUES (@ready);
 DROP TEMPORARY TABLE IF EXISTS tmp_tm_report_mock_context;
 CREATE TEMPORARY TABLE tmp_tm_report_mock_context AS
 SELECT p.id AS project_id,@operator_1 AS operator_1,@operator_2 AS operator_2,@system_1 AS system_1,@system_2 AS system_2,@system_3 AS system_3,@team_1 AS team_1,
+       ROW_NUMBER() OVER (ORDER BY p.id) AS project_variant,
        @base_id + ROW_NUMBER() OVER (ORDER BY p.id) * 100000 AS seed_base
 FROM pm_project p WHERE p.tenant_id=@tenant_id AND p.deleted=0;
 ALTER TABLE tmp_tm_report_mock_context ADD PRIMARY KEY (project_id);
@@ -72,7 +73,7 @@ FROM tmp_tm_report_mock_context ctx CROSS JOIN (SELECT 1 seq UNION ALL SELECT 2 
 WHERE TRUE ON DUPLICATE KEY UPDATE directory_name=VALUES(directory_name),updated_by=VALUES(updated_by),deleted=0;
 
 INSERT INTO tm_test_execution (id,tenant_id,test_domain,project_id,physical_subsystem_id,round_id,cycle_id,directory_id,case_id,execution_status,actual_result_html,remark_html,executor_id,executed_at,created_by,updated_by,deleted)
-SELECT ctx.seed_base+2000+n,@tenant_id,@domain,ctx.project_id,CASE MOD(n,3) WHEN 0 THEN ctx.system_1 WHEN 1 THEN ctx.system_2 ELSE ctx.system_3 END,ctx.seed_base+11+FLOOR(MOD(n-1,60)/20),ctx.seed_base+21+MOD(n-1,6),ctx.seed_base+200+MOD(n-1,6)+1,ctx.seed_base+1000+n,CASE MOD(n,6) WHEN 0 THEN 'SUCCESS' WHEN 1 THEN 'FAILED' WHEN 2 THEN 'BLOCKED' WHEN 3 THEN 'IN_PROGRESS' WHEN 4 THEN 'UNEXECUTED' ELSE 'SUCCESS' END,'<p>【本地模拟】执行结果</p>','<p>【本地模拟】备注</p>',IF(MOD(n,2)=0,ctx.operator_1,ctx.operator_2),IF(MOD(n,6) IN (3,4),NULL,NOW()),ctx.operator_1,ctx.operator_1,0
+SELECT ctx.seed_base+2000+n,@tenant_id,@domain,ctx.project_id,CASE MOD(n,3) WHEN 0 THEN ctx.system_1 WHEN 1 THEN ctx.system_2 ELSE ctx.system_3 END,ctx.seed_base+11+FLOOR(MOD(n-1,60)/20),ctx.seed_base+21+MOD(n-1,6),ctx.seed_base+200+MOD(n-1,6)+1,ctx.seed_base+1000+n,CASE MOD(ctx.project_variant-1,3) WHEN 0 THEN CASE MOD(n,6) WHEN 0 THEN 'SUCCESS' WHEN 1 THEN 'FAILED' WHEN 2 THEN 'BLOCKED' WHEN 3 THEN 'IN_PROGRESS' WHEN 4 THEN 'UNEXECUTED' ELSE 'SUCCESS' END WHEN 1 THEN CASE MOD(n,10) WHEN 0 THEN 'SUCCESS' WHEN 1 THEN 'SUCCESS' WHEN 2 THEN 'SUCCESS' WHEN 3 THEN 'SUCCESS' WHEN 4 THEN 'SUCCESS' WHEN 5 THEN 'FAILED' WHEN 6 THEN 'BLOCKED' WHEN 7 THEN 'IN_PROGRESS' WHEN 8 THEN 'IN_PROGRESS' ELSE 'UNEXECUTED' END ELSE CASE MOD(n,10) WHEN 0 THEN 'SUCCESS' WHEN 1 THEN 'FAILED' WHEN 2 THEN 'FAILED' WHEN 3 THEN 'FAILED' WHEN 4 THEN 'BLOCKED' WHEN 5 THEN 'IN_PROGRESS' WHEN 6 THEN 'IN_PROGRESS' ELSE 'UNEXECUTED' END END,'<p>【本地模拟】执行结果</p>','<p>【本地模拟】备注</p>',IF(MOD(n,2)=0,ctx.operator_1,ctx.operator_2),IF(MOD(n,6) IN (3,4),NULL,NOW()),ctx.operator_1,ctx.operator_1,0
 FROM tmp_tm_report_mock_context ctx CROSS JOIN (SELECT ones.n+tens.n*10+1 n FROM (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) ones CROSS JOIN (SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) tens) numbers
 WHERE TRUE ON DUPLICATE KEY UPDATE execution_status=VALUES(execution_status),executor_id=VALUES(executor_id),executed_at=VALUES(executed_at),updated_by=VALUES(updated_by),deleted=0;
 

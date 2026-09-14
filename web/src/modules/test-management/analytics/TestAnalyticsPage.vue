@@ -91,6 +91,7 @@ const config = reactive({
   metrics: ["execution_rate", "case_success_rate"],
   charts: ["TABLE", "BAR"],
 });
+let projectContextVersion = 0;
 const fieldLabels: Record<string, string> = {
   system_name: "参测系统",
   responsible_team_name: "责任团队组织",
@@ -321,24 +322,27 @@ const chartOption = computed<EChartsOption>(() => {
 function err(e: any, s: string) {
   ElMessage.error(e?.response?.data?.message || s);
 }
-async function load() {
-  if (!projectId.value) return;
+async function load(
+  requestedProjectId = projectId.value,
+  requestVersion = projectContextVersion,
+) {
+  if (!requestedProjectId) return;
   loading.value = true;
   try {
     const response = (
       await (activeSavedId.value
-        ? runSavedTestAnalytics(domain.value, projectId.value, activeSavedId.value, {
+        ? runSavedTestAnalytics(domain.value, requestedProjectId, activeSavedId.value, {
             physicalSubsystemId: filters.systemId,
             roundId: filters.roundId,
             cycleId: filters.cycleId,
           })
         : active.key === "CUSTOM"
-          ? getTestAnalytics(domain.value, projectId.value, "CUSTOM", {
+          ? getTestAnalytics(domain.value, requestedProjectId, "CUSTOM", {
               physicalSubsystemId: filters.systemId,
               roundId: filters.roundId,
               cycleId: filters.cycleId,
             })
-        : getTestAnalyticsPreset(domain.value, projectId.value, active.key, {
+        : getTestAnalyticsPreset(domain.value, requestedProjectId, active.key, {
             physicalSubsystemId: filters.systemId,
             roundId: filters.roundId,
             cycleId: filters.cycleId,
@@ -346,23 +350,58 @@ async function load() {
             perspective: active.perspective,
           }))
     ).data.data as any;
+    if (requestVersion !== projectContextVersion || requestedProjectId !== projectId.value) return;
     model.value = { ...response, rows: response.rows || response.table || [] };
     if (active.key.startsWith("CHT-") && active.view === "TABLE") active.view = chartView(response.chart_type);
   } catch (e) {
-    err(e, "统计数据加载失败");
+    if (requestVersion === projectContextVersion) err(e, "统计数据加载失败");
   } finally {
-    loading.value = false;
+    if (requestVersion === projectContextVersion) loading.value = false;
   }
 }
-async function setup() {
-  if (!projectId.value) return;
-  const [a, b] = await Promise.all([
-    getTestAnalyticsTree(domain.value, projectId.value),
-    getTestAnalyticsFilters(domain.value, projectId.value),
-  ]);
-  tree.value = a.data.data;
-  meta.value = b.data.data;
-  await load();
+function resetProjectScopedState() {
+  filters.systemId = undefined;
+  filters.roundId = undefined;
+  filters.cycleId = undefined;
+  tree.value = undefined;
+  meta.value = { systems: [], rounds: [], cycles: [] };
+  model.value = { rows: [], trend: [] };
+  drillRows.value = [];
+  compareRows.value = [];
+  compareRounds.value = [];
+  activeCustomId.value = undefined;
+  activeSavedId.value = undefined;
+  if (active.key === "CUSTOM") {
+    active.key = "RPT-001";
+    active.name = "测试执行进度汇总表";
+    active.view = "TABLE";
+  }
+}
+async function setup(refreshProjects = false) {
+  const version = ++projectContextVersion;
+  if (refreshProjects) {
+    resetProjectScopedState();
+    try {
+      projects.value = (await listTestProjects(domain.value)).data.data || [];
+    } catch (e) {
+      if (version === projectContextVersion) err(e, "项目列表加载失败");
+      return;
+    }
+  }
+  const selectedProjectId = projectId.value;
+  if (!selectedProjectId) return;
+  try {
+    const [a, b] = await Promise.all([
+      getTestAnalyticsTree(domain.value, selectedProjectId),
+      getTestAnalyticsFilters(domain.value, selectedProjectId),
+    ]);
+    if (version !== projectContextVersion || selectedProjectId !== projectId.value) return;
+    tree.value = a.data.data;
+    meta.value = b.data.data;
+    await load(selectedProjectId, version);
+  } catch (e) {
+    if (version === projectContextVersion) err(e, "统计上下文加载失败");
+  }
 }
 function select(key: string, name?: string) {
   activeCustomId.value = undefined;
@@ -527,10 +566,9 @@ async function save() {
 }
 onMounted(async () => {
   await context.initialize();
-  projects.value = (await listTestProjects(domain.value)).data.data || [];
-  await setup();
+  await setup(true);
 });
-watch([() => context.currentRef, domain], setup);
+watch([() => context.currentRef, domain], () => void setup(true));
 </script>
 <template>
   <section class="analytics">
