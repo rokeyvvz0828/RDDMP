@@ -1,0 +1,53 @@
+{
+ "schema_version": 1,
+ "task_id": "T5",
+ "status": "verified",
+ "commands": [
+  {
+   "command": "mvn -q -pl :ccb-data-migration -am test -o",
+   "exit_code": 0,
+   "salient_output": "208 tests, 0 failures, 0 errors"
+  },
+  {
+   "command": "npm --prefix web run build",
+   "exit_code": 0,
+   "salient_output": "构建通过"
+  },
+  {
+   "command": "git diff --check",
+   "exit_code": 0,
+   "salient_output": "无空白错误；V197/V198 无 diff"
+  },
+  {
+   "command": "node scripts/check-codex-scope.mjs --scope 069 scope yaml",
+   "exit_code": 1,
+   "salient_output": "元数据全部通过；violations 均为共享工作区 031/067/068 他任务文件（非 069 范围），069 自身文件全部命中 writable_paths（用 069 文件清单单独匹配验证通过）"
+  },
+  {
+   "command": "node scripts/check-all-governance.mjs",
+   "exit_code": 1,
+   "salient_output": "模块/技能/开发入口检查通过；check-ai-control-layout 被既有 REQ-061 YAML 旧格式 scope 文件阻断（历史遗留，非本任务文件）"
+  },
+  {
+   "command": "codex-task-scope.yaml 治理格式",
+   "exit_code": 0,
+   "salient_output": "069 scope 已由 YAML 转 JSON（JSON.parse 兼容），历史遗留仅 REQ-061 一份"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "浏览器真实验收",
+   "result": "pass",
+   "evidence": "30/30，含 375/390/430 视口 overflow=0、无意外控制台错误、无未捕获异常"
+  },
+  {
+   "check": "真实后端字段删除链路",
+   "result": "pass",
+   "evidence": "修复 V200 缺失列后 DELETE 200，抽屉与 API 一致"
+  }
+ ],
+ "environment_notes": [
+  "重启后端时暴露 REQ-068 的 V199 校验和不一致（其 23:24 修改未重启）；按 Flyway 正道通过 repair 仅对齐开发库历史校验和，未改动 068 文件与表结构",
+  "开发库 ccb_platform 的 V200 采用重放方式应用修正版（删除 200 历史行→重启重放→新 checksum），验收数据已清理"
+ ]
+}

@@ -1,0 +1,79 @@
+{
+  "task_id": "T41",
+  "parent_task": "T40",
+  "trigger": "用户指令「治理：dm_target_table 表中字段 id 与字段 table_code 设计是否重复」「table_code 使用原来 id 的生成方式，不考虑租户」；联动决策确认：1. 发号机制沿用原 nextId()、2. 唯一范围全局唯一保留 (tenant_id, table_code) 组合唯一、3. 关联键联动一并修改、4. 字段表主键一并改 field_code、5. 审计语义历史数据不用管；开发阶段数据库不需要备份（用户此前确认）。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_target_table_code_pk",
+  "decision_recorded": "dm_target_table 取消自增 id 单列主键，table_code 直接作单列主键（编号沿用原 nextId() 纯数字 BIGINT、全局唯一、不按租户分区、不建号源表）；dm_target_table_field 主键同步改 field_code，关联键 table_id 改名 table_code，V163 遗留引用 table_id 的 uk_target_field_active_en/cn 与 idx_target_field_table/key 随改名重建为 table_code，组合外键 fk_target_field_table_code 按 (tenant_id, table_code) 引用主表 uk_target_table_tenant_code；dm_issue_relation.related_id 与审计 dm_operation_log.entity_id 存的正是原 id 数值即新 code 数值，数据零改写、历史数据不追溯；V168 条件式迁移（information_schema 守卫、幂等）只追加不改历史脚本。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V168__data_migration_target_table_code_pk.sql（新增）",
+      "purpose": "存储过程 dm_v168_convert_target_table_code_pk：字段表先段（DROP 旧外键/活动唯一键/引用 table_id 索引，UPDATE field_code=id，PK 切到 field_code 并删 id，CHANGE table_id table_code）；主表段（UPDATE table_code=id，PK 切到 table_code 并删 id）；确保段（active_table_code/active_field_code 生成列重建为 BIGINT，uk_target_table_active_code、uk_target_table_tenant_code、uk_target_field_active_en/cn、组合外键 fk_target_field_table_code、idx_target_field_table/key 重建）；information_schema 条件式幂等。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+      "purpose": "表/字段契约全部由 id/table_id/field_id 改 table_code/field_code：createTable 直接 nextId() 生成 tableCode（不再拼 TT+id），addFieldInternal 直接 nextId() 生成 fieldCode（不再拼 TF+id）；list/getDetail/listFields/updateField/deleteField(s)/cascadeDeleteTableIfEmpty/requireTable/ensureTableUnique/ensureFieldUnique/exportTables 按 code 编写 SQL；审计 entity_id 存编号数值。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TargetTableController.java",
+      "purpose": "路由 {id} 改 {tableCode}；batchDelete 参数 ids 改 tableCodes；导出选中参数改 fieldCodes（按 f.field_code IN，语义=旧字段 ids）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TargetTableFieldController.java",
+      "purpose": "路由 {fieldId} 改 {fieldCode}；batchDelete 参数改 fieldCodes。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java",
+      "purpose": "关联目标按业务编号：getTargetTableOptions value=table_code、getTargetFieldOptions value=field_code；baseSelect 关联子查询 t.table_code=r.related_id、f.field_code=r.related_id；ensureRelationTarget 按 table_code/field_code 校验；ensureFieldRelationsBelongToRelatedTables 改按 field_code/table_code。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/IssueController.java",
+      "purpose": "/options/target-fields 参数 tableId 改 tableCode。"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "TargetTableField/TargetTableRecord 类型删 id/table_id/field_id，改 field_code/table_code number；API 参数 id→tableCode、ids→tableCodes、fieldId→fieldCode、fieldCodes、exportTargetTables 传 fieldCodes。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+      "purpose": "row.id→row.table_code、字段 f.id→f.field_code、row-key/data-row-id、编辑字段定位、选中集合与导出 fieldCodes 全部按业务编号。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/IssuesPage.vue",
+      "purpose": "字段选项加载由 tableIds 改 tableCodes（变量改名，逻辑不变）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationGovernanceRemediationMySqlTest.java",
+      "purpose": "v166/v167 专项夹具改为 V168 收敛后结构（PK=table_code/field_code、组合外键、uk_target_table_tenant_code）；新增 v168ConvertsTargetTablePrimaryKeyToCode 专项：V167 旧 id 结构基线（含 V163 生成列/唯一键）→ migrate 167→168 → 断言主键/回填/关联 JOIN/生成列 BIGINT/索引列/组合外键/服务写侧纯数字编号与审计 entity_id。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java",
+      "purpose": "夹具 dm_target_table 补 table_code、dm_target_table_field 补 field_code，保证 baseSelect 关联子查询在 V92-V148 旧结构测试中可执行。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "v98 断言后补充 V168 迁移包含 CHANGE COLUMN table_id table_code 且服务含 t.table_code = f.table_code。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "DDL 基线上移至 V168；表清单 dm_target_table 19→18 列、dm_target_table_field 23→22 列；3.15 related_id 按业务编号解释；3.17/3.18 改 table_code/field_code 单列主键、组合外键、生成列 bigint、索引与唯一键更新；第 4 节关系视图与 4.1 物理外键说明更新；6.1 字段活动唯一键改 (tenant_id, table_code, ...)；7 审计 entity_id 语义；9.1 补主键即业务编号条目；9.2 治理表新增「主键与编号重复」已处置行；复核口径 V162-V168。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      "purpose": "writable_paths/migration_files 登记 V168 与 T41 实施计划文档；note 与 compatibility_and_rollback 追加 T41 说明。"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/execution-T41.json / observation-T41.json（新增）",
+      "purpose": "任务执行与独立观测账本。"
+    }
+  ],
+  "verification": [
+    "后端整体回归：mvn -pl :ccb-data-migration -am test 通过，Tests run: 81, Failures: 0, Errors: 0, Skipped: 0。",
+    "V168 迁移专项（MySQL 8.4）：v168ConvertsTargetTablePrimaryKeyToCode V167→V168 迁移断言通过——主表/字段表无 id 列、无 table_id 列，主键分别为 table_code/field_code；存量 1001/2001 回填为原 id 数值；dm_issue_relation JOIN 按 table_code/field_code 命中；active_table_code/active_field_code 为 bigint STORED GENERATED；uk_target_table_tenant_code (tenant_id, table_code)、uk_target_field_active_en/cn (tenant_id, table_code, active_field_name_en/cn) 列序正确；组合外键 fk_target_field_table_code 按 (tenant_id, table_code)；服务 createTable/addField 落库纯数字编号且 audit entity_id=编号数值。",
+    "数据零改写：UPDATE dm_target_table SET table_code=id、dm_target_table_field SET field_code=id（覆盖历史 TT/TF 前缀派生值）；issue_relation.related_id 与 operation_log.entity_id 不更新，JOIN 列名改 table_code/field_code。",
+    "前端构建：npm --prefix web run build 成功（仅既有 chunk 体积提示）。",
+    "范围检查：check-codex-scope.mjs 仅报告他人任务 REQ-20260903-064 的越界项与未跟踪文件（本任务未触碰）；V168、T41 实施计划文档均已登记 writable_paths。"
+  ],
+  "not_done": "未运行真实浏览器验收与本地运行时健康检查（纯主键/编号重构 + 迁移 + 测试验证，未按需启动全套运行时）；未修改任何历史迁移脚本（V168 仅追加）；不提交、不推送、不合并。",
+  "noted_risk": "TargetTableService.list 返回值不再含 id/table_id/field_id，前端相关列已改用 table_code/field_code，外部调用方需同步；导出接口语义为按字段编号导出（与旧字段 ids 一致），当前前端导出默认全量不传选中项，未扩大范围；REQ-20260903-064 工作区越界改动未触碰。"
+}

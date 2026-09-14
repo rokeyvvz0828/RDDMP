@@ -10,7 +10,11 @@ const versions = new Map();
 const allowedSqlCallbacks = new Set([
   'beforeMigrate__ensure_flowable_event_registry_metadata.sql',
 ]);
+const allowedLegacyMigrations = new Map([
+  ['V84_1__seed_requirement_system_catalog.sql', 84.1],
+]);
 const callbacks = [];
+const legacyMigrations = [];
 
 for (const file of fs.readdirSync(absoluteDirectory).filter((name) => name.endsWith('.sql'))) {
   if (allowedSqlCallbacks.has(file)) {
@@ -19,6 +23,13 @@ for (const file of fs.readdirSync(absoluteDirectory).filter((name) => name.endsW
   }
   const match = file.match(/^V(\d+)__([a-z0-9_]+)\.sql$/i);
   if (!match) {
+    const legacyVersion = allowedLegacyMigrations.get(file);
+    if (legacyVersion !== undefined) {
+      if (versions.has(legacyVersion)) violations.push(`${file}: duplicates Flyway version V${legacyVersion} used by ${versions.get(legacyVersion)}`);
+      versions.set(legacyVersion, file);
+      legacyMigrations.push(file);
+      continue;
+    }
     violations.push(`${file}: expected V<number>__description.sql`);
     continue;
   }
@@ -49,4 +60,4 @@ if (violations.length) {
   console.error(`Flyway migration check failed:\n${violations.join('\n')}`);
   process.exit(1);
 }
-console.log(`Flyway migration check passed for ${versions.size} migration(s) and ${callbacks.length} approved callback(s)${base ? ` against ${base}` : ''}.`);
+console.log(`Flyway migration check passed for ${versions.size} migration(s), ${callbacks.length} approved callback(s), and ${legacyMigrations.length} approved legacy migration(s)${base ? ` against ${base}` : ''}.`);

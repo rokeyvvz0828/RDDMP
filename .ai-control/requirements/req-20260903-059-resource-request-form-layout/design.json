@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260903-059-resource-request-form-layout",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+  "objective": "在不改变资源申请接口和业务规则的前提下，将多明细纵向表单改为可扫描、可切换、可定位错误的两级主从布局。",
+  "users": [
+    "资源申请人在资源申请页面新建或编辑草稿并登记多个部署单元资源规格",
+    "资源申请人在桌面或手机端恢复错误、切换申请项并保存草稿"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "外层必须分为基础信息和部署单元登记表两栏。",
+      "acceptance": ["桌面端两栏稳定", "基础字段和物理子系统摘要位于左侧", "登记行为位于右侧"],
+      "priority": "must",
+      "source": "用户原始请求及 2026-09-03 布局确认",
+      "counterexample": ["继续把基础字段和所有明细纵向混排", "基础信息切换后丢失登记上下文"]
+    },
+    {
+      "id": "R2",
+      "statement": "登记表必须使用申请项列表与当前项表单的主从布局。",
+      "acceptance": ["左列可新增、删除和切换", "右列只展示当前申请项", "切换后输入不丢失"],
+      "priority": "must",
+      "source": "用户选择方案 1",
+      "counterexample": ["左列展示部署单元目录而非申请项", "全部申请项表单同时展开"]
+    },
+    {
+      "id": "R3",
+      "statement": "必须保留同一部署单元的多规格重复申请能力。",
+      "acceptance": ["部署单元在当前项表单中选择", "多个申请项可选择相同部署单元", "不同规格提交并正确回显"],
+      "priority": "must",
+      "source": "用户明确确认保留",
+      "counterexample": ["列表按部署单元唯一化", "重复选择被前端禁止或覆盖"]
+    },
+    {
+      "id": "R4",
+      "statement": "申请项列表必须展示稳定状态并支持错误定位。",
+      "acceptance": ["状态包含未选择、待完善和已填写", "保存校验失败自动选中首个错误项", "删除后选中相邻项"],
+      "priority": "must",
+      "source": "用户确认的状态设计",
+      "counterexample": ["状态只用颜色表达", "错误只显示总提示且无法定位"]
+    },
+    {
+      "id": "R5",
+      "statement": "物理子系统切换必须保护并按确认结果处理已有申请项。",
+      "acceptance": ["有内容时二次确认", "确认后清空并创建一个空项后刷新候选", "取消后恢复原物理子系统和申请项"],
+      "priority": "must",
+      "source": "用户 2026-09-03 确认",
+      "counterexample": ["静默保留不属于新物理子系统的部署单元", "取消后仍清空内容"]
+    },
+    {
+      "id": "R6",
+      "statement": "API、字段分流、计算和校验语义必须保持兼容。",
+      "acceptance": ["items[] 结构和顺序不变", "DB 与应用/Web 字段分流不变", "服务端仍执行最终校验"],
+      "priority": "must",
+      "source": "现有资源申请契约和项目约束",
+      "counterexample": ["新增后端字段或接口", "前端状态判定替代服务端校验"]
+    },
+    {
+      "id": "R7",
+      "statement": "表单必须覆盖全状态和桌面移动响应式体验。",
+      "acceptance": ["加载、失败、无权限、提交中和脏表单保护可见", "1280、375、390、430 视口无页面级横向溢出", "明暗主题和底部操作可用"],
+      "priority": "must",
+      "source": "design-h5、前端规约和用户确认",
+      "counterexample": ["手机端保留不可用的双层横向分栏", "保存失败后清空表单"]
+    }
+  ],
+  "invariants": [
+    "只修改 ResourceRequestPage.vue、architecture.css 和当前需求设计控制文件",
+    "不改变资源申请 API、DTO、数据库、后端、权限、审计和工作流",
+    "重复 deploymentUnitId 合法且 items[] 顺序保持",
+    "不修改公共 UI 或引入动态表单元数据",
+    "不覆盖其他需求的未关联工作区改动"
+  ],
+  "constraints": [
+    "使用 Vue 3、TypeScript、Element Plus 和现有架构模块样式",
+    "遵循交付示范中心、frontend-ui-contract 和 design-h5",
+    "手机端禁止页面级横向滚动或缩小字号",
+    "当前需求无服务端和数据库写权限"
+  ],
+  "non_goals": [
+    "自动保存、拖拽排序、复制申请项或批量套用规格",
+    "修改列表、详情、审批、下发和实际资源实例",
+    "新增接口、持久化字段或迁移",
+    "重构架构模块或公共组件"
+  ],
+  "selected_approach": {
+    "name": "两级主从申请项编辑",
+    "reason": "申请项数量增加时仍可扫描、切换和定位，并能在不改变 items[] 契约的情况下保留重复部署单元多规格。",
+    "alternatives": [
+      {"name": "申请项标签页", "rejected_because": "申请项较多时扫描困难且手机端横向拥挤"},
+      {"name": "纵向折叠全部明细", "rejected_because": "仍形成长页面，不能解决定位和切换成本"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["ResourceRequestPage.vue 表单状态和模板", "architecture.css 响应式局部样式", "当前需求文档和控制证据"],
+      "outside": ["资源申请后端、数据库、API 类型", "公共 UI、路由、其他业务页面"]
+    },
+    "components": [
+      {"name": "基础信息栏", "responsibility": "维护申请级字段、物理子系统摘要和切换保护", "depends_on": ["现有选项数据"]},
+      {"name": "申请项列表", "responsibility": "维护选中临时 ID、摘要、状态和新增删除命令", "depends_on": ["ResourceFormItem[]"]},
+      {"name": "当前申请项编辑器", "responsibility": "复用现有 DB/非 DB 字段、同步和计算逻辑", "depends_on": ["当前 ResourceFormItem", "现有选项"]},
+      {"name": "表单状态适配", "responsibility": "分配临时 ID、回显、校验定位和提交剥离", "depends_on": ["现有 requestItemPayload"]},
+      {"name": "响应式布局", "responsibility": "桌面双层分栏、中等宽度重排、手机单列和滚动边界", "depends_on": ["语义主题变量"]}
+    ],
+    "interfaces": [
+      {"name": "资源申请提交载荷", "producer": "ResourceRequestPage.vue", "consumers": ["现有 create/update API"], "contract": "继续按列表顺序输出现有 ResourceRequestPayload.items[]，不包含前端临时 ID"},
+      {"name": "部署单元候选", "producer": "现有 architecture options API", "consumers": ["当前申请项部署单元选择器"], "contract": "物理子系统变化后重新加载，失败时保留已有表单快照"}
+    ],
+    "data_flows": [
+      {"input": "新建或编辑草稿", "transitions": ["创建或映射带临时 ID 的 items", "选中第一项", "切换和修改当前项"], "output": "稳定的主从表单状态"},
+      {"input": "物理子系统变更", "transitions": ["检测申请项内容", "确认或取消", "确认后重建空项并加载候选"], "output": "与新物理子系统一致的申请项集合"},
+      {"input": "保存", "transitions": ["申请级校验", "逐项校验并定位", "剥离临时 ID", "按顺序映射 payload"], "output": "兼容的 ResourceRequestPayload"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "部署单元候选加载失败", "behavior": "保留当前申请项和已有部署单元快照并显示可重试错误", "recovery": "重新加载候选后继续编辑"},
+    {"condition": "申请项校验失败", "behavior": "显示持续错误并选中首个错误申请项", "recovery": "用户在右侧修正后重新保存"},
+    {"condition": "保存请求失败", "behavior": "保留弹窗、顺序、选中项和全部输入", "recovery": "修正或重试"},
+    {"condition": "物理子系统切换被取消", "behavior": "恢复原选择且不清空申请项", "recovery": "继续原草稿"},
+    {"condition": "保存进行中", "behavior": "禁用会改变申请项集合或选择的操作", "recovery": "请求结束后恢复"}
+  ],
+  "quality_attributes": {
+    "security": ["服务端认证、RBAC、租户和实体校验不变", "前端状态不替代服务端校验"],
+    "performance": ["只渲染当前申请项完整字段", "申请项列表使用轻量摘要", "避免无必要候选重复请求"],
+    "compatibility": ["ResourceRequestPayload 和 items[] 顺序不变", "DB 与应用/Web 字段语义不变", "现有详情和工作流入口不变"],
+    "operations": ["无迁移和配置变更", "回退仅需回退前端提交", "真实浏览器记录四视口和明暗主题证据"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2"], "signal": "两级主从布局和申请项切换正确", "method": "桌面浏览器新建、连续新增、切换和删除旅程"},
+    {"requirement_ids": ["R3", "R6"], "signal": "重复部署单元多规格和请求兼容", "method": "检查 Network 请求、保存结果和编辑回显"},
+    {"requirement_ids": ["R4"], "signal": "列表状态和错误定位准确", "method": "构造未选择、DB 不完整和非 DB 缺网络分区场景"},
+    {"requirement_ids": ["R5"], "signal": "物理子系统切换保护正确", "method": "验证空项、有内容确认和有内容取消三条路径"},
+    {"requirement_ids": ["R7"], "signal": "全状态和响应式可用", "method": "npm build、governance、scope、diff 和 1280/375/390/430 明暗主题浏览器验收"}
+  ],
+  "assumptions": [
+    {"text": "申请项列表顺序就是提交顺序，不需要拖拽排序。", "basis": "用户只要求新增、删除和切换", "falsifier": "用户要求手工重排申请项"},
+    {"text": "现有前端没有可直接复用的资源申请组件单测入口。", "basis": "当前页面为单文件业务页面且现有任务以 build 和浏览器验收为主", "falsifier": "实施勘察发现可复用的聚焦测试框架"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D1", "decision": "保留同一部署单元多规格重复明细。", "reason": "符合原业务规则和用户明确确认", "source": "用户 2026-09-03 确认"},
+    {"id": "D2", "decision": "左列为申请项列表，部署单元在右侧表单选择。", "reason": "申请项是编辑和错误定位的真实工作对象", "source": "用户 2026-09-03 确认"},
+    {"id": "D3", "decision": "物理子系统变更确认后清空全部申请项，取消则恢复。", "reason": "防止旧部署单元与新物理子系统不一致", "source": "用户 2026-09-03 确认"},
+    {"id": "D4", "decision": "采用桌面双层分栏、中等宽度登记区上下、手机单列。", "reason": "兼顾桌面效率和移动端可达性", "source": "用户 2026-09-03 确认"}
+  ],
+  "risks": [
+    {"risk": "数组索引导致切换或删除后内容错位", "impact": "用户编辑错误申请项", "mitigation": "使用稳定前端临时 ID 作为视图身份"},
+    {"risk": "列表状态判定与最终校验分叉", "impact": "显示已填写但保存失败", "mitigation": "状态与校验复用同一组无副作用规则，服务端保持最终校验"},
+    {"risk": "双层分栏在窄桌面压缩控件", "impact": "内容溢出或操作不可达", "mitigation": "明确断点重排登记区和外层，不缩小字号"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-03 回复“可以”，确认落盘设计修订 1。",
+    "confirmed_at": "2026-09-03T10:01:58+08:00"
+  }
+}

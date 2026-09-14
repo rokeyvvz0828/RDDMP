@@ -1,0 +1,26 @@
+{
+  "sample_label":"T30 data-migration plan domain (V159 + PlanController/Service/SPI + PlansPage rewrite)",
+  "task_ids":["T30"],
+  "purpose":"独立验证 V159 迁移落地、活动维度唯一约束、专属路由可达与鉴权、统一回收站 PLAN 认领、前端构建与真实浏览器结构/交互",
+  "independence":"实现完成后的独立命令/API 采样 + 内置浏览器 DOM 实测与视口仿真（顶层窗口截图受隐藏视图限制未产出）",
+  "database_assertions":[
+    {"check":"flyway_schema_history v159 success","expected":"1","observed":"迁移历史停于 158→重启后应用至 v159，success=1","pass":true},
+    {"check":"dm_plan 新增列存在","expected":"granularity/plan_type/system_id/plan_summary/active_dimension_key","observed":"information_schema 实测五列齐备，active_dimension_key=STORED GENERATED","pass":true},
+    {"check":"uk_dm_plan_active_dimension 唯一索引","expected":"存在","observed":"information_schema.statistics 命中","pass":true},
+    {"check":"活动维度唯一(软删可重建/跨维度并存)","expected":"第二条同维度抛约束、软删后可重建","observed":"PlanDomainMigrationMySqlTest 断言通过","pass":true}
+  ],
+  "runtime_probes":[
+    {"endpoint":"GET /actuator/health","http":200,"actual":"UP（重启后 Started CcbApplication）"},
+    {"endpoint":"GET /api/data-migration/plans (无认证)","http":401,"actual":"Authentication required（已映射且受保护）"},
+    {"endpoint":"GET /api/data-migration/plans?page=1&size=20 (admin 登录态)","http":200,"actual":"{records:[],total:0}"},
+    {"endpoint":"GET /api/data-migration/plans/options/systems?projectId=3003 (登录态)","http":200,"actual":"data:[]"},
+    {"endpoint":"GET /api/data-migration/plans/999 (登录态)","http":400,"actual":"迁移方案不存在"},
+    {"endpoint":"GET /api/data-migration/recycle-bin?contentTypes=PLAN (登录态)","http":200,"actual":"分页信封，PLAN 经 PlanRecycleBinSource 认领成功"},
+    {"endpoint":"GET /api/data-migration/content assets /plans (通用链路)","http":"removed","actual":"/plans* 已从 ContentAssetController.RESOURCE_TYPES/mapping 移除；PLAN 不在 MANAGED_TYPES"}
+  ],
+  "browser_probe":{"login":"admin","route":"/data-migration/content/plans","viewport_desktop":"1280x800(iframe 仿真)","viewport_mobile":"375x812(iframe 仿真)","findings":"标题/新增按钮/5 维筛选(资产颗粒度=项目级/系统级；方案类型=业务/数据；关联系统取自接口)/11 业务列表头/空态文案 均符合；新增抽屉 归属维度→方案信息→源文件 三分组，系统级↔关联系统必填联动，多文件 input[multiple]，取消不保存(无 POST/PUT/DELETE)；登录态 plans 请求 200；控制台零错误、零 4xx/5xx；移动 375 无横向破版、可纵向滚动、抽屉宽=375-24。","defects_fixed":["所属项目下拉初始值 0 显示裸值 → 改为 null 以显示占位符","源文件新增态补 required 星号"],"defects_deferred":["双份空态与 1280 列宽横滚：沿用交付示范中心既定范式(MeetingsPage 同构)，未单独改动"],"evidence_gap":"顶层窗口截图因内置 Browser 视图 hidden/未附加无法产出；有数据行的下载/预览/编辑回填/回收站恢复为盲区(无演示数据)"},
+  "static_checks":{"focused_maven":"pass (14 tests: PlanDomainMigrationMySqlTest + DataMigrationModuleRegistrationTest)","frontend_build":"pass (exit 0)","vue_tsc":"pass (PlansPage 无类型错误)","governance":"req-20260820-031 无治理失败；聚合脚本退出码 1 为既有无关前缀所致（移除本次 T30 仍为 1）","scope":"仅改 031 前缀与已登记可写路径；V159 已在 codex-task-scope.yaml 登记"},
+  "error_counts":{"P0":0,"P1":0,"P2":0,"P3":2},
+  "p3_notes":["浏览器截图取证缺失(环境)","有数据行交互验收盲区(数据)"],
+  "conclusion":"迁移方案域化改造后端(服务/控制器/回收站 SPI/V159)+ 前端专属页已实现并通过编译、14 项定向测试、生产构建、治理与真实运行取证：V159 落地、活动维度唯一、路由受保护可达、统一回收站认领 PLAN 正常、登录态列表 200。浏览器结构与交互实测符合规范并修复两项页面缺陷；唯顶层窗口截图与有数据行写入链路因环境/数据缺失未覆盖，已登记为待复验项。"
+}

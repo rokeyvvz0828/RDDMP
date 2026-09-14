@@ -1,0 +1,239 @@
+{
+  "baseline_revision": "baseline-revision-1",
+  "model_revision": "model-revision-1",
+  "plan_status": "ready",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "迁移参数页头部双按钮与页内批量导入对话框",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+      "prerequisites": [
+        "前端构建基线通过",
+        "ParametersPage.vue 既有治理 diff 已记录",
+        "useProjectScope 与 importParameters API 可用"
+      ],
+      "input_facts": [
+        "ParametersPage.vue 当前使用 UiToolbar，导入入口在工具栏",
+        "hasCreate 同时控制新增与导入入口",
+        "downloadParameterTemplate 和 importParameters API 已存在"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/views/content/ParametersPage.vue 的 template/script/style"
+      ],
+      "invariants": [
+        "不修改 API 路径、参数和权限",
+        "不修改共享 CSS 或公共组件",
+        "不修改路由",
+        "保留既有治理 diff"
+      ],
+      "interface_contracts": [
+        "UiPageHeader.actions 插槽：批量导入左、新增右",
+        "dm-upload-dropzone 复用共享类",
+        "downloadParameterTemplate GET /data-migration/parameters/template",
+        "importParameters POST /data-migration/parameters/import"
+      ],
+      "non_goals": [
+        "后端接口改造",
+        "权限体系改造",
+        "公共组件抽取",
+        "数据库结构变化"
+      ],
+      "action_bounds": [
+        "只修改 ParametersPage.vue 一个文件",
+        "仅在当前文件内新增状态与模板，不影响其他模块",
+        "scoped 样式只作用于导入对话框"
+      ],
+      "acceptance_checks": [
+        "头部依次显示次要按钮批量导入与主按钮新增迁移参数",
+        "批量导入对话框包含模板下载、上传区、文件状态、确认导入和结果反馈",
+        "工具栏不再包含模板或导入入口",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功刷新列表并保持打开，请求失败保留文件",
+        "错误列表最多20条并显示剩余数量",
+        "关闭或项目切换重置状态",
+        "桌面与375/390/430视口无横向溢出，footer可达"
+      ],
+      "evidence_required": [
+        "构建退出码0",
+        "git diff --check 退出码0",
+        "源码契约检查通过",
+        "四视口浏览器截图与 DOM 测量",
+        "受控响应验证日志"
+      ],
+      "rollback": "撤销本次对 ParametersPage.vue 的 template/script/style 修改，保留既有治理改动",
+      "stop_conditions": [
+        "构建失败",
+        "引入范围外文件修改",
+        "公共样式必须修改才能满足响应式"
+      ],
+      "escalation_conditions": [
+        "发现独立导入权限",
+        "API 契约与设计不符",
+        "需要修改共享 CSS 或公共组件"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "共用表结构页头部双按钮与页内批量导入对话框",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": [
+        "T1 已通过构建与源码契约检查",
+        "TargetTablesPage.vue 既有治理 diff 已记录",
+        "TARGET/INTERMEDIATE 路由与 category meta 可用"
+      ],
+      "input_facts": [
+        "TargetTablesPage.vue 当前使用 UiToolbar，导入入口在工具栏",
+        "hasCreate 同时控制新增与导入入口",
+        "downloadTargetTableTemplate 和 importTargetTables API 已存在",
+        "category 从路由 meta 派生，区分 TARGET/INTERMEDIATE"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/views/content/TargetTablesPage.vue 的 template/script/style"
+      ],
+      "invariants": [
+        "不修改 API 路径、参数和权限",
+        "不修改共享 CSS 或公共组件",
+        "不修改路由配置",
+        "保留既有治理 diff",
+        "TARGET 与 INTERMEDIATE 共用同一文件"
+      ],
+      "interface_contracts": [
+        "UiPageHeader.actions 插槽：批量导入左、新增右，文案随 category 变化",
+        "dm-upload-dropzone 复用共享类",
+        "downloadTargetTableTemplate GET /data-migration/target-tables/template",
+        "importTargetTables POST /data-migration/target-tables/import",
+        "route meta.category = TARGET | INTERMEDIATE"
+      ],
+      "non_goals": [
+        "后端接口改造",
+        "权限体系改造",
+        "公共组件抽取",
+        "数据库结构变化",
+        "拆分为两个独立页面文件"
+      ],
+      "action_bounds": [
+        "只修改 TargetTablesPage.vue 一个文件",
+        "仅在当前文件内新增状态与模板，不影响其他模块",
+        "scoped 样式只作用于导入对话框"
+      ],
+      "acceptance_checks": [
+        "TARGET路由显示批量导入与主按钮新增目标表结构",
+        "INTERMEDIATE路由显示批量导入与主按钮新增中间表结构",
+        "批量导入对话框包含模板下载、上传区、文件状态、确认导入和结果反馈",
+        "工具栏不再包含模板或导入入口",
+        "category 切换时对话框关闭且导入状态重置",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功刷新列表并保持打开，请求失败保留文件",
+        "错误列表最多20条并显示剩余数量",
+        "桌面与375/390/430视口无横向溢出，footer可达"
+      ],
+      "evidence_required": [
+        "构建退出码0",
+        "git diff --check 退出码0",
+        "源码契约检查通过",
+        "四视口浏览器截图与 DOM 测量",
+        "TARGET/INTERMEDIATE 分类切换验证"
+      ],
+      "rollback": "撤销本次对 TargetTablesPage.vue 的 template/script/style 修改，保留既有治理改动",
+      "stop_conditions": [
+        "构建失败",
+        "引入范围外文件修改",
+        "公共样式必须修改才能满足响应式"
+      ],
+      "escalation_conditions": [
+        "发现独立导入权限",
+        "API 契约与设计不符",
+        "需要修改共享 CSS 或公共组件",
+        "TARGET 与 INTERMEDIATE 必须拆分文件才能实现"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "三路由四视口集成验收与范围验证",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": [
+        "T1 与 T2 均已完成实现",
+        "前端构建通过",
+        "本地服务与 Chromium 可用"
+      ],
+      "input_facts": [
+        "三个路由：parameters、target-tables、intermediate-tables",
+        "四个视口：1280x800、375x812、390x844、430x932",
+        "REQ-031 定向范围规则"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/ 观测与收敛产物"
+      ],
+      "invariants": [
+        "不修改产品代码",
+        "不修改共享样式",
+        "不提交或推送远程"
+      ],
+      "interface_contracts": [
+        "Chromium Playwright 浏览器接口",
+        "本地后端健康检查接口",
+        "源码契约 Node 脚本"
+      ],
+      "non_goals": [
+        "新增功能",
+        "重构公共组件",
+        "后端测试"
+      ],
+      "action_bounds": [
+        "只读验证",
+        "仅写入 .ai-control 当前主题目录",
+        "临时截图写入 /tmp"
+      ],
+      "acceptance_checks": [
+        "三个路由均通过源码契约检查",
+        "前端构建与 git diff --check 通过",
+        "桌面与375/390/430四视口无横向溢出且footer可达",
+        "REQ-031 定向范围检查通过",
+        "受控响应验证：提交中禁用、部分失败、请求失败保留文件"
+      ],
+      "evidence_required": [
+        "三路由构建通过日志",
+        "三路由四视口截图",
+        "DOM 尺寸测量数据",
+        "受控响应验证截图或日志",
+        "定向范围检查报告"
+      ],
+      "rollback": "仅删除本主题控制账本观测产物",
+      "stop_conditions": [
+        "浏览器无法启动",
+        "本地服务不可用",
+        "三页以上出现阻塞性缺陷"
+      ],
+      "escalation_conditions": [
+        "发现 R1-R7 范围外新问题",
+        "需要修复公共组件或共享样式",
+        "需要后端配合才能验证"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2"},
+    {"from": "T2", "to": "T3"}
+  ],
+  "parallel_groups": [],
+  "integration_points": [
+    {"task_id": "T1", "point": "ParametersPage 模板与脚本修改完成，构建通过"},
+    {"task_id": "T2", "point": "TargetTablesPage 模板与脚本修改完成，构建通过"},
+    {"task_id": "T3", "point": "三路由四视口全部验收通过"}
+  ],
+  "sampling_plan": [
+    {"sample_id": "S-PRE", "before_task": "T1", "sensors": ["S2", "S4"], "purpose": "构建与范围基线采样"},
+    {"sample_id": "S-T1", "after_task": "T1", "sensors": ["S1", "S2", "S3", "S4"], "purpose": "参数页实现后采样"},
+    {"sample_id": "S-T2", "after_task": "T2", "sensors": ["S1", "S2", "S3", "S4"], "purpose": "表结构页实现后采样"},
+    {"sample_id": "S-FINAL", "after_task": "T3", "sensors": ["S1", "S2", "S3", "S4", "S5"], "purpose": "三路由最终采样"}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T3"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2", "T3"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T2", "T3"]},
+    {"requirement_id": "R7", "task_ids": ["T2", "T3"]}
+  ]
+}

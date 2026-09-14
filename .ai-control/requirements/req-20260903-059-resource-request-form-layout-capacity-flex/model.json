@@ -1,0 +1,124 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "ResourceRequestPage.vue 非数据库容量与部署 DOM",
+      "architecture.css 资源申请编辑器局部布局规则",
+      "760px 手机响应式覆盖",
+      "当前项编辑器内部滚动容器"
+    ],
+    "environment": [
+      "Element Plus el-form-item、el-select、el-input-number 默认样式",
+      "Vite 浏览器运行时",
+      "本地 Mock API",
+      "视口、主题和字体渲染"
+    ]
+  },
+  "state_variables": [
+    {"name":"capacity_layout_mode","owner":"architecture.css","valid_values":["grid","flex"]},
+    {"name":"capacity_field_geometry","owner":"browser layout engine","valid_values":["desktop-3-4-per-row","wrapped","mobile-single-column","overflow"]},
+    {"name":"request_contract","owner":"ResourceRequestPage.vue existing submit logic","valid_values":["unchanged","regressed"]},
+    {"name":"scroll_boundary","owner":"resource request dialog","valid_values":["internal-reachable","root-overflow","footer-hidden"]}
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R13",
+      "input": "非数据库当前项和可用编辑器宽度",
+      "transitions": [
+        "Vue 为容量容器和字段提供局部语义类",
+        "architecture.css 以 Flex basis 和 min-width 计算字段宽度",
+        "空间不足时 flex-wrap 换行",
+        "760px 以下覆盖为单列满宽"
+      ],
+      "outputs": [
+        "宽桌面每行尽量 3 至 4 项",
+        "中桌面自然换行",
+        "摘要独占整行",
+        "手机无页面级横向溢出"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "capacity-layout-classes",
+      "producers": ["ResourceRequestPage.vue"],
+      "consumers": ["architecture.css"],
+      "invariant": "类名只标注布局类型，不改变字段绑定、顺序和事件"
+    },
+    {
+      "name": "resource-request-payload",
+      "producers": ["ResourceRequestPage.vue existing submit logic"],
+      "consumers": ["create/update resource request API"],
+      "invariant": "布局修订不改变 items[] 数量、顺序、字段值或 clientId 剥离"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "桌面 Flex 布局和字段几何",
+      "method": "1920x1080、1280x800 浏览器读取 display、flexWrap、offsetTop、offsetWidth、摘要和数字输入宽度",
+      "blind_spots": ["未覆盖的系统字体差异"],
+      "independence": "直接观察浏览器布局引擎输出"
+    },
+    {
+      "id": "S2",
+      "target": "手机响应式和滚动边界",
+      "method": "375x812、390x844、430x932 读取字段宽度、documentElement.scrollWidth、footer 和编辑器滚动尺寸",
+      "blind_spots": ["真实移动浏览器地址栏动态高度"],
+      "independence": "不同视口的运行时尺寸探针"
+    },
+    {
+      "id": "S3",
+      "target": "代码边界和构建兼容",
+      "method": "Vite build、源码选择器扫描、git diff 和 scope 检查",
+      "blind_spots": ["构建不能证明实际排版"],
+      "independence": "仓库级静态和编译传感器"
+    },
+    {
+      "id": "S4",
+      "target": "业务与请求不变量",
+      "method": "真实浏览器回归 DB/非 DB、计算、校验、申请项切换并检查 POST/PUT 与 Console",
+      "blind_spots": ["Mock 与真实后端环境差异"],
+      "independence": "运行时交互和网络输出"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "容量区布局语义",
+      "action": "仅为非数据库容量容器和字段增加专用类",
+      "authority": "codex-task-scope.yaml writable_paths",
+      "impact_radius": "ResourceRequestPage.vue 容量与部署模板",
+      "rollback": "revert T7 产品提交"
+    },
+    {
+      "id": "A2",
+      "target": "容量字段宽度、换行和手机覆盖",
+      "action": "在 architecture-resource-request-editor 局部作用域增加 Flex 规则",
+      "authority": "codex-task-scope.yaml writable_paths",
+      "impact_radius": "architecture.css 资源申请容量区",
+      "rollback": "revert T7 产品提交"
+    }
+  ],
+  "measurements": [
+    {"requirement_id":"R13","sensor_ids":["S1","S2","S3","S4"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"Element Plus 默认 form-item 宽度","effect":"basis 被覆盖或字段异常拉伸","detectable":true,"controllable":true},
+    {"source":"长标签、长选项和字体渲染","effect":"每行字段数量波动","detectable":true,"controllable":true},
+    {"source":"Vite HMR 与 Dialog 初次布局","effect":"过早采样旧样式或零尺寸","detectable":true,"controllable":true},
+    {"source":"Mock 与真实后端差异","effect":"请求回归证据仅代表本地环境","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"Vite HMR","consequence":"刷新前计算样式可能仍是旧规则","sampling_rule":"等待模块刷新和 Dialog 稳定后采样"},
+    {"source":"主题和视口切换","consequence":"布局在下一帧重排","sampling_rule":"切换后等待两帧并重新读取字段几何"}
+  ],
+  "assumptions": [
+    {"text":"局部类可覆盖资源申请编辑器固定两列规则","evidence":"现有 CSS 已使用同级业务作用域覆盖通用网格","falsifier":"S1 显示计算 display 仍为 grid"},
+    {"text":"现有 Mock 环境可回归请求结构","evidence":"修订 1、2 已在相同环境完成请求回归","falsifier":"真实后端 UAT 与 S4 结论冲突"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R13","observable":"yes","controllable":"yes","action":"使用 A1/A2 实施，并由 S1-S4 在任务完成和集成阶段采样"}
+  ],
+  "model_status": "ready"
+}

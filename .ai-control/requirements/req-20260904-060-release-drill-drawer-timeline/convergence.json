@@ -1,0 +1,46 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "evidence": "方案正向投产和回退两条横向时序轨道已在浏览器中显示。"},
+    {"id": "R2", "result": "pass", "evidence": "方案步骤新增和已有步骤编辑均打开抽屉，保存字段保持不变。"},
+    {"id": "R3", "result": "pass", "evidence": "演练步骤新增抽屉已打开并显示完整步骤字段。"},
+    {"id": "R4", "result": "pass", "evidence": "五个投产路由标题区域不再渲染当前项目标识块。"},
+    {"id": "R5", "result": "pass", "evidence": "前端构建、后端回归、浏览器路由和控制台检查通过。"}
+  ],
+  "task_results": [
+    {"id": "T1", "result": "verified"},
+    {"id": "T2", "result": "verified"},
+    {"id": "T3", "result": "verified"}
+  ],
+  "feedback_summary": [],
+  "sample_trend": [
+    {"label": "S-0001 desktop", "score": 0},
+    {"label": "S-0002 narrow", "score": 0}
+  ],
+  "regression_checks": [
+    "npm --prefix web run build: passed",
+    "mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\": 87 tests passed",
+    "git diff --check: passed",
+    "five release routes: loaded",
+    "browser error/warning logs: 0"
+  ],
+  "invariant_results": [
+    "API、数据库、权限和项目切换逻辑未改动",
+    "时间范围字段、删除确认和 rowVersion 行为保留",
+    "时序内容在轨道容器内横向滚动"
+  ],
+  "scope_audit": [
+    "本任务产品代码改动限于投产前端组件、页面头部和样式",
+    "当前工作区另有上一任务遗留未提交文件，范围脚本扫描时会报告这些既有文件，未对其做回退或覆盖"
+  ],
+  "disturbance_resilience": [
+    "390x844 窄视口下抽屉和新增入口可用",
+    "长时序通过轨道内部横向滚动承载"
+  ],
+  "residual_risks": [
+    "内置浏览器封装的 evaluate 返回值不可用，溢出结论依据 DOM 可见状态和截图",
+    "工作区既有未提交改动需在后续提交时按原任务边界单独处理"
+  ],
+  "gate_result": "pass",
+  "route_reason": "所有必须需求、受控任务、回归检查和浏览器采样均完成，允许收敛。"
+}

@@ -1,0 +1,19 @@
+{
+  "objective": "将数迁资产内容下专题材料升级为参数管理类型、多系统、多附件、详情编辑下载逻辑删除和统一回收站的专属域功能。",
+  "requirements": [
+    {"id":"R1","statement":"专题记录保存颗粒度、参数类型、名称、简述和附件集合。","acceptance":["新增和编辑校验必填元数据及附件","详情和列表返回完整专题元数据"],"priority":"must","source":"用户功能说明和已批准设计","counterexample":["继续只保存通用doc_name和单文件"]},
+    {"id":"R2","statement":"专题类型统一由系统管理参数按颗粒度提供并校验。","acceptance":["DM_TOPIC_PROJECT_TYPE和DM_TOPIC_SYSTEM_TYPE可读取","V180幂等初始化23项","停用或未知编码不能写入"],"priority":"must","source":"用户确认统一采用系统管理/参数管理","counterexample":["新增dm_topic_type表","前端硬编码类型"]},
+    {"id":"R3","statement":"专题支持多系统多附件且生命周期一致。","acceptance":["dm_topic_system唯一约束","TOPIC附件支持多文件","软删恢复purge无悬挂关系"],"priority":"must","source":"用户功能说明","counterexample":["多个文件拆成多条专题记录"]},
+    {"id":"R4","statement":"列表支持组合筛选分页查看下载编辑删除和桌面移动端状态。","acceptance":["服务端分页组合查询","详情不丢列表上下文","手机视口无页面横向溢出"],"priority":"must","source":"用户功能说明与design-h5.md","counterexample":["继续复用通用薄页"]},
+    {"id":"R5","statement":"写操作执行认证RBAC项目实体授权和审计。","acceptance":["普通用户仅能维护本人记录","跨租户跨项目和伪造ownerId被拒绝","TOPIC写操作写入项目维度审计"],"priority":"must","source":"REQ-031统一规则","counterexample":["仅依赖前端隐藏按钮"]},
+    {"id":"R6","statement":"邻接修改限于数据迁移模块和专题追加迁移，不扩大到平台公共能力。","acceptance":["TOPIC只有一个回收站来源","通用链路不再认领TOPIC","范围检查通过"],"priority":"must","source":"用户关于避免范围扩大的要求","counterexample":["修改全局项目切换器或平台Java"]}
+  ],
+  "invariants":["tenant_id和当前project_id始终参与查询和写入","参数名称来自SystemReferenceQuery","Flyway只追加V180且幂等","软删恢复purge和审计保持一致"],
+  "constraints":["只修改当前REQ-031 writable_paths","复用现有附件审计项目上下文和UI能力","单文件不超过50MB且对象引用不返回前端"],
+  "non_goals":["新建dm_topic_type表","修改系统管理参数实现","修改全局项目切换器和公共附件审计表结构"],
+  "assumptions":["专题页面遵守T31-r1不展示所属项目字段","系统参数接口提供按类别读取启用项","dm_component提供项目活动系统编号"],
+  "unknowns":["当前专题列表不展示项目名称，除非用户另行确认例外"],
+  "decisions":["使用SystemReferenceQuery读取参数管理类型","新增dm_topic_system表达多系统关系","TopicService/Controller/RecycleBinSource替代通用TOPIC链路"],
+  "measurement_intents":["R1=迁移结构和服务测试","R2=参数类别及23项计数和options接口","R3=关系唯一键和附件生命周期测试","R4=前端构建与浏览器视口","R5=权限响应和审计断言","R6=diff与scope检查"],
+  "baseline_status":"ready"
+}

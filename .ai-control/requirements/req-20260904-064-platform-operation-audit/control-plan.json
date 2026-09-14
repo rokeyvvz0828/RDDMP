@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260904-064-platform-operation-audit",
+  "status": "approved",
+  "human_document": "docs/engineering-control/plans/2026-09-04-platform-operation-audit-implementation-plan.md",
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认方案、要求新分支直接实施且后续不再重复确认。",
+    "confirmed_at": "2026-09-04T15:55:18+08:00"
+  },
+  "tasks": [
+    {"id":"T1","goal":"统一采集、去重和 V156 数据结构","requirements":["R1","R2","R3","R4"],"prerequisites":[],"verification":["OperationAuditPolicyTest","JdbcSystemOperationAuditTest","check-flyway-migrations"]},
+    {"id":"T2","goal":"项目权限、30 天查询和 180 天清理","requirements":["R5","R6"],"prerequisites":["T1"],"verification":["OperationAuditServiceTest","OperationAuditRetentionJobTest","ccb-system tests"]},
+    {"id":"T3","goal":"审计页面和完整验收","requirements":["R7","R8"],"prerequisites":["T2"],"verification":["web build","mvn test","governance","scope","browser"]}
+  ],
+  "dependency_edges": [{"from":"T1","to":"T2"},{"from":"T2","to":"T3"}],
+  "parallel_groups": [["T1"],["T2"],["T3"]],
+  "rollback": "逐任务回退代码；保留 V156 可空结构并使用后续补偿迁移停用菜单或删除结构。",
+  "stop_conditions": ["需要保存原始正文", "发生跨项目越权", "请求上下文泄漏", "必须修改历史迁移"]
+}

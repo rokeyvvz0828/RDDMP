@@ -1,0 +1,65 @@
+{
+  "baseline_revision": "frontend-governance-baseline-1",
+  "plant_boundary": {
+    "inside": ["数据迁移页面模板","data-migration.css","页面本地文件状态","REQ-031 当前增量文档"],
+    "environment": ["Element Plus 上传组件","全局项目上下文","现有上传 API","本地浏览器环境","REQ-061 治理文件"]
+  },
+  "state_variables": [
+    {"name":"project_context_visibility","owner":"数据迁移 Vue 模板","valid_values":["hidden","visible"]},
+    {"name":"upload_layout","owner":"data-migration.css 与页面类名","valid_values":["full-width-dropzone","attachment-button-list","inconsistent"]},
+    {"name":"file_list_renderer","owner":"el-upload 配置和页面自定义列表","valid_values":["custom-only","element-only","duplicate"]},
+    {"name":"theme_source","owner":"CSS 声明","valid_values":["semantic-token","hardcoded-color"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"全局当前项目和页面数据","transitions":["页面模板选择字段与文案","Element Plus 渲染"],"outputs":["列表、详情、提示和确认框文本"]},
+    {"requirement_id":"R2","input":"视口宽度和弹层内容宽度","transitions":["el-upload 根节点布局","el-upload-dragger 默认或共享宽度"],"outputs":["上传区计算宽度和页面 scrollWidth"]},
+    {"requirement_id":"R3","input":"页面文件状态","transitions":["页面选择上传形态","共享或局部附件类渲染"],"outputs":["上传入口和文件列表视觉"]},
+    {"requirement_id":"R4","input":"用户选择文件","transitions":["Element Plus 内部列表更新","页面自定义预览状态更新"],"outputs":["文件列表 DOM 数量"]},
+    {"requirement_id":"R5","input":"主题变量和构建源文件","transitions":["CSS 解析","vue-tsc 与 Vite 编译","治理脚本扫描"],"outputs":["主题样式、构建状态和治理结果"]}
+  ],
+  "interfaces": [
+    {"name":"project_scope","producers":["useProjectScope"],"consumers":["数据迁移页面请求和提交"],"invariant":"projectId 继续参与业务归属且项目名称不进入 UI"},
+    {"name":"upload_event_contract","producers":["Element Plus el-upload"],"consumers":["页面 on-change/on-remove 回调"],"invariant":"现有 File/UploadFile 回调语义不变"},
+    {"name":"upload_style_contract","producers":["data-migration.css"],"consumers":["数据迁移上传和附件列表模板"],"invariant":"拖拽区全宽，附件列表可收缩且使用语义变量"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"项目字段和动态名称残留","method":"rg 扫描 Vue 模板并人工分类注释/文件契约","blind_spots":["运行时第三方文案"],"independence":"直接读取模板源代码"},
+    {"id":"S2","target":"上传样式和默认列表配置","method":"rg 扫描 upload、attachment 类和十六进制颜色","blind_spots":["浏览器计算样式级联"],"independence":"静态结构传感器"},
+    {"id":"S3","target":"TypeScript 和 Vue 模板完整性","method":"npm --prefix web run build","blind_spots":["视觉布局"],"independence":"编译与打包传感器"},
+    {"id":"S4","target":"四视口布局和 DOM 重复","method":"真实浏览器截图、scrollWidth 与文件列表 DOM 断言","blind_spots":["未打开的权限受限入口"],"independence":"运行时渲染传感器"},
+    {"id":"S5","target":"任务授权和仓库治理状态","method":"check-codex-scope、git diff --check、check-all-governance","blind_spots":["REQ-061 为不可控外部失败"],"independence":"治理脚本传感器"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"项目字段渲染模板","action":"删除项目列/详情项并改写动态项目文案","authority":"REQ-031 web/src/modules/data-migration/** 可写","impact_radius":"五个数据迁移页面","rollback":"恢复任务开始前页面 diff"},
+    {"id":"A2","target":"上传布局与主题来源","action":"增加共享 CSS 并替换页面类名和内联颜色","authority":"数据迁移模块 CSS/Vue 可写","impact_radius":"所有引入共享 CSS 的数据迁移页面","rollback":"移除共享块并恢复页面类名"},
+    {"id":"A3","target":"默认文件列表","action":"在自定义预览上传入口设置 show-file-list=false","authority":"ReportsPage 可写","impact_radius":"汇报材料三个上传入口","rollback":"恢复属性"},
+    {"id":"A4","target":"需求文字冲突","action":"在 REQ-031 登记增量并修正规则域显示口径","authority":"REQ-031 文档可写","impact_radius":"当前需求基准","rollback":"恢复需求文档"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S4"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S2","S4"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S2","S4"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S2","S4"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S2","S3","S5"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"REQ-061 非 JSON-compatible YAML","effect":"仓库全量治理在读取投产需求范围时失败","detectable":true,"controllable":false},
+    {"source":"本地后端或测试账号不可用","effect":"真实浏览器业务入口无法完成","detectable":true,"controllable":false},
+    {"source":"共享 CSS 级联","effect":"未显式修改页面可能继承新样式","detectable":true,"controllable":true}
+  ],
+  "delays": [
+    {"source":"Vite 构建和浏览器页面加载","consequence":"静态修改后视觉证据延迟","sampling_rule":"构建完成且页面 network idle 后采样"}
+  ],
+  "assumptions": [
+    {"text":"所有目标页面加载 data-migration.css","evidence":"rg 显示目标 Vue 文件均直接 import 共享 CSS","falsifier":"构建分块或浏览器计算样式未包含共享选择器"},
+    {"text":"两个上传视觉形态足以覆盖当前入口","evidence":"源码入口分为拖拽导入和按钮附件两类","falsifier":"执行时发现需要第三种独立状态或布局"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"修改页面模板并用 S1/S4 复验"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"共享全宽 CSS 并用 S2/S4 复验"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"迁移共享类并用 S2/S4 复验"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"关闭默认列表并用 S2/S4 复验"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"语义变量替换和分层治理采样"}
+  ],
+  "model_status": "ready"
+}

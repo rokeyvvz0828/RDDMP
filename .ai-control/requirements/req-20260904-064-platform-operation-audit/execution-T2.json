@@ -1,0 +1,26 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "requirements_addressed": ["R5", "R6"],
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/audit", "purpose": "提供操作/登录日志查询、项目范围和每日保留清理"},
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java", "purpose": "按超级管理员或可管理项目动态返回审计菜单权限"},
+    {"path_or_resource": "server/src/platform/boot/src/main/resources/application.yml", "purpose": "启用每日 180 天审计数据清理计划"}
+  ],
+  "commands": [
+    {"command": "mvn test (JDK 17)", "exit_code": 0, "salient_output": "OperationAuditServiceTest 6/6、OperationAuditRetentionJobTest 1/1、AuthRepositoryAuditAccessTest 2/2；全仓 583/583"}
+  ],
+  "local_checks": [
+    {"check": "角色与项目数据范围", "result": "pass", "evidence": "管理员、项目 owner/PM 和普通成员三类运行态账号验证；PM 仅返回可管理项目，普通成员 API 为 403", "limitations": []},
+    {"check": "登录日志限制", "result": "pass", "evidence": "SUPER_ADMIN 可查询；PM 调用登录日志接口返回 403", "limitations": []},
+    {"check": "30/180 天时间边界", "result": "pass", "evidence": "服务测试验证查询下限钳制到 30 天，清理任务使用 180 天阈值并写汇总日志", "limitations": ["每日调度触发时刻依赖部署节点系统时钟"]}
+  ],
+  "invariants_checked": [
+    {"invariant": "项目数据范围在 SQL 层收敛", "result": "pass", "evidence": "查询使用 tenant 条件及 owner/有效 PM EXISTS 条件"},
+    {"invariant": "普通用户菜单和 API 均不可达", "result": "pass", "evidence": "动态路由结果无 system:audit:list，操作日志 API 返回 403"},
+    {"invariant": "项目管理员不能读取登录日志", "result": "pass", "evidence": "PM 运行态请求返回 403"}
+  ],
+  "disturbances": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,231 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "投产方案时序与指令抽屉支持互相独立的全屏和还原",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ReleaseDrillPlanView.vue中timelineDrawer、itemDrawer为两个独立ref；对应size为min(980px,100vw)、min(680px,94vw)",
+        "未使用UiFormDrawer，不改原表单与事件函数",
+        "Element Plus图标库已导出FullScreen与ScaleToOriginal"
+      ],
+      "write_scope": [
+        "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+        "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+        "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+        "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+        "web/src/modules/release/release-operations.css"
+      ],
+      "invariants": [
+        "不改字段、接口、权限、数据、保存与关闭保护",
+        "非投产管理抽屉不变",
+        "保留用户既有未提交代码与测试数据"
+      ],
+      "interface_contracts": [
+        "Vue Ref<boolean>/ref/computed/watch",
+        "Element Plus el-drawer #header的titleId/titleClass",
+        "原timelineDrawer、itemDrawer与标题表达式",
+        "useReleaseDrawerFullscreen(open: Ref<boolean>, defaultSize: string): {fullscreen: Ref<boolean>,size: ComputedRef<string>,toggle: () => void}",
+        "ReleaseDrawerHeader props title:string,titleId?:string,titleClass?:string,fullscreen:boolean; emit toggle:[]",
+        "专属类release-operations-fullscreen-drawer；表单内容类release-operations-fullscreen-form"
+      ],
+      "non_goals": [
+        "浏览器原生全屏",
+        "将轮次等普通弹窗改为抽屉",
+        "其他模块及版本申请、配置绑定历史抽屉",
+        "数据库和登录问题"
+      ],
+      "action_bounds": [
+        "Only approved module local fullscreen additions"
+      ],
+      "acceptance_checks": [
+        "投产/回退共用时序抽屉、指令抽屉都可放大还原",
+        "父子不串状态；标题id和关闭按钮不丢失",
+        "原表单内容、打开和CRUD函数不变"
+      ],
+      "evidence_required": [
+        "runtime tests",
+        "build exit code",
+        "pre-edit preservation checks",
+        "browser evidence or explicit gap"
+      ],
+      "rollback": "只撤销本任务新增帮助函数/头部、方案接入和专属CSS，不回退方案页面原有改版",
+      "stop_conditions": [
+        "需要改公共组件、依赖或CRUD"
+      ],
+      "escalation_conditions": [
+        "原层级机制无法容纳父子全屏，需扩大行为范围"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "环境、演练步骤与问题抽屉完成全屏接入并集成回归",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "环境dialogOpen size=min(760px,94vw)",
+        "演练stepDrawer size=min(680px,calc(100vw - 24px))，closeStep保留保存中关闭保护",
+        "问题drawerOpen size=min(760px,calc(100vw - 24px))，详情/新增/编辑共用；closeDrawer处理保存及未保存确认",
+        "问题.issue-drawer.el-drawer含max-width规则"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+        "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+        "web/src/modules/release/release-operations.css",
+        "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+      ],
+      "invariants": [
+        "不改字段、接口、权限、数据、保存与关闭保护",
+        "非投产管理抽屉不变",
+        "保留用户既有未提交代码与测试数据"
+      ],
+      "interface_contracts": [
+        "T1帮助函数、头部控件及CSS",
+        "原dialogOpen/stepDrawer/drawerOpen refs、标题、before-close、show-close和footer",
+        "全部5个抽屉实例接入；未新增公共接口"
+      ],
+      "non_goals": [
+        "浏览器原生全屏",
+        "将轮次等普通弹窗改为抽屉",
+        "其他模块及版本申请、配置绑定历史抽屉",
+        "数据库和登录问题"
+      ],
+      "action_bounds": [
+        "Only approved module local fullscreen additions"
+      ],
+      "acceptance_checks": [
+        "环境新增/编辑、步骤新增/编辑、问题详情/新增/编辑均可全屏还原",
+        "输入不丢失、0额外业务请求、0误提交",
+        "原关闭保护、权限、未保存提示不变",
+        "4种视口和主题尺寸可达"
+      ],
+      "evidence_required": [
+        "runtime tests",
+        "build exit code",
+        "pre-edit preservation checks",
+        "browser evidence or explicit gap"
+      ],
+      "rollback": "仅撤销T2接入和本次专属样式；不撤销演练/问题改版及数据",
+      "stop_conditions": [
+        "需要更改关闭保护或后端业务行为"
+      ],
+      "escalation_conditions": [
+        "必须修改全局抽屉或应用壳才能满足视口要求"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "T2消费T1能力且共享CSS与测试文件"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1",
+        "T2"
+      ],
+      "checks": [
+        "all tests",
+        "build",
+        "scope",
+        "browser if authorized"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1",
+      "trigger": "task output",
+      "observer": "main agent separate observation pass",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    {
+      "label": "T2",
+      "trigger": "task output",
+      "observer": "main agent separate observation pass",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

@@ -1,0 +1,71 @@
+{
+  "observation_id": "observation-T1",
+  "observed_at": "2026-09-13T01:40:00+08:00",
+  "scope": "REQ-20260912-075 集成验收采样（任务 T10）",
+  "sensors": [
+    {
+      "sensor": "npm --prefix web run build",
+      "result": "exit 0",
+      "evidence": "vue-tsc 类型检查与 vite 生产构建通过，0 个类型错误"
+    },
+    {
+      "sensor": "mvn -pl :ccb-system -am test",
+      "result": "exit 0",
+      "evidence": "ccb-system Tests run: 86, Failures: 0, Errors: 0；BUILD SUCCESS"
+    },
+    {
+      "sensor": "mvn -pl :ccb-architecture,:ccb-development -am test",
+      "result": "exit 0",
+      "evidence": "ccb-architecture Tests run: 467, Failures: 0, Errors: 0；ccb-development Tests run: 89, Failures: 0, Errors: 0；BUILD SUCCESS"
+    },
+    {
+      "sensor": "git diff --name-only 845388f..HEAD -- ModuleView.vue AppLayout.vue ProjectView.vue",
+      "result": "空输出",
+      "evidence": "三个既有调用文件零改动，R6 的硬边界成立"
+    },
+    {
+      "sensor": "grep 检索人员纯文本渲染与原始 ID 插值",
+      "result": "0 命中",
+      "evidence": "{{ row.owner.name }}、{{ item.assignee.name }}、{{ event.actor.name }}、申请人 #{{、操作人 #{{、userLabel(、{{ detail.offlinedBy }}、{{ workOrder.applicantId }} 全部无残留"
+    },
+    {
+      "sensor": "node scripts/check-codex-scope.mjs --base 845388f --head HEAD",
+      "result": "通过",
+      "evidence": "Codex scope check passed for REQ-20260912-075; 47 changed file(s)"
+    },
+    {
+      "sensor": "node scripts/check-all-governance.mjs",
+      "result": "部分失败（既有基线故障）",
+      "evidence": "check-governance.mjs 通过（18 个模块）；check-ai-control-layout.mjs 因 docs/requirements/REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 非 JSON 兼容 YAML 失败，该文件本次未改动，属用户已确认不修的历史问题"
+    },
+    {
+      "sensor": "CDP 驱动 headless chromium（--blink-settings 强制 hover:hover 与 pointer:fine）+ 生产构建静态服务 + /api 反向代理，逐页走查与悬停",
+      "result": "通过",
+      "evidence": "26 个文件中新增 52 个人员卡片实例；物理子系统、交付单元、部署单元、资源申请、子系统变更、网络工单、开发任务、工作项看板、架构决策等页面均观察到卡片渲染且悬停浮层取到权威档案（电话、团队、角色）；全部页面无横向溢出"
+    },
+    {
+      "sensor": "CDP 改造前后生产构建触发态快照对照",
+      "result": "通过",
+      "evidence": "用户列表 17→17、项目管理 1→1、开发任务既有项差异 0；组件示范页保留 1 处已裁决为刻意行为的演示姓名差异"
+    },
+    {
+      "sensor": "CDP Fetch 拦截构造档案，复现加载中/加载失败+重试/未找到/无角色/停用/超长文本六种状态",
+      "result": "通过",
+      "evidence": "六种状态均有对应渲染；暗色主题下浮层文字 rgb(238,245,255) 于背景 rgb(20,39,70)；320px 视口浮层宽度 296px 且无横向溢出"
+    },
+    {
+      "sensor": "curl 端到端调用新接口",
+      "result": "通过",
+      "evidence": "51 个标识返回 HTTP 400 与业务码 40000；空数组返回 HTTP 200 且两个列表为空；未登录返回 HTTP 401；响应字段集合恰为白名单"
+    }
+  ],
+  "measurement_limitations": [
+    "网络访问关系的申请人与导入批次的操作人（共 4 处）在本地数据下无记录可观察，只有构建与检索层面的证据；其中网络工单的申请人已通过插入本地虚构工单补齐观测",
+    "搭建计划详情的责任人、完成人与操作人（4 处）位于需展开的任务与检查项区域内，未逐处截图",
+    "决策材料时间线的创建人（1 处）未在页面分支中观察到",
+    "120ms 悬停延迟、明暗主题对比度、外观一致性为人工判读，未接自动化判定",
+    "dev server 当前把 web/src/styles.css 下发为空 CSS（const __vite__css = \"\"），与本次改动无关；因此所有 CSS 与主题验收改在生产构建上完成",
+    "首次走查曾误连 ccb-platform-mysql(3306) 而非后端实际使用的 rddmp-dev-mysql(13306)，前者迁移只到 124，得出的『缺少数据』结论已作废并改用正确库重测"
+  ],
+  "conclusion": "所有可自动化的传感器通过；必须需求与不变量均有独立证据；未观察到的约 10 处展示点已在残余风险中逐项披露。"
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260902-058-release-operations-menu-demo-data",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-02-release-operations-menu-demo-data-design.md",
+  "objective": "保留投产管理父级目录，将五项功能呈现为独立子菜单，并为至少两个测试项目补齐五项投产管理测试数据。",
+  "requirements": [
+    "五项投产功能使用独立左侧子菜单，页面内不再显示 Tabs 或重复横向导航",
+    "投产管理父级入口和现有五条路由、权限编码保持兼容",
+    "至少两个固定测试项目各覆盖演练、普通时序、回退时序、问题跟踪和投产组织",
+    "测试数据固定主键、固定前缀、条件写入，可重复执行且不删除用户新增业务记录",
+    "切换项目和刷新页面后只读取当前项目数据"
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "保留 ReleaseOperationsManagement.vue 作为公共项目上下文壳，按路由只渲染一个业务组件", "reason": "复用已验证的项目解析、切换代次和全状态处理，避免五个页面重复实现"},
+    {"id": "D2", "decision": "不新增权限和 API，保持 V123 菜单权限与现有投产契约", "reason": "需求仅改变菜单呈现，不改变业务能力边界"},
+    {"id": "D3", "decision": "追加 V124 固定测试数据迁移，引用已有演示用户和项目成员表", "reason": "Flyway 只追加，数据必须可按项目隔离且不引入真实个人信息"}
+  ],
+  "approval": {"status": "approved", "evidence": "用户先确认保留投产管理父级目录，再确认至少两个测试项目且每个项目覆盖五项投产功能，随后确认按设计实施。", "confirmed_at": "2026-09-02T00:00:00+08:00"},
+  "risks": ["动态菜单缓存", "V124 对历史演示用户/项目成员的条件引用", "固定测试主键冲突", "项目切换旧请求覆盖新状态"]
+}

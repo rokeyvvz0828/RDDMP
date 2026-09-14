@@ -1,0 +1,12 @@
+{
+  "sample_label": "T1/T2 V99 建表与 V100 复制搬迁观测",
+  "task_ids": ["T1", "T2"],
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "Testcontainers MySQL 8.4 上 Flyway 98->99 迁移 + information_schema 断言 + 生成列唯一键行为断言", "result": "pass", "raw_evidence": "V99 成功执行；13 张新表存在；dm_plan.active_doc_code 与 dm_content_attachment.active_attachment_key 为 STORED GENERATED；活动编号冲突被拒绝、软删后可重建；中文注释与租户前缀索引存在于脚本", "limitation": ["索引与注释为脚本静态核对，未在运行库逐项查询 information_schema.statistics"]},
+    {"requirement_id": "R2", "sensor": "ContentAssetMigrationMySqlTest 三用例（正向搬迁断言 + 两类断言保护失败回退）", "result": "pass", "raw_evidence": "Tests run: 3, Failures: 0, Errors: 0；行数/id/软删/排序/时间戳逐字段断言通过；双向关系归一去重后 4 行；dm_meeting_system 2 行；未登记类型与未映射组合均触发迁移失败且目标表零残留", "limitation": ["基线为手工构造的最小 V98 表集合，非完整存量库；真实存量数据搬迁由上线验证（发布 A）承接"]}
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "V99/V100 与迁移测试覆盖验收标准 1、2 的自动化部分，T1/T2 收敛；进入 T3 后端切换。"
+}

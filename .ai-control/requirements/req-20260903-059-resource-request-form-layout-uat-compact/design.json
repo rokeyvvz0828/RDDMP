@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260903-059-resource-request-form-layout-uat-compact",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+  "objective": "在不改变资源申请接口、业务规则和主从交互的前提下，压缩非必要高度，让登记表占满弹窗可用空间并内部滚动，使桌面端尽量在一屏完成填写。",
+  "users": [
+    "资源申请人在桌面端新建或编辑资源申请时快速查看主要字段并填写当前部署单元规格",
+    "资源申请人在手机端继续使用原有单列和局部横向申请项列表"
+  ],
+  "requirements": [
+    {
+      "id": "R8",
+      "statement": "基础信息区必须减少非必要纵向占用。",
+      "acceptance": ["申请原因桌面端默认 2 行", "基础字段和物理摘要保持可读", "不隐藏必填信息"],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 1 项",
+      "counterexample": ["申请原因仍以 4 行或更高高度撑高页面", "通过隐藏字段减少高度"]
+    },
+    {
+      "id": "R9",
+      "statement": "登记表必须占满弹窗可用高度并在内部滚动。",
+      "acceptance": ["主从容器拉伸到 body 剩余高度", "申请项列表和当前项编辑器独立滚动", "标题和 footer 保持可见"],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 2 项",
+      "counterexample": ["登记内容继续撑高整个弹窗", "页面根滚动导致 footer 不可达"]
+    },
+    {
+      "id": "R10",
+      "statement": "数值字段必须使用短输入框。",
+      "acceptance": ["桌面端数值输入宽约 140 至 180px", "步进按钮和长数值可用", "手机端恢复满宽"],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 3 项",
+      "counterexample": ["数值输入继续拉伸到整列宽度", "手机端固定短宽导致不可用"]
+    },
+    {
+      "id": "R11",
+      "statement": "申请项列表和编辑器顶部必须以部署单元名称作为主标题。",
+      "acceptance": ["已选择时两处显示部署单元名称", "未选择时显示未选择部署单元", "序号继续用于错误和删除定位"],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 4 项及后续选择 1",
+      "counterexample": ["主标题继续显示申请项 1/2/3", "空项没有可理解标题", "错误提示不再包含序号"]
+    },
+    {
+      "id": "R12",
+      "statement": "桌面布局必须优先提高一屏可见信息量。",
+      "acceptance": ["1920x1080 下标题、主要基础信息、登记区和 footer 同时可见", "1280x800 下无页面级横向溢出", "超高内容通过登记区内部滚动访问"],
+      "priority": "must",
+      "source": "用户 2026-09-03 UAT 反馈第 5 项",
+      "counterexample": ["必须滚动整个弹窗才能访问保存按钮", "通过缩小正文字号换取单屏"]
+    }
+  ],
+  "invariants": [
+    "修订 1 的 R1-R7、主从状态和失败恢复行为保持",
+    "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流保持",
+    "只允许调整 ResourceRequestPage.vue、architecture.css 和当前需求设计控制文件",
+    "不修改公共 UI、API、DTO、后端、数据库、权限、审计或工作流"
+  ],
+  "constraints": [
+    "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+    "桌面紧凑样式不得降低正文字号",
+    "手机端数字输入恢复满宽且不得产生页面级横向滚动",
+    "既有收敛账本作为修订 1 历史证据保留"
+  ],
+  "non_goals": [
+    "基础信息自动折叠或隐藏字段",
+    "应用级高密度模式",
+    "自动保存、拖拽排序、复制或批量填写",
+    "后端或数据契约调整"
+  ],
+  "selected_approach": {
+    "name": "固定登记区高度与内部滚动",
+    "reason": "保留已验证主从交互，通过局部高度链、独立滚动、短数值框和部署单元标题提高一屏信息密度。",
+    "alternatives": [
+      {"name": "基础信息自动折叠", "rejected_because": "隐藏申请范围上下文并增加展开状态"},
+      {"name": "全局高密度控件", "rejected_because": "影响可读性和触控体验并扩大影响范围"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["ResourceRequestPage.vue 资源申请弹窗模板", "architecture.css 资源申请局部高度、滚动和数值输入样式", "修订 2 设计与计划证据"],
+      "outside": ["资源申请 API、DTO、后端和数据库", "公共 UI 和应用壳", "其他业务页面"]
+    },
+    "components": [
+      {"name": "弹窗高度链", "responsibility": "让 body、外层布局、登记表和主从容器使用可收缩剩余高度", "depends_on": ["Element Plus Dialog"]},
+      {"name": "独立滚动区域", "responsibility": "桌面端列表和编辑器各自滚动，移动端保留原重排", "depends_on": ["现有主从 DOM"]},
+      {"name": "紧凑基础信息", "responsibility": "申请原因缩为 2 行并减少局部间距，不隐藏摘要", "depends_on": ["现有申请级字段"]},
+      {"name": "标题与短数值适配", "responsibility": "用部署单元名称作为标题并限制桌面数字输入宽度", "depends_on": ["deploymentUnitName", "el-input-number"]}
+    ],
+    "interfaces": [
+      {"name": "申请项显示标题", "producer": "ResourceFormItem.deploymentUnitName", "consumers": ["申请项列表", "当前项编辑器"], "contract": "有名称时显示名称，否则显示未选择部署单元；序号不进入主标题"},
+      {"name": "资源申请提交载荷", "producer": "ResourceRequestPage.vue", "consumers": ["现有 create/update API"], "contract": "修订 2 不改变任何请求字段、顺序或数值"}
+    ],
+    "data_flows": [
+      {"input": "部署单元选择变化", "transitions": ["同步已有 deploymentUnitName", "更新列表和编辑器标题"], "output": "两处一致的业务标题"},
+      {"input": "视口高度和表单内容变化", "transitions": ["分配弹窗 body 剩余高度", "列表和编辑器分别计算滚动"], "output": "footer 可见且内容可达"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "登记内容超过可用高度", "behavior": "只在列表或编辑器内部滚动，不撑高弹窗", "recovery": "用户在对应区域滚动继续填写"},
+    {"condition": "部署单元尚未选择", "behavior": "两处主标题显示未选择部署单元", "recovery": "选择后立即显示部署单元名称"},
+    {"condition": "手机视口不足以容纳短宽布局", "behavior": "数字输入恢复满宽单列", "recovery": "沿用修订 1 手机滚动边界"}
+  ],
+  "quality_attributes": {
+    "security": ["认证、RBAC、租户和实体授权不变"],
+    "performance": ["不增加数据请求和完整申请项 DOM", "固定高度避免页面布局持续增长"],
+    "compatibility": ["请求、字段和校验不变", "手机断点沿用修订 1"],
+    "operations": ["无迁移和配置变化", "回退修订 2 前端提交即可"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R8"], "signal": "基础信息高度降低且内容完整", "method": "桌面检查申请原因行数、基础字段和物理摘要"},
+    {"requirement_ids": ["R9", "R12"], "signal": "弹窗单屏密度和内部滚动正确", "method": "1920x1080、1280x800 明暗主题检查 clientHeight、scrollHeight、overflow、footer 和页面根宽度"},
+    {"requirement_ids": ["R10"], "signal": "数字输入桌面短宽且手机满宽", "method": "检查全部 el-input-number 计算宽度、步进按钮和三个手机视口"},
+    {"requirement_ids": ["R11"], "signal": "标题按部署单元名称同步", "method": "空项、选择、重复选择和切换时检查两处标题，保存首错仍包含序号"},
+    {"requirement_ids": ["R8", "R9", "R10", "R11", "R12"], "signal": "修订 1 行为无回归", "method": "前端构建、scope、diff、新建/编辑请求和四视口明暗主题回归"}
+  ],
+  "assumptions": [
+    {"text": "1920x1080 是本轮一屏优化的主要桌面验收视口。", "basis": "用户提供的 UAT 截图接近宽桌面场景", "falsifier": "用户指定其他主桌面分辨率"},
+    {"text": "错误定位仍需要申请项序号。", "basis": "重复部署单元合法且名称可能相同", "falsifier": "产品决定使用其他唯一可见标识"}
+  ],
+  "unknowns": [],
+  "decisions": [
+    {"id": "D5", "decision": "申请原因桌面端缩为 2 行，不折叠基础信息。", "reason": "减少高度且保留上下文", "source": "用户 UAT 反馈确认"},
+    {"id": "D6", "decision": "登记表占满剩余高度，列表和编辑器独立滚动。", "reason": "防止内容撑高弹窗并保持 footer 可见", "source": "用户 UAT 反馈确认"},
+    {"id": "D7", "decision": "部署单元名称作为主标题，空项显示未选择部署单元。", "reason": "直接表达当前编辑对象，序号保留给错误定位", "source": "用户选择方案 1"},
+    {"id": "D8", "decision": "数字输入桌面短宽、手机满宽。", "reason": "提高桌面密度且保持手机可用", "source": "用户 UAT 反馈确认"}
+  ],
+  "risks": [
+    {"risk": "多层高度和 overflow 形成错误滚动容器", "impact": "footer 遮挡或内容不可达", "mitigation": "使用 min-height:0 高度链并通过真实浏览器尺寸验证"},
+    {"risk": "短数值输入无法显示极端长值", "impact": "数值或步进按钮被遮挡", "mitigation": "保留 140 至 180px 可用宽度并在手机端恢复满宽"},
+    {"risk": "重复部署单元名称使标题相同", "impact": "用户难以区分错误项", "mitigation": "状态和编码继续显示，错误和删除提示保留序号"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-03 回复‘可以’，批准资源申请表单 UAT 紧凑布局设计修订 2。",
+    "confirmed_at": "2026-09-03T13:41:34+08:00"
+  }
+}

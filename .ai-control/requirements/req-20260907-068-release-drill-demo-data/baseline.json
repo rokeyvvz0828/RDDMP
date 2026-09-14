@@ -1,0 +1,81 @@
+{
+  "objective": "Add identifiable drill test data for the two user-selected demonstration projects in the current local database",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Each specified project gains 3 identifiable rounds with 6 ordered steps each",
+      "acceptance": [
+        "A=940001 and B=940002 each have 3 new rounds and 18 new steps",
+        "Cover PLANNED/RUNNING/COMPLETED and meaningful synthetic descriptions/results"
+      ],
+      "priority": "must",
+      "source": "User confirmed 3 rounds, 5-8 steps and specified demonstration projects A/B in current database",
+      "counterexample": [
+        "Only frontend mock exists or wrong project is seeded"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Retain existing data and valid tenant/project/plan/environment relationships",
+      "acceptance": [
+        "All new rows tenant 1 and exactly project 940001 or 940002",
+        "Reuse their own existing plan/environment",
+        "No existing row updates/deletions",
+        "Rerun creates no duplicates"
+      ],
+      "priority": "must",
+      "source": "User scope and repository safety rules",
+      "counterexample": [
+        "Cross-project reference",
+        "Existing rows overwritten"
+      ]
+    }
+  ],
+  "invariants": [
+    "No production access",
+    "No credential disclosure",
+    "No application, schema, permission or account changes",
+    "Only release-owned round and step table inserts"
+  ],
+  "constraints": [
+    "Current local ccb_platform_licon only",
+    "Current licon workspace; no restart/commit/push",
+    "Owner IDs optional and left null; seed attribution created_by/updated_by=0 (offline fixture, not impersonated user)"
+  ],
+  "non_goals": [
+    "Create projects, plans, environments, issues, users",
+    "UI changes or login repair"
+  ],
+  "assumptions": [
+    {
+      "text": "Existing local schema supports current drill DTOs",
+      "basis": "SHOW COLUMNS and release store checked",
+      "falsifier": "Schema assertions or existing references fail"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "question": "Target database and projects",
+      "options": [
+        "Current local database, demonstration projects A/B"
+      ],
+      "selected": "Current local database, demonstration projects A/B",
+      "blocking": false,
+      "source": "Latest user message"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "requirement_id": "R1",
+      "observable": "Persisted counts, statuses, ordered times and synthetic fields",
+      "candidate_sensor": "Fresh MySQL read after committed transaction"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "Original row fingerprint, references and rerun counts",
+      "candidate_sensor": "Before/after SQL snapshot and guarded idempotency rerun"
+    }
+  ],
+  "baseline_status": "ready"
+}

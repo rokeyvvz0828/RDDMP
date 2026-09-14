@@ -1,0 +1,26 @@
+{
+  "task_id": "T22",
+  "status": "implemented",
+  "trigger": "用户授权追加 V98，物理删除兼容字段并清理未使用专题类型表",
+  "changed_surfaces": [
+    {"path_or_resource": "V98__data_migration_remove_compatibility_columns.sql", "purpose": "删除兼容冗余列和孤立专题类型表，修复 V96/V97 附件唯一性与租户索引"},
+    {"path_or_resource": "data-migration services", "purpose": "移除已删除列的 SQL 依赖，改用关系表或主表 JOIN 投影"},
+    {"path_or_resource": "database-schema-and-relations.md", "purpose": "更新 V98 后表清单、字段、关系、菜单映射和遗留风险"}
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am -DskipTests compile", "exit_code": 0, "salient_output": "Reactor compile succeeded"},
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "32 tests passed, 0 failures, 0 errors"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "salient_output": "Current scope check passed"},
+    {"command": "temporary MySQL 8.4 execution of V98", "exit_code": 0, "salient_output": "V98 applied; compatibility columns and dm_topic_type absent; duplicate active attachment removed; tenant-prefixed indexes and active uniqueness key present"}
+  ],
+  "invariants_checked": [
+    {"invariant": "No production access", "result": "pass", "evidence": "V98 execution used a disposable local MySQL container"},
+    {"invariant": "Application has no deleted-column SQL dependency", "result": "pass", "evidence": "Static search found no object_key or deleted meeting main-column references in service code"},
+    {"invariant": "V96 active attachment uniqueness", "result": "pass", "evidence": "Duplicate active rows were deduplicated before generated-key unique index creation"}
+  ],
+  "unresolved_items": [
+    "Before applying V98 to any environment, verify dm_asset rows with object_key and no attachment_id are zero or have an approved attachment compensation plan",
+    "Full repository Maven and historical governance ledgers remain separately owned residuals"
+  ],
+  "recommended_next": "observe"
+}

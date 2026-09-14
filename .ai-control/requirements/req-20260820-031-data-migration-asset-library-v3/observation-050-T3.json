@@ -1,0 +1,17 @@
+{
+  "sample_label": "T3 后端内容表切换观测",
+  "task_ids": ["T3"],
+  "measurements": [
+    {"requirement_id": "R3", "sensor": "DataMigrationModuleRegistrationTest 端点/契约静态注册断言 + ReportServiceTest/IssueServiceTest 服务层用例（列表/编辑/软删/恢复/清除/MD5 顺序）", "result": "pass", "raw_evidence": "mvn -pl :ccb-data-migration test 全模块 Tests run: 35, Failures: 0, Errors: 0, BUILD SUCCESS；注册断言改指 ContentAssetController/ContentRecycleBinController/ContentFileAssetService/ContentAttachmentService", "limitation": ["接口层为服务与注册级验证，真实 HTTP 请求/下载/预览与浏览器路径验收由 T6 承接"]},
+    {"requirement_id": "R4", "sensor": "IssueServiceTest 关系 DELETE/INSERT 计数 + IssueMigrationMySqlTest（Testcontainers MySQL 真实回滚）+ MeetingService 关系/附件切换经注册断言", "result": "pass", "raw_evidence": "IssueServiceTest 8 用例（含 explicitEmptyArrays=3、explicitIds=1、purge relationDeletes=1）通过；IssueMigrationMySqlTest 3 用例通过，invalidRelation/restoreConflict 在真实库正确抛 BusinessException 并回滚", "limitation": ["会议↔问题反向归一的行为等价以单测/迁移断言证明，跨用户浏览器联动由 T6"]},
+    {"requirement_id": "R5", "sensor": "ContentRecycleBinService 聚合 + ContentRecycleBinController 注册的单元/静态核对", "result": "pass", "raw_evidence": "统一回收站覆盖文件 6 类 + 结构化 3 类，按 deleted_at 倒序聚合、restore/purge 按类型分发；注册测试确认控制器与授权注解存在", "limitation": ["回收站页面渲染与分类操作属前端 + 浏览器验收（T4/T6）"]},
+    {"requirement_id": "R6", "sensor": "ContentFileAssetService.md5UnionSql 跨 7 文件表命中 + ContentAssetMigrationMySqlTest + ReportServiceTest MD5 委托断言", "result": "pass", "raw_evidence": "MD5 查重遍历 FILE_TABLES（PLAN/MAPPING_DOC/DEPENDENCY/SCRIPT/TOPIC/RELEASE_DRILL/REPORT），命中重复时 assertMd5Available 拒绝；相关用例通过", "limitation": ["查重语义以 6/7 文件表 union 计（含 dm_report）；跨真实并发上传的竞态由唯一键兜底，浏览器层由 T6"]},
+    {"requirement_id": "审计/权限不变量", "sensor": "IssueServiceTest auditWrites 断言 + 新控制器 @PreAuthorize 静态核对", "result": "pass", "raw_evidence": "写操作保留 dm_operation_log 审计（冲突/越权前不写入被断言）；ContentAssetController/ContentRecycleBinController 声明 manage/admin 权限且服务层执行租户/数据范围校验", "limitation": ["未执行端到端越权 HTTP 用例，服务端等价性由单测与代码审查保证"]},
+    {"requirement_id": "旧表解耦", "sensor": "主源码 grep dm_asset/dm_asset_relation/dm_meeting_attachment", "result": "pass", "raw_evidence": "运行期 SQL 无旧表引用，仅存 1 处历史注释；AssetService/AssetController 已删除", "limitation": ["旧表物理删除属 V101/T5"]},
+    {"requirement_id": "无生产访问", "sensor": "运行环境核对", "result": "pass", "raw_evidence": "仅 Testcontainers mysql:8.4 一次性容器与内存桩，全部虚构数据", "limitation": []}
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "T3 后端切换的自动化证据层（编译、单元、迁移、真实库回滚）全部通过，R3-R6 的服务/接口层部分收敛；前端契约、破坏性端点联调与浏览器验收分别由 T4、T6 承接，旧表清理由 T5 承接。进入 T4 前端切换。"
+}

@@ -1,0 +1,52 @@
+{
+ "task_id": "T35",
+ "parent_task": "T34",
+ "trigger": "用户指令「每个表的表结构要完整」：database-schema-and-relations.md §3 由「公共列+专属列」组合式描述改为 19 张 dm_ 表逐表完整列清单（字段、类型、默认/约束、说明），并顺带修正 §6.3 软删描述。",
+ "status": "implemented_and_verified",
+ "scope_kind": "documentation_schema_completeness",
+ "decision_recorded": "§3 改为每表一节、每节直接列出全部列，避免读者手工合并公共列；列结构与默认值以各迁移 DDL 为准（V84/V88/V98 实为 V152/V147/V148/V149/V150/V153/V157/V159/V161/V162/V163/V164），并保留 §3.1 公共列作为共性对照；§6.3 按真实列修正为「组件、目标表和字段无 deleted_by/deleted_at 列」。",
+ "changed_surfaces": [
+  {
+   "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+   "purpose": "§3 重写为 19 张表逐表完整列清单（3.2 dm_plan 21 列 … 3.20 dm_operation_log 10 列），每节附约束/索引汇总；§6.3 软删描述修正。"
+  }
+ ],
+ "requirements_addressed": [
+  "schema 文档 §3 每张表列结构完整、可直接单表核对",
+  "§2.1 列数与 §3 清单一致性",
+  "§6.3 与真实列结构一致（组件/目标表/字段软删无删除人/时间列）"
+ ],
+ "commands": [
+  {
+   "command": "逐迁移核对 CREATE/ALTER 提取真实列与默认值（V84/V88/V147/V148/V149/V150/V152/V153/V157/V159/V161-164）",
+   "exit_code": 0,
+   "result": "19 张表列集合与 §2.1 列数全部吻合。"
+  },
+  {
+   "command": "python 统计每节 | `列 行数与 §2.1 列数比对",
+   "exit_code": 0,
+   "result": "3.2-3.20 全部 OK（21/16/16/16/16/16/19/16/16/13/19/6/28/7/13/20/23/8/10）。"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "每表列清单 vs 迁移 DDL",
+   "result": "dm_plan 含 granularity/plan_type/system_id/plan_summary/active_dimension_key；dm_report 含 report_period/report_date/keywords；dm_rule/dm_parameter 用 structured_data 替代 checksum_md5；dm_meeting 已被 V152 删 project_name/attachment_id/file_name、V157 加 meeting_code/active_meeting_code；dm_issue 28 列含 V162 system_id；dm_target_table_field 已删 table_code（V152）、V163 加 3 个 active_* 列；dm_component/dm_target_table/dm_target_table_field 均无 deleted_by/deleted_at。"
+  },
+  {
+   "check": "索引/唯一键汇总 vs V153/V157/V159/V161/V162/V163",
+   "result": "各节约束/索引行与迁移逐一对应（含 V161 的 (tenant_id, project_id, checksum_md5, deleted) 与 V163 的新唯一键命名）。"
+  }
+ ],
+ "invariants_checked": [
+  "未改任何 Java 源码、测试与迁移文件（仅文档）",
+  "§2.1 列数与 §3 逐表清单一致",
+  "19 张表数量与最终模型一致（dm_meeting_attachment/dm_asset/dm_asset_relation 已下线不列）"
+ ],
+ "disturbances": [],
+ "assumptions_falsified": [],
+ "unresolved_items": [
+  "文档列序为逻辑分组顺序，非建表物理列序（如需严格逐列物理序需以 information_schema 复核）"
+ ],
+ "rollback": "文档变更可整体回退（git checkout 该文件），无运行影响。"
+}

@@ -1,0 +1,80 @@
+{
+ "task_id": "T33",
+ "parent_task": "T32-r1-doc",
+ "trigger": "9.2 治理表 P2「MD5 索引缺项目列」：查重条件已有 project_id（T32 收敛为单租户+单项目），V153 建的 idx_*_md5 仍为 (tenant_id, checksum_md5, deleted)，缺 project_id 无法按项目先行裁剪。用户指令继续处理 9.2 中的治理项，本项为纯增量索引迁移（不改行为、可回退、可 information_schema 级验证），先于其余 P1/P2 实改项执行。",
+ "status": "implemented_and_verified",
+ "scope_kind": "data_migration_index_remediation_migration_only",
+ "decision_recorded": "替换而非追加：全模块 MD5 查询唯一来源 ContentAssetTables.md5UnionSql 恒带 tenant_id + project_id + checksum_md5 + deleted，grep 全 server 源码无其它 checksum_md5 引用（V90 的 uk_dm_asset_checksum_active 属已下线 dm_asset），旧索引无其它使用者；同名原子替换避免冗余索引写放大，单条 ALTER 的 DROP+ADD 无中间缺失态；仅追加 V161，不修改 V153。条件式执行：information_schema.statistics 存在旧索引才替换，缺失不报错。",
+ "changed_surfaces": [
+  {
+   "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V161__data_migration_md5_index_project_id.sql（新增）",
+   "purpose": "7 张文件型内容表（dm_plan/dm_mapping_doc/dm_dependency/dm_script/dm_topic/dm_release_drill/dm_report）的 idx_*_md5 由 (tenant_id, checksum_md5, deleted) 原子替换为 (tenant_id, project_id, checksum_md5, deleted)；存储过程遍历 + information_schema 条件判断。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java",
+   "purpose": "新增 v161ReplacesMd5IndexesWithProjectDimension：Testcontainer MySQL 8.4 上 flyway(153)→flyway(161) 全链路执行 V161，逐表断言 idx_*_md5 列序精确为 (tenant_id, project_id, checksum_md5, deleted) 且含 checksum_md5 的索引全表唯一（旧形态必不存在），作为持久回归护栏。"
+  },
+  {
+   "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+   "purpose": "6.2 查询索引与 9.2 治理表对应条目更新为已处理（V161，2026-09-03）。"
+  }
+ ],
+ "requirements_addressed": [
+  "9.2 P2「MD5 索引缺项目列」（database-schema-and-relations.md）",
+  "6.2 查询索引章节的待优化项（同一文档）",
+  "T32 项目隔离配套：查重域 (tenant_id, project_id) 的索引承载"
+ ],
+ "commands": [
+  {
+   "command": "rg 全仓 server 源码核对 checksum_md5 引用与 V153 索引清单",
+   "exit_code": 0,
+   "result": "7 张文件表旧索引确认；MD5 查询仅 ContentAssetTables.md5UnionSql（恒带 project_id）；V90 唯一键属已下线 dm_asset，无其它使用者。"
+  },
+  {
+   "command": "mvn -q -pl :ccb-data-migration -am test",
+   "exit_code": 0,
+   "result": "最终 65 tests / 0 failures / 0 errors / 0 skipped（11 类），含新增 v161ReplacesMd5IndexesWithProjectDimension 在 Testcontainer MySQL 8.4 实跑 V153→V161。"
+  },
+  {
+   "command": "node scripts/check-flyway-migrations.mjs",
+   "exit_code": 1,
+   "result": "仍红，唯一违规 V84_1__seed_requirement_system_catalog.sql（提交 e1061eb，REQ-20260828-049，已在 origin/main），非本任务引入；V161 命名合规、无重复版本、未改已发布脚本。"
+  },
+  {
+   "command": "node scripts/check-ai-control-layout.mjs（过滤 031/064 前缀）",
+   "exit_code": 0,
+   "result": "031/064 前缀账本无违规。"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "information_schema.statistics：每表 idx_*_md5 的 GROUP_CONCAT(column_name ORDER BY seq_in_index)",
+   "result": "7/7 表均等于 tenant_id,project_id,checksum_md5,deleted"
+  },
+  {
+   "check": "含 checksum_md5 的索引个数（COUNT DISTINCT index_name）",
+   "result": "每表 = 1，旧形态索引不存在"
+  }
+ ],
+ "invariants_checked": [
+  "Flyway 只追加：V161 为新文件，V153 未被修改（git diff --name-status 无 M）",
+  "新索引为普通 KEY 非 UNIQUE：MD5 非项目内唯一约束，查重由应用层维护（ContentFileAssetService.assertMd5Available）",
+  "行为不变：无 DML、无业务逻辑改动，替换仅影响执行计划"
+ ],
+ "disturbances": [
+  "首版测试用例 flyway(161) 在 V157 失败（dm_meeting 由被测试基线跳过的 V149 创建）；复用现有 prepareV160Baseline() 补桩后通过",
+  "第二版断言用 GROUP BY+HAVING，空结果集导致 count() 的 result.next() 为 false（assertTrue 失败）；改为「含 checksum_md5 的索引唯一」等价断言"
+ ],
+ "assumptions_falsified": [
+  "假设「flyway(153) 后可直接迁移到 161」被证伪：V157 依赖 V149 的 dm_meeting、V160 依赖 V88 的 dm_target_table，本测试基线 152 跳过历史版本，必须补桩"
+ ],
+ "unresolved_items": [
+  "生产库索引替换随应用发布执行（Flyway 自动）；DB 级回退语句未入库，登记于文档 9.2",
+  "flyway 治理门禁整体仍红：V84_1 命名问题与其它需求前缀账本违规，均非本任务范围"
+ ],
+ "recommended_next": "独立观测 observation-T33 复核；此后 9.2 最小改动项为「P2 生成列注释不完整」（纯注释迁移）",
+ "rollback": "应用回退无需代码操作（索引只影响执行计划）；DB 回退：对 7 表执行 ALTER TABLE ... DROP INDEX idx_*_md5, ADD INDEX idx_*_md5 (tenant_id, checksum_md5, deleted)，文档 9.2 已登记",
+ "external_access": "local testcontainers only（Docker MySQL 8.4）",
+ "remote_updated": false,
+ "evidence_level": "已实现 + 检查通过（flyway 治理基线红已归因、布局检查 031/064 通过）+ Testcontainer MySQL 8.4 真实执行（flyway 153→161，information_schema 断言 7/7 表）+ mvn 65/0/0/0"
+}

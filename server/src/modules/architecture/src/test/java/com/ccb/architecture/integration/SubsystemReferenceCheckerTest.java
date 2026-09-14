@@ -11,7 +11,7 @@ class SubsystemReferenceCheckerTest {
     void usesImmutableNeutralRequestAndResultValues() {
         ReferenceCheckRequest request = new ReferenceCheckRequest(
                 7L,
-                ReferenceCheckRequest.SubsystemKind.LOGICAL,
+                ReferenceCheckRequest.SubsystemKind.PHYSICAL,
                 41L,
                 ReferenceCheckRequest.Operation.VOID);
         ReferenceCheckResult result = ReferenceCheckResult.indeterminate(" 引用检查\n暂不可用\t ");
@@ -19,7 +19,7 @@ class SubsystemReferenceCheckerTest {
         assertThat(ReferenceCheckRequest.class.isRecord()).isTrue();
         assertThat(ReferenceCheckResult.class.isRecord()).isTrue();
         assertThat(request.tenantId()).isEqualTo(7L);
-        assertThat(request.subsystemKind()).isEqualTo(ReferenceCheckRequest.SubsystemKind.LOGICAL);
+        assertThat(request.subsystemKind()).isEqualTo(ReferenceCheckRequest.SubsystemKind.PHYSICAL);
         assertThat(request.subsystemId()).isEqualTo(41L);
         assertThat(request.operation()).isEqualTo(ReferenceCheckRequest.Operation.VOID);
         assertThat(result.status()).isEqualTo(ReferenceCheckResult.Status.INDETERMINATE);

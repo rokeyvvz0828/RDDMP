@@ -1,0 +1,15 @@
+{
+  "sample_label": "T5 V101 删旧表无损断言观测",
+  "task_ids": ["T5"],
+  "measurements": [
+    {"requirement_id": "R7", "sensor": "ContentAssetMigrationMySqlTest v101 正向用例（V99→V100→V101 真实库）+ information_schema 断言", "result": "pass", "raw_evidence": "V101 迁移成功；information_schema.tables 中 dm_asset/dm_asset_relation/dm_meeting_attachment 计数为 0；dm_plan=2、dm_report(10002)=1、dm_content_attachment=6、dm_issue_relation=4、dm_meeting_system=2 保留；routine dm_v101_assert_zero 已清理", "limitation": ["基线为手工构造最小 V98 源表集合，真实存量删表由上线流程在 V101 前全量备份后执行"]},
+    {"requirement_id": "R7-保护", "sensor": "ContentAssetMigrationMySqlTest v101BlocksDropWhenAssetRowUnmigrated（V100 后向 dm_asset 注入未搬迁行）", "result": "pass", "raw_evidence": "flyway(101).migrate() 抛异常；断言 dm_asset、dm_meeting_attachment 仍存在、dm_plan=2 未受影响，证明残留>0 时拒绝删表且不产生部分删除", "limitation": ["MySQL DDL 非事务，脚本按序执行；SIGNAL 位于 DROP 之前，失败即中止脚本，故不会删表"]},
+    {"requirement_id": "只追加约束", "sensor": "node scripts/check-flyway-migrations.mjs", "result": "pass", "raw_evidence": "Flyway migration check passed for 92 migration(s) and 1 approved callback(s)", "limitation": []},
+    {"requirement_id": "回归", "sensor": "mvn -pl :ccb-data-migration test 全模块", "result": "pass", "raw_evidence": "Tests run: 37, Failures: 0, Errors: 0, BUILD SUCCESS", "limitation": ["全 reactor mvn test（其他模块）由 T6 承接"]},
+    {"requirement_id": "无生产访问", "sensor": "运行环境核对", "result": "pass", "raw_evidence": "仅 Testcontainers mysql:8.4 一次性容器，全部虚构数据", "limitation": []}
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "V101 无损删表断言与迁移用例收敛，R7 的自动化部分通过；分发布上线约束与全量 reactor 测试/浏览器验收由 T6 承接。T1-T5 全部自动化收敛，进入 T6 全量验证与浏览器验收。"
+}

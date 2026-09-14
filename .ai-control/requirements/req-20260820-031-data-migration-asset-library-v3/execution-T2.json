@@ -1,1 +1,36 @@
-{"task_id":"T2","status":"implemented","changed_surfaces":[{"path_or_resource":"server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java","purpose":"derive administrator and owner authorization from AuthUser and tenant tables"},{"path_or_resource":"server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java","purpose":"tenant-scoped project/component CRUD, uniqueness, relation checks and audit"},{"path_or_resource":"server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java","purpose":"REST options/projects/components endpoints"}],"requirements_addressed":["R2","R3","R7"],"commands":[{"command":"mvn -pl :ccb-data-migration -am test","exit_code":0,"salient_output":"reactor success; module registration test passed; upstream tests passed"}],"local_checks":[{"check":"T2 Java compilation and focused reactor","result":"pass","evidence":"Maven exit code 0","limitations":["JDBC authorization paths need live MySQL or Mockito coverage"]}],"diff_summary":["tenant-scoped base-data queries","admin/owner write policy","duplicate and relation-safe deletion errors","module-owned operation audit"],"invariants_checked":[{"invariant":"tenant from AuthUser","result":"pass","evidence":"all service queries bind user.tenantId()"},{"invariant":"normal user cannot modify others","result":"pass","evidence":"requireWrite compares owner id"},{"invariant":"writes audited","result":"pass","evidence":"dm_operation_log inserts after mutations"}],"disturbances":[],"assumptions_falsified":[],"unresolved_items":["live permission data and SQL behavior deferred to observing/runtime"],"recommended_next":"observe"}
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task": "T2",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java",
+      "purpose": "专题材料专属服务：list/detail/create/update/delete/getTypeOptions/getSystemOptions/download/listAttachments，复用ContentAttachmentService实现多附件、DataMigrationPermissionService实现权限隔离、SystemReferenceQuery读取参数类型"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TopicController.java",
+      "purpose": "REST Controller /api/data-migration/topics，GET/POST/PUT/DELETE + /options/types + /options/systems + /download + /attachments，PreAuthorize RBAC"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java",
+      "purpose": "11个桩测试覆盖：必填校验、颗粒度/参数类型联动、系统级/项目级系统关系、多附件绑定、租户/项目/实体授权、逻辑删除与恢复状态冲突、审计与doc_code生成"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5"],
+  "commands": [
+    "mvn -pl :ccb-data-migration -am -Dtest=TopicServiceTest -Dsurefire.failIfNoSpecifiedTests=false test -> Tests run: 11, Failures: 0, Errors: 0",
+    "mvn -pl :ccb-data-migration -am -Dtest=TopicServiceTest,TopicRecycleBinSourceTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test -> Tests run: 30, Failures: 0, Errors: 0"
+  ],
+  "observations": [
+    "TopicServiceStubJdbcTemplate原有queryForList对所有dm_content_attachment查询统一返回[101L]，导致ContentAttachmentService.replaceAll误判附件已存在不调用bind；修正为deleted=0和deleted=1查询返回空列表，JOIN查询保留101L",
+    "11个测试覆盖：createRejectsMissingRequiredFields、systemGranularityRequiresSystemCodesAndProjectLevelRejectsThem、unknownOrDisabledTypeCodeIsRejected、systemCodeNotBelongingToCurrentProjectIsRejected、createGeneratesTopicDocCodeAndBindsAttachments、updateRejectsNonOwnerAndPreservesProjectOwnership、deleteAndRestoreLifecycle、listFiltersByGranularityAndTypeAndSystem、downloadRequiresMainFile、typeOptionsByGranularity、auditEventsRecorded",
+    "接口路径静态检查：/api/data-migration/topics GET/POST/PUT/DELETE、/options/types、/options/systems、/{id}、/{id}/download、/{id}/attachments"
+  ],
+  "unresolved_issues": [],
+  "risks": [
+    "TopicService.resolveAttachment依赖ContentFileAssetService检查uploaderId和status=TEMP，桩测试通过但真实附件上传流程在T5集成验证"
+  ],
+  "recorded_at": "2026-09-05T02:01:30Z"
+}

@@ -1,0 +1,12 @@
+{
+  "objective": "资源申请人在宽桌面能够以更少纵向滚动查看和填写完整的当前申请项表单。",
+  "requirements": [{"id": "R14", "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。", "acceptance": ["1920x1080 下容量字段按 3、4、3 分组", "有边车开关位于边车数值字段之前", "摘要与标题同行且技术栈三列", "三个手机视口单列无页面级横向溢出"], "priority": "must", "source": "用户于 2026-09-03 确认", "counterexample": ["字段散落产生额外换行", "手机端横向溢出"]}],
+  "invariants": ["字段绑定、联动、计算、校验、状态和提交载荷不变", "数据库申请项布局不变", "内部滚动和 footer 可用"],
+  "constraints": ["产品修改仅限两个授权前端文件", "不修改公共组件、API、后端或数据库"],
+  "non_goals": ["改变字段含义", "修改请求契约"],
+  "assumptions": [{"text": "现有宽度可形成目标分组", "basis": "上一轮 1920 实测为 3/4/3", "falsifier": "重排后 DOM 几何不满足"}],
+  "unknowns": [],
+  "decisions": [{"question": "是否按业务顺序重排字段", "options": ["重排", "保持"], "selected": "重排", "blocking": false, "source": "用户确认"}],
+  "measurement_intents": [{"requirement_id": "R14", "observable": "字段 offsetTop、摘要位置、技术栈列数和根 scrollWidth", "candidate_sensor": "构建和五视口浏览器 DOM 探针"}],
+  "baseline_status": "ready"
+}

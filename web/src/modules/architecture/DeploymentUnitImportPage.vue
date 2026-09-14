@@ -8,6 +8,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import {
@@ -195,7 +196,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
           <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
           <div class="el-upload__text">将 .xlsx 文件拖到此处，或<em>点击选择文件</em></div>
           <template #tip>
-            <div class="el-upload__tip">模板列：物理子系统编号、部署单元简称、部署单元名称、部署单元类型（应用/数据库/消息队列）、描述、备注；最多 5000 行、10MB。</div>
+            <div class="el-upload__tip">模板列：物理子系统编号、部署单元名称、部署单元类型（应用/数据库/Web）、描述、备注；最多 5000 行、10MB。</div>
           </template>
         </el-upload>
       </section>
@@ -213,7 +214,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
         <el-table-column label="可写入" width="80" prop="validRows" />
         <el-table-column label="成功" width="80" prop="successRows" />
         <el-table-column label="失败" width="80" prop="failedRows" />
-        <el-table-column label="操作人" min-width="110"><template #default="scope">{{ scope.row.createdByDisplayName || `用户 #${scope.row.createdBy}` }}</template></el-table-column>
+        <el-table-column label="操作人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.createdBy" :fallback-name="scope.row.createdByDisplayName" variant="compact" /></template></el-table-column>
         <el-table-column label="创建时间" width="145"><template #default="scope">{{ formatDateTime(scope.row.createdAt) }}</template></el-table-column>
         <el-table-column label="操作" width="130" fixed="right"><template #default="scope"><div class="architecture-table-actions"><el-button link type="primary" @click="showHistory(scope.row)">明细</el-button><el-button v-if="scope.row.failedRows > 0" link type="danger" @click="downloadErrorReport(scope.row)">错误报告</el-button></div></template></el-table-column>
         <template #footer><div class="architecture-table-footer"><span>共 {{ total }} 条记录</span><el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @current-change="changePage" @size-change="changePageSize" /></div></template>
@@ -241,7 +242,6 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
           <el-table :data="preview.items" size="small" border max-height="52vh">
             <el-table-column label="行号" prop="lineNo" width="64" />
             <el-table-column label="物理子系统" min-width="110"><template #default="scope">{{ scope.row.row.physicalCode || '—' }}</template></el-table-column>
-            <el-table-column label="简称" min-width="100"><template #default="scope">{{ scope.row.row.shortName || '—' }}</template></el-table-column>
             <el-table-column label="名称" min-width="150"><template #default="scope">{{ scope.row.row.name || '—' }}</template></el-table-column>
             <el-table-column label="类型" width="90"><template #default="scope">{{ scope.row.row.kindLabel || '—' }}</template></el-table-column>
             <el-table-column label="状态" width="90"><template #default="scope"><UiStatusTag :value="scope.row.rowStatus" :labels="importItemStatusLabels" :tone="importItemStatusTone(scope.row.rowStatus)" /></template></el-table-column>
@@ -267,7 +267,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
             <span><strong>{{ history.batch.failedRows }}</strong> 失败</span>
             <UiStatusTag :value="history.batch.status" :labels="importBatchStatusLabels" :tone="importBatchStatusTone(history.batch.status)" />
           </div>
-          <p class="architecture-muted">来源文件：{{ history.batch.fileName }} · 操作人 {{ history.batch.createdByDisplayName }} · {{ formatDateTime(history.batch.createdAt) }}</p>
+          <p class="architecture-muted">来源文件：{{ history.batch.fileName }} · 操作人 <UiUserIdentity :user-id="history.batch.createdBy" :fallback-name="history.batch.createdByDisplayName" variant="compact" /> · {{ formatDateTime(history.batch.createdAt) }}</p>
           <el-table :data="history.items" size="small" border max-height="52vh">
             <el-table-column label="行号" prop="lineNo" width="64" />
             <el-table-column label="物理子系统" min-width="110"><template #default="scope">{{ scope.row.row.physicalCode || '—' }}</template></el-table-column>

@@ -1,0 +1,88 @@
+{
+  "task_id": "T32-r1-doc",
+  "observer": "独立复核轮（本地 MySQL information_schema 只读复算 + 仓库迁移脚本与 ContentAssetTables 登记表交叉比对；与文档写作动作分离）",
+  "observed_at": "2026-09-03T14:05:00+08:00",
+  "environment": "本地容器 ccb-platform-mysql（MySQL 8.4.11，库 ccb_platform，只读查询，未使用业务口令）；仓库分支 feat/REQ-20260820-031-data-migration，Flyway 最后一条 V159；未连接生产库，未加载真实业务数据",
+  "closes": [
+    "F-0018 resolution 中「文档内不写不可复现的结论，一律附取证方法」这一 self-commitment 的落地复核"
+  ],
+  "supersedes_baseline": "不取代 execution-T32-r1.json / observation-T32-r1.json 的代码结论；本观测只覆盖交付物 docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md 的事实准确性与可复现性",
+  "findings": [
+    {
+      "id": "F-DOC-01",
+      "statement": "表集合与列总量与文档一致",
+      "requirement": "§1 表清单必须等于库内现存 dm_% 表集合（V159 后 21 张）",
+      "method": "information_schema.TABLES / COLUMNS 计数复算",
+      "observed": "21 张表、314 列；ENGINE/TABLE_COLLATION 无 InnoDB + utf8mb4_unicode_ci 之外的例外（违规集合返回 NULL）",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-DOC-02",
+      "statement": "生成列「13 张表 14 列」成立，但取证查询存在可误用口径",
+      "requirement": "§4.1 与 §11 必须给出可复现且不会误导的取证方式",
+      "method": "分别用 EXTRA LIKE '%GENERATED%' 与 GENERATION_EXPRESSION <> '' 两种过滤复算，并统计 EXTRA 取值分布",
+      "observed": "宽松过滤得 21 张表 50 列（混入 DEFAULT_GENERATED 21 列、DEFAULT_GENERATED on update CURRENT_TIMESTAMP 15 列）；严格过滤得 13 张表 14 列，EXTRA 全为 STORED GENERATED，与 §4.1 一致。原文 §11 未附生成列取证 SQL，复现者极可能踩宽松过滤并把文档判为失实",
+      "verdict": "correction_applied",
+      "correction": "§11 补 GENERATION_EXPRESSION 口径的查询与「取证陷阱」段落；头部补结构总量行"
+    },
+    {
+      "id": "F-DOC-03",
+      "statement": "索引计数口径存在歧义（唯一键是否计入「二级索引」未定义）",
+      "requirement": "§4.3/§9.3 的索引条数必须可被单一口径复算",
+      "method": "information_schema.STATISTICS 按 TABLE_NAME, INDEX_NAME 分组，区分 NON_UNIQUE 复算 dm_issue/dm_meeting 与 10 张内容表",
+      "observed": "实测 dm_issue 非主键索引 5 个（1 唯一 + 4 普通）、dm_meeting 7 个（1 唯一 + 6 普通），原文只写「4 条/6 条」未定义口径；内容表三件套、结构化表无 MD5 索引、idx_*_md5 缺 project_id、dm_plan 额外 dimension/system、dm_report 额外 period 全部成立",
+      "verdict": "correction_applied",
+      "correction": "§4.3 明确「二级索引 = 非主键且非唯一」并给出含唯一键的全集数；§9.3 会议索引冗余行改为「6 条普通二级索引」"
+    },
+    {
+      "id": "F-DOC-04",
+      "statement": "物理外键与 CHECK 约束的极端稀少属实",
+      "requirement": "§4.4/§5.1 声称仅 1 条物理外键、0 条 CHECK",
+      "method": "KEY_COLUMN_USAGE（REFERENCED_TABLE_NAME 非空）与 CHECK_CONSTRAINTS（按约束名筛）复算",
+      "observed": "外键仅 dm_target_table_field.table_id → dm_target_table；dm 相关 CHECK 约束 0 条。另记 MySQL 8.4 的 CHECK_CONSTRAINTS 无 TABLE_NAME 列，只能按约束名筛，已写入 §11",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-DOC-05",
+      "statement": "专属列归属与 ContentAssetTables 登记表一致",
+      "requirement": "§3.1/§6.2 的文件型 7 表（checksum_md5）与结构化 3 表（structured_data）划分",
+      "method": "COLUMNS 按列名反查表集合，与 FILE_TABLES/STRUCTURED_TABLES 常量比对",
+      "observed": "checksum_md5 命中 dm_dependency,dm_mapping_doc,dm_plan,dm_release_drill,dm_report,dm_script,dm_topic（7）；structured_data 命中 dm_intermediate_table,dm_parameter,dm_rule（3）；与 Java 登记表逐项相等，无第三轨",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-DOC-06",
+      "statement": "生成列注释缺失只涉及 2 列",
+      "requirement": "§9.3 P2「生成列注释缺失」的证据列名",
+      "method": "生成列集合内筛 COLUMN_COMMENT = ''",
+      "observed": "恰为 dm_issue.active_issue_code、dm_meeting.active_meeting_code，其余 12 列有注释",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-DOC-07",
+      "statement": "四张 Mermaid 图未经渲染验证",
+      "requirement": "§6 关系视图应可被读者渲染",
+      "method": "围栏配对计数与逐行人工阅读（erDiagram 关系行、flowchart 节点与边）",
+      "observed": "代码块 4 个、围栏 12 处配对完整；基数符号与实体名符合 Mermaid 语法惯例。但本机与 web/ 均无 mermaid 依赖，未做真实渲染，语法错误风险未被排除",
+      "verdict": "not_verified"
+    }
+  ],
+  "regression_checks": [
+    "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-.../codex-task-scope.yaml --base origin/main --head HEAD --working-tree：EXIT=0，143 changed file(s)",
+    "node scripts/check-ai-control-layout.mjs：本需求 0 命中（grep -c 031-data-migration 结果为 0）",
+    "node scripts/check-all-governance.mjs：EXIT=1，输出 34 行全部归属 req-20260813-030/032、req-20260817-031、req-20260818-032、req-20260819-033/034/035、req-20260822-048、req-20260827-049、req-20260901-059，与本需求无关，属既有基线",
+    "state.json 以 json.load 解析通过（revision 206 → 207）"
+  ],
+  "blind_spots": [
+    "不存在「文档描述的表集合 vs 库实际表集合」的自动化传感器，本轮仍靠人工复算；文档下次仍会漂移",
+    "§1/§7 的行数是本地快照（dm_operation_log 1069 行、dm_dashboard_snapshot 1 行会随运行增长），不构成生产结构证明",
+    "文档正确性只到「与本地库和当前分支代码一致」层级；未做运行与浏览器验收（纯文档改动，无需）",
+    "Mermaid 未渲染（见 F-DOC-07）"
+  ],
+  "verdict": "database-schema-and-relations.md 的结构事实经独立复算成立：21 表 / 314 列 / 101 索引（80 非主键）/ 1 外键 / 0 CHECK / 14 生成列（13 表）/ 专属列划分与 Java 登记表一致 / 注释缺失范围精确。本轮发现并当场纠正 2 处质量问题：生成列取证口径缺失（会让复现者得出 50 的错数）、二级索引计数歧义。未闭合一处：Mermaid 渲染未经工具验证。证据等级：检查通过（静态与库结构复算），不涉及运行与浏览器验收。",
+  "phase_recommendation": "converged_with_registered_residuals",
+  "required_before_release": [
+    "在具备 mermaid 渲染的环境（文档站或 IDE 预览）确认 §6 四张图可渲染，否则降级为文字关系表",
+    "后续任何追加 dm_% 表结构的 Flyway 迁移，验收清单必须包含本文件同步项并复跑 §11 查询（F-0018 的 correction_check 落地）"
+  ]
+}

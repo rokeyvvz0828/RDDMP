@@ -31,11 +31,13 @@ import DataMigrationTargetTables from '../modules/data-migration/views/base/Targ
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
+import ReleaseOperationsManagement from '../modules/release/ReleaseOperationsManagement.vue'
 import TestManagementList from '../modules/test-management/TestManagementList.vue'
 import BusinessDayManagement from '../modules/test-management/business-day/BusinessDayManagement.vue'
 import TestConfigurationPage from '../modules/test-management/configuration/TestConfigurationPage.vue'
 import { getWorkflowTaskContext } from '../api/workflow'
 import { useAuthStore } from '../stores/auth'
+import { useProjectContextStore } from '../stores/project-context'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -66,19 +68,19 @@ const router = createRouter({
           path: 'projects',
           name: 'projects',
           component: ProjectView,
-          meta: { title: '项目管理' }
+          meta: { title: '项目管理', projectContext: 'global' }
         },
         {
           path: 'projects/:projectId',
           name: 'project-detail',
           component: ProjectView,
-          meta: { title: '项目详情' }
+          meta: { title: '项目详情', projectContext: 'global' }
         },
         {
           path: 'system/params',
           name: 'system-params',
           component: ParameterView,
-          meta: { title: '参数管理' }
+          meta: { title: '参数管理', projectContext: 'global' }
         },
         // {
         //   path: 'system/form-metadata',
@@ -88,15 +90,26 @@ const router = createRouter({
         // },
         {
           path: 'system/role-permissions',
-          name: 'role-permissions',
+          redirect: '/system/permissions'
+        },
+        {
+          path: 'system/permissions',
+          name: 'permissions',
           component: RolePermissionView,
-          meta: { title: '角色权限配置' }
+          meta: { title: '权限维护', permission: 'system:role:list', menuPath: '/system/permissions', projectContext: 'global' }
+        },
+        {
+          path: 'system/audit',
+          name: 'system-audit',
+          component: () => import('../views/AuditLogView.vue'),
+          meta: { title: '审计日志', permission: 'system:audit:list', menuPath: '/system/audit', projectContext: 'global' }
         },
         {
           path: 'system/:section',
           name: 'module',
           component: ModuleView,
-          props: true
+          props: true,
+          meta: { projectContext: 'global' }
         },
         {
           path: 'workflow',
@@ -145,6 +158,25 @@ const router = createRouter({
           name: 'delivery-showcase',
           component: DeliveryShowcaseModule,
           meta: { title: '交付示范中心' }
+        },
+        { path: 'development', redirect: '/development/tasks' },
+        {
+          path: 'development/work-items/board',
+          name: 'development-work-item-board',
+          component: () => import('../modules/development/DevelopmentWorkItemBoardPage.vue'),
+          meta: { title: '工作项看板', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
+        {
+          path: 'development/tasks',
+          name: 'development-tasks',
+          component: () => import('../modules/development/DevelopmentTaskListPage.vue'),
+          meta: { title: '开发任务', permission: 'development:task:read', menuPath: '/development/tasks' }
+        },
+        {
+          path: 'development/tasks/:taskId',
+          name: 'development-task-detail',
+          component: () => import('../modules/development/DevelopmentTaskDetailPage.vue'),
+          meta: { title: '开发任务详情', permission: 'development:task:read', menuPath: '/development/tasks' }
         },
         {
           path: 'release',
@@ -223,6 +255,42 @@ const router = createRouter({
           }
         },
         {
+          path: 'release-operations',
+          name: 'release-operations-root',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产管理' }
+        },
+        {
+          path: 'release-operations/drill-plans',
+          name: 'release-operations-drill-plans',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产方案', permission: 'release-operations:plan:view', menuPath: '/release-operations/drill-plans' }
+        },
+        {
+          path: 'release-operations/environments',
+          name: 'release-operations-environments',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练环境', permission: 'release-operations:environment:view', menuPath: '/release-operations/environments' }
+        },
+        {
+          path: 'release-operations/drills',
+          name: 'release-operations-drills',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产演练', permission: 'release-operations:drill:view', menuPath: '/release-operations/drills' }
+        },
+        {
+          path: 'release-operations/issues',
+          name: 'release-operations-issues',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产问题分析及跟踪', permission: 'release-operations:issue:view', menuPath: '/release-operations/issues' }
+        },
+        {
+          path: 'release-operations/organization',
+          name: 'release-operations-organization',
+          component: ReleaseOperationsManagement,
+          meta: { title: '投产组织', permission: 'release-operations:organization:view', menuPath: '/release-operations/organization' }
+        },
+        {
           path: 'data-migration',
           redirect: '/data-migration/dashboard/overall'
         },
@@ -234,13 +302,13 @@ const router = createRouter({
           path: 'data-migration/dashboard/overall',
           name: 'data-migration-dashboard-overall',
           component: DataMigrationOverallDashboard,
-          meta: { title: '整体看板' }
+          meta: { title: '整体看板', permission: 'data-migration:dashboard:overall', menuPath: '/data-migration/dashboard/overall' }
         },
         {
           path: 'data-migration/dashboard/components',
           name: 'data-migration-dashboard-components',
           component: DataMigrationComponentDashboard,
-          meta: { title: '组件看板' }
+          meta: { title: '组件看板', permission: 'data-migration:dashboard:components', menuPath: '/data-migration/dashboard/components' }
         },
         {
           path: 'data-migration/content',
@@ -250,73 +318,73 @@ const router = createRouter({
           path: 'data-migration/content/reports',
           name: 'data-migration-content-reports',
           component: DataMigrationReports,
-          meta: { title: '汇报材料' }
+          meta: { title: '汇报材料', permission: 'data-migration:content:reports', menuPath: '/data-migration/content/reports' }
         },
         {
           path: 'data-migration/content/meetings',
           name: 'data-migration-content-meetings',
           component: DataMigrationMeetings,
-          meta: { title: '会议纪要' }
+          meta: { title: '会议纪要', permission: 'data-migration:content:meetings', menuPath: '/data-migration/content/meetings' }
         },
         {
           path: 'data-migration/content/plans',
           name: 'data-migration-content-plans',
           component: DataMigrationPlans,
-          meta: { title: '迁移方案' }
+          meta: { title: '迁移方案', permission: 'data-migration:content:plans', menuPath: '/data-migration/content/plans' }
         },
         {
           path: 'data-migration/content/mappings',
           name: 'data-migration-content-mappings',
           component: DataMigrationMappings,
-          meta: { title: '迁移映射' }
+          meta: { title: '迁移映射', permission: 'data-migration:content:mappings', menuPath: '/data-migration/content/mappings' }
         },
         {
           path: 'data-migration/content/validation-rules',
           name: 'data-migration-content-validation-rules',
           component: DataMigrationValidationRules,
-          meta: { title: '迁移检核规则' }
+          meta: { title: '迁移检核规则', permission: 'data-migration:content:validation-rules', menuPath: '/data-migration/content/validation-rules' }
         },
         {
           path: 'data-migration/content/parameters',
           name: 'data-migration-content-parameters',
           component: DataMigrationParameters,
-          meta: { title: '迁移参数' }
+          meta: { title: '迁移参数', permission: 'data-migration:content:parameters', menuPath: '/data-migration/content/parameters' }
         },
         {
           path: 'data-migration/content/dependencies',
           name: 'data-migration-content-dependencies',
           component: DataMigrationDependencies,
-          meta: { title: '迁移过程依赖文件' }
+          meta: { title: '迁移过程依赖文件', permission: 'data-migration:content:dependencies', menuPath: '/data-migration/content/dependencies' }
         },
         {
           path: 'data-migration/content/programs',
           name: 'data-migration-content-programs',
           component: DataMigrationPrograms,
-          meta: { title: '迁移程序' }
+          meta: { title: '迁移程序', permission: 'data-migration:content:programs', menuPath: '/data-migration/content/programs' }
         },
         {
           path: 'data-migration/content/topics',
           name: 'data-migration-content-topics',
           component: DataMigrationTopics,
-          meta: { title: '专题材料' }
+          meta: { title: '专题材料', permission: 'data-migration:content:topics', menuPath: '/data-migration/content/topics' }
         },
         {
           path: 'data-migration/content/release-drills',
           name: 'data-migration-content-release-drills',
           component: DataMigrationReleaseDrills,
-          meta: { title: '投产及演练' }
+          meta: { title: '投产及演练', permission: 'data-migration:content:release-drills', menuPath: '/data-migration/content/release-drills' }
         },
         {
           path: 'data-migration/content/issues',
           name: 'data-migration-content-issues',
           component: DataMigrationIssues,
-          meta: { title: '问题清单' }
+          meta: { title: '问题清单', permission: 'data-migration:content:issues', menuPath: '/data-migration/content/issues' }
         },
         {
           path: 'data-migration/content/recycle-bin',
           name: 'data-migration-content-recycle-bin',
           component: DataMigrationRecycleBin,
-          meta: { title: '回收站' }
+          meta: { title: '回收站', permission: 'data-migration:content:recycle-bin', menuPath: '/data-migration/content/recycle-bin' }
         },
         {
           path: 'data-migration/base',
@@ -326,27 +394,26 @@ const router = createRouter({
           path: 'data-migration/base/components',
           name: 'data-migration-base-components',
           component: DataMigrationBaseComponents,
-          meta: { title: '系统/组件清单' }
+          meta: { title: '系统/组件清单', permission: 'data-migration:base:components', menuPath: '/data-migration/base/components' }
         },
         {
           path: 'data-migration/base/target-tables',
           name: 'data-migration-base-target-tables',
           component: DataMigrationTargetTables,
           props: true,
-          meta: { title: '目标表结构', category: 'TARGET' }
+          meta: { title: '目标表结构', category: 'TARGET', permission: 'data-migration:base:table-fields-target', menuPath: '/data-migration/base/target-tables' }
         },
         {
           path: 'data-migration/base/intermediate-tables',
           name: 'data-migration-base-intermediate-tables',
           component: DataMigrationTargetTables,
           props: true,
-          meta: { title: '中间表结构', category: 'INTERMEDIATE' }
+          meta: { title: '中间表结构', category: 'INTERMEDIATE', permission: 'data-migration:base:table-fields-intermediate', menuPath: '/data-migration/base/intermediate-tables' }
         },
         { path: 'requirements', redirect: '/requirements/new-project' },
         { path: 'requirements/systems', redirect: '/requirements/new-project' },
         { path: 'requirements/:section', name: 'requirements', component: RequirementsView, props: true, meta: { title: '需求管理平台' } },
         { path: 'requirements/params/:section', name: 'requirement-params-section', component: RequirementsView, props: true, meta: { title: '八大参数管理' } },
-        { path: 'architecture/logical-subsystems', name: 'architecture-logical-subsystems', component: () => import('../modules/architecture/LogicalSubsystemPage.vue'), meta: { title: '逻辑子系统' } },
         { path: 'architecture/physical-subsystems', name: 'architecture-physical-subsystems', component: () => import('../modules/architecture/PhysicalSubsystemPage.vue'), meta: { title: '物理子系统' } },
         { path: 'architecture/subsystem-change-applications', name: 'architecture-subsystem-change-applications', component: () => import('../modules/architecture/SubsystemChangeApplicationListPage.vue'), meta: { title: '架构子系统变更工单' } },
         { path: 'architecture/subsystem-change-applications/new', name: 'architecture-subsystem-change-application-new', component: () => import('../modules/architecture/SubsystemChangeApplicationFormPage.vue'), meta: { title: '新建架构子系统变更工单' } },
@@ -357,8 +424,9 @@ const router = createRouter({
         { path: 'architecture/decisions/new', name: 'architecture-decision-new', component: () => import('../modules/architecture/DecisionMatterFormPage.vue'), meta: { title: '提交架构决策事项' } },
         { path: 'architecture/decisions/:id', name: 'architecture-decision-detail', component: () => import('../modules/architecture/DecisionMatterDetailPage.vue'), meta: { title: '架构决策事项详情' } },
         { path: 'architecture/deployment-units', name: 'architecture-deployment-units', component: () => import('../modules/architecture/DeploymentUnitPage.vue'), meta: { title: '部署单元' } },
+        { path: 'architecture/delivery-units', name: 'architecture-delivery-units', component: () => import('../modules/architecture/DeliveryUnitPage.vue'), meta: { title: '交付单元' } },
         { path: 'architecture/deployment-unit-imports', name: 'architecture-deployment-unit-imports', component: () => import('../modules/architecture/DeploymentUnitImportPage.vue'), meta: { title: '部署单元初始化导入' } },
-        { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '具体环境' } },
+        { path: 'architecture/environments', name: 'architecture-environments', component: () => import('../modules/architecture/EnvironmentPage.vue'), meta: { title: '环境管理' } },
         { path: 'architecture/instances', name: 'architecture-instances', component: () => import('../modules/architecture/InstanceListPage.vue'), meta: { title: '环境部署实例' } },
         { path: 'architecture/plans', name: 'architecture-plans', component: () => import('../modules/architecture/PlanListPage.vue'), meta: { title: '环境搭建计划' } },
         { path: 'architecture/plans/:id', name: 'architecture-plan-detail', component: () => import('../modules/architecture/PlanDetailPage.vue'), meta: { title: '环境搭建计划详情', menuPath: '/architecture/plans' } },
@@ -433,7 +501,7 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (!auth.user) {
-    await auth.hydrate()
+    await auth.hydrate(null)
   }
 
   if (!auth.token) {
@@ -445,6 +513,18 @@ router.beforeEach(async (to) => {
 
   if (to.name === 'login') {
     return { name: 'dashboard' }
+  }
+
+  if (to.meta.projectContext !== 'global') {
+    const projectContext = useProjectContextStore()
+    await projectContext.initialize()
+    if (projectContext.currentId && auth.currentProjectId !== projectContext.currentId) {
+      try {
+        auth.applyAuthorization(await auth.fetchAuthorization(projectContext.currentId))
+      } catch {
+        // Keep the last valid authorization snapshot; explicit project switching reports failures in AppLayout.
+      }
+    }
   }
 
   if (to.path === '/dashboard') {

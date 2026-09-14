@@ -1,0 +1,129 @@
+{
+ "task_id": "T34",
+ "parent_task": "T33",
+ "trigger": "用户指令「继续处理 9.2 中某一项」与「再更新，只保留最终态」：收敛 database-schema-and-relations.md 9.2 剩余四项 P2——子系统引用键不统一、软删唯一键策略不一致、跨表统计线性增长、生成列注释不完整；文档只保留最终态（基线迁至 V164，9.2 四项从治理表移除）。",
+ "status": "implemented_and_verified",
+ "scope_kind": "data_migration_governance_p2_four_items",
+ "decision_recorded": "子系统引用收敛：追加 V162 为 dm_issue/dm_target_table/dm_component 建 system_id/physical_subsystem_id 引用列并按 (tenant_id, code) 回填；应用层 create/update 同时解析 arch_physical_subsystem.id 双写，未匹配保持 NULL；code 列保留为录入/显示键，前端 systemCode 契约与查询过滤不变。软删唯一键：V163 用 active_* 生成列替换 7 个含 deleted 的唯一键（组件 1、目标表 3、字段 3）并删除 dm_issue 旧 uk_dm_issue_code，恢复冲突由数据库唯一键拒绝。跨表统计：组件看板由逐组件×逐表相关子查询改为 9 张内容表一次 UNION ALL 分组后 LEFT JOIN 组件，保留 tenant_id+project_id+deleted=0 过滤。注释：V164 补齐 active_issue_code/active_meeting_code 注释。三项迁移均为仅追加、information_schema 条件式执行，不修改已发布脚本。",
+ "changed_surfaces": [
+  {
+   "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V162__data_migration_subsystem_id_columns.sql（新增）",
+   "purpose": "dm_issue.system_id、dm_target_table.system_id、dm_component.physical_subsystem_id 引用列 + (tenant_id, code) 存量回填 + idx_dm_issue_system_id/idx_target_table_system_id/idx_dm_component_subsystem_id 索引；条件式追加。"
+  },
+  {
+   "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V163__data_migration_active_code_unique_keys.sql（新增）",
+   "purpose": "dm_component/dm_target_table/dm_target_table_field 的 8 个含 deleted 唯一键替换为 active_* 生成列唯一索引；删除 dm_issue 旧 uk_dm_issue_code；存储过程条件式执行。"
+  },
+  {
+   "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V164__data_migration_active_code_column_comments.sql（新增）",
+   "purpose": "补齐 dm_issue.active_issue_code、dm_meeting.active_meeting_code 生成列注释，MODIFY 保留原表达式。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java",
+   "purpose": "create/update 双写 system_id：按 (tenant_id, code) 解析 arch_physical_subsystem.id，未匹配为 NULL。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+   "purpose": "createComponent 双写 physical_subsystem_id；组件编号仍为项目内录入/显示键。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+   "purpose": "createTable（含 Excel 导入复用路径）双写 system_id。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+   "purpose": "组件看板 component() 改为 9 张内容表一次 UNION ALL 按 component_id 分组统计后 LEFT JOIN 组件/物理子系统；整体看板 assets 由 byType 一次分组求和。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java",
+   "purpose": "删除已无使用者的 correlatedCountSumSql；activeCountUnionSql/typeCountUnionSql 保留（ProjectComponentService/StructuredAssetService/看板使用）。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationGovernanceRemediationMySqlTest.java",
+   "purpose": "5 个 Testcontainer MySQL 8.4 用例：V162 回填与索引、V163 唯一键替换与删除重建/恢复冲突、V164 注释、V162 配套三服务双写端到端、看板一次分组统计；cleanFixtureTables 同步清理 flyway_schema_history 保证用例顺序无关。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+   "purpose": "issueCreateInsertBindsAllColumns 占位符 21→22 并断言 INSERT 含 system_code, system_id。"
+  },
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java",
+   "purpose": "夹具停在 V148，为服务双写补 system_id 列（ALTER 对齐 V162），避免 UPDATE 报错。"
+  },
+  {
+   "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+   "purpose": "收敛为最终态：DDL 基线 V161→V164；列数（dm_issue 28、dm_component 13、dm_target_table 20、dm_target_table_field 23）；9 张内容表口径；活动唯一键表补组件/目标表/字段；6.2 补 id 引用索引；9.2 移除四项已处理 P2。"
+  },
+  {
+   "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+   "purpose": "writable_paths 与 database.migration_files 登记 V162-V164；compatibility_and_rollback 与 public_capability_change.note 补 T34 说明。"
+  }
+ ],
+ "requirements_addressed": [
+  "9.2 P2「子系统引用键不统一」",
+  "9.2 P2「软删唯一键策略不一致」",
+  "9.2 P2「跨表统计线性增长」",
+  "9.2 P2「生成列注释不完整」",
+  "文档「只保留最终态」：数据库关系说明与治理表同步收敛"
+ ],
+ "commands": [
+  {
+   "command": "mvn -q -pl :ccb-data-migration -am -DskipTests compile -o",
+   "exit_code": 0,
+   "result": "双写改动编译通过。"
+  },
+  {
+   "command": "mvn -pl :ccb-data-migration -o test -Dtest=DataMigrationGovernanceRemediationMySqlTest",
+   "exit_code": 0,
+   "result": "5/5（V162 回填索引、V163 唯一键行为、V164 注释、三服务双写端到端、看板一次分组统计）。"
+  },
+  {
+   "command": "mvn -pl :ccb-data-migration -o test",
+   "exit_code": 0,
+   "result": "模块全量测试通过（见 observation-T34）。"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "information_schema：V162 回填 system_id/physical_subsystem_id 与 3 个 idx（Testcontainer）",
+   "result": "dm_issue/dm_target_table/dm_component 命中行回填为 arch id，幽灵 code 与跨租户保持 NULL；3 个索引存在。"
+  },
+  {
+   "check": "information_schema：V163 唯一键列序与行为（Testcontainer）",
+   "result": "旧 8 键不存在，新 active_* 唯一键列序符合；软删行同值可重建，恢复冲突被拒绝；uk_dm_issue_code 已删。"
+  },
+  {
+   "check": "information_schema：V164 column_comment（Testcontainer）",
+   "result": "active_issue_code/active_meeting_code 注释均含「仅未删除记录取值」。"
+  },
+  {
+   "check": "三服务 create 双写（Testcontainer 端到端）",
+   "result": "组件 SYS-2→20/SYS-1→10、NO-ARCH→NULL；问题 SYS-1→10、NO-ARCH→NULL；目标表 SYS-1→10。"
+  },
+  {
+   "check": "DashboardService.component/overall（Testcontainer 运行时）",
+   "result": "组件 1=3、组件 2=2（软删与非组件行排除）；整体 assets=6（byType 求和，含 MAPPING_DOC=1）。"
+  }
+ ],
+ "invariants_checked": [
+  "Flyway 只追加：V162-V164 均为新文件，已发布脚本未修改（V148/V157 未动）",
+  "前端 systemCode/physicalSubsystemCode 契约不变，查询仍按 code 过滤",
+  "项目过滤不变量：看板 UNION ALL 恒带 tenant_id + project_id + deleted=0",
+  "写入归属双写不改变既有业务校验（ensureSystemCode/ensureSystemBelongsToProject 保留）",
+  "id 引用列可空：未匹配 arch 的行保持 NULL，不做严格外键"
+ ],
+ "disturbances": [
+  "首版双写用 JdbcTemplate.query(sql, Class) 不存在该重载，编译失败；改用 queryForList(sql, Class, args)",
+  "端到端夹具陆续补齐 arch 显示列、sys_role/sys_user_role、sys_user.deleted 等被服务 SQL 引用的列",
+  "组件看板断言初次把 system_code 当作显示名（实为物理子系统编号）、整体资产数漏算无组件行，按实际 SQL 语义修正",
+  "模块全量测试暴露注册测试占位符 21→22 与 IssueMigrationMySqlTest 夹具缺 system_id，已同步"
+ ],
+ "assumptions_falsified": [
+  "假设「存量 dm_component 一定能在 arch 表中命中 id」不成立：NO-ARCH 场景验证未命中保持 NULL 是预期而不是数据问题"
+ ],
+ "unresolved_items": [
+  "生产库随应用启动执行 flyway（V162-V164 自动生效），不在开发环境手工执行",
+  "V163 对超大表 DDL 耗时未在生产规模评估"
+ ],
+ "rollback": "删除 V162-V164 新增列/索引/唯一键并恢复旧的含 deleted 唯一键需另行审批的补偿迁移；应用回退同时停止双写即可，新旧列共存无数据损坏。"
+}

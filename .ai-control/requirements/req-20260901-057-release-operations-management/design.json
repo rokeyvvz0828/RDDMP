@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260901-057-release-operations-management",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-01-release-operations-management-design.md",
+  "objective": "新增按项目隔离的投产管理父级菜单及五个业务页面。",
+  "requirements": [
+    "投产演练计划包含方案、环境搭建和多轮演练记录",
+    "普通/回退投产时序可维护时序明细并按序展示",
+    "投产问题支持筛选、分析和跟踪",
+    "投产组织维护无层级投产组和当前项目成员",
+    "顶部项目切换后五个业务页面只显示当前项目数据"
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "数据按项目独立维护且不绑定投产窗口/版本申请", "reason": "用户已确认项目级独立数据主对象"},
+    {"id": "D2", "decision": "普通和回退时序共用 timeline/item 模型并用类型隔离", "reason": "两类时序字段和维护行为一致，减少重复契约"},
+    {"id": "D3", "decision": "投产组成员只引用当前项目有效成员", "reason": "复用现有项目成员数据并避免跨项目越权"}
+  ],
+  "risks": ["V123 迁移与现有版本链", "项目成员公开契约复用", "切换项目的异步旧请求覆盖", "时序序号和并发编辑"],
+  "approval": {"status": "approved", "evidence": "用户确认按项目独立维护投产数据", "confirmed_at": "2026-09-01T00:00:00+08:00"}
+}

@@ -1,0 +1,23 @@
+{
+  "task_id":"T1",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/platform/boot/src/main/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisher.java","purpose":"local 启动时检查并正式发布两个固定流程"},
+    {"path_or_resource":"server/src/platform/boot/src/test/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisherTest.java","purpose":"覆盖草稿发布、已发布跳过和缺失失败"},
+    {"path_or_resource":"server/src/platform/boot/src/main/resources/application-local.yml","purpose":"登记可关闭、可覆盖的本地固定流程配置"}
+  ],
+  "requirements_addressed":["R1","R2","R3"],
+  "commands":[
+    {"command":"mvn -pl :ccb-boot -am -Dtest=LocalSeededWorkflowPublisherTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"LocalSeededWorkflowPublisherTest 3/3，Reactor BUILD SUCCESS"},
+    {"command":"mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemSubmissionServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"24 tests，0 failures，BUILD SUCCESS"},
+    {"command":"mvn -pl :ccb-boot -am test","exit_code":1,"salient_output":"ccb-architecture 运行 267 tests，1 failure、10 errors；失败集中于既有 ArchitectureStandardsDecisionsMySqlTest、NetworkWorkflowIntegrationMySqlTest、NetworkAccessMigrationMySqlTest，ccb-boot 因上游失败被跳过"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误"}
+  ],
+  "local_checks":[{"check":"JSON 解析","result":"passed","evidence":"ledger JSON passed","limitations":[]},{"check":"真实 local 启动","result":"not-run","evidence":"Docker MySQL 可用，但当前进程缺少全部安全环境变量且 .env 禁止读取","limitations":["未观察真实 deployment_id"]}],
+  "diff_summary":["新增 local-only ApplicationRunner","复用 WorkflowService.publish，不写 Flowable 表","不修改历史迁移或架构业务服务"],
+  "invariants_checked":[{"invariant":"非 local 不自动发布","result":"passed","evidence":"@Profile(local)"},{"invariant":"不伪造发布状态","result":"passed","evidence":"唯一执行器为 WorkflowService.publish"},{"invariant":"保护用户改动","result":"passed","evidence":"未修改既有 req-20260812-021 未跟踪文件"}],
+  "disturbances":[{"event":"治理检查存在历史账本错误","impact":"全仓治理退出 1，与本任务文件无关"},{"event":"scope 检查包含既有 forbidden 未跟踪文件","impact":"路径检查退出 1，本任务路径未报告越界"},{"event":"完整 ccb-boot 反应堆在 ccb-architecture 失败","impact":"既有迁移/网络/标准决策集成测试共 1 failure、10 errors，boot 模块未执行；新增启动器聚焦测试已单独通过"}],
+  "assumptions_falsified":[],
+  "unresolved_items":["使用本地安全环境变量启动后确认两个定义 status=PUBLISHED 且 deployment_id 非空"],
+  "recommended_next":"observe"
+}

@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackageClasses = {
-        LogicalSubsystemController.class,
+        PhysicalSubsystemController.class,
         SubsystemChangeApplicationController.class,
         ArchitectureStandardController.class,
         ArchitectureDecisionController.class,

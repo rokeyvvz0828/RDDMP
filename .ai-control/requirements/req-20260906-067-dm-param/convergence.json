@@ -1,0 +1,54 @@
+{
+  "schema_version": 4,
+  "requirement_id": "REQ-20260906-067",
+  "control_prefix": "req-20260906-067-dm-param",
+  "baseline_revision": "baseline.json revision 1 (A/B/C 用户决策已确认)",
+  "status": "pending_manual_acceptance",
+  "convergence_evidence": [
+    "后端聚焦单测通过：ParameterServiceTest/DataMigrationModuleRegistrationTest/ContentRecycleBinRegistryTest",
+    "前端 npm --prefix web run build 构建通过",
+    "git diff --check 通过；治理模块检查通过（除既有无关 REQ-060061 文件）",
+    "V197 已在本地开发库（ccb_platform, mysql:8.4）Flyway 执行并验证：成功应用至 v197，旧列删除、新列/唯一键/索引/码值断言通过"
+  ],
+  "requirement_results": {
+    "R1": {
+      "result": "implemented_verified_backend_frontend",
+      "limitations": [
+        "浏览器真实路径验收未执行"
+      ]
+    },
+    "R2": {
+      "result": "implemented_verified_unit_tests",
+      "limitations": []
+    },
+    "R3": {
+      "result": "implemented_verified_unit_tests",
+      "limitations": [
+        "导入未在真实浏览器/Excel 文件走查"
+      ]
+    },
+    "R4": {
+      "result": "implemented_verified_unit_tests",
+      "limitations": [
+        "回收站真实路径未走查"
+      ]
+    },
+    "R5": {
+      "result": "implemented",
+      "limitations": [
+        "真实角色登录验收未执行"
+      ]
+    },
+    "R6": {
+      "result": "implemented_verified_unit_tests",
+      "limitations": []
+    }
+  },
+  "open_verifications": [
+    "本地启动 MySQL/MinIO/后端/前端，按桌面与 375/390/430 移动视口走通 筛选/新增/导入/编辑/删除/回收站",
+    "全量后端模块测试中 4 个既有无关失败需另行隔离（非本需求引入）",
+    "真实浏览器路径验收未执行（本地前端/后端联调）"
+  ],
+  "verdict": "not_converged_until_manual_acceptance",
+  "recorded_at": "2026-09-06T16:50:00+08:00"
+}

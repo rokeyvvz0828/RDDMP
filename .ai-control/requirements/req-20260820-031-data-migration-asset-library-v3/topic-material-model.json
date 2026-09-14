@@ -1,0 +1,15 @@
+{
+  "baseline_revision": 1,
+  "plant_boundary":{"inside":["dm_topic专题字段","dm_topic_system","V180参数初始化","TopicService/Controller/RecycleBinSource","TopicsPage和data-migration API"],"outside":["platform/system参数实现","全局项目切换器","公共附件和审计表结构","其他业务模块"]},
+  "state_variables":["专题元数据","系统关系集合","TOPIC附件集合","参数启用状态","deleted状态","项目和用户授权状态"],
+  "causal_paths":["参数/系统选项->服务端校验->专题与关系事务->列表详情","临时附件->附件归属校验->公共关系绑定->下载/回收站生命周期","项目上下文/权限->SQL范围与实体授权->审计"],
+  "interfaces":["SystemReferenceQuery.activeParameters","ContentAttachmentService","DataMigrationPermissionService","统一RecycleBinSource SPI","/api/data-migration/topics*"],
+  "sensors":["MySQL8.4迁移和SHOW CREATE断言","TopicService/Controller权限与事务测试","前端构建和真实浏览器视口","scope/governance静态检查"],
+  "actuators":["V180追加迁移","TopicService/TopicController","TopicRecycleBinSource注册和通用TOPIC摘除","TopicsPage/API契约"],
+  "measurements":[{"requirement_id":"R1","sensor":"迁移结构、服务必填校验和详情列表断言"},{"requirement_id":"R2","sensor":"参数类别/23项计数及options接口"},{"requirement_id":"R3","sensor":"关系唯一键、多附件、软删恢复purge测试"},{"requirement_id":"R4","sensor":"npm build与375/390/430/1280浏览器验收"},{"requirement_id":"R5","sensor":"400/403/409和dm_operation_log项目维度断言"},{"requirement_id":"R6","sensor":"git diff、scope和治理检查"}],
+  "disturbances":["已有REQ-031账本处于converged","其他需求目录治理格式错误","管理员停用参数","项目切换或附件失效","并发编辑"],
+  "delays":["参数和系统选项异步加载","附件先上传后绑定专题事务","统一回收站按来源聚合分页"],
+  "assumptions":["系统参数公开契约可按类别读取启用项","dm_component提供项目活动系统编号","专题页面继续不展示所属项目字段"],
+  "control_assessment":["平台参数实现和公共附件/审计表结构为只读边界","TOPIC可通过专属服务提供等价回收站投影","T1-T5串行依赖明确；执行器和传感器足以覆盖R1-R6"],
+  "model_status":"ready"
+}

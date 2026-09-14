@@ -1,0 +1,82 @@
+{
+  "task_id": "T40",
+  "parent_task": "T39",
+  "trigger": "用户指令「治理：P1 | 审计缺项目维度 | dm_operation_log 无 project_id | 追加字段和索引，写入侧从实体项目上下文填充；补项目级审计查询测试」；开发阶段数据库不需要备份（用户此前确认）。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_audit_project_dimension",
+  "decision_recorded": "追加 V167 条件式迁移为 dm_operation_log 增加 project_id（BIGINT NOT NULL DEFAULT 0，置于 tenant_id 之后）与项目级审计索引 idx_dm_operation_log_project (tenant_id, project_id, entity_type, created_at)。审计签名统一为 audit(user, operation, projectId, entityId)：创建/导入类取入参项目（projectId/scope），维护类取库中实体 project_id（恢复/删除/彻底删除等），清空回收站类（*_PURGE_ALL）取操作范围项目且 entity_id=0。存量行 project_id=0 不参与项目级查询，追溯需另行批准补偿迁移。开发阶段免备份。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V167__data_migration_operation_log_project.sql（新增）",
+      "purpose": "追加 dm_operation_log.project_id（AFTER tenant_id，存量默认 0）与 idx_dm_operation_log_project；information_schema 条件式、幂等；不修改历史脚本。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/PlanService.java",
+      "purpose": "audit 加 projectId；PLAN_UPLOAD/UPDATE/DELETE/RESTORE/PURGE 落实体项目；requireRecycleBinScope 改为返回 long。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MeetingService.java",
+      "purpose": "audit 加 projectId；MEETING_CREATE/UPDATE/DELETE/RESTORE/PURGE 落实体项目，附件恢复/删除区落实体项目，PURGE_ALL/PURGE_ALL_ATTACHMENTS 落操作范围；requireMeetingScope 改为返回 long。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/IssueService.java",
+      "purpose": "audit 加 projectId；ISSUE_CREATE/UPDATE/DELETE/RESTORE/PURGE 落实体项目（restore/purge 保持先全量校验后写入的两阶段结构，projectId 经 Map 携带），PURGE_ALL 落操作范围。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+      "purpose": "audit 加 projectId；表/字段增删改与级联删空表（TARGET_TABLE_DELETE）审计均落实体项目。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+      "purpose": "audit 加 projectId；ASSET_UPLOAD/REPLACE/DELETE/RESTORE/PURGE 落实体项目；requireDeletedProjectScope 改为返回 long。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+      "purpose": "STRUCTURED_CREATE 由内联写日志改为走 audit 助手；UPDATE/DELETE/RESTORE/PURGE 落实体项目。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java",
+      "purpose": "audit 加 projectId；REPORT_UPLOAD/BATCH_UPLOAD/UPDATE/DELETE/RESTORE/PURGE 落实体项目。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+      "purpose": "STRUCTURED_IMPORT 审计按导入 scope 记录 project_id。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "purpose": "audit 加 projectId；COMPONENT_CREATE/UPDATE/DELETE 落实体项目。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationGovernanceRemediationMySqlTest.java",
+      "purpose": "dm_operation_log 夹具补 project_id 列；新增 v167AddsOperationLogProjectDimension：V166->V167 迁移 schema 断言（列+索引+既有索引保留），服务端写侧端到端（issue 全生命周期、purgeAll、目标表、组件），项目级审计分组查询断言。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueMigrationMySqlTest.java",
+      "purpose": "dm_operation_log 夹具补 project_id 列，保证旧结构迁移测试不因新写入列失败。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java",
+      "purpose": "mock 断言参数索引 args[2]->args[3]（INSERT 新增 project_id 占位符后 operation 顺延）。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "DDL 基线上移至 V167；dm_operation_log 表清单 10->11 列、3.20 补 project_id 行与项目级索引；第 7 节审计描述更新为带项目维度；9.1 补审计项目维度合理性条目；9.2 治理表加治理状态列并标记已处置（V167）；复核口径 V162-V167。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      "purpose": "writable_paths/migration_files 登记 V167；compatibility_and_rollback 与 public_capability_change.note 追加 T40 说明。"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/execution-T40.json / observation-T40.json（新增）",
+      "purpose": "任务执行与独立观测账本。"
+    }
+  ],
+  "verification": [
+    "后端整体回归：mvn -pl :ccb-data-migration -am test 通过，15 个测试类全部 0 failures / 0 errors（80 tests，含 DataMigrationGovernanceRemediationMySqlTest 7 项，其中新增 v167AddsOperationLogProjectDimension 专项）。",
+    "V167 迁移（MySQL 8.4 实测）：dm_operation_log 追加 project_id BIGINT NOT NULL DEFAULT 0（AFTER tenant_id）与 idx_dm_operation_log_project (tenant_id, project_id, entity_type, created_at)；既有 idx_dm_operation_log 保留；information_schema 条件式幂等。",
+    "写侧端到端（MySQL 8.4 + 真实服务）：ISSUE_CREATE/UPDATE/DELETE/RESTORE/PURGE、TARGET_TABLE_CREATE、COMPONENT_CREATE 审计均落实体项目；ISSUE_PURGE_ALL 记录操作范围项目且 entity_id=0；按 project_id 分组统计正确（项目 10 计 8 条、项目 20 计 3 条、跨项目 2 个）。",
+    "IssueServiceTest.restorePrevalidatesWholeBatchBeforeWriting 保持两阶段预校验语义通过；ReportServiceTest mock 断言参数索引已同步。"
+  ],
+  "not_done": "未运行真实浏览器验收（本任务为纯后端写入侧+迁移+测试，无前端契约变更，web 前端未改动）；未修改任何历史迁移脚本；未对 dm_operation_log 存量行做补偿回填（默认 0，需另行批准迁移）。",
+  "noted_risk": "dm_operation_log 存量行 project_id=0，不参与项目级审计查询，如需追溯历史需补偿迁移；ExcelService import 与 ContentFileAssetService/MeetingService 附件审计未逐路径跑 MySQL 端到端（由同构路径与模块级测试覆盖）；GITHUB-RULES 下未提交、未推送、未合并。"
+}

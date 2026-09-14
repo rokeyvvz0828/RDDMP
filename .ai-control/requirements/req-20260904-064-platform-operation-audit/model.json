@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260904-064-platform-operation-audit",
+  "status": "validated",
+  "boundary": {
+    "inside": ["已认证 HTTP 请求采集", "sys_operation_log", "sys_login_log 查询", "项目审计范围", "日志保留", "审计页面"],
+    "outside": ["业务响应正文", "领域审计表", "外部日志系统", "生产运维发布"]
+  },
+  "state_variables": ["auditIncluded", "operationType", "operationCode", "projectId", "responseStatus", "durationMs", "createdAt"],
+  "interfaces": ["Spring MVC HandlerInterceptor", "SystemOperationAuditContext", "JdbcTemplate", "/api/system/audit/*", "AuthRepository routes", "Vue audit page"],
+  "sensors": ["OperationAuditPolicyTest", "OperationAuditServiceTest", "OperationAuditRetentionJobTest", "JdbcSystemOperationAuditTest", "Maven", "Vue build", "browser"],
+  "actuators": ["集中路径策略", "请求上下文", "V156 列与索引", "SQL EXISTS 数据范围", "定时 DELETE", "动态菜单", "响应式页面"],
+  "disturbances": ["GlobalExceptionHandler 处理异常", "旧手工审计", "缺失项目参数", "代理转发头", "删除用户项目", "大日志量"],
+  "observability": "策略、持久化参数、查询 SQL、角色结果、迁移和 UI 均有独立传感器；无法确认的项目归属显式为空。",
+  "controllability": "采集范围、去重、查询范围和保留均有集中执行器；业务内部无 HTTP 上下文时保留旧审计路径。",
+  "assumptions": [
+    {"text":"存量 SystemOperationAudit 调用与 HTTP 请求同线程","falsifier":"异步调用测试发现上下文缺失或重复"},
+    {"text":"部署后端只接受可信反向代理流量","falsifier":"后端端口公网直连或转发头可由客户端伪造"}
+  ]
+}

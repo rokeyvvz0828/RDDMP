@@ -58,7 +58,7 @@ class JdbcSystemOperationAuditTest {
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).update(contains("trace_id"), args.capture());
         assertEquals(0, args.getValue()[6]);
-        assertEquals(255, ((String) args.getValue()[7]).length());
+        assertEquals("Business operation failed", args.getValue()[7]);
         assertNull(args.getValue()[8]);
 
         Method success = JdbcSystemOperationAudit.class.getMethod("recordSuccess", SystemOperationAuditCommand.class);

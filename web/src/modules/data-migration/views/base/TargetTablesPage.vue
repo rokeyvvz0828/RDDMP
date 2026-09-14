@@ -3,16 +3,18 @@
   说明：上下结构维护表信息 + 字段明细；字段粒度分页列表；支持批量上传/单笔新增/查看/修改表信息/字段行编辑/删除/导出。
         系统编号联动物理子系统带出只读事业群/系统名称（不落库）；字段英文名/中文名/字典编号不允许空格；
         表英文名/中文名在 项目+系统编号 下唯一，字段英文名/中文名在表内唯一。覆盖加载/空/失败/无权限/提交中状态与移动端卡片化。
+        所属项目唯一取自全局项目上下文：页内不再有项目筛选、项目下拉与「所属项目」字段，列表/导出/新增/批量导入均自动使用当前项目，
+        导入时服务端逐行校验模板「所属项目编码」与当前项目一致，不一致的行按行失败；项目切换后重置分页与其他筛选条件重查。
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Download, Edit, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, genFileId, type UploadFile, type UploadInstance, type UploadProps, type UploadRawFile } from 'element-plus'
+import { Delete, Document, Download, Edit, Plus, Refresh, Search, Upload, UploadFilled, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
-import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
+import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../../../api/error'
 import { useAuthStore } from '../../../../stores/auth'
@@ -24,31 +26,37 @@ import {
   deleteTargetTables,
   downloadTargetTableTemplate,
   exportTargetTables,
+  getSystemOptions,
   importTargetTables,
-  listPhysicalSubsystemsByCode,
+  listAllPhysicalSubsystems,
   listTargetTableFields,
   listTargetTables,
   updateTargetTable,
   updateTargetTableField,
   type TableCategory,
   type TargetTableField,
-  type TargetTableRecord
+  type TargetTableRecord,
+  type SelectOption
 } from '../../../../api/data-migration'
-import { getProjectWorkbench } from '../../../../api/project'
-import type { Project } from '../../../../types/project'
+import ProjectScopeState from '../../components/ProjectScopeState.vue'
+import { useProjectScope } from '../../composables/useProjectScope'
 
 const route = useRoute()
 const props = defineProps<{ category?: TableCategory }>()
 const resolvedCategory = computed<TableCategory>(() => (props.category ?? (route.meta.category as TableCategory) ?? 'TARGET'))
+
+const scope = useProjectScope()
+const scopeState = scope.state
+const scopeProjectId = scope.projectId
 
 const auth = useAuthStore()
 const readCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target' : 'data-migration:base:table-fields-intermediate')
 const createCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target:create' : 'data-migration:base:table-fields-intermediate:create')
 const updateCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target:update' : 'data-migration:base:table-fields-intermediate:update')
 const deleteCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target:delete' : 'data-migration:base:table-fields-intermediate:delete')
-const canCreate = computed(() => auth.hasPermission(createCode.value))
-const canUpdate = computed(() => auth.hasPermission(updateCode.value))
-const canDelete = computed(() => auth.hasPermission(deleteCode.value))
+const canCreate = computed(() => auth.hasPermission(createCode.value) || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canUpdate = computed(() => auth.hasPermission(updateCode.value) || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
+const canDelete = computed(() => auth.hasPermission(deleteCode.value) || auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
 
 const title = computed(() => (resolvedCategory.value === 'TARGET' ? '目标表结构' : '中间表结构'))
 
@@ -62,21 +70,34 @@ const pageSize = ref(20)
 const actionBusy = ref(false)
 const selectedIds = ref<number[]>([])
 
-// 记录每行被裁剪进 "..." 的操作（key: row.id），用于控制下拉菜单只显示被裁剪的操作
+// 记录每行被裁剪进 "..." 的操作（key: row.table_code），用于控制下拉菜单只显示被裁剪的操作
 const clippedMap = reactive(new Map<number, Set<string>>())
 function getClipped(row: TargetTableRecord) {
-  return clippedMap.get(row.id) ?? new Set<string>()
+  return clippedMap.get(row.table_code) ?? new Set<string>()
 }
 
-const projects = ref<Project[]>([])
 const filters = reactive({
-  projectId: undefined as number | undefined,
   systemCode: '',
   isKeyField: undefined as number | undefined,
   dictCode: '',
   tableKeyword: '',
   fieldKeyword: ''
 })
+// 系统筛选：本项目数迁系统数量小（≤150），一次性加载后下拉本地随输随筛（编号/名称均可、不区分大小写）
+const filterSysOpts = ref<SelectOption[]>([])
+const filterSysLoading = ref(false)
+async function loadFilterSystems() {
+  if (scopeProjectId.value == null) { filterSysOpts.value = []; return }
+  filterSysLoading.value = true
+  try {
+    const { data } = await getSystemOptions(scopeProjectId.value)
+    filterSysOpts.value = data.data ?? []
+  } catch {
+    filterSysOpts.value = []
+  } finally {
+    filterSysLoading.value = false
+  }
+}
 
 function httpStatus(e: unknown) {
   return (e as { response?: { status?: number } }).response?.status
@@ -89,13 +110,18 @@ function parseList(r: { data: { data: { records: TargetTableRecord[]; total: num
 }
 
 async function load() {
+  if (scopeProjectId.value == null) {
+    rows.value = []
+    total.value = 0
+    return
+  }
   loading.value = true
   error.value = ''
   forbidden.value = false
   try {
     const r = await listTargetTables({
       category: resolvedCategory.value,
-      projectId: filters.projectId,
+      projectId: scopeProjectId.value,
       systemCode: filters.systemCode || undefined,
       isKeyField: filters.isKeyField,
       dictCode: filters.dictCode || undefined,
@@ -115,27 +141,27 @@ async function load() {
   }
 }
 
-async function loadProjects() {
-  try { projects.value = (await getProjectWorkbench()).data.data ?? [] } catch { projects.value = [] }
-}
-
 function search() { page.value = 1; load() }
 function resetFilters() {
-  Object.assign(filters, { projectId: undefined, systemCode: '', isKeyField: undefined, dictCode: '', tableKeyword: '', fieldKeyword: '' })
+  Object.assign(filters, { systemCode: '', isKeyField: undefined, dictCode: '', tableKeyword: '', fieldKeyword: '' })
   page.value = 1; load()
 }
 function onPageChange(p: number) { page.value = p; load() }
 function onSizeChange(s: number) { pageSize.value = s; page.value = 1; load() }
-function onSelectionChange(val: TargetTableRecord[]) { selectedIds.value = val.map(v => v.id) }
+function onSelectionChange(val: TargetTableRecord[]) { selectedIds.value = val.map(v => v.table_code) }
 
 /* ---------- 导出 ---------- */
-async function exportExcel(ids?: number[]) {
+async function exportExcel(fieldCodes?: number[]) {
+  if (scopeProjectId.value == null) {
+    ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+    return
+  }
   actionBusy.value = true
   try {
     const r = await exportTargetTables({
       category: resolvedCategory.value,
-      ids,
-      projectId: filters.projectId,
+      fieldCodes,
+      projectId: scopeProjectId.value,
       systemCode: filters.systemCode || undefined,
       isKeyField: filters.isKeyField,
       dictCode: filters.dictCode || undefined,
@@ -159,40 +185,100 @@ async function downloadTemplate() {
     const blob = new Blob([r.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = '目标表结构模板.xlsx'
+    a.href = url
+    a.download = resolvedCategory.value === 'TARGET' ? '目标表结构模板.xlsx' : '中间表结构模板.xlsx'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     URL.revokeObjectURL(url)
   } catch (e) { ElMessage.error(apiErrorMessage(e, '模板下载失败')) }
 }
 
-/* ---------- 导入 ---------- */
-const importVisible = ref(false)
-const importFile = ref<File | null>(null)
-const importLoading = ref(false)
+/* ---------- 导入（当前页对话框） ---------- */
+const importDialogOpen = ref(false)
+const importUploadRef = ref<UploadInstance>()
+const pendingImportFile = ref<File | null>(null)
 const importResult = ref<{ accepted: number; failed: number; errors: string[] } | null>(null)
-function openImport() { importVisible.value = true; importFile.value = null; importResult.value = null }
+const importError = ref('')
+
+const importReady = computed(() => Boolean(scopeProjectId.value))
+const canImport = computed(() => canCreate.value && importReady.value)
+const canSubmitImport = computed(() => canImport.value && Boolean(pendingImportFile.value) && !actionBusy.value)
+
+function resetImportDialog() {
+  pendingImportFile.value = null
+  importResult.value = null
+  importError.value = ''
+  importUploadRef.value?.clearFiles()
+}
+
+function openImportDialog() {
+  resetImportDialog()
+  importDialogOpen.value = true
+}
+
+function onImportFileChange(file: UploadFile) {
+  pendingImportFile.value = file.raw ?? null
+  importResult.value = null
+  importError.value = ''
+}
+
+const onImportFileExceed: UploadProps['onExceed'] = (files) => {
+  importUploadRef.value?.clearFiles()
+  const file = files[0] as UploadRawFile
+  file.uid = genFileId()
+  importUploadRef.value?.handleStart(file)
+}
+
+function onImportFileRemove() {
+  pendingImportFile.value = null
+  importResult.value = null
+  importError.value = ''
+}
+
+function clearImportFile() {
+  importUploadRef.value?.clearFiles()
+  onImportFileRemove()
+}
+
+function beforeImportDialogClose(done: () => void) {
+  if (!actionBusy.value) done()
+}
+
+function closeImportDialog() {
+  if (!actionBusy.value) importDialogOpen.value = false
+}
+
 async function submitImport() {
-  if (!importFile.value) return ElMessage.warning('请选择 Excel 文件')
-  importLoading.value = true
+  const projectId = scopeProjectId.value
+  const file = pendingImportFile.value
+  if (!projectId) return void ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+  if (!file) return void ElMessage.warning('请先选择 Excel 文件')
+  if (actionBusy.value) return
+  actionBusy.value = true
+  importResult.value = null
+  importError.value = ''
   try {
-    const r = await importTargetTables(resolvedCategory.value, importFile.value)
+    const r = await importTargetTables(resolvedCategory.value, projectId, file)
     importResult.value = r.data.data
-    ElMessage.success(`导入完成：成功 ${r.data.data.accepted} 条，失败 ${r.data.data.failed} 条`)
-    importVisible.value = false
+    const text = `导入完成：成功 ${r.data.data.accepted} 条，失败 ${r.data.data.failed} 条`
+    if (r.data.data.errors?.length) ElMessage.warning(text)
+    else ElMessage.success(text)
     await load()
-  } catch (e) { ElMessage.error(apiErrorMessage(e, '导入失败')) } finally { importLoading.value = false }
+  } catch (e) {
+    importError.value = apiErrorMessage(e, '导入失败')
+    ElMessage.error(importError.value)
+  } finally { actionBusy.value = false }
 }
 
 /* ---------- 查看 ---------- */
-const viewOpen = ref(false)
 const viewing = ref<TargetTableRecord | null>(null)
 const viewFields = ref<TargetTableField[]>([])
 async function openView(row: TargetTableRecord) {
   viewing.value = row
   viewFields.value = []
-  viewOpen.value = true
+  tableDialogMode.value = 'view'
+  createOpen.value = true
   try {
-    const r = await listTargetTableFields(row.id, resolvedCategory.value)
+    const r = await listTargetTableFields(row.table_code, resolvedCategory.value)
     viewFields.value = r.data.data ?? []
   } catch (e) { ElMessage.error(apiErrorMessage(e, '字段加载失败')) }
 }
@@ -215,7 +301,7 @@ async function submitEdit() {
   if (!editForm.table_name_cn.trim() || /\s/.test(editForm.table_name_cn)) return ElMessage.warning('表中文名不允许空格')
   editSaving.value = true
   try {
-    await updateTargetTable(editing.value.id, resolvedCategory.value, { tableNameEn: editForm.table_name_en.trim(), tableNameCn: editForm.table_name_cn.trim(), tableMeaning: editForm.table_meaning.trim() })
+    await updateTargetTable(editing.value.table_code, resolvedCategory.value, { tableNameEn: editForm.table_name_en.trim(), tableNameCn: editForm.table_name_cn.trim(), tableMeaning: editForm.table_meaning.trim() })
     ElMessage.success('修改成功')
     editOpen.value = false
     await load()
@@ -224,55 +310,85 @@ async function submitEdit() {
 
 /* ---------- 新增表 + 字段 ---------- */
 const createOpen = ref(false)
+const tableDialogMode = ref<'create' | 'view'>('create')
 const createSaving = ref(false)
-const subsystemSearching = ref(false)
+const createError = ref('')
+const subsystemLoading = ref(false)
 const subsystemForbidden = ref(false)
-const subsystemCandidates = ref<{ code: string; name: string; businessGroupName?: string | null }[]>([])
+const createSystemOpts = ref<SelectOption[]>([])
+const subsystemMeta = new Map<string, { name: string; businessGroupName?: string | null }>()
+const subsystemMetaLoaded = ref(false)
 const createForm = reactive<{
-  projectId?: number
   systemCode: string
   table_name_en: string
   table_name_cn: string
   table_meaning: string
   fields: Record<string, unknown>[]
-}>({ projectId: undefined, systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
-const selectedSubsystem = computed(() => subsystemCandidates.value.find(c => c.code === createForm.systemCode))
+}>({ systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
+const selectedSubsystem = computed(() => {
+  const code = createForm.systemCode
+  const meta = subsystemMeta.get(code)
+  return meta ? { code, ...meta } : undefined
+})
 
-async function searchSubsystem() {
-  if (!createForm.systemCode.trim()) return
-  subsystemSearching.value = true
+// 新增表：只允许选择已纳入本项目组件清单的系统（候选「编号 - 名称」），本地随输随筛；
+// 系统名称/事业群由物理子系统主数据一次性加载后联动展示（跨模块只读契约）。
+async function loadCreateSubsystems() {
+  if (subsystemMetaLoaded.value) return
+  const pid = scopeProjectId.value
+  if (pid == null) { createSystemOpts.value = []; return }
+  subsystemLoading.value = true
   subsystemForbidden.value = false
   try {
-    const r = await listPhysicalSubsystemsByCode(createForm.systemCode.trim())
-    subsystemCandidates.value = (r.data.data.records ?? []).map(s => ({ code: s.code, name: s.name, businessGroupName: s.businessGroupName ?? undefined }))
-    if (!subsystemCandidates.value.length) ElMessage.warning('未找到匹配的物理子系统')
+    const { data } = await getSystemOptions(pid)
+    createSystemOpts.value = data.data ?? []
+  } catch {
+    createSystemOpts.value = []
+    subsystemLoading.value = false
+    return
+  }
+  try {
+    const subsystems = await listAllPhysicalSubsystems()
+    subsystemMeta.clear()
+    for (const s of subsystems) subsystemMeta.set(s.code, { name: s.name, businessGroupName: s.businessGroupName ?? undefined })
+    subsystemMetaLoaded.value = true
   } catch (e) {
-    if (httpStatus(e) === 403) { subsystemForbidden.value = true; ElMessage.warning('缺少物理子系统查询权限，无法联动带出系统信息') }
-    else ElMessage.error(apiErrorMessage(e, '系统编号查询失败'))
-  } finally { subsystemSearching.value = false }
+    subsystemMetaLoaded.value = true
+    if (httpStatus(e) === 403) subsystemForbidden.value = true
+  } finally {
+    subsystemLoading.value = false
+  }
 }
 function openCreate() {
-  Object.assign(createForm, { projectId: undefined, systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
-  subsystemCandidates.value = []
+  tableDialogMode.value = 'create'
+  Object.assign(createForm, { systemCode: '', table_name_en: '', table_name_cn: '', table_meaning: '', fields: [] })
+  createError.value = ''
   subsystemForbidden.value = false
+  void loadCreateSubsystems()
   createOpen.value = true
 }
 function addCreateField() { createForm.fields.push({ fieldNameEn: '', fieldNameCn: '', fieldMeaning: '', codeDescription: '', isKeyField: 0, oracleType: '', mysqlType: '', isNullable: 1, isPrimaryKey: 0, dictCode: '' }) }
 function removeCreateField(idx: number) { createForm.fields.splice(idx, 1) }
 async function submitCreate() {
-  if (!createForm.projectId) return ElMessage.warning('请选择所属项目')
-  if (!createForm.systemCode.trim()) return ElMessage.warning('请输入系统编号')
-  if (!createForm.table_name_en.trim() || /\s/.test(createForm.table_name_en)) return ElMessage.warning('表英文名不允许空格')
-  if (!createForm.table_name_cn.trim() || /\s/.test(createForm.table_name_cn)) return ElMessage.warning('表中文名不允许空格')
+  createError.value = ''
+  if (scopeProjectId.value == null) { createError.value = '当前项目不可用，请在顶部项目切换器中重新选择项目'; return }
+  if (!createForm.systemCode.trim()) { createError.value = '请选择系统'; return }
+  if (!createForm.table_name_en.trim() || /\s/.test(createForm.table_name_en)) { createError.value = '表英文名不允许空格'; return }
+  if (!createForm.table_name_cn.trim() || /\s/.test(createForm.table_name_cn)) { createError.value = '表中文名不允许空格'; return }
+  const fieldEn = new Set<string>(), fieldCn = new Set<string>()
   for (const f of createForm.fields) {
-    if (!f.fieldNameEn || /\s/.test(String(f.fieldNameEn))) return ElMessage.warning('字段英文名不允许空格')
-    if (!f.fieldNameCn || /\s/.test(String(f.fieldNameCn))) return ElMessage.warning('字段中文名不允许空格')
-    if (f.dictCode && /\s/.test(String(f.dictCode))) return ElMessage.warning('数据字典编号不允许空格')
+    if (!f.fieldNameEn || /\s/.test(String(f.fieldNameEn))) { createError.value = '字段英文名不允许空格'; return }
+    if (!f.fieldNameCn || /\s/.test(String(f.fieldNameCn))) { createError.value = '字段中文名不允许空格'; return }
+    if (f.dictCode && /\s/.test(String(f.dictCode))) { createError.value = '数据字典编号不允许空格'; return }
+    const en = String(f.fieldNameEn).trim().toLowerCase(), cn = String(f.fieldNameCn).trim().toLowerCase()
+    if (fieldEn.has(en)) { createError.value = '字段英文名不能重复'; return }
+    if (fieldCn.has(cn)) { createError.value = '字段中文名不能重复'; return }
+    fieldEn.add(en); fieldCn.add(cn)
   }
   createSaving.value = true
   try {
     await createTargetTable(resolvedCategory.value, {
-      projectId: createForm.projectId,
+      projectId: scopeProjectId.value,
       systemCode: createForm.systemCode.trim(),
       tableNameEn: createForm.table_name_en.trim(),
       tableNameCn: createForm.table_name_cn.trim(),
@@ -282,7 +398,7 @@ async function submitCreate() {
     ElMessage.success('新增成功')
     createOpen.value = false
     await load()
-  } catch (e) { ElMessage.error(apiErrorMessage(e, '新增失败')) } finally { createSaving.value = false }
+  } catch (e) { createError.value = apiErrorMessage(e, '新增失败') } finally { createSaving.value = false }
 }
 
 /* ---------- 字段操作（抽屉行编辑/新增/删除） ---------- */
@@ -293,6 +409,9 @@ const fieldBusy = ref(false)
 const editingField = ref<TargetTableField | null>(null)
 const fieldForm = reactive<Record<string, unknown>>({})
 const fieldSaving = ref(false)
+const fieldCreateOpen = ref(false)
+const fieldCreateSaving = ref(false)
+const fieldCreateForm = reactive<Record<string, unknown>>(newFieldTemplate())
 const selectedFieldIds = ref<number[]>([])
 
 async function openFields(row: TargetTableRecord) {
@@ -300,18 +419,30 @@ async function openFields(row: TargetTableRecord) {
   fieldRows.value = []
   fieldOpen.value = true
   try {
-    const r = await listTargetTableFields(row.id, resolvedCategory.value)
+    const r = await listTargetTableFields(row.table_code, resolvedCategory.value)
     fieldRows.value = r.data.data ?? []
   } catch (e) { ElMessage.error(apiErrorMessage(e, '字段加载失败')) }
 }
 async function addField() {
   if (!fieldTable.value) return
-  fieldBusy.value = true
+  Object.assign(fieldCreateForm, newFieldTemplate())
+  fieldCreateOpen.value = true
+}
+async function submitNewField() {
+  if (!fieldTable.value) return
+  if (!String(fieldCreateForm.fieldNameEn ?? '').trim()) return ElMessage.warning('请填写字段英文名')
+  if (!String(fieldCreateForm.fieldNameCn ?? '').trim()) return ElMessage.warning('请填写字段中文名')
+  if (/\s/.test(String(fieldCreateForm.fieldNameEn)) || /\s/.test(String(fieldCreateForm.fieldNameCn)) || (fieldCreateForm.dictCode && /\s/.test(String(fieldCreateForm.dictCode)))) return ElMessage.warning('字段名称和数据字典编号不允许空格')
+  const en = String(fieldCreateForm.fieldNameEn).trim().toLowerCase(), cn = String(fieldCreateForm.fieldNameCn).trim().toLowerCase()
+  if (fieldRows.value.some(row => row.field_name_en.trim().toLowerCase() === en)) return ElMessage.warning('字段英文名不能重复')
+  if (fieldRows.value.some(row => row.field_name_cn.trim().toLowerCase() === cn)) return ElMessage.warning('字段中文名不能重复')
+  fieldCreateSaving.value = true
   try {
-    const r = await addTargetTableField(fieldTable.value.id, resolvedCategory.value, newFieldTemplate())
+    const r = await addTargetTableField(fieldTable.value.table_code, resolvedCategory.value, { ...fieldCreateForm })
     fieldRows.value.push(r.data.data)
+    fieldCreateOpen.value = false
     ElMessage.success('新增字段成功')
-  } catch (e) { ElMessage.error(apiErrorMessage(e, '新增字段失败')) } finally { fieldBusy.value = false }
+  } catch (e) { ElMessage.error(apiErrorMessage(e, '新增字段失败')) } finally { fieldCreateSaving.value = false }
 }
 function newFieldTemplate() {
   return { fieldNameEn: '', fieldNameCn: '', fieldMeaning: '', codeDescription: '', isKeyField: 0, oracleType: '', mysqlType: '', isNullable: 1, isPrimaryKey: 0, dictCode: '' }
@@ -327,7 +458,7 @@ async function saveEditField(f: TargetTableField) {
   if (fieldForm.dictCode && /\s/.test(String(fieldForm.dictCode))) return ElMessage.warning('数据字典编号不允许空格')
   fieldSaving.value = true
   try {
-    const r = await updateTargetTableField(f.id, resolvedCategory.value, { ...fieldForm })
+    const r = await updateTargetTableField(f.field_code, resolvedCategory.value, { ...fieldForm })
     Object.assign(f, r.data.data)
     editingField.value = null
     ElMessage.success('字段保存成功')
@@ -337,9 +468,9 @@ async function removeField(f: TargetTableField) {
   try {
     await ElMessageBox.confirm(`确认删除字段「${f.field_name_cn}（${f.field_name_en}）」吗？`, '删除字段', { type: 'warning' })
     fieldBusy.value = true
-    await deleteTargetTableField(f.id, resolvedCategory.value)
-    fieldRows.value = fieldRows.value.filter(x => x.id !== f.id)
-    selectedFieldIds.value = selectedFieldIds.value.filter(x => x !== f.id)
+    await deleteTargetTableField(f.field_code, resolvedCategory.value)
+    fieldRows.value = fieldRows.value.filter(x => x.field_code !== f.field_code)
+    selectedFieldIds.value = selectedFieldIds.value.filter(x => x !== f.field_code)
     ElMessage.success('已删除')
     // 若该表字段已全部删除，后端会同步删除表：关闭抽屉并刷新列表
     if (fieldRows.value.length === 0) {
@@ -354,7 +485,7 @@ async function batchDeleteFields() {
     await ElMessageBox.confirm(`确认批量删除 ${selectedFieldIds.value.length} 个字段吗？若某表字段被全部删除将同步删除该表`, '批量删除字段', { type: 'warning' })
     fieldBusy.value = true
     await deleteTargetTableFields(resolvedCategory.value, selectedFieldIds.value)
-    fieldRows.value = fieldRows.value.filter(x => !selectedFieldIds.value.includes(x.id))
+    fieldRows.value = fieldRows.value.filter(x => !selectedFieldIds.value.includes(x.field_code))
     selectedFieldIds.value = []
     ElMessage.success('已批量删除')
     if (fieldRows.value.length === 0) {
@@ -369,7 +500,7 @@ async function removeRow(row: TargetTableRecord) {
   try {
     await ElMessageBox.confirm(`确认删除表「${row.table_name_cn}（${row.table_name_en}）」及其全部字段吗？`, '删除表结构', { type: 'warning' })
     actionBusy.value = true
-    await deleteTargetTables(resolvedCategory.value, [row.id])
+    await deleteTargetTables(resolvedCategory.value, [row.table_code])
     ElMessage.success('已删除')
     await load()
   } catch (e) { if (!cancelled(e)) ElMessage.error(apiErrorMessage(e, '删除失败')) } finally { actionBusy.value = false }
@@ -458,12 +589,51 @@ function checkOverflow(el: HTMLElement) {
   })
 }
 
-onMounted(() => { loadProjects(); load() })
+onMounted(() => { void scope.ensureLoaded() })
+
+// 全局项目变化：丢弃上一个项目的列表、筛选与分页状态，按新项目重新查询。
+watch(scopeProjectId, () => {
+  rows.value = []
+  total.value = 0
+  selectedIds.value = []
+  page.value = 1
+  Object.assign(filters, { systemCode: '', isKeyField: undefined, dictCode: '', tableKeyword: '', fieldKeyword: '' })
+  createOpen.value = false
+  editOpen.value = false
+  fieldOpen.value = false
+  importDialogOpen.value = false
+  resetImportDialog()
+  error.value = ''
+  forbidden.value = false
+  filterSysOpts.value = []
+  subsystemMetaLoaded.value = false
+  subsystemMeta.clear()
+  createSystemOpts.value = []
+  void loadFilterSystems()
+  void load()
+}, { immediate: true })
+
+watch(resolvedCategory, () => {
+  importDialogOpen.value = false
+  resetImportDialog()
+})
 </script>
 
 <template>
   <main class="dm-page-root tt-page">
-    <section v-if="forbidden" class="dm-state-panel">
+    <UiPageHeader :title="title" description="列表、新增与导入均固定属于顶部项目切换器选择的当前项目。">
+      <template #actions>
+        <el-button v-if="canCreate && scopeState === 'ready' && !forbidden && !error" :disabled="loading || actionBusy" @click="openImportDialog">
+          <el-icon><UploadFilled /></el-icon>批量导入
+        </el-button>
+        <el-button v-if="canCreate && scopeState === 'ready' && !forbidden && !error" type="primary" :disabled="loading || actionBusy" @click="openCreate">
+          <el-icon><Plus /></el-icon>新增{{ title }}
+        </el-button>
+      </template>
+    </UiPageHeader>
+
+    <ProjectScopeState v-if="scopeState !== 'ready'" :state="scopeState" @retry="scope.retry()" />
+    <section v-else-if="forbidden" class="dm-state-panel">
       <el-result icon="warning" :title="`暂无${title}查看权限`" sub-title="请向数据迁移管理员申请相应权限。" />
     </section>
     <section v-else-if="error" class="dm-state-panel">
@@ -473,12 +643,9 @@ onMounted(() => { loadProjects(); load() })
     </section>
     <template v-else>
       <UiToolbar>
-        <el-select v-model="filters.projectId" clearable filterable placeholder="所属项目" style="width: 190px">
-          <el-option v-for="p in projects" :key="p.id" :label="`${p.project_name}（${p.project_code}）`" :value="p.id" />
+        <el-select v-model="filters.systemCode" clearable filterable :loading="filterSysLoading" placeholder="输入系统编号或名称搜索" style="width: 220px" @change="search" @clear="search">
+          <el-option v-for="o in filterSysOpts" :key="o.value" :label="o.label" :value="o.value" />
         </el-select>
-        <el-input v-model="filters.systemCode" clearable placeholder="系统编号" style="width: 150px" @keyup.enter="search">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
         <el-select v-model="filters.isKeyField" clearable placeholder="关键栏位" style="width: 120px">
           <el-option label="是" :value="1" /><el-option label="否" :value="0" />
         </el-select>
@@ -496,16 +663,13 @@ onMounted(() => { loadProjects(); load() })
           <el-button :disabled="loading || actionBusy" @click="search"><el-icon><Search /></el-icon>查询</el-button>
           <el-button :disabled="loading" @click="resetFilters">重置</el-button>
           <el-button :disabled="loading || actionBusy" @click="exportExcel()"><el-icon><Download /></el-icon>导出</el-button>
-          <el-button v-if="canCreate" :disabled="loading || actionBusy" @click="downloadTemplate"><el-icon><Download /></el-icon>模板</el-button>
-          <el-button v-if="canCreate" :disabled="loading || actionBusy" @click="openImport"><el-icon><Upload /></el-icon>批量上传</el-button>
-          <el-button v-if="canCreate" type="primary" :disabled="loading || actionBusy" @click="openCreate"><el-icon><Plus /></el-icon>新增</el-button>
+          <el-button v-if="canDelete" type="danger" plain :disabled="!selectedIds.length || actionBusy" @click="batchDelete"><el-icon><Delete /></el-icon>删除 ({{ selectedIds.length }})</el-button>
         </template>
       </UiToolbar>
 
       <div v-if="rows.length || loading" class="tt-desktop">
-        <UiDataTable :data="rows" :loading="loading" row-key="id" border empty-text="暂无数据" @selection-change="onSelectionChange">
+        <UiDataTable :data="rows" :loading="loading" row-key="table_code" border empty-text="暂无数据" @selection-change="onSelectionChange">
           <el-table-column type="selection" width="46" />
-          <el-table-column prop="project_name" label="所属项目" min-width="150" show-overflow-tooltip />
           <el-table-column prop="business_group" label="事业群" min-width="110" show-overflow-tooltip />
           <el-table-column prop="system_code" label="系统编号" min-width="130" show-overflow-tooltip />
           <el-table-column prop="system_name" label="系统名称" min-width="160" show-overflow-tooltip />
@@ -530,7 +694,7 @@ onMounted(() => { loadProjects(); load() })
           <el-table-column prop="dict_code" label="数据字典编号" min-width="130" show-overflow-tooltip />
           <el-table-column label="操作" width="210" fixed="right" align="center">
             <template #default="{ row }">
-              <div v-overflow class="dm-table-actions" :data-row-id="row.id">
+              <div v-overflow class="dm-table-actions" :data-row-id="row.table_code">
                 <el-button data-action="view" link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
                 <el-button v-if="canUpdate" data-action="edit" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
                 <el-button v-if="canUpdate" data-action="fields" link type="primary" :disabled="actionBusy" @click="openFields(row)">字段</el-button>
@@ -559,13 +723,12 @@ onMounted(() => { loadProjects(); load() })
       </div>
 
       <div v-if="rows.length || loading" class="dm-mobile-list">
-        <article v-for="row in rows" :key="row.id">
+        <article v-for="row in rows" :key="row.table_code">
           <header>
             <div><strong>{{ row.table_name_cn }}</strong><small>{{ row.table_name_en }} · {{ row.system_code }}</small></div>
             <el-tag :type="row.is_key_field === 1 ? 'danger' : 'info'" effect="plain" size="small">关键：{{ row.is_key_field === 1 ? '是' : '否' }}</el-tag>
           </header>
           <dl>
-            <div><dt>所属项目</dt><dd>{{ row.project_name }}</dd></div>
             <div><dt>事业群</dt><dd>{{ row.business_group }}</dd></div>
             <div><dt>系统名称</dt><dd>{{ row.system_name }}</dd></div>
             <div><dt>表含义</dt><dd>{{ row.table_meaning }}</dd></div>
@@ -585,123 +748,143 @@ onMounted(() => { loadProjects(); load() })
         </div>
       </div>
 
-      <UiEmptyState v-if="!loading && !rows.length" :title="`暂无${title}数据`" :description="`当前筛选条件下没有记录，可通过「新增」或「批量上传」录入。`" />
+      <UiEmptyState v-if="!loading && !rows.length" :title="`暂无${title}数据`" description="当前项目下没有记录，可通过「新增」或「批量上传」录入。" />
     </template>
 
-    <!-- 查看 -->
-    <el-dialog v-model="viewOpen" :title="`${title}详情`" width="720px" align-center destroy-on-close>
-      <template v-if="viewing">
-        <h4 class="tt-section-title">表信息</h4>
-        <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="表编号">{{ viewing.table_code }}</el-descriptions-item>
-          <el-descriptions-item label="所属项目">{{ viewing.project_name }}</el-descriptions-item>
-          <el-descriptions-item label="所属事业群">{{ viewing.business_group }}</el-descriptions-item>
-          <el-descriptions-item label="系统编号">{{ viewing.system_code }}</el-descriptions-item>
-          <el-descriptions-item label="系统名称">{{ viewing.system_name }}</el-descriptions-item>
-          <el-descriptions-item label="表英文名">{{ viewing.table_name_en }}</el-descriptions-item>
-          <el-descriptions-item label="表中文名">{{ viewing.table_name_cn }}</el-descriptions-item>
-          <el-descriptions-item label="表含义">{{ viewing.table_meaning }}</el-descriptions-item>
-        </el-descriptions>
-        <h4 class="tt-section-title">字段信息</h4>
-        <el-table :data="viewFields" border size="small" max-height="320">
-          <el-table-column prop="field_name_en" label="字段英文名" min-width="120" />
-          <el-table-column prop="field_name_cn" label="字段中文名" min-width="120" />
-          <el-table-column prop="field_meaning" label="字段含义" min-width="120" />
-          <el-table-column prop="code_description" label="码值说明" min-width="100" />
-          <el-table-column label="关键栏位" width="80" align="center"><template #default="{ row }">{{ row.is_key_field === 1 ? '是' : '否' }}</template></el-table-column>
-          <el-table-column prop="oracle_type" label="ORACLE类型" min-width="100" />
-          <el-table-column prop="mysql_type" label="mysql类型" min-width="100" />
-          <el-table-column label="可空" width="60" align="center"><template #default="{ row }">{{ row.is_nullable === 1 ? '是' : '否' }}</template></el-table-column>
-          <el-table-column label="主键" width="60" align="center"><template #default="{ row }">{{ row.is_primary_key === 1 ? '是' : '否' }}</template></el-table-column>
-          <el-table-column prop="dict_code" label="字典编号" min-width="100" />
-        </el-table>
-      </template>
-      <template #footer><el-button @click="viewOpen = false">关闭</el-button></template>
-    </el-dialog>
-
     <!-- 修改表信息 -->
-    <UiFormDrawer v-model="editOpen" title="修改表信息" width="560px" :loading="editSaving" confirm-text="保存" @submit="submitEdit">
+    <el-dialog v-model="editOpen" class="dm-form-dialog" title="修改表信息" width="min(760px, calc(100vw - 24px))" top="5vh" destroy-on-close :close-on-click-modal="!editSaving" :close-on-press-escape="!editSaving" :show-close="!editSaving">
       <el-form label-width="96px" label-position="left">
         <el-form-item label="表编号"><el-input :model-value="editing?.table_code" disabled /></el-form-item>
-        <el-form-item label="所属项目"><el-input :model-value="editing?.project_name" disabled /></el-form-item>
         <el-form-item label="系统编号"><el-input :model-value="editing?.system_code" disabled /></el-form-item>
         <el-form-item label="表英文名" required><el-input v-model="editForm.table_name_en" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表中文名" required><el-input v-model="editForm.table_name_cn" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表含义"><el-input v-model="editForm.table_meaning" type="textarea" :rows="2" /></el-form-item>
       </el-form>
-    </UiFormDrawer>
+      <template #footer>
+        <el-button :disabled="editSaving" @click="editOpen = false">取消</el-button>
+        <el-button type="primary" :loading="editSaving" @click="submitEdit">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 新增表 + 字段 -->
-    <UiFormDrawer v-model="createOpen" :title="`新增${title}`" width="720px" :loading="createSaving" confirm-text="保存" @submit="submitCreate">
-      <el-form label-width="110px" label-position="left">
-        <el-form-item label="所属项目" required>
-          <el-select v-model="createForm.projectId" filterable placeholder="请选择所属项目" style="width: 100%">
-            <el-option v-for="p in projects" :key="p.id" :label="`${p.project_name}（${p.project_code}）`" :value="p.id" />
-          </el-select>
-        </el-form-item>
+    <el-dialog
+      v-model="createOpen"
+      class="dm-form-dialog"
+      :title="tableDialogMode === 'view' ? `${title}详情` : `新增${title}`"
+      width="min(1120px, calc(100vw - 24px))"
+      destroy-on-close
+      :close-on-click-modal="!createSaving"
+      :close-on-press-escape="!createSaving"
+      :show-close="!createSaving"
+    >
+      <div v-if="tableDialogMode === 'view'" class="dm-form-dialog-body">
+        <template v-if="viewing">
+          <h4 class="tt-section-title">表信息</h4>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="表编号">{{ viewing.table_code }}</el-descriptions-item>
+            <el-descriptions-item label="所属事业群">{{ viewing.business_group }}</el-descriptions-item>
+            <el-descriptions-item label="系统编号">{{ viewing.system_code }}</el-descriptions-item>
+            <el-descriptions-item label="系统名称">{{ viewing.system_name }}</el-descriptions-item>
+            <el-descriptions-item label="表英文名">{{ viewing.table_name_en }}</el-descriptions-item>
+            <el-descriptions-item label="表中文名">{{ viewing.table_name_cn }}</el-descriptions-item>
+            <el-descriptions-item label="表含义">{{ viewing.table_meaning }}</el-descriptions-item>
+          </el-descriptions>
+          <h4 class="tt-section-title">字段信息</h4>
+          <el-table :data="viewFields" border size="small" max-height="320">
+            <el-table-column prop="field_name_en" label="字段英文名" min-width="120" />
+            <el-table-column prop="field_name_cn" label="字段中文名" min-width="120" />
+            <el-table-column prop="field_meaning" label="字段含义" min-width="120" />
+            <el-table-column prop="code_description" label="码值说明" min-width="100" />
+            <el-table-column label="关键栏位" width="80"><template #default="{ row }">{{ row.is_key_field === 1 ? '是' : '否' }}</template></el-table-column>
+            <el-table-column prop="oracle_type" label="ORACLE类型" min-width="100" />
+            <el-table-column prop="mysql_type" label="mysql类型" min-width="100" />
+            <el-table-column label="可空" width="60"><template #default="{ row }">{{ row.is_nullable === 1 ? '是' : '否' }}</template></el-table-column>
+            <el-table-column label="主键" width="60"><template #default="{ row }">{{ row.is_primary_key === 1 ? '是' : '否' }}</template></el-table-column>
+            <el-table-column prop="dict_code" label="字典编号" min-width="100" />
+          </el-table>
+        </template>
+      </div>
+      <div v-else class="dm-form-dialog-body">
+        <el-alert v-if="createError" :title="createError" type="error" :closable="false" show-icon style="margin-bottom: 12px" />
+        <el-form label-position="top">
         <el-form-item label="系统编号" required>
-          <div class="tt-subsystem-search">
-            <el-input v-model="createForm.systemCode" placeholder="输入物理子系统编号" @keyup.enter="searchSubsystem" />
-            <el-button type="primary" :loading="subsystemSearching" @click="searchSubsystem">查询</el-button>
-          </div>
+          <el-select v-model="createForm.systemCode" filterable :loading="subsystemLoading" placeholder="输入系统编号或名称搜索" style="width: 100%">
+            <el-option v-for="o in createSystemOpts" :key="o.value" :label="o.label" :value="o.value" />
+          </el-select>
         </el-form-item>
         <template v-if="selectedSubsystem">
           <el-form-item label="所属事业群"><el-input :model-value="selectedSubsystem.businessGroupName ?? '-'" disabled /></el-form-item>
           <el-form-item label="系统名称"><el-input :model-value="selectedSubsystem.name" disabled /></el-form-item>
         </template>
         <el-alert v-else-if="subsystemForbidden" type="warning" :closable="false" show-icon title="缺少物理子系统查询权限，无法联动带出系统信息，请先授权架构模块查询权限。" class="tt-subsystem-alert" />
-        <el-alert v-else type="info" :closable="false" show-icon title="输入系统编号后点击「查询」，系统信息将自动带出（仅展示、不保存）。" class="tt-subsystem-alert" />
+        <el-alert v-else type="info" :closable="false" show-icon title="输入系统编号或名称搜索并选择系统，系统信息将自动带出（仅展示、不保存）。" class="tt-subsystem-alert" />
         <el-form-item label="表英文名" required><el-input v-model="createForm.table_name_en" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表中文名" required><el-input v-model="createForm.table_name_cn" placeholder="不允许空格" /></el-form-item>
         <el-form-item label="表含义"><el-input v-model="createForm.table_meaning" type="textarea" :rows="2" /></el-form-item>
 
         <h4 class="tt-section-title">字段信息（可空，保存后可继续在「字段」中维护）</h4>
-        <div v-for="(f, idx) in createForm.fields" :key="idx" class="tt-create-field">
-          <el-divider content-position="left">字段 {{ idx + 1 }}</el-divider>
-          <el-form-item label="字段英文名" required><el-input v-model="f.fieldNameEn" placeholder="不允许空格" /></el-form-item>
-          <el-form-item label="字段中文名" required><el-input v-model="f.fieldNameCn" placeholder="不允许空格" /></el-form-item>
-          <el-form-item label="字段含义"><el-input v-model="f.fieldMeaning" /></el-form-item>
-          <el-form-item label="码值说明"><el-input v-model="f.codeDescription" /></el-form-item>
-          <el-form-item label="ORACLE类型"><el-input v-model="f.oracleType" /></el-form-item>
-          <el-form-item label="mysql类型"><el-input v-model="f.mysqlType" /></el-form-item>
-          <el-form-item label="数据字典编号"><el-input v-model="f.dictCode" placeholder="不允许空格" /></el-form-item>
-          <el-form-item label="关键/可空/主键">
-            <el-checkbox v-model="f.isKeyField" :true-value="1" :false-value="0">关键栏位</el-checkbox>
-            <el-checkbox v-model="f.isNullable" :true-value="1" :false-value="0">可空</el-checkbox>
-            <el-checkbox v-model="f.isPrimaryKey" :true-value="1" :false-value="0">主键</el-checkbox>
-          </el-form-item>
-          <el-button link type="danger" @click="removeCreateField(idx)"><el-icon><Delete /></el-icon>移除该字段</el-button>
+        <div class="tt-create-fields-table">
+          <el-table :data="createForm.fields" border size="small" empty-text="暂无字段">
+            <el-table-column type="index" label="序号" width="56" align="center" />
+            <el-table-column label="字段英文名" min-width="150">
+              <template #default="{ row }"><el-input v-model="row.fieldNameEn" placeholder="不允许空格" /></template>
+            </el-table-column>
+            <el-table-column label="字段中文名" min-width="150">
+              <template #default="{ row }"><el-input v-model="row.fieldNameCn" placeholder="不允许空格" /></template>
+            </el-table-column>
+            <el-table-column label="字段含义" min-width="150"><template #default="{ row }"><el-input v-model="row.fieldMeaning" /></template></el-table-column>
+            <el-table-column label="码值说明" min-width="140"><template #default="{ row }"><el-input v-model="row.codeDescription" /></template></el-table-column>
+            <el-table-column label="ORACLE类型" min-width="130"><template #default="{ row }"><el-input v-model="row.oracleType" /></template></el-table-column>
+            <el-table-column label="mysql类型" min-width="130"><template #default="{ row }"><el-input v-model="row.mysqlType" /></template></el-table-column>
+            <el-table-column label="数据字典编号" min-width="140"><template #default="{ row }"><el-input v-model="row.dictCode" placeholder="不允许空格" /></template></el-table-column>
+            <el-table-column label="属性" min-width="190">
+              <template #default="{ row }">
+                <el-checkbox v-model="row.isKeyField" :true-value="1" :false-value="0">关键</el-checkbox>
+                <el-checkbox v-model="row.isNullable" :true-value="1" :false-value="0">可空</el-checkbox>
+                <el-checkbox v-model="row.isPrimaryKey" :true-value="1" :false-value="0">主键</el-checkbox>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="84" align="center">
+              <template #default="{ $index }"><el-button circle plain type="danger" title="移除字段" aria-label="移除字段" @click="removeCreateField($index)"><el-icon><Delete /></el-icon></el-button></template>
+            </el-table-column>
+          </el-table>
         </div>
         <el-button link type="primary" @click="addCreateField"><el-icon><Plus /></el-icon>添加字段</el-button>
-      </el-form>
-    </UiFormDrawer>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button :disabled="createSaving" @click="createOpen = false">取消</el-button>
+        <el-button type="primary" :loading="createSaving" @click="submitCreate">保存</el-button>
+      </template>
+    </el-dialog>
 
-    <!-- 字段操作抽屉 -->
-    <UiFormDrawer v-model="fieldOpen" :title="`${title}字段维护 - ${fieldTable?.table_name_cn}`" width="860px">
+    <!-- 字段操作弹框 -->
+    <el-dialog v-model="fieldOpen" class="dm-form-dialog" :title="`${title}字段维护 - ${fieldTable?.table_name_cn}`" width="min(1120px, calc(100vw - 24px))" top="5vh" destroy-on-close :close-on-click-modal="!fieldBusy" :close-on-press-escape="!fieldBusy" :show-close="!fieldBusy">
+      <div class="dm-form-dialog-body">
       <template v-if="fieldTable">
         <el-alert type="info" :closable="false" show-icon :title="`表编号 ${fieldTable.table_code} · 系统编号 ${fieldTable.system_code} · 字段级操作，按行编辑提交`" class="tt-subsystem-alert" />
         <div class="tt-field-toolbar">
           <el-button v-if="canUpdate" type="primary" :loading="fieldBusy" @click="addField"><el-icon><Plus /></el-icon>新增字段</el-button>
           <el-button v-if="canDelete" type="danger" :loading="fieldBusy" :disabled="!selectedFieldIds.length" @click="batchDeleteFields"><el-icon><Delete /></el-icon>批量删除字段（{{ selectedFieldIds.length }}）</el-button>
         </div>
-        <el-table :data="fieldRows" border size="small" row-key="id" @selection-change="(rows: TargetTableField[]) => selectedFieldIds = rows.map(r => r.id)">
+        <el-table :data="fieldRows" border size="small" row-key="field_code" @selection-change="(rows: TargetTableField[]) => selectedFieldIds = rows.map(r => r.field_code)">
           <el-table-column type="selection" width="46" />
           <el-table-column type="expand">
             <template #default="{ row }">
               <el-form label-width="110px" label-position="left" class="tt-field-edit">
-                <el-form-item label="字段英文名"><el-input v-model="row.field_name_en" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="字段中文名"><el-input v-model="row.field_name_cn" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="字段含义"><el-input v-model="row.field_meaning" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="码值说明"><el-input v-model="row.code_description" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="ORACLE类型"><el-input v-model="row.oracle_type" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="mysql类型"><el-input v-model="row.mysql_type" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="数据字典编号"><el-input v-model="row.dict_code" :disabled="editingField?.id !== row.id" /></el-form-item>
-                <el-form-item label="关键/可空/主键" v-if="editingField?.id === row.id">
+                <el-form-item label="字段英文名"><el-input v-model="row.field_name_en" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="字段中文名"><el-input v-model="row.field_name_cn" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="字段含义"><el-input v-model="row.field_meaning" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="码值说明"><el-input v-model="row.code_description" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="ORACLE类型"><el-input v-model="row.oracle_type" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="mysql类型"><el-input v-model="row.mysql_type" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="数据字典编号"><el-input v-model="row.dict_code" :disabled="editingField?.field_code !== row.field_code" /></el-form-item>
+                <el-form-item label="关键/可空/主键" v-if="editingField?.field_code === row.field_code">
                   <el-checkbox v-model="fieldForm.isKeyField" :true-value="1" :false-value="0">关键栏位</el-checkbox>
                   <el-checkbox v-model="fieldForm.isNullable" :true-value="1" :false-value="0">可空</el-checkbox>
                   <el-checkbox v-model="fieldForm.isPrimaryKey" :true-value="1" :false-value="0">主键</el-checkbox>
                 </el-form-item>
-                <el-form-item v-if="editingField?.id === row.id">
+                <el-form-item v-if="editingField?.field_code === row.field_code">
                   <el-button type="primary" :loading="fieldSaving" @click="saveEditField(row)">保存</el-button>
                   <el-button @click="cancelEditField">取消</el-button>
                 </el-form-item>
@@ -715,39 +898,148 @@ onMounted(() => { loadProjects(); load() })
           <el-table-column label="主键" width="60" align="center"><template #default="{ row }">{{ row.is_primary_key === 1 ? '是' : '否' }}</template></el-table-column>
           <el-table-column label="操作" width="150" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button v-if="canUpdate" link type="primary" :disabled="fieldBusy" @click="editingField?.id === row.id ? cancelEditField() : openEditField(row)">{{ editingField?.id === row.id ? '取消' : '编辑' }}</el-button>
+              <el-button v-if="canUpdate" link type="primary" :disabled="fieldBusy" @click="editingField?.field_code === row.field_code ? cancelEditField() : openEditField(row)">{{ editingField?.field_code === row.field_code ? '取消' : '编辑' }}</el-button>
               <el-button v-if="canDelete" link type="danger" :disabled="fieldBusy" @click="removeField(row)"><el-icon><Delete /></el-icon>删除</el-button>
             </template>
           </el-table-column>
         </el-table>
       </template>
-    </UiFormDrawer>
-
-    <!-- 导入 -->
-    <el-dialog v-model="importVisible" title="批量上传表结构" width="520px" align-center>
-      <el-upload drag :auto-upload="false" :limit="1" :on-change="(f: any) => importFile = f.raw" accept=".xlsx,.xls">
-        <el-icon class="el-icon--upload"><Upload /></el-icon>
-        <div>将 Excel 拖到此处，或点击选择（模板列：所属项目编码/系统编号/表英文名称/表中文名称/表含义/字段…）</div>
-      </el-upload>
+      </div>
       <template #footer>
-        <el-button @click="importVisible = false">取消</el-button>
-        <el-button type="primary" :loading="importLoading" @click="submitImport">开始导入</el-button>
+        <el-button :disabled="fieldBusy || fieldSaving" @click="fieldOpen = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="fieldCreateOpen" class="dm-form-dialog" title="新增字段" width="min(760px, calc(100vw - 24px))" top="8vh" destroy-on-close :close-on-click-modal="!fieldCreateSaving" :close-on-press-escape="!fieldCreateSaving" :show-close="!fieldCreateSaving">
+      <el-form label-position="top">
+        <el-form-item label="字段英文名" required><el-input v-model="fieldCreateForm.fieldNameEn" placeholder="不允许空格" /></el-form-item>
+        <el-form-item label="字段中文名" required><el-input v-model="fieldCreateForm.fieldNameCn" placeholder="不允许空格" /></el-form-item>
+        <el-form-item label="字段含义"><el-input v-model="fieldCreateForm.fieldMeaning" /></el-form-item>
+        <el-form-item label="码值说明"><el-input v-model="fieldCreateForm.codeDescription" /></el-form-item>
+        <el-form-item label="ORACLE类型"><el-input v-model="fieldCreateForm.oracleType" /></el-form-item>
+        <el-form-item label="mysql类型"><el-input v-model="fieldCreateForm.mysqlType" /></el-form-item>
+        <el-form-item label="数据字典编号"><el-input v-model="fieldCreateForm.dictCode" placeholder="不允许空格" /></el-form-item>
+        <el-form-item label="属性">
+          <el-checkbox v-model="fieldCreateForm.isKeyField" :true-value="1" :false-value="0">关键栏位</el-checkbox>
+          <el-checkbox v-model="fieldCreateForm.isNullable" :true-value="1" :false-value="0">可空</el-checkbox>
+          <el-checkbox v-model="fieldCreateForm.isPrimaryKey" :true-value="1" :false-value="0">主键</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button :disabled="fieldCreateSaving" @click="fieldCreateOpen = false">取消</el-button>
+        <el-button type="primary" :loading="fieldCreateSaving" @click="submitNewField">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 导入对话框 -->
+    <el-dialog
+      v-model="importDialogOpen"
+      class="dm-import-dialog"
+      :title="`批量导入${title}`"
+      width="min(720px, calc(100vw - 24px))"
+      destroy-on-close
+      :close-on-click-modal="!actionBusy"
+      :close-on-press-escape="!actionBusy"
+      :show-close="!actionBusy"
+      :before-close="beforeImportDialogClose"
+      @closed="resetImportDialog"
+    >
+      <div class="dm-import-dialog-body">
+        <el-alert title="导入数据将按当前全局项目上下文校验" type="info" :closable="false" show-icon>
+          <template #sub-title>模板中「所属项目编码」与当前项目不一致的行将按行失败，不会写入其他项目。</template>
+        </el-alert>
+
+        <div class="dm-import-template-row">
+          <span>使用表结构模板填写数据，包含项目编码、系统编号、表信息及字段明细。</span>
+          <el-button :disabled="actionBusy" @click="downloadTemplate"><el-icon><Document /></el-icon>下载模板</el-button>
+        </div>
+
+        <el-upload
+          ref="importUploadRef"
+          class="dm-upload-dropzone"
+          drag
+          :auto-upload="false"
+          :limit="1"
+          accept=".xlsx,.xls"
+          :show-file-list="false"
+          :disabled="actionBusy"
+          :on-change="onImportFileChange"
+          :on-exceed="onImportFileExceed"
+          :on-remove="onImportFileRemove"
+        >
+          <el-icon class="dm-upload-icon"><UploadFilled /></el-icon>
+          <div class="el-upload__text">将 Excel 文件拖到此处，或 <em>点击选择</em></div>
+          <template #tip><div class="dm-upload-hint">支持 .xlsx、.xls，单次选择一个文件</div></template>
+        </el-upload>
+
+        <div v-if="pendingImportFile" class="dm-attachment-section">
+          <div class="dm-attachment-section-title">已选择文件</div>
+          <div class="dm-attachment-list">
+            <div class="dm-attachment-item is-pending">
+              <span class="dm-attachment-icon is-pending"><el-icon><Document /></el-icon></span>
+              <div class="dm-attachment-info">
+                <div class="dm-attachment-name" :title="pendingImportFile.name">{{ pendingImportFile.name }}</div>
+                <div class="dm-attachment-meta">Excel 文件 · 待导入</div>
+              </div>
+              <div class="dm-attachment-actions">
+                <el-button circle plain type="danger" :disabled="actionBusy" title="移除文件" aria-label="移除文件" @click="clearImportFile">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <el-alert v-if="importError" class="dm-import-result" type="error" :closable="false" show-icon title="导入请求失败">
+          <template #default><div class="dm-import-message">{{ importError }}</div></template>
+        </el-alert>
+        <el-alert
+          v-if="importResult"
+          class="dm-import-result"
+          :type="importResult.failed > 0 ? 'warning' : 'success'"
+          :closable="false"
+          show-icon
+          :title="`导入完成：成功 ${importResult.accepted} 条，失败 ${importResult.failed} 条`"
+        >
+          <template v-if="importResult.errors?.length" #default>
+            <ul class="dm-import-errors">
+              <li v-for="(item, index) in importResult.errors.slice(0, 20)" :key="index">{{ item }}</li>
+              <li v-if="importResult.errors.length > 20">剩余 {{ importResult.errors.length - 20 }} 条错误未展示</li>
+            </ul>
+          </template>
+        </el-alert>
+      </div>
+
+      <template #footer>
+        <el-button :disabled="actionBusy" @click="closeImportDialog">取消</el-button>
+        <el-button type="primary" :loading="actionBusy" :disabled="!canSubmitImport" @click="submitImport">确认导入</el-button>
       </template>
     </el-dialog>
   </main>
 </template>
 
 <style scoped>
+.dm-form-dialog { margin-top: 24px; }
+.dm-form-dialog-body { min-width: 0; max-height: min(72vh, 720px); padding-right: 2px; overflow-x: hidden; overflow-y: auto; }
 .tt-page .ui-toolbar { align-items: flex-start; }
 .tt-page .ui-toolbar__filters, .tt-page .ui-toolbar__actions { flex-wrap: wrap; }
 .tt-page .dm-table-actions { gap: 6px; }
 .tt-page .dm-state-panel { padding: 0; }
 .tt-section-title { margin: 14px 0 8px; font-size: 14px; font-weight: 600; color: var(--text); }
-.tt-subsystem-search { display: flex; width: 100%; gap: 8px; }
 .tt-subsystem-alert { width: 100%; margin-bottom: 12px; }
 .tt-create-field { padding: 8px 0; }
+.tt-create-fields-table { min-width: 0; overflow-x: auto; }
+.tt-create-fields-table .el-table { min-width: 1320px; }
+.tt-create-fields-table .el-input { width: 100%; }
 .tt-field-toolbar { margin: 8px 0; }
 .tt-field-edit { padding: 8px 16px; }
+.dm-import-dialog-body { min-width: 0; max-height: min(60vh, 520px); padding-right: 2px; overflow-x: hidden; overflow-y: auto; }
+.dm-import-template-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+.dm-import-template-row span { min-width: 0; overflow-wrap: anywhere; }
+.dm-import-result { margin: 14px 0 0; }
+.dm-import-message { word-break: break-word; }
+.dm-import-errors { margin: 6px 0 0; padding-left: 18px; }
+.dm-import-errors li { margin: 2px 0; word-break: break-word; }
 
 @media (max-width: 760px) {
   .tt-page .ui-toolbar__filters, .tt-page .ui-toolbar__actions { width: 100%; }

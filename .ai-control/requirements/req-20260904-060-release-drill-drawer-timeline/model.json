@@ -1,0 +1,47 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {"inside": ["ReleaseDrillPlanView", "ReleaseDrillExecutionView", "ReleaseOperationsManagement", "release-operations.css"], "outside": ["release API", "release backend", "database", "project context store"]},
+  "state_variables": ["selectedPlan", "itemType", "editingItem", "itemDialog", "selectedRound", "editingStep", "stepDialog", "current_project_id"],
+  "interfaces": [
+    {"name": "plan_item_dto", "producer": "existing release API", "consumer": "ReleaseDrillPlanView", "invariant": "itemType and seqNo retained"},
+    {"name": "drill_step_dto", "producer": "existing release API", "consumer": "ReleaseDrillExecutionView", "invariant": "round ownership and rowVersion retained"},
+    {"name": "project_context", "producer": "existing project store", "consumer": "ReleaseOperationsManagement", "invariant": "top project switch remains source of context"}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "existing plan item array", "transitions": ["filter NORMAL/ROLLBACK", "sort by seqNo", "render connected timeline nodes"], "output": "two readable horizontal timelines"},
+    {"requirement_id": "R2", "input": "timeline add/edit action", "transitions": ["set item type and editing record", "open drawer", "reuse existing saveItem"], "output": "saved plan item returns to timeline"},
+    {"requirement_id": "R3", "input": "round step add/edit action", "transitions": ["set editing step", "open drawer", "reuse existing saveStep"], "output": "saved drill step returns to timeline"},
+    {"requirement_id": "R4", "input": "operations page render", "transitions": ["remove project summary block", "retain project store and route resolution"], "output": "top project switch remains the only project context"},
+    {"requirement_id": "R5", "input": "frontend and runtime checks", "transitions": ["build", "backend regression", "browser route and layout sampling"], "output": "no contract or runtime regression"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Vue source and build", "method": "rg plus npm build"},
+    {"id": "S2", "target": "existing release regression", "method": "focused Maven tests"},
+    {"id": "S3", "target": "drawer and timeline workflows", "method": "authenticated browser DOM and screenshot"},
+    {"id": "S4", "target": "layout and runtime", "method": "scrollWidth, route text, console logs"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "plan view", "action": "replace item cards/dialog with timelines/drawer"},
+    {"id": "A2", "target": "drill view", "action": "replace step list/dialog with timeline/drawer"},
+    {"id": "A3", "target": "operations header", "action": "remove current project block"}
+  ],
+  "disturbances": [
+    {"source": "long timeline contents", "effect": "page-level horizontal overflow", "detectable": true, "controllable": true},
+    {"source": "drawer narrow viewport", "effect": "form action area may be clipped", "detectable": true, "controllable": true},
+    {"source": "existing asynchronous project resolution", "effect": "stale project content during switch", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "API save response", "consequence": "timeline updates after request completion", "sampling_rule": "verify loading state and post-save DOM"},
+    {"source": "project context initialization", "consequence": "header/page may show loading state", "sampling_rule": "wait for route data before measuring"}
+  ],
+  "assumptions": ["existing save functions remain valid", "Element Plus drawer is available in shared app", "timeline content can scroll inside panel"],
+  "measurements": [{"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes"}, {"requirement_id": "R2", "sensor_ids": ["S3"], "observable": "yes"}, {"requirement_id": "R3", "sensor_ids": ["S3"], "observable": "yes"}, {"requirement_id": "R4", "sensor_ids": ["S3", "S4"], "observable": "yes"}, {"requirement_id": "R5", "sensor_ids": ["S1", "S2", "S4"], "observable": "yes"}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A1"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A2"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A3"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3"}
+  ],
+  "model_status": "ready"
+}

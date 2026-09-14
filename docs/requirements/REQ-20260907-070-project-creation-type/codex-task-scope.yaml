@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "local-browser", "isolated-docker-test"]
+  },
+  "external_access": { "changed": false, "systems": [], "data_classification": "synthetic-test-only" },
+  "required_tests": [
+    { "name": "api", "command": "mvn -pl :ccb-system -am test" },
+    { "name": "permission", "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test" },
+    { "name": "frontend", "command": "node docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs" },
+    { "name": "build", "command": "npm --prefix web run build" },
+    { "name": "full-regression", "command": "mvn test" }
+  ],
+  "risk": { "level": "high", "items": ["Additive database migration", "Shared project selector", "Existing migration version collision"] },
+  "requirement": {
+    "id": "REQ-20260907-070",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260907-070-project-creation-type/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "platform/system",
+    "module_owner": "rokeyvvz0828",
+    "branch": "licon",
+    "worktree": "D:/ai_project/ccb_rd"
+  },
+  "scope": {
+    "writable_paths": [
+      ".runtime-logs/req070-preserve-data/**",
+      "docs/requirements/REQ-20260907-070-project-creation-type/**",
+      ".ai-control/requirements/req-20260907-070-project-creation-type/design.json",
+      ".ai-control/requirements/req-20260907-070-project-creation-type/handoff.json",
+      "docs/engineering-control/designs/2026-09-07-project-creation-type-design.md",
+      "docs/engineering-control/plans/2026-09-07-project-creation-type-implementation-plan.md",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+      "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+      "web/src/types/project.ts",
+      "web/src/types/project-context.ts",
+      "web/src/stores/project-context.ts",
+      "web/src/views/ProjectView.vue",
+      "web/src/views/AppLayout.vue",
+      ".ai-control/requirements/req-20260907-070-project-creation-type/*.json"
+    ],
+    "read_only_paths": [
+      ".env",
+      "web/src/components/ui/**",
+      "web/src/api/**",
+      "web/src/modules/delivery-showcase/**",
+      "server/src/platform/system/AGENTS.md",
+      "docs/governance/**",
+      "governance/modules.yaml",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [
+      "**/*.pem",
+      "**/*.key"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260907-070",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "project create/update/read permissions and audit",
+      "three project selectors and selection confirmation"
+    ]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql"
+    ],
+    "planned_change": "Add pm_project.creation_type with NEW default through a new Flyway migration after approval"
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260907-070-project-creation-type",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260907-070-project-creation-type/execution-T1.json",
+      ".ai-control/requirements/req-20260907-070-project-creation-type/observation-T1.json",
+      ".ai-control/requirements/req-20260907-070-project-creation-type/execution-T2.json",
+      ".ai-control/requirements/req-20260907-070-project-creation-type/observation-T2.json"
+    ]
+  },
+  "execution_gate": {
+    "design_approval": "approved",
+    "implementation_plan_approval": "approved",
+    "platform_owner_approval": "approved",
+    "note": "User explicitly confirmed structure updates with all existing data retained and existing release management tables untouched. Development .env may be read without disclosure. Local backup, isolated restore/preflight, compatible structural migration and backend restart are authorized. No production or Git mutations. Destructive source migrations may not run blindly; compatibility and protected-table checks must pass first. No history reset or fabricated migration success is authorized."
+  }
+}

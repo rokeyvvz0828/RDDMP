@@ -1,0 +1,2204 @@
+{
+  "schema_version": 4,
+  "revision": 20,
+  "created_at": "2026-09-03T09:49:19+00:00",
+  "updated_at": "2026-09-03T10:22:51+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认按推荐方案执行；计划确认=用户确认按推荐方案执行",
+      "recorded_at": "2026-09-03T09:49:19+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "REQ-064 基线已确认，进入系统建模",
+      "recorded_at": "2026-09-03T09:49:46+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "系统模型门禁通过",
+      "recorded_at": "2026-09-03T09:49:46+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划覆盖 R1-R5，开始 T1",
+      "recorded_at": "2026-09-03T09:51:19+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "执行产物已入库（revision 1）；T1-T4 全部 verified；S-0001~S-0004 四次采样误差 0，进入独立观测",
+      "recorded_at": "2026-09-03T10:21:42+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "观测产物 complete；T1-T4 全部 verified；无未裁决反馈；进入收敛验收",
+      "recorded_at": "2026-09-03T10:22:04+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁 PASS：4 次全零采样、T1-T4 全部 verified、回归/治理/范围/不变量全部通过",
+      "recorded_at": "2026-09-03T10:22:51+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认按推荐方案执行；计划确认=用户确认按推荐方案执行",
+        "recorded_at": "2026-09-03T09:49:19+00:00",
+        "data": {
+          "objective": "将中间表唯一收敛到 dm_target_table(table_category='INTERMEDIATE') + dm_target_table_field，并在测试节点安全清理空旧表。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "中间表唯一主模型为 dm_target_table(table_category='INTERMEDIATE') 与 dm_target_table_field。",
+              "acceptance": [
+                "所有中间表 CRUD/查询均通过目标表服务"
+              ],
+              "priority": "must",
+              "source": "用户批准方案",
+              "counterexample": [
+                "生产服务读取 dm_intermediate_table"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "追加迁移在删除前断言旧表为空，存在数据时阻断。",
+              "acceptance": [
+                "空表 fixture 成功；非空 fixture 在 DROP 前失败"
+              ],
+              "priority": "must",
+              "source": "用户最新决策",
+              "counterexample": [
+                "未检查存量直接 DROP"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "中间表菜单、接口、回收站、统计和关联查询统一使用目标表/字段接口。",
+              "acceptance": [
+                "旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE"
+              ],
+              "priority": "must",
+              "source": "P1 治理问题",
+              "counterexample": [
+                "StructuredAssetService 继续拼接旧表名"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "最终数据库不保留 dm_intermediate_table，且删除必须受空表断言保护。",
+              "acceptance": [
+                "V160 成功后旧表不存在；非空时迁移失败"
+              ],
+              "priority": "must",
+              "source": "用户最新决策",
+              "counterexample": [
+                "无断言 DROP 旧表"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "租户、项目、权限和审计语义保持不变。",
+              "acceptance": [
+                "模块测试、治理检查和权限回归通过"
+              ],
+              "priority": "must",
+              "source": "项目规约",
+              "counterexample": [
+                "目标表接口绕过项目可达性"
+              ]
+            }
+          ],
+          "invariants": [
+            "Flyway 只追加",
+            "DROP 前旧表行数必须为 0",
+            "不修改平台 system 或 pm_project_member"
+          ],
+          "constraints": [
+            "仅修改 REQ-064 writable_paths",
+            "不连接生产",
+            "保持 com.ccb 包名和现有权限码"
+          ],
+          "non_goals": [
+            "迁移旧表存量数据",
+            "修改项目成员模型",
+            "引入动态表单元数据"
+          ],
+          "assumptions": [
+            {
+              "text": "V160 是当前最高版本后的下一个可用迁移号",
+              "basis": "当前最高版本 V159",
+              "falsifier": "迁移检查发现更高版本"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "不可转换存量采用迁移前阻断并人工补齐",
+              "reason": "避免静默丢失或伪造字段",
+              "source": "用户确认按建议执行"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "signal": "迁移、服务、前端、治理检查均通过",
+              "method": "Maven/Testcontainers/Vue/repository checks"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "V160、后端和前端边界及传感器已定义",
+        "recorded_at": "2026-09-03T09:49:46+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "V160 migration",
+              "data-migration backend services",
+              "data-migration frontend route/pages"
+            ],
+            "environment": [
+              "dm_intermediate_table存量",
+              "dm_target_table/field",
+              "platform permission contract",
+              "local MySQL/Testcontainers"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "intermediate_storage_source",
+              "owner": "data-migration services",
+              "valid_values": [
+                "target_table_field",
+                "legacy_intermediate_table"
+              ]
+            },
+            {
+              "name": "migration_status",
+              "owner": "V160",
+              "valid_values": [
+                "blocked_nonempty",
+                "dropped_empty"
+              ]
+            },
+            {
+              "name": "legacy_write_count",
+              "owner": "application SQL",
+              "valid_values": [
+                "zero"
+              ]
+            },
+            {
+              "name": "menu_component",
+              "owner": "Vue router",
+              "valid_values": [
+                "TargetTablesPage",
+                "StructuredListView"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "intermediate CRUD",
+              "transitions": [
+                "TargetTableService category INTERMEDIATE"
+              ],
+              "outputs": [
+                "normalized reads/writes"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "legacy table row count",
+              "transitions": [
+                "pre-drop assert"
+              ],
+              "outputs": [
+                "drop empty table or blocked migration"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "menu/API/recycle bin",
+              "transitions": [
+                "shared target table contract"
+              ],
+              "outputs": [
+                "single interface source"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "cleanup request",
+              "transitions": [
+                "empty-table guard",
+                "drop table"
+              ],
+              "outputs": [
+                "legacy table absent"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "authenticated request",
+              "transitions": [
+                "existing permission/project checks"
+              ],
+              "outputs": [
+                "tenant-safe result"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "target_table_intermediate",
+              "producer": "TargetTableService",
+              "consumers": [
+                "TargetTablesPage",
+                "IssueService",
+                "recycle bin"
+              ],
+              "invariant": "table_category=INTERMEDIATE"
+            },
+            {
+              "name": "legacy_migration_input",
+              "producer": "dm_intermediate_table",
+              "consumers": [
+                "V160 only"
+              ],
+              "invariant": "no application read/write after cutover"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "migration correctness",
+              "method": "Testcontainers MySQL fixture and row assertions",
+              "independence": "database execution"
+            },
+            {
+              "id": "S2",
+              "target": "legacy reference",
+              "method": "rg production SQL scan",
+              "independence": "static source scan"
+            },
+            {
+              "id": "S3",
+              "target": "menu/API convergence",
+              "method": "frontend build and route inspection",
+              "independence": "Vue compiler/static route"
+            },
+            {
+              "id": "S4",
+              "target": "governance and scope",
+              "method": "repository checkers",
+              "independence": "governance scripts"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "data model",
+              "action": "append V160 empty-assert then drop migration",
+              "authority": "REQ-064",
+              "rollback": "test database rebuild"
+            },
+            {
+              "id": "A2",
+              "target": "backend",
+              "action": "remove legacy type branch and route intermediate through target service",
+              "authority": "REQ-064",
+              "rollback": "application version rollback"
+            },
+            {
+              "id": "A3",
+              "target": "frontend",
+              "action": "remove legacy structured page and use TargetTablesPage",
+              "authority": "REQ-064",
+              "rollback": "application version rollback"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "legacy rows with incomplete JSON",
+              "effect": "migration blocks",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "pre-existing dirty worktree",
+              "effect": "scope checker sees unrelated changes",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flyway DDL execution",
+              "consequence": "database rollback is rebuild-only",
+              "sampling_rule": "run empty/non-empty migration fixtures before release"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "V160 is next available migration version",
+              "evidence": "current max migration V159",
+              "falsifier": "governance scan finds a higher version"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2/A3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T4 串行任务和验收已定义",
+        "recorded_at": "2026-09-03T09:51:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "追加 V160 并在旧表为空时安全清理",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "当前测试节点无需保留旧表存量"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_intermediate_table_canonicalization.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java"
+              ],
+              "invariants": [
+                "DROP 前旧表行数为 0",
+                "目标表不受影响"
+              ],
+              "interface_contracts": [
+                "V160 仅追加且空表断言"
+              ],
+              "non_goals": [
+                "迁移旧表存量"
+              ],
+              "action_bounds": [
+                "只新增 V160 和测试"
+              ],
+              "evidence_required": [
+                "Maven/Testcontainers 输出"
+              ],
+              "acceptance_checks": [
+                "empty fixture dropped",
+                "non-empty fixture blocked before drop",
+                "target tables remain"
+              ],
+              "rollback": "测试数据库重建",
+              "stop_conditions": [
+                "旧表非空"
+              ],
+              "escalation_conditions": [
+                "需迁移非空存量"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "移除后端旧表读写并将回收站/统计/关联收敛到目标表",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "TargetTableService 已支持 INTERMEDIATE"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/**"
+              ],
+              "invariants": [
+                "租户项目权限不变",
+                "旧表 SQL 为零"
+              ],
+              "interface_contracts": [
+                "结构化服务只支持 RULE/PARAMETER"
+              ],
+              "non_goals": [
+                "修改 platform"
+              ],
+              "action_bounds": [
+                "只改 data-migration 模块"
+              ],
+              "evidence_required": [
+                "Maven 和 rg"
+              ],
+              "acceptance_checks": [
+                "production SQL no dm_intermediate_table",
+                "structured endpoint rejects INTERMEDIATE_TABLE",
+                "permissions preserved"
+              ],
+              "rollback": "应用版本回滚",
+              "stop_conditions": [
+                "无法保持授权语义"
+              ],
+              "escalation_conditions": [
+                "需修改 platform"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "中间表前端入口统一使用 TargetTablesPage",
+              "requirement_ids": [
+                "R3",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "router 已指向 TargetTablesPage"
+              ],
+              "write_scope": [
+                "web/src/modules/data-migration/**",
+                "web/src/api/data-migration.ts",
+                "web/src/router/index.ts"
+              ],
+              "invariants": [
+                "中间表菜单权限码保持"
+              ],
+              "interface_contracts": [
+                "category=INTERMEDIATE"
+              ],
+              "non_goals": [
+                "修改公共 UI"
+              ],
+              "action_bounds": [
+                "只改数据迁移前端"
+              ],
+              "evidence_required": [
+                "Vue build 和路由扫描"
+              ],
+              "acceptance_checks": [
+                "route uses category INTERMEDIATE",
+                "legacy StructuredListView branch absent",
+                "frontend build pass"
+              ],
+              "rollback": "应用版本回滚",
+              "stop_conditions": [
+                "菜单权限或移动布局回归"
+              ],
+              "escalation_conditions": [
+                "需修改公共 UI"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "执行独立观测和高保证收敛验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "T1-T3 已完成并可采样"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260903-064-data-migration-intermediate-table-canonicalization/*.json"
+              ],
+              "invariants": [
+                "需求和范围事实不伪造"
+              ],
+              "interface_contracts": [
+                "convergence.json"
+              ],
+              "non_goals": [
+                "扩展功能"
+              ],
+              "action_bounds": [
+                "只记录证据"
+              ],
+              "evidence_required": [
+                "命令退出码和残留扫描"
+              ],
+              "acceptance_checks": [
+                "maven",
+                "frontend",
+                "governance",
+                "flyway",
+                "diff",
+                "residual scan"
+              ],
+              "rollback": "数据库通过测试库重建",
+              "stop_conditions": [
+                "任一 must 无证据"
+              ],
+              "escalation_conditions": [
+                "出现数据丢失或跨租户访问"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "先建立数据事实源"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "后端契约稳定后切前端"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "完成实现后独立验收"
+            }
+          ],
+          "parallel_groups": [],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "migration fixture and old-table guard"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "backend test and residual scan"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "frontend build and route inspection"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "迁移采样",
+              "trigger": "T1 完成",
+              "observer": "Testcontainers",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ]
+            },
+            {
+              "label": "后端契约采样",
+              "trigger": "T2 完成",
+              "observer": "Maven + rg",
+              "sensors": [
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "最终集成采样",
+              "trigger": "T3 完成",
+              "observer": "frontend/governance",
+              "sensors": [
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3 实现完成；T4 全模块回归与治理门禁实测通过",
+        "recorded_at": "2026-09-03T10:21:08+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_intermediate_table_canonicalization.sql",
+              "purpose": "新增：追加迁移，CALL 存储过程断言 dm_intermediate_table 行数为 0，非空 SIGNAL 阻断；断言通过后 DROP 旧表，不复制存量"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/**",
+              "purpose": "移除旧表名常量与 INTERMEDIATE_TABLE 业务分支；StructuredAssetService/ContentAssetTables/ExcelService 仅保留 RULE/PARAMETER；回收站/统计/关联校验收敛到 TargetTableService category=INTERMEDIATE，保留权限与项目可达性校验；新增 DataMigrationExceptionAdvice 废弃语义"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/**",
+              "purpose": "新增/更新 ContentAssetMigrationMySqlTest（空表删除与非空阻断 fixture）、DataMigrationModuleRegistrationTest（生产代码无旧表引用且 V160 含受控 DROP）、DataMigrationPermissionServiceTest、StubProjectAccess、web 包异常建议测试"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/**",
+              "purpose": "删除 IntermediateTablesPage.vue；TargetTablesPage 支持 category=INTERMEDIATE；StructuredListView/API 类型/回收站展示移除 INTERMEDIATE_TABLE 分支；新增 ProjectScopeState 等既有上下文组件"
+            },
+            {
+              "path_or_resource": "web/src/api/data-migration.ts",
+              "purpose": "类型与请求下沉到目标表/字段接口，移除旧结构化中间表契约"
+            },
+            {
+              "path_or_resource": "web/src/router/index.ts",
+              "purpose": "中间表菜单仍保留路径/标题，组件指向 TargetTablesPage 并传 category=INTERMEDIATE"
+            },
+            {
+              "path_or_resource": "docs/engineering-control/designs/2026-09-03-data-migration-intermediate-table-canonicalization-design.md",
+              "purpose": "修正旧'观察期保留/复制存量'表述，明确 V160 不复制存量、仅在空表时清理、fail-closed"
+            },
+            {
+              "path_or_resource": "docs/requirements/** REQ-064 与 REQ-031 database-schema-and-relations.md",
+              "purpose": "同步中间表唯一化后的库表关系描述"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            "mvn -pl :ccb-data-migration -am test：8/8 模块 BUILD SUCCESS；data-migration 64/64 通过，0 失败 0 错误（含 ContentAssetMigrationMySqlTest 7/7、IssueMigrationMySqlTest 3/3、DataMigrationModuleRegistrationTest 14/14、DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7）",
+            "npm --prefix web run build：✓ built in 18.56s，退出码 0（仅存量 chunk size 警告）",
+            "node scripts/check-all-governance.mjs：17 模块/仓库 skill/development entry/99 需求目录 1123 JSON/14 Maven 模块/Flyway 全部通过，退出码 0",
+            "rg -n -i 'dm_intermediate_table|INTERMEDIATE_TABLE' production 范围：0 命中；命中仅限测试文件与受控迁移",
+            "git diff --check：退出码 0",
+            "V160 空表 fixture 删除成功、非空 fixture 在 DROP 前被 SIGNAL 阻断（ContentAssetMigrationMySqlTest 7/7 复验）"
+          ],
+          "local_checks": [
+            "V160 在 DROP 前经存储过程断言行数=0，非空时 SIGNAL 45000，fail-closed",
+            "DataMigrationModuleRegistrationTest 断言生产源文件不含 dm_intermediate_table/INTERMEDIATE_TABLE，且 V160 包含受控 DROP",
+            "全仓库生产代码扫描（排除 test/migration/.ai-control/docs）无旧表引用；router 无 IntermediateTablesPage 残留导入",
+            "设计/计划文档扫描无'观察期保留/复制存量'残留表述",
+            "Flyway 检查通过（154 迁移 + 2 回调），V160 仅追加"
+          ],
+          "diff_summary": [
+            "62 个文件变更，+11303/-10283；REQ-064 可归属改动均在 writable_paths 内；工作树同时包含其他需求（REQ-031 T31/T32、REQ-063 治理整改、控制脚本与开发工具、LoginView/verify_ui 等）的既有未提交改动"
+          ],
+          "invariants_checked": [
+            "Flyway 只追加：V88/V153/V154/V151/V155 未修改，V160 为追加",
+            "DROP 前旧表行数必须为 0（SIGNAL 保护）",
+            "未修改 platform/system 与 pm_project_member（模块边界检查通过）",
+            "中间表菜单权限码与路由路径保持",
+            "租户/项目/RBAC/审计语义经权限测试与治理检查保持"
+          ],
+          "disturbances": [
+            "特征分支工作树带有 REQ-031/REQ-063 等既有未提交改动，属于其他需求范围，REQ-064 未触碰",
+            "前端构建存在存量 chunk size 警告，与本次改动无关",
+            "本地验证环境为 Testcontainers MySQL 8.4 与本地前端构建，不替代生产拓扑"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "生产 MySQL 8.4 Flyway 版本兼容警告为存量现象，不阻断；V160 在测试节点空表前提下执行"
+          ],
+          "recorded_at": "2026-09-03T18:30:00+08:00",
+          "task_id": "T1-T4",
+          "recommended_next": "进入独立观测：按 S1-S4 传感器记录采样并核对 R1-R5 证据，随后执行收敛验收"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "S-0001~S-0004 独立采样全零误差；R1-R5 逐项测量通过；无待裁决反馈",
+        "recorded_at": "2026-09-03T10:22:00+00:00",
+        "data": {
+          "sample_label": "S-0001~S-0004 最终集成采样（high-assurance 三次以上）",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "id": "M-R1-01",
+              "requirement": "R1",
+              "expectation": "中间表 CRUD/查询均通过目标表服务（category=INTERMEDIATE）",
+              "measurement": "DataMigrationModuleRegistrationTest 14/14 断言生产源不含旧表引用；全仓库生产 rg 扫描 0 命中；TargetTablesPage/接口固定 tableCategory=INTERMEDIATE",
+              "result": "pass"
+            },
+            {
+              "id": "M-R2-01",
+              "requirement": "R2",
+              "expectation": "空表 fixture 删除成功；非空 fixture 在 DROP 前失败",
+              "measurement": "ContentAssetMigrationMySqlTest 7/7：空表 DROP 后 information_schema 无 dm_intermediate_table；非空 fixture INSERT 后 V160 断言 SIGNAL 阻断且表保留",
+              "result": "pass"
+            },
+            {
+              "id": "M-R3-01",
+              "requirement": "R3",
+              "expectation": "旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE",
+              "measurement": "StructuredAssetService/ExcelService/ContentAssetTables 无 INTERMEDIATE_TABLE 分支；router 无 IntermediateTablesPage 残留；构建通过且权限码保留",
+              "result": "pass"
+            },
+            {
+              "id": "M-R4-01",
+              "requirement": "R4",
+              "expectation": "最终数据库不保留旧表，删除受空表断言保护",
+              "measurement": "V160 SQL 实读：存储过程断言 COUNT(*)=0 非空 SIGNAL 45000，断言后 DROP；空表 fixture 复验旧表不存在",
+              "result": "pass"
+            },
+            {
+              "id": "M-R5-01",
+              "requirement": "R5",
+              "expectation": "租户、项目、权限和审计语义不变",
+              "measurement": "DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7、system 项目/审计测试 62/62；模块边界检查 14 模块通过；数据范围校验代码保持",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "特征分支工作树存在 REQ-031（T31/T32 执行与观测记录）、REQ-063（治理整改）、控制脚本和开发工具等既有未提交改动，不属于 REQ-064 范围且未被触碰",
+            "前端构建存量 chunk size 警告（>500kB），与本次改动无关",
+            "验证环境为本地 Testcontainers MySQL 8.4 与本地构建，未连接生产"
+          ],
+          "coverage_gaps": [
+            "生产拓扑与真实 IAM/发布顺序未在本机复验（约定：应用收敛版本先发布，V160 后执行）",
+            "移动视口与浏览器点击路径依赖既有 UI 验收流程，本门禁以构建、路由静态检查与共享组件复用证据覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛验收：R1-R5 证据链完整，4 次全零采样，全模块回归与治理门禁通过",
+        "recorded_at": "2026-09-03T10:22:43+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "DataMigrationModuleRegistrationTest 14/14 断言生产源无旧表引用",
+                "全仓库生产 rg 扫描 0 命中 dm_intermediate_table/INTERMEDIATE_TABLE",
+                "TargetTablesPage/接口固定 tableCategory=INTERMEDIATE，router 无 IntermediateTablesPage 残留"
+              ],
+              "limitations": [
+                "中间表 CRUD 运行路径以模块测试与服务测试覆盖，未在浏览器手动点测"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "evidence": [
+                "ContentAssetMigrationMySqlTest 7/7：空表 fixture DROP 成功且旧表从 information_schema 消失",
+                "非空 fixture 在 DROP 前被存储过程 SIGNAL 45000 阻断且表保留",
+                "目标表/字段未受影响"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "StructuredAssetService/ContentAssetTables/ExcelService 无 INTERMEDIATE_TABLE 业务分支（模块注册测试 14/14 + rg 扫描）",
+                "中间表菜单保留路径/标题并指向 TargetTablesPage（category=INTERMEDIATE）",
+                "前端构建 ✓ 18.56s，权限码与路由检查通过"
+              ],
+              "limitations": [
+                "移动视口验收依赖既有 UI 验收流程"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "evidence": [
+                "V160 实读：存储过程断言 COUNT(*)=0，非空 SIGNAL，断言后 DROP TABLE dm_intermediate_table",
+                "空表 fixture 复验旧表不存在；非空 fixture 复验阻断且数据保留"
+              ],
+              "limitations": [
+                "V160 为不可逆 DROP，回退仅限测试库重建；生产按发布顺序执行"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7、system 模块项目/审计测试 62/62 通过",
+                "治理检查：17 模块、模块边界 14 Maven 模块、99 需求目录 1123 JSON 全部通过",
+                "数据范围/RBAC/审计代码路径复用未改动"
+              ],
+              "limitations": [
+                "真实生产 IAM 与租户数据未在本机验证"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "V160 空表断言 fixture 成功/非空 fixture DROP 前阻断；ContentAssetMigrationMySqlTest 7/7；Flyway 只追加检查通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "data-migration 64/64 测试通过；生产代码旧表引用 0；回收站/统计/关联收敛到目标表；权限测试 8/8"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "前端构建 ✓ 18.56s；router 无旧页面残留；菜单组件=TargetTablesPage category=INTERMEDIATE；StructuredListView 无旧类型分支"
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "maven 8/8 模块 BUILD SUCCESS；前端构建通过；check-all-governance 全通过；git diff --check 通过；残留扫描 0 生产命中"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0,
+              "label": "S1 迁移断言采样"
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0,
+              "label": "S2 后端契约与残留采样"
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0,
+              "label": "S3 前端收敛采样"
+            },
+            {
+              "sample_id": "S-0004",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0,
+              "label": "S4 治理与范围采样"
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "mvn -pl :ccb-data-migration -am test",
+              "result": "pass",
+              "evidence": "8/8 模块 BUILD SUCCESS；data-migration 64/64，0 失败 0 错误 0 跳过"
+            },
+            {
+              "check": "npm --prefix web run build",
+              "result": "pass",
+              "evidence": "✓ built in 18.56s，退出码 0"
+            },
+            {
+              "check": "node scripts/check-all-governance.mjs",
+              "result": "pass",
+              "evidence": "17 模块、仓库 skill、development entry、99 需求目录 1123 JSON、14 Maven 模块、Flyway 154 迁移+2 回调全部通过"
+            },
+            {
+              "check": "残留扫描 rg dm_intermediate_table|INTERMEDIATE_TABLE（生产范围）",
+              "result": "pass",
+              "evidence": "生产代码 0 命中；命中仅限测试文件与受控迁移（含 V160 受控 DROP）"
+            },
+            {
+              "check": "git diff --check",
+              "result": "pass",
+              "evidence": "退出码 0，无空白错误"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "Flyway 只追加",
+              "result": "pass",
+              "evidence": "V88/V151/V153/V154/V155 未修改；V160 为新增追加迁移；Flyway 检查通过"
+            },
+            {
+              "invariant": "DROP 前旧表行数必须为 0",
+              "result": "pass",
+              "evidence": "V160 存储过程断言 COUNT(*)=0，非空 SIGNAL 45000 fail-closed"
+            },
+            {
+              "invariant": "不修改 platform/system 与 pm_project_member",
+              "result": "pass",
+              "evidence": "模块边界检查 14 模块通过；REQ-064 无 platform 或项目成员表改动"
+            },
+            {
+              "invariant": "中间表菜单权限码保持",
+              "result": "pass",
+              "evidence": "路由路径/标题保留，组件切换为 TargetTablesPage；权限码未变更"
+            },
+            {
+              "invariant": "租户/项目/RBAC/审计语义保持",
+              "result": "pass",
+              "evidence": "权限/项目测试 8/8+62/62；服务契约复用现有校验路径"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": [
+              "工作树同时存在其他需求/工具链的既有未提交改动（REQ-031 T31/T32 记录、REQ-063 治理整改文档与 governance 例外清单、控制脚本与开发工具、LoginView/verify_ui 等），均可归属既有任务且 REQ-064 未触碰；合入时需与其他任务一并评审"
+            ]
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "非空旧表 fixture（数据存在）",
+              "result": "pass",
+              "evidence": "V160 阻断且数据保留，无静默丢失"
+            },
+            {
+              "disturbance": "前端构建存量 chunk 警告",
+              "result": "pass",
+              "evidence": "构建退出码 0，警告与本次改动无关"
+            },
+            {
+              "disturbance": "特征分支既有未提交改动",
+              "result": "pass",
+              "evidence": "REQ-064 可归属改动均在 writable_paths；其他需求改动未受影响"
+            }
+          ],
+          "residual_risks": [
+            "V160 为不可逆 DROP：仅测试节点空表前提下执行；应用先收敛再发迁移；回退=应用版本回退+测试库重建",
+            "JSON 到规范化字段不可逆映射风险已通过空表断言消除（无存量迁移）",
+            "生产拓扑与真实 IAM 未在本机验证，发布时按顺序执行并在生产空表前提下放行",
+            "前端移动视口验收依赖既有 UI 验收流程，本门禁以构建与路由静态证据覆盖",
+            "scope_audit 披露：特征分支包含其他需求未提交改动，合入前需单独评审"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R5 全部 must 需求均有任务覆盖与异质传感器证据；4 次采样 P0/P1/P2/P3 全零；任务 T1-T4 全部 verified；无未裁决反馈；回归（maven/前端/治理/Flyway/diff/残留）全部通过；范围与不变量审计通过"
+        }
+      }
+    ]
+  },
+  "objective": "将中间表唯一收敛到 dm_target_table(table_category='INTERMEDIATE') + dm_target_table_field，并在测试节点安全清理空旧表。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "中间表唯一主模型为 dm_target_table(table_category='INTERMEDIATE') 与 dm_target_table_field。",
+      "acceptance": [
+        "所有中间表 CRUD/查询均通过目标表服务"
+      ],
+      "priority": "must",
+      "source": "用户批准方案",
+      "counterexample": [
+        "生产服务读取 dm_intermediate_table"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "追加迁移在删除前断言旧表为空，存在数据时阻断。",
+      "acceptance": [
+        "空表 fixture 成功；非空 fixture 在 DROP 前失败"
+      ],
+      "priority": "must",
+      "source": "用户最新决策",
+      "counterexample": [
+        "未检查存量直接 DROP"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "中间表菜单、接口、回收站、统计和关联查询统一使用目标表/字段接口。",
+      "acceptance": [
+        "旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE"
+      ],
+      "priority": "must",
+      "source": "P1 治理问题",
+      "counterexample": [
+        "StructuredAssetService 继续拼接旧表名"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "最终数据库不保留 dm_intermediate_table，且删除必须受空表断言保护。",
+      "acceptance": [
+        "V160 成功后旧表不存在；非空时迁移失败"
+      ],
+      "priority": "must",
+      "source": "用户最新决策",
+      "counterexample": [
+        "无断言 DROP 旧表"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "租户、项目、权限和审计语义保持不变。",
+      "acceptance": [
+        "模块测试、治理检查和权限回归通过"
+      ],
+      "priority": "must",
+      "source": "项目规约",
+      "counterexample": [
+        "目标表接口绕过项目可达性"
+      ]
+    }
+  ],
+  "invariants": [
+    "Flyway 只追加",
+    "DROP 前旧表行数必须为 0",
+    "不修改平台 system 或 pm_project_member"
+  ],
+  "constraints": [
+    "仅修改 REQ-064 writable_paths",
+    "不连接生产",
+    "保持 com.ccb 包名和现有权限码"
+  ],
+  "non_goals": [
+    "迁移旧表存量数据",
+    "修改项目成员模型",
+    "引入动态表单元数据"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260903-064-data-migration-intermediate-table-canonicalization/handoff.json",
+    "imported_at": "2026-09-03T09:49:19+00:00",
+    "topic": "data-migration-intermediate-table-canonicalization",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-intermediate-table-canonicalization",
+      "handoff_status": "approved",
+      "created_at": "2026-09-03T17:30:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-intermediate-table-canonicalization",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-03-data-migration-intermediate-table-canonicalization-design.md",
+        "objective": "将中间表唯一收敛到 dm_target_table(table_category='INTERMEDIATE') + dm_target_table_field，并在测试节点安全清理空旧表。",
+        "users": [
+          "数据迁移管理员",
+          "数据迁移模块服务",
+          "数据库运维"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "中间表唯一主模型为 dm_target_table(table_category='INTERMEDIATE') 与 dm_target_table_field。",
+            "acceptance": [
+              "所有中间表 CRUD/查询均通过目标表服务"
+            ],
+            "priority": "must",
+            "source": "用户批准方案",
+            "counterexample": [
+              "生产服务读取 dm_intermediate_table"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "追加迁移在删除前断言旧表为空，存在数据时阻断。",
+            "acceptance": [
+              "空表 fixture 成功；非空 fixture 在 DROP 前失败"
+            ],
+            "priority": "must",
+            "source": "用户最新决策",
+            "counterexample": [
+              "未检查存量直接 DROP"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "中间表菜单、接口、回收站、统计和关联查询统一使用目标表/字段接口。",
+            "acceptance": [
+              "旧结构化入口拒绝；菜单仍可用且调用 category=INTERMEDIATE"
+            ],
+            "priority": "must",
+            "source": "P1 治理问题",
+            "counterexample": [
+              "StructuredAssetService 继续拼接旧表名"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "最终数据库不保留 dm_intermediate_table，且删除必须受空表断言保护。",
+            "acceptance": [
+              "V160 成功后旧表不存在；非空时迁移失败"
+            ],
+            "priority": "must",
+            "source": "用户最新决策",
+            "counterexample": [
+              "无断言 DROP 旧表"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "租户、项目、权限和审计语义保持不变。",
+            "acceptance": [
+              "模块测试、治理检查和权限回归通过"
+            ],
+            "priority": "must",
+            "source": "项目规约",
+            "counterexample": [
+              "目标表接口绕过项目可达性"
+            ]
+          }
+        ],
+        "invariants": [
+          "Flyway 只追加",
+          "DROP 前旧表行数必须为 0",
+          "不修改平台 system 或 pm_project_member"
+        ],
+        "constraints": [
+          "仅修改 REQ-064 writable_paths",
+          "不连接生产",
+          "保持 com.ccb 包名和现有权限码"
+        ],
+        "non_goals": [
+          "迁移旧表存量数据",
+          "修改项目成员模型",
+          "引入动态表单元数据"
+        ],
+        "selected_approach": {
+          "name": "规范化主模型、空表断言后清理",
+          "reason": "测试节点无需搬迁数据，断言避免静默丢失",
+          "alternatives": [
+            {
+              "name": "长期双写/双读",
+              "rejected_because": "持续漂移且无法消除双模型"
+            },
+            {
+              "name": "未断言直接删除旧表",
+              "rejected_because": "可能造成数据丢失"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "V160 migration",
+              "data-migration backend/frontend"
+            ],
+            "outside": [
+              "platform/system",
+              "physical cleanup"
+            ]
+          },
+          "components": [],
+          "interfaces": [],
+          "data_flows": []
+        },
+        "error_handling": [
+          {
+            "condition": "JSON 元数据缺失或冲突",
+            "behavior": "迁移前 SIGNAL 失败",
+            "recovery": "人工补齐后重试"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "租户和项目授权不变"
+          ],
+          "performance": [
+            "按索引和 JSON_TABLE 执行"
+          ],
+          "compatibility": [
+            "旧表观察期保留"
+          ],
+          "operations": [
+            "追加迁移、无物理删除"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "signal": "迁移、服务、前端、治理检查均通过",
+            "method": "Maven/Testcontainers/Vue/repository checks"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "V160 是当前最高版本后的下一个可用迁移号",
+            "basis": "当前最高版本 V159",
+            "falsifier": "迁移检查发现更高版本"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "不可转换存量采用迁移前阻断并人工补齐",
+            "reason": "避免静默丢失或伪造字段",
+            "source": "用户确认按建议执行"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "旧 JSON 字段缺失",
+            "impact": "迁移阻断",
+            "mitigation": "前置断言"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认按推荐方案执行",
+          "confirmed_at": "2026-09-03"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-03-data-migration-intermediate-table-canonicalization-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只追加 V160",
+          "不删除 dm_intermediate_table",
+          "不修改平台成员表"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_intermediate_table_canonicalization.sql",
+            "status": "candidate-new",
+            "responsibility": "存量断言与复制",
+            "evidence": "REQ-064"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+            "status": "existing",
+            "responsibility": "规范化表/字段服务",
+            "evidence": "现有 TargetTablesPage API"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+            "status": "existing",
+            "responsibility": "中间表菜单页面",
+            "evidence": "router category INTERMEDIATE"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "追加 V160 并完成 JSON 到目标表/字段表的 fail-closed 迁移",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V159 为当前最高迁移版本",
+              "V88 已有目标表/字段表"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_intermediate_table_canonicalization.sql"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "dm_intermediate_table JSON"
+              ],
+              "produces": [
+                "normalized intermediate table/field rows"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "添加有效与失败 fixture",
+                "command": null,
+                "expected": "fixture 覆盖成功、缺字段、重复和冲突",
+                "evidence": "测试输出"
+              },
+              {
+                "id": "T1-S2",
+                "action": "实现 V160 前置断言和幂等复制",
+                "command": null,
+                "expected": "失败时无目标写入且旧表保留",
+                "evidence": "Flyway/Testcontainers 输出"
+              },
+              {
+                "id": "T1-S3",
+                "action": "运行迁移测试",
+                "command": "mvn -pl :ccb-data-migration -am test",
+                "expected": "测试通过",
+                "evidence": "Maven 退出码 0"
+              }
+            ],
+            "acceptance_checks": [
+              "有效 fixture 复制",
+              "无效 fixture fail-closed",
+              "无 DROP 旧表"
+            ],
+            "risks": [
+              "JSON 结构不一致"
+            ],
+            "rollback": "回滚应用，保留 V160 和旧表",
+            "stop_conditions": [
+              "映射含义不确定"
+            ],
+            "escalation_conditions": [
+              "需修改历史迁移"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "后端接口收敛到目标表",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "TargetTableService 已支持 INTERMEDIATE"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/data-migration/**"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/**"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "TargetTableService INTERMEDIATE"
+              ],
+              "produces": [
+                "旧结构化类型拒绝、回收站按目标表查询"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "移除旧表常量和业务分支",
+                "command": null,
+                "expected": "生产 SQL 无 dm_intermediate_table",
+                "evidence": "rg 输出"
+              },
+              {
+                "id": "T2-S2",
+                "action": "补齐目标表回收站分发",
+                "command": null,
+                "expected": "软删/恢复/清理保留权限审计",
+                "evidence": "Maven 测试"
+              }
+            ],
+            "acceptance_checks": [
+              "后端编译测试通过",
+              "权限和项目隔离不变"
+            ],
+            "risks": [
+              "回收站契约变化"
+            ],
+            "rollback": "应用版本回滚",
+            "stop_conditions": [
+              "授权语义无法保持"
+            ],
+            "escalation_conditions": [
+              "需修改平台"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "前端菜单使用 TargetTablesPage",
+            "requirement_ids": [
+              "R3",
+              "R5"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "router 已将中间表路径指向 TargetTablesPage"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/data-migration/**",
+                "web/src/api/data-migration.ts",
+                "web/src/router/index.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "category=INTERMEDIATE"
+              ],
+              "produces": [
+                "规范化中间表维护页面"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "删除旧 StructuredListView 页面和类型分支",
+                "command": null,
+                "expected": "前端不再出现 INTERMEDIATE_TABLE 编辑链路",
+                "evidence": "rg/build"
+              },
+              {
+                "id": "T3-S2",
+                "action": "运行前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "构建通过",
+                "evidence": "构建日志"
+              }
+            ],
+            "acceptance_checks": [
+              "菜单可达",
+              "桌面/移动布局无溢出",
+              "构建通过"
+            ],
+            "risks": [
+              "菜单权限回归"
+            ],
+            "rollback": "应用版本回滚",
+            "stop_conditions": [
+              "菜单不可达"
+            ],
+            "escalation_conditions": [
+              "需修改公共 UI"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "独立回归和收敛验收",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "三次采样分别覆盖迁移、后端、前端治理"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260903-064-data-migration-intermediate-table-canonicalization/*.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T3 输出"
+              ],
+              "produces": [
+                "convergence.json"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "运行全量检查",
+                "command": "node scripts/check-all-governance.mjs",
+                "expected": "全部治理通过",
+                "evidence": "命令输出"
+              }
+            ],
+            "acceptance_checks": [
+              "Maven/frontend/governance/Flyway/diff/residual scan 全部通过"
+            ],
+            "risks": [
+              "预先存在的工作区改动影响范围扫描"
+            ],
+            "rollback": "不执行物理清理",
+            "stop_conditions": [
+              "任一 must 无证据"
+            ],
+            "escalation_conditions": [
+              "出现数据丢失或跨租户访问"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "先建立数据事实源"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "后端契约稳定后切前端"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "完成实现后独立验收"
+          }
+        ],
+        "parallel_groups": [],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am test",
+            "expected": "迁移测试通过"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "rg -n -i 'dm_intermediate_table' server/src/modules/data-migration/src/main",
+            "expected": "无生产 SQL 命中"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "构建通过"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认按推荐方案执行",
+          "confirmed_at": "2026-09-03"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "V160",
+          "data-migration backend/frontend"
+        ],
+        "state_variable_candidates": [
+          "legacy write count",
+          "migration status",
+          "menu component"
+        ],
+        "interface_candidates": [
+          "TargetTableService INTERMEDIATE"
+        ],
+        "sensor_candidates": [
+          "Testcontainers",
+          "rg",
+          "frontend build",
+          "governance check"
+        ],
+        "actuator_candidates": [
+          "V160 append migration",
+          "remove legacy service branch",
+          "route page to target table"
+        ],
+        "disturbance_candidates": [
+          "incomplete legacy JSON",
+          "dirty worktree"
+        ],
+        "delay_candidates": [
+          "observation window before physical cleanup"
+        ],
+        "assumptions": [
+          {
+            "text": "V160 is next migration",
+            "basis": "V159 max",
+            "falsifier": "higher version discovered"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"dm_intermediate_table存量\", \"dm_target_table/field\", \"platform permission contract\", \"local MySQL/Testcontainers\"], \"inside\": [\"V160 migration\", \"data-migration backend services\", \"data-migration frontend route/pages\"]}",
+    "sensors": [
+      "{\"id\": \"S1\", \"independence\": \"database execution\", \"method\": \"Testcontainers MySQL fixture and row assertions\", \"target\": \"migration correctness\"}",
+      "{\"id\": \"S2\", \"independence\": \"static source scan\", \"method\": \"rg production SQL scan\", \"target\": \"legacy reference\"}",
+      "{\"id\": \"S3\", \"independence\": \"Vue compiler/static route\", \"method\": \"frontend build and route inspection\", \"target\": \"menu/API convergence\"}",
+      "{\"id\": \"S4\", \"independence\": \"governance scripts\", \"method\": \"repository checkers\", \"target\": \"governance and scope\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"append V160 empty-assert then drop migration\", \"authority\": \"REQ-064\", \"id\": \"A1\", \"rollback\": \"test database rebuild\", \"target\": \"data model\"}",
+      "{\"action\": \"remove legacy type branch and route intermediate through target service\", \"authority\": \"REQ-064\", \"id\": \"A2\", \"rollback\": \"application version rollback\", \"target\": \"backend\"}",
+      "{\"action\": \"remove legacy structured page and use TargetTablesPage\", \"authority\": \"REQ-064\", \"id\": \"A3\", \"rollback\": \"application version rollback\", \"target\": \"frontend\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"migration blocks\", \"source\": \"legacy rows with incomplete JSON\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"scope checker sees unrelated changes\", \"source\": \"pre-existing dirty worktree\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"current max migration V159\", \"falsifier\": \"governance scan finds a higher version\", \"text\": \"V160 is next available migration version\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "追加 V160 并在旧表为空时安全清理",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "当前测试节点无需保留旧表存量"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_intermediate_table_canonicalization.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java"
+      ],
+      "invariants": [
+        "DROP 前旧表行数为 0",
+        "目标表不受影响"
+      ],
+      "interface_contracts": [
+        "V160 仅追加且空表断言"
+      ],
+      "non_goals": [
+        "迁移旧表存量"
+      ],
+      "action_bounds": [
+        "只新增 V160 和测试"
+      ],
+      "acceptance": [
+        "empty fixture dropped",
+        "non-empty fixture blocked before drop",
+        "target tables remain"
+      ],
+      "evidence_required": [
+        "Maven/Testcontainers 输出"
+      ],
+      "rollback": "测试数据库重建",
+      "stop_conditions": [
+        "旧表非空"
+      ],
+      "escalation_conditions": [
+        "需迁移非空存量"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T10:21:16+00:00",
+          "text": "V160 空表 fixture 删除成功、非空 fixture 在 DROP 前 SIGNAL 阻断；ContentAssetMigrationMySqlTest 7/7 通过，目标表不受影响（Testcontainers MySQL 8.4 复验）"
+        }
+      ],
+      "updated_at": "2026-09-03T10:21:16+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "移除后端旧表读写并将回收站/统计/关联收敛到目标表",
+      "requirements": [
+        "R1",
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "TargetTableService 已支持 INTERMEDIATE"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/**"
+      ],
+      "invariants": [
+        "租户项目权限不变",
+        "旧表 SQL 为零"
+      ],
+      "interface_contracts": [
+        "结构化服务只支持 RULE/PARAMETER"
+      ],
+      "non_goals": [
+        "修改 platform"
+      ],
+      "action_bounds": [
+        "只改 data-migration 模块"
+      ],
+      "acceptance": [
+        "production SQL no dm_intermediate_table",
+        "structured endpoint rejects INTERMEDIATE_TABLE",
+        "permissions preserved"
+      ],
+      "evidence_required": [
+        "Maven 和 rg"
+      ],
+      "rollback": "应用版本回滚",
+      "stop_conditions": [
+        "无法保持授权语义"
+      ],
+      "escalation_conditions": [
+        "需修改 platform"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T10:21:16+00:00",
+          "text": "data-migration 模块 64/64 测试通过；DataMigrationModuleRegistrationTest 14/14 断言生产源无旧表引用且 V160 含受控 DROP；全仓库生产代码 rg 扫描 0 命中；权限/项目测试（DataMigrationPermissionServiceTest 8/8、ContentRecycleBinRegistryTest 7/7）通过"
+        }
+      ],
+      "updated_at": "2026-09-03T10:21:16+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "中间表前端入口统一使用 TargetTablesPage",
+      "requirements": [
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "router 已指向 TargetTablesPage"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/**",
+        "web/src/api/data-migration.ts",
+        "web/src/router/index.ts"
+      ],
+      "invariants": [
+        "中间表菜单权限码保持"
+      ],
+      "interface_contracts": [
+        "category=INTERMEDIATE"
+      ],
+      "non_goals": [
+        "修改公共 UI"
+      ],
+      "action_bounds": [
+        "只改数据迁移前端"
+      ],
+      "acceptance": [
+        "route uses category INTERMEDIATE",
+        "legacy StructuredListView branch absent",
+        "frontend build pass"
+      ],
+      "evidence_required": [
+        "Vue build 和路由扫描"
+      ],
+      "rollback": "应用版本回滚",
+      "stop_conditions": [
+        "菜单权限或移动布局回归"
+      ],
+      "escalation_conditions": [
+        "需修改公共 UI"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T10:21:16+00:00",
+          "text": "前端构建 ✓ 18.56s 退出码 0；router 无 IntermediateTablesPage 残留导入；中间表菜单组件指向 TargetTablesPage 并传 category=INTERMEDIATE；StructuredListView 无 INTERMEDIATE_TABLE 分支"
+        }
+      ],
+      "updated_at": "2026-09-03T10:21:16+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "执行独立观测和高保证收敛验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3 已完成并可采样"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-064-data-migration-intermediate-table-canonicalization/*.json"
+      ],
+      "invariants": [
+        "需求和范围事实不伪造"
+      ],
+      "interface_contracts": [
+        "convergence.json"
+      ],
+      "non_goals": [
+        "扩展功能"
+      ],
+      "action_bounds": [
+        "只记录证据"
+      ],
+      "acceptance": [
+        "maven",
+        "frontend",
+        "governance",
+        "flyway",
+        "diff",
+        "residual scan"
+      ],
+      "evidence_required": [
+        "命令退出码和残留扫描"
+      ],
+      "rollback": "数据库通过测试库重建",
+      "stop_conditions": [
+        "任一 must 无证据"
+      ],
+      "escalation_conditions": [
+        "出现数据丢失或跨租户访问"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-03T10:21:16+00:00",
+          "text": "maven 8/8 模块 BUILD SUCCESS、npm build 通过、check-all-governance 全部通过（17 模块/99 需求目录 1123 JSON/14 Maven 模块/Flyway）、git diff --check 通过、残留扫描 0 生产命中"
+        }
+      ],
+      "updated_at": "2026-09-03T10:21:16+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S1 迁移断言采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "ContentAssetMigrationMySqlTest 7/7（Testcontainers MySQL 8.4）：空表 fixture DROP 成功且旧表消失；非空 fixture 在 DROP 前 SIGNAL 阻断且旧表保留；目标表/字段不受影响",
+      "recorded_at": "2026-09-03T10:21:38+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S2 后端契约与残留采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "mvn -pl :ccb-data-migration -am test：8 模块 BUILD SUCCESS、data-migration 64/64；rg 生产代码 0 命中 dm_intermediate_table/INTERMEDIATE_TABLE；DataMigrationModuleRegistrationTest 14/14",
+      "recorded_at": "2026-09-03T10:21:38+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S3 前端收敛采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "npm --prefix web run build ✓ 18.56s 退出码 0；router 扫描无 IntermediateTablesPage 残留；菜单组件=TargetTablesPage、category=INTERMEDIATE",
+      "recorded_at": "2026-09-03T10:21:38+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "S4 治理与范围采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "node scripts/check-all-governance.mjs 全部通过（17 模块、99 需求目录 1123 JSON、14 Maven 模块、Flyway 154 迁移+2 回调）；git diff --check 退出码 0；REQ-064 改动均在 writable_paths",
+      "recorded_at": "2026-09-03T10:21:38+00:00"
+    }
+  ]
+}

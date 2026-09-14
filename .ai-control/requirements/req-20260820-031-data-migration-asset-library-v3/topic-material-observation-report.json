@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "sample_label": "专题材料增量独立观测-2026-09-05",
+  "task_ids": ["T1", "T2", "T3", "T4", "T5"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "topic-domain-schema",
+      "result": "pass",
+      "raw_evidence": "V180 在独立 MySQL 8.4 容器通过 TopicDomainMigrationMySqlTest；dm_topic 新列/dm_topic_system 唯一键/索引/参数初始化均验证",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "parameter-source-audit",
+      "result": "pass",
+      "raw_evidence": "类型选项来自 SystemReferenceQuery.activeParameters；TopicServiceTest 验证未知/停用/跨类别类型被拒绝",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "attachment-system-lifecycle",
+      "result": "pass",
+      "raw_evidence": "TopicServiceTest 覆盖多附件、系统级必选系统关系、项目级禁止系统、软删恢复 purge 清理关系与附件解绑",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "frontend-build-and-filter",
+      "result": "pass",
+      "raw_evidence": "TopicsPage 已含颗粒度/专题类型/涉及系统/关键字组合筛选；vue-tsc 0 错误，vite build 成功；仅未做真实浏览器视口",
+      "limitation": ["运行时浏览器依赖本地后端，其后端被环境Flyway历史校验和不匹配阻断"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "permission-audit-tests",
+      "result": "pass",
+      "raw_evidence": "TopicServiceTest 覆盖非Owner编辑/删除拒绝、管理员回收站权限、状态冲突和审计；Controller 类级权限与写操作专项权限均已声明",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "scope-and-recycler-source",
+      "result": "pass",
+      "raw_evidence": "scope 检查通过；ContentFileAssetService/ContentAssetController/FILE_RESOURCE_SEGMENTS 已摘除 TOPIC；TopicRecycleBinSource 唯一认领；git diff --check 通过",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "source": "本地开发库 Flyway V155-V170 checksum mismatch",
+      "effect": "后端 spring-boot 启动前 Flyway 校验失败，无法为浏览器验证提供在线后端",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "check-all-governance 范围外 REQ-20260904-061 YAML 格式错误",
+      "effect": "全量治理命令在检查其他需求目录时退出非零；任务前缀检查不受影响",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "coverage_gaps": [
+    "真实浏览器管理员/普通用户多视口路径未验收",
+    "本地后端健康接口与SPA运行态未验证",
+    "统一回收站TOPIC的端到端浏览器交互未验收"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 1,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

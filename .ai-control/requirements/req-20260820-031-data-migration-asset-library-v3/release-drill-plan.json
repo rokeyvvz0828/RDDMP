@@ -1,0 +1,122 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "V184迁移与参数码值注册",
+      "requirement_ids": ["R1", "R2", "R8"],
+      "prerequisites": [],
+      "input_facts": ["V183为最新迁移", "dm_release_drill当前14列", "DataMigrationCodeValueService已存在"],
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_release_drill_domain.sql", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TestDataMigrationCodeValues.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationCodeValueServiceTest.java"],
+      "invariants": ["Flyway只追加", "参数INSERT IGNORE", "业务不改发布迁移"],
+      "interface_contracts": ["DataMigrationCodeValueService支持DM_RELEASE_DRILL_GRANULARITY/DM_RELEASE_DRILL_TYPE"],
+      "non_goals": ["不新建字典表"],
+      "action_bounds": ["只写V184、码值服务和对应测试"],
+      "acceptance_checks": ["V184可重复执行且含新列索引和参数项", "码值测试通过"],
+      "evidence_required": ["V184文件diff", "测试命令和退出码"],
+      "rollback": "不发布V184并回退码值服务改动",
+      "stop_conditions": ["迁移无法幂等", "类别/项数不符", "越界文件"],
+      "escalation_conditions": ["需要修改sys_dict_type全局约束或平台参数接口"]
+    },
+    {
+      "id": "T2",
+      "goal": "ReleaseDrillService与ReleaseDrillController",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6"],
+      "prerequisites": ["T1"],
+      "input_facts": ["TopicService/PlanService提供模式", "ContentDocCodeGenerator已支持DRILL"],
+      "write_scope": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillServiceTest.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillControllerSecurityTest.java"],
+      "invariants": ["绑定当前项目与tenant", "单文件", "组件级必选系统"],
+      "interface_contracts": ["/api/data-migration/release-drills*按Topic/Plan契约"],
+      "non_goals": ["不读取投产模块"],
+      "action_bounds": ["只新增/修改release drill专属后端与测试"],
+      "acceptance_checks": ["必填/组件级/单附件/权限/审计测试通过"],
+      "evidence_required": ["服务与控制器代码diff", "测试报告"],
+      "rollback": "删除新增服务/控制器/测试并保留T1",
+      "stop_conditions": ["参数/系统校验需访问平台私有SQL", "单附件无法事务一致"],
+      "escalation_conditions": ["需修改公共附件接口或新增菜单/RBAC种子"]
+    },
+    {
+      "id": "T3",
+      "goal": "回收站来源与通用链路摘除",
+      "requirement_ids": ["R6", "R7", "R8"],
+      "prerequisites": ["T2"],
+      "input_facts": ["MANAGED_TYPES含RELEASE_DRILL", "ContentAssetController含release-drills", "注册测试当前断言通用控制器含release-drills/delete"],
+      "write_scope": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSource.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSourceTest.java", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"],
+      "invariants": ["回收站来源唯一", "ContentAssetTables保留RELEASE_DRILL映射"],
+      "interface_contracts": ["RecycleBinSource supports=RELEASE_DRILL"],
+      "non_goals": ["不删除dm_release_drill"],
+      "action_bounds": ["只摘除RELEASE_DRILL通用链路并新增专用来源"],
+      "acceptance_checks": ["通用控制器无release-drills", "回收站注册无重复"],
+      "evidence_required": ["代码diff", "注册/回收站测试报告"],
+      "rollback": "恢复通用映射和MANAGED_TYPES并移除专用来源",
+      "stop_conditions": ["看板或旧信封依赖通用字段且无法投影", "双来源"],
+      "escalation_conditions": ["需修改回收站公共SPI或平台RBAC"]
+    },
+    {
+      "id": "T4",
+      "goal": "前端API与ReleaseDrillsPage专属页面",
+      "requirement_ids": ["R3", "R4", "R5", "R6"],
+      "prerequisites": ["T2"],
+      "input_facts": ["ReleaseDrillsPage当前薄页", "PlansPage/TopicsPage已验证模式", "data-migration.ts已有参数选项API"],
+      "write_scope": ["web/src/api/data-migration.ts", "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue"],
+      "invariants": ["页面不展示项目选择", "不硬编码颗粒度/类型"],
+      "interface_contracts": ["ReleaseDrillRecord与后端列表字段一致"],
+      "non_goals": ["不改共享UI/store/router"],
+      "action_bounds": ["只改数据迁移前端API与专属页面"],
+      "acceptance_checks": ["npm build通过", "列表展示新列", "组件级系统必填", "单文件上传"],
+      "evidence_required": ["代码diff", "构建日志"],
+      "rollback": "回退data-migration.ts与ReleaseDrillsPage改动",
+      "stop_conditions": ["后端接口字段与前端声明不一致且无法修正", "参数选项未返回"],
+      "escalation_conditions": ["需修改共享UI/store/router"]
+    },
+    {
+      "id": "T5",
+      "goal": "集成检查与收敛门禁",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+      "prerequisites": ["T1", "T2", "T3", "T4"],
+      "input_facts": ["T1-T4已实现并局部验证"],
+      "write_scope": ["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**"],
+      "invariants": ["不扩大范围", "全量门禁通过"],
+      "interface_contracts": ["全新release drill链路可用"],
+      "non_goals": ["不做未授权重构"],
+      "action_bounds": ["仅修复集成/回归失败并保留证据"],
+      "acceptance_checks": ["Maven全量测试通过", "治理检查通过", "前端构建通过"],
+      "evidence_required": ["测试报告", "治理输出", "构建日志"],
+      "rollback": "回退到T4前提交，不执行反向迁移",
+      "stop_conditions": ["负反馈无法在方案内修复"],
+      "escalation_conditions": ["需新增菜单/RBAC种子或重定需求"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "T2依赖迁移与码值注册"},
+    {"from": "T2", "to": "T3", "reason": "回收站摘除依赖T2服务"},
+    {"from": "T2", "to": "T4", "reason": "前端依赖T2后端接口"},
+    {"from": "T3", "to": "T5", "reason": "集成依赖链路收敛"},
+    {"from": "T4", "to": "T5", "reason": "集成依赖前端完成"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["mvn -pl :ccb-data-migration -am -Dtest=DataMigrationCodeValueServiceTest,ContentAssetMigrationMySqlTest test"]},
+    {"after_tasks": ["T2"], "checks": ["mvn -pl :ccb-data-migration -am -Dtest=ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest test"]},
+    {"after_tasks": ["T3"], "checks": ["mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ReleaseDrillRecycleBinSourceTest test"]},
+    {"after_tasks": ["T4"], "checks": ["npm --prefix web run build"]},
+    {"after_tasks": ["T5"], "checks": ["mvn -pl :ccb-data-migration -am test && node scripts/check-all-governance.mjs && npm --prefix web run build"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1完成采样", "trigger": "T1返回执行报告", "observer": "独立观察者", "sensors": ["S2"], "requirement_ids": ["R1", "R2"]},
+    {"label": "T2/T3完成采样", "trigger": "T2/T3返回执行报告", "observer": "独立观察者", "sensors": ["S1", "S3"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]},
+    {"label": "T4/T5完成采样", "trigger": "T4/T5返回执行报告", "observer": "独立观察者", "sensors": ["S4", "S5"], "requirement_ids": ["R3", "R4", "R5", "R8"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2"], "sensor_ids": ["S2"]},
+    {"requirement_id": "R3", "task_ids": ["T2", "T4"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R4", "task_ids": ["T2", "T4"], "sensor_ids": ["S1"]},
+    {"requirement_id": "R5", "task_ids": ["T2", "T4"], "sensor_ids": ["S4", "S5"]},
+    {"requirement_id": "R6", "task_ids": ["T2", "T3"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R7", "task_ids": ["T3"], "sensor_ids": ["S3"]},
+    {"requirement_id": "R8", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S2", "S4"]}
+  ],
+  "plan_status": "ready"
+}

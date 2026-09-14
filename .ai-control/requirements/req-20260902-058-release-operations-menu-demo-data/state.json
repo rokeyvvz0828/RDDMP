@@ -1,0 +1,2391 @@
+{
+  "schema_version": 4,
+  "revision": 17,
+  "created_at": "2026-09-02T02:22:38+00:00",
+  "updated_at": "2026-09-02T11:27:00+08:00",
+  "mode": "standard",
+  "phase": "verifying",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认菜单层级、测试数据范围和落盘设计；计划确认=用户确认按当前实施计划进入开发。",
+      "recorded_at": "2026-09-02T02:22:38+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "已复核用户批准的基线与交接包；所有 must 需求均有验收和候选传感器，进入系统建模。",
+      "recorded_at": "2026-09-02T02:23:07+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "系统模型 ready：菜单/路由、项目切换、V124 数据流、传感器和扰动已明确，所有 must 需求可观测可控。",
+      "recorded_at": "2026-09-02T02:24:54+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "受控计划 ready 且依赖无环，进入 T1 页面壳执行。",
+      "recorded_at": "2026-09-02T02:26:04+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 执行报告 status=implemented，实际 diff、构建结果和剩余运行态盲区已记录，进入独立观测。",
+      "recorded_at": "2026-09-02T02:30:31+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified，无未关闭反馈，进入 T2 V124 迁移执行。",
+      "recorded_at": "2026-09-02T02:31:22+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 V124/V125/V126 执行报告已记录，迁移检查和本地数据可达，进入数据观测。",
+      "recorded_at": "2026-09-02T11:20:00+08:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 数据观测通过，进入 T3 集成执行；V126 状态修正和 V125 权限补齐均已闭合。",
+      "recorded_at": "2026-09-02T11:21:00+08:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 构建、后端测试和浏览器验收执行报告已记录，进入集成观测。",
+      "recorded_at": "2026-09-02T11:25:00+08:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T3 观测通过：五路由、A/B 数据、四视口和刷新均符合需求；治理/范围门禁保留已知元数据阻断，进入最终验证裁决。",
+      "recorded_at": "2026-09-02T11:27:00+08:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认菜单层级、测试数据范围和落盘设计；计划确认=用户确认按当前实施计划进入开发。",
+        "recorded_at": "2026-09-02T02:22:38+00:00",
+        "data": {
+          "objective": "保留投产管理父级目录，将五项功能改为独立子菜单，并为至少两个测试项目补齐测试数据。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "五项投产功能使用独立左侧子菜单，页面内不再显示 Tabs 或重复横向导航。",
+              "acceptance": [
+                "五个菜单可独立点击且页面无重复导航"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "页面仍显示第二套横向 Tabs"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "至少两个测试项目各有完整投产演练数据。",
+              "acceptance": [
+                "每项目有方案、环境和三轮演练"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "只有一个项目或无演练轮次"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "至少两个测试项目各有普通和回退时序明细。",
+              "acceptance": [
+                "普通四条、回退三条明细且类型隔离"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "回退页面显示普通时序"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "至少两个测试项目各有可筛选的问题分析跟踪数据。",
+              "acceptance": [
+                "三条问题覆盖优先级/状态并填写分析处理跟踪"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "问题只有标题没有跟踪内容"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "至少两个测试项目各有多个投产组和有效项目成员。",
+              "acceptance": [
+                "每项目两个投产组且组成员属于当前项目"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "组成员来自其他项目"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "切换项目和刷新后五项页面只读取当前项目数据。",
+              "acceptance": [
+                "A/B 项目固定业务 ID 不串数"
+              ],
+              "priority": "must",
+              "source": "仓库项目隔离规则",
+              "counterexample": [
+                "A 的问题出现在 B"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "既有权限、API、错误和回退契约保持兼容。",
+              "acceptance": [
+                "后端回归和菜单权限检查通过"
+              ],
+              "priority": "must",
+              "source": "既有投产设计",
+              "counterexample": [
+                "因测试数据改变权限编码"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "桌面和手机视口下页面状态和操作可达。",
+              "acceptance": [
+                "四视口无页面横向溢出和新增控制台错误"
+              ],
+              "priority": "must",
+              "source": "design-h5.md",
+              "counterexample": [
+                "手机页面被第二套导航挤压"
+              ]
+            }
+          ],
+          "invariants": [
+            "V123 不修改",
+            "V124 只追加且固定 ID 条件插入",
+            "所有投产业务行 tenant/project 范围明确",
+            "组成员属于当前项目有效成员",
+            "路由权限与动态菜单权限一致"
+          ],
+          "constraints": [
+            "只写本任务 writable_paths",
+            "不访问生产或真实个人信息",
+            "保持 Java 包名和既有 API",
+            "复用既有投产组件和项目上下文"
+          ],
+          "non_goals": [
+            "不取消投产管理父级目录",
+            "不修改 V123 表结构",
+            "不新增权限/公共 API",
+            "不改投产窗口和版本申请"
+          ],
+          "assumptions": [
+            "V124 是当前迁移链下一版本",
+            "V71 演示用户 1001-1006 可用",
+            "pm_project 和 pm_project_member 已存在",
+            "动态菜单读取 V123 子菜单"
+          ],
+          "unknowns": [
+            {
+              "question": "本地数据库固定项目主键是否已被占用",
+              "impact": "迁移会跳过冲突记录并在验证中报告",
+              "blocking": false
+            },
+            {
+              "question": "运行环境动态菜单缓存刷新时延",
+              "impact": "需要重启或刷新动态菜单后观察",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            "保留父级目录",
+            "页面壳按路由只渲染单页",
+            "追加 V124 固定测试数据"
+          ],
+          "measurement_intents": [
+            "Flyway/数据库计数验证",
+            "Maven/Vite 构建",
+            "治理/范围/差异检查",
+            "浏览器五菜单、A/B 切换、刷新、四视口"
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "已用 V123 Flyway 检查、路由源码、页面壳、业务组件 props、V51/V71/V123 迁移事实核对边界；R1-R8 均有可判别传感器和受控执行器。",
+        "recorded_at": "2026-09-02T02:24:54+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "web/src/modules/release/ReleaseOperationsManagement.vue 的投产页面壳",
+              "五条 release-operations 前端路由和 V123 动态菜单子项",
+              "V124 投产管理测试数据迁移",
+              "现有五个投产业务组件的当前项目数据展示"
+            ],
+            "environment": [
+              "Vue Router 和顶部 project-context store",
+              "现有投产管理 API 和后端权限校验",
+              "MySQL 8.4/Flyway 数据库",
+              "V51 项目表、项目成员表和 V71 演示用户",
+              "本地浏览器、Maven、Vite 和治理检查命令"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "current_project_id",
+              "owner": "ReleaseOperationsManagement.vue",
+              "valid_values": [
+                "当前项目数字 ID",
+                "undefined"
+              ]
+            },
+            {
+              "name": "current_route",
+              "owner": "Vue Router",
+              "valid_values": [
+                "父级入口",
+                "五个投产子路由"
+              ]
+            },
+            {
+              "name": "page_data_state",
+              "owner": "五个投产业务组件",
+              "valid_values": [
+                "loading",
+                "ready",
+                "empty",
+                "error",
+                "forbidden",
+                "saving"
+              ]
+            },
+            {
+              "name": "flyway_version",
+              "owner": "Flyway",
+              "valid_values": [
+                "V123 已执行",
+                "V124 待执行",
+                "V124 已执行"
+              ]
+            },
+            {
+              "name": "demo_record_presence",
+              "owner": "V124 数据库记录",
+              "valid_values": [
+                "缺失",
+                "每项目完整",
+                "部分存在",
+                "固定 ID 冲突"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "用户打开投产管理菜单或子路由",
+              "transitions": [
+                "动态菜单读取 V123 父子关系",
+                "router meta 校验权限",
+                "页面壳依据 route.path 选择组件"
+              ],
+              "outputs": [
+                "左侧五个独立子菜单且页面只显示一个业务组件"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "当前项目 ID 和 V124 演练记录",
+              "transitions": [
+                "业务组件传 projectId 调用演练 API",
+                "后端按 tenant/project 查询",
+                "页面渲染方案、环境和轮次"
+              ],
+              "outputs": [
+                "每个演示项目可看到方案、环境和多轮演练"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "当前项目 ID 和 NORMAL/ROLLBACK 时序记录",
+              "transitions": [
+                "页面按路由选择 timelineType",
+                "API 按项目和类型查询",
+                "组件按 seqNo 渲染明细"
+              ],
+              "outputs": [
+                "普通和回退时序各自显示对应明细"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "当前项目 ID 和问题记录筛选条件",
+              "transitions": [
+                "问题页面发起项目范围分页查询",
+                "后端应用 keyword/priority/status",
+                "页面显示分析、处理和跟踪字段"
+              ],
+              "outputs": [
+                "两个演示项目都有可筛选问题记录"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "当前项目 ID 和项目成员关系",
+              "transitions": [
+                "组织页面读取组和成员选项",
+                "后端限定项目成员",
+                "页面显示两个投产组及组内成员"
+              ],
+              "outputs": [
+                "组成员只来自当前项目"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "顶部项目 ref 变化",
+              "transitions": [
+                "store.currentRef 变化",
+                "页面壳清空 projectId并递增请求代次",
+                "业务组件 key 变化重新加载"
+              ],
+              "outputs": [
+                "当前页面和刷新后的数据只对应新项目"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "既有投产 API 和固定 V124 种子",
+              "transitions": [
+                "不修改后端权限/API",
+                "迁移按固定 ID 条件插入",
+                "自动化回归检查旧契约"
+              ],
+              "outputs": [
+                "权限、API 和回退兼容"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "input": "桌面/手机视口和页面状态",
+              "transitions": [
+                "既有 CSS 响应式规则",
+                "业务组件保留全状态",
+                "浏览器测量 DOM/scrollWidth/console"
+              ],
+              "outputs": [
+                "四视口可达且无页面级横向溢出"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "dynamic_release_menu",
+              "producers": [
+                "V123 sys_menu/sys_menu_permission seed"
+              ],
+              "consumers": [
+                "AppLayout/auth menu tree"
+              ],
+              "invariant": "父级 1000 下五个子菜单路径和权限编码唯一"
+            },
+            {
+              "name": "release_route_shell",
+              "producers": [
+                "Vue Router",
+                "ReleaseOperationsManagement.vue"
+              ],
+              "consumers": [
+                "五个既有业务组件"
+              ],
+              "invariant": "每次只渲染当前路由对应的一个组件并传当前项目 ID"
+            },
+            {
+              "name": "release_project_api",
+              "producers": [
+                "ccb-release operations controller/service"
+              ],
+              "consumers": [
+                "五个 Vue 业务组件"
+              ],
+              "invariant": "请求使用当前项目范围并保留现有权限/错误契约"
+            },
+            {
+              "name": "release_demo_seed",
+              "producers": [
+                "V124 Flyway migration"
+              ],
+              "consumers": [
+                "V123 七张投产表和投产 API"
+              ],
+              "invariant": "固定测试记录条件写入，不删除非固定记录"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1 独立菜单和路由",
+              "method": "路由源码、V123 菜单结构和浏览器 DOM",
+              "blind_spots": [
+                "动态菜单缓存尚未刷新时的短暂状态"
+              ],
+              "independence": "源码结构与运行 DOM 两类观测"
+            },
+            {
+              "id": "S2",
+              "target": "R2-R5 五项测试数据",
+              "method": "本地数据库按 project_id 分组计数和页面 API/DOM",
+              "blind_spots": [
+                "数据库连接不可用时只能检查 SQL 静态结构"
+              ],
+              "independence": "数据库查询与浏览器显示互不依赖"
+            },
+            {
+              "id": "S3",
+              "target": "R6 项目切换和刷新隔离",
+              "method": "浏览器切换 A/B 项目，比较固定业务 ID、网络参数和刷新后 DOM",
+              "blind_spots": [
+                "未覆盖高并发网络延迟组合"
+              ],
+              "independence": "交互、网络请求和持久化结果组合传感器"
+            },
+            {
+              "id": "S4",
+              "target": "R7 既有契约和权限回归",
+              "method": "Maven release tests、Flyway check、未授权 API smoke check",
+              "blind_spots": [
+                "非 admin 角色的完整权限矩阵"
+              ],
+              "independence": "自动化后端与迁移检查"
+            },
+            {
+              "id": "S5",
+              "target": "R8 响应式与全状态",
+              "method": "真实浏览器四视口 DOM、console error 和 document.documentElement.scrollWidth",
+              "blind_spots": [
+                "真实移动设备字体渲染差异"
+              ],
+              "independence": "运行时视觉/布局测量"
+            },
+            {
+              "id": "S6",
+              "target": "任务范围和治理约束",
+              "method": "scope checker、governance checker、git diff --check",
+              "blind_spots": [
+                "历史任务账本可能造成非本任务噪声"
+              ],
+              "independence": "仓库差异和治理静态传感器"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "页面内重复 Tabs",
+              "action": "删除页面壳内部 nav 状态和导航 DOM，按 route.path 映射单一业务组件",
+              "authority": "本任务 web/src/modules/release/ReleaseOperationsManagement.vue 写权限",
+              "impact_radius": "投产管理页面壳和五条路由展示",
+              "rollback": "恢复本任务页面壳修改",
+              "maximum_action": "不修改 AppLayout、store、公共组件或业务组件契约"
+            },
+            {
+              "id": "A2",
+              "target": "投产测试数据缺失",
+              "action": "追加 V124 固定项目、成员和五项业务记录的条件插入",
+              "authority": "本任务 V124 Flyway 写权限",
+              "impact_radius": "tenant 1 本地测试项目和固定记录",
+              "rollback": "应用层关闭菜单；不删除迁移和用户数据",
+              "maximum_action": "不修改 V123，不按项目批量删除，不写生产数据"
+            },
+            {
+              "id": "A3",
+              "target": "集成验证缺口",
+              "action": "运行构建、测试、迁移、治理、范围和浏览器检查并记录证据",
+              "authority": "本地测试工具",
+              "impact_radius": "验证产物和本地测试数据库",
+              "rollback": "停止本地进程并保留证据"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S4",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "dynamic menu cache",
+              "effect": "菜单变更暂时不显示",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "fixed demo ID already occupied",
+              "effect": "V124 skips a record and coverage is incomplete",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "V71 demo user missing",
+              "effect": "project member and group member data cannot be validly seeded",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "delayed project-switch request",
+              "effect": "old project data can overwrite new project UI",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "pre-existing dirty worktree",
+              "effect": "scope/governance output contains unrelated changes",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "project context async lookup",
+              "consequence": "old lookup may finish after current project changes",
+              "sampling_rule": "compare request generation and final current project ID after each switch"
+            },
+            {
+              "source": "dynamic menu cache",
+              "consequence": "new child menu may lag database seed",
+              "sampling_rule": "restart/refresh before browser menu acceptance"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "V124 is the next available migration version",
+              "evidence": "V123 release operations migration is the latest task-scoped migration file and Flyway check passes",
+              "falsifier": "Flyway reports version collision or a newer migration is discovered"
+            },
+            {
+              "text": "V71 demo users 1001-1006 exist in a normal full migration database",
+              "evidence": "V71 creates these users with synthetic names",
+              "falsifier": "read-only database lookup returns no corresponding users"
+            },
+            {
+              "text": "V123 tables match the existing operations API DTOs",
+              "evidence": "current backend tests and V123 schema are present",
+              "falsifier": "migration or backend test reports column mismatch"
+            },
+            {
+              "text": "AppLayout obtains child menu items from the dynamic menu store",
+              "evidence": "router meta and existing menu-tree searches show permission/menu path integration",
+              "falsifier": "browser shows no V123 child menus after refresh"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1 page shell change and S1 DOM check"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2 V124 seed and S2 database/page count"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2 fixed NORMAL/ROLLBACK rows and S2/S3 checks"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2 issue rows and T3 filter/page check"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2 project members/groups and T3 organization check"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1 preserve generation/key logic and T3 A/B switch test"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T3 Maven/Flyway/permission regression"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1 preserve existing responsive components and T3 four viewport check"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "已将设计与系统模型对账为 T1 页面壳、T2 V124 迁移、T3 集成验收三个串行任务；所有 must 需求、写入边界、传感器、回滚和停止条件已覆盖。",
+        "recorded_at": "2026-09-02T02:26:03+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "移除页面内重复 Tabs 并按独立路由展示单个投产业务页面",
+              "requirement_ids": [
+                "R1",
+                "R6",
+                "R8"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "五条投产路由已存在且共用 ReleaseOperationsManagement.vue",
+                "五个业务组件均接受 projectId",
+                "重复横向导航只在页面壳中定义"
+              ],
+              "write_scope": [
+                "web/src/modules/release/ReleaseOperationsManagement.vue",
+                "web/src/router/index.ts"
+              ],
+              "invariants": [
+                "保留父级入口和五条 URL",
+                "路由权限编码不变",
+                "每次只渲染当前路由组件",
+                "项目切换代次和 key 保护不丢失"
+              ],
+              "interface_contracts": [
+                "route.path -> 当前业务组件",
+                "projectStore.currentRef -> currentProjectId/project-id props",
+                "五个既有组件 props 契约"
+              ],
+              "non_goals": [
+                "不修改 AppLayout、项目上下文 store、公共 UI、后端 API 或权限"
+              ],
+              "action_bounds": [
+                "仅删除页面壳内部导航状态和 DOM",
+                "仅在必要时调整投产路由入口 meta",
+                "保留公共 loading/error/empty/forbidden 状态"
+              ],
+              "acceptance_checks": [
+                "源码不存在 release-operations-nav/visibleNavItems 页面导航实现",
+                "五条路由仍可解析",
+                "构建通过",
+                "浏览器 DOM 只有一个当前业务组件且无重复 Tabs",
+                "项目切换重新挂载当前页面"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "rg 路由/导航结果",
+                "npm build 退出码",
+                "桌面和手机 DOM/scrollWidth 结果"
+              ],
+              "rollback": "恢复本任务对 ReleaseOperationsManagement.vue 和 router/index.ts 的修改，不触碰上一轮文件",
+              "stop_conditions": [
+                "需要修改公共壳、store、权限或 API",
+                "路由权限与菜单不一致",
+                "旧项目请求覆盖新项目状态"
+              ],
+              "escalation_conditions": [
+                "动态菜单不是 V123 子菜单来源",
+                "无法保留项目上下文而不复制五套逻辑"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "追加两个测试项目各覆盖五项投产管理数据的 V124 迁移",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "V51 定义 pm_project/pm_project_member",
+                "V71 建立演示用户 1001-1006",
+                "V123 定义七张投产管理表",
+                "V124 为当前迁移链候选下一个版本"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V124__release_operations_demo_data.sql"
+              ],
+              "invariants": [
+                "只追加 V124",
+                "固定测试 ID 和项目编码条件写入",
+                "不删除或覆盖非固定测试记录",
+                "普通/回退时序类型隔离",
+                "投产组成员引用当前项目有效成员"
+              ],
+              "interface_contracts": [
+                "pm_project/pm_project_member schema",
+                "sys_user demo users",
+                "V123 release operation tables"
+              ],
+              "non_goals": [
+                "不修改 V123 或其他历史迁移",
+                "不新增真实用户",
+                "不清理项目下用户手工数据",
+                "不修改后端服务"
+              ],
+              "action_bounds": [
+                "只为 REL-DEMO-ALPHA/REL-DEMO-BETA 条件插入固定项目、成员和业务记录",
+                "项目/成员/业务行均需存在性检查",
+                "缺失演示用户时跳过无效成员并让验证报告缺口"
+              ],
+              "acceptance_checks": [
+                "Flyway 检查通过",
+                "每项目演练 1/轮次 3、普通时序 1/明细 4、回退时序 1/明细 3、问题 3、组织组 2",
+                "组成员属于本项目",
+                "重复执行计数不增加",
+                "固定冲突不覆盖既有记录"
+              ],
+              "evidence_required": [
+                "V124 SQL diff",
+                "Flyway 退出码和版本",
+                "本地数据库只读计数",
+                "重复执行前后计数",
+                "固定 ID 冲突/成员缺失报告"
+              ],
+              "rollback": "保留 V124 及测试数据，应用层关闭菜单；不修改历史迁移或执行删除",
+              "stop_conditions": [
+                "V124 版本冲突",
+                "固定 ID 被非测试记录占用",
+                "成员无法关联有效项目成员",
+                "需要读取生产配置或真实数据",
+                "需要修改已发布迁移"
+              ],
+              "escalation_conditions": [
+                "V51/V123 实际 schema 与模型不符",
+                "本地数据库无法安全执行只读验证"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "完成投产管理独立菜单、项目切换、自动化和四视口集成验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1 页面壳变更已构建",
+                "T2 V124 测试数据已执行并可查询"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260902-058-release-operations-menu-demo-data/*.json"
+              ],
+              "invariants": [
+                "所有 must 需求有真实证据或明确不可观测缺口",
+                "不把上一轮改动失败归因于本任务",
+                "不写入生产系统",
+                "P0/P1 反馈为零后才能收敛"
+              ],
+              "interface_contracts": [
+                "动态菜单和五条投产路由",
+                "现有投产 API",
+                "顶部项目切换栏",
+                "两个 V124 演示项目"
+              ],
+              "non_goals": [
+                "不修复无关历史迁移/账本问题",
+                "不新增公共组件或权限",
+                "不删除 V124 数据"
+              ],
+              "action_bounds": [
+                "执行规定的 Maven/Vite/Flyway/governance/scope/diff 检查",
+                "使用本地浏览器验证五菜单、A/B 项目切换、刷新和四视口",
+                "只记录证据，不因观测结果直接改需求"
+              ],
+              "acceptance_checks": [
+                "后端回归和前端构建通过或记录真实阻断",
+                "五个独立菜单可达且页面无 Tabs",
+                "A/B 项目数据不串且刷新保留",
+                "375/390/430/1280 视口无页面级横向溢出",
+                "console error 为 0 或明确区分既有错误"
+              ],
+              "evidence_required": [
+                "命令原始输出和退出码",
+                "浏览器路由/DOM/网络/console/scrollWidth",
+                "数据库计数",
+                "observation-T3 和 convergence"
+              ],
+              "rollback": "按任务边界恢复页面壳入口，保留 V124 和全部工程证据",
+              "stop_conditions": [
+                "白屏、跨项目数据、非预期 401/403、页面溢出、重复 Tabs、新增控制台错误或回归失败"
+              ],
+              "escalation_conditions": [
+                "缺少可用测试账号/项目导致关键路径不可观测",
+                "需要公共壳、权限或历史迁移改动"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "先稳定独立菜单入口，再执行运行态数据验收"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "集成验收依赖页面壳变更"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "浏览器验收依赖两个项目完整测试数据"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "git diff --check"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "node scripts/check-flyway-migrations.mjs",
+                "数据库按项目计数和幂等性查询"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "mvn -pl :ccb-release -am test '-Dnet.bytebuddy.experimental=true'",
+                "npm --prefix web run build",
+                "node scripts/check-all-governance.mjs",
+                "git diff --check",
+                "浏览器四视口验收"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1完成采样",
+              "trigger": "T1 执行报告生成",
+              "observer": "主 Agent 独立静态/构建观察",
+              "sensors": [
+                "S1",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R6",
+                "R8"
+              ]
+            },
+            {
+              "label": "T2迁移采样",
+              "trigger": "V124 执行完成",
+              "observer": "数据库和迁移检查观察",
+              "sensors": [
+                "S2",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6"
+              ]
+            },
+            {
+              "label": "T3最终采样",
+              "trigger": "自动化和浏览器验收完成",
+              "observer": "独立运行/浏览器观察",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S6"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 已在授权页面壳范围内完成；首次构建受沙箱阻断，受控重试构建通过，页面内导航扫描和差异检查通过。",
+        "recorded_at": "2026-09-02T02:30:30+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/ReleaseOperationsManagement.vue",
+              "purpose": "删除页面内 release-operations nav 状态和 DOM，按 route.path 只渲染当前业务组件"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R6",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "git status --short --branch; rg -n \"release-operations-nav|visibleNavItems|activeKey|ReleaseDrillPlanView|ReleaseTimelineView\" web/src/modules/release/ReleaseOperationsManagement.vue web/src/router/index.ts",
+              "exit_code": 0,
+              "salient_output": "五条路由和页面壳导航位置已确认；上一轮未提交改动仍在工作区"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 1,
+              "salient_output": "首次沙箱执行在 Vite 启动 esbuild 时 spawn EPERM，未进入代码构建结论"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 和 Vite 构建成功；2526 modules transformed；built in 56.43s；仅有既存 @vueuse Rollup 注释警告"
+            },
+            {
+              "command": "git diff --check -- web/src/modules/release/ReleaseOperationsManagement.vue",
+              "exit_code": 0,
+              "salient_output": "无差异空白错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "页面壳导航实现",
+              "result": "pass",
+              "evidence": "rg 未找到 release-operations-nav、visibleNavItems 和 navigate；只保留 route.path -> activeKey 与单一 v-if 链",
+              "limitations": [
+                "动态左侧菜单需运行态浏览器验证"
+              ]
+            },
+            {
+              "check": "前端类型和构建",
+              "result": "pass",
+              "evidence": "第二次构建退出码 0",
+              "limitations": [
+                "首轮失败是沙箱子进程限制，已在受控本地权限下重试"
+              ]
+            },
+            {
+              "check": "路由兼容",
+              "result": "pass",
+              "evidence": "router/index.ts 五条 route/meta 未修改，仍保留父级入口和权限路径",
+              "limitations": [
+                "未在本任务 T1 单独启动浏览器"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "ReleaseOperationsManagement.vue 将 navItems/visibleNavItems 替换为无图标路由映射和 firstAccessibleRoute",
+            "删除内部 nav DOM",
+            "保留项目初始化、请求代次、组件 key 和五个既有业务组件"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "五条 URL 和权限编码保持不变",
+              "result": "pass",
+              "evidence": "router/index.ts 未被修改，源码扫描确认五个业务组件仍按原路径映射"
+            },
+            {
+              "invariant": "当前项目切换 key/请求代次保护保留",
+              "result": "pass",
+              "evidence": "projectLookupGeneration、currentProjectId 清空和 projectStore.currentRef key 未删除"
+            },
+            {
+              "invariant": "页面壳同一时刻只渲染一个业务组件",
+              "result": "pass",
+              "evidence": "五个组件使用 v-if/v-else-if 单链"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "sandbox denied esbuild child process",
+              "impact": "首轮构建退出码 1；使用已批准的本地构建权限重试后通过"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "动态菜单实际显示和项目切换运行态留给 T3 浏览器验收"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "独立静态/构建观测：页面壳内部导航匹配为 0，五个子路由存在，项目切换保护保留，未观察到 T1 可行动偏差；运行态留给 T3。",
+        "recorded_at": "2026-09-02T02:31:22+00:00",
+        "data": {
+          "sample_label": "T1-independent-page-shell-observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1",
+              "result": "pass",
+              "raw_evidence": "ReleaseOperationsManagement.vue internal navigation matches=0; router/index.ts child route count=5",
+              "limitation": [
+                "dynamic menu DOM is reserved for T3"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S1",
+              "result": "pass",
+              "raw_evidence": "projectLookupGeneration, currentProjectId reset, projectStore.currentRef and component key expressions remain present",
+              "limitation": [
+                "A/B project switching requires runtime browser"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "S6",
+              "result": "pass",
+              "raw_evidence": "T1 scoped diff check passed; frontend build exit code 0",
+              "limitation": [
+                "four viewport layout reserved for T3"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "type": "disturbance",
+              "source": "sandbox esbuild spawn restriction",
+              "effect": "initial build attempt failed with EPERM; controlled retry passed",
+              "detectable": true
+            }
+          ],
+          "coverage_gaps": [
+            "No runtime browser sample at T1; planned for T3"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "T2/T3 执行与观测产物已落盘；功能验收通过，治理和范围元数据阻断作为残余风险保留。",
+        "recorded_at": "2026-09-02T11:27:00+08:00",
+        "data": {
+          "execution_artifacts": ["execution-T2.json", "execution-T3.json"],
+          "observation_artifacts": ["observation-T2.json", "observation-T3.json"],
+          "requirements_passed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+          "residual_blockers": ["历史任务治理账本问题", "当前 scope assignment module/branch 不符合检查脚本格式"]
+        }
+      }
+    ]
+  },
+  "objective": "保留投产管理父级目录，将五项功能改为独立子菜单，并为至少两个测试项目补齐测试数据。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "五项投产功能使用独立左侧子菜单，页面内不再显示 Tabs 或重复横向导航。",
+      "acceptance": [
+        "五个菜单可独立点击且页面无重复导航"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "页面仍显示第二套横向 Tabs"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "至少两个测试项目各有完整投产演练数据。",
+      "acceptance": [
+        "每项目有方案、环境和三轮演练"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "只有一个项目或无演练轮次"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "至少两个测试项目各有普通和回退时序明细。",
+      "acceptance": [
+        "普通四条、回退三条明细且类型隔离"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "回退页面显示普通时序"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "至少两个测试项目各有可筛选的问题分析跟踪数据。",
+      "acceptance": [
+        "三条问题覆盖优先级/状态并填写分析处理跟踪"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "问题只有标题没有跟踪内容"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "至少两个测试项目各有多个投产组和有效项目成员。",
+      "acceptance": [
+        "每项目两个投产组且组成员属于当前项目"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "组成员来自其他项目"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "切换项目和刷新后五项页面只读取当前项目数据。",
+      "acceptance": [
+        "A/B 项目固定业务 ID 不串数"
+      ],
+      "priority": "must",
+      "source": "仓库项目隔离规则",
+      "counterexample": [
+        "A 的问题出现在 B"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "既有权限、API、错误和回退契约保持兼容。",
+      "acceptance": [
+        "后端回归和菜单权限检查通过"
+      ],
+      "priority": "must",
+      "source": "既有投产设计",
+      "counterexample": [
+        "因测试数据改变权限编码"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "桌面和手机视口下页面状态和操作可达。",
+      "acceptance": [
+        "四视口无页面横向溢出和新增控制台错误"
+      ],
+      "priority": "must",
+      "source": "design-h5.md",
+      "counterexample": [
+        "手机页面被第二套导航挤压"
+      ]
+    }
+  ],
+  "invariants": [
+    "V123 不修改",
+    "V124 只追加且固定 ID 条件插入",
+    "所有投产业务行 tenant/project 范围明确",
+    "组成员属于当前项目有效成员",
+    "路由权限与动态菜单权限一致"
+  ],
+  "constraints": [
+    "只写本任务 writable_paths",
+    "不访问生产或真实个人信息",
+    "保持 Java 包名和既有 API",
+    "复用既有投产组件和项目上下文"
+  ],
+  "non_goals": [
+    "不取消投产管理父级目录",
+    "不修改 V123 表结构",
+    "不新增权限/公共 API",
+    "不改投产窗口和版本申请"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260902-058-release-operations-menu-demo-data\\handoff.json",
+    "imported_at": "2026-09-02T02:22:38+00:00",
+    "topic": "req-20260902-058-release-operations-menu-demo-data",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260902-058-release-operations-menu-demo-data",
+      "handoff_status": "approved",
+      "created_at": "2026-09-02T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260902-058-release-operations-menu-demo-data",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-02-release-operations-menu-demo-data-design.md",
+        "objective": "保留投产管理父级目录，将五项功能改为独立子菜单，并为至少两个测试项目补齐测试数据。",
+        "users": [
+          "具有投产管理权限的项目管理人员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "五项投产功能使用独立左侧子菜单，页面内不再显示 Tabs 或重复横向导航。",
+            "acceptance": [
+              "五个菜单可独立点击且页面无重复导航"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "页面仍显示第二套横向 Tabs"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "至少两个测试项目各有完整投产演练数据。",
+            "acceptance": [
+              "每项目有方案、环境和三轮演练"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "只有一个项目或无演练轮次"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "至少两个测试项目各有普通和回退时序明细。",
+            "acceptance": [
+              "普通四条、回退三条明细且类型隔离"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "回退页面显示普通时序"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "至少两个测试项目各有可筛选的问题分析跟踪数据。",
+            "acceptance": [
+              "三条问题覆盖优先级/状态并填写分析处理跟踪"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "问题只有标题没有跟踪内容"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "至少两个测试项目各有多个投产组和有效项目成员。",
+            "acceptance": [
+              "每项目两个投产组且组成员属于当前项目"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "组成员来自其他项目"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "切换项目和刷新后五项页面只读取当前项目数据。",
+            "acceptance": [
+              "A/B 项目固定业务 ID 不串数"
+            ],
+            "priority": "must",
+            "source": "仓库项目隔离规则",
+            "counterexample": [
+              "A 的问题出现在 B"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "既有权限、API、错误和回退契约保持兼容。",
+            "acceptance": [
+              "后端回归和菜单权限检查通过"
+            ],
+            "priority": "must",
+            "source": "既有投产设计",
+            "counterexample": [
+              "因测试数据改变权限编码"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "桌面和手机视口下页面状态和操作可达。",
+            "acceptance": [
+              "四视口无页面横向溢出和新增控制台错误"
+            ],
+            "priority": "must",
+            "source": "design-h5.md",
+            "counterexample": [
+              "手机页面被第二套导航挤压"
+            ]
+          }
+        ],
+        "invariants": [
+          "V123 不修改",
+          "V124 只追加且固定 ID 条件插入",
+          "所有投产业务行 tenant/project 范围明确",
+          "组成员属于当前项目有效成员",
+          "路由权限与动态菜单权限一致"
+        ],
+        "constraints": [
+          "只写本任务 writable_paths",
+          "不访问生产或真实个人信息",
+          "保持 Java 包名和既有 API",
+          "复用既有投产组件和项目上下文"
+        ],
+        "non_goals": [
+          "不取消投产管理父级目录",
+          "不修改 V123 表结构",
+          "不新增权限/公共 API",
+          "不改投产窗口和版本申请"
+        ],
+        "selected_approach": {
+          "name": "公共项目上下文壳按路由渲染单个业务组件",
+          "reason": "复用既有切换和全状态逻辑，避免五个页面重复实现",
+          "alternatives": [
+            "五个组件各自解析项目",
+            "嵌套路由父页面"
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "ReleaseOperationsManagement.vue",
+              "五条 release-operations 路由",
+              "V124 测试数据"
+            ],
+            "outside": [
+              "AppLayout、project-context、V123、投产 API、生产数据库"
+            ]
+          },
+          "components": [
+            "项目上下文壳",
+            "五个既有业务视图",
+            "V124 条件种子"
+          ],
+          "interfaces": [
+            "现有五条路由和权限 meta",
+            "现有 project-id props",
+            "pm_project/pm_project_member 与 V123 表"
+          ],
+          "data_flows": [
+            "顶部项目 ref -> 壳解析 project id -> 单一业务组件 API -> 当前项目数据"
+          ]
+        },
+        "error_handling": [
+          "保留初始化失败、无项目、无权限和业务页面失败状态",
+          "固定 ID/用户/版本冲突停止迁移并报告",
+          "切换项目清空旧 ID并使用 key 防旧状态残留"
+        ],
+        "quality_attributes": {
+          "security": [
+            "不新增权限并保留后端既有项目范围校验"
+          ],
+          "performance": [
+            "不复制项目初始化请求"
+          ],
+          "compatibility": [
+            "保留五条 URL 和父级入口"
+          ],
+          "operations": [
+            "Flyway 追加，可关闭菜单回退入口"
+          ]
+        },
+        "verification_strategy": [
+          "Flyway/数据库计数验证",
+          "Maven/Vite 构建",
+          "治理/范围/差异检查",
+          "浏览器五菜单、A/B 切换、刷新、四视口"
+        ],
+        "assumptions": [
+          "V124 是当前迁移链下一版本",
+          "V71 演示用户 1001-1006 可用",
+          "pm_project 和 pm_project_member 已存在",
+          "动态菜单读取 V123 子菜单"
+        ],
+        "unknowns": [
+          {
+            "question": "本地数据库固定项目主键是否已被占用",
+            "impact": "迁移会跳过冲突记录并在验证中报告",
+            "blocking": false
+          },
+          {
+            "question": "运行环境动态菜单缓存刷新时延",
+            "impact": "需要重启或刷新动态菜单后观察",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          "保留父级目录",
+          "页面壳按路由只渲染单页",
+          "追加 V124 固定测试数据"
+        ],
+        "risks": [
+          "固定 ID 冲突",
+          "演示用户缺失",
+          "旧请求覆盖新项目",
+          "历史工作区变更导致范围检查噪声"
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认菜单层级、测试数据范围和落盘设计",
+          "confirmed_at": "2026-09-02T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-02-release-operations-menu-demo-data-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改当前 scope writable_paths",
+          "Flyway 只追加 V124",
+          "不覆盖上一轮未提交改动",
+          "不访问生产数据"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/ReleaseOperationsManagement.vue",
+            "status": "existing",
+            "responsibility": "公共项目上下文壳和当前路由单页承载",
+            "evidence": "现有投产实现"
+          },
+          {
+            "path": "web/src/router/index.ts",
+            "status": "existing",
+            "responsibility": "投产父级和五条子路由",
+            "evidence": "现有路由定义"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V124__release_operations_demo_data.sql",
+            "status": "candidate-new",
+            "responsibility": "固定项目、成员和投产数据种子",
+            "evidence": "V123 后追加迁移设计"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "页面内不再显示 Tabs且按独立路由展示单一投产业务页面",
+            "requirement_ids": [
+              "R1",
+              "R6",
+              "R8"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "五条路由共用现有页面壳",
+              "五个子组件均接受 project-id"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/release/ReleaseOperationsManagement.vue",
+                "web/src/router/index.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "route.path",
+                "projectStore.currentRef",
+                "五个现有业务组件"
+              ],
+              "produces": [
+                "单一业务组件渲染",
+                "父级入口跳转"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "检查页面壳导航和五条路由",
+                "command": "rg -n \"release-operations-nav|visibleNavItems|activeKey|ReleaseDrillPlanView|ReleaseTimelineView\" web/src/modules/release/ReleaseOperationsManagement.vue web/src/router/index.ts",
+                "expected": "导航逻辑和五条路由位置明确",
+                "evidence": "execution-T1"
+              },
+              {
+                "id": "T1-S2",
+                "action": "删除内部导航并保留路由映射和项目切换状态",
+                "command": null,
+                "expected": "同一时间只渲染当前路由业务组件",
+                "evidence": "diff和浏览器DOM"
+              },
+              {
+                "id": "T1-S3",
+                "action": "构建和差异检查",
+                "command": "npm --prefix web run build; git diff --check",
+                "expected": "退出码0",
+                "evidence": "命令输出"
+              }
+            ],
+            "acceptance_checks": [
+              "五条路由可解析",
+              "DOM 无重复 Tabs",
+              "切换项目重新挂载当前组件",
+              "桌面/手机没有新增溢出"
+            ],
+            "risks": [
+              "公共壳职责变化影响页面状态"
+            ],
+            "rollback": "恢复本任务对页面壳和路由文件的变更",
+            "stop_conditions": [
+              "需改公共 AppLayout/store/权限契约",
+              "旧项目请求覆盖新状态"
+            ],
+            "escalation_conditions": [
+              "菜单不是动态读取 V123 或现有壳无法承载单页"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "两个测试项目各覆盖五项投产管理数据",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "V51项目表和成员表",
+              "V71演示用户",
+              "V123七张投产表"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V124__release_operations_demo_data.sql"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "pm_project",
+                "pm_project_member",
+                "sys_user",
+                "V123 tables"
+              ],
+              "produces": [
+                "REL-DEMO-ALPHA/BETA固定测试数据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "核对版本和表结构",
+                "command": "node scripts/check-flyway-migrations.mjs",
+                "expected": "当前链可追加V124",
+                "evidence": "迁移检查"
+              },
+              {
+                "id": "T2-S2",
+                "action": "条件插入固定项目和有效成员",
+                "command": null,
+                "expected": "不存在时创建，冲突时不覆盖",
+                "evidence": "SQL和计数"
+              },
+              {
+                "id": "T2-S3",
+                "action": "条件插入五项投产数据",
+                "command": null,
+                "expected": "每项目方案/环境/3轮、NORMAL/4、ROLLBACK/3、问题/3、组织/2组",
+                "evidence": "数据库统计"
+              },
+              {
+                "id": "T2-S4",
+                "action": "重复执行并比较数量",
+                "command": "node scripts/check-flyway-migrations.mjs",
+                "expected": "唯一版本且测试记录数不增加",
+                "evidence": "执行-T2"
+              }
+            ],
+            "acceptance_checks": [
+              "两个项目完整覆盖",
+              "固定ID重复执行幂等",
+              "组成员项目内有效",
+              "A/B ID不串数"
+            ],
+            "risks": [
+              "固定ID冲突或演示用户缺失"
+            ],
+            "rollback": "保留V124和数据，应用回退关闭菜单；禁止修改历史迁移",
+            "stop_conditions": [
+              "V124非下一版本、需改V123、成员无法有效引用"
+            ],
+            "escalation_conditions": [
+              "需生产配置或真实数据才能迁移"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "完成自动化、运行态和浏览器验收",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "T1页面壳和T2测试数据已完成"
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                ".ai-control/requirements/req-20260902-058-release-operations-menu-demo-data/execution-T3.json",
+                ".ai-control/requirements/req-20260902-058-release-operations-menu-demo-data/observation-T3.json"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "dynamic menu",
+                "five routes",
+                "two demo projects"
+              ],
+              "produces": [
+                "verification evidence and convergence gate"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "运行后端/前端/治理/范围/差异检查",
+                "command": "mvn -pl :ccb-release -am test '-Dnet.bytebuddy.experimental=true'; npm --prefix web run build; node scripts/check-all-governance.mjs; git diff --check",
+                "expected": "结果可复查，历史阻断单独记录",
+                "evidence": "execution-T3"
+              },
+              {
+                "id": "T3-S2",
+                "action": "浏览器逐项检查五菜单和两项目切换",
+                "command": null,
+                "expected": "无Tabs、无串数、刷新保留",
+                "evidence": "observation-T3"
+              },
+              {
+                "id": "T3-S3",
+                "action": "四视口测量滚动宽度和控制台",
+                "command": null,
+                "expected": "页面级溢出false，新增console error为0",
+                "evidence": "observation-T3"
+              }
+            ],
+            "acceptance_checks": [
+              "自动化检查",
+              "菜单可达",
+              "项目切换/刷新",
+              "四视口",
+              "权限和失败状态不回归"
+            ],
+            "risks": [
+              "本地账号或菜单缓存限制运行态证据"
+            ],
+            "rollback": "按任务边界回退页面入口，保留V124迁移",
+            "stop_conditions": [
+              "白屏、401/403、跨项目数据、溢出或新增错误"
+            ],
+            "escalation_conditions": [
+              "需改权限/公共壳或无法使用测试账号"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "页面入口先稳定，便于验证迁移数据"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "集成验收依赖独立菜单入口"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "浏览器验收依赖两个项目的完整测试数据"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "node scripts/check-flyway-migrations.mjs; npm --prefix web run build; git diff --check",
+            "expected": "迁移、构建和差异检查通过，浏览器结果另有记录"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认按当前实施计划进入开发。",
+          "confirmed_at": "2026-09-02T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "投产管理页面壳、五条路由、V124测试数据"
+        ],
+        "state_variable_candidates": [
+          "current_project_id",
+          "current_route",
+          "page_state",
+          "flyway_version",
+          "demo_data_presence"
+        ],
+        "interface_candidates": [
+          "dynamic menu",
+          "route meta permission",
+          "project-id props",
+          "pm_project/pm_project_member/V123 tables"
+        ],
+        "sensor_candidates": [
+          "DOM and route",
+          "browser network/console",
+          "database counts",
+          "Maven/Vite/Flyway/governance checks"
+        ],
+        "actuator_candidates": [
+          "route mapping",
+          "append V124 conditional inserts",
+          "project switch and refresh"
+        ],
+        "disturbance_candidates": [
+          "menu cache",
+          "missing demo users",
+          "fixed ID conflict",
+          "stale request",
+          "pre-existing worktree changes"
+        ],
+        "delay_candidates": [
+          "dynamic menu cache refresh",
+          "project switch async request"
+        ],
+        "assumptions": [
+          {
+            "text": "V124 is next migration version",
+            "basis": "V123 is current release operations migration",
+            "falsifier": "Flyway reports version conflict"
+          },
+          {
+            "text": "V71 demo users 1001-1006 exist",
+            "basis": "V71 migration creates them",
+            "falsifier": "read-only user lookup finds none"
+          },
+          {
+            "text": "dynamic menu reads V123 hierarchy",
+            "basis": "existing menu seed and route meta",
+            "falsifier": "runtime menu differs"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Vue Router 和顶部 project-context store\", \"现有投产管理 API 和后端权限校验\", \"MySQL 8.4/Flyway 数据库\", \"V51 项目表、项目成员表和 V71 演示用户\", \"本地浏览器、Maven、Vite 和治理检查命令\"], \"inside\": [\"web/src/modules/release/ReleaseOperationsManagement.vue 的投产页面壳\", \"五条 release-operations 前端路由和 V123 动态菜单子项\", \"V124 投产管理测试数据迁移\", \"现有五个投产业务组件的当前项目数据展示\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"动态菜单缓存尚未刷新时的短暂状态\"], \"id\": \"S1\", \"independence\": \"源码结构与运行 DOM 两类观测\", \"method\": \"路由源码、V123 菜单结构和浏览器 DOM\", \"target\": \"R1 独立菜单和路由\"}",
+      "{\"blind_spots\": [\"数据库连接不可用时只能检查 SQL 静态结构\"], \"id\": \"S2\", \"independence\": \"数据库查询与浏览器显示互不依赖\", \"method\": \"本地数据库按 project_id 分组计数和页面 API/DOM\", \"target\": \"R2-R5 五项测试数据\"}",
+      "{\"blind_spots\": [\"未覆盖高并发网络延迟组合\"], \"id\": \"S3\", \"independence\": \"交互、网络请求和持久化结果组合传感器\", \"method\": \"浏览器切换 A/B 项目，比较固定业务 ID、网络参数和刷新后 DOM\", \"target\": \"R6 项目切换和刷新隔离\"}",
+      "{\"blind_spots\": [\"非 admin 角色的完整权限矩阵\"], \"id\": \"S4\", \"independence\": \"自动化后端与迁移检查\", \"method\": \"Maven release tests、Flyway check、未授权 API smoke check\", \"target\": \"R7 既有契约和权限回归\"}",
+      "{\"blind_spots\": [\"真实移动设备字体渲染差异\"], \"id\": \"S5\", \"independence\": \"运行时视觉/布局测量\", \"method\": \"真实浏览器四视口 DOM、console error 和 document.documentElement.scrollWidth\", \"target\": \"R8 响应式与全状态\"}",
+      "{\"blind_spots\": [\"历史任务账本可能造成非本任务噪声\"], \"id\": \"S6\", \"independence\": \"仓库差异和治理静态传感器\", \"method\": \"scope checker、governance checker、git diff --check\", \"target\": \"任务范围和治理约束\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"删除页面壳内部 nav 状态和导航 DOM，按 route.path 映射单一业务组件\", \"authority\": \"本任务 web/src/modules/release/ReleaseOperationsManagement.vue 写权限\", \"id\": \"A1\", \"impact_radius\": \"投产管理页面壳和五条路由展示\", \"maximum_action\": \"不修改 AppLayout、store、公共组件或业务组件契约\", \"rollback\": \"恢复本任务页面壳修改\", \"target\": \"页面内重复 Tabs\"}",
+      "{\"action\": \"追加 V124 固定项目、成员和五项业务记录的条件插入\", \"authority\": \"本任务 V124 Flyway 写权限\", \"id\": \"A2\", \"impact_radius\": \"tenant 1 本地测试项目和固定记录\", \"maximum_action\": \"不修改 V123，不按项目批量删除，不写生产数据\", \"rollback\": \"应用层关闭菜单；不删除迁移和用户数据\", \"target\": \"投产测试数据缺失\"}",
+      "{\"action\": \"运行构建、测试、迁移、治理、范围和浏览器检查并记录证据\", \"authority\": \"本地测试工具\", \"id\": \"A3\", \"impact_radius\": \"验证产物和本地测试数据库\", \"rollback\": \"停止本地进程并保留证据\", \"target\": \"集成验证缺口\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"菜单变更暂时不显示\", \"source\": \"dynamic menu cache\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"V124 skips a record and coverage is incomplete\", \"source\": \"fixed demo ID already occupied\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"project member and group member data cannot be validly seeded\", \"source\": \"V71 demo user missing\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"old project data can overwrite new project UI\", \"source\": \"delayed project-switch request\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"scope/governance output contains unrelated changes\", \"source\": \"pre-existing dirty worktree\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"V123 release operations migration is the latest task-scoped migration file and Flyway check passes\", \"falsifier\": \"Flyway reports version collision or a newer migration is discovered\", \"text\": \"V124 is the next available migration version\"}",
+      "{\"evidence\": \"V71 creates these users with synthetic names\", \"falsifier\": \"read-only database lookup returns no corresponding users\", \"text\": \"V71 demo users 1001-1006 exist in a normal full migration database\"}",
+      "{\"evidence\": \"current backend tests and V123 schema are present\", \"falsifier\": \"migration or backend test reports column mismatch\", \"text\": \"V123 tables match the existing operations API DTOs\"}",
+      "{\"evidence\": \"router meta and existing menu-tree searches show permission/menu path integration\", \"falsifier\": \"browser shows no V123 child menus after refresh\", \"text\": \"AppLayout obtains child menu items from the dynamic menu store\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S6\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S4\", \"S6\"]"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "[\"S5\", \"S6\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "移除页面内重复 Tabs 并按独立路由展示单个投产业务页面",
+      "requirements": [
+        "R1",
+        "R6",
+        "R8"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "五条投产路由已存在且共用 ReleaseOperationsManagement.vue",
+        "五个业务组件均接受 projectId",
+        "重复横向导航只在页面壳中定义"
+      ],
+      "write_scope": [
+        "web/src/modules/release/ReleaseOperationsManagement.vue",
+        "web/src/router/index.ts"
+      ],
+      "invariants": [
+        "保留父级入口和五条 URL",
+        "路由权限编码不变",
+        "每次只渲染当前路由组件",
+        "项目切换代次和 key 保护不丢失"
+      ],
+      "interface_contracts": [
+        "route.path -> 当前业务组件",
+        "projectStore.currentRef -> currentProjectId/project-id props",
+        "五个既有组件 props 契约"
+      ],
+      "non_goals": [
+        "不修改 AppLayout、项目上下文 store、公共 UI、后端 API 或权限"
+      ],
+      "action_bounds": [
+        "仅删除页面壳内部导航状态和 DOM",
+        "仅在必要时调整投产路由入口 meta",
+        "保留公共 loading/error/empty/forbidden 状态"
+      ],
+      "acceptance": [
+        "源码不存在 release-operations-nav/visibleNavItems 页面导航实现",
+        "五条路由仍可解析",
+        "构建通过",
+        "浏览器 DOM 只有一个当前业务组件且无重复 Tabs",
+        "项目切换重新挂载当前页面"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "rg 路由/导航结果",
+        "npm build 退出码",
+        "桌面和手机 DOM/scrollWidth 结果"
+      ],
+      "rollback": "恢复本任务对 ReleaseOperationsManagement.vue 和 router/index.ts 的修改，不触碰上一轮文件",
+      "stop_conditions": [
+        "需要修改公共壳、store、权限或 API",
+        "路由权限与菜单不一致",
+        "旧项目请求覆盖新项目状态"
+      ],
+      "escalation_conditions": [
+        "动态菜单不是 V123 子菜单来源",
+        "无法保留项目上下文而不复制五套逻辑"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-02T02:26:22+00:00",
+          "text": "T1 执行前采样确认页面壳包含唯一内部导航，五条路由和五个 project-id 业务组件均存在；工作区上一轮改动保持不变。"
+        },
+        {
+          "recorded_at": "2026-09-02T02:31:22+00:00",
+          "text": "observation-T1 无偏差，页面壳静态与构建验证通过。"
+        }
+      ],
+      "updated_at": "2026-09-02T02:31:22+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "追加两个测试项目各覆盖五项投产管理数据的 V124 迁移",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "V51 定义 pm_project/pm_project_member",
+        "V71 建立演示用户 1001-1006",
+        "V123 定义七张投产管理表",
+        "V124 为当前迁移链候选下一个版本"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V124__release_operations_demo_data.sql"
+      ],
+      "invariants": [
+        "只追加 V124",
+        "固定测试 ID 和项目编码条件写入",
+        "不删除或覆盖非固定测试记录",
+        "普通/回退时序类型隔离",
+        "投产组成员引用当前项目有效成员"
+      ],
+      "interface_contracts": [
+        "pm_project/pm_project_member schema",
+        "sys_user demo users",
+        "V123 release operation tables"
+      ],
+      "non_goals": [
+        "不修改 V123 或其他历史迁移",
+        "不新增真实用户",
+        "不清理项目下用户手工数据",
+        "不修改后端服务"
+      ],
+      "action_bounds": [
+        "只为 REL-DEMO-ALPHA/REL-DEMO-BETA 条件插入固定项目、成员和业务记录",
+        "项目/成员/业务行均需存在性检查",
+        "缺失演示用户时跳过无效成员并让验证报告缺口"
+      ],
+      "acceptance": [
+        "Flyway 检查通过",
+        "每项目演练 1/轮次 3、普通时序 1/明细 4、回退时序 1/明细 3、问题 3、组织组 2",
+        "组成员属于本项目",
+        "重复执行计数不增加",
+        "固定冲突不覆盖既有记录"
+      ],
+      "evidence_required": [
+        "V124 SQL diff",
+        "Flyway 退出码和版本",
+        "本地数据库只读计数",
+        "重复执行前后计数",
+        "固定 ID 冲突/成员缺失报告"
+      ],
+      "rollback": "保留 V124 及测试数据，应用层关闭菜单；不修改历史迁移或执行删除",
+      "stop_conditions": [
+        "V124 版本冲突",
+        "固定 ID 被非测试记录占用",
+        "成员无法关联有效项目成员",
+        "需要读取生产配置或真实数据",
+        "需要修改已发布迁移"
+      ],
+      "escalation_conditions": [
+        "V51/V123 实际 schema 与模型不符",
+        "本地数据库无法安全执行只读验证"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-02T02:31:47+00:00",
+          "text": "T2 执行前已确认 V123 之后追加 V124，V51 项目/成员表和 V123 投产七表结构已读取；固定测试 ID 方案在当前 scope 内。"
+        },
+        {
+          "recorded_at": "2026-09-02T11:27:00+08:00",
+          "text": "execution-T2 和 observation-T2 已记录；A/B 每项目 1 个演练方案、3 轮、普通 4 条、回退 3 条、问题 3 条、投产组 2 个，项目数据不串。"
+        }
+      ],
+      "updated_at": "2026-09-02T11:27:00+08:00"
+    },
+    {
+      "id": "T3",
+      "goal": "完成投产管理独立菜单、项目切换、自动化和四视口集成验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 页面壳变更已构建",
+        "T2 V124 测试数据已执行并可查询"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260902-058-release-operations-menu-demo-data/*.json"
+      ],
+      "invariants": [
+        "所有 must 需求有真实证据或明确不可观测缺口",
+        "不把上一轮改动失败归因于本任务",
+        "不写入生产系统",
+        "P0/P1 反馈为零后才能收敛"
+      ],
+      "interface_contracts": [
+        "动态菜单和五条投产路由",
+        "现有投产 API",
+        "顶部项目切换栏",
+        "两个 V124 演示项目"
+      ],
+      "non_goals": [
+        "不修复无关历史迁移/账本问题",
+        "不新增公共组件或权限",
+        "不删除 V124 数据"
+      ],
+      "action_bounds": [
+        "执行规定的 Maven/Vite/Flyway/governance/scope/diff 检查",
+        "使用本地浏览器验证五菜单、A/B 项目切换、刷新和四视口",
+        "只记录证据，不因观测结果直接改需求"
+      ],
+      "acceptance": [
+        "后端回归和前端构建通过或记录真实阻断",
+        "五个独立菜单可达且页面无 Tabs",
+        "A/B 项目数据不串且刷新保留",
+        "375/390/430/1280 视口无页面级横向溢出",
+        "console error 为 0 或明确区分既有错误"
+      ],
+      "evidence_required": [
+        "命令原始输出和退出码",
+        "浏览器路由/DOM/网络/console/scrollWidth",
+        "数据库计数",
+        "observation-T3 和 convergence"
+      ],
+      "rollback": "按任务边界恢复页面壳入口，保留 V124 和全部工程证据",
+      "stop_conditions": [
+        "白屏、跨项目数据、非预期 401/403、页面溢出、重复 Tabs、新增控制台错误或回归失败"
+      ],
+      "escalation_conditions": [
+        "缺少可用测试账号/项目导致关键路径不可观测",
+        "需要公共壳、权限或历史迁移改动"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-02T11:27:00+08:00",
+          "text": "execution-T3 和 observation-T3 已记录；五条独立菜单、A/B 项目切换与刷新、四视口、后端回归和前端构建均有结果。"
+        }
+      ],
+      "updated_at": "2026-09-02T11:27:00+08:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

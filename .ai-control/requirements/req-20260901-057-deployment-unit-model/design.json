@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260901-057-deployment-unit-model",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-02-deployment-unit-model-design.md",
+  "objective": "将部署单元收敛为完整名称、应用/数据库/Web 类型和可搜索多选的双向结构化关联，消除简称、登记类型和自由文本关联等重复事实源。",
+  "users": [
+    "架构信息维护者在部署单元页面创建、编辑并发布版本",
+    "架构信息查看者在列表、详情、版本和下游页面查看统一完整名称与双向关联",
+    "资源申请和其他架构模块内下游能力按部署单元业务类型读取字段分流"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "模型必须删除部署单元简称和重复事实源。",
+      "acceptance": ["主记录、版本、DTO、前端类型、Mock 和契约不再包含 shortName、relatedDeploymentUnitName、deploymentUnitType"],
+      "priority": "must",
+      "source": "用户原始请求及规范化方案确认",
+      "counterexample": ["页面隐藏简称但数据库和接口仍继续维护", "资源申请继续依赖 deploymentUnitType"]
+    },
+    {
+      "id": "R2",
+      "statement": "部署单元名称必须由一个输入框维护并以最后一个下划线识别主名称和后缀。",
+      "acceptance": ["输入自动大写", "主名称只含大写字母和数字", "后缀为 1-8 位大写字母或数字", "完整名称租户内唯一", "页面无第二个后缀输入框"],
+      "priority": "must",
+      "source": "用户确认通过 _ 判断分割和拼接",
+      "counterexample": ["主名称和后缀使用两个输入框", "只在前端校验而服务端接受非法名称"]
+    },
+    {
+      "id": "R3",
+      "statement": "部署单元类型必须收敛为应用、数据库、Web，并与标准后缀双向联动。",
+      "acceptance": ["_AP 映射 APPLICATION", "_DB 映射 DATABASE", "_WB 映射 WEB", "标准后缀切换自动替换", "自定义后缀保留并允许手工选择类型"],
+      "priority": "must",
+      "source": "用户原始请求和格式确认",
+      "counterexample": ["继续允许 MQ 或 PL 新建", "选择类型覆盖自定义后缀"]
+    },
+    {
+      "id": "R4",
+      "statement": "关联部署单元必须支持租户内 ACTIVE 记录的搜索、多选和跨物理子系统选择。",
+      "acceptance": ["按名称、编号和物理子系统搜索", "排除自身", "拒绝跨租户和非 ACTIVE 目标", "选择器支持多选并保留已选标签"],
+      "priority": "must",
+      "source": "用户确认关联候选范围",
+      "counterexample": ["继续使用自由文本", "只能选择同一物理子系统", "允许选择自身"]
+    },
+    {
+      "id": "R5",
+      "statement": "关联关系必须为双向无向关系并保持事务一致。",
+      "acceptance": ["A-B 规范化只保存一条当前关系", "双方详情均可见", "任一端解除后双方不可见", "重复和并发提交不产生重复或半边关系"],
+      "priority": "must",
+      "source": "用户确认双向关联",
+      "counterexample": ["A 关联 B 但 B 不显示 A", "同时存在 A-B 与 B-A 两行"]
+    },
+    {
+      "id": "R6",
+      "statement": "版本、关系历史、审计和模块内下游契约必须同步。",
+      "acceptance": ["关系变更写独立历史和审计", "发起编辑端发布新版本", "资源申请按 kind 映射 AP/DB/WB", "初始化导入、实例、网络和计划回归通过"],
+      "priority": "must",
+      "source": "现有部署单元版本和架构模块契约",
+      "counterexample": ["关系变化无历史", "资源申请类型分流错误"]
+    },
+    {
+      "id": "R7",
+      "statement": "权限、租户、实体、乐观锁、审计和模块边界必须保持。",
+      "acceptance": ["服务端继续校验 view/manage 权限", "HTTP DTO 不含 tenantId", "关系目标执行租户和状态校验", "不修改平台公共实现"],
+      "priority": "must",
+      "source": "仓库规约和架构模块规则",
+      "counterexample": ["用前端显隐代替服务端权限", "直接写平台或其他业务模块表"]
+    },
+    {
+      "id": "R8",
+      "statement": "前端必须覆盖全状态并在桌面和手机视口可用。",
+      "acceptance": ["加载、无结果、失败、无权限、提交中、409 和脏表单状态明确", "1280x800 与 375x812、390x844、430x932 无页面级横向滚动", "明暗主题和控制台验收通过"],
+      "priority": "must",
+      "source": "design-h5、前端规约和用户截图",
+      "counterexample": ["多选标签撑宽弹窗", "搜索失败清空已选项", "手机底部提交按钮不可达"]
+    }
+  ],
+  "invariants": [
+    "只追加 Flyway 迁移，不修改历史迁移",
+    "保持部署单元 code、物理子系统归属、生命周期、网络分区、描述、备注和乐观锁职责",
+    "服务端认证、RBAC、租户隔离、实体校验和审计不能放松",
+    "业务代码和关系数据归 business/architecture",
+    "不引入动态表单元数据或 biz_form 依赖",
+    "不访问生产系统或真实敏感数据"
+  ],
+  "constraints": [
+    "候选迁移为 V124，实施前重新扫描版本占用",
+    "公开架构契约删除字段，模块内消费者必须同批更新",
+    "早期开发数据允许清理重建，但生产回退不能依赖重建数据库",
+    "前端优先复用交付示范中心、共享 UI、Element Plus 和语义主题"
+  ],
+  "non_goals": [
+    "不保留 MQ、PL 或旧 deploymentUnitType 兼容入口",
+    "不新增部署单元类型字典和维护页面",
+    "不改变权限码、菜单、编号规则和生命周期",
+    "不重构模块目录、Java 包名或公共 UI 组件",
+    "不实现生产数据灰度双写"
+  ],
+  "selected_approach": {
+    "name": "规范化完整名称、业务类型与双向关系表",
+    "reason": "只有一套名称和类型事实源，满足单输入框、后缀联动、早期数据无需兼容和双向结构化关联要求。",
+    "alternatives": [
+      {"name": "主名称与后缀分列存储", "rejected_because": "与模型只保留一个完整名称冲突，并增加接口拼接和一致性成本"},
+      {"name": "保留旧字段但前端隐藏", "rejected_because": "继续保留多套冲突事实源，且用户已确认无需旧数据兼容"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "server/src/modules/architecture",
+        "web/src/modules/architecture",
+        "Flyway V124 部署单元模型迁移",
+        "mock/mock-data.json",
+        "docs/integration/architecture-module-contract.md",
+        "REQ-20260901-057 需求、设计、计划和当前前缀账本"
+      ],
+      "outside": [
+        "platform/system 和 platform/workflow 内部实现",
+        "公共 UI 组件修改",
+        "其他业务模块私有表",
+        "生产系统和真实数据"
+      ]
+    },
+    "components": [
+      {"name": "部署单元领域服务", "responsibility": "名称/类型校验、关系替换、版本、生命周期和审计编排", "depends_on": ["DeploymentUnitStore", "SystemOperationAudit"]},
+      {"name": "部署单元持久化", "responsibility": "主记录、版本、规范化当前关系和关系历史的事务读写", "depends_on": ["MySQL 8.4"]},
+      {"name": "部署单元 HTTP 与选项接口", "responsibility": "稳定请求/响应 DTO、分页搜索、权限和错误语义", "depends_on": ["DeploymentUnitService"]},
+      {"name": "部署单元前端页面", "responsibility": "单名称输入、类型/后缀联动、远程搜索多选和全状态响应式体验", "depends_on": ["Vue 3", "Element Plus", "共享 UI"]},
+      {"name": "Flyway V124", "responsibility": "删除冗余列、调整类型约束、创建关系及历史结构", "depends_on": ["V123 及之前迁移"]},
+      {"name": "架构模块内下游适配", "responsibility": "资源申请分流和实例、网络、计划、导入的完整名称契约回归", "depends_on": ["部署单元公开投影"]}
+    ],
+    "interfaces": [
+      {"name": "DeploymentUnitCommand", "producer": "architecture HTTP", "consumers": ["DeploymentUnitService"], "contract": "physicalSubsystemId,name,kind,relatedDeploymentUnitIds,defaultNetworkZoneId,description,remark,rowVersion"},
+      {"name": "DeploymentUnitView", "producer": "DeploymentUnitService", "consumers": ["架构前端和模块内下游"], "contract": "完整 name、APPLICATION/DATABASE/WEB kind 和 relatedDeploymentUnits[]，不含旧三个字段"},
+      {"name": "DeploymentUnitSearchOption", "producer": "architecture options API", "consumers": ["部署单元关联多选"], "contract": "分页返回当前租户 ACTIVE 记录，支持名称、编号和物理子系统关键字，允许 excludeId"},
+      {"name": "资源申请部署单元投影", "producer": "business/architecture", "consumers": ["EnvironmentResourceService 和前端"], "contract": "按 kind 映射 AP/DB/WB，不读取 deploymentUnitType"}
+    ],
+    "data_flows": [
+      {"input": "名称输入与类型选择", "transitions": ["前端大写和标准后缀联动", "服务端按最后一个下划线解析", "校验格式、标准映射和租户唯一"], "output": "完整 name 与 kind"},
+      {"input": "relatedDeploymentUnitIds[]", "transitions": ["去重和排序", "校验租户、ACTIVE、非自身", "端点规范化", "事务替换当前关系", "记录关系历史和审计"], "output": "双方一致的 relatedDeploymentUnits[]"},
+      {"input": "部署单元 kind", "transitions": ["APPLICATION->AP", "DATABASE->DB", "WEB->WB"], "output": "资源申请字段分支"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "名称格式错误或标准后缀与类型不一致", "behavior": "返回 400 并定位名称或类型字段", "recovery": "前端保留输入并提示格式或选择正确类型"},
+    {"condition": "完整名称重复或行版本冲突", "behavior": "返回 409", "recovery": "保留表单和已选关系，用户修改名称或刷新后重试"},
+    {"condition": "关联目标不存在、跨租户、非 ACTIVE 或为自身", "behavior": "返回 400 并指出失效目标", "recovery": "移除失效项后重新搜索选择"},
+    {"condition": "存在当前关联时作废", "behavior": "返回 409", "recovery": "先解除关联再作废"},
+    {"condition": "选项搜索失败", "behavior": "显示局部失败和重试，不清空已选标签", "recovery": "重试搜索或稍后提交"},
+    {"condition": "迁移版本冲突或未建模外键依赖", "behavior": "停止实施并回到建模/计划", "recovery": "重新分配迁移版本或补充迁移顺序和测试"}
+  ],
+  "quality_attributes": {
+    "security": ["服务端认证、RBAC、租户、实体、乐观锁和审计保持", "HTTP DTO 不含 tenantId", "不访问生产数据或密钥"],
+    "performance": ["关联搜索服务端分页", "关系端点具备租户查询索引", "详情批量投影避免逐项查询"],
+    "compatibility": ["旧三个字段和 MQ/PL 是有意删除的开发契约", "模块内消费者同批适配", "早期开发数据可重建"],
+    "operations": ["V124 只追加且实施前重扫版本", "空库和既有开发库迁移均验证", "生产回退使用补偿迁移而非重建数据库"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R3"], "signal": "旧字段和旧类型不再可用", "method": "源码/契约负向扫描与模型、DTO、持久化测试"},
+    {"requirement_ids": ["R2"], "signal": "名称解析、联动和唯一性准确", "method": "服务端单测、API 场景、前端构建和浏览器输入旅程"},
+    {"requirement_ids": ["R4", "R5"], "signal": "搜索多选和双向关系原子一致", "method": "MySQL 唯一键/外键、事务、重复和并发测试及真实 API"},
+    {"requirement_ids": ["R6"], "signal": "版本、历史、审计和下游契约无回归", "method": "架构模块聚焦回归与资源申请三类分流测试"},
+    {"requirement_ids": ["R7"], "signal": "权限、租户和模块边界保持", "method": "Controller 403/租户测试、governance、scope 和 module-boundary 检查"},
+    {"requirement_ids": ["R8"], "signal": "桌面和移动端全状态可用", "method": "npm build 与 1280/375/390/430 明暗主题真实浏览器验收"}
+  ],
+  "assumptions": [
+    {"text": "主名称本身不含下划线，最后一个下划线是名称与后缀的唯一分隔符。", "basis": "用户确认的格式规则", "falsifier": "用户要求主名称允许下划线"},
+    {"text": "关系独立历史承担双方可追踪性，只有发起编辑端发布新版本。", "basis": "避免一次关系变更为全部目标产生无意版本", "falsifier": "用户要求双方版本号同步增长"},
+    {"text": "停用保留关系，作废必须先解除关系。", "basis": "既有生命周期的历史可读和引用限制", "falsifier": "用户要求作废自动解除"}
+  ],
+  "unknowns": [
+    {"question": "V124 在正式实施前是否被并行分支占用？", "impact": "只影响迁移文件名和 scope，不改变业务设计。", "owner": "实施任务负责人", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "名称使用一个完整输入框，通过下划线解析和拼接。", "reason": "减少输入项并直接维护最终名称。", "source": "用户 2026-09-01 确认"},
+    {"id": "D2", "decision": "类型固定为应用、数据库、Web，标准后缀为 _AP/_DB/_WB，自定义后缀手工选择类型。", "reason": "满足标准联动与扩展后缀并存。", "source": "用户原始请求和格式确认"},
+    {"id": "D3", "decision": "不提供旧数据和 MQ/PL 兼容。", "reason": "当前为早期开发阶段，用户允许删除现有数据。", "source": "用户 2026-09-01 确认"},
+    {"id": "D4", "decision": "关联候选为当前租户全部 ACTIVE 部署单元，允许跨物理子系统并排除自身。", "reason": "满足可搜索、多选且不限制业务关联范围。", "source": "用户 2026-09-01 确认"},
+    {"id": "D5", "decision": "关联为双向无向关系，规范化只保存一条当前记录。", "reason": "关联语义对双方一致并避免 A-B/B-A 重复。", "source": "用户 2026-09-01 确认"}
+  ],
+  "risks": [
+    {"risk": "删除 deploymentUnitType 后遗漏资源申请消费者。", "impact": "AP/DB/WB 字段分流错误。", "mitigation": "全仓扫描并覆盖资源申请三类聚焦回归。"},
+    {"risk": "双向关系并发导致重复或丢失。", "impact": "双方详情不一致或出现重复关系。", "mitigation": "规范化端点、唯一键、排序锁定、事务替换和并发测试。"},
+    {"risk": "破坏性删列导致旧客户端不可用。", "impact": "未同批更新的调用方编译或运行失败。", "mitigation": "模块内消费者同批更新，契约负向扫描，实施前复核 scope。"},
+    {"risk": "V124 被并行分支占用。", "impact": "Flyway 版本冲突。", "mitigation": "实施前重扫，冲突时重新分配并同步需求和 scope。"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-02 回复“批准”，确认落盘设计修订 1。",
+    "confirmed_at": "2026-09-02T10:04:27.4756636+08:00"
+  }
+}

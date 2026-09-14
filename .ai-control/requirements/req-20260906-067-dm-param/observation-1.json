@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260906-067-dm-param",
+  "phase": "verifying",
+  "baseline": "REQ-20260906-067 baseline artifact revision 1 (A/B/C 用户决策确认)",
+  "expected": {
+    "R1": "筛选/分页/列表字段齐全（项目名称/参数类型/参数范围分类/系统编号/系统名称/参数名称/参数说明/操作）",
+    "R2": "单条新增/编辑必填与参数名称唯一（租户+项目+系统编号）",
+    "R3": "Excel 五列逐行校验批量导入，失败行逐行报错",
+    "R4": "逻辑删除进统一回收站，恢复唯一冲突阻断",
+    "R5": "复用菜单 RBAC，无硬编码角色",
+    "R6": "写操作写入 dm_operation_log（entity_type=PARAMETER）"
+  },
+  "measured_ok": [
+    "后端聚焦单测通过（ParameterServiceTest/DataMigrationModuleRegistrationTest/ContentRecycleBinRegistryTest）",
+    "前端构建通过",
+    "git diff --check 与治理模块检查通过（除既有无关文件）",
+    "V197 在本地 ccb_platform 真实库经 Flyway 执行成功（success=1）；表列/唯一键/查询索引/码值断言通过",
+    "首跑发现迁移 bug（唯一键删除分支写死错误索引名），修正后重跑幂等通过"
+  ],
+  "negative_feedback": [
+    {
+      "feedback": "V197 未在真实开发库执行验证",
+      "severity": "medium",
+      "owner": "deploy/DB validation",
+      "action": "在本地启动或专项 MySQL 环境由 Flyway 应用 V197 并断言列/索引/码值"
+    },
+    {
+      "feedback": "真实浏览器路径验收未执行",
+      "severity": "medium",
+      "owner": "requirement acceptance",
+      "action": "本地启动 MySQL/MinIO/后端/前端，按桌面与移动视口走通筛选/新增/导入/编辑/删除/回收站"
+    },
+    {
+      "feedback": "全量后端模块测试存在 4 个既有无关失败",
+      "severity": "low",
+      "owner": "pre-existing",
+      "action": "另行隔离排查 data-migration:bypass 相关 MySQL 查询，非本需求范围"
+    }
+  ],
+  "recorded_at": "2026-09-06T16:50:00+08:00",
+  "type": "observation-1"
+}

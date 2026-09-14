@@ -1,0 +1,1892 @@
+{
+  "schema_version": 4,
+  "revision": 18,
+  "created_at": "2026-09-07T08:19:41+00:00",
+  "updated_at": "2026-09-07T08:29:50+00:00",
+  "mode": "standard",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户在收到修订1落盘设计链接后回复“确认”；计划确认=用户在实施计划修订1后回复确认，批准实施",
+      "recorded_at": "2026-09-07T08:19:41+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "approved-design-and-plan-reviewed",
+      "recorded_at": "2026-09-07T08:19:42+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model-reviewed",
+      "recorded_at": "2026-09-07T08:20:40+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "task-contracts-ready",
+      "recorded_at": "2026-09-07T08:20:43+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-output-ready",
+      "recorded_at": "2026-09-07T08:25:41+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "continue-T2",
+      "recorded_at": "2026-09-07T08:25:44+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2-ready-for-acceptance",
+      "recorded_at": "2026-09-07T08:29:44+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户在收到修订1落盘设计链接后回复“确认”；计划确认=用户在实施计划修订1后回复确认，批准实施",
+        "recorded_at": "2026-09-07T08:19:41+00:00",
+        "data": {
+          "objective": "投产管理抽屉可在保留业务上下文的情况下放大至浏览器内容全屏并还原",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "投产管理范围内全部5处抽屉可切换页面内全屏与原尺寸",
+              "acceptance": [
+                "方案时序（投产/回退）、方案指令、环境维护、演练步骤、问题详情/维护均有全屏及还原按钮",
+                "全屏覆盖浏览器内容视口；不调用浏览器Fullscreen API"
+              ],
+              "priority": "must",
+              "source": "用户需求及对推荐方案的确认",
+              "counterexample": [
+                "只支持演练步骤",
+                "全屏隐藏浏览器工具栏"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "切换尺寸保留原表单、选中对象、嵌套抽屉和业务操作上下文",
+              "acceptance": [
+                "切换不新增API请求、不重建表单、不清空输入",
+                "父子抽屉分别控制全屏，关闭子层不关闭父层",
+                "保留所有原关闭保护、权限、提交和校验",
+                "关闭并再次打开为默认尺寸，项目切换清理状态"
+              ],
+              "priority": "must",
+              "source": "已确认方案及原业务不变量",
+              "counterexample": [
+                "全屏后丢失输入",
+                "保存中全屏按钮触发表单提交"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "全屏及普通抽屉在桌面手机和明暗主题均可操作",
+              "acceptance": [
+                "标题和底部操作不被正文滚动吞掉",
+                "375x812、390x844、430x932、1280x800无页面级横向溢出或操作遮挡",
+                "图标提供全屏/还原提示和可访问名称"
+              ],
+              "priority": "must",
+              "source": "design-h5.md与已确认方案",
+              "counterexample": [
+                "旧max-width仍限制全屏",
+                "关闭按钮被放大按钮盖住"
+              ]
+            }
+          ],
+          "invariants": [
+            "不改字段、接口、权限、数据、保存与关闭保护",
+            "非投产管理抽屉不变",
+            "保留用户既有未提交代码与测试数据"
+          ],
+          "constraints": [
+            "Vue3/Element Plus现有图标库",
+            "模块内复用，不修改公共UiFormDrawer",
+            "不读取.env或后端，不重启服务、不提交推送",
+            "默认尺寸按各实例现值，普通弹窗不改"
+          ],
+          "non_goals": [
+            "浏览器原生全屏",
+            "将轮次等普通弹窗改为抽屉",
+            "其他模块及版本申请、配置绑定历史抽屉",
+            "数据库和登录问题"
+          ],
+          "assumptions": [
+            {
+              "text": "仅需页面内全屏，不改默认打开尺寸",
+              "basis": "用户确认推荐方案",
+              "falsifier": "用户要求默认全屏或浏览器原生全屏"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "真实浏览器访问工具是否可用",
+              "impact": "可能阻断实际视觉验收；不可用时如实保留缺口",
+              "owner": "执行阶段",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "使用页面内全屏",
+              "reason": "适配业务表单和嵌套抽屉",
+              "source": "用户最新确认"
+            },
+            {
+              "id": "D2",
+              "decision": "保留原关闭和Esc语义",
+              "reason": "全屏只改变尺寸，避免原保护回归",
+              "source": "已确认保留业务功能与关闭保护"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "5处切换与恢复，嵌套状态独立，表单无请求无丢失",
+              "method": "局部状态测试、编译和真实浏览器操作"
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "视口宽高、滚动、页脚、按钮、主题",
+              "method": "指定4类视口截图/DOM尺寸及明暗主题检查"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "source-and-build-verified",
+        "recorded_at": "2026-09-07T08:20:36+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+              "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+              "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+              "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+              "web/src/modules/release/release-operations.css",
+              "候选新增：web/src/modules/release/components/ReleaseDrawerHeader.vue",
+              "候选新增：web/src/modules/release/composables/useReleaseDrawerFullscreen.ts"
+            ],
+            "environment": [
+              "Vue3",
+              "Element Plus",
+              "existing project-key remount"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "open/fullscreen/size",
+              "owner": "each drawer",
+              "valid_values": [
+                "closed",
+                "default",
+                "fullscreen"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "header toggle",
+              "transitions": [
+                "local ref toggles",
+                "computed size updates"
+              ],
+              "outputs": [
+                "投产管理范围内全部5处抽屉可切换页面内全屏与原尺寸"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "close/reopen or nested toggle",
+              "transitions": [
+                "independent watch resets on open",
+                "business refs unchanged"
+              ],
+              "outputs": [
+                "切换尺寸保留原表单、选中对象、嵌套抽屉和业务操作上下文"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "viewport change",
+              "transitions": [
+                "scoped full viewport CSS",
+                "body scroll and stable header/footer"
+              ],
+              "outputs": [
+                "全屏及普通抽屉在桌面手机和明暗主题均可操作"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "drawer header/size",
+              "producers": [
+                "module helper/header"
+              ],
+              "consumers": [
+                "five el-drawers"
+              ],
+              "invariant": "original events, forms, close control unchanged"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "state and five wiring points",
+              "method": "Node Vue reactive runtime and SFC AST assertions",
+              "blind_spots": [
+                "real layout"
+              ],
+              "independence": "runtime assertions and pre-edit fingerprints"
+            },
+            {
+              "id": "S2",
+              "target": "typing/bundling",
+              "method": "vue-tsc and Vite build; baseline exit0",
+              "blind_spots": [
+                "interaction"
+              ],
+              "independence": "compiler"
+            },
+            {
+              "id": "S3",
+              "target": "layout and interaction",
+              "method": "authorized browser viewport/interaction checks",
+              "blind_spots": [
+                "currently unavailable pending access"
+              ],
+              "independence": "actual rendered UI"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "five module drawers",
+              "action": "add local helper/header and dedicated CSS only",
+              "authority": "approved scope",
+              "impact_radius": "release operations frontend",
+              "rollback": "remove only added hunks"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "dirty business files",
+              "effect": "HEAD is not valid baseline",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "browser authorization",
+              "effect": "visual evidence unavailable",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "issue drawer max-width",
+              "effect": "limits fullscreen",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "drawer closing animation",
+              "consequence": "premature reset shrinks closing drawer",
+              "sampling_rule": "reset on reopening synchronously"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "local size/CSS sufficient",
+              "evidence": "five existing size props; issue max-width located",
+              "falsifier": "browser geometry mismatch"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement with runtime/compiler checks; retain browser acceptance gap"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement with runtime/compiler checks; retain browser acceptance gap"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement with runtime/compiler checks; retain browser acceptance gap"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "approved-plan-bounded-to-five-drawers",
+        "recorded_at": "2026-09-07T08:20:41+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "投产方案时序与指令抽屉支持互相独立的全屏和还原",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ReleaseDrillPlanView.vue中timelineDrawer、itemDrawer为两个独立ref；对应size为min(980px,100vw)、min(680px,94vw)",
+                "未使用UiFormDrawer，不改原表单与事件函数",
+                "Element Plus图标库已导出FullScreen与ScaleToOriginal"
+              ],
+              "write_scope": [
+                "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+                "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+                "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+                "web/src/modules/release/release-operations.css"
+              ],
+              "invariants": [
+                "不改字段、接口、权限、数据、保存与关闭保护",
+                "非投产管理抽屉不变",
+                "保留用户既有未提交代码与测试数据"
+              ],
+              "interface_contracts": [
+                "Vue Ref<boolean>/ref/computed/watch",
+                "Element Plus el-drawer #header的titleId/titleClass",
+                "原timelineDrawer、itemDrawer与标题表达式",
+                "useReleaseDrawerFullscreen(open: Ref<boolean>, defaultSize: string): {fullscreen: Ref<boolean>,size: ComputedRef<string>,toggle: () => void}",
+                "ReleaseDrawerHeader props title:string,titleId?:string,titleClass?:string,fullscreen:boolean; emit toggle:[]",
+                "专属类release-operations-fullscreen-drawer；表单内容类release-operations-fullscreen-form"
+              ],
+              "non_goals": [
+                "浏览器原生全屏",
+                "将轮次等普通弹窗改为抽屉",
+                "其他模块及版本申请、配置绑定历史抽屉",
+                "数据库和登录问题"
+              ],
+              "action_bounds": [
+                "Only approved module local fullscreen additions"
+              ],
+              "acceptance_checks": [
+                "投产/回退共用时序抽屉、指令抽屉都可放大还原",
+                "父子不串状态；标题id和关闭按钮不丢失",
+                "原表单内容、打开和CRUD函数不变"
+              ],
+              "evidence_required": [
+                "runtime tests",
+                "build exit code",
+                "pre-edit preservation checks",
+                "browser evidence or explicit gap"
+              ],
+              "rollback": "只撤销本任务新增帮助函数/头部、方案接入和专属CSS，不回退方案页面原有改版",
+              "stop_conditions": [
+                "需要改公共组件、依赖或CRUD"
+              ],
+              "escalation_conditions": [
+                "原层级机制无法容纳父子全屏，需扩大行为范围"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "环境、演练步骤与问题抽屉完成全屏接入并集成回归",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "环境dialogOpen size=min(760px,94vw)",
+                "演练stepDrawer size=min(680px,calc(100vw - 24px))，closeStep保留保存中关闭保护",
+                "问题drawerOpen size=min(760px,calc(100vw - 24px))，详情/新增/编辑共用；closeDrawer处理保存及未保存确认",
+                "问题.issue-drawer.el-drawer含max-width规则"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+                "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+                "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+                "web/src/modules/release/release-operations.css",
+                "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+              ],
+              "invariants": [
+                "不改字段、接口、权限、数据、保存与关闭保护",
+                "非投产管理抽屉不变",
+                "保留用户既有未提交代码与测试数据"
+              ],
+              "interface_contracts": [
+                "T1帮助函数、头部控件及CSS",
+                "原dialogOpen/stepDrawer/drawerOpen refs、标题、before-close、show-close和footer",
+                "全部5个抽屉实例接入；未新增公共接口"
+              ],
+              "non_goals": [
+                "浏览器原生全屏",
+                "将轮次等普通弹窗改为抽屉",
+                "其他模块及版本申请、配置绑定历史抽屉",
+                "数据库和登录问题"
+              ],
+              "action_bounds": [
+                "Only approved module local fullscreen additions"
+              ],
+              "acceptance_checks": [
+                "环境新增/编辑、步骤新增/编辑、问题详情/新增/编辑均可全屏还原",
+                "输入不丢失、0额外业务请求、0误提交",
+                "原关闭保护、权限、未保存提示不变",
+                "4种视口和主题尺寸可达"
+              ],
+              "evidence_required": [
+                "runtime tests",
+                "build exit code",
+                "pre-edit preservation checks",
+                "browser evidence or explicit gap"
+              ],
+              "rollback": "仅撤销T2接入和本次专属样式；不撤销演练/问题改版及数据",
+              "stop_conditions": [
+                "需要更改关闭保护或后端业务行为"
+              ],
+              "escalation_conditions": [
+                "必须修改全局抽屉或应用壳才能满足视口要求"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2消费T1能力且共享CSS与测试文件"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "all tests",
+                "build",
+                "scope",
+                "browser if authorized"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1",
+              "trigger": "task output",
+              "observer": "main agent separate observation pass",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "T2",
+              "trigger": "task output",
+              "observer": "main agent separate observation pass",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1-tests-build-pass",
+        "recorded_at": "2026-09-07T08:24:52+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+              "purpose": "fullscreen state, header, scoped styles and regression tests"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+              "purpose": "fullscreen state, header, scoped styles and regression tests"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+              "purpose": "fullscreen state, header, scoped styles and regression tests"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+              "purpose": "fullscreen state, header, scoped styles and regression tests"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/release-operations.css",
+              "purpose": "fullscreen state, header, scoped styles and regression tests"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase T1",
+              "exit_code": 0,
+              "salient_output": "PASS reactive fullscreen/reset/isolation; 2 drawers; original scripts, bindings, guards and dialogs preserved"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2569 modules; built in 37.24s; existing PURE/chunk warnings"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "reactive and template assertions",
+              "result": "pass",
+              "evidence": "T1 test exit0",
+              "limitations": [
+                "no real browser geometry"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "two plan drawers wired; module helper/header/CSS added"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "original scripts and forms unchanged",
+              "result": "pass",
+              "evidence": "pre-edit SFC snapshot comparison"
+            }
+          ],
+          "disturbances": [
+            "browser inventory available but previous localhost authorization unresolved"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "browser visual and nested interaction checks"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "all-five-implemented-tests-build-pass",
+        "recorded_at": "2026-09-07T08:29:35+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+              "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+              "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+            },
+            {
+              "path_or_resource": "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+              "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+              "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+              "exit_code": 0,
+              "salient_output": "PASS: reactive fullscreen/reset/isolation; 5 drawers; original scripts, bindings, guards and dialogs preserved"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2569 modules transformed; built in 35.21s; existing PURE annotations and large chunk warnings"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "Only CRLF normalization warnings"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "REQ-20260904-061 scope must be JSON-compatible YAML"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-069-release-drawer-fullscreen/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 1,
+              "salient_output": "Branch must follow <type>/REQ-YYYYMMDD-NNN-short-name; current licon"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "all five drawer and reactive assertions",
+              "result": "pass",
+              "evidence": "PASS: reactive fullscreen/reset/isolation; 5 drawers; original scripts, bindings, guards and dialogs preserved",
+              "limitations": [
+                "does not measure browser geometry, network or focus"
+              ]
+            },
+            {
+              "check": "type/build",
+              "result": "pass",
+              "evidence": "2569 modules transformed; built in 35.21s; existing PURE annotations and large chunk warnings",
+              "limitations": [
+                "not browser rendering"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "environment/steps/issues wired to independent fullscreen state",
+            "readable 960px fullscreen form/detail containers",
+            "original scripts, events, models and dialogs preserved by AST comparison"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "business behavior untouched",
+              "result": "pass",
+              "evidence": "original script byte comparison after stripping only helper imports/calls; AST models/events/guards/dialog comparison"
+            },
+            {
+              "invariant": "project remount reset",
+              "result": "pass",
+              "evidence": "local effectScope creation test and existing project-key component wiring; no browser project switching measured"
+            }
+          ],
+          "disturbances": [
+            "existing REQ061 scope and licon branch governance failures",
+            "prior localhost authorization remains unresolved; inventory only"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "R3 four viewports/light-dark real browser acceptance",
+            "R2 nested focus, no extra requests and visual state preservation real browser checks"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1-tests-build-pass-browser-gap",
+        "recorded_at": "2026-09-07T08:25:42+00:00",
+        "data": {
+          "sample_label": "T1",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S2",
+              "result": "pass",
+              "raw_evidence": [
+                {
+                  "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase T1",
+                  "exit_code": 0,
+                  "salient_output": "PASS reactive fullscreen/reset/isolation; 2 drawers; original scripts, bindings, guards and dialogs preserved"
+                },
+                {
+                  "command": "npm --prefix web run build",
+                  "exit_code": 0,
+                  "salient_output": "2569 modules; built in 37.24s; existing PURE/chunk warnings"
+                }
+              ],
+              "limitation": [
+                "only plan two drawers"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1",
+              "result": "pass",
+              "raw_evidence": "original business script/forms/guards exact comparison; reactive isolation test",
+              "limitation": [
+                "real nested focus not measured"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3",
+              "result": "unobservable",
+              "raw_evidence": "cua inventory found Edge localhost tab; prior authorization not restored",
+              "limitation": [
+                "four viewports/themes not measured"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "real browser matrix"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "automated-pass-browser-matrix-missing",
+        "recorded_at": "2026-09-07T08:29:46+00:00",
+        "data": {
+          "sample_label": "T2",
+          "task_ids": [
+            "T1",
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1/S2",
+              "result": "pass",
+              "raw_evidence": [
+                {
+                  "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+                  "exit_code": 0,
+                  "salient_output": "PASS: reactive fullscreen/reset/isolation; 5 drawers; original scripts, bindings, guards and dialogs preserved"
+                },
+                {
+                  "command": "npm --prefix web run build",
+                  "exit_code": 0,
+                  "salient_output": "2569 modules transformed; built in 35.21s; existing PURE annotations and large chunk warnings"
+                }
+              ],
+              "limitation": [
+                "five bindings and sizes measured synthetically, not actual browser geometry"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1",
+              "result": "pass",
+              "raw_evidence": "reactive/reset/isolation plus original script/events/forms/dialog AST assertions",
+              "limitation": [
+                "runtime network, nested focus and unsaved prompt interaction unmeasured"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1/S2/S3",
+              "result": "unobservable",
+              "raw_evidence": "CSS parsed: dedicated selector width/max-width100vw height/max-height100dvh; build0; browser inventory only",
+              "limitation": [
+                "desktop/mobile light/dark screenshots missing"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "REQ061 YAML baseline failure",
+            "licon branch baseline failure",
+            "browser access unresolved"
+          ],
+          "coverage_gaps": [
+            "No authorized real browser matrix or independent UI acceptance; do not mark converged"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "投产管理抽屉可在保留业务上下文的情况下放大至浏览器内容全屏并还原",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "投产管理范围内全部5处抽屉可切换页面内全屏与原尺寸",
+      "acceptance": [
+        "方案时序（投产/回退）、方案指令、环境维护、演练步骤、问题详情/维护均有全屏及还原按钮",
+        "全屏覆盖浏览器内容视口；不调用浏览器Fullscreen API"
+      ],
+      "priority": "must",
+      "source": "用户需求及对推荐方案的确认",
+      "counterexample": [
+        "只支持演练步骤",
+        "全屏隐藏浏览器工具栏"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "切换尺寸保留原表单、选中对象、嵌套抽屉和业务操作上下文",
+      "acceptance": [
+        "切换不新增API请求、不重建表单、不清空输入",
+        "父子抽屉分别控制全屏，关闭子层不关闭父层",
+        "保留所有原关闭保护、权限、提交和校验",
+        "关闭并再次打开为默认尺寸，项目切换清理状态"
+      ],
+      "priority": "must",
+      "source": "已确认方案及原业务不变量",
+      "counterexample": [
+        "全屏后丢失输入",
+        "保存中全屏按钮触发表单提交"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "全屏及普通抽屉在桌面手机和明暗主题均可操作",
+      "acceptance": [
+        "标题和底部操作不被正文滚动吞掉",
+        "375x812、390x844、430x932、1280x800无页面级横向溢出或操作遮挡",
+        "图标提供全屏/还原提示和可访问名称"
+      ],
+      "priority": "must",
+      "source": "design-h5.md与已确认方案",
+      "counterexample": [
+        "旧max-width仍限制全屏",
+        "关闭按钮被放大按钮盖住"
+      ]
+    }
+  ],
+  "invariants": [
+    "不改字段、接口、权限、数据、保存与关闭保护",
+    "非投产管理抽屉不变",
+    "保留用户既有未提交代码与测试数据"
+  ],
+  "constraints": [
+    "Vue3/Element Plus现有图标库",
+    "模块内复用，不修改公共UiFormDrawer",
+    "不读取.env或后端，不重启服务、不提交推送",
+    "默认尺寸按各实例现值，普通弹窗不改"
+  ],
+  "non_goals": [
+    "浏览器原生全屏",
+    "将轮次等普通弹窗改为抽屉",
+    "其他模块及版本申请、配置绑定历史抽屉",
+    "数据库和登录问题"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260907-069-release-drawer-fullscreen\\handoff.json",
+    "imported_at": "2026-09-07T08:19:41+00:00",
+    "topic": "release-drawer-fullscreen",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "release-drawer-fullscreen",
+      "handoff_status": "approved",
+      "created_at": "2026-09-07T08:05:08Z",
+      "design": {
+        "schema_version": 1,
+        "topic": "release-drawer-fullscreen",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-07-release-drawer-fullscreen-design.md",
+        "objective": "投产管理抽屉可在保留业务上下文的情况下放大至浏览器内容全屏并还原",
+        "users": [
+          "查看时序、维护指令、环境、演练步骤和问题的项目成员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "投产管理范围内全部5处抽屉可切换页面内全屏与原尺寸",
+            "acceptance": [
+              "方案时序（投产/回退）、方案指令、环境维护、演练步骤、问题详情/维护均有全屏及还原按钮",
+              "全屏覆盖浏览器内容视口；不调用浏览器Fullscreen API"
+            ],
+            "priority": "must",
+            "source": "用户需求及对推荐方案的确认",
+            "counterexample": [
+              "只支持演练步骤",
+              "全屏隐藏浏览器工具栏"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "切换尺寸保留原表单、选中对象、嵌套抽屉和业务操作上下文",
+            "acceptance": [
+              "切换不新增API请求、不重建表单、不清空输入",
+              "父子抽屉分别控制全屏，关闭子层不关闭父层",
+              "保留所有原关闭保护、权限、提交和校验",
+              "关闭并再次打开为默认尺寸，项目切换清理状态"
+            ],
+            "priority": "must",
+            "source": "已确认方案及原业务不变量",
+            "counterexample": [
+              "全屏后丢失输入",
+              "保存中全屏按钮触发表单提交"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "全屏及普通抽屉在桌面手机和明暗主题均可操作",
+            "acceptance": [
+              "标题和底部操作不被正文滚动吞掉",
+              "375x812、390x844、430x932、1280x800无页面级横向溢出或操作遮挡",
+              "图标提供全屏/还原提示和可访问名称"
+            ],
+            "priority": "must",
+            "source": "design-h5.md与已确认方案",
+            "counterexample": [
+              "旧max-width仍限制全屏",
+              "关闭按钮被放大按钮盖住"
+            ]
+          }
+        ],
+        "invariants": [
+          "不改字段、接口、权限、数据、保存与关闭保护",
+          "非投产管理抽屉不变",
+          "保留用户既有未提交代码与测试数据"
+        ],
+        "constraints": [
+          "Vue3/Element Plus现有图标库",
+          "模块内复用，不修改公共UiFormDrawer",
+          "不读取.env或后端，不重启服务、不提交推送",
+          "默认尺寸按各实例现值，普通弹窗不改"
+        ],
+        "non_goals": [
+          "浏览器原生全屏",
+          "将轮次等普通弹窗改为抽屉",
+          "其他模块及版本申请、配置绑定历史抽屉",
+          "数据库和登录问题"
+        ],
+        "selected_approach": {
+          "name": "保留原el-drawer，增加模块内全屏状态和头部控件",
+          "reason": "五处直接使用el-drawer且关闭行为各异，最小化对表单和嵌套弹层的影响",
+          "alternatives": [
+            {
+              "name": "浏览器Fullscreen API",
+              "rejected_because": "用户已选择页面内全屏，不需要隐藏浏览器控件或权限依赖"
+            },
+            {
+              "name": "改造全局UiFormDrawer并迁移所有抽屉",
+              "rejected_because": "扩大公共组件回归范围，且当前业务抽屉自定义正文和关闭控制不一致"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+              "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+              "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+              "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+              "web/src/modules/release/release-operations.css",
+              "候选新增：web/src/modules/release/components/ReleaseDrawerHeader.vue",
+              "候选新增：web/src/modules/release/composables/useReleaseDrawerFullscreen.ts"
+            ],
+            "outside": [
+              "web/src/components/ui",
+              "后端/数据库/API/路由",
+              "ReleaseApplicationDrawer/ReleaseWorkflowBindingView"
+            ]
+          },
+          "components": [
+            {
+              "name": "原有5处el-drawer",
+              "responsibility": "继续持有原表单、显示状态、校验和生命周期",
+              "depends_on": [
+                "Element Plus"
+              ]
+            },
+            {
+              "name": "候选模块内全屏状态帮助函数",
+              "responsibility": "每个实例单独持有状态，关闭重开和项目卸载恢复默认",
+              "depends_on": [
+                "Vue"
+              ]
+            },
+            {
+              "name": "候选模块内抽屉头部",
+              "responsibility": "标题与全屏/还原图标，不替代原关闭按钮",
+              "depends_on": [
+                "Element Plus图标、Tooltip"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "局部全屏切换事件",
+              "producer": "抽屉头部",
+              "consumers": [
+                "对应单个抽屉状态"
+              ],
+              "contract": "只切换显示尺寸，不提交、关闭、重建组件或请求业务数据"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "点击全屏图标",
+              "transitions": [
+                "仅切换本实例布尔状态",
+                "size和专属CSS扩展至视口",
+                "图标及tooltip显示还原"
+              ],
+              "output": "原内容与业务状态保持，全屏尺寸生效"
+            },
+            {
+              "input": "还原或关闭重开",
+              "transitions": [
+                "还原原有尺寸；下次打开从默认尺寸开始"
+              ],
+              "output": "不持久化全屏偏好"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "保存中",
+            "behavior": "全屏只是尺寸操作，原禁止关闭和重复提交保护不变",
+            "recovery": "保存结果由原组件处理"
+          },
+          {
+            "condition": "子抽屉打开",
+            "behavior": "沿用Element Plus层级管理，各自尺寸状态独立",
+            "recovery": "关闭子抽屉返回父抽屉原尺寸状态"
+          },
+          {
+            "condition": "项目切换",
+            "behavior": "依赖现有项目key卸载页面，全屏状态随组件销毁",
+            "recovery": "新项目默认尺寸"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "不增加写权限或暴露数据"
+          ],
+          "performance": [
+            "切换不触发业务请求，不复制表单DOM"
+          ],
+          "compatibility": [
+            "普通尺寸和Esc关闭语义保持原样",
+            "全屏表单桌面使用可读的内层最大宽度，时序画布使用可用全宽"
+          ],
+          "operations": [
+            "无服务重启和数据迁移"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "5处切换与恢复，嵌套状态独立，表单无请求无丢失",
+            "method": "局部状态测试、编译和真实浏览器操作"
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "视口宽高、滚动、页脚、按钮、主题",
+            "method": "指定4类视口截图/DOM尺寸及明暗主题检查"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "仅需页面内全屏，不改默认打开尺寸",
+            "basis": "用户确认推荐方案",
+            "falsifier": "用户要求默认全屏或浏览器原生全屏"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "真实浏览器访问工具是否可用",
+            "impact": "可能阻断实际视觉验收；不可用时如实保留缺口",
+            "owner": "执行阶段",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "使用页面内全屏",
+            "reason": "适配业务表单和嵌套抽屉",
+            "source": "用户最新确认"
+          },
+          {
+            "id": "D2",
+            "decision": "保留原关闭和Esc语义",
+            "reason": "全屏只改变尺寸，避免原保护回归",
+            "source": "已确认保留业务功能与关闭保护"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "问题抽屉的max-width及Teleport样式限制全屏",
+            "impact": "size变化但没有实际占满",
+            "mitigation": "仅对本次实例专属全屏class解除限制并测量实际尺寸"
+          },
+          {
+            "risk": "嵌套层级和全屏状态相互影响",
+            "impact": "父层误关闭或还原",
+            "mitigation": "独立实例状态，真实父子操作回归"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户在收到修订1落盘设计链接后回复“确认”",
+          "confirmed_at": "2026-09-07T08:05:08Z"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-07-release-drawer-fullscreen-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Vue3/Element Plus现有图标库",
+          "模块内复用，不修改公共UiFormDrawer",
+          "不读取.env或后端，不重启服务、不提交推送",
+          "默认尺寸按各实例现值，普通弹窗不改",
+          "不改字段、接口、权限、数据、保存与关闭保护",
+          "非投产管理抽屉不变",
+          "保留用户既有未提交代码与测试数据",
+          "继续当前licon工作区，不切换分支、不创建worktree；只增量修改既有未提交代码",
+          "实际浏览器权限不可用时不绕过，不宣称已验收"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+            "status": "existing",
+            "responsibility": "接入已有抽屉全屏而不变业务逻辑",
+            "evidence": "已读取抽屉声明与原事件"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+            "status": "existing",
+            "responsibility": "接入已有抽屉全屏而不变业务逻辑",
+            "evidence": "已读取抽屉声明与原事件"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+            "status": "existing",
+            "responsibility": "接入已有抽屉全屏而不变业务逻辑",
+            "evidence": "已读取抽屉声明与原事件"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+            "status": "existing",
+            "responsibility": "接入已有抽屉全屏而不变业务逻辑",
+            "evidence": "已读取抽屉声明与原事件"
+          },
+          {
+            "path": "web/src/modules/release/release-operations.css",
+            "status": "existing",
+            "responsibility": "本次专属全屏与表单容器样式",
+            "evidence": "已读取末尾模块响应式样式"
+          },
+          {
+            "path": "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+            "status": "candidate-new",
+            "responsibility": "全屏状态与尺寸",
+            "evidence": "本次计划候选文件，未创建"
+          },
+          {
+            "path": "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+            "status": "candidate-new",
+            "responsibility": "标题及纯尺寸图标操作",
+            "evidence": "本次计划候选文件，未创建"
+          },
+          {
+            "path": "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+            "status": "candidate-new",
+            "responsibility": "局部可重复断言",
+            "evidence": "本次计划候选文件，未创建"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "投产方案时序与指令抽屉支持互相独立的全屏和还原",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ReleaseDrillPlanView.vue中timelineDrawer、itemDrawer为两个独立ref；对应size为min(980px,100vw)、min(680px,94vw)",
+              "未使用UiFormDrawer，不改原表单与事件函数",
+              "Element Plus图标库已导出FullScreen与ScaleToOriginal"
+            ],
+            "files": {
+              "create": [
+                "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+                "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+                "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+              ],
+              "modify": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+                "web/src/modules/release/release-operations.css"
+              ],
+              "test": [
+                "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Vue Ref<boolean>/ref/computed/watch",
+                "Element Plus el-drawer #header的titleId/titleClass",
+                "原timelineDrawer、itemDrawer与标题表达式"
+              ],
+              "produces": [
+                "useReleaseDrawerFullscreen(open: Ref<boolean>, defaultSize: string): {fullscreen: Ref<boolean>,size: ComputedRef<string>,toggle: () => void}",
+                "ReleaseDrawerHeader props title:string,titleId?:string,titleClass?:string,fullscreen:boolean; emit toggle:[]",
+                "专属类release-operations-fullscreen-drawer；表单内容类release-operations-fullscreen-form"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "记录当前4个业务组件和模块CSS差异基线",
+                "command": "git diff --stat -- web/src/modules/release",
+                "expected": "识别已有改动，不覆盖或回退",
+                "evidence": "基线diff和文件归属"
+              },
+              {
+                "id": "T1-S2",
+                "action": "新建局部Node测试并先验证失败信号",
+                "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase T1",
+                "expected": "帮助函数未实现时明确失败，不触碰真实数据",
+                "evidence": "退出码和失败断言"
+              },
+              {
+                "id": "T1-S3",
+                "action": "实现帮助函数及头部控件，仅接入方案的两个抽屉",
+                "command": null,
+                "expected": "默认false；全屏size=100vw；再次切换还原；关闭重开false；两实例互不影响；header按钮native-type=button",
+                "evidence": "实际diff和接口对照"
+              },
+              {
+                "id": "T1-S4",
+                "action": "增加只命中全屏class的视口尺寸和滚动规则",
+                "command": null,
+                "expected": "覆盖旧max-width；正文可收缩滚动，header/footer不收缩；普通尺寸不变",
+                "evidence": "专属CSS差异"
+              },
+              {
+                "id": "T1-S5",
+                "action": "运行局部状态和模板检查",
+                "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase T1",
+                "expected": "开关/重开/双实例/零业务请求及两个接入点通过",
+                "evidence": "断言名称、退出码"
+              },
+              {
+                "id": "T1-S6",
+                "action": "运行前端类型及打包检查",
+                "command": "npm --prefix web run build",
+                "expected": "退出0，既有警告单列",
+                "evidence": "vue-tsc/Vite结果"
+              },
+              {
+                "id": "T1-S7",
+                "action": "验证父子抽屉的真实界面并形成一次采样",
+                "command": null,
+                "expected": "在方案页面全屏父层、打开/全屏/关闭子层、父层保持；未授权则明确缺口",
+                "evidence": "execution-T1/observation-T1及浏览器证据或限制"
+              }
+            ],
+            "acceptance_checks": [
+              "投产/回退共用时序抽屉、指令抽屉都可放大还原",
+              "父子不串状态；标题id和关闭按钮不丢失",
+              "原表单内容、打开和CRUD函数不变"
+            ],
+            "risks": [
+              "Element Plus插槽标题语义",
+              "Teleport规则优先级",
+              "关闭动画期间重开"
+            ],
+            "rollback": "只撤销本任务新增帮助函数/头部、方案接入和专属CSS，不回退方案页面原有改版",
+            "stop_conditions": [
+              "需要改公共组件、依赖或CRUD"
+            ],
+            "escalation_conditions": [
+              "原层级机制无法容纳父子全屏，需扩大行为范围"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "环境、演练步骤与问题抽屉完成全屏接入并集成回归",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "环境dialogOpen size=min(760px,94vw)",
+              "演练stepDrawer size=min(680px,calc(100vw - 24px))，closeStep保留保存中关闭保护",
+              "问题drawerOpen size=min(760px,calc(100vw - 24px))，详情/新增/编辑共用；closeDrawer处理保存及未保存确认",
+              "问题.issue-drawer.el-drawer含max-width规则"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+                "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+                "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+                "web/src/modules/release/release-operations.css",
+                "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+              ],
+              "test": [
+                "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1帮助函数、头部控件及CSS",
+                "原dialogOpen/stepDrawer/drawerOpen refs、标题、before-close、show-close和footer"
+              ],
+              "produces": [
+                "全部5个抽屉实例接入；未新增公共接口"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "扩展局部检查覆盖全部5处接入与关闭保护",
+                "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+                "expected": "接入前准确定位剩余3处缺失",
+                "evidence": "预期失败断言"
+              },
+              {
+                "id": "T2-S2",
+                "action": "接入剩余3处抽屉，保留标题表达式及全部事件",
+                "command": null,
+                "expected": "更换静态size为帮助函数计算值，添加header插槽及专属class；不修改保存/关闭函数和表单v-model",
+                "evidence": "实际diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "限定全屏表单内层最大宽度，处理问题详情及手机布局",
+                "command": null,
+                "expected": "全屏外壳占满；表单桌面最大960px、width100%；手机单列；时序画布不受表单限宽",
+                "evidence": "CSS作用域与视口检查"
+              },
+              {
+                "id": "T2-S4",
+                "action": "运行全部局部测试",
+                "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+                "expected": "5处接入、开关重开、实例隔离、保留关闭保护与无请求通过",
+                "evidence": "测试原始输出"
+              },
+              {
+                "id": "T2-S5",
+                "action": "执行完整前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "退出0；警告如实记录",
+                "evidence": "类型及打包结果"
+              },
+              {
+                "id": "T2-S6",
+                "action": "检查空白及治理",
+                "command": "git diff --check",
+                "expected": "退出0；再执行check-all-governance和当前范围检查，旧失败独立报告",
+                "evidence": "真实命令和结果"
+              },
+              {
+                "id": "T2-S7",
+                "action": "在4类视口、明暗主题下进行真实操作验收",
+                "command": null,
+                "expected": "五类抽屉全部支持全屏/还原；字段输入和选中对象保留；保存中切换不提交或关闭；原取消、确认、Esc语义不变；项目切换重置；无页面溢出",
+                "evidence": "浏览器截图/DOM尺寸/网络及控制台，或明确缺口"
+              },
+              {
+                "id": "T2-S8",
+                "action": "记录执行、采样与交付边界",
+                "command": null,
+                "expected": "只修改授权文件；无独立或浏览器证据则保留observing，不宣称converged",
+                "evidence": "execution-T2/observation-T2和最终账本状态"
+              }
+            ],
+            "acceptance_checks": [
+              "环境新增/编辑、步骤新增/编辑、问题详情/新增/编辑均可全屏还原",
+              "输入不丢失、0额外业务请求、0误提交",
+              "原关闭保护、权限、未保存提示不变",
+              "4种视口和主题尺寸可达"
+            ],
+            "risks": [
+              "问题页非scoped样式优先级",
+              "长标题挤压两个图标",
+              "全屏表单宽度与页脚错位"
+            ],
+            "rollback": "仅撤销T2接入和本次专属样式；不撤销演练/问题改版及数据",
+            "stop_conditions": [
+              "需要更改关闭保护或后端业务行为"
+            ],
+            "escalation_conditions": [
+              "必须修改全局抽屉或应用壳才能满足视口要求"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "T2消费T1能力且共享CSS与测试文件"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+            "expected": "全部5处的状态及接入检查通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "退出0"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "报告真实结果；历史REQ061 YAML故障不在本任务修复"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-069-release-drawer-fullscreen/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+            "expected": "报告真实结果；既有licon命名与此前改动分别归属"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户在实施计划修订1后回复确认，批准实施",
+          "confirmed_at": "2026-09-07"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+          "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+          "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+          "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+          "web/src/modules/release/release-operations.css",
+          "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+          "web/src/modules/release/components/ReleaseDrawerHeader.vue"
+        ],
+        "state_variable_candidates": [
+          "5个open/fullscreen/size组合",
+          "原表单、选中对象、saving/confirmingClose",
+          "父子弹层栈"
+        ],
+        "interface_candidates": [
+          "useReleaseDrawerFullscreen",
+          "ReleaseDrawerHeader",
+          "Element Plus header slot and size"
+        ],
+        "sensor_candidates": [
+          "Node state/template checks",
+          "vue-tsc/Vite",
+          "Browser dimensions,screenshots,request count"
+        ],
+        "actuator_candidates": [
+          "局部尺寸状态、header插槽和专属CSS"
+        ],
+        "disturbance_candidates": [
+          "旧max-width、Teleport、嵌套焦点",
+          "已有未提交页面改动",
+          "浏览器授权不可用"
+        ],
+        "delay_candidates": [
+          "抽屉打开/关闭动画",
+          "请求尚未完成时切换尺寸"
+        ],
+        "assumptions": [
+          {
+            "text": "仅通过size与局部CSS即可占满视口，不需更改原弹层关闭机制",
+            "basis": "现有抽屉组件结构与用户批准设计",
+            "falsifier": "真实浏览器尺寸或嵌套操作失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Vue3\", \"Element Plus\", \"existing project-key remount\"], \"inside\": [\"web/src/modules/release/components/ReleaseDrillPlanView.vue\", \"web/src/modules/release/components/ReleaseDrillEnvironmentView.vue\", \"web/src/modules/release/components/ReleaseDrillExecutionView.vue\", \"web/src/modules/release/components/ReleaseIssueTrackingView.vue\", \"web/src/modules/release/release-operations.css\", \"候选新增：web/src/modules/release/components/ReleaseDrawerHeader.vue\", \"候选新增：web/src/modules/release/composables/useReleaseDrawerFullscreen.ts\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"real layout\"], \"id\": \"S1\", \"independence\": \"runtime assertions and pre-edit fingerprints\", \"method\": \"Node Vue reactive runtime and SFC AST assertions\", \"target\": \"state and five wiring points\"}",
+      "{\"blind_spots\": [\"interaction\"], \"id\": \"S2\", \"independence\": \"compiler\", \"method\": \"vue-tsc and Vite build; baseline exit0\", \"target\": \"typing/bundling\"}",
+      "{\"blind_spots\": [\"currently unavailable pending access\"], \"id\": \"S3\", \"independence\": \"actual rendered UI\", \"method\": \"authorized browser viewport/interaction checks\", \"target\": \"layout and interaction\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"add local helper/header and dedicated CSS only\", \"authority\": \"approved scope\", \"id\": \"A1\", \"impact_radius\": \"release operations frontend\", \"rollback\": \"remove only added hunks\", \"target\": \"five module drawers\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"HEAD is not valid baseline\", \"source\": \"dirty business files\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"visual evidence unavailable\", \"source\": \"browser authorization\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"limits fullscreen\", \"source\": \"issue drawer max-width\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"five existing size props; issue max-width located\", \"falsifier\": \"browser geometry mismatch\", \"text\": \"local size/CSS sufficient\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "投产方案时序与指令抽屉支持互相独立的全屏和还原",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ReleaseDrillPlanView.vue中timelineDrawer、itemDrawer为两个独立ref；对应size为min(980px,100vw)、min(680px,94vw)",
+        "未使用UiFormDrawer，不改原表单与事件函数",
+        "Element Plus图标库已导出FullScreen与ScaleToOriginal"
+      ],
+      "write_scope": [
+        "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+        "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+        "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+        "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+        "web/src/modules/release/release-operations.css"
+      ],
+      "invariants": [
+        "不改字段、接口、权限、数据、保存与关闭保护",
+        "非投产管理抽屉不变",
+        "保留用户既有未提交代码与测试数据"
+      ],
+      "interface_contracts": [
+        "Vue Ref<boolean>/ref/computed/watch",
+        "Element Plus el-drawer #header的titleId/titleClass",
+        "原timelineDrawer、itemDrawer与标题表达式",
+        "useReleaseDrawerFullscreen(open: Ref<boolean>, defaultSize: string): {fullscreen: Ref<boolean>,size: ComputedRef<string>,toggle: () => void}",
+        "ReleaseDrawerHeader props title:string,titleId?:string,titleClass?:string,fullscreen:boolean; emit toggle:[]",
+        "专属类release-operations-fullscreen-drawer；表单内容类release-operations-fullscreen-form"
+      ],
+      "non_goals": [
+        "浏览器原生全屏",
+        "将轮次等普通弹窗改为抽屉",
+        "其他模块及版本申请、配置绑定历史抽屉",
+        "数据库和登录问题"
+      ],
+      "action_bounds": [
+        "Only approved module local fullscreen additions"
+      ],
+      "acceptance": [
+        "投产/回退共用时序抽屉、指令抽屉都可放大还原",
+        "父子不串状态；标题id和关闭按钮不丢失",
+        "原表单内容、打开和CRUD函数不变"
+      ],
+      "evidence_required": [
+        "runtime tests",
+        "build exit code",
+        "pre-edit preservation checks",
+        "browser evidence or explicit gap"
+      ],
+      "rollback": "只撤销本任务新增帮助函数/头部、方案接入和专属CSS，不回退方案页面原有改版",
+      "stop_conditions": [
+        "需要改公共组件、依赖或CRUD"
+      ],
+      "escalation_conditions": [
+        "原层级机制无法容纳父子全屏，需扩大行为范围"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T08:25:36+00:00",
+          "text": "implementation-and-local-checks-complete"
+        }
+      ],
+      "updated_at": "2026-09-07T08:25:36+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "环境、演练步骤与问题抽屉完成全屏接入并集成回归",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "环境dialogOpen size=min(760px,94vw)",
+        "演练stepDrawer size=min(680px,calc(100vw - 24px))，closeStep保留保存中关闭保护",
+        "问题drawerOpen size=min(760px,calc(100vw - 24px))，详情/新增/编辑共用；closeDrawer处理保存及未保存确认",
+        "问题.issue-drawer.el-drawer含max-width规则"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+        "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+        "web/src/modules/release/release-operations.css",
+        "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs"
+      ],
+      "invariants": [
+        "不改字段、接口、权限、数据、保存与关闭保护",
+        "非投产管理抽屉不变",
+        "保留用户既有未提交代码与测试数据"
+      ],
+      "interface_contracts": [
+        "T1帮助函数、头部控件及CSS",
+        "原dialogOpen/stepDrawer/drawerOpen refs、标题、before-close、show-close和footer",
+        "全部5个抽屉实例接入；未新增公共接口"
+      ],
+      "non_goals": [
+        "浏览器原生全屏",
+        "将轮次等普通弹窗改为抽屉",
+        "其他模块及版本申请、配置绑定历史抽屉",
+        "数据库和登录问题"
+      ],
+      "action_bounds": [
+        "Only approved module local fullscreen additions"
+      ],
+      "acceptance": [
+        "环境新增/编辑、步骤新增/编辑、问题详情/新增/编辑均可全屏还原",
+        "输入不丢失、0额外业务请求、0误提交",
+        "原关闭保护、权限、未保存提示不变",
+        "4种视口和主题尺寸可达"
+      ],
+      "evidence_required": [
+        "runtime tests",
+        "build exit code",
+        "pre-edit preservation checks",
+        "browser evidence or explicit gap"
+      ],
+      "rollback": "仅撤销T2接入和本次专属样式；不撤销演练/问题改版及数据",
+      "stop_conditions": [
+        "需要更改关闭保护或后端业务行为"
+      ],
+      "escalation_conditions": [
+        "必须修改全局抽屉或应用壳才能满足视口要求"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T08:25:45+00:00",
+          "text": "approved-T2"
+        },
+        {
+          "recorded_at": "2026-09-07T08:29:42+00:00",
+          "text": "local-checks-pass-browser-gap"
+        }
+      ],
+      "updated_at": "2026-09-07T08:29:42+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "runtime-and-build-pass-browser-unmeasured",
+      "recorded_at": "2026-09-07T08:24:57+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "automated-pass-browser-gap-not-counted-as-product-pass",
+      "recorded_at": "2026-09-07T08:29:50+00:00"
+    }
+  ]
+}

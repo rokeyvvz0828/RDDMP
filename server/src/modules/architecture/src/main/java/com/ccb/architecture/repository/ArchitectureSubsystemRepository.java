@@ -1,9 +1,5 @@
 package com.ccb.architecture.repository;
 
-import com.ccb.architecture.model.LogicalSubsystem;
-import com.ccb.architecture.model.LogicalSubsystemCommand;
-import com.ccb.architecture.model.LogicalSubsystemLock;
-import com.ccb.architecture.model.LogicalSubsystemQuery;
 import com.ccb.architecture.model.PhysicalSubsystem;
 import com.ccb.architecture.model.PhysicalSubsystemCommand;
 import com.ccb.architecture.model.PhysicalSubsystemQuery;
@@ -20,35 +16,19 @@ import java.util.Optional;
 
 @Repository
 public class ArchitectureSubsystemRepository {
-    private static final String LOGICAL_COLUMNS = """
-            id, code, short_name, name, business_org_id, deployment_platform_code,
-            system_type_code, system_ownership_code, contact_user_id, description, remark,
-            created_by, updated_by, created_at, updated_at,
-            number_sequence, status, sort_no, row_version
-            """;
     private static final String PHYSICAL_COLUMNS = """
-            id, code, short_name, name, logical_subsystem_id, business_group_name,
-            business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
+            id, code, short_name, name, logical_subsystem_name, business_component_code, business_group_name,
+            deployment_platform, disaster_recovery_mode,
             responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
             development_framework_code, owner_user_id, description, remark,
             created_by, updated_by, created_at, updated_at,
-            number_slot, english_name, status, row_version
+            english_name, status, row_version, security_node_no, file_transfer_node_no
             """;
-
-    private static final RowMapper<LogicalSubsystem> LOGICAL_MAPPER = (rs, rowNum) -> new LogicalSubsystem(
-            rs.getLong("id"), rs.getString("code"), rs.getString("short_name"), rs.getString("name"),
-            rs.getLong("business_org_id"), rs.getString("deployment_platform_code"),
-            rs.getString("system_type_code"), rs.getString("system_ownership_code"),
-            rs.getLong("contact_user_id"), rs.getString("description"), rs.getString("remark"),
-            rs.getLong("created_by"), rs.getLong("updated_by"),
-            localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
-            rs.getObject("number_sequence", Integer.class), rs.getString("status"), rs.getInt("sort_no"),
-            rs.getLong("row_version"), List.of());
 
     private static final RowMapper<PhysicalSubsystem> PHYSICAL_MAPPER = (rs, rowNum) -> new PhysicalSubsystem(
             rs.getLong("id"), rs.getString("code"), rs.getString("short_name"), rs.getString("name"),
-            rs.getLong("logical_subsystem_id"), rs.getString("business_group_name"),
-            rs.getString("business_continuity_level"), rs.getString("collected_system_level"),
+            rs.getString("logical_subsystem_name"), rs.getString("business_component_code"),
+            rs.getString("business_group_name"),
             rs.getString("deployment_platform"), rs.getString("disaster_recovery_mode"),
             rs.getLong("responsible_team_org_id"), rs.getString("responsible_team_name_snapshot"),
             rs.getString("runtime_code"), rs.getString("system_level_code"),
@@ -56,10 +36,9 @@ public class ArchitectureSubsystemRepository {
             rs.getString("description"), rs.getString("remark"),
             rs.getLong("created_by"), rs.getLong("updated_by"),
             localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
-            rs.getString("number_slot"), rs.getString("english_name"), rs.getString("status"),
-            rs.getLong("row_version"));
-    private static final RowMapper<LogicalSubsystemLock> LOGICAL_LOCK_MAPPER = (rs, rowNum) ->
-            new LogicalSubsystemLock(rs.getLong("id"), rs.getBoolean("deleted"));
+            rs.getString("english_name"), rs.getString("status"),
+            rs.getLong("row_version"),
+            rs.getString("security_node_no"), rs.getString("file_transfer_node_no"));
 
     private final JdbcTemplate jdbc;
 
@@ -67,201 +46,111 @@ public class ArchitectureSubsystemRepository {
         this.jdbc = jdbc;
     }
 
-    public PageResult<LogicalSubsystem> pageLogical(long tenantId, PageQuery page, LogicalSubsystemQuery query) {
-        PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
-        LogicalSubsystemQuery normalizedQuery = query == null ? LogicalSubsystemQuery.empty() : query;
-        StringBuilder filter = new StringBuilder();
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
-        addLike(filter, args, "code", normalizedQuery.code());
-        addLike(filter, args, "short_name", normalizedQuery.shortName());
-        addLike(filter, args, "name", normalizedQuery.name());
-        if (normalizedQuery.businessOrgId() != null) {
-            filter.append(" AND business_org_id = ?");
-            args.add(normalizedQuery.businessOrgId());
-        }
-        addStatus(filter, args, normalizedQuery.status());
-        Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_logical_subsystem WHERE tenant_id = ? AND deleted = 0" + filter,
-                Long.class,
-                args.toArray());
-        List<Object> listArgs = pageArgs(args, normalizedPage);
-        List<LogicalSubsystem> records = jdbc.query(
-                "SELECT " + LOGICAL_COLUMNS + " FROM arch_logical_subsystem WHERE tenant_id = ? AND deleted = 0"
-                        + filter + " ORDER BY sort_no ASC, id DESC LIMIT ? OFFSET ?",
-                LOGICAL_MAPPER,
-                listArgs.toArray());
-        return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
-    }
-
-    public Optional<LogicalSubsystem> findLogical(long tenantId, long id) {
-        return jdbc.query("SELECT " + LOGICAL_COLUMNS + " FROM arch_logical_subsystem WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                LOGICAL_MAPPER, tenantId, id).stream().findFirst();
-    }
-
-    /** 父子并发锁读取必须能看见已软删除父记录，以区分普通无效引用与并发删除。 */
-    public Optional<LogicalSubsystemLock> lockLogical(long tenantId, long id) {
-        return jdbc.query("SELECT id, deleted FROM arch_logical_subsystem WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                LOGICAL_LOCK_MAPPER, tenantId, id).stream().findFirst();
-    }
-
-    public boolean logicalCodeExists(long tenantId, String code, Long excludeId) {
-        return exists("arch_logical_subsystem", "code", tenantId, code, excludeId);
-    }
-
-    public boolean logicalNameExists(long tenantId, String name, Long excludeId) {
-        return exists("arch_logical_subsystem", "name", tenantId, name, excludeId);
-    }
-
-    public void insertLogical(long id, long tenantId, LogicalSubsystemCommand command, long actorId) {
-        jdbc.update("""
-                INSERT INTO arch_logical_subsystem
-                    (id, tenant_id, code, short_name, name, business_org_id, deployment_platform_code,
-                     system_type_code, system_ownership_code, contact_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, command.code(), command.shortName(), command.name(), command.businessOrgId(),
-                command.deploymentPlatformCode(), command.systemTypeCode(), command.systemOwnershipCode(),
-                command.contactUserId(), command.description(), command.remark(), actorId, actorId);
-    }
-
-    public int updateLogical(long tenantId, long id, LogicalSubsystemCommand command, long actorId) {
-        return jdbc.update("""
-                UPDATE arch_logical_subsystem
-                SET code = ?, short_name = ?, name = ?, business_org_id = ?, deployment_platform_code = ?,
-                    system_type_code = ?, system_ownership_code = ?, contact_user_id = ?, description = ?,
-                    remark = ?, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND deleted = 0
-                """, command.code(), command.shortName(), command.name(), command.businessOrgId(),
-                command.deploymentPlatformCode(), command.systemTypeCode(), command.systemOwnershipCode(),
-                command.contactUserId(), command.description(), command.remark(), actorId, tenantId, id);
-    }
-
-    public int softDeleteLogical(long tenantId, long id, long actorId) {
-        return jdbc.update("UPDATE arch_logical_subsystem SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                actorId, tenantId, id);
-    }
-
-    public long countActivePhysicalByLogical(long tenantId, long logicalSubsystemId) {
-        Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_physical_subsystem "
-                        + "WHERE tenant_id = ? AND logical_subsystem_id = ? AND deleted = 0 AND status = 'ACTIVE'",
-                Long.class, tenantId, logicalSubsystemId);
-        return count == null ? 0 : count;
-    }
-
-    /**
-     * 统计逻辑子系统名下全部物理历史，包括已软删除、下线和作废记录。
-     * 逻辑作废规则使用该事实，避免通过软删除历史绕过不可逆约束。
-     */
-    public long countPhysicalHistoryByLogical(long tenantId, long logicalSubsystemId) {
-        Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ? AND logical_subsystem_id = ?",
-                Long.class, tenantId, logicalSubsystemId);
-        return count == null ? 0 : count;
-    }
-
-    public PageResult<PhysicalSubsystem> pagePhysical(long tenantId, PageQuery page, PhysicalSubsystemQuery query) {
+    public PageResult<PhysicalSubsystem> pagePhysical(long tenantId, long projectId, PageQuery page,
+                                                      PhysicalSubsystemQuery query) {
         PageQuery normalizedPage = page == null ? new PageQuery(1, 20) : page;
         PhysicalSubsystemQuery normalizedQuery = query == null ? PhysicalSubsystemQuery.empty() : query;
         StringBuilder filter = new StringBuilder();
         List<Object> args = new ArrayList<>();
         args.add(tenantId);
+        String projectFilter = " AND project_id = ?";
+        args.add(projectId);
         addLike(filter, args, "code", normalizedQuery.code());
         addLike(filter, args, "short_name", normalizedQuery.shortName());
         addLike(filter, args, "name", normalizedQuery.name());
+        addLike(filter, args, "logical_subsystem_name", normalizedQuery.logicalSubsystemName());
+        if (normalizedQuery.businessComponentCode() != null) {
+            filter.append(" AND business_component_code = ?");
+            args.add(normalizedQuery.businessComponentCode());
+        }
         addLike(filter, args, "business_group_name", normalizedQuery.businessGroupName());
         if (normalizedQuery.responsibleTeamOrgId() != null) {
             filter.append(" AND responsible_team_org_id = ?");
             args.add(normalizedQuery.responsibleTeamOrgId());
         }
-        if (normalizedQuery.logicalSubsystemId() != null) {
-            filter.append(" AND logical_subsystem_id = ?");
-            args.add(normalizedQuery.logicalSubsystemId());
-        }
         addStatus(filter, args, normalizedQuery.status());
         Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ? AND deleted = 0" + filter,
+                "SELECT COUNT(*) FROM arch_physical_subsystem WHERE tenant_id = ?" + projectFilter
+                        + " AND deleted = 0" + filter,
                 Long.class,
                 args.toArray());
         List<Object> listArgs = pageArgs(args, normalizedPage);
         List<PhysicalSubsystem> records = jdbc.query(
-                "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ? AND deleted = 0"
-                        + filter + " ORDER BY id DESC LIMIT ? OFFSET ?",
+                "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ?" + projectFilter
+                        + " AND deleted = 0" + filter + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 PHYSICAL_MAPPER,
                 listArgs.toArray());
         return new PageResult<>(records, total == null ? 0 : total, normalizedPage.page(), normalizedPage.size());
     }
 
-    public Optional<PhysicalSubsystem> findPhysical(long tenantId, long id) {
-        return jdbc.query("SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                PHYSICAL_MAPPER, tenantId, id).stream().findFirst();
-    }
-
-    /** 逻辑详情只汇总当前可查看的已发布物理事实，不包含软删除历史。 */
-    public List<PhysicalSubsystem> findPhysicalByLogical(long tenantId, long logicalSubsystemId) {
+    public Optional<PhysicalSubsystem> findPhysical(long tenantId, long projectId, long id) {
         return jdbc.query("SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem "
-                        + "WHERE tenant_id = ? AND logical_subsystem_id = ? AND deleted = 0 "
-                        + "ORDER BY number_slot ASC, id ASC",
-                PHYSICAL_MAPPER, tenantId, logicalSubsystemId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0",
+                PHYSICAL_MAPPER, tenantId, projectId, id).stream().findFirst();
     }
 
-    public boolean physicalCodeExists(long tenantId, String code, Long excludeId) {
-        return exists("arch_physical_subsystem", "code", tenantId, code, excludeId);
+    public boolean physicalCodeExists(long tenantId, long projectId, String code, Long excludeId) {
+        return exists("arch_physical_subsystem", "code", tenantId, projectId, code, excludeId);
     }
 
-    public boolean physicalNameExists(long tenantId, String name, Long excludeId) {
-        return exists("arch_physical_subsystem", "name", tenantId, name, excludeId);
+    public boolean physicalNameExists(long tenantId, long projectId, String name, Long excludeId) {
+        return exists("arch_physical_subsystem", "name", tenantId, projectId, name, excludeId);
     }
 
-    public void insertPhysical(long id, long tenantId, PhysicalSubsystemCommand command,
+    public void insertPhysical(long id, long tenantId, long projectId, PhysicalSubsystemCommand command,
                                String responsibleTeamNameSnapshot, long actorId) {
         jdbc.update("""
                 INSERT INTO arch_physical_subsystem
-                    (id, tenant_id, code, short_name, name, logical_subsystem_id, business_group_name,
-                     business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
+                    (id, tenant_id, project_id, code, short_name, name, logical_subsystem_name, business_component_code, business_group_name,
+                     deployment_platform, disaster_recovery_mode,
                      responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
-                     development_framework_code, owner_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, id, tenantId, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
-                command.businessGroupName(), command.businessContinuityLevel(), command.collectedSystemLevel(),
-                command.deploymentPlatform(), command.disasterRecoveryMode(),
-                command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
-                command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
-                command.ownerUserId(), command.description(), command.remark(), actorId, actorId);
-    }
-
-    public int updatePhysical(long tenantId, long id, PhysicalSubsystemCommand command,
-                              String responsibleTeamNameSnapshot, long actorId) {
-        return jdbc.update("""
-                UPDATE arch_physical_subsystem
-                SET code = ?, short_name = ?, name = ?, logical_subsystem_id = ?, business_group_name = ?,
-                    business_continuity_level = ?, collected_system_level = ?, deployment_platform = ?,
-                    disaster_recovery_mode = ?, responsible_team_org_id = ?, responsible_team_name_snapshot = ?,
-                    runtime_code = ?, system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
-                    description = ?, remark = ?, updated_by = ?
-                WHERE tenant_id = ? AND id = ? AND deleted = 0
-                """, command.code(), command.shortName(), command.name(), command.logicalSubsystemId(),
-                command.businessGroupName(), command.businessContinuityLevel(), command.collectedSystemLevel(),
-                command.deploymentPlatform(), command.disasterRecoveryMode(),
+                     development_framework_code, owner_user_id, description, remark,
+                     security_node_no, file_transfer_node_no, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, id, tenantId, projectId, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
+                command.businessComponentCode(),
+                command.businessGroupName(), command.deploymentPlatform(), command.disasterRecoveryMode(),
                 command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(),
-                actorId, tenantId, id);
+                command.securityNodeNo(), command.fileTransferNodeNo(), actorId, actorId);
     }
 
-    public int softDeletePhysical(long tenantId, long id, long actorId) {
-        return jdbc.update("UPDATE arch_physical_subsystem SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                actorId, tenantId, id);
+    public int updatePhysical(long tenantId, long projectId, long id, PhysicalSubsystemCommand command,
+                              String responsibleTeamNameSnapshot, long actorId) {
+        return jdbc.update("""
+                UPDATE arch_physical_subsystem
+                SET code = ?, short_name = ?, name = ?, logical_subsystem_name = ?, business_component_code = ?,
+                    business_group_name = ?, deployment_platform = ?, disaster_recovery_mode = ?,
+                    responsible_team_org_id = ?, responsible_team_name_snapshot = ?,
+                    runtime_code = ?, system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
+                    description = ?, remark = ?, security_node_no = ?, file_transfer_node_no = ?, updated_by = ?
+                WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0
+                """, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
+                command.businessComponentCode(),
+                command.businessGroupName(), command.deploymentPlatform(), command.disasterRecoveryMode(),
+                command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
+                command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
+                command.ownerUserId(), command.description(), command.remark(),
+                command.securityNodeNo(), command.fileTransferNodeNo(),
+                actorId, tenantId, projectId, id);
     }
 
-    private boolean exists(String table, String column, long tenantId, String value, Long excludeId) {
+    public int softDeletePhysical(long tenantId, long projectId, long id, long actorId) {
+        return jdbc.update("UPDATE arch_physical_subsystem SET deleted = 1, updated_by = ? "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0",
+                actorId, tenantId, projectId, id);
+    }
+
+    private boolean exists(String table, String column, long tenantId, long projectId, String value, Long excludeId) {
         String exclude = excludeId == null ? "" : " AND id <> ?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, value));
+        List<Object> args = new ArrayList<>(List.of(tenantId, projectId, value));
         if (excludeId != null) {
             args.add(excludeId);
         }
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND " + column + " = ?" + exclude,
+                "SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND project_id = ? AND "
+                        + column + " = ?" + exclude,
                 Long.class,
                 args.toArray());
         return count != null && count > 0;

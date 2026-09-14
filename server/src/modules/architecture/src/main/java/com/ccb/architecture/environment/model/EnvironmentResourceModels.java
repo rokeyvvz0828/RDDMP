@@ -107,6 +107,7 @@ public final class EnvironmentResourceModels {
     public record Environment(
             long id,
             long tenantId,
+            long projectId,
             String code,
             String name,
             String typeCode,
@@ -124,6 +125,7 @@ public final class EnvironmentResourceModels {
     public record ResourceRequest(
             long id,
             long tenantId,
+            long projectId,
             String requestNo,
             long physicalSubsystemId,
             String physicalSubsystemCode,
@@ -158,15 +160,14 @@ public final class EnvironmentResourceModels {
     public record ResourceRequestItem(
             long id,
             long tenantId,
+            long projectId,
             long requestId,
             int itemSeq,
             long deploymentUnitId,
             String deploymentUnitCode,
             String deploymentUnitName,
             String deploymentUnitKind,
-            String relatedDeploymentUnitName,
             String deploymentUnitDescription,
-            String deploymentUnitType,
             BigDecimal databaseStorageGb,
             BigDecimal fileStorageGb,
             Long networkZoneId,
@@ -196,8 +197,7 @@ public final class EnvironmentResourceModels {
 
         public ResourceRequestItem(long id, long tenantId, long requestId, int itemSeq, long deploymentUnitId,
                                    String deploymentUnitCode, String deploymentUnitName,
-                                   String deploymentUnitKind, String relatedDeploymentUnitName,
-                                   String deploymentUnitDescription, String deploymentUnitType,
+                                   String deploymentUnitKind, String deploymentUnitDescription,
                                    BigDecimal databaseStorageGb, BigDecimal fileStorageGb,
                                    String networkZone, String serverType, BigDecimal cpuCores,
                                    BigDecimal memoryGb, int appWebGroupCount, int plannedNodeCount,
@@ -207,12 +207,33 @@ public final class EnvironmentResourceModels {
                                    BigDecimal localDiskGb, boolean needsNft, boolean needsFserver,
                                    boolean needsJobexecutor, String remark,
                                    LocalDateTime createdAt, LocalDateTime updatedAt) {
-            this(id, tenantId, requestId, itemSeq, deploymentUnitId, deploymentUnitCode, deploymentUnitName,
-                    deploymentUnitKind, relatedDeploymentUnitName, deploymentUnitDescription, deploymentUnitType,
+            this(id, tenantId, 0L, requestId, itemSeq, deploymentUnitId, deploymentUnitCode, deploymentUnitName,
+                    deploymentUnitKind, deploymentUnitDescription,
                     databaseStorageGb, fileStorageGb, null, null, networkZone, serverType, cpuCores, memoryGb,
                     appWebGroupCount, plannedNodeCount, sidecarCpuCores, sidecarMemoryGb, hasSidecar,
                     databaseName, databaseVersion, jdkVersion, middleware, operatingSystem, extraCbsGb,
                     localDiskGb, needsNft, needsFserver, needsJobexecutor, remark, createdAt, updatedAt);
+        }
+
+        public ResourceRequestItem(long id, long tenantId, long projectId, long requestId, int itemSeq,
+                                   long deploymentUnitId, String deploymentUnitCode, String deploymentUnitName,
+                                   String deploymentUnitKind, String deploymentUnitDescription,
+                                   BigDecimal databaseStorageGb, BigDecimal fileStorageGb,
+                                   String networkZone, String serverType, BigDecimal cpuCores,
+                                   BigDecimal memoryGb, int appWebGroupCount, int plannedNodeCount,
+                                   BigDecimal sidecarCpuCores, BigDecimal sidecarMemoryGb, boolean hasSidecar,
+                                   String databaseName, String databaseVersion, String jdkVersion,
+                                   String middleware, String operatingSystem, BigDecimal extraCbsGb,
+                                   BigDecimal localDiskGb, boolean needsNft, boolean needsFserver,
+                                   boolean needsJobexecutor, String remark,
+                                   LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(id, tenantId, projectId, requestId, itemSeq, deploymentUnitId, deploymentUnitCode,
+                    deploymentUnitName, deploymentUnitKind, deploymentUnitDescription,
+                    databaseStorageGb, fileStorageGb, null, null, networkZone, serverType, cpuCores,
+                    memoryGb, appWebGroupCount, plannedNodeCount, sidecarCpuCores, sidecarMemoryGb,
+                    hasSidecar, databaseName, databaseVersion, jdkVersion, middleware, operatingSystem,
+                    extraCbsGb, localDiskGb, needsNft, needsFserver, needsJobexecutor, remark,
+                    createdAt, updatedAt);
         }
 
         public BigDecimal totalCpuCores() {
@@ -272,6 +293,7 @@ public final class EnvironmentResourceModels {
     public record HistoryEvent(
             long id,
             long tenantId,
+            long projectId,
             long requestId,
             String eventType,
             RequestStatus fromStatus,
@@ -287,6 +309,7 @@ public final class EnvironmentResourceModels {
     public record WorkflowRound(
             long id,
             long tenantId,
+            long projectId,
             long requestId,
             int roundNo,
             Long workflowDefinitionId,
@@ -303,6 +326,7 @@ public final class EnvironmentResourceModels {
     public record WorkflowReceiptStart(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             long requestId,
@@ -314,6 +338,7 @@ public final class EnvironmentResourceModels {
     public record WorkflowReceipt(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             Long requestId,
@@ -330,7 +355,7 @@ public final class EnvironmentResourceModels {
     @JsonIgnoreProperties(value = {
             "tenantId", "requestId", "businessContinuityLevel", "collectedSystemLevel",
             "businessGroupName", "deploymentPlatform", "systemLevelCode", "disasterRecoveryMode",
-            "relatedDeploymentUnitName", "deploymentUnitDescription", "deploymentUnitType"
+            "deploymentUnitDescription"
     }, ignoreUnknown = true)
     public record ResourceItemCommand(
             Long deploymentUnitId,
@@ -377,6 +402,7 @@ public final class EnvironmentResourceModels {
     public record EnvironmentInstance(
             long id,
             long tenantId,
+            long projectId,
             String instanceNo,
             long environmentId,
             String environmentCode,
@@ -449,7 +475,7 @@ public final class EnvironmentResourceModels {
                                    Long offlinedBy, String offlineReason, long rowVersion,
                                    long createdBy, long updatedBy, LocalDateTime createdAt,
                                    LocalDateTime updatedAt) {
-            this(id, tenantId, instanceNo, environmentId, environmentCode, environmentName, environmentTypeName,
+            this(id, tenantId, 0L, instanceNo, environmentId, environmentCode, environmentName, environmentTypeName,
                     deploymentUnitId, deploymentUnitCode, deploymentUnitName, deploymentUnitKind,
                     deploymentUnitVersionId, deploymentUnitVersionNo, latestDeploymentUnitVersionNo,
                     hasVersionDifference, physicalSubsystemId, physicalSubsystemCode, physicalSubsystemName,
@@ -460,11 +486,45 @@ public final class EnvironmentResourceModels {
                     differenceReason, remark, offlinedAt, offlinedBy, offlineReason, rowVersion,
                     createdBy, updatedBy, createdAt, updatedAt);
         }
+
+        public EnvironmentInstance(long id, long tenantId, long projectId, String instanceNo,
+                                   long environmentId, String environmentCode, String environmentName,
+                                   String environmentTypeName, long deploymentUnitId,
+                                   String deploymentUnitCode, String deploymentUnitName,
+                                   String deploymentUnitKind, Long deploymentUnitVersionId,
+                                   int deploymentUnitVersionNo, int latestDeploymentUnitVersionNo,
+                                   boolean hasVersionDifference, long physicalSubsystemId,
+                                   String physicalSubsystemCode, String physicalSubsystemName,
+                                   long sourceRequestId, String sourceRequestNo, Long sourceItemId,
+                                   String machineName, String ipAddress, String serverType,
+                                   String deploymentPlatform, String networkZone, InstanceStatus status,
+                                   BigDecimal cpuCores, BigDecimal memoryGb, BigDecimal databaseStorageGb,
+                                   BigDecimal fileStorageGb, BigDecimal extraCbsGb, BigDecimal localDiskGb,
+                                   String databaseName, String databaseVersion, String jdkVersion,
+                                   String middleware, String operatingSystem, boolean needsNft,
+                                   boolean needsFserver, boolean needsJobexecutor, FulfillmentMode fulfillmentMode,
+                                   String differenceReason, String remark, LocalDateTime offlinedAt,
+                                   Long offlinedBy, String offlineReason, long rowVersion,
+                                   long createdBy, long updatedBy, LocalDateTime createdAt,
+                                   LocalDateTime updatedAt) {
+            this(id, tenantId, projectId, instanceNo, environmentId, environmentCode, environmentName,
+                    environmentTypeName, deploymentUnitId, deploymentUnitCode, deploymentUnitName,
+                    deploymentUnitKind, deploymentUnitVersionId, deploymentUnitVersionNo,
+                    latestDeploymentUnitVersionNo, hasVersionDifference, physicalSubsystemId,
+                    physicalSubsystemCode, physicalSubsystemName, sourceRequestId, sourceRequestNo,
+                    sourceItemId, machineName, ipAddress, serverType, deploymentPlatform, null, null,
+                    networkZone, status, cpuCores, memoryGb, databaseStorageGb, fileStorageGb, extraCbsGb,
+                    localDiskGb, databaseName, databaseVersion, jdkVersion, middleware, operatingSystem,
+                    needsNft, needsFserver, needsJobexecutor, fulfillmentMode, differenceReason, remark,
+                    offlinedAt, offlinedBy, offlineReason, rowVersion, createdBy, updatedBy, createdAt,
+                    updatedAt);
+        }
     }
 
     public record InstanceDisasterRecovery(
             long id,
             long tenantId,
+            long projectId,
             long deploymentUnitId,
             String deploymentUnitCode,
             String deploymentUnitName,
@@ -559,7 +619,6 @@ public final class EnvironmentResourceModels {
             long deploymentUnitId,
             String deploymentUnitCode,
             String deploymentUnitName,
-            String deploymentUnitType,
             String deploymentUnitKind,
             BigDecimal cpuCores,
             BigDecimal memoryGb,
@@ -586,7 +645,7 @@ public final class EnvironmentResourceModels {
             String remark) {
         public ProvisionItemRequest(long sourceItemId, int itemSeq, long deploymentUnitId,
                                     String deploymentUnitCode, String deploymentUnitName,
-                                    String deploymentUnitType, String deploymentUnitKind,
+                                    String deploymentUnitKind,
                                     BigDecimal cpuCores, BigDecimal memoryGb, BigDecimal databaseStorageGb,
                                     BigDecimal fileStorageGb, BigDecimal extraCbsGb, BigDecimal localDiskGb,
                                     int plannedNodeCount, int nextSequenceStart, String networkZone,
@@ -595,7 +654,7 @@ public final class EnvironmentResourceModels {
                                     String operatingSystem, boolean needsNft, boolean needsFserver,
                                     boolean needsJobexecutor, String remark) {
             this(sourceItemId, itemSeq, deploymentUnitId, deploymentUnitCode, deploymentUnitName,
-                    deploymentUnitType, deploymentUnitKind, cpuCores, memoryGb, databaseStorageGb,
+                    deploymentUnitKind, cpuCores, memoryGb, databaseStorageGb,
                     fileStorageGb, extraCbsGb, localDiskGb, plannedNodeCount, nextSequenceStart,
                     null, null, networkZone, null, serverType, deploymentPlatform, databaseName, databaseVersion,
                     jdkVersion, middleware, operatingSystem, needsNft, needsFserver, needsJobexecutor, remark);
@@ -604,6 +663,9 @@ public final class EnvironmentResourceModels {
 
     public record ProvisionRequest(
             long tenantId,
+            long projectId,
+            String projectRef,
+            String projectName,
             long requestId,
             String requestNo,
             long environmentId,

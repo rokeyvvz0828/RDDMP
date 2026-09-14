@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id":"REQ-20260902-058","status":"ready","document":"docs/requirements/REQ-20260902-058-local-fixed-workflow-publish/requirement.md","codex_allowed":true},
+  "assignment": {"developer":"Codex","module":"platform/boot","module_owner":"rokeyvvz0828","branch":"fix/REQ-20260902-058-local-fixed-workflow-publish","worktree":"C:/Users/missa/source/RDDMP"},
+  "codex": {"production_access":false,"contains_confidential_information":false,"allowed_tools":["local-shell","codex","browser"]},
+  "scope": {
+    "writable_paths":["server/src/platform/boot/src/main/java/com/ccb/boot/workflow/**","server/src/platform/boot/src/test/java/com/ccb/boot/workflow/**","server/src/platform/boot/src/main/resources/application-local.yml","server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureStandardsDecisionsMySqlTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkWorkflowIntegrationMySqlTest.java","server/src/modules/architecture/src/test/java/com/ccb/architecture/network/persistence/NetworkAccessMigrationMySqlTest.java","docs/requirements/REQ-20260902-058-local-fixed-workflow-publish/**",".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/*.json"],
+    "read_only_paths":["server/src/platform/workflow/**","server/src/platform/security/src/main/java/com/ccb/security/model/AuthUser.java","server/src/modules/architecture/src/main/**","server/src/platform/infrastructure/src/main/resources/db/migration/**"],
+    "forbidden_paths":[".env",".env.*","**/*.pem","**/*.key","**/target/**","**/node_modules/**","server/src/platform/workflow/src/main/java/com/ccb/workflow/internal/**",".ai-control/original/**",".ai-control/requirements/req-20260812-021-architecture-subsystems/**"]
+  },
+  "public_capability_change": {"required":true,"issue":"REQ-20260902-058","owner_approved":true,"approval_evidence":"用户于 2026-09-02 明确要求修复两个固定业务流程未发布导致的提交错误；实现只在 boot 组合根复用现有 WorkflowService。","old_behavior_preserved":true,"regression_tests":["非 local profile 不自动发布","业务提交仍通过 WorkflowBusinessGateway","历史迁移不修改"]},
+  "database": {"changed":false,"migration_files":[],"compatibility_and_rollback":"无迁移；回退启动器和 local 配置即可。"},
+  "external_access": {"changed":false,"systems":[],"data_classification":"internal-test-only"},
+  "required_tests":[
+    {"name":"boot-unit","command":"mvn -pl :ccb-boot -am -Dtest=LocalSeededWorkflowPublisherTest -Dsurefire.failIfNoSpecifiedTests=false test"},
+    {"name":"api","command":"mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemSubmissionServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test"},
+    {"name":"migration-regression","command":"mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardsDecisionsMySqlTest,NetworkWorkflowIntegrationMySqlTest,NetworkAccessMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test"},
+    {"name":"boot-reactor","command":"mvn -pl :ccb-boot -am test"},
+    {"name":"permission","command":"验证自动发布仅由 local profile 启动器执行，不新增 HTTP 权限入口，正式发布仍由 WorkflowService 记录操作用户与审计"},
+    {"name":"governance","command":"node scripts/check-all-governance.mjs"},
+    {"name":"scope","command":"node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260902-058-local-fixed-workflow-publish/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"},
+    {"name":"diff","command":"git diff --check"}
+  ],
+  "risk": {"level":"important","items":["本地启动会创建真实 Flowable deployment","固定流程缺失时本地启动失败","迁移测试目标版本必须与已发布迁移重编号保持一致"]},
+  "completion": {"control_mode":"full","control_prefix":"req-20260902-058-local-fixed-workflow-publish","control_justification":"涉及平台组合根启动行为和真实工作流部署，需要可追踪执行与验证证据。","acceptance_evidence":[".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/baseline.json",".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/model.json",".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/control-plan.json",".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/execution-T1.json",".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/observation-T1.json",".ai-control/requirements/req-20260902-058-local-fixed-workflow-publish/convergence.json"],"release_verification":["local profile 启动后两个流程为 PUBLISHED 且 deployment_id 非空","两类工单提交可启动真实流程"],"rollback":"回退 boot 启动器和 application-local.yml 配置；已产生的本地 Flowable deployment 可随早期开发数据库重建清理。"}
+}

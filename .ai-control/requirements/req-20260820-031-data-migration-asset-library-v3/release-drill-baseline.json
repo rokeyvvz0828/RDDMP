@@ -1,0 +1,113 @@
+{
+  "objective": "将数迁资产内容下的投产及演练资料从通用文件资产薄页升级为具有参数化颗粒度与资料类型、组件级单选系统、手填轮次、单文件、组合筛选、逻辑删除和统一回收站的专属域功能。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "dm_release_drill保存granularity/material_type_code/drill_round和资料名称，组件级必选一个系统，新增必选一个源文件，轮次可空手填。",
+      "acceptance": ["缺少必填元数据返回400", "项目级传系统400", "组件级缺系统400", "轮次可空"],
+      "priority": "must",
+      "source": "用户功能说明与已批准设计",
+      "counterexample": ["只保存doc_name/system_code"]
+    },
+    {
+      "id": "R2",
+      "statement": "颗粒度与资料类型由系统管理参数维护，V184幂等初始化DM_RELEASE_DRILL_GRANULARITY和DM_RELEASE_DRILL_TYPE。",
+      "acceptance": ["参数选项接口可读", "未知/停用编码不能写入", "重复执行V184不覆盖管理员配置"],
+      "priority": "must",
+      "source": "用户确认Granularity指向参数管理",
+      "counterexample": ["前后端硬编码类型"]
+    },
+    {
+      "id": "R3",
+      "statement": "列表展示涉及物理子系统（组件级显示编号-名称，项目级为空）和所属轮次。",
+      "acceptance": ["列表返回system_code/system_name/drill_round", "组件级名称经dm_component投影"],
+      "priority": "must",
+      "source": "用户确认列表展示两列",
+      "counterexample": ["仅编辑表单可见"]
+    },
+    {
+      "id": "R4",
+      "statement": "一个资料记录只绑定一个源文件，新增必传，编辑可保留或替换。",
+      "acceptance": ["新增无文件400", "编辑不传新文件保留原附件", "编辑传新文件替换主文件", "文件不超过50MB"],
+      "priority": "must",
+      "source": "用户确认单文件",
+      "counterexample": ["多条记录/多文件"]
+    },
+    {
+      "id": "R5",
+      "statement": "列表支持颗粒度、资料类型、资料名称关键字组合筛选和服务端分页，并覆盖加载/空/失败/无权限/提交中状态。",
+      "acceptance": ["筛选回第一页", "分页20/50/100", "项目切换后重置并重查"],
+      "priority": "must",
+      "source": "用户功能说明",
+      "counterexample": ["浏览器内存筛选"]
+    },
+    {
+      "id": "R6",
+      "statement": "上传/编辑/删除/下载/回收站均纳入权限，写操作执行项目隔离、实体授权和审计。",
+      "acceptance": ["省略projectId或跨项目请求被拒", "普通用户只能维护本人记录", "RELEASE_DRILL_*审计可追踪"],
+      "priority": "must",
+      "source": "REQ-031统一规则",
+      "counterexample": ["仅前端隐藏按钮"]
+    },
+    {
+      "id": "R7",
+      "statement": "RELEASE_DRILL由ReleaseDrillRecycleBinSource唯一认领，并从通用文件资产链路摘除。",
+      "acceptance": ["通用管理器不含release-drills", "MANAGED_TYPES不含RELEASE_DRILL", "回收站无重复或无来源"],
+      "priority": "must",
+      "source": "已批准设计",
+      "counterexample": ["双来源认领"]
+    },
+    {
+      "id": "R8",
+      "statement": "邻接修改限定在数据迁移模块、V184追加迁移和数据迁移前端API/页面。",
+      "acceptance": ["不依赖投产模块", "不改平台公共构件与全局项目切换器", "范围检查和构建通过"],
+      "priority": "must",
+      "source": "REQ-031范围",
+      "counterexample": ["引入投产模块依赖"]
+    }
+  ],
+  "invariants": [
+    "单租户且所有查询写入绑定当前项目与tenant_id",
+    "Flyway只追加且使用V184",
+    "业务关联使用(project_id, system_code)",
+    "doc_code由服务端生成且不可修改",
+    "参数项INSERT IGNORE不覆盖管理员配置"
+  ],
+  "constraints": [
+    "模块边界遵循governance/modules.yaml",
+    "不读取或依赖投产模块表/服务",
+    "不修改platform/system参数私有实现",
+    "文件单个不超过50MB",
+    "页面遵循design-h5.md和共享UI组件"
+  ],
+  "non_goals": [
+    "轮次下拉来自投产模块或用参数管理维护轮次",
+    "多文件批量上传和多系统关联",
+    "新增独立dm_release_drill_type业务字典表",
+    "修改投产模块、全局项目切换器和公共附件/审计表结构"
+  ],
+  "assumptions": [
+    {"text": "dm_release_drill当前无业务存量行", "basis": "REQ-031本地表行数为0", "falsifier": "发现已有业务行且需保留原语义"},
+    {"text": "组件级等价dm_component一个启用记录", "basis": "迁移方案/专题既有口径", "falsifier": "组件级需要引用其他系统模型"},
+    {"text": "编辑不传新文件保留原文件", "basis": "专题/方案附件策略", "falsifier": "用户要求编辑必须重新上传"}
+  ],
+  "unknowns": [
+    {"question": "测试或生产库是否存在需要保留的旧投产及演练记录", "impact": "若存在旧记录，V184默认值可能不符合历史语义", "owner": "module-owner", "blocking": false}
+  ],
+  "decisions": [
+    {"question": "所属轮次数据来源", "options": ["纯手填", "投产模块下拉"], "selected": "纯手填", "blocking": false, "source": "用户确认"},
+    {"question": "涉及物理子系统选择维度", "options": ["单选", "多选"], "selected": "单选", "blocking": false, "source": "用户确认"},
+    {"question": "源文件数量", "options": ["单文件", "多文件"], "selected": "单文件", "blocking": false, "source": "用户确认"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "服务测试覆盖必填/组件级/项目级边界", "candidate_sensor": "ReleaseDrillServiceTest"},
+    {"requirement_id": "R2", "observable": "参数类别和项数、options接口、停用拒绝", "candidate_sensor": "码值服务测试与V184 MySQL迁移测试"},
+    {"requirement_id": "R3", "observable": "列表返回system_code/system_name/drill_round", "candidate_sensor": "服务列表断言+前端页面验收"},
+    {"requirement_id": "R4", "observable": "新增无文件400、编辑保留/替换附件", "candidate_sensor": "ReleaseDrillServiceTest"},
+    {"requirement_id": "R5", "observable": "筛选分页和前端状态", "candidate_sensor": "前端构建+浏览器验收"},
+    {"requirement_id": "R6", "observable": "权限/项目隔离/审计断言", "candidate_sensor": "服务与回收站测试"},
+    {"requirement_id": "R7", "observable": "回收站注册和通用链路摘除", "candidate_sensor": "DataMigrationModuleRegistrationTest+ReleaseDrillRecycleBinSourceTest"},
+    {"requirement_id": "R8", "observable": "范围检查和全量构建", "candidate_sensor": "check-all-governance+Maven测试+前端构建"}
+  ],
+  "baseline_status": "ready"
+}

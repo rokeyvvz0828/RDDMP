@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260906-067-dm-param",
+  "phase": "executing",
+  "task": "T1",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_domain.sql",
+      "purpose": "追加迁移：断言 dm_parameter 为空后删除旧通用信封列/doc_code/doc_name/structured_data，新增 parameter_type/parameter_scope/parameter_name/parameter_description，唯一键 uk_dm_parameter_name (tenant_id,project_id,system_code,parameter_name) 与查询/关键字索引，并 INSERT IGNORE 登记 DM_PARAMETER_TYPE/DM_PARAMETER_SCOPE 两类系统参数码值"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+      "purpose": "新增参数专属服务：列表/详情/新增/编辑/逻辑删除/模板下载/导入/导出/回收站 SPI，必填与参数名称唯一校验、逐行 Excel 校验、dm_operation_log 审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterRecycleBinSource.java",
+      "purpose": "新增统一回收站 PARAMETER 来源，支持查询/恢复/彻底删除及唯一冲突阻断"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+      "purpose": "新增 /api/data-migration/parameters 路由：列表/详情/新增/导入/编辑/删除/模板下载/导出，复用既有菜单 RBAC 权限节点"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+      "purpose": "登记 DM_PARAMETER_TYPE/DM_PARAMETER_SCOPE 两个码值类别"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java",
+      "purpose": "STRUCTURED_TABLES 改为仅 dm_rule；ALL_TABLES 保留 dm_parameter 供仪表盘统计"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+      "purpose": "TYPES 移除 PARAMETER，避免参数走通用结构化通道"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+      "purpose": "移除 /parameters 通用结构化 content 端点，避免与 ParameterController 路由冲突"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+      "purpose": "新增 346 行测试：必填校验、参数名称唯一、码值校验、导入逐行解析、回收站冲突与审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "断言改为 ParameterController 承载 /parameters 端点、StructuredAssetService 不再含 PARAMETER"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/StructuredDocCodeGovernanceTest.java",
+      "purpose": "删除过时的旧结构化 PARAMETER 测试"
+    },
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_domain.sql",
+      "purpose": "修复旧唯一键删除分支：按 information_schema 实际发现的索引名（uk_dm_parameter_code 或旧名）动态 DROP，先在本地库验证后固化"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R6"
+  ],
+  "commands": [
+    "mvn -q -o -pl :ccb-data-migration -am test -Dtest='ParameterServiceTest,DataMigrationModuleRegistrationTest,ContentRecycleBinRegistryTest' -Dsurefire.failIfNoSpecifiedTests=false -> BUILD SUCCESS",
+    "docker exec ccb-platform-mysql mysql ... SELECT version DESC -> 本地库已应用至 V196，V197 待执行、dm_parameter 为 0 行且旧唯一键名为 uk_dm_parameter_code",
+    "首跑 ./backend-dev.sh start -> Flyway V197 失败：错误 1091 Can't DROP 'uk_dm_parameter_active_code'（分支判定含两个名但 DROP 固定写死 active 名）",
+    "修正脚本为按实际索引名动态 DROP；DELETE FROM flyway_schema_history WHERE version='197' AND success=0（本地失败记录清理）",
+    "再次 ./backend-dev.sh start -> Flyway Migrating schema to version \"197\" ... Successfully applied 1 migration, now at v197；Tomcat 8080 启动成功"
+  ],
+  "observations": [
+    "ParameterServiceTest、DataMigrationModuleRegistrationTest、ContentRecycleBinRegistryTest 通过；ParameterServiceTest 覆盖必填/唯一/码值/导入逐行解析/回收站冲突/审计",
+    "全量模块测试仍含 4 个既有无关错误（DataMigrationGovernanceRemediationMySqlTest 等，涉及 sys_user_role 查 BadSqlGrammar/data-migration:bypass），非本需求引起",
+    "迁移后 dm_parameter 列：id/tenant_id/project_id/system_code/parameter_name/parameter_description/parameter_type/parameter_scope/owner_id/deleted/deleted_by/deleted_at/created_by/created_at/updated_by/updated_at；旧 doc_code/doc_name/structured_data 已删除",
+    "索引：uk_dm_parameter_name(tenant_id,project_id,system_code,parameter_name)、idx_dm_parameter_query、idx_dm_parameter_keyword 生效；旧 uk_dm_parameter_code/idx_dm_parameter_owner 已删除",
+    "DM_PARAMETER_TYPE/DM_PARAMETER_SCOPE 两类码值均存在且各含 2 项（业务参数/技术参数、公共参数/自有参数）；flyway_schema_history V197 success=1"
+  ],
+  "unresolved_issues": [
+    "真实浏览器路径验收仍未执行（需本地前端/后端联调）"
+  ],
+  "risks": [
+    "V197 为追加迁移，未发布前可在本地库重跑确认幂等；删除旧列的断言保证 dm_parameter 非空时拒绝破坏",
+    "工作区含 031 未提交增量（177 个），本任务不提交/不回退 031 改动"
+  ],
+  "recorded_at": "2026-09-06T17:00:00+08:00"
+}

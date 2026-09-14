@@ -1,0 +1,94 @@
+{
+  "baseline_revision": "baseline-revision-2",
+  "plant_boundary": {
+    "inside": [
+      "ValidationRulesPage.vue 的 UiPageHeader 与 actions",
+      "ValidationRulesPage.vue 的 UiToolbar",
+      "ValidationRulesPage.vue 的导入本地状态与 submitImport 状态流",
+      "ValidationRulesPage.vue 的批量导入 el-dialog/el-upload",
+      "ValidationRulesPage.vue 的局部响应式样式",
+      "REQ-031 validation-rule-import-dialog 控制记录"
+    ],
+    "environment": [
+      "只读公共 UiPageHeader/UiToolbar 组件与 web/src/styles.css 响应式规则",
+      "只读 data-migration.css 的 dm-upload-dropzone 与 dm-attachment-*",
+      "既有 data-migration API 与后端规则导入接口",
+      "全局认证、权限和 useProjectScope 项目上下文",
+      "Chromium/Playwright 浏览器运行时",
+      "范围外 REQ-061 治理文件"
+    ]
+  },
+  "state_variables": [
+    {"name": "import_dialog", "owner": "ValidationRulesPage.vue", "valid_values": ["closed", "open", "closing-blocked"]},
+    {"name": "pending_import_file", "owner": "ValidationRulesPage.vue", "valid_values": ["empty", "selected"]},
+    {"name": "import_request", "owner": "ValidationRulesPage.vue", "valid_values": ["idle", "submitting", "succeeded", "failed"]},
+    {"name": "import_result", "owner": "ValidationRulesPage.vue", "valid_values": ["empty", "all-success", "partial-failure"]},
+    {"name": "import_error", "owner": "ValidationRulesPage.vue", "valid_values": ["empty", "request-error"]},
+    {"name": "project_scope", "owner": "useProjectScope", "valid_values": ["loading", "empty", "ready", "error"]},
+    {"name": "action_busy", "owner": "ValidationRulesPage.vue", "valid_values": ["false", "true"]},
+    {"name": "list_context", "owner": "ValidationRulesPage.vue", "valid_values": ["filters-and-page-preserved", "project-change-reset"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "具备 hasCreate 且项目 ready 的用户打开规则页", "transitions": ["UiPageHeader 渲染 actions 插槽", "批量导入使用默认按钮", "新增使用 primary 按钮"], "outputs": ["头部从左到右显示批量导入与新增迁移检核规则", "无权限或项目未就绪时不显示"]},
+    {"requirement_id": "R2", "input": "用户点击头部批量导入", "transitions": ["openImportDialog 清理旧状态", "importDialogOpen=true", "el-dialog 在当前组件渲染"], "outputs": ["路由不变", "对话框同时提供模板、文件、确认和结果区域", "列表筛选分页保持"]},
+    {"requirement_id": "R3", "input": "用户选择/移除文件、提交、收到成功/部分失败/请求失败或关闭", "transitions": ["UploadFile.raw 写入 pendingImportFile", "canSubmitImport 组合项目/文件/busy", "submitImport 更新 busy/result/error 并按结果调用 load", "before-close 与 closed 控制关闭和重置"], "outputs": ["七个状态的按钮、关闭、结果、列表刷新和重试行为可观察"]},
+    {"requirement_id": "R4", "input": "用户查看或操作列表工具栏", "transitions": ["导入与新增入口从 UiToolbar 移至 UiPageHeader/ImportDialog"], "outputs": ["工具栏仅显示筛选、查询、重置、导出和批量删除"]},
+    {"requirement_id": "R5", "input": "桌面或规定手机视口打开导入对话框并展示长文件名/错误列表", "transitions": ["公共 ui-page-header 响应式换行", "dialog 使用视口约束宽度", "dm-upload-dropzone 全宽", "局部正文 max-height/overflow 与文本断行"], "outputs": ["页面和对话框无横向溢出", "正文可滚动", "footer 可达"]},
+    {"requirement_id": "R6", "input": "模板下载或确认导入", "transitions": ["downloadTemplate 调用 downloadRuleTemplate", "submitImport 读取 scopeProjectId 和 pendingImportFile", "importMigrationCheckRules 发送 multipart file 与 projectId"], "outputs": ["既有请求路径、参数、权限和 Excel 行级解析保持", "代码差异不越界"]}
+  ],
+  "interfaces": [
+    {"name": "UiPageHeader.actions", "producers": ["ValidationRulesPage.vue"], "consumers": ["UiPageHeader.vue", "web/src/styles.css"], "invariant": "批量导入为左侧次要按钮，新增为右侧 primary；760px 下允许换行"},
+    {"name": "UiToolbar slots", "producers": ["ValidationRulesPage.vue"], "consumers": ["UiToolbar.vue"], "invariant": "只包含列表筛选和批量管理，不包含导入流程"},
+    {"name": "rule template API", "producers": ["downloadRuleTemplate"], "consumers": ["downloadTemplate"], "invariant": "GET /data-migration/rules/template，blob 响应"},
+    {"name": "rule import API", "producers": ["importMigrationCheckRules"], "consumers": ["submitImport"], "invariant": "POST /data-migration/rules/import，multipart file 与 projectId 查询参数，返回 RuleImportResult"},
+    {"name": "project scope", "producers": ["useProjectScope"], "consumers": ["canImport", "submitImport", "project watch"], "invariant": "项目不可用不提交，项目切换清理导入状态"},
+    {"name": "Element Plus upload/dialog", "producers": ["Element Plus 2.9.5"], "consumers": ["ImportDialog"], "invariant": "UploadFile.raw 提供 File；before-close 在 busy 时不调用 done；closed 执行最终清理"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "页面头部、工具栏、状态函数与 API 调用源码契约", "method": "Node/rg 对单文件进行确定性结构断言并审查 git diff", "blind_spots": ["CSS 实际布局", "Element Plus 运行时事件顺序"], "independence": "直接读取源码，不依赖浏览器和后端"},
+    {"id": "S2", "target": "Vue 模板、TypeScript 类型与生产构建", "method": "npm --prefix web run build", "blind_spots": ["运行时交互正确性", "视觉溢出"], "independence": "由 vue-tsc 与 Vite 编译链独立于源码字符串断言"},
+    {"id": "S3", "target": "头部层级、路由保持、导入状态、四视口布局与可达性", "method": "Chromium + Playwright DOM/截图/scrollWidth 断言，可对导入 API 使用受控网络响应", "blind_spots": ["真实后端 Excel 解析正确性若改用网络拦截"], "independence": "真实浏览器渲染与事件执行，独立于编译和静态扫描"},
+    {"id": "S4", "target": "文件写入范围和无意契约变更", "method": "git diff --check、git diff 审查和 REQ-031 check-codex-scope", "blind_spots": ["范围内行为错误"], "independence": "版本控制与治理脚本独立于应用运行时"},
+    {"id": "S5", "target": "真实导入请求、RuleImportResult 和列表刷新", "method": "本地后端健康时使用非敏感 Excel 执行浏览器网络与UI检查", "blind_spots": ["缺少适当测试数据时部分失败分支可能不可触发"], "independence": "直接观察既有后端响应；不与前端网络拦截共享实现假设"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "页面操作层级", "action": "在 ValidationRulesPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar", "authority": "REQ-031 writable_paths", "impact_radius": "迁移检核规则页面模板", "rollback": "按任务前 diff 逆向恢复本次模板块，保留既有修改"},
+    {"id": "A2", "target": "导入状态转换", "action": "增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport 与项目 watch", "authority": "REQ-031 writable_paths", "impact_radius": "迁移检核规则页面本地状态和规则导入交互", "rollback": "仅移除本次状态与函数修改"},
+    {"id": "A3", "target": "导入流程呈现", "action": "增加当前页 el-dialog、el-upload、文件状态、结果和 footer", "authority": "REQ-031 writable_paths", "impact_radius": "迁移检核规则导入对话框", "rollback": "移除本次 dialog 模板并恢复原工具栏入口"},
+    {"id": "A4", "target": "响应式滚动和文本边界", "action": "增加 ValidationRulesPage.vue scoped 对话框布局样式，复用共享上传类", "authority": "REQ-031 writable_paths", "impact_radius": "该页面导入对话框", "rollback": "移除本次 scoped 样式，不修改共享 CSS"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S2", "S4", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "工作区已有 ValidationRulesPage.vue 与其他 REQ-031 未提交治理修改", "effect": "diff 基线包含非本主题改动，可能误回退或误归因", "detectable": true, "controllable": true},
+    {"source": "本地后端、认证或测试数据状态", "effect": "真实成功/部分失败导入分支可能无法复验", "detectable": true, "controllable": "partial"},
+    {"source": "REQ-061 非 JSON-compatible YAML", "effect": "check-all-governance 可能非零退出", "detectable": true, "controllable": false},
+    {"source": "python 命令别名不存在", "effect": "控制脚本按计划命令首次失败", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "导入请求和随后 load 刷新", "consequence": "过早采样会在 actionBusy=true 或旧列表状态下判断", "sampling_rule": "等待导入响应、load 完成和 actionBusy=false 后采样"},
+    {"source": "Vite 首次构建与页面热更新", "consequence": "浏览器可能观察旧资源", "sampling_rule": "等待构建/热更新完成后硬刷新再测量"},
+    {"source": "项目上下文异步加载", "consequence": "头部入口暂时不显示或确认禁用", "sampling_rule": "分别采样非ready状态和ready稳定状态"}
+  ],
+  "assumptions": [
+    {"text": "hasCreate 是批量导入与单条新增的共同前端权限", "evidence": "现有 ValidationRulesPage.vue 两个入口均以 hasCreate 控制，后端契约未要求独立导入权限", "falsifier": "运行时返回仅导入权限差异或权限配置出现独立动作"},
+    {"text": "单文件执行器足以满足响应式目标", "evidence": "公共 ui-page-header 已在760px换为列布局，dm-upload-dropzone 已全宽，缺失仅是对话框局部滚动边界", "falsifier": "四视口测量证明公共样式缺陷必须跨文件修复"},
+    {"text": "Playwright 可用于真实浏览器验收", "evidence": "node import('playwright') 成功且 /snap/bin/chromium 存在", "falsifier": "浏览器启动、认证或目标路由加载失败"},
+    {"text": "本地后端当前可探测", "evidence": "2026-09-07 对 127.0.0.1:8080/actuator/health 返回 HTTP 200", "falsifier": "执行动态验收时健康检查或目标 API 不可用"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "使用A1并由S1/S3采样"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "使用A1/A3并由S1/S3采样"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "使用A2/A3并由S1/S3/S5采样"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "使用A1并由S1/S3采样"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "使用A3/A4并由S2/S3采样"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "限制A1-A4写入边界并由S1/S2/S4/S5采样"}
+  ],
+  "model_status": "ready"
+}

@@ -1,0 +1,76 @@
+{
+  "sample_label": "T37 checksum_md5 removal final observation",
+  "task_ids": ["T37-DB", "T37-BE", "T37-FE", "T37-DOC"],
+  "baseline_revision": "T37 approved implementation plan 2026-09-04",
+  "observed_at": "2026-09-04T14:27:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 MySQL 8.4 Flyway migration test",
+      "result": "pass",
+      "raw_evidence": "V165 migrated seven file tables and information_schema assertions found zero checksum_md5 columns and zero idx_*_md5 indexes; doc_code, active_doc_code and attachment_id remained present.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 Java source inspection and module regression",
+      "result": "pass",
+      "raw_evidence": "Current data-migration business code has no MD5 parameters, projection, assertMd5Available, md5Union SQL or check-md5 mapping; 78 module tests passed.",
+      "limitation": ["Historical V154/V161 migration fixtures intentionally retain pre-T37 checksum facts."]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 Vue build and source contract scan",
+      "result": "pass",
+      "raw_evidence": "vue-tsc and Vite build passed; current API and data-migration pages contain no checksumMd5, checksumMd5s, computeFileMd5 or check-md5 contract.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 attachment/service regression",
+      "result": "pass",
+      "raw_evidence": "Focused ReportService and ContentFileAsset governance tests passed; attachment binding and id-targeted replacement assertions remain green.",
+      "limitation": ["Live browser upload/replace verification from T36 was not repeated in this incremental change."]
+    }
+  ],
+  "samples": [
+    {
+      "id": "T37-S1",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "Full ccb-data-migration reactor test: 78/78 passed."
+    },
+    {
+      "id": "T37-S2",
+      "kind": "database migration",
+      "result": "pass",
+      "evidence": "Isolated MySQL 8.4 V165 test passed."
+    },
+    {
+      "id": "T37-S3",
+      "kind": "frontend build and static contract",
+      "result": "pass",
+      "evidence": "Web build passed and current business source scan returned no MD5 contract matches."
+    }
+  ],
+  "feedback": [],
+  "resolved_feedback": [
+    {
+      "id": "F-T37-DB-01",
+      "classification": "deviation",
+      "severity": "P2",
+      "observed": "V165 PREPARE syntax failed when using a stored-procedure local variable.",
+      "resolution": "Switched dynamic SQL to a session variable and verified migration success on MySQL 8.4."
+    }
+  ],
+  "disturbances": [
+    "Unrelated worktree governance/scope violations remain outside the T37 writable surface."
+  ],
+  "coverage_gaps": [
+    "No new live browser lifecycle probe was required for the backend/database-only contract removal; prior T36 browser evidence remains valid for attachment lifecycle."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "verdict": "converged_for_T37",
+  "phase_recommendation": "Keep canonical requirement state converged; retain T37 incremental evidence and do not rewrite historical convergence.json."
+}

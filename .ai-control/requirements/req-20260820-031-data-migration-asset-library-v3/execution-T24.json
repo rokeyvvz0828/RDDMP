@@ -1,0 +1,40 @@
+{
+  "task_id": "T24",
+  "status": "implemented",
+  "trigger": "Owner 指示：把 REPORT 与 MEETING 的前后端独立回收站收敛到现有统一回收站。前端 RecycleBinPage 补 MEETING 标签；ReportsPage/MeetingsPage 独立回收站入口移除或降级；后端为会议纪要文档级新增 MeetingRecycleBinSource 委托 MeetingService；旧 /reports/recycle-bin、/meetings/recycle-bin 保留向后兼容。附件级回收站按边界保留在会议页。",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MeetingRecycleBinSource.java", "purpose": "新增：@Component 实现 RecycleBinSource，supports()=Set.of(\"MEETING\")；listDeleted 委托 MeetingService.recycleBinList 并做信封投影（id/asset_type/asset_name），restore/purge 直接委托 MeetingService.restore/purge，完整保留管理员校验、CONFLICT 状态冲突、dm_meeting_system 与 dm_issue_relation 级联和审计，不在统一层复制业务规则"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MeetingRecycleBinSourceTest.java", "purpose": "新增：3 项纯单测覆盖 supports 唯一性、project 信封投影保留原列、可选列缺失时不崩溃且不伪造 asset_code"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/RecycleBinPage.vue", "purpose": "前端：CONTENT_TYPE_LABELS 新增 MEETING 标签；顶部注释与页头描述扩展为「9 类文件与结构化 + REPORT + MEETING」；修正 T23 复核发现的注释遗漏（CONTENT_TYPES → supportedTypes()）"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/ReportsPage.vue", "purpose": "前端：移除「回收站」el-tab-pane 与相关状态、加载、分页、选择、恢复/销毁函数、导入（FolderOpened、listReportRecycleBin、restoreReportMaterials、purgeReportMaterials），去掉外层 el-tabs 包装；顶部注释更新为「回收站已收敛到统一页，REPORT 作为内容类型纳入」。净删除 ~312 行"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/MeetingsPage.vue", "purpose": "前端：JS 移除 imports listMeetingRecycleBin/restoreMeetings/purgeMeetings/purgeAllMeetings、rec 系列状态、loadRecycle、doRestore/doRestoreOne/doPurge/doPurgeOne/doPurgeAll；简化 switchTab；Template 移除「会议纪要」sub-tab 与内层 el-tabs；外层「回收站」tab-pane 改为「附件回收站」；顶部注释更新说明附件级不并入理由（uk_dm_meeting_att_active + 父会议未删前置校验 + 视图语义冲突）"}
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "BUILD SUCCESS; data-migration 模块 45 tests 0 failures（较 T23 42 项新增 MeetingRecycleBinSourceTest 3 项）；MeetingRecycleBinSourceTest 3/3；ContentRecycleBinRegistryTest 5/5；ReportServiceTest 5/5；ContentAssetMigrationMySqlTest 5/5；IssueMigrationMySqlTest 3/3；IssueServiceTest 8/8；IssueExcelServiceTest 3/3；DataMigrationModuleRegistrationTest 13/13"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit 与 vite build 均通过；built in 11.75s；RecycleBinPage/ReportsPage/MeetingsPage 三处改动通过类型检查与产物构建"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Governance check passed for 17 module(s); Repository skill check passed; Development entry check passed；唯一失败步骤为 AI control layout 的历史违规（030/032/017-031-project-risk/018-032/019-033~035/027-049），与本任务无关"},
+    {"command": "node scripts/check-ai-control-layout.mjs", "exit_code": 1, "salient_output": "对 req-20260820-031 命中数=0；execution-T24.json 与 observation-T24.json 匹配 execution(?:-[A-Za-z0-9-]+)?\\.json / observation(?:-[A-Za-z0-9-]+)?\\.json 白名单；违规全属其他历史目录（与 T23 观察时同集合）"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base main --head HEAD --working-tree", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260820-031; 93 changed file(s)（较 T23 89 增 4：MeetingRecycleBinSource.java + 测试 + execution-T24.json + observation-T24.json）"}
+  ],
+  "invariants_checked": [
+    {"invariant": "旧端点向后兼容：/reports/recycle-bin*、/meetings/recycle-bin*、/meetings/purge-all 未被删除", "result": "pass", "evidence": "未触及 ReportController 与 MeetingController；ReportService.recycleBinList/restore/purge 与 MeetingService.recycleBinList/restore/purge/purgeAll 签名和实现未改；ReportServiceTest 5/5 与 MeetingRecycleBinSourceTest 3/3 均通过"},
+    {"invariant": "统一入口签名稳定：ContentRecycleBinController/Service 的 list/restore/purge 未新增或移除参数，未引入平行统一入口", "result": "pass", "evidence": "ContentRecycleBinService 结构未动，仅在 List<RecycleBinSource> 注入下 MEETING 与 REPORT 自动纳入 supportedTypes()；无新文件"},
+    {"invariant": "MEETING 文档级业务规则未复制：管理员校验、CONFLICT、关系级联（dm_meeting_system/dm_issue_relation）、审计全在 MeetingService 内", "result": "pass", "evidence": "MeetingRecycleBinSource.restore/purge 直接 return meetingService.restore/purge(ids, user)；无本地 SQL、无本地校验；listDeleted 仅做纯字段投影不查询数据库"},
+    {"invariant": "附件级回收站边界清晰：不并入统一页，理由显式记录", "result": "pass", "evidence": "MeetingsPage.vue 顶部注释和 recycle tab-pane 前的 HTML 注释均说明「受 uk_dm_meeting_att_active 与父会议未删前置校验约束，不兼容统一信封，因此不并入」；UI 保留跨会议附件级列表、批量恢复/销毁、清空、单行操作"},
+    {"invariant": "前端不残留对已删函数/常量的引用", "result": "pass", "evidence": "grep -n 'recKeyword|recRecords|recTotal|recPage|recSize|recSelected|recLoading|recycleSubTab|loadRecycle|doRestore\\b|doRestoreOne|doPurge\\b|doPurgeOne|doPurgeAll\\b' MeetingsPage.vue → 0 命中；grep 'listMeetingRecycleBin|restoreMeetings|purgeMeetings|purgeAllMeetings|listReportRecycleBin|restoreReportMaterials|purgeReportMaterials' web/src/modules/data-migration → 0 命中；vue-tsc 通过"},
+    {"invariant": "无数据库/Flyway 变更", "result": "pass", "evidence": "未新增或修改 V*.sql；dm_meeting/dm_report/dm_content_attachment 结构未动；仅代码与账本"},
+    {"invariant": "模块边界与权限未扩大", "result": "pass", "evidence": "所有改动落在 server/src/modules/data-migration/**、web/src/modules/data-migration/**、.ai-control/requirements/req-20260820-031.../*.json；均在 codex-task-scope.yaml.writable_paths 内；check-all-governance 17 模块通过"},
+    {"invariant": "账本纯追加", "result": "pass", "evidence": "execution-T23.json/observation-T23.json 保留原样；新增 execution-T24.json/observation-T24.json；state.json 由 rev 195→196，phase 保持 converged，phase_history 末尾追加一条 converged→converged"},
+    {"invariant": "本地不 commit / 不 push / 不改 origin", "result": "pass", "evidence": "全程未执行 git add/commit/push；工作树仍 dirty"}
+  ],
+  "unresolved_items": [
+    "未启动本地 MySQL/MinIO/后端/前端做运行期健康验收；未做浏览器 1280x800 与移动视口 375x812 / 390x844 / 430x932 视觉与操作验收",
+    "未运行全量 mvn test（仅跑聚焦 -pl :ccb-data-migration -am test）；其他模块由后续统一发布门执行",
+    "无 @SpringBootTest 覆盖 MeetingRecycleBinSource 装配；CcbApplication scanBasePackages=com.ccb 应覆盖新 @Component，但实际启动未验证",
+    "ISSUE（问题管理）文档级尚未接入统一回收站，作为 Tier 3 后续演进",
+    "统一列表仍不分页（跨类型全量 + 按 deleted_at 内存排序）；数据规模显著增长时需引入分组分页与 per-type 筛选（属后续演进）",
+    "MEETING 行的 asset_code 为空（会议纪要业务上无独立编号），前端表格在 asset_code 列显示 '—'；如需类型专属附加列（如项目名/颗粒度）需在 RecycleBinPage 按 asset_type 分派渲染，属后续增强",
+    "旧端点 /meetings/recycle-bin、/meetings/purge-all、/reports/recycle-bin 已无 web 端调用方；本任务选择保留以维持向后兼容，实际下线需在确认无外部集成方后另立需求"
+  ],
+  "recommended_next": "observe"
+}

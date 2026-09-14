@@ -1,0 +1,604 @@
+{
+  "baseline_revision": "baseline-revision-1",
+  "plant_boundary": {
+    "inside": [
+      "ParametersPage.vue 的 UiPageHeader 与 actions",
+      "ParametersPage.vue 的 UiToolbar",
+      "ParametersPage.vue 的导入本地状态与 submitImport 状态流",
+      "ParametersPage.vue 的批量导入 el-dialog/el-upload",
+      "ParametersPage.vue 的局部响应式样式",
+      "TargetTablesPage.vue 的 UiPageHeader 与 actions（TARGET/INTERMEDIATE 共用）",
+      "TargetTablesPage.vue 的 UiToolbar",
+      "TargetTablesPage.vue 的导入本地状态与 submitImport 状态流",
+      "TargetTablesPage.vue 的批量导入 el-dialog/el-upload",
+      "TargetTablesPage.vue 的局部响应式样式",
+      "REQ-031 three-page-import-dialog 控制记录"
+    ],
+    "environment": [
+      "只读公共 UiPageHeader/UiToolbar 组件与 web/src/styles.css 响应式规则",
+      "只读 data-migration.css 的 dm-upload-dropzone 与 dm-attachment-*",
+      "只读 parameters/target-tables/intermediate-tables 路由配置",
+      "既有 data-migration 参数与表结构 API 与后端",
+      "全局认证、权限和 useProjectScope 项目上下文",
+      "Chromium/Playwright 浏览器运行时",
+      "范围外 REQ-061 治理文件"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "import_dialog",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "closed",
+        "open",
+        "closing-blocked"
+      ]
+    },
+    {
+      "name": "pending_import_file",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "empty",
+        "selected"
+      ]
+    },
+    {
+      "name": "import_request",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "idle",
+        "submitting",
+        "succeeded",
+        "failed"
+      ]
+    },
+    {
+      "name": "import_result",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "empty",
+        "all-success",
+        "partial-failure"
+      ]
+    },
+    {
+      "name": "import_error",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "empty",
+        "request-error"
+      ]
+    },
+    {
+      "name": "project_scope",
+      "owner": "useProjectScope",
+      "valid_values": [
+        "loading",
+        "empty",
+        "ready",
+        "error"
+      ]
+    },
+    {
+      "name": "route_category",
+      "owner": "TargetTablesPage.vue route",
+      "valid_values": [
+        "TARGET",
+        "INTERMEDIATE"
+      ]
+    },
+    {
+      "name": "action_busy",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "false",
+        "true"
+      ]
+    },
+    {
+      "name": "list_context",
+      "owner": "ParametersPage.vue / TargetTablesPage.vue",
+      "valid_values": [
+        "filters-and-page-preserved",
+        "project-or-category-change-reset"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "具备 hasCreate 且项目 ready 的用户打开参数/表结构页",
+      "transitions": [
+        "UiPageHeader 渲染 actions 插槽",
+        "批量导入使用默认按钮",
+        "新增使用 primary 按钮",
+        "表结构页按 category 切换文案"
+      ],
+      "outputs": [
+        "头部从左到右显示批量导入与新增",
+        "参数页显示新增迁移参数",
+        "目标表结构页显示新增目标表结构",
+        "中间表结构页显示新增中间表结构",
+        "无权限或项目未就绪时不显示"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "用户点击头部批量导入",
+      "transitions": [
+        "openImportDialog 清理旧状态",
+        "importDialogOpen=true",
+        "el-dialog 在当前组件渲染"
+      ],
+      "outputs": [
+        "路由不变",
+        "对话框同时提供模板、文件、确认和结果区域",
+        "列表筛选分页保持"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "用户选择/移除文件、提交、收到成功/部分失败/请求失败或关闭",
+      "transitions": [
+        "UploadFile.raw 写入 pendingImportFile",
+        "canSubmitImport 组合项目/文件/busy",
+        "submitImport 更新 busy/result/error 并按结果调用 load",
+        "before-close 与 closed 控制关闭和重置"
+      ],
+      "outputs": [
+        "七个状态的按钮、关闭、结果、列表刷新和重试行为可观察"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "用户查看或操作列表工具栏",
+      "transitions": [
+        "导入与新增入口从 UiToolbar 移至 UiPageHeader/ImportDialog"
+      ],
+      "outputs": [
+        "工具栏仅显示筛选、查询、重置、刷新、导出等列表操作"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "桌面或规定手机视口打开导入对话框并展示长文件名/错误列表",
+      "transitions": [
+        "公共 ui-page-header 响应式换行",
+        "dialog 使用视口约束宽度",
+        "dm-upload-dropzone 全宽",
+        "局部正文 max-height/overflow 与文本断行"
+      ],
+      "outputs": [
+        "页面和对话框无横向溢出",
+        "正文可滚动",
+        "footer 可达"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "模板下载或确认导入",
+      "transitions": [
+        "downloadTemplate 调用对应模板 API",
+        "submitImport 读取 scopeProjectId 和 pendingImportFile",
+        "对应 import API 发送 multipart file 与 projectId"
+      ],
+      "outputs": [
+        "既有请求路径、参数、权限和行级解析保持",
+        "代码差异不越界"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "在 TargetTablesPage.vue 中切换 TARGET/INTERMEDIATE 路由或项目切换",
+      "transitions": [
+        "category 或 projectId 变化触发导入状态重置",
+        "头部与对话框文案按 category 更新"
+      ],
+      "outputs": [
+        "切换分类时对话框关闭且状态清空",
+        "两种分类的导入互不污染"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "UiPageHeader.actions",
+      "producers": [
+        "ParametersPage.vue",
+        "TargetTablesPage.vue"
+      ],
+      "consumers": [
+        "UiPageHeader.vue"
+      ],
+      "invariant": "批量导入为左侧次要按钮，新增为右侧 primary"
+    },
+    {
+      "name": "UiToolbar slots",
+      "producers": [
+        "ParametersPage.vue",
+        "TargetTablesPage.vue"
+      ],
+      "consumers": [
+        "UiToolbar.vue"
+      ],
+      "invariant": "只包含列表筛选和批量管理，不包含导入流程"
+    },
+    {
+      "name": "parameter template API",
+      "producers": [
+        "downloadParameterTemplate"
+      ],
+      "consumers": [
+        "ParametersPage.vue"
+      ],
+      "invariant": "GET /data-migration/parameters/template"
+    },
+    {
+      "name": "parameter import API",
+      "producers": [
+        "importParameters"
+      ],
+      "consumers": [
+        "ParametersPage.vue"
+      ],
+      "invariant": "POST /data-migration/parameters/import"
+    },
+    {
+      "name": "target-table template API",
+      "producers": [
+        "downloadTargetTableTemplate"
+      ],
+      "consumers": [
+        "TargetTablesPage.vue"
+      ],
+      "invariant": "GET /data-migration/target-tables/template"
+    },
+    {
+      "name": "target-table import API",
+      "producers": [
+        "importTargetTables"
+      ],
+      "consumers": [
+        "TargetTablesPage.vue"
+      ],
+      "invariant": "POST /data-migration/target-tables/import"
+    },
+    {
+      "name": "project scope",
+      "producers": [
+        "useProjectScope"
+      ],
+      "consumers": [
+        "两页导入逻辑"
+      ],
+      "invariant": "项目不可用不提交，项目切换重置导入状态"
+    },
+    {
+      "name": "route category",
+      "producers": [
+        "route meta"
+      ],
+      "consumers": [
+        "TargetTablesPage.vue"
+      ],
+      "invariant": "TARGET/INTERMEDIATE 决定表结构页面文案与导入路径"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1-P",
+      "target": "迁移参数页操作层级",
+      "action": "在 ParametersPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "迁移参数页面模板",
+      "rollback": "按任务前 diff 逆向恢复本次模板块，保留既有修改"
+    },
+    {
+      "id": "A2-P",
+      "target": "迁移参数页导入状态转换",
+      "action": "增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport 与项目 watch",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "迁移参数页面本地状态和参数导入交互",
+      "rollback": "仅移除本次状态与函数修改"
+    },
+    {
+      "id": "A3-P",
+      "target": "迁移参数页导入流程呈现",
+      "action": "增加当前页 el-dialog、el-upload、文件状态、结果和 footer",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "迁移参数导入对话框",
+      "rollback": "移除本次 dialog 模板并恢复原工具栏入口"
+    },
+    {
+      "id": "A4-P",
+      "target": "迁移参数页响应式滚动和文本边界",
+      "action": "增加 ParametersPage.vue scoped 对话框布局样式，复用共享上传类",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "该页面导入对话框",
+      "rollback": "移除本次 scoped 样式，不修改共享 CSS"
+    },
+    {
+      "id": "A1-T",
+      "target": "表结构页操作层级",
+      "action": "在 TargetTablesPage.vue 引入并渲染 UiPageHeader，移动新增/导入入口并收敛 UiToolbar，按 category 切换文案",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "目标/中间表结构页面模板",
+      "rollback": "按任务前 diff 逆向恢复本次模板块，保留既有修改"
+    },
+    {
+      "id": "A2-T",
+      "target": "表结构页导入状态转换",
+      "action": "增加 dialog/file/error/reset 状态和 UploadFile/UploadInstance 事件，调整 submitImport、项目 watch 与 category watch",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "表结构页面本地状态和表结构导入交互",
+      "rollback": "仅移除本次状态与函数修改"
+    },
+    {
+      "id": "A3-T",
+      "target": "表结构页导入流程呈现",
+      "action": "增加当前页 el-dialog、el-upload、文件状态、结果和 footer，文案随 category 变化",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "目标/中间表结构导入对话框",
+      "rollback": "移除本次 dialog 模板并恢复原工具栏入口"
+    },
+    {
+      "id": "A4-T",
+      "target": "表结构页响应式滚动和文本边界",
+      "action": "增加 TargetTablesPage.vue scoped 对话框布局样式，复用共享上传类",
+      "authority": "REQ-031 writable_paths",
+      "impact_radius": "该页面导入对话框",
+      "rollback": "移除本次 scoped 样式，不修改共享 CSS"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S3",
+        "S5"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S2",
+        "S3"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S4",
+        "S5"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "yes"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "工作区已有 ParametersPage.vue 与 TargetTablesPage.vue 未提交治理修改",
+      "effect": "diff 基线包含非本主题改动，可能误回退或误归因",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "本地后端、认证或测试数据状态",
+      "effect": "真实成功/部分失败导入分支可能无法复验",
+      "detectable": true,
+      "controllable": "partial"
+    },
+    {
+      "source": "REQ-061 非 JSON-compatible YAML",
+      "effect": "check-all-governance 可能非零退出",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "TargetTablesPage.vue 双路由共用",
+      "effect": "TARGET/INTERMEDIATE 状态未隔离会造成串扰",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "dialog 动画与打开/关闭时序",
+      "effect": "测量采样过早会读到半开状态或滚动高度错误",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "delays": [
+    {
+      "source": "导入请求和随后 load 刷新",
+      "consequence": "过早采样会在 actionBusy=true 或旧列表状态下判断",
+      "sampling_rule": "等待导入响应、load 完成和 actionBusy=false 后采样"
+    },
+    {
+      "source": "Vite 首次构建与页面热更新",
+      "consequence": "浏览器可能观察旧资源",
+      "sampling_rule": "等待构建/热更新完成后硬刷新再测量"
+    },
+    {
+      "source": "项目上下文与 category 异步加载",
+      "consequence": "头部入口暂时不显示或确认禁用",
+      "sampling_rule": "分别采样非ready状态和ready稳定状态"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "hasCreate 是批量导入与单条新增的共同前端权限",
+      "evidence": "现有页面两个入口均以 hasCreate 控制，后端契约未要求独立导入权限",
+      "falsifier": "运行时返回仅导入权限差异或权限配置出现独立动作"
+    },
+    {
+      "text": "单一表结构模板支持 TARGET 和 INTERMEDIATE",
+      "evidence": "现有模板 API 路径无 category 参数，当前实现按同一模板导入",
+      "falsifier": "真实模板或接口只支持一种分类"
+    },
+    {
+      "text": "共享上传样式无需修改",
+      "evidence": "迁移检核规则和当前表结构已复用 dm-upload-dropzone",
+      "falsifier": "四视口测量证明公共样式缺陷必须跨文件修复"
+    },
+    {
+      "text": "Playwright 可用于真实浏览器验收",
+      "evidence": "同日上一主题 validation-rule-import-dialog 已用 Chromium 完成四视口验证",
+      "falsifier": "浏览器启动、认证或目标路由加载失败"
+    },
+    {
+      "text": "本地后端当前可探测",
+      "evidence": "2026-09-07 对 127.0.0.1:8080/actuator/health 返回 HTTP 200",
+      "falsifier": "执行动态验收时健康检查或目标 API 不可用"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "使用A1-P/A1-T并由S1/S3采样"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "使用A1-P/A3-P/A1-T/A3-T并由S1/S3采样"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "使用A2-P/A3-P/A2-T/A3-T并由S1/S3/S5采样"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "使用A1-P/A1-T并由S1/S3采样"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "使用A3-P/A4-P/A3-T/A4-T并由S2/S3采样"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "限制A1-A4写入边界并由S1/S2/S4/S5采样"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "使用A1-T/A2-T并由S1/S3采样"
+    }
+  ],
+  "model_status": "ready",
+  "sensors": [
+    {
+      "id": "S1",
+      "name": "源码契约检查",
+      "type": "static",
+      "description": "静态 Node 脚本验证模板结构、按钮顺序、状态变量和 API 调用与设计一致"
+    },
+    {
+      "id": "S2",
+      "name": "前端构建与空白检查",
+      "type": "build",
+      "description": "npm --prefix web run build 与 git diff --check 验证编译和空白"
+    },
+    {
+      "id": "S3",
+      "name": "Chromium 四视口 DOM 测量",
+      "type": "browser",
+      "description": "桌面及 375/390/430 手机视口下验证布局、溢出、滚动和按钮文案"
+    },
+    {
+      "id": "S4",
+      "name": "REQ-031 定向范围检查",
+      "type": "static",
+      "description": "定向 governance 扫描仅覆盖 REQ-031 可写路径"
+    },
+    {
+      "id": "S5",
+      "name": "受控导入响应验证",
+      "type": "browser",
+      "description": "在本地服务和测试数据下验证提交中禁用、部分失败错误列表和请求失败保留文件"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "id": "M1",
+      "description": "页面头部按钮顺序与文案",
+      "method": "源码 + 浏览器 DOM 检查"
+    },
+    {
+      "id": "M2",
+      "description": "导入对话框内集中性",
+      "method": "源码 + 浏览器 DOM 检查"
+    },
+    {
+      "id": "M3",
+      "description": "导入状态流完整性",
+      "method": "源码 + 浏览器受控响应"
+    },
+    {
+      "id": "M4",
+      "description": "工具栏导入入口移除",
+      "method": "源码 + 浏览器 DOM 检查"
+    },
+    {
+      "id": "M5",
+      "description": "四视口无横向溢出与滚动可达",
+      "method": "浏览器 DOM 尺寸测量"
+    },
+    {
+      "id": "M6",
+      "description": "API 路径与参数不变",
+      "method": "源码 + 定向范围检查"
+    },
+    {
+      "id": "M7",
+      "description": "分类切换状态隔离",
+      "method": "源码 + 浏览器 DOM 检查"
+    }
+  ]
+}

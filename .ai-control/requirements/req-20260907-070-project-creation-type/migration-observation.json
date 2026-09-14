@@ -1,0 +1,34 @@
+{
+  "environment": "mysql:8.4 container req070-creation-type-test, network none, no ports, synthetic data only",
+  "migration": "V199__project_creation_type.sql",
+  "commands": [
+    {
+      "command": "create isolated req070 database and pm_project(id) with rows1,2",
+      "exit_code": 0
+    },
+    {
+      "command": "pipe V199 into docker exec mysql req070",
+      "exit_code": 0
+    },
+    {
+      "command": "select legacy/new defaults and update row2",
+      "exit_code": 0,
+      "output": "initial:1 NEW,2 NEW; after:1 NEW,2 CONTINUATION,3 NEW"
+    },
+    {
+      "command": "update creation_type INVALID",
+      "exit_code": 1,
+      "output": "ERROR3819 chk_pm_project_creation_type violated"
+    },
+    {
+      "command": "docker rm --force --volumes req070-creation-type-test",
+      "exit_code": 0,
+      "output": "req070-creation-type-test"
+    }
+  ],
+  "limitations": [
+    "isolated minimal table, not full schema migration chain",
+    "full Flyway chain blocked by existing duplicate V156",
+    "current database untouched"
+  ]
+}

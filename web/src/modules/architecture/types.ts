@@ -10,51 +10,14 @@ export type SubsystemTargetKind = 'LOGICAL' | 'PHYSICAL'
 export type SubsystemActionType = 'CREATE' | 'UPDATE' | 'OFFLINE' | 'REACTIVATE' | 'VOID' | 'REPLACE'
 export type SubsystemApplicationStatus = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
-export interface PhysicalSubsystemSummary {
-  id: number
-  code: string
-  shortName: string
-  name: string
-  numberSlot: string | null
-  englishName: string | null
-  status: PublishedSubsystemStatus
-  rowVersion: number
-}
-
-export interface LogicalSubsystem {
-  id: number
-  code: string
-  shortName: string
-  name: string
-  businessOrgId: number
-  deploymentPlatformCode: string | null
-  systemTypeCode: string | null
-  systemOwnershipCode: string | null
-  contactUserId: number
-  description: string | null
-  remark: string | null
-  createdBy: number
-  updatedBy: number
-  createdAt: string
-  updatedAt: string
-  numberSequence: number | null
-  status: PublishedSubsystemStatus
-  sortNo: number
-  rowVersion: number
-  physicalSubsystems: PhysicalSubsystemSummary[]
-}
-
 export interface PhysicalSubsystem {
   id: number
   code: string
   shortName: string
   name: string
-  logicalSubsystemId: number
-  logicalSubsystemCode: string
-  logicalSubsystemName: string
+  logicalSubsystemName: string | null
+  businessComponentCode: string | null
   businessGroupName: string | null
-  businessContinuityLevel: string | null
-  collectedSystemLevel: string | null
   deploymentPlatform: string | null
   disasterRecoveryMode: string | null
   responsibleTeamOrgId: number
@@ -72,37 +35,22 @@ export interface PhysicalSubsystem {
   updatedBy: number
   createdAt: string
   updatedAt: string
-  numberSlot: string | null
   englishName: string | null
   status: PublishedSubsystemStatus
   rowVersion: number
-  logicalSubsystemNumberSequence: number | null
-  logicalSubsystemStatus: PublishedSubsystemStatus | null
-}
-
-export interface LogicalDraftInput {
-  shortName: string
-  name: string
-  businessOrgId: number | null
-  deploymentPlatformCode: string | null
-  systemTypeCode: string | null
-  systemOwnershipCode: string | null
-  contactUserId: number | null
-  description: string | null
-  remark: string | null
-  sortNo: number
-  sourceRowVersion: number | null
+  securityNodeNo: string | null
+  fileTransferNodeNo: string | null
 }
 
 export interface PhysicalDraftInput {
   lineNo: number
-  targetLogicalSubsystemId: number | null
+  code: string
   shortName: string
   name: string
+  logicalSubsystemName: string | null
+  businessComponentCode: string | null
   englishName: string | null
   businessGroupName: string | null
-  businessContinuityLevel: string | null
-  collectedSystemLevel: string | null
   deploymentPlatform: string | null
   disasterRecoveryMode: string | null
   responsibleTeamOrgId: number | null
@@ -114,23 +62,13 @@ export interface PhysicalDraftInput {
   description: string | null
   remark: string | null
   sourceRowVersion: number | null
-}
-
-export interface LogicalDraft extends Omit<LogicalDraftInput, 'businessOrgId' | 'contactUserId'> {
-  sourceLogicalSubsystemId: number | null
-  businessOrgId: number
-  contactUserId: number
-  reservedNumberSequence: number | null
-  draftRevision: number
-  submittedSnapshotJson: string | null
-  createdAt: string
-  updatedAt: string
+  securityNodeNo: string | null
+  fileTransferNodeNo: string | null
 }
 
 export interface PhysicalDraft extends Omit<PhysicalDraftInput, 'responsibleTeamOrgId'> {
   sourcePhysicalSubsystemId: number | null
   responsibleTeamOrgId: number
-  reservedNumberSlot: string | null
   draftRevision: number
   submittedSnapshotJson: string | null
   createdAt: string
@@ -173,25 +111,21 @@ export interface SubsystemChangeHistory {
 
 export interface SubsystemChangeApplicationDetail {
   application: SubsystemChangeApplicationSummary
-  logicalDraft: LogicalDraft | null
   physicalDrafts: PhysicalDraft[]
   history: SubsystemChangeHistory[]
 }
 
 export interface CreateSubsystemChangeApplicationPayload {
-  targetKind: SubsystemTargetKind
+  targetKind: 'PHYSICAL'
   actionType: SubsystemActionType
   targetId: number | null
   reason: string
-  logicalDraft?: LogicalDraftInput | null
-  physicalDrafts?: PhysicalDraftInput[]
-  physicalDraft?: PhysicalDraftInput | null
+  physicalDraft: PhysicalDraftInput
 }
 
 export interface UpdateSubsystemChangeApplicationPayload {
   rowVersion: number
   reason: string
-  logicalDraft: LogicalDraftInput | null
   physicalDrafts: PhysicalDraftInput[]
 }
 
@@ -205,10 +139,19 @@ export interface SubsystemSuggestion {
 export interface OrganizationOption { id: number; name: string; parentId: number | null; pathLabel: string }
 export interface UserOption { id: number; displayName: string; username: string; phone: string | null }
 export interface ParameterOption { code: string; label: string }
-export interface LogicalSubsystemOption { id: number; code: string; name: string }
 
-export type ArchitectureResource = 'logical-subsystem' | 'physical-subsystem'
-export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
+export type ArchitectureResource = 'physical-subsystem' | 'delivery-unit'
+export type StatusTone = 'primary' | 'success' | 'warning' | 'danger' | 'info'
+export type DetailItem = {
+  label: string
+  value: string
+  wide?: boolean
+  tone?: 'warning' | 'danger'
+  tag?: { value: string | number | boolean; labels?: Record<string, string>; tone?: StatusTone }
+  /** 带人员标识的条目改由人员卡片渲染，value 作为未取到档案时的姓名兜底。 */
+  userId?: number | string | null
+}
+export type DetailSection = { title: string; items: DetailItem[] }
 
 // ---------- 架构规范 ----------
 export type StandardDocumentStatus = 'DRAFT' | 'PUBLISHED' | 'OFFLINE'
@@ -237,6 +180,7 @@ export interface StandardDocumentDetail {
   publishedByName: string | null
   rowVersion: number
   createdByName: string | null
+  createdBy: number
   createdAt: string
   updatedAt: string
 }
@@ -285,6 +229,7 @@ export interface DecisionMatterSummary {
   firstHandlingOutcome: FirstHandlingOutcome | null
   reviewMode: ReviewMethod | null
   proposerName: string
+  proposerId: number
   updatedAt: string
 }
 
@@ -324,6 +269,7 @@ export interface DecisionMaterial {
   kind: MaterialKind
   content: string
   createdByName: string | null
+  createdBy: number
   createdAt: string
 }
 
@@ -390,7 +336,7 @@ export interface PublicationIntentView {
 export interface DecisionUserReference { id: number; displayName: string; username: string }
 // ---------- 部署单元 ----------
 
-export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'MQ'
+export type DeploymentUnitKind = 'APPLICATION' | 'DATABASE' | 'WEB'
 export type DeploymentUnitStatus = 'ACTIVE' | 'INACTIVE' | 'VOIDED'
 export type DeploymentUnitImportBatchStatus = 'PREVIEW' | 'SUCCESS' | 'PARTIAL' | 'FAILED'
 export type DeploymentUnitImportItemStatus = 'VALID' | 'INVALID' | 'SUCCESS' | 'FAILED' | 'SKIPPED'
@@ -402,11 +348,9 @@ export interface DeploymentUnit {
   physicalSubsystemCode: string | null
   physicalSubsystemName: string | null
   physicalSubsystemStatus: string | null
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string
   kind: DeploymentUnitKind
+  relatedDeploymentUnits: RelatedDeploymentUnit[]
   status: DeploymentUnitStatus
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -424,10 +368,7 @@ export interface DeploymentUnit {
 
 export interface DeploymentUnitVersion {
   versionNo: number
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string
   kind: DeploymentUnitKind
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -440,11 +381,9 @@ export interface DeploymentUnitVersion {
 
 export interface DeploymentUnitPayload {
   physicalSubsystemId: number | null
-  shortName: string
   name: string
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string | null
   kind: DeploymentUnitKind | ''
+  relatedDeploymentUnitIds: number[]
   defaultNetworkZoneId: number | null
   description: string | null
   remark: string | null
@@ -470,11 +409,20 @@ export interface DeploymentUnitImportBatch {
 
 export interface DeploymentUnitImportRow {
   physicalCode: string | null
-  shortName: string | null
   name: string | null
   kindLabel: string | null
   description: string | null
   remark: string | null
+}
+
+export interface RelatedDeploymentUnit {
+  id: number
+  code: string
+  name: string
+  kind: DeploymentUnitKind
+  physicalSubsystemId: number
+  physicalSubsystemName: string | null
+  status: DeploymentUnitStatus
 }
 
 export interface DeploymentUnitImportItem {
@@ -492,14 +440,56 @@ export interface DeploymentUnitImportBatchDetail {
   items: DeploymentUnitImportItem[]
 }
 
+// ---------- 交付单元 ----------
+
+export type DeliveryUnitStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface DeliveryUnit {
+  id: number
+  code: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string | null
+  physicalSubsystemName: string | null
+  physicalSubsystemStatus: string | null
+  name: string
+  status: DeliveryUnitStatus
+  artifactTypeCode: string | null
+  relatedDeploymentUnits: RelatedDeploymentUnit[]
+  description: string | null
+  remark: string | null
+  createdBy: number
+  createdByDisplayName: string | null
+  updatedBy: number
+  updatedByDisplayName: string | null
+  createdAt: string
+  updatedAt: string
+  rowVersion: number
+}
+
+export interface DeliveryUnitPayload {
+  physicalSubsystemId: number | null
+  name: string
+  description: string | null
+  remark: string | null
+  relatedDeploymentUnitIds: number[]
+  rowVersion?: number | null
+  artifactTypeCode: string | null
+}
+
+/** 部署单元侧反查到的交付单元只读引用。 */
+export interface RelatedDeliveryUnit {
+  id: number
+  code: string
+  name: string
+  status: DeliveryUnitStatus
+}
+
 export interface PhysicalSubsystemOption {
   id: number
   code: string
   shortName: string | null
   name: string
   businessGroupName: string | null
-  businessContinuityLevel: string | null
-  collectedSystemLevel: string | null
   deploymentPlatform: string | null
   disasterRecoveryMode: string | null
   systemLevelCode: string | null
@@ -849,8 +839,6 @@ export interface DeploymentUnitOption {
   name: string
   kind: DeploymentUnitKind
   physicalSubsystemId: number
-  relatedDeploymentUnitName: string | null
-  deploymentUnitType: string | null
   description: string | null
   defaultNetworkZoneId: number | null
   defaultNetworkZoneName: string | null
@@ -892,9 +880,7 @@ export interface ResourceRequestItem {
   deploymentUnitCode: string
   deploymentUnitName: string
   deploymentUnitKind: DeploymentUnitKind
-  relatedDeploymentUnitName: string | null
   deploymentUnitDescription: string | null
-  deploymentUnitType: string | null
   databaseStorageGb: number
   fileStorageGb: number
   networkZoneId: number | null
@@ -1109,4 +1095,23 @@ export interface DisasterRecoveryPayload {
   standbyInstanceId: number
   drMode: DisasterRecoveryMode
   description?: string
+}
+
+/** 系统显式分工与实时有效资格分开返回，失效名单不悄悄删除。 */
+export interface SubsystemParticipantCandidate {
+  userId: number
+  displayName: string
+}
+export interface SubsystemParticipation {
+  ownerUserId: number | null
+  explicitParticipantUserIds: number[]
+  effectiveParticipantUserIds: number[]
+  rowVersion: number
+  canManage: boolean
+  participants: SubsystemParticipantCandidate[]
+}
+export interface SubsystemParticipationPayload {
+  participantUserIds: number[]
+  rowVersion: number
+  reason: string
 }

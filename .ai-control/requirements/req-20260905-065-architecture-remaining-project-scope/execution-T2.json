@@ -1,0 +1,23 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network", "purpose": "网络专项工单读写、附件和工作流生命周期按可信项目隔离"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network", "purpose": "补充接口、服务、持久化和生命周期隔离测试"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6"],
+  "commands": [
+    {"command": "mvn -pl :ccb-architecture -am test", "exit_code": 0, "salient_output": "架构模块 291 项测试通过，包含网络工单 MySQL、Controller、Service、附件和工作流测试"}
+  ],
+  "local_checks": [
+    {"check": "网络工单双项目隔离", "result": "pass", "evidence": "列表、直接 ID、编号唯一、附件策略和回调负向测试通过", "limitations": []}
+  ],
+  "diff_summary": ["目标 API 强制 projectRef", "Store 查询增加 tenant_id + project_id", "工作流上下文和回调复核业务项目"],
+  "invariants_checked": [
+    {"invariant": "tenant_id 与 project_id 来自服务端可信上下文", "result": "pass", "evidence": "Controller 通过 ProjectAccessService 获取 ProjectAccess，DTO 不接收 projectId"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

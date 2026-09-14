@@ -1,0 +1,54 @@
+{
+  "sample_label": "T1 数据契约采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 真实 MySQL 8.4 空库与增量迁移测试",
+      "result": "pass",
+      "raw_evidence": "独立重跑 ArchitectureProjectScopeMigrationMySqlTest：Tests run: 3, Failures: 0, Errors: 0；空库成功到达 V156，六类主表 project_id 为 NOT NULL",
+      "limitation": ["尚未覆盖后续 Java Store 的 tenant_id + project_id 查询行为", "未测量生产大表 DDL 时长"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 MySQL 唯一索引和写入反例",
+      "result": "pass",
+      "raw_evidence": "跨项目插入相同物理子系统编号成功；同项目重复及软删除后复用均被唯一约束拒绝；索引列为 tenant_id,project_id,code",
+      "limitation": ["运行反例聚焦物理子系统，其余五类主表由 V156 DDL 成功执行和静态结构扫描覆盖"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S1 information_schema 断言与 S8 SQL 结构扫描",
+      "result": "pass",
+      "raw_evidence": "arch_plan_template、arch_plan_template_version 均无 project_id；V156 对 arch_setup_plan_activity 使用 TEMPLATE 空项目/PLAN 非空项目 CHECK",
+      "limitation": ["模板跨项目业务复用将在 T5 集成采样"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S1 存量回填和迁移失败路径",
+      "result": "pass",
+      "raw_evidence": "V155 存量记录回填至同租户 RDDMP-PLATFORM；缺少默认项目时 FlywayException，且失败后未产生 project_id 永久列",
+      "limitation": ["重复默认项目由同一 COUNT(*) <> 1 守卫静态确认，未单列运行用例"]
+    },
+    {
+      "requirement_id": "R1",
+      "sensor": "S8 范围、版本和结构扫描",
+      "result": "pass",
+      "raw_evidence": "git diff --check 退出码 0；最高整数迁移版本为 156；V156 含 37 个 ADD COLUMN project_id、36 个 NOT NULL 修改、模板项目列修改计数 0",
+      "limitation": ["git status 同时显示用户和其他任务的既有未提交文件，未将其归因于 T1"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "node scripts/check-flyway-migrations.mjs 因既有 V84_1__seed_requirement_system_catalog.sql 命名规则退出 1，未指向 V156",
+    "node scripts/check-all-governance.mjs 在通过模块、Skill 和研发准入检查后，因范围外 REQ-20260904-061 codex-task-scope.yaml 非 JSON-compatible YAML 退出 1",
+    "MySQL 8.4/Flyway 输出既有弃用警告，不影响本次断言和退出码"
+  ],
+  "coverage_gaps": [
+    "生产规模 DDL 锁等待与执行窗口未采样",
+    "六类业务 Store、权限和工作流隔离属于 T2-T5 后续采样范围"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

@@ -1,0 +1,49 @@
+{
+  "task_id": "T25",
+  "status": "implemented",
+  "trigger": "Owner 报告：会议纪要删除后，统一回收站列表中「编号」字段为空。诊断结论：dm_meeting 与 dm_report.doc_code / dm_issue.issue_code 不同构，无业务编号列；MeetingRecycleBinSource.project() 有意不伪造 asset_code。Owner 选择方案 C：为 dm_meeting 追加真实业务编号列 meeting_code + 唯一索引 + 前后端全链路改造，使 MEETING 在统一回收站信封上与 REPORT/ISSUE 同构。",
+  "changed_surfaces": [
+    {"path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml", "purpose": "范围扩展：writable_paths 与 database.migration_files 追加 V103__data_migration_meeting_code.sql；public_capability_change.note 与 database.compatibility_and_rollback 更新说明 V103 语义（回填 MEET-{meeting_id} + 活动域唯一）"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V103__data_migration_meeting_code.sql", "purpose": "新增 Flyway 迁移：ALTER dm_meeting ADD meeting_code VARCHAR(96) NULL；UPDATE 回填 MEET-{meeting_id}；MODIFY NOT NULL；ADD generated column active_meeting_code（软删为 NULL）+ uk_dm_meeting_active_code(tenant_id, project_id, active_meeting_code) + idx_dm_meeting_code(tenant_id, meeting_code)。语义参照 V94（问题活动域唯一）"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MeetingService.java", "purpose": "业务改造：(1) baseSelect 增列 m.meeting_code 与别名 asset_code；(2) create 支持 body.meetingCode 显式或自动生成 MEET-{id}；(3) update 允许修改 meeting_code，留空回退到当前值；(4) keyword 搜索覆盖 meeting_code；(5) 新增 ensureCodeAvailable(projectId, code, currentMeetingId, user) 活动域唯一校验；(6) 新增 meetingCodeConflict(DataIntegrityViolationException) 翻译唯一索引冲突；(7) 附带的缺陷修复：purge 内层 subquery 自引用 dm_issue_relation 触发 MySQL 1093，改为先 SELECT 已软删且关联本会议的 issue_id 再拆两步 DELETE，语义保留"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MeetingRecycleBinSource.java", "purpose": "信封投影：project() 优先从 meeting_code 显式写 asset_code；SQL alias 存在时保留，两者皆无时不伪造（向后兼容旧行/无 DB 别名的直接构造）。Javadoc 与顶部注释更新说明 V103 后 MEETING 与 REPORT/ISSUE 同构"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MeetingRecycleBinSourceTest.java", "purpose": "单测：3 → 5 用例。保留原 supports 与 project 保留原列 + 缺编号不伪造；新增 projectMapsMeetingCodeToAssetCodeAfterV103（meeting_code → asset_code）与 projectPreservesExistingAssetCodeAliasFromSql（SQL alias 已注入时不覆盖）"},
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "TS 契约：MeetingRecord 增 meeting_code?: string 与 asset_code?: string；MeetingFormData 增 meetingCode?: string 用于新增/编辑提交"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/MeetingsPage.vue", "purpose": "前端：fv 初始态/resetForm/openEdit/doSave body 均加 meetingCode；列表 el-table 新增「编号」列（第二列，min-width 150）；详情弹窗 el-descriptions 首位新增「会议编号」项；表单 drawer 新增「会议编号（可选）」输入行，新建提示「留空自动生成 MEET-{id}」，编辑提示「可调整当前编号」"}
+  ],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration -am test -Dtest='MeetingRecycleBinSourceTest,ContentRecycleBinRegistryTest,ReportServiceTest,IssueServiceTest' -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "BUILD SUCCESS；23 tests 0 failures；MeetingRecycleBinSourceTest 5/5（原 3 + 新 2）；ContentRecycleBinRegistryTest 5/5；ReportServiceTest 5/5；IssueServiceTest 8/8"},
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "salient_output": "BUILD SUCCESS；模块全量 47 tests 0 failures（Distribution：Registration 13 / Registry 5 / Excel 3 / ContentAssetMySql 5 / MeetingRecycleBinSource 5 / Issue 8 / Report 5 / IssueMySql 3）"},
+    {"command": "mvn -q install -DskipTests -pl :ccb-data-migration -am", "exit_code": 0, "salient_output": "本地 Maven 仓库 jar 更新，供 spring-boot:run 使用"},
+    {"command": "bash ./backend-dev.sh restart", "exit_code": 0, "salient_output": "Flyway 迁移成功：Migrating schema `ccb_platform` to version '103 - data migration meeting code' → Successfully applied 1 migration now at v103 (00:00.307s)。Started CcbApplication in 3.734 seconds。/actuator/health 200 {status:UP}"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit + vite build 通过；built in 12.11s；MeetingsPage.vue 新模板与 MeetingRecord/MeetingFormData 类型变更通过类型检查"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 94 migration(s) and 1 approved callback(s)（较 T24 93 增 1 = V103）"},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 0, "salient_output": "Governance 17 模块通过；AI layout 违规全属历史其他需求（030/032/017-031/018-032/019-033~035/027-049），与本任务无关"},
+    {"command": "node scripts/check-ai-control-layout.mjs", "exit_code": 1, "salient_output": "req-20260820-031 命中数=0；execution-T25.json / observation-T25.json 匹配文件名白名单；违规全属其他历史目录（与 T24 观察时同集合）"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base main --head HEAD --working-tree", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260820-031; 98 changed file(s)（较 T24 认证后 97 +1，即 V103；本任务新增 execution-T25/observation-T25 与 state rev 199 会额外计 1-2 文件）"}
+  ],
+  "invariants_checked": [
+    {"invariant": "Flyway 只追加：V103 不修改 V84-V102 任何历史脚本；check-flyway-migrations 通过 94 迁移", "result": "pass", "evidence": "新增文件 V103__data_migration_meeting_code.sql；其他 V*.sql 未 touch；脚本 EXIT=0"},
+    {"invariant": "旧行为兼容：MeetingService 未变更 create/update/delete/restore/purge 方法签名；无 SQL 别名的行仍不伪造 asset_code（MeetingRecycleBinSourceTest 保留原用例）", "result": "pass", "evidence": "create 新增对 meetingCode 字段的读取但不改动方法形参；update 使用 getOrDefault 保证旧前端不感知新字段时回退到当前值；MeetingRecycleBinSourceTest 3 项原用例全部通过（支持集合、原列保留、缺字段不崩溃）"},
+    {"invariant": "活动域唯一：uk_dm_meeting_active_code(tenant_id, project_id, active_meeting_code) 通过 generated column 让软删行不参与唯一约束；同编号可 delete→restore→delete 循环", "result": "pass", "evidence": "V103 SQL 参照 V94 模式；运行时 5. duplicate 探针返回 40900 '会议编号在该项目下已存在'（MeetingService.ensureCodeAvailable + MeetingController 200→409）"},
+    {"invariant": "编号命名与 REPORT 同构：MEET-{meeting_id} 使用与 REPORT-{id} 相同的应用生成策略（nextId()=timestamp*1000+random）；无跨表冲突", "result": "pass", "evidence": "MeetingService.create line 79-84 与 ReportService.create 中 doc_code = 'REPORT-' + id 模式对齐；实际生成示例：MEET-1788247121662627"},
+    {"invariant": "统一回收站信封 asset_code 由 meeting_code 投影，与 REPORT.doc_code / ISSUE.issue_code 一致", "result": "pass", "evidence": "运行探针 /recycle-bin?contentTypes=MEETING 返回 4 行 asset_code 全部为 MEET-20010/20003/20002/20005；无过滤聚合 MEETING 4/4 + REPORT 1/1 都有 asset_code"},
+    {"invariant": "附件级回收站边界保留（不并入）", "result": "pass", "evidence": "MeetingsPage.vue recycle tab-pane 仍为「附件回收站」，未触及 uk_dm_meeting_att_active 相关；附件级不进入统一页"},
+    {"invariant": "权限/数据范围：MeetingService.create/update 保持 permissions.requireWrite；recycleBinList/restore/purge 保持 requireAdmin；本任务未新增或降低权限点", "result": "pass", "evidence": "diff 未涉及 requireWrite/requireAdmin 行；MeetingController @PreAuthorize 未变更"},
+    {"invariant": "前端类型契约：MeetingRecord/MeetingFormData 新字段为可选，旧调用方不受影响；vue-tsc 通过", "result": "pass", "evidence": "npm --prefix web run build EXIT=0；tsconfig 严格模式下 MeetingFormData 与 MeetingRecord 新字段用 ? 修饰"},
+    {"invariant": "MySQL 1093 缺陷修复：MeetingService.purge 拆 SELECT + DELETE 两步，不再在 DELETE 目标表内嵌自引用子查询；语义保留（同时级联清理软删问题的其它关联行）", "result": "pass", "evidence": "统一 /recycle-bin/purge type=MEETING 请求 200 OK；回收站列表从 6 行（4 seed + 2 新）恢复到 4 行（seed 保留）；无 500 错误"},
+    {"invariant": "账本纯追加：execution-T24 / observation-T24 / observation-T24-verify / observation-T24-authenticated 保留；execution-T25 / observation-T25 新增；state.json rev 198→199 单条追加", "result": "pass", "evidence": "T24 账本文件未 touch；phase_history 单调追加，历史 phase 条目一字未改"},
+    {"invariant": "本地不 commit / 不 push / 不改 origin", "result": "pass", "evidence": "全程未执行 git add/commit/push；工作树仍 dirty"}
+  ],
+  "unresolved_items": [
+    "明/暗主题双视觉未做（本轮浏览器验收仅默认主题）；编号列在两主题下的对齐/换行未回归",
+    "批量删除后同项目下重建同 meeting_code 的活动域唯一性循环（delete→restore→recreate-same-code）未做真实回归，仅静态依据 V94 同构推理",
+    "前端列表 meeting_code 排序未提供（当前按 updated_at/meeting_id 排序），若用户希望按编号排序需另立需求",
+    "会议纪要 mock seed（V100 之后 dev DB 中 20001-20010）由 Flyway V103 回填为 MEET-{meeting_id}；若未来重新 seed 需显式提供 meetingCode 或依赖 create 路径自动生成，未新增 seed migration",
+    "ISSUE 文档级仍留在自己独立回收站（本次未纳入）；REPORT 已在 T24 纳入，ISSUE 需类似 T24 追加 IssueRecycleBinSource",
+    "统一列表仍不分页（跨类型全量 + 按 deleted_at 内存排序）；数据规模显著增长时需引入分组分页与 per-type 筛选（后续演进）",
+    "本任务附带的 MeetingService.purge MySQL 1093 缺陷修复未在 T25 需求内明写；由 Owner 选择 C 方案后运行时验收发现，已按同任务追加，若 Owner 认为应独立需求可在下一轮拆分（不改动代码，只调整账本结构）",
+    "旧端点 /meetings/recycle-bin、/meetings/purge-all、/reports/recycle-bin 已无 web 端调用方；本任务保留向后兼容，实际下线需在确认无外部集成方后另立需求"
+  ],
+  "recommended_next": "observe"
+}

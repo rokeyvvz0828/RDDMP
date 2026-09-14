@@ -1,0 +1,14 @@
+{
+  "sample_label": "T2 权限、查询窗口和保留策略采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R5", "sensor": "OperationAuditServiceTest、AuthRepositoryAuditAccessTest 和三角色运行态 API", "result": "pass", "raw_evidence": "SUPER_ADMIN 获得全租户操作/登录日志；owner/PM 仅获得可管理项目操作日志及菜单；普通成员无菜单且接口 403；PM 登录日志接口 403。", "limitation": []},
+    {"requirement_id": "R6", "sensor": "OperationAuditServiceTest 和 OperationAuditRetentionJobTest", "result": "pass", "raw_evidence": "默认及越界日期均不早于服务端当前时间减 30 天；每日任务删除两表 180 天前数据并产生一条汇总审计。", "limitation": ["大数据量删除性能需在生产数据规模下持续观察"]}
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["未执行半年以上生产数据量的性能压测。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

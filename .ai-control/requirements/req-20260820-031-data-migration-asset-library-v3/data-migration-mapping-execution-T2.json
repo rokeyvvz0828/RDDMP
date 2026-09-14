@@ -1,0 +1,116 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java",
+      "purpose": "补齐文件名称边界、非空和非重复附件集合、清理并发一致性规则"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingServiceTest.java",
+      "purpose": "覆盖 200/201 字符、空附件、重复附件和失败清理不解绑不审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+      "purpose": "枚举查询、选项、详情、附件和下载入口的类级查看权限继承"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test (基准)",
+      "exit_code": 0,
+      "salient_output": "Tests run: 32, Failures: 0, Errors: 0, Skipped: 0；基准测试未覆盖已识别反例"
+    },
+    {
+      "command": "mvn -q -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "新增 200 字符接受断言因测试桩详情回读固定旧名称失败；判定为测试传感器故障并修正断言"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test (最终)",
+      "exit_code": 0,
+      "salient_output": "Tests run: 35, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS"
+    },
+    {
+      "command": "git diff --check -- <T2 Mapping 目标文件>",
+      "exit_code": 0,
+      "salient_output": "无空白错误"
+    },
+    {
+      "command": "rg MAPPING_DOC 和 /mappings 通用认领及专属 RecycleBinSource",
+      "exit_code": 0,
+      "salient_output": "通用 ContentFileAssetService/ContentAssetController 无 MAPPING_DOC 或 /mappings；仅 MappingRecycleBinSource 返回 Set.of(\"MAPPING_DOC\")"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Mapping 服务正常、边界和失败路径",
+      "result": "pass",
+      "evidence": "MappingServiceTest 14 个用例通过，覆盖必填、200 字符、多附件、50MB、类型、系统、所有者、附件集合、下载、审计和回收站",
+      "limitations": ["JdbcTemplate 与附件服务使用测试桩，真实 MySQL/MinIO 生命周期留待 T4"]
+    },
+    {
+      "check": "Controller RBAC 和统一回收站唯一认领",
+      "result": "pass",
+      "evidence": "MappingControllerSecurityTest、MappingRecycleBinSourceTest、DataMigrationModuleRegistrationTest 共 21 个用例通过",
+      "limitations": ["当前为反射和委托测试，真实 401/403 留待 T4 HTTP 验收"]
+    },
+    {
+      "check": "通用链路摘除 MAPPING_DOC",
+      "result": "pass",
+      "evidence": "源扫描在通用 Service/Controller 中无 MAPPING_DOC 或 /mappings，专属 Source 是唯一静态认领者",
+      "limitations": ["Spring 运行时 Bean 唯一性由模块测试及 T4 启动验证补充"]
+    }
+  ],
+  "diff_summary": [
+    "文件名称按 Unicode 码点执行最多 200 字符校验",
+    "显式 files 空集合被拒绝，防止编辑后无附件",
+    "重复 attachmentId 在进入公共绑定服务前返回 400",
+    "purge 先确认并删除回收站业务行，再清理附件；并发失败不解绑且不写成功审计",
+    "Controller 测试覆盖全部查看和下载入口的类级权限"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "租户、项目、实体和附件归属检查保持在服务端",
+      "result": "pass",
+      "evidence": "所有详情、附件和下载入口经 findRaw + requireStoredProject；新附件经 resolveAttachment；指定附件必须属于记录绑定集合"
+    },
+    {
+      "invariant": "单附件最大 52428800 字节且附件集合非空唯一",
+      "result": "pass",
+      "evidence": "服务测试覆盖 50MB+1、空集合和重复 ID 拒绝"
+    },
+    {
+      "invariant": "MAPPING_DOC 只有一个回收站来源",
+      "result": "pass",
+      "evidence": "注册测试与源扫描均确认专属认领"
+    },
+    {
+      "invariant": "失败写操作不记录成功审计",
+      "result": "pass",
+      "evidence": "非所有者删除、超长名称、空/重复附件和并发 purge 失败均断言无对应成功审计"
+    },
+    {
+      "invariant": "不修改 platform/shared 公共实现",
+      "result": "pass",
+      "evidence": "T2 实际修改只在 data-migration Mapping 专属服务及直接测试"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "现有 Mapping 文件均为工作区未跟踪或与同需求交叠修改",
+      "impact": "以限定源扫描、运行测试和文件级修改记录取代相对 HEAD 的精确作者 diff"
+    },
+    {
+      "event": "新增 200 字符接受断言首次被测试桩固定回读值误报",
+      "impact": "仅修正测试断言为成功创建和审计信号，业务实现未为迁就桩而改变"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "真实附件字节流、ZIP 中途失败和 HTTP 401/403 由 T4 本地运行验收",
+    "完整模块回归由 T4 执行"
+  ],
+  "recommended_next": "observe"
+}

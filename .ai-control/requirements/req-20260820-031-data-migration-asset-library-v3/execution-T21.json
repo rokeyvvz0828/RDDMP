@@ -1,0 +1,113 @@
+{
+  "task_id": "T21",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "development MySQL ccb_platform", "purpose": "Apply V94 through application startup and exercise issue relation, uniqueness, restore and cleanup behavior on test-only data"},
+    {"path_or_resource": "development runtime on 127.0.0.1:8080 and 127.0.0.1:5173", "purpose": "Run authenticated non-Mock API and four-viewport browser acceptance"},
+    {"path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/execution-T21.json", "purpose": "Record bounded final execution evidence for the current control prefix"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit_code": 0,
+      "salient_output": "Reactor success; ccb-data-migration ran 23 tests with 0 failures and 0 errors in 21.675s"
+    },
+    {
+      "command": "mvn test",
+      "exit_code": 1,
+      "salient_output": "ccb-data-migration succeeded; ccb-architecture failed with 2 setup errors because PhysicalSubsystemConcurrencyMySqlTest migrated only to V36 and queried arch_physical_subsystem introduced at V77; later modules were skipped"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite production build succeeded; 2450 modules transformed"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "Module governance, repository skill and development entry passed; only unrelated historical requirement ledgers failed AI-control layout validation"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "Codex scope check passed for REQ-20260820-031 with 31 changed files"
+    },
+    {
+      "command": "authenticated issue API verification",
+      "exit_code": 0,
+      "salient_output": "11/11 relation, missing-key preservation, explicit clear, uniqueness, delete/recreate, restore conflict and atomic batch restore checks passed; no-role requests returned 403 and anonymous list returned 401"
+    },
+    {
+      "command": "Playwright non-Mock issue workflow at 1280x800, 375x812, 390x844 and 430x932",
+      "exit_code": 0,
+      "salient_output": "22/22 checks passed, including detail-before-edit, existing relation display, three explicit empty arrays, failure-closed drawer and stabilized overflow geometry"
+    },
+    {
+      "command": "authenticated DELETE /api/data-migration/issues and DELETE /api/data-migration/issues/purge for fixture 1788079907308568",
+      "exit_code": 0,
+      "salient_output": "Logical delete and purge both returned HTTP 200"
+    },
+    {
+      "command": "final development database invariant query",
+      "exit_code": 0,
+      "salient_output": "Flyway 94; V94 generated column present; GOV-REQ031 and GOV-UI-REQ031 issues 0; ISSUE relations 0; legacy ISSUE assets 0; non-ISSUE assets 1; temporary user 0; ISSUE audit entries 25"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Issue backend and migration contract",
+      "result": "pass",
+      "evidence": "Focused module tests, isolated MySQL 8.4 V92 to V94 migration, development migration and authenticated lifecycle probes all passed",
+      "limitations": ["Flyway version declares MySQL support through 8.1 and emits an upgrade recommendation for MySQL 8.4"]
+    },
+    {
+      "check": "Issue frontend workflow",
+      "result": "pass",
+      "evidence": "Production build and 22 browser checks passed across desktop and three required mobile viewports",
+      "limitations": ["Vite retains existing third-party PURE annotation and large-chunk warnings"]
+    },
+    {
+      "check": "Repository-wide regression attribution",
+      "result": "external-failure",
+      "evidence": "Full Maven reaches and passes ccb-data-migration before failing in ccb-architecture; global governance failures name only other requirement prefixes",
+      "limitations": ["The repository-wide commands do not return zero until separately owned architecture tests and historical ledgers are governed"]
+    },
+    {
+      "check": "Test fixture cleanup and persistence invariants",
+      "result": "pass",
+      "evidence": "Authenticated cleanup returned HTTP 200 and final database counts prove zero REQ-031 fixtures with one non-ISSUE asset retained",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "No additional product-code changes were made during T21",
+    "Applied and verified V94 in the confirmed development/test database",
+    "Exercised issue relation, uniqueness, lifecycle, authorization, audit and responsive browser behavior",
+    "Removed all REQ-031 runtime fixtures while preserving audit history and unrelated asset data"
+  ],
+  "invariants_checked": [
+    {"invariant": "No production access", "result": "pass", "evidence": "All runtime probes targeted local services and the user-confirmed development/test environment"},
+    {"invariant": "No non-ISSUE data change", "result": "pass", "evidence": "Final dm_asset non-ISSUE count remains 1"},
+    {"invariant": "No current-prefix scope violation", "result": "pass", "evidence": "Current task scope check and git diff check both exited 0"},
+    {"invariant": "No data-migration P0/P1 remains", "result": "pass", "evidence": "Focused tests, authenticated API/RBAC checks and browser checks report no current-module failure"},
+    {"invariant": "Audit survives purge", "result": "pass", "evidence": "dm_operation_log retains 25 ISSUE entries after all fixture rows and relations were purged"}
+  ],
+  "disturbances": [
+    {"event": "Full Maven fails in ccb-architecture after ccb-data-migration succeeds", "impact": "External module regression evidence; excluded by REQ-031 acceptance criterion 9 and not modified"},
+    {"event": "Global governance reports malformed or incomplete ledgers for other requirement prefixes", "impact": "Historical external governance evidence; current scope check passes and other prefixes remain untouched"},
+    {"event": "MySQL 8.4 is newer than the Flyway library's declared tested support through 8.1", "impact": "Migration and runtime checks pass; retain as release residual risk"},
+    {"event": "Vite reports existing large-chunk and third-party PURE annotation warnings", "impact": "Production bundle succeeds; optimization is outside T21"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "ccb-architecture full-reactor failures require a separate architecture task",
+    "Historical AI-control layout failures require their owning governance tasks"
+  ],
+  "recommended_next": "observe"
+}

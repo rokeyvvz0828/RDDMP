@@ -1,0 +1,20 @@
+{
+  "sample_label":"T1/T2/T3 集成独立采样（2026-09-02）",
+  "task_ids":["T1","T2","T3"],
+  "baseline_revision":"baseline-1",
+  "measurements":[
+    {"requirement_id":"R1","sensor":"S1/S6 源码、测试与契约复核","result":"partial","raw_evidence":"旧字段已从部署单元运行模型和契约删除。","limitation":["V124 未实际运行"]},
+    {"requirement_id":"R2","sensor":"S1/S3/S6 单元测试、浏览器与静态复核","result":"partial","raw_evidence":"服务端名称校验、前端后缀联动及 38 个非容器测试通过。","limitation":["真实唯一约束和 API 未验证"]},
+    {"requirement_id":"R3","sensor":"S3/S6 浏览器与静态复核","result":"partial","raw_evidence":"APPLICATION、DATABASE、WEB 及 AP、DB、WB 映射在代码和 Mock 浏览器旅程通过。","limitation":["真实后端未验证"]},
+    {"requirement_id":"R4","sensor":"S3/S6 浏览器与静态复核","result":"partial","raw_evidence":"ACTIVE、租户、搜索、多选和排除自身逻辑已实现；前端远程多选旅程通过。","limitation":["真实 SQL 和租户边界未验证"]},
+    {"requirement_id":"R5","sensor":"S6 代码复核","result":"unobservable","raw_evidence":"规范化关系、历史和事务代码存在。","limitation":["外键、回滚、重复提交和并发未运行验证"]},
+    {"requirement_id":"R6","sensor":"S1/S6 测试编译、迁移与契约复核","result":"partial","raw_evidence":"模板五列、资源分流和迁移顺序已静态修正；迁移测试种子编译通过。","limitation":["导入 round-trip、MQ 增量迁移和审计未运行"]},
+    {"requirement_id":"R7","sensor":"S1/S6 Controller 测试与静态复核","result":"partial","raw_evidence":"Controller 权限和 DTO 静态测试通过。","limitation":["真实 403、跨租户和审计缺失"]},
+    {"requirement_id":"R8","sensor":"S3/S5 前端构建与浏览器验收","result":"pass","raw_evidence":"正式 build、四视口、明暗主题、控制台和 Mock 交互证据通过。","limitation":["不代表真实 API"]}
+  ],
+  "feedback":[],
+  "disturbances":["Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 未执行。","T2/T3 浏览器使用临时内存 Mock API，不能作为真实后端证据。","mock/mock-data.json 未含部署单元数据，相关白名单在 scope 外。"],
+  "coverage_gaps":["四项 MySQL/Flyway 测试、外键、唯一约束和事务回滚未运行。","关系并发、重复提交、锁顺序和停用关系编辑未验证。","真实 API 权限、租户隔离、审计和资源申请下游未联调。","F-0001/F-0002 仍需 MySQL 运行证据才能关闭。"],
+  "error_counts":{"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status":"incomplete"
+}

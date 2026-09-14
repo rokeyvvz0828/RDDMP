@@ -1,0 +1,39 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {"inside": ["NotificationController", "NotificationStreamController", "NotificationSseService", "SystemNotificationService", "SecurityConfiguration", "UiNotificationCenter", "Nginx SSE locations"], "environment": ["authenticated browser", "Spring transaction manager", "Vite proxy", "single backend process"]},
+  "state_variables": [
+    {"name": "stream_ticket", "owner": "platform/system", "valid_values": ["unused and unexpired", "consumed", "expired"]},
+    {"name": "active_emitters", "owner": "platform/system", "valid_values": ["grouped by tenantId/userId"]},
+    {"name": "client_connection", "owner": "frontend/application", "valid_values": ["connecting", "open", "retrying", "fallback", "hidden"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "notification invalidation event", "transitions": ["EventSource listener", "unread count refresh", "optional drawer refresh"], "outputs": ["current badge/list without periodic one-second query"]},
+    {"requirement_id": "R2", "input": "authenticated ticket request", "transitions": ["random ticket issue", "single remove on stream exchange", "tenant/user key restoration"], "outputs": ["authorized SseEmitter"]},
+    {"requirement_id": "R3", "input": "notification database mutation", "transitions": ["affected-row check", "transaction afterCommit", "tenant/user emitter lookup", "SSE send"], "outputs": ["all matching live tabs invalidated"]},
+    {"requirement_id": "R4", "input": "network/visibility/timeout event", "transitions": ["close stale stream", "bounded fresh-ticket retry", "60-second fallback", "unbuffered proxy forwarding"], "outputs": ["recovered or eventually consistent client"]}
+  ],
+  "interfaces": [
+    {"name": "stream ticket REST", "producers": ["NotificationController"], "consumers": ["UiNotificationCenter"], "invariant": "authenticated and 30-second single-use"},
+    {"name": "notification SSE", "producers": ["NotificationSseService"], "consumers": ["EventSource"], "invariant": "payload is only an invalidation signal"},
+    {"name": "after-commit broadcast", "producers": ["SystemNotificationService"], "consumers": ["NotificationSseService"], "invariant": "actual changed rows and committed transaction only"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "ticket and connection lifecycle", "method": "NotificationSseServiceTest", "blind_spots": ["real proxy"], "independence": "direct service assertions"},
+    {"id": "S2", "target": "mutation broadcast timing", "method": "SystemNotificationServiceTest with transaction synchronization", "blind_spots": ["full MySQL transaction manager"], "independence": "mock JDBC and synchronization callbacks"},
+    {"id": "S3", "target": "frontend compile and stale timer removal", "method": "Vue TypeScript build and source search", "blind_spots": ["runtime network timing"], "independence": "compiler/static evidence"},
+    {"id": "S4", "target": "runtime request and reconnect behavior", "method": "browser network and console inspection", "blind_spots": ["unobserved long outage"], "independence": "real browser"},
+    {"id": "S5", "target": "proxy streaming settings", "method": "Nginx configuration inspection", "blind_spots": ["remote host not deployed"], "independence": "configuration evidence"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "backend SSE channel", "action": "add ticket/emitter service and exact stream endpoint", "authority": "REQ-065 scope", "impact_radius": "platform/system and exact security matcher", "rollback": "revert Java files"},
+    {"id": "A2", "target": "notification mutation flow", "action": "schedule affected-user invalidation after commit", "authority": "REQ-065 scope", "impact_radius": "notification writes", "rollback": "remove broadcaster calls"},
+    {"id": "A3", "target": "frontend refresh lifecycle", "action": "replace one-second timers with EventSource/retry/fallback", "authority": "REQ-065 scope", "impact_radius": "global notification center", "rollback": "revert Vue/API files"},
+    {"id": "A4", "target": "proxy streaming", "action": "disable buffering/cache on exact SSE path", "authority": "REQ-065 scope", "impact_radius": "notification stream only", "rollback": "revert Nginx locations"}
+  ],
+  "measurements": [{"requirement_id": "R1", "sensor_ids": ["S3", "S4"], "observable": "yes"}, {"requirement_id": "R2", "sensor_ids": ["S1", "S4"], "observable": "yes"}, {"requirement_id": "R3", "sensor_ids": ["S1", "S2", "S4"], "observable": "yes"}, {"requirement_id": "R4", "sensor_ids": ["S3", "S4", "S5"], "observable": "yes"}],
+  "disturbances": [{"source": "network outage", "effect": "stream error and retries", "detectable": true, "controllable": true}, {"source": "page hidden", "effect": "unneeded connection", "detectable": true, "controllable": true}, {"source": "rokey unrelated uncommitted changes", "effect": "merge contamination risk", "detectable": true, "controllable": true}, {"source": "future multiple backend replicas", "effect": "in-memory broadcast misses users on other replicas", "detectable": true, "controllable": false}],
+  "delays": [{"source": "heartbeat", "consequence": "dead connections detected within about 25 seconds", "sampling_rule": "observe at least one heartbeat"}, {"source": "reconnect backoff", "consequence": "recovery delay up to 30 seconds", "sampling_rule": "assert configured sequence"}, {"source": "fallback poll", "consequence": "outage consistency up to 60 seconds", "sampling_rule": "verify no lower interval"}],
+  "assumptions": [{"text": "one backend instance", "evidence": "current deployment topology", "falsifier": "replica count > 1"}],
+  "control_assessment": [{"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "T2"}, {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "T1"}, {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "T1/T3"}, {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "T2/T3"}],
+  "model_status": "ready"
+}

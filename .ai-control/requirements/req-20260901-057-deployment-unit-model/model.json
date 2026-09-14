@@ -1,0 +1,96 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "arch_deployment_unit、arch_deployment_unit_version 及候选 V124 关系/历史表",
+      "DeploymentUnitModels、DeploymentUnitStore、DeploymentUnitService、DeploymentUnitController",
+      "DeploymentUnitImportService 与部署单元导入批次/明细",
+      "EnvironmentResourceModels/Store/Service/Controller 的部署单元投影和资源分流",
+      "web/src/modules/architecture 的部署单元、导入、资源申请页面及类型/API",
+      "mock/mock-data.json 与 architecture-module-contract.md"
+    ],
+    "environment": [
+      "认证用户 AuthUser、Spring Security 方法权限和 SystemOperationAudit",
+      "物理子系统与网络分区公开查询能力",
+      "MySQL 8.4/Flyway/Testcontainers/Docker Desktop",
+      "Vue 3、Element Plus、共享 UI 和浏览器运行时"
+    ]
+  },
+  "state_variables": [
+    {"name": "deployment_unit_identity", "owner": "arch_deployment_unit", "valid_values": ["租户内唯一完整 name", "永久 code", "不可变 physical_subsystem_id"]},
+    {"name": "deployment_unit_kind", "owner": "arch_deployment_unit/DeploymentUnitService", "valid_values": ["APPLICATION", "DATABASE", "WEB"]},
+    {"name": "deployment_unit_status", "owner": "DeploymentUnitService", "valid_values": ["ACTIVE", "INACTIVE", "VOIDED"]},
+    {"name": "deployment_unit_version", "owner": "arch_deployment_unit_version", "valid_values": ["从 1 递增的不可改写快照"]},
+    {"name": "current_relations", "owner": "候选 arch_deployment_unit_relation", "valid_values": ["tenant+min(unitA,unitB)+max(unitA,unitB) 唯一集合"]},
+    {"name": "relation_history", "owner": "候选 arch_deployment_unit_relation_history", "valid_values": ["LINK", "UNLINK"]},
+    {"name": "form_state", "owner": "DeploymentUnitPage.vue", "valid_values": ["完整名称", "kind", "relatedDeploymentUnitIds", "loading/error/submitting/dirty"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "创建、更新、导入或资源申请读取部署单元", "transitions": ["HTTP/导入解析", "DeploymentUnitService 校验", "Store SQL 持久化", "资源申请投影", "Vue DTO 展示"], "outputs": ["仅保留完整 name、kind 和结构化关系，不再出现旧三个字段"]},
+    {"requirement_id": "R2", "input": "用户在唯一名称框输入任意大小写文本", "transitions": ["前端 trim/大写", "服务端按最后一个下划线解析", "正则和租户唯一校验", "主记录与版本写入"], "outputs": ["^[A-Z0-9]+_[A-Z0-9]{1,8}$ 的完整名称"]},
+    {"requirement_id": "R3", "input": "完整名称后缀或业务类型变化", "transitions": ["前端标准后缀联动", "服务端标准映射校验", "自定义后缀保留"], "outputs": ["APPLICATION/_AP、DATABASE/_DB、WEB/_WB 一致，或合法自定义后缀+手工类型"]},
+    {"requirement_id": "R4", "input": "关联选择器关键字、分页和 excludeId", "transitions": ["Controller 权限", "Store 按当前租户 ACTIVE、名称/编号/物理子系统搜索", "排除自身", "前端远程多选和回显"], "outputs": ["可搜索、多选、跨物理子系统的合法候选"]},
+    {"requirement_id": "R5", "input": "relatedDeploymentUnitIds 集合", "transitions": ["去重排序", "锁定并校验目标", "端点 min/max 规范化", "同事务差量 LINK/UNLINK", "双方详情投影"], "outputs": ["无重复、无半边的双向无向关系"]},
+    {"requirement_id": "R6", "input": "部署单元内容或关系变更", "transitions": ["发起端发布版本", "关系独立历史", "系统操作审计", "资源申请按 kind 映射 AP/DB/WB"], "outputs": ["版本、关系历史、审计和模块内下游一致"]},
+    {"requirement_id": "R7", "input": "查看、写入或关联请求", "transitions": ["认证上下文注入 tenant", "view/manage RBAC", "实体状态/租户/乐观锁校验", "只写 architecture 自有表"], "outputs": ["403/404/409/400 语义及租户隔离保持"]},
+    {"requirement_id": "R8", "input": "桌面或手机用户执行列表、表单、详情和远程搜索", "transitions": ["共享页面头/工具栏/表格", "移动卡片", "视口约束弹层", "局部加载/空/失败/无权限/提交中状态"], "outputs": ["1280、375、390、430 视口和明暗主题可完成同一任务"]}
+  ],
+  "interfaces": [
+    {"name": "DeploymentUnitCommand/View", "producers": ["DeploymentUnitController/Service"], "consumers": ["DeploymentUnitPage.vue", "导入和模块内调用方"], "invariant": "HTTP DTO 不含 tenantId，只含完整 name、kind、relatedDeploymentUnitIds/relatedDeploymentUnits"},
+    {"name": "GET /api/architecture/deployment-units/options", "producers": ["DeploymentUnitController/Store"], "consumers": ["部署单元关联远程选择器"], "invariant": "当前租户、ACTIVE、分页、排除自身"},
+    {"name": "DeploymentUnitRef", "producers": ["EnvironmentResourceStore"], "consumers": ["EnvironmentResourceService/Controller/ResourceRequestPage"], "invariant": "资源分支只由 kind 决定，不读取旧登记类型"},
+    {"name": "Flyway V124", "producers": ["platform/infrastructure 迁移链"], "consumers": ["MySQL 空库与增量升级"], "invariant": "只追加且版本唯一，不修改 V1-V123"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Java 领域、Controller、资源申请行为", "method": "JUnit/Mockito 聚焦测试及 ccb-architecture 非容器测试", "blind_spots": ["真实 MySQL 约束和并发"], "independence": "直接执行 Java 行为断言"},
+    {"id": "S2", "target": "V124、唯一键、外键、关系事务和并发", "method": "Testcontainers MySQL 集成测试与 information_schema/SQL 断言", "blind_spots": ["Docker Desktop 未运行时不可采样"], "independence": "真实 MySQL 运行证据"},
+    {"id": "S3", "target": "前端 DTO 和静态交互契约", "method": "vue-tsc、Vite build 和旧字段负向 rg 扫描", "blind_spots": ["不能证明真实交互和布局"], "independence": "编译器和静态扫描"},
+    {"id": "S4", "target": "权限、租户、HTTP/SQL/审计组合结果", "method": "本地真实 API、数据库查询和审计记录", "blind_spots": ["本地角色与数据集覆盖有限"], "independence": "运行时接口和持久化证据"},
+    {"id": "S5", "target": "桌面/移动端全状态和可访问性", "method": "真实浏览器 Network/Console/DOM 溢出与四视口明暗主题验收", "blind_spots": ["未覆盖所有设备浏览器差异"], "independence": "用户路径可视化运行证据"},
+    {"id": "S6", "target": "范围、迁移号、模块边界和契约残留", "method": "scope、Flyway、governance、git diff 与 rg 检查", "blind_spots": ["不能证明业务运行正确"], "independence": "仓库治理和差异传感器"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "数据库结构和开发数据", "action": "追加 V124 删除旧列、调整约束并创建关系/历史表", "authority": "scope 仅授权候选 V124", "impact_radius": "部署单元与资源申请明细表", "rollback": "提交前撤销；已执行后用补偿迁移或重建早期开发库"},
+    {"id": "A2", "target": "后端共享契约", "action": "修改 architecture 模块模型、Store、Service、Controller、导入和资源申请", "authority": "server/src/modules/architecture/**", "impact_radius": "架构模块 Java 编译与运行", "rollback": "回退 T1 小提交"},
+    {"id": "A3", "target": "前端用户旅程", "action": "修改 architecture 模块类型、API、页面、详情和局部样式", "authority": "web/src/modules/architecture/**", "impact_radius": "架构前端模块", "rollback": "回退 T2 小提交并与 T1 配套"},
+    {"id": "A4", "target": "演示数据和公开说明", "action": "同步 Mock、architecture-module-contract 和当前任务证据", "authority": "scope 指定文档/Mock/任务前缀", "impact_radius": "本地演示与公开契约", "rollback": "回退 T3 小提交"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S3", "S6"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S2", "S4", "S6"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S4", "S6"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S3", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Docker Desktop 未运行", "effect": "11 个 Testcontainers 基线测试无法启动", "detectable": true, "controllable": true},
+    {"source": "隔离工作树无 node_modules 且 scope 禁止修改依赖目录", "effect": "标准 npm build 无法直接解析依赖；vue-tsc 可复用主检出依赖", "detectable": true, "controllable": true},
+    {"source": "V124 可能被并行分支占用", "effect": "迁移版本冲突", "detectable": true, "controllable": true},
+    {"source": "历史治理账本噪声", "effect": "全仓治理检查可能失败但不代表本需求偏差", "detectable": true, "controllable": false},
+    {"source": "用户在主检出的 T11 未跟踪文件", "effect": "错误清理会覆盖其他任务证据", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "远程搜索请求和防抖", "consequence": "旧响应可能覆盖新关键字", "sampling_rule": "浏览器测试快速连续输入并验证仅最新结果生效"},
+    {"source": "关系端点锁和事务提交", "consequence": "并发提交可能产生等待或冲突", "sampling_rule": "事务完成后从双方和关系表采样"},
+    {"source": "Maven/Testcontainers 与四视口浏览器验收", "consequence": "反馈周期较长", "sampling_rule": "先局部单测，再集成 MySQL，最后全栈浏览器"}
+  ],
+  "assumptions": [
+    {"text": "主名称不包含下划线", "evidence": "用户批准的设计修订 1", "falsifier": "用户要求主名称允许下划线"},
+    {"text": "关系独立历史足以追踪被关联端", "evidence": "用户批准只有发起端发布版本", "falsifier": "用户要求双方版本同步增长"},
+    {"text": "停用保留关系且作废先解除", "evidence": "用户批准的生命周期设计", "falsifier": "用户要求作废自动解除"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3+A4"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A1+A2"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A1+A2+A3+A4"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "A2+A4"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "A3+A4"}
+  ],
+  "model_status": "ready"
+}

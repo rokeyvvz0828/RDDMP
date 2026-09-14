@@ -1,0 +1,52 @@
+{
+  "sample_label": "最终集成采样",
+  "task_ids": ["T7", "T8"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R13",
+      "sensor": "S1 最终浅色桌面计算样式和字段几何",
+      "result": "pass",
+      "raw_evidence": "1920x1080：flex/wrap、容器777px、行3/4/3、选择270px、数值180px、输入160px、摘要777px；1280x800：容器604px且自然2/2/3/3，内部滚动和footer可见",
+      "limitation": ["字段行数量会随字体和编辑器实际宽度自然变化"]
+    },
+    {
+      "requirement_id": "R13",
+      "sensor": "S2 最终手机和根宽探针",
+      "result": "pass",
+      "raw_evidence": "430x932提交态全部字段单列309px、输入309px、根scrollWidth=430=innerWidth、footer visible=true；执行报告另含375/390相同结论",
+      "limitation": ["使用浏览器视口模拟"]
+    },
+    {
+      "requirement_id": "R13",
+      "sensor": "S3 最终构建、范围和提交边界",
+      "result": "pass",
+      "raw_evidence": "最终build退出0；scope退出0；diff --check退出0；产品HEAD=d29ff407d8e132dfaa5861bf40c6c2b5e431f8b6且只修改两个授权前端文件",
+      "limitation": ["全仓治理因其他历史需求账本问题退出1，但本前缀未出现在错误列表"]
+    },
+    {
+      "requirement_id": "R13",
+      "sensor": "S4 业务、请求边界和Console",
+      "result": "pass",
+      "raw_evidence": "DB区保持原Grid；应用区计算总CPU4/总内存8G；边车开关后输入disabled=false；创建提示成功；submitForm/requestItemPayload无diff；Console error=0",
+      "limitation": ["Mock不持久化创建结果且浏览器工具未暴露POST body，真实后端持久化留作上线前验证"]
+    },
+    {
+      "requirement_id": "R13",
+      "sensor": "旧账本哈希传感器",
+      "result": "pass",
+      "raw_evidence": "修订1哈希3A36B04732B9964E051B1110B080F2DC4656F8B65BBA48ACE351B25686C24D5F；修订2哈希A7ECF2DEAC7E97D7CE55B64EF5797FC3CBC9BB87C5BC3B56AD616A6906E4AF6A",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    "全仓治理仍包含其他历史需求账本错误，本控制前缀无新增错误",
+    "Mock创建响应不持久化到列表，不能用列表回显作为请求持久化传感器"
+  ],
+  "coverage_gaps": [
+    "真实后端环境的请求body与持久化需上线前集成验证"
+  ],
+  "error_counts": {"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status": "complete"
+}

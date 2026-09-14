@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "requirementId": "REQ-20260831-001",
+  "topic": "req-20260831-001-remove-logical-subsystem",
+  "phase": "closed",
+  "status": "accepted-with-residual-risks",
+  "closureStatus": "accepted",
+  "closedAt": "2026-09-01T16:07:23.8597860+08:00",
+  "implementationCommit": "f3ff8955853ee226a434b280ef246062b7344678",
+  "userAcceptance": "用户于 2026-09-01 要求推送并关闭此需求。",
+  "coverage": [
+    {
+      "requirement": "逻辑子系统模型退役",
+      "status": "covered",
+      "evidence": "生产代码中逻辑 Controller、Service、模型、草稿和编号分配路径已移除，前端逻辑路由已删除。"
+    },
+    {
+      "requirement": "逻辑子系统作为物理子系统可选字段",
+      "status": "covered",
+      "evidence": "PhysicalSubsystem 与物理草稿 DTO、Repository、页面和详情均使用 logicalSubsystemName。"
+    },
+    {
+      "requirement": "业务组件编号由字典管理",
+      "status": "covered",
+      "evidence": "V123 新增 ARCH_BUSINESS_COMPONENT 字典配置，服务端和前端读取业务组件选项。"
+    },
+    {
+      "requirement": "物理子系统编号支持自行填写",
+      "status": "covered",
+      "evidence": "创建草稿和物理页面暴露 code 字段，服务端校验格式与唯一性，不再预占编号。"
+    }
+  ],
+  "notConverged": [
+    "全量 mvn -pl server/src/modules/architecture -am test 仍因范围外 standards/decisions 与 network 测试失败而未全绿。",
+    "浏览器 UAT 未执行。",
+    "scope 检查被无关未跟踪 T11 账本文件，以及方案 B 的有意破坏性公共契约变更阻断。"
+  ],
+  "deliveryDecision": "本需求按用户确认关闭并可推送；上线前仍需处理或接受 notConverged 中记录的浏览器 UAT、范围外历史失败和破坏性迁移发布风险。"
+}

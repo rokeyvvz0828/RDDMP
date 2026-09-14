@@ -1,0 +1,1374 @@
+{
+  "schema_version": 1,
+  "topic": "subsystem-participation",
+  "handoff_status": "approved",
+  "created_at": "2026-09-06T15:57:51+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "subsystem-participation",
+    "design_revision": 2,
+    "design_status": "approved",
+    "human_document": "docs/requirements/REQ-20260906-066-subsystem-participation/design.md",
+    "objective": "系统参与资格与任务分工统一控制执行、个人看板和资源申请，管理者能监督但不能越权执行。",
+    "users": [
+      "系统负责人",
+      "任务负责人和参与人",
+      "计划及项目管理者",
+      "资源申请人",
+      "审批和办理人"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "物理子系统维护显式参与人，有效参与人包含当前负责人；部署单元继承系统资格。",
+        "acceptance": [
+          "负责人不可被单独移除；不同项目同名系统不共享权限。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "加入系统A却获得系统B或其他项目权限。"
+        ]
+      },
+      {
+        "id": "R2",
+        "statement": "按系统或部署单元展开任务，默认负责人为系统负责人，默认参与人为系统有效参与人；任务创建前后均可独立调整。",
+        "acceptance": [
+          "新负责人自动加入任务；旧负责人默认保留为参与人；任务负责人必填且不可单独移除。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "修改一个任务反向修改系统名单或其他任务。"
+        ]
+      },
+      {
+        "id": "R3",
+        "statement": "人员默认值采用创建时快照，系统资格执行实时校验。",
+        "acceptance": [
+          "新增系统成员不自动加入旧任务；移除成员立即失去资格；未完任务负责人和未解决阻塞负责人先移交。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "旧页面或旧任务名单可以绕过人员移除。"
+        ]
+      },
+      {
+        "id": "R4",
+        "statement": "普通人员只看本人任务及检查项；管理者可查看授权项目或计划全貌，但不得越权执行。",
+        "acceptance": [
+          "非任务人员即使是管理员，也不能启动任务、完成或重新打开检查项。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "通过管理员放行分支代勾检查项。"
+        ]
+      },
+      {
+        "id": "R5",
+        "statement": "敏捷看板直接替换环境搭建计划详情中原有的看板页签，只展示当前计划任务，按未开始、已开始、已完成、阻塞分列；默认只展示本人相关任务，管理者可切换查看当前计划全部任务，但不得越权执行。",
+        "acceptance": [
+          "WAITING_PRECEDING映射阻塞；取消默认隐藏；计数与分页仅统计可见任务；不能拖动绕过检查项。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "看板只在前端过滤，接口返回全部任务。"
+        ]
+      },
+      {
+        "id": "R6",
+        "statement": "资源申请只能选择、申请本人参与系统的部署单元，保留申请人和流程职责限制。",
+        "acceptance": [
+          "创建、编辑、复制、提交、任务发起、批量明细逐一校验；办理和审批按流程授权。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "替换部署单元ID或提交移除成员前保存的草稿成功。"
+        ]
+      },
+      {
+        "id": "R7",
+        "statement": "同一业务对象的选项、详情、报告、附件、通知、关联工单和批量入口采用一致授权。",
+        "acceptance": [
+          "不可见前置任务只展示条件未满足；管理员管理视图不扩大资源申请权限；附件下载不能绕过对象权限。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "通过搜索总数、报告或附件读取不可见任务。"
+        ]
+      },
+      {
+        "id": "R8",
+        "statement": "存量兼容、审计、性能及桌面移动端验收必须覆盖。",
+        "acceptance": [
+          "保留历史任务分工，资格不符进入待处理且拒绝执行；完成四种视口与明暗主题验收。"
+        ],
+        "priority": "must",
+        "source": "2026-09-06当前会话确认",
+        "counterexample": [
+          "批量补全所有任务人员造成权限扩大，或修改已发布迁移。"
+        ]
+      }
+    ],
+    "invariants": [
+      "系统负责人默认参与系统，任务负责人默认参与任务。",
+      "管理可见性不授予执行资格。",
+      "任务名单为独立快照，系统资格实时校验。"
+    ],
+    "constraints": [
+      "保留现有Java包和模块边界",
+      "本轮只写文档",
+      "数据库只追加迁移",
+      "前后端共同权限控制"
+    ],
+    "non_goals": [
+      "跨计划或跨项目聚合看板",
+      "新建任务体系",
+      "修改其他业务模块",
+      "引入动态表单"
+    ],
+    "selected_approach": {
+      "name": "默认带入、任务独立维护、资格实时校验",
+      "reason": "满足系统默认分工与任务后续调整，同时避免历史名单残留越权",
+      "alternatives": [
+        {
+          "name": "系统内全员执行全部任务",
+          "rejected_because": "不能表达任务分工"
+        },
+        {
+          "name": "持续全量同步",
+          "rejected_because": "覆盖独立分工并扩大权限"
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "架构模块参与关系、任务执行和查询、资源申请、看板及关联入口"
+        ],
+        "outside": [
+          "平台用户/权限实现",
+          "其他业务模块"
+        ]
+      },
+      "components": [
+        {
+          "name": "参与资格",
+          "responsibility": "系统有效成员及实时校验",
+          "depends_on": []
+        },
+        {
+          "name": "任务分工",
+          "responsibility": "生成默认值及独立更新",
+          "depends_on": [
+            "参与资格"
+          ]
+        },
+        {
+          "name": "查询执行",
+          "responsibility": "个人范围、管理范围和执行权限",
+          "depends_on": [
+            "任务分工"
+          ]
+        },
+        {
+          "name": "资源申请",
+          "responsibility": "目标系统和申请人校验",
+          "depends_on": [
+            "参与资格"
+          ]
+        },
+        {
+          "name": "敏捷看板",
+          "responsibility": "四列个人任务和管理入口",
+          "depends_on": [
+            "查询执行"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "统一系统参与资格",
+          "producer": "参与资格",
+          "consumers": [
+            "任务分工",
+            "查询执行",
+            "资源申请"
+          ],
+          "contract": "T1冻结候选requireSystemParticipant与ParticipationView，租户/项目隔离"
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "系统负责人及显式成员",
+          "transitions": [
+            "生成任务默认值",
+            "任务级调整",
+            "实时校验系统资格"
+          ],
+          "output": "个人可见任务和合法执行动作"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "无资格",
+        "behavior": "不可见对象不存在；可见对象动作禁止",
+        "recovery": "合法分派或人员维护后重试"
+      },
+      {
+        "condition": "版本冲突",
+        "behavior": "拒绝覆盖并提示刷新",
+        "recovery": "刷新后重新提交"
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "查询和写入同一实体范围，管理员不豁免执行"
+      ],
+      "performance": [
+        "批量成员查询，分页前过滤"
+      ],
+      "compatibility": [
+        "保留旧任务名单和历史审计"
+      ],
+      "operations": [
+        "追加迁移，异常负责人先移交"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R3",
+          "R8"
+        ],
+        "signal": [
+          "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+          "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。"
+        ],
+        "method": "T1聚焦测试与集成验收"
+      },
+      {
+        "requirement_ids": [
+          "R2",
+          "R3",
+          "R8"
+        ],
+        "signal": [
+          "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+          "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+          "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+        ],
+        "method": "T2聚焦测试与集成验收"
+      },
+      {
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R7"
+        ],
+        "signal": [
+          "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+          "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+          "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+        ],
+        "method": "T3聚焦测试与集成验收"
+      },
+      {
+        "requirement_ids": [
+          "R6",
+          "R7"
+        ],
+        "signal": [
+          "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+          "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+          "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+          "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+        ],
+        "method": "T4聚焦测试与集成验收"
+      },
+      {
+        "requirement_ids": [
+          "R2",
+          "R4",
+          "R5",
+          "R8"
+        ],
+        "signal": [
+          "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+          "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+          "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+        ],
+        "method": "T5聚焦测试与集成验收"
+      },
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "R6",
+          "R7",
+          "R8"
+        ],
+        "signal": [
+          "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+          "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+          "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+        ],
+        "method": "T6聚焦测试与集成验收"
+      }
+    ],
+    "assumptions": [],
+    "unknowns": [],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "任务负责人默认系统负责人且后续可修改",
+        "reason": "用户明确要求",
+        "source": "当前会话"
+      },
+      {
+        "id": "D2",
+        "decision": "管理者可看授权范围全貌但不得越权执行",
+        "reason": "用户明确同意",
+        "source": "当前会话"
+      },
+      {
+        "id": "D3",
+        "decision": "原位替换搭建计划详情已有看板，固定当前计划，不新增跨计划聚合。",
+        "reason": "纠正此前范围扩大",
+        "source": "2026-09-06用户明确：敏捷看板应该替代搭建计划里原来的看板。"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "存量任务成员不满足新资格",
+        "impact": "被禁止执行",
+        "mitigation": "上线前差异报告及责任移交"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户确认默认参与人、默认负责人及管理不越权执行；随后同意整理正式需求和计划。此确认不等于审批本实施计划。 用户进一步明确看板原位替换当前计划原看板。",
+      "confirmed_at": "2026-09-06T15:57:51+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 2,
+    "human_document": "docs/requirements/REQ-20260906-066-subsystem-participation/implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "保留现有Java包和模块边界",
+      "本轮只写文档",
+      "数据库只追加迁移",
+      "前后端共同权限控制"
+    ],
+    "file_map": [
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+        "status": "existing",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "status": "existing",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/api.ts",
+        "status": "existing",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/types.ts",
+        "status": "existing",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+        "status": "candidate-new",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+        "status": "candidate-new",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java",
+        "status": "candidate-new",
+        "responsibility": "系统参与关系与统一资格契约",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java",
+        "status": "existing",
+        "responsibility": "任务展开默认负责人、参与人及独立分派",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+        "status": "existing",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+        "status": "existing",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/PlanListPage.vue",
+        "status": "existing",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/PlanDetailPage.vue",
+        "status": "existing",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/planApi.ts",
+        "status": "existing",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java",
+        "status": "candidate-new",
+        "responsibility": "任务展开默认负责人、参与人及独立分派",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanEngine.java",
+        "status": "existing",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java",
+        "status": "existing",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+        "status": "existing",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java",
+        "status": "existing",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanTimeService.java",
+        "status": "existing",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
+        "status": "candidate-new",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java",
+        "status": "candidate-new",
+        "responsibility": "任务执行授权及个人/管理读取闭环",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderService.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/ResourceRequestPage.vue",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/InstanceListPage.vue",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/DeploymentUnitPage.vue",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/NetworkAccessPage.vue",
+        "status": "existing",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
+        "status": "candidate-new",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkParticipationTest.java",
+        "status": "candidate-new",
+        "responsibility": "资源申请及关联业务权限闭环",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "web/src/modules/architecture/architecture.css",
+        "status": "existing",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "本轮只读路径核验"
+      },
+      {
+        "path": "web/src/modules/architecture/components/PersonalTaskBoard.vue",
+        "status": "candidate-new",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java",
+        "status": "candidate-new",
+        "responsibility": "替换当前搭建计划原有看板及分工交互",
+        "evidence": "实施候选，尚未写入产品文件"
+      },
+      {
+        "path": "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java",
+        "status": "candidate-new",
+        "responsibility": "存量迁移、端到端权限回归与交付验收",
+        "evidence": "实施候选，尚未写入产品文件"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "系统参与关系与统一资格契约",
+        "requirement_ids": [
+          "R1",
+          "R3",
+          "R8"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "既有系统负责人字段、平台公开用户/项目能力"
+        ],
+        "files": {
+          "create": [
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/SubsystemParticipationService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/SubsystemParticipationStore.java",
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java"
+          ],
+          "modify": [
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/PhysicalSubsystemService.java",
+            "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+            "web/src/modules/architecture/api.ts",
+            "web/src/modules/architecture/types.ts"
+          ],
+          "test": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/SubsystemParticipationServiceTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "既有系统负责人字段、平台公开用户/项目能力"
+          ],
+          "produces": [
+            "候选 ParticipationView(ownerUserId, explicitParticipantUserIds, effectiveParticipantUserIds, rowVersion)",
+            "候选 requireSystemParticipant(actor, projectId, subsystemId)；后续任务只调用统一资格服务"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "按验收矩阵在列出的测试文件建立失败测试，先确认旧实现不满足目标；既有行为已通过者记录基准。",
+            "command": null,
+            "expected": "同项目系统A/B成员严格隔离；有效集合去重且含负责人。；系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T1.json"
+          },
+          {
+            "id": "T1-S2",
+            "action": "运行聚焦测试，记录基准及失败原因，不将编译错误冒充业务失败。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest -Dsurefire.failIfNoSpecifiedTests=false",
+            "expected": "新需求断言在实现前失败或既有行为基准通过，退出码与原因可追踪",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T1.json"
+          },
+          {
+            "id": "T1-S3",
+            "action": "冻结读取/更新人员API、任务分工DTO、管理权限码映射和精确追加迁移路径；再实现参与关系存储与系统详情人员维护。迁移路径未授权前不得写SQL。",
+            "command": null,
+            "expected": "仅修改批准后的任务文件和迁移，不触碰其他任务改动",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T1.json"
+          },
+          {
+            "id": "T1-S4",
+            "action": "重复聚焦测试并执行架构模块回归；前端任务同时生产构建。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=SubsystemParticipationServiceTest -Dsurefire.failIfNoSpecifiedTests=false; mvn -pl :ccb-architecture -am test; npm --prefix web run build",
+            "expected": "分别记录每条命令退出码，均为0且无断言失败",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-T1.json"
+          },
+          {
+            "id": "T1-S5",
+            "action": "检查差异后只暂存当前任务明确文件，建立小步提交。实施分支获授权后执行，不能git add全仓。",
+            "command": "git diff --check",
+            "expected": "无空白错误，无范围外修改；提交信息：feat: 系统参与关系与统一资格契约",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T1.json"
+          }
+        ],
+        "acceptance_checks": [
+          "同项目系统A/B成员严格隔离；有效集合去重且含负责人。",
+          "系统负责人退出或用户停用后实时失效；退出前阻塞未完责任移交；成员版本冲突不覆盖他人修改。"
+        ],
+        "risks": [
+          "权限收紧可能使存量任务需要移交；不能以放宽授权解决。"
+        ],
+        "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+        "stop_conditions": [
+          "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+        ],
+        "escalation_conditions": [
+          "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "任务展开默认负责人、参与人及独立分派",
+        "requirement_ids": [
+          "R2",
+          "R3",
+          "R8"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "T1 ParticipationView及requireSystemParticipant"
+        ],
+        "files": {
+          "create": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java"
+          ],
+          "modify": [
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanGenerationService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+            "web/src/modules/architecture/PlanListPage.vue",
+            "web/src/modules/architecture/PlanDetailPage.vue",
+            "web/src/modules/architecture/planApi.ts"
+          ],
+          "test": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationGenerationTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1 ParticipationView及requireSystemParticipant"
+          ],
+          "produces": [
+            "生成预览：模板任务+目标类型+目标ID稳定键、ownerUserId、participantUserIds",
+            "生成提交和分派更新：校验有效系统人员；负责人原子加入任务参与人"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "按验收矩阵在列出的测试文件建立失败测试，先确认旧实现不满足目标；既有行为已通过者记录基准。",
+            "command": null,
+            "expected": "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。；按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。；更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T2.json"
+          },
+          {
+            "id": "T2-S2",
+            "action": "运行聚焦测试，记录基准及失败原因，不将编译错误冒充业务失败。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationGenerationTest -Dsurefire.failIfNoSpecifiedTests=false",
+            "expected": "新需求断言在实现前失败或既有行为基准通过，退出码与原因可追踪",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T2.json"
+          },
+          {
+            "id": "T2-S3",
+            "action": "修改生成预览/提交及任务分派，采用任务级覆盖而非计划全局名单覆盖所有展开任务；创建提交重新校验预览以来的资格变化。",
+            "command": null,
+            "expected": "仅修改批准后的任务文件和迁移，不触碰其他任务改动",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T2.json"
+          },
+          {
+            "id": "T2-S4",
+            "action": "重复聚焦测试并执行架构模块回归；前端任务同时生产构建。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationGenerationTest -Dsurefire.failIfNoSpecifiedTests=false; mvn -pl :ccb-architecture -am test; npm --prefix web run build",
+            "expected": "分别记录每条命令退出码，均为0且无断言失败",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-T2.json"
+          },
+          {
+            "id": "T2-S5",
+            "action": "检查差异后只暂存当前任务明确文件，建立小步提交。实施分支获授权后执行，不能git add全仓。",
+            "command": "git diff --check",
+            "expected": "无空白错误，无范围外修改；提交信息：feat: 任务展开默认负责人、参与人及独立分派",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T2.json"
+          }
+        ],
+        "acceptance_checks": [
+          "系统A负责人甲、成员乙丙展开后默认甲负责、甲乙丙参与；单任务改乙负责只影响该任务。",
+          "按部署单元取其所属系统；无负责人不能提交；新系统成员不进入旧任务；修改系统负责人不重写任务。",
+          "更换任务负责人后旧人保留参与；公共任务按项目资格校验，不依赖虚构系统。"
+        ],
+        "risks": [
+          "权限收紧可能使存量任务需要移交；不能以放宽授权解决。"
+        ],
+        "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+        "stop_conditions": [
+          "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+        ],
+        "escalation_conditions": [
+          "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+        ]
+      },
+      {
+        "id": "T3",
+        "goal": "任务执行授权及个人/管理读取闭环",
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R7"
+        ],
+        "prerequisites": [
+          "T2"
+        ],
+        "input_facts": [
+          "T1统一系统资格",
+          "T2任务分工"
+        ],
+        "files": {
+          "create": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java"
+          ],
+          "modify": [
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanEngine.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanExecutionService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanBlockService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanTimeService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/persistence/PlanStore.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+            "web/src/modules/architecture/PlanDetailPage.vue",
+            "web/src/modules/architecture/planApi.ts"
+          ],
+          "test": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PlanParticipationAuthorizationTest.java",
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1统一系统资格",
+            "T2任务分工"
+          ],
+          "produces": [
+            "个人查询 view=mine 与有管理资格的 view=management",
+            "服务端对象 canView/canManage/canExecute；管理员不豁免requireTaskExecutor"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T3-S1",
+            "action": "按验收矩阵在列出的测试文件建立失败测试，先确认旧实现不满足目标；既有行为已通过者记录基准。",
+            "command": null,
+            "expected": "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。；个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。；任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T3.json"
+          },
+          {
+            "id": "T3-S2",
+            "action": "运行聚焦测试，记录基准及失败原因，不将编译错误冒充业务失败。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationAuthorizationTest,PlanParticipationControllerTest -Dsurefire.failIfNoSpecifiedTests=false",
+            "expected": "新需求断言在实现前失败或既有行为基准通过，退出码与原因可追踪",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T3.json"
+          },
+          {
+            "id": "T3-S3",
+            "action": "将查询范围下推SQL，拆分管理与执行判断，去掉管理员执行放行；所有检查项和任务写入口回溯任务、系统和项目校验，事务内防止撤销竞态。",
+            "command": null,
+            "expected": "仅修改批准后的任务文件和迁移，不触碰其他任务改动",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T3.json"
+          },
+          {
+            "id": "T3-S4",
+            "action": "重复聚焦测试并执行架构模块回归；前端任务同时生产构建。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=PlanParticipationAuthorizationTest,PlanParticipationControllerTest -Dsurefire.failIfNoSpecifiedTests=false; mvn -pl :ccb-architecture -am test; npm --prefix web run build",
+            "expected": "分别记录每条命令退出码，均为0且无断言失败",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-T3.json"
+          },
+          {
+            "id": "T3-S5",
+            "action": "检查差异后只暂存当前任务明确文件，建立小步提交。实施分支获授权后执行，不能git add全仓。",
+            "command": "git diff --check",
+            "expected": "无空白错误，无范围外修改；提交信息：feat: 任务执行授权及个人/管理读取闭环",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T3.json"
+          }
+        ],
+        "acceptance_checks": [
+          "仅系统成员但非任务人员不能执行；管理者能查看授权计划全部任务但启动/勾选/重开返回禁止。",
+          "个人列表、详情、报告、时间视图、分页总数仅含合法本人任务；不可见前置任务不返回详情。",
+          "任务参与人被移除后，重放旧完成请求失败；取消/恢复仍保留原管理职责与审计。"
+        ],
+        "risks": [
+          "权限收紧可能使存量任务需要移交；不能以放宽授权解决。"
+        ],
+        "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+        "stop_conditions": [
+          "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+        ],
+        "escalation_conditions": [
+          "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+        ]
+      },
+      {
+        "id": "T4",
+        "goal": "资源申请及关联业务权限闭环",
+        "requirement_ids": [
+          "R6",
+          "R7"
+        ],
+        "prerequisites": [
+          "T3"
+        ],
+        "input_facts": [
+          "T1统一系统资格",
+          "T3任务可见与执行能力"
+        ],
+        "files": {
+          "create": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkParticipationTest.java"
+          ],
+          "modify": [
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/service/EnvironmentResourceService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/persistence/EnvironmentResourceStore.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanWorkOrderService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanNotificationService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkWorkOrderService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/network/service/NetworkAccessService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+            "web/src/modules/architecture/ResourceRequestPage.vue",
+            "web/src/modules/architecture/InstanceListPage.vue",
+            "web/src/modules/architecture/DeploymentUnitPage.vue",
+            "web/src/modules/architecture/NetworkAccessPage.vue"
+          ],
+          "test": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/service/ResourceRequestParticipationTest.java",
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/network/service/NetworkParticipationTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1统一系统资格",
+            "T3任务可见与执行能力"
+          ],
+          "produces": [
+            "资源申请目标筛选与逐项实体授权",
+            "通知及关联工单目标授权；流程办理不依赖申请人参与身份"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T4-S1",
+            "action": "按验收矩阵在列出的测试文件建立失败测试，先确认旧实现不满足目标；既有行为已通过者记录基准。",
+            "command": null,
+            "expected": "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。；被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。；源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。；资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T4.json"
+          },
+          {
+            "id": "T4-S2",
+            "action": "运行聚焦测试，记录基准及失败原因，不将编译错误冒充业务失败。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=ResourceRequestParticipationTest,NetworkParticipationTest -Dsurefire.failIfNoSpecifiedTests=false",
+            "expected": "新需求断言在实现前失败或既有行为基准通过，退出码与原因可追踪",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T4.json"
+          },
+          {
+            "id": "T4-S3",
+            "action": "收紧业务选择源和写入服务，保留申请人规则及流程回调职责；逐一盘点实际附件、报告、通知入口，无该入口的对象记录不适用证据。",
+            "command": null,
+            "expected": "仅修改批准后的任务文件和迁移，不触碰其他任务改动",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T4.json"
+          },
+          {
+            "id": "T4-S4",
+            "action": "重复聚焦测试并执行架构模块回归；前端任务同时生产构建。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=ResourceRequestParticipationTest,NetworkParticipationTest -Dsurefire.failIfNoSpecifiedTests=false; mvn -pl :ccb-architecture -am test; npm --prefix web run build",
+            "expected": "分别记录每条命令退出码，均为0且无断言失败",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-T4.json"
+          },
+          {
+            "id": "T4-S5",
+            "action": "检查差异后只暂存当前任务明确文件，建立小步提交。实施分支获授权后执行，不能git add全仓。",
+            "command": "git diff --check",
+            "expected": "无空白错误，无范围外修改；提交信息：feat: 资源申请及关联业务权限闭环",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T4.json"
+          }
+        ],
+        "acceptance_checks": [
+          "申请人参与A不参与B，混合A/B部署单元申请整体拒绝；创建、复制、编辑、提交均拒绝替换目标ID。",
+          "被移除人员的草稿不能提交；审批人/办理人未参与系统仍能履行已分配流程动作。",
+          "源系统参与人可以申请合法目录目标网络访问，不需要加入目标系统；非法目标和不可见工单关联拒绝。",
+          "资源、附件、通知跳转、搜索与导出按对象范围校验，既有平台能力不足时停止该接入而非修改平台绕过。"
+        ],
+        "risks": [
+          "权限收紧可能使存量任务需要移交；不能以放宽授权解决。"
+        ],
+        "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+        "stop_conditions": [
+          "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+        ],
+        "escalation_conditions": [
+          "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+        ]
+      },
+      {
+        "id": "T5",
+        "goal": "替换当前搭建计划原有看板及分工交互",
+        "requirement_ids": [
+          "R2",
+          "R4",
+          "R5",
+          "R8"
+        ],
+        "prerequisites": [
+          "T4"
+        ],
+        "input_facts": [
+          "T3个人/管理读取和对象能力",
+          "T2分工预览及更新接口"
+        ],
+        "files": {
+          "create": [
+            "web/src/modules/architecture/components/PersonalTaskBoard.vue",
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java"
+          ],
+          "modify": [
+            "web/src/modules/architecture/PlanDetailPage.vue",
+            "web/src/modules/architecture/planApi.ts",
+            "web/src/modules/architecture/architecture.css",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+            "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java"
+          ],
+          "test": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T3个人/管理读取和对象能力",
+            "T2分工预览及更新接口"
+          ],
+          "produces": [
+            "当前计划原有看板原位替换为四列敏捷看板，固定planId，不新增跨计划筛选",
+            "同一看板内授权管理者切换当前计划全部任务，手机状态页签和单列任务卡片"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T5-S1",
+            "action": "按验收矩阵在列出的测试文件建立失败测试，先确认旧实现不满足目标；既有行为已通过者记录基准。",
+            "command": null,
+            "expected": "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。；看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。；切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T5.json"
+          },
+          {
+            "id": "T5-S2",
+            "action": "运行聚焦测试，记录基准及失败原因，不将编译错误冒充业务失败。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=PersonalTaskBoardTest -Dsurefire.failIfNoSpecifiedTests=false",
+            "expected": "新需求断言在实现前失败或既有行为基准通过，退出码与原因可追踪",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T5.json"
+          },
+          {
+            "id": "T5-S3",
+            "action": "在PlanDetailPage.vue现有看板页签原位替换内容，可抽取本模块组件；复用UiToolbar、卡片/抽屉和语义色，不新增看板路由或跨计划聚合，不新建状态机，不提供拖拽绕过检查项完成。",
+            "command": null,
+            "expected": "仅修改批准后的任务文件和迁移，不触碰其他任务改动",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T5.json"
+          },
+          {
+            "id": "T5-S4",
+            "action": "重复聚焦测试并执行架构模块回归；前端任务同时生产构建。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=PersonalTaskBoardTest -Dsurefire.failIfNoSpecifiedTests=false; mvn -pl :ccb-architecture -am test; npm --prefix web run build",
+            "expected": "分别记录每条命令退出码，均为0且无断言失败",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-T5.json"
+          },
+          {
+            "id": "T5-S5",
+            "action": "检查差异后只暂存当前任务明确文件，建立小步提交。实施分支获授权后执行，不能git add全仓。",
+            "command": "git diff --check",
+            "expected": "无空白错误，无范围外修改；提交信息：feat: 替换当前搭建计划原有看板及分工交互",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T5.json"
+          }
+        ],
+        "acceptance_checks": [
+          "NOT_STARTED/IN_PROGRESS/COMPLETED/BLOCKED与WAITING_PRECEDING准确分列，取消默认隐藏，计数与实际本人卡片一致。",
+          "看板默认仅展示当前计划本人相关任务；管理者可在同一看板切换当前计划全部任务，无执行资格不显示执行操作；其他计划任务不得混入。",
+          "切项目晚到响应不得覆盖新项目；375/390/430宽无整页横溢；明暗主题、提交失败和无权限有明确反馈。"
+        ],
+        "risks": [
+          "权限收紧可能使存量任务需要移交；不能以放宽授权解决。"
+        ],
+        "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+        "stop_conditions": [
+          "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+        ],
+        "escalation_conditions": [
+          "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+        ]
+      },
+      {
+        "id": "T6",
+        "goal": "存量迁移、端到端权限回归与交付验收",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "R6",
+          "R7",
+          "R8"
+        ],
+        "prerequisites": [
+          "T5"
+        ],
+        "input_facts": [
+          "T1-T5契约与迁移",
+          "原始系统负责人及既有任务人员"
+        ],
+        "files": {
+          "create": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
+          ],
+          "modify": [],
+          "test": [
+            "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/ParticipationProjectIsolationMySqlTest.java"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1-T5契约与迁移",
+            "原始系统负责人及既有任务人员"
+          ],
+          "produces": [
+            "权限矩阵证据、迁移差异报告、浏览器验收和上线/安全回退清单"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T6-S1",
+            "action": "按验收矩阵在列出的测试文件建立失败测试，先确认旧实现不满足目标；既有行为已通过者记录基准。",
+            "command": null,
+            "expected": "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。；两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。；完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T6.json"
+          },
+          {
+            "id": "T6-S2",
+            "action": "运行聚焦测试，记录基准及失败原因，不将编译错误冒充业务失败。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=ParticipationProjectIsolationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+            "expected": "新需求断言在实现前失败或既有行为基准通过，退出码与原因可追踪",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T6.json"
+          },
+          {
+            "id": "T6-S3",
+            "action": "用虚构数据重放权限矩阵和并发撤销场景，追加权限集成测试，执行全部验证并记录独立观测；问题回到对应任务修正后重测。",
+            "command": null,
+            "expected": "仅修改批准后的任务文件和迁移，不触碰其他任务改动",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T6.json"
+          },
+          {
+            "id": "T6-S4",
+            "action": "重复聚焦测试并执行架构模块回归；前端任务同时生产构建。",
+            "command": "mvn -pl :ccb-architecture -am test -Dtest=ParticipationProjectIsolationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false; mvn -pl :ccb-architecture -am test",
+            "expected": "分别记录每条命令退出码，均为0且无断言失败",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/observation-T6.json"
+          },
+          {
+            "id": "T6-S5",
+            "action": "检查差异后只暂存当前任务明确文件，建立小步提交。实施分支获授权后执行，不能git add全仓。",
+            "command": "git diff --check",
+            "expected": "无空白错误，无范围外修改；提交信息：feat: 存量迁移、端到端权限回归与交付验收",
+            "evidence": ".ai-control/requirements/req-20260906-066-subsystem-participation/execution-T6.json"
+          }
+        ],
+        "acceptance_checks": [
+          "新建数据库与升级数据库均满足关系唯一约束；旧任务名单未批量扩大；异常负责人被识别且不能执行。",
+          "两个项目、两系统、管理员、任务成员、仅系统成员、退出成员、审批/办理人全矩阵通过。",
+          "完整测试、生产构建和全部指定视口实测记录；未执行部分不写通过。"
+        ],
+        "risks": [
+          "权限收紧可能使存量任务需要移交；不能以放宽授权解决。"
+        ],
+        "rollback": "回退本任务独立提交，保留成员和审计数据；权限故障先暂停受影响写入口，不能恢复旧宽权限。",
+        "stop_conditions": [
+          "计划未批准、实际路径未纳入scope、迁移版本未授权或测试出现越权时停止推进。"
+        ],
+        "escalation_conditions": [
+          "需要改平台/公共能力/其他模块、变更管理角色语义或覆盖他人改动时提交Owner及用户复核。"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "后续任务消费前序任务已验证的参与资格与业务契约，共享文件串行修改。"
+      },
+      {
+        "from": "T2",
+        "to": "T3",
+        "reason": "后续任务消费前序任务已验证的参与资格与业务契约，共享文件串行修改。"
+      },
+      {
+        "from": "T3",
+        "to": "T4",
+        "reason": "后续任务消费前序任务已验证的参与资格与业务契约，共享文件串行修改。"
+      },
+      {
+        "from": "T4",
+        "to": "T5",
+        "reason": "后续任务消费前序任务已验证的参与资格与业务契约，共享文件串行修改。"
+      },
+      {
+        "from": "T5",
+        "to": "T6",
+        "reason": "后续任务消费前序任务已验证的参与资格与业务契约，共享文件串行修改。"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1"
+      ],
+      [
+        "T2"
+      ],
+      [
+        "T3"
+      ],
+      [
+        "T4"
+      ],
+      [
+        "T5"
+      ],
+      [
+        "T6"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "mvn -pl :ccb-architecture -am test",
+        "expected": "退出码0，分别保留输出；不能用构建代替运行验收"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "mvn test",
+        "expected": "退出码0，分别保留输出；不能用构建代替运行验收"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "退出码0，分别保留输出；不能用构建代替运行验收"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "node scripts/check-all-governance.mjs",
+        "expected": "退出码0，分别保留输出；不能用构建代替运行验收"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "node scripts/check-flyway-migrations.mjs",
+        "expected": "退出码0，分别保留输出；不能用构建代替运行验收"
+      },
+      {
+        "after_tasks": [
+          "T6"
+        ],
+        "command": "git diff --check",
+        "expected": "退出码0，分别保留输出；不能用构建代替运行验收"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T1",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T2",
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T1",
+          "T2",
+          "T3",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T3",
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": [
+          "T5",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R6",
+        "task_ids": [
+          "T4",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R7",
+        "task_ids": [
+          "T3",
+          "T4",
+          "T6"
+        ]
+      },
+      {
+        "requirement_id": "R8",
+        "task_ids": [
+          "T1",
+          "T2",
+          "T5",
+          "T6"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "2026-09-06 用户在修订2明确原位替换当前搭建计划看板后回复“可以”，批准该修订。实施路径授权和Owner审批另行核验。",
+      "confirmed_at": "2026-09-06T16:02:47+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "架构系统参与关系、计划执行/查询、资源申请"
+    ],
+    "state_variable_candidates": [
+      "系统有效成员",
+      "任务负责人和参与人",
+      "项目资格",
+      "任务状态",
+      "版本"
+    ],
+    "interface_candidates": [
+      "ParticipationView",
+      "requireSystemParticipant",
+      "个人/管理查询"
+    ],
+    "sensor_candidates": [
+      "聚焦JUnit测试",
+      "MySQL权限集成测试",
+      "浏览器接口和布局证据"
+    ],
+    "actuator_candidates": [
+      "受控代码修改",
+      "追加迁移",
+      "任务人员移交"
+    ],
+    "disturbance_candidates": [
+      "并发人员撤销",
+      "系统负责人变更",
+      "旧页面请求",
+      "存量异常人员"
+    ],
+    "delay_candidates": [
+      "前端缓存与晚到响应",
+      "事务并发"
+    ],
+    "assumptions": []
+  }
+}

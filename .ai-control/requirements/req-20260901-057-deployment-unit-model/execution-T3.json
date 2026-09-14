@@ -1,0 +1,27 @@
+{
+  "task_id":"T3",
+  "status":"partial",
+  "changed_surfaces":[
+    {"path_or_resource":"docs/integration/architecture-module-contract.md","purpose":"同步新 DTO、三类型、关联 options 和导入五列契约"},
+    {"path_or_resource":"docs/requirements/REQ-20260901-057-deployment-unit-model/**","purpose":"记录需求、范围和验收约束"},
+    {"path_or_resource":".ai-control/requirements/req-20260901-057-deployment-unit-model/*.json","purpose":"记录控制闭环证据"}
+  ],
+  "requirements_addressed":["R1","R5","R6","R7","R8"],
+  "commands":[
+    {"command":"node scripts/check-flyway-migrations.mjs","exit_code":0,"salient_output":"115 migrations 和 1 approved callback 通过"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误，仅 LF/CRLF 提示"},
+    {"command":"旧字段/MQ 运行代码和契约扫描","exit_code":0,"salient_output":"无业务残留；合法迁移/兼容测试上下文除外"},
+    {"command":"docker version","exit_code":1,"salient_output":"dockerDesktopLinuxEngine 命名管道不存在"}
+  ],
+  "local_checks":[
+    {"check":"公开契约一致性","result":"pass","evidence":"Java、TypeScript、HTTP 文档均使用 name/kind/relatedDeploymentUnits 与三类型","limitations":["真实 HTTP 未联调"]},
+    {"check":"浏览器业务旅程","result":"pass","evidence":"创建、详情双向展示、409 保留输入、脏表单确认、搜索失败保留已选、四视口明暗主题均已验证","limitations":["临时内存 Mock API"]},
+    {"check":"真实 API/SQL/审计","result":"blocked","evidence":"Docker/MySQL 不可达","limitations":["关系外键、事务、迁移和审计运行证据缺失"]}
+  ],
+  "diff_summary":["公开契约同步新部署单元模型","Mock 文件未保留无效或非幂等数据差异","浏览器与自动化证据已记录"],
+  "invariants_checked":[{"invariant":"不修改其他任务账本和历史治理噪声","result":"pass","evidence":"仅写当前控制前缀"},{"invariant":"不连接生产或真实敏感数据","result":"pass","evidence":"仅本地代码、临时 Mock API 和测试数据"}],
+  "disturbances":["Docker Desktop Linux 引擎不可达；全局 scope/governance 检查包含其他历史任务文件噪声，未修改。"],
+  "assumptions_falsified":[],
+  "unresolved_items":["Testcontainers MySQL 四项聚焦测试未运行","真实 API/SQL/审计尚未闭合"],
+  "recommended_next":"observe"
+}

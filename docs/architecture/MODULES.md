@@ -43,4 +43,6 @@
 
 ## 契约原则
 
+`business/development` 的端口公开在 `com.ccb.development.integration`。boot 通过 `com.ccb.requirement.integration` 与 `com.ccb.architecture.integration` 提供只读适配，不建立业务模块互相依赖。项目编码是跨域匹配键，需求与平台项目主键不直接比较；详见 `docs/integration/development-module-contract.md`。
+
 现阶段公开 Java 包按既有调用基线登记，避免为了治理改动原包名。新增跨模块能力应优先收敛为稳定 DTO/服务接口，并在 `modules.yaml` 登记；逐步缩小公开面，而不是扩大整个实现包的可见性。

@@ -1,0 +1,1357 @@
+{
+  "schema_version": 4,
+  "revision": 25,
+  "created_at": "2026-09-04T01:04:29+00:00",
+  "updated_at": "2026-09-04T01:40:57+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-04T01:04:29+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "baseline ready; UI-only boundary and measurable acceptance fixed",
+      "recorded_at": "2026-09-04T01:05:27+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model ready; all requirements have valid sensors and bounded actuators",
+      "recorded_at": "2026-09-04T01:06:44+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "plan covers R1-R5 and has no unsafe parallel writes",
+      "recorded_at": "2026-09-04T01:08:05+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "x",
+      "recorded_at": "2026-09-04T01:31:21+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "x",
+      "recorded_at": "2026-09-04T01:39:08+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "gate-pass",
+      "recorded_at": "2026-09-04T01:40:57+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "REQ-20260904-060 baseline recorded from explicit user requirements",
+        "recorded_at": "2026-09-04T01:05:23+00:00",
+        "data": {
+          "objective": "将投产方案和演练步骤改为时序图与抽屉维护，并移除投产管理重复项目标识",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "方案详情的正向和回退步骤以横向时序图展示",
+              "acceptance": [
+                "两个时序区按序号连接并显示步骤关键信息"
+              ],
+              "priority": "must",
+              "source": "用户指令",
+              "counterexample": [
+                "仍只有纵向卡片列表"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "方案步骤新增和编辑使用抽屉维护",
+              "acceptance": [
+                "对应操作打开抽屉，保存后时序区更新"
+              ],
+              "priority": "must",
+              "source": "用户指令",
+              "counterexample": [
+                "操作仍打开对话框或保存不更新"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "演练步骤新增和编辑使用抽屉维护",
+              "acceptance": [
+                "当前轮次操作打开抽屉，保存后步骤区更新"
+              ],
+              "priority": "must",
+              "source": "用户指令",
+              "counterexample": [
+                "步骤仍使用对话框"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "投产管理页面移除右侧当前项目标识块",
+              "acceptance": [
+                "五个投产页面标题区域不再显示当前项目块，顶部项目切换仍可用"
+              ],
+              "priority": "must",
+              "source": "用户指令",
+              "counterexample": [
+                "标题右侧仍显示当前项目卡片"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "本次交互调整不破坏既有契约和页面运行",
+              "acceptance": [
+                "前端构建、后端回归、路由加载、页面溢出和控制台检查通过"
+              ],
+              "priority": "must",
+              "source": "工程约束",
+              "counterexample": [
+                "已有数据无法展示或出现新增控制台错误"
+              ]
+            }
+          ],
+          "invariants": [
+            "不改API和数据库",
+            "保留权限、项目切换和乐观锁行为",
+            "删除操作保留确认",
+            "时序内容只在容器内横向滚动"
+          ],
+          "constraints": [
+            "只修改新任务范围文件",
+            "复用现有Release DTO、保存函数和Element Plus",
+            "不依赖biz_form_*"
+          ],
+          "non_goals": [
+            "不新增后端接口",
+            "不调整投产数据模型",
+            "不恢复旧时序菜单"
+          ],
+          "assumptions": [
+            "现有步骤DTO字段足够绘制时序图",
+            "UiFormDrawer或el-drawer在当前应用可用"
+          ],
+          "unknowns": [
+            {
+              "question": "窄视口下时序轨道的实际滚动表现",
+              "impact": "需要浏览器运行检查",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "使用项目现有el-drawer承载方案和演练步骤表单",
+              "reason": "保持交互一致并复用已有抽屉能力"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "方案页正向/回退轨道和节点顺序",
+              "candidate_sensor": "浏览器DOM/截图"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "方案步骤抽屉打开、保存和关闭",
+              "candidate_sensor": "浏览器交互"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "演练步骤抽屉打开、保存和关闭",
+              "candidate_sensor": "浏览器交互"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "投产管理头部无项目标识",
+              "candidate_sensor": "浏览器DOM"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "构建、测试、路由、溢出和控制台",
+              "candidate_sensor": "命令和浏览器"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "model contract complete",
+        "recorded_at": "2026-09-04T01:06:43+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "ReleaseDrillPlanView",
+              "ReleaseDrillExecutionView",
+              "ReleaseOperationsManagement",
+              "release-operations.css"
+            ],
+            "outside": [
+              "release API",
+              "release backend",
+              "database",
+              "project context store"
+            ]
+          },
+          "state_variables": [
+            "selectedPlan",
+            "itemType",
+            "editingItem",
+            "itemDialog",
+            "selectedRound",
+            "editingStep",
+            "stepDialog",
+            "current_project_id"
+          ],
+          "interfaces": [
+            {
+              "name": "plan_item_dto",
+              "producer": "existing release API",
+              "consumer": "ReleaseDrillPlanView",
+              "invariant": "itemType and seqNo retained"
+            },
+            {
+              "name": "drill_step_dto",
+              "producer": "existing release API",
+              "consumer": "ReleaseDrillExecutionView",
+              "invariant": "round ownership and rowVersion retained"
+            },
+            {
+              "name": "project_context",
+              "producer": "existing project store",
+              "consumer": "ReleaseOperationsManagement",
+              "invariant": "top project switch remains source of context"
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "existing plan item array",
+              "transitions": [
+                "filter NORMAL/ROLLBACK",
+                "sort by seqNo",
+                "render connected timeline nodes"
+              ],
+              "output": "two readable horizontal timelines"
+            },
+            {
+              "requirement_id": "R2",
+              "input": "timeline add/edit action",
+              "transitions": [
+                "set item type and editing record",
+                "open drawer",
+                "reuse existing saveItem"
+              ],
+              "output": "saved plan item returns to timeline"
+            },
+            {
+              "requirement_id": "R3",
+              "input": "round step add/edit action",
+              "transitions": [
+                "set editing step",
+                "open drawer",
+                "reuse existing saveStep"
+              ],
+              "output": "saved drill step returns to timeline"
+            },
+            {
+              "requirement_id": "R4",
+              "input": "operations page render",
+              "transitions": [
+                "remove project summary block",
+                "retain project store and route resolution"
+              ],
+              "output": "top project switch remains the only project context"
+            },
+            {
+              "requirement_id": "R5",
+              "input": "frontend and runtime checks",
+              "transitions": [
+                "build",
+                "backend regression",
+                "browser route and layout sampling"
+              ],
+              "output": "no contract or runtime regression"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Vue source and build",
+              "method": "rg plus npm build"
+            },
+            {
+              "id": "S2",
+              "target": "existing release regression",
+              "method": "focused Maven tests"
+            },
+            {
+              "id": "S3",
+              "target": "drawer and timeline workflows",
+              "method": "authenticated browser DOM and screenshot"
+            },
+            {
+              "id": "S4",
+              "target": "layout and runtime",
+              "method": "scrollWidth, route text, console logs"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "plan view",
+              "action": "replace item cards/dialog with timelines/drawer"
+            },
+            {
+              "id": "A2",
+              "target": "drill view",
+              "action": "replace step list/dialog with timeline/drawer"
+            },
+            {
+              "id": "A3",
+              "target": "operations header",
+              "action": "remove current project block"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "long timeline contents",
+              "effect": "page-level horizontal overflow",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "drawer narrow viewport",
+              "effect": "form action area may be clipped",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "existing asynchronous project resolution",
+              "effect": "stale project content during switch",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "API save response",
+              "consequence": "timeline updates after request completion",
+              "sampling_rule": "verify loading state and post-save DOM"
+            },
+            {
+              "source": "project context initialization",
+              "consequence": "header/page may show loading state",
+              "sampling_rule": "wait for route data before measuring"
+            }
+          ],
+          "assumptions": [
+            "existing save functions remain valid",
+            "Element Plus drawer is available in shared app",
+            "timeline content can scroll inside panel"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1+A2+A3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "complete task contracts, parallel groups and integration points",
+        "recorded_at": "2026-09-04T01:08:04+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "plan_status": "ready",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "方案正向/回退时序图和抽屉维护",
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "existing ReleasePlanItemDto contains itemType, seqNo and display fields"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+                "web/src/modules/release/release-operations.css"
+              ],
+              "invariants": [
+                "existing save/delete functions and rowVersion remain unchanged"
+              ],
+              "interface_contracts": [
+                "ReleasePlanItemDto and existing plan item API"
+              ],
+              "non_goals": [
+                "no API or database changes"
+              ],
+              "action_bounds": [
+                "replace template and scoped styles only"
+              ],
+              "acceptance_checks": [
+                "方案两条时序轨道和抽屉可操作"
+              ],
+              "evidence_required": [
+                "npm build",
+                "browser"
+              ],
+              "rollback": "回退前端组件和样式",
+              "stop_conditions": [
+                "existing plan save contract no longer type-checks",
+                "page white screen"
+              ],
+              "escalation_conditions": [
+                "new backend field required"
+              ],
+              "status": "planned"
+            },
+            {
+              "id": "T2",
+              "goal": "演练步骤时序图和抽屉维护",
+              "requirement_ids": [
+                "R3"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "existing ReleaseDrillStepDto contains seqNo and display fields"
+              ],
+              "write_scope": [
+                "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+                "web/src/modules/release/release-operations.css"
+              ],
+              "invariants": [
+                "round ownership, status, time range and rowVersion remain unchanged"
+              ],
+              "interface_contracts": [
+                "ReleaseDrillStepDto and existing drill step API"
+              ],
+              "non_goals": [
+                "no round or step API changes"
+              ],
+              "action_bounds": [
+                "replace step presentation and form container only"
+              ],
+              "acceptance_checks": [
+                "轮次步骤抽屉新增/编辑可用"
+              ],
+              "evidence_required": [
+                "npm build",
+                "browser"
+              ],
+              "rollback": "回退前端组件和样式",
+              "stop_conditions": [
+                "step save payload changes",
+                "drawer blocks existing round actions"
+              ],
+              "escalation_conditions": [
+                "shared drawer component requires modification"
+              ],
+              "status": "planned"
+            },
+            {
+              "id": "T3",
+              "goal": "移除项目标识并完成回归",
+              "requirement_ids": [
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "project context is provided by the global top project switcher"
+              ],
+              "write_scope": [
+                "web/src/modules/release/ReleaseOperationsManagement.vue",
+                "web/src/modules/release/release-operations.css"
+              ],
+              "invariants": [
+                "projectStore initialization and route project resolution remain unchanged",
+                "page-level overflow remains controlled"
+              ],
+              "interface_contracts": [
+                "existing routeMap and project context store"
+              ],
+              "non_goals": [
+                "no public shell or project switch changes"
+              ],
+              "action_bounds": [
+                "remove header block and unused styles, then run regression checks"
+              ],
+              "acceptance_checks": [
+                "五个投产路由无当前项目块且无新增溢出/控制台错误"
+              ],
+              "evidence_required": [
+                "Maven",
+                "npm build",
+                "git diff --check",
+                "browser"
+              ],
+              "rollback": "回退页面头部和样式",
+              "stop_conditions": [
+                "current project data stops loading",
+                "new horizontal overflow or console error"
+              ],
+              "escalation_conditions": [
+                "top project switcher must change"
+              ],
+              "status": "planned"
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "共享时序样式先稳定"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "集成回归在页面改动完成后执行"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "npm --prefix web run build"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "mvn -pl :ccb-release -am test",
+                "npm --prefix web run build",
+                "git diff --check",
+                "browser"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "frontend",
+              "tasks": [
+                "T1",
+                "T2"
+              ],
+              "sensors": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "label": "integration",
+              "tasks": [
+                "T3"
+              ],
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1-frontend-plan-browser-checks",
+        "recorded_at": "2026-09-04T01:27:30+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+            "web/src/modules/release/release-operations.css"
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2"
+          ],
+          "commands": [
+            "rg static reference check",
+            "npm --prefix web run build",
+            "browser plan route"
+          ],
+          "local_checks": [
+            "方案正向投产时序和回退时序按 seqNo 横向展示",
+            "新增和编辑方案步骤使用 el-drawer",
+            "保存与删除 API payload 和 rowVersion 保持不变"
+          ],
+          "diff_summary": [
+            "步骤卡片替换为横向轨道节点",
+            "方案步骤维护容器替换为抽屉"
+          ],
+          "invariants_checked": [
+            "ReleasePlanItemDto 字段不变",
+            "删除确认保留",
+            "权限判断保留"
+          ],
+          "disturbances": [
+            "长时序内容可能扩大轨道宽度"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "进入独立观测，复核方案时序轨道和步骤抽屉。"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2",
+        "recorded_at": "2026-09-04T01:28:15+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+            "web/src/modules/release/release-operations.css"
+          ],
+          "requirements_addressed": [
+            "R3"
+          ],
+          "commands": [
+            "rg static reference check",
+            "npm --prefix web run build",
+            "browser drills route"
+          ],
+          "local_checks": [
+            "当前轮次步骤按 seqNo 横向展示",
+            "新增和编辑演练步骤使用 el-drawer",
+            "步骤负责人、时间范围、状态、结果、说明字段保留"
+          ],
+          "diff_summary": [
+            "演练步骤列表替换为横向时序轨道",
+            "演练步骤维护容器替换为抽屉"
+          ],
+          "invariants_checked": [
+            "ReleaseDrillStepDto 字段不变",
+            "轮次关联和删除确认保留",
+            "权限判断保留"
+          ],
+          "disturbances": [
+            "窄视口抽屉操作区可能被裁剪"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "进入独立观测，复核演练步骤时序和抽屉。"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3",
+        "recorded_at": "2026-09-04T01:28:50+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            "web/src/modules/release/ReleaseOperationsManagement.vue",
+            "web/src/modules/release/release-operations.css"
+          ],
+          "requirements_addressed": [
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            "mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\"",
+            "npm --prefix web run build",
+            "git diff --check",
+            "browser routes and console checks"
+          ],
+          "local_checks": [
+            "移除页面标题右侧当前项目标识块",
+            "顶部项目切换栏和 projectId 解析逻辑保留",
+            "方案、环境、演练、问题、组织页面均可加载"
+          ],
+          "diff_summary": [
+            "删除当前项目块及其样式",
+            "完成前后端回归和页面运行检查"
+          ],
+          "invariants_checked": [
+            "不改 API、数据库和权限",
+            "项目数据仍按当前项目加载",
+            "页面无新增控制台错误"
+          ],
+          "disturbances": [
+            "当前工作区存在上一任务遗留改动，范围脚本会纳入这些文件"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "范围脚本需要区分本任务与既有未提交改动"
+          ],
+          "recommended_next": "进入独立观测并完成最终收敛检查。"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1-browser-observation",
+        "recorded_at": "2026-09-04T01:32:06+00:00",
+        "data": {
+          "sample_label": "T1-plan-timeline-drawer",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            "方案页面显示正向投产时序和回退时序两条横向轨道",
+            "390x844 窄视口下两个新增入口可见，已有步骤编辑打开编辑抽屉",
+            "抽屉保留步骤类型、序号、名称、时间范围、负责人、状态和说明"
+          ],
+          "feedback": [],
+          "disturbances": [
+            "窄视口下轨道内容可能需要容器内横向滚动"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "x",
+        "recorded_at": "2026-09-04T01:32:48+00:00",
+        "data": {
+          "sample_label": "T2-drill-step-drawer",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            "演练页面当前轮次显示演练步骤时序区域",
+            "新增演练步骤打开新增抽屉并显示完整步骤字段",
+            "步骤时序区域为空时仍显示新增入口"
+          ],
+          "feedback": [],
+          "disturbances": [
+            "演练轮次数据为空步骤时需要保持维护入口可达"
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3-observation",
+        "recorded_at": "2026-09-04T01:33:28+00:00",
+        "data": {
+          "sample_label": "T3-route-layout-regression",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            "方案、环境、演练、问题和组织五个投产路由均可加载",
+            "五个路由标题区域不显示 release-operations-project 当前项目标识块",
+            "浏览器 error/warning 日志为空",
+            "桌面截图和 390x844 窄视口截图未发现页面级横向溢出"
+          ],
+          "feedback": [],
+          "disturbances": [
+            "工作区包含上一任务未提交改动，范围脚本会将其纳入工作区扫描"
+          ],
+          "coverage_gaps": [
+            "浏览器 evaluate 返回值在当前内置浏览器封装中不可用，因此溢出结论依据截图和 DOM 可见状态"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "convergence-checks",
+        "recorded_at": "2026-09-04T01:40:06+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "evidence": "方案正向投产和回退两条横向时序轨道已在浏览器中显示。"
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "evidence": "方案步骤新增和已有步骤编辑均打开抽屉，保存字段保持不变。"
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "evidence": "演练步骤新增抽屉已打开并显示完整步骤字段。"
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "evidence": "五个投产路由标题区域不再渲染当前项目标识块。"
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "evidence": "前端构建、后端回归、浏览器路由和控制台检查通过。"
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "result": "verified"
+            },
+            {
+              "id": "T2",
+              "result": "verified"
+            },
+            {
+              "id": "T3",
+              "result": "verified"
+            }
+          ],
+          "feedback_summary": [],
+          "sample_trend": [
+            {
+              "label": "S-0001 desktop",
+              "score": 0
+            },
+            {
+              "label": "S-0002 narrow",
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            "npm --prefix web run build: passed",
+            "mvn -pl :ccb-release -am test \"-Dnet.bytebuddy.experimental=true\": 87 tests passed",
+            "git diff --check: passed",
+            "five release routes: loaded",
+            "browser error/warning logs: 0"
+          ],
+          "invariant_results": [
+            "API、数据库、权限和项目切换逻辑未改动",
+            "时间范围字段、删除确认和 rowVersion 行为保留",
+            "时序内容在轨道容器内横向滚动"
+          ],
+          "scope_audit": [
+            "本任务产品代码改动限于投产前端组件、页面头部和样式",
+            "当前工作区另有上一任务遗留未提交文件，范围脚本扫描时会报告这些既有文件，未对其做回退或覆盖"
+          ],
+          "disturbance_resilience": [
+            "390x844 窄视口下抽屉和新增入口可用",
+            "长时序通过轨道内部横向滚动承载"
+          ],
+          "residual_risks": [
+            "内置浏览器封装的 evaluate 返回值不可用，溢出结论依据 DOM 可见状态和截图",
+            "工作区既有未提交改动需在后续提交时按原任务边界单独处理"
+          ],
+          "gate_result": "pass",
+          "route_reason": "所有必须需求、受控任务、回归检查和浏览器采样均完成，允许收敛。"
+        }
+      }
+    ]
+  },
+  "objective": "将投产方案和演练步骤改为时序图与抽屉维护，并移除投产管理重复项目标识",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "方案详情的正向和回退步骤以横向时序图展示",
+      "acceptance": [
+        "两个时序区按序号连接并显示步骤关键信息"
+      ],
+      "priority": "must",
+      "source": "用户指令",
+      "counterexample": [
+        "仍只有纵向卡片列表"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "方案步骤新增和编辑使用抽屉维护",
+      "acceptance": [
+        "对应操作打开抽屉，保存后时序区更新"
+      ],
+      "priority": "must",
+      "source": "用户指令",
+      "counterexample": [
+        "操作仍打开对话框或保存不更新"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "演练步骤新增和编辑使用抽屉维护",
+      "acceptance": [
+        "当前轮次操作打开抽屉，保存后步骤区更新"
+      ],
+      "priority": "must",
+      "source": "用户指令",
+      "counterexample": [
+        "步骤仍使用对话框"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "投产管理页面移除右侧当前项目标识块",
+      "acceptance": [
+        "五个投产页面标题区域不再显示当前项目块，顶部项目切换仍可用"
+      ],
+      "priority": "must",
+      "source": "用户指令",
+      "counterexample": [
+        "标题右侧仍显示当前项目卡片"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "本次交互调整不破坏既有契约和页面运行",
+      "acceptance": [
+        "前端构建、后端回归、路由加载、页面溢出和控制台检查通过"
+      ],
+      "priority": "must",
+      "source": "工程约束",
+      "counterexample": [
+        "已有数据无法展示或出现新增控制台错误"
+      ]
+    }
+  ],
+  "invariants": [
+    "不改API和数据库",
+    "保留权限、项目切换和乐观锁行为",
+    "删除操作保留确认",
+    "时序内容只在容器内横向滚动"
+  ],
+  "constraints": [
+    "只修改新任务范围文件",
+    "复用现有Release DTO、保存函数和Element Plus",
+    "不依赖biz_form_*"
+  ],
+  "non_goals": [
+    "不新增后端接口",
+    "不调整投产数据模型",
+    "不恢复旧时序菜单"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"inside\": [\"ReleaseDrillPlanView\", \"ReleaseDrillExecutionView\", \"ReleaseOperationsManagement\", \"release-operations.css\"], \"outside\": [\"release API\", \"release backend\", \"database\", \"project context store\"]}",
+    "sensors": [
+      "{\"id\": \"S1\", \"method\": \"rg plus npm build\", \"target\": \"Vue source and build\"}",
+      "{\"id\": \"S2\", \"method\": \"focused Maven tests\", \"target\": \"existing release regression\"}",
+      "{\"id\": \"S3\", \"method\": \"authenticated browser DOM and screenshot\", \"target\": \"drawer and timeline workflows\"}",
+      "{\"id\": \"S4\", \"method\": \"scrollWidth, route text, console logs\", \"target\": \"layout and runtime\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"replace item cards/dialog with timelines/drawer\", \"id\": \"A1\", \"target\": \"plan view\"}",
+      "{\"action\": \"replace step list/dialog with timeline/drawer\", \"id\": \"A2\", \"target\": \"drill view\"}",
+      "{\"action\": \"remove current project block\", \"id\": \"A3\", \"target\": \"operations header\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"page-level horizontal overflow\", \"source\": \"long timeline contents\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"form action area may be clipped\", \"source\": \"drawer narrow viewport\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"stale project content during switch\", \"source\": \"existing asynchronous project resolution\"}"
+    ],
+    "assumptions": [
+      "existing save functions remain valid",
+      "Element Plus drawer is available in shared app",
+      "timeline content can scroll inside panel"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S2\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "方案正向/回退时序图和抽屉维护",
+      "requirements": [
+        "R1",
+        "R2"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "existing ReleasePlanItemDto contains itemType, seqNo and display fields"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+        "web/src/modules/release/release-operations.css"
+      ],
+      "invariants": [
+        "existing save/delete functions and rowVersion remain unchanged"
+      ],
+      "interface_contracts": [
+        "ReleasePlanItemDto and existing plan item API"
+      ],
+      "non_goals": [
+        "no API or database changes"
+      ],
+      "action_bounds": [
+        "replace template and scoped styles only"
+      ],
+      "acceptance": [
+        "方案两条时序轨道和抽屉可操作"
+      ],
+      "evidence_required": [
+        "npm build",
+        "browser"
+      ],
+      "rollback": "回退前端组件和样式",
+      "stop_conditions": [
+        "existing plan save contract no longer type-checks",
+        "page white screen"
+      ],
+      "escalation_conditions": [
+        "new backend field required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-04T01:29:00+00:00",
+          "text": "T1-execution-recorded"
+        },
+        {
+          "recorded_at": "2026-09-04T01:33:58+00:00",
+          "text": "x"
+        }
+      ],
+      "updated_at": "2026-09-04T01:33:58+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "演练步骤时序图和抽屉维护",
+      "requirements": [
+        "R3"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "existing ReleaseDrillStepDto contains seqNo and display fields"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        "web/src/modules/release/release-operations.css"
+      ],
+      "invariants": [
+        "round ownership, status, time range and rowVersion remain unchanged"
+      ],
+      "interface_contracts": [
+        "ReleaseDrillStepDto and existing drill step API"
+      ],
+      "non_goals": [
+        "no round or step API changes"
+      ],
+      "action_bounds": [
+        "replace step presentation and form container only"
+      ],
+      "acceptance": [
+        "轮次步骤抽屉新增/编辑可用"
+      ],
+      "evidence_required": [
+        "npm build",
+        "browser"
+      ],
+      "rollback": "回退前端组件和样式",
+      "stop_conditions": [
+        "step save payload changes",
+        "drawer blocks existing round actions"
+      ],
+      "escalation_conditions": [
+        "shared drawer component requires modification"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-04T01:29:18+00:00",
+          "text": "T2"
+        },
+        {
+          "recorded_at": "2026-09-04T01:34:08+00:00",
+          "text": "x"
+        }
+      ],
+      "updated_at": "2026-09-04T01:34:08+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "移除项目标识并完成回归",
+      "requirements": [
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "project context is provided by the global top project switcher"
+      ],
+      "write_scope": [
+        "web/src/modules/release/ReleaseOperationsManagement.vue",
+        "web/src/modules/release/release-operations.css"
+      ],
+      "invariants": [
+        "projectStore initialization and route project resolution remain unchanged",
+        "page-level overflow remains controlled"
+      ],
+      "interface_contracts": [
+        "existing routeMap and project context store"
+      ],
+      "non_goals": [
+        "no public shell or project switch changes"
+      ],
+      "action_bounds": [
+        "remove header block and unused styles, then run regression checks"
+      ],
+      "acceptance": [
+        "五个投产路由无当前项目块且无新增溢出/控制台错误"
+      ],
+      "evidence_required": [
+        "Maven",
+        "npm build",
+        "git diff --check",
+        "browser"
+      ],
+      "rollback": "回退页面头部和样式",
+      "stop_conditions": [
+        "current project data stops loading",
+        "new horizontal overflow or console error"
+      ],
+      "escalation_conditions": [
+        "top project switcher must change"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-04T01:30:26+00:00",
+          "text": "T3-observe"
+        },
+        {
+          "recorded_at": "2026-09-04T01:35:02+00:00",
+          "text": "T3"
+        }
+      ],
+      "updated_at": "2026-09-04T01:35:02+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "x",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "x",
+      "recorded_at": "2026-09-04T01:36:26+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "y",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "y",
+      "recorded_at": "2026-09-04T01:37:10+00:00"
+    }
+  ]
+}

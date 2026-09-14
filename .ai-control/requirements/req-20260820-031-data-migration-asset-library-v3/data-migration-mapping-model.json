@@ -1,0 +1,90 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": ["dm_mapping_doc schema and rows", "dm_content_attachment MAPPING_DOC relations", "MappingService and MappingController", "MappingRecycleBinSource registration", "MappingsPage and Mapping API", "focused tests and task ledger"],
+    "environment": ["MySQL 8.4 and Flyway", "platform attachment and MinIO", "platform parameter tables", "authentication and project capability", "Vue application shell and global project context", "Chromium browser", "existing dirty REQ-031 worktree"]
+  },
+  "state_variables": [
+    {"name": "mapping_schema", "owner": "V186", "valid_values": ["missing", "non-null-without-history-default"]},
+    {"name": "mapping_lifecycle", "owner": "dm_mapping_doc", "valid_values": ["active", "deleted", "purged"]},
+    {"name": "attachment_set", "owner": "dm_content_attachment and attachment platform", "valid_values": ["temporary", "bound-active", "removed"]},
+    {"name": "upload_item_state", "owner": "MappingsPage", "valid_values": ["pending", "uploading", "uploaded", "error"]},
+    {"name": "project_scope", "owner": "global project context and DataMigrationPermissionService", "valid_values": ["loading", "ready", "unselected", "unavailable", "error"]},
+    {"name": "page_state", "owner": "MappingsPage", "valid_values": ["loading", "ready", "empty", "filtered-empty", "error", "forbidden", "saving"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "mapping metadata", "transitions": ["controller authentication", "service required and length validation", "server doc code generation", "database insert"], "outputs": ["400 rejection or persisted record with code"]},
+    {"requirement_id": "R2", "input": "mapping type code", "transitions": ["V186 parameter seed", "active code lookup", "service validation"], "outputs": ["enabled option or 400 rejection"]},
+    {"requirement_id": "R3", "input": "projectId and systemCode", "transitions": ["project accessibility check", "enabled dm_component lookup", "project switch reset"], "outputs": ["project system option or rejected request and cleared UI"]},
+    {"requirement_id": "R4", "input": "one metadata form and local files", "transitions": ["frontend per-file precheck and upload", "attachment ownership and size resolution", "ordered relation replacement"], "outputs": ["one record with multiple attachments or atomic rejection"]},
+    {"requirement_id": "R5", "input": "type system name and pagination filters", "transitions": ["query parameter normalization", "tenant and project SQL filters", "ordered page query", "desktop/mobile rendering"], "outputs": ["bounded filtered page with four required fields"]},
+    {"requirement_id": "R6", "input": "edited metadata attachment set or download selection", "transitions": ["owner and project validation", "full attachment set replacement", "attachment membership check or streamed ZIP"], "outputs": ["consistent detail or authorized file response"]},
+    {"requirement_id": "R7", "input": "delete restore or purge command", "transitions": ["soft delete", "unique source aggregation", "admin project validation", "restore or attachment cleanup"], "outputs": ["single recycle item, restored record, or purged record with audit retained"]},
+    {"requirement_id": "R8", "input": "authenticated or unauthorized operation", "transitions": ["method RBAC", "tenant project and owner checks", "attachment ownership validation", "success audit"], "outputs": ["authorized result, 401/403, and correct audit row"]},
+    {"requirement_id": "R9", "input": "page load project change multi-file upload and viewport", "transitions": ["async state transitions", "per-file retry", "desktop table or mobile cards", "drawer and pagination constraints"], "outputs": ["recoverable UI with no duplicate submit or page overflow"]},
+    {"requirement_id": "R10", "input": "clean database applying V186", "transitions": ["add non-null column", "create index", "seed parameters without data update"], "outputs": ["new schema with no history classification"]}
+  ],
+  "interfaces": [
+    {"name": "Mapping REST", "producers": ["MappingController"], "consumers": ["MappingsPage"], "invariant": "all data is tenant and current-project scoped and DTO never exposes object keys"},
+    {"name": "attachment binding", "producers": ["ContentAttachmentService", "attachment platform"], "consumers": ["MappingService"], "invariant": "only owned temporary or already-bound attachments can enter the mapping set"},
+    {"name": "mapping code values", "producers": ["sys_dict_type and sys_config via DataMigrationCodeValueService"], "consumers": ["MappingService", "MappingsPage"], "invariant": "only active values are writable and labels are not hard-coded by the page"},
+    {"name": "project systems", "producers": ["dm_component and architecture name projection"], "consumers": ["MappingService", "MappingsPage"], "invariant": "systemCode belongs to the current accessible project and is enabled"},
+    {"name": "recycle source SPI", "producers": ["MappingRecycleBinSource"], "consumers": ["ContentRecycleBinService"], "invariant": "MAPPING_DOC has exactly one source"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "V186 schema and no-history SQL", "method": "DataMigrationMappingMigrationMySqlTest plus static migration scan", "blind_spots": ["shared environment where V186 may already be applied"], "independence": "MySQL information_schema and source text"},
+    {"id": "S2", "target": "Mapping service data, permission, attachment, audit and recycle behavior", "method": "MappingServiceTest, MappingRecycleBinSourceTest and registration test", "blind_spots": ["real MinIO byte lifecycle"], "independence": "JUnit behavior assertions over service boundary"},
+    {"id": "S3", "target": "Controller RBAC annotations", "method": "MappingControllerSecurityTest and authenticated HTTP status probes", "blind_spots": ["unmodeled global security filter changes"], "independence": "reflection and HTTP authorization boundary"},
+    {"id": "S4", "target": "frontend contract and type correctness", "method": "npm --prefix web run build", "blind_spots": ["runtime layout and request payload behavior"], "independence": "Vue TypeScript compiler and Vite bundler"},
+    {"id": "S5", "target": "database, attachment and REST lifecycle", "method": "local MySQL MinIO backend authenticated HTTP flow", "blind_spots": ["production topology and identities"], "independence": "running services and persisted state"},
+    {"id": "S6", "target": "responsive states, interaction and overflow", "method": "local Chromium at 1280x800, 375x812, 390x844 and 430x932 with DOM console network and scrollWidth probes", "blind_spots": ["non-Chromium engines"], "independence": "rendered browser state"},
+    {"id": "S7", "target": "module and writable path boundaries", "method": "governance and codex scope scripts plus git diff inspection", "blind_spots": ["uncommitted changes predating this increment require manual attribution"], "independence": "repository policy scripts"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "V186 and migration test", "action": "remove history default and backfill and align MySQL assertions", "authority": "REQ-031 writable migration path", "impact_radius": "new unpublished V186 only", "rollback": "restore task-start V186 diff"},
+    {"id": "A2", "target": "Mapping backend and tests", "action": "apply bounded validation permission attachment and recycle corrections", "authority": "business/data-migration writable path", "impact_radius": "Mapping files and MAPPING_DOC branches in overlapping generic files", "rollback": "revert only Mapping hunks"},
+    {"id": "A3", "target": "Mapping frontend and API", "action": "add upload item state retry download choice mobile cards and error states", "authority": "data-migration frontend writable path", "impact_radius": "MappingsPage and Mapping API segment", "rollback": "revert only Mapping page and API hunks"},
+    {"id": "A4", "target": "measurement coverage", "action": "add or tighten focused tests and browser probes", "authority": "REQ-031 tests and local execution", "impact_radius": "task tests and generated evidence", "rollback": "remove task-only sensor changes"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S2", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S2", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S2", "S5", "S6"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S2", "S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S4", "S6"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S1", "S7"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "existing dirty REQ-031 worktree", "effect": "diff and global tests include changes not created by this increment", "detectable": true, "controllable": false},
+    {"source": "Docker daemon or MySQL MinIO availability", "effect": "migration and runtime sensors may be skipped or fail", "detectable": true, "controllable": false},
+    {"source": "global governance failures from other requirements", "effect": "repository-wide check can be non-zero without Mapping defect", "detectable": true, "controllable": false},
+    {"source": "large sequential uploads and ZIP generation", "effect": "long response and increased resource use", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "temporary attachment upload before business save", "consequence": "partial success precedes mapping transaction", "sampling_rule": "observe every file state and only sample business result after all required uploads succeed"},
+    {"source": "streaming ZIP response", "consequence": "headers may succeed before later attachment read fails", "sampling_rule": "consume response bytes and verify archive entries, not only HTTP headers"},
+    {"source": "global project context loading", "consequence": "early page query can omit or reuse project", "sampling_rule": "sample requests after scope ready and immediately after project switch"}
+  ],
+  "assumptions": [
+    {"text": "V186 is unpublished and may be corrected in place", "evidence": "file is untracked in current feature worktree", "falsifier": "owner reports or Flyway history shows V186 deployed in shared environment"},
+    {"text": "current database has no mapping history", "evidence": "user explicit confirmation", "falsifier": "pre-migration query finds rows requiring preservation"},
+    {"text": "Chromium sensor is available locally", "evidence": "/snap/bin/chromium exists", "falsifier": "browser cannot launch or connect to local app"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1 and A2"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A1 and A2"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A2 and A3"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A2 and A3"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A2 and A3"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A2 and A3"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "A2"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "A2 and A3"},
+    {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "A3 and A4"},
+    {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "A1"}
+  ],
+  "model_status": "ready"
+}

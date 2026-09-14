@@ -1,0 +1,110 @@
+{
+  "sample_label": "T25 dm_meeting.meeting_code C-plan full-chain + browser acceptance + purge MySQL 1093 hotfix",
+  "task_ids": ["T25"],
+  "purpose": "对 C 方案（dm_meeting 追加真实业务编号列 meeting_code + Flyway V103 + MeetingService 全链路 + MeetingRecycleBinSource 信封投影 + 前端契约/列表/详情/表单四处渲染）做已授权运行时验收与真实浏览器多视口验收，并把 T24 遗留「统一回收站 MEETING 编号列为空」的根因彻底消除；同步记录运行时发现的 MeetingService.purge MySQL 1093 预存缺陷与其修复。凭据仅本会话内使用（admin/admin123），依据 UpdateMemory 安全规则不落盘、不写记忆。",
+  "preconditions": {
+    "code_state": "V103__data_migration_meeting_code.sql + MeetingService + MeetingRecycleBinSource + MeetingRecycleBinSourceTest + data-migration.ts + MeetingsPage.vue 已实现并 mvn install -DskipTests 更新本地 jar",
+    "backend_restart": "bash ./backend-dev.sh restart 成功；日志：Migrating schema `ccb_platform` to version '103 - data migration meeting code' → Successfully applied 1 migration now at v103 (00:00.307s)；Started CcbApplication in 3.734s；/actuator/health 200 {status:UP}",
+    "frontend_dev": "Vite dev 服务在 :5173 运行",
+    "static_gates_before_runtime": [
+      "mvn -pl :ccb-data-migration -am test → BUILD SUCCESS；模块 47 tests 0 failures；MeetingRecycleBinSourceTest 5/5（原 3 + 新 2）",
+      "npm --prefix web run build → vue-tsc --noEmit + vite build EXIT=0（built in 12.11s）",
+      "node scripts/check-flyway-migrations.mjs → 94 migration(s) + 1 approved callback(s) 通过（较 T24 93 增 1 = V103）",
+      "node scripts/check-all-governance.mjs → 17 模块通过",
+      "node scripts/check-codex-scope.mjs → 98 文件全部在 writable_paths 内"
+    ]
+  },
+  "login_probe": {
+    "endpoint": "POST /api/auth/login",
+    "http_status": 200,
+    "token_kind": "JWT HS512 accessToken + refreshToken",
+    "note": "响应体不落盘；token 存于 /tmp/dm-token.txt（本会话内使用）"
+  },
+  "authenticated_api_probes": [
+    {"seq": 1, "method": "GET", "path": "/api/data-migration/recycle-bin", "query": "(no filter)", "http": 200, "expectation": "跨类型聚合，MEETING 行的 asset_code 均非空", "actual": "rows=5，uniqueTypes=[MEETING,REPORT]；MEETING=4 行 asset_code=[MEET-20010, MEET-20003, MEET-20002, MEET-20005] 全部非空；REPORT=1 行 asset_code=REPORT-xxx 非空；按 deleted_at desc 排序", "result": "pass"},
+    {"seq": 2, "method": "GET", "path": "/api/data-migration/recycle-bin", "query": "contentTypes=MEETING", "http": 200, "actual": "rows=4 全部 asset_code 命中 MEET-* 前缀", "result": "pass"},
+    {"seq": 3, "method": "POST", "path": "/api/data-migration/meetings", "body": "{projectId, meetingTitle, meetingDate, ...} 无 meetingCode", "http": 200, "actual": "创建成功；返回 meeting_code = MEET-{meeting_id}（形如 MEET-1788247121662627）；证明 MeetingService.create 自动生成兜底", "result": "pass"},
+    {"seq": 4, "method": "POST", "path": "/api/data-migration/meetings", "body": "使用同一 meetingCode 再次提交", "http": 409, "actual": "{\"code\":40900,\"message\":\"会议编号在该项目下已存在\"}；MeetingService.ensureCodeAvailable + meetingCodeConflict 生效", "result": "pass"},
+    {"seq": 5, "method": "POST", "path": "/api/data-migration/meetings", "body": "显式 meetingCode='MEET-T25-EXPLICIT'", "http": 200, "actual": "创建成功；返回体 meeting_code 与 asset_code 均为 MEET-T25-EXPLICIT", "result": "pass"},
+    {"seq": 6, "method": "GET", "path": "/api/data-migration/meetings", "query": "keyword=MEET-20004", "http": 200, "actual": "命中 1 行；证明 MeetingService 关键字 LIKE 覆盖 m.meeting_code", "result": "pass"},
+    {"seq": 7, "method": "POST", "path": "/api/data-migration/recycle-bin/purge", "body": "{\"type\":\"MEETING\",\"ids\":[<T25 探针新建的 2 个 meeting_id>]}", "http": 200, "actual": "彻底删除成功；未再触发 MySQL 1093；回收站列表由 6 行回归到 4 行 seed 基线", "result": "pass", "note": "本项在 MeetingService.purge 修复前会返回 50000（详见 purge_bug_fix_section）"},
+    {"seq": 8, "method": "GET", "path": "/api/data-migration/meetings/recycle-bin", "query": "page=1&size=5（向后兼容）", "http": 200, "actual": "records=4；证明旧独立端点未回归；每条 record 也带 meeting_code（baseSelect 已注入）", "result": "pass"}
+  ],
+  "purge_bug_fix_section": {
+    "kind": "预存缺陷（T24 引入 MEETING 到统一入口时未跑过 purge 分支；本次 T25 首次端到端 /recycle-bin/purge type=MEETING 才暴露）",
+    "symptom": "POST /api/data-migration/recycle-bin/purge {type:MEETING, ids:[...]} 返回 {code:50000,message:'Internal server error'}；后端日志：Caused by: java.sql.SQLException: You can't specify target table 'dm_issue_relation' for update in FROM clause (SQLState HY000, error code 1093)",
+    "root_cause": "MeetingService.purge 内的 DELETE 语句 `DELETE FROM dm_issue_relation WHERE tenant_id=? AND (related_type='MEETING' AND related_id=? OR issue_id IN (SELECT r.issue_id FROM dm_issue_relation r JOIN dm_issue i ON i.issue_id=r.issue_id AND i.deleted=1 WHERE r.related_type='MEETING' AND r.related_id=?))` 的目标表 dm_issue_relation 在子查询 FROM 中自引用，被 MySQL 直接拒绝",
+    "fix": "拆两步：先 `SELECT DISTINCT r.issue_id FROM dm_issue_relation r JOIN dm_issue i ON i.issue_id=r.issue_id AND i.deleted=1 WHERE r.related_type='MEETING' AND r.related_id=?` 得 issueIds；空分支执行 `DELETE FROM dm_issue_relation WHERE tenant_id=? AND related_type='MEETING' AND related_id=?`；非空分支执行 `DELETE FROM dm_issue_relation WHERE tenant_id=? AND (related_type='MEETING' AND related_id=? OR issue_id IN (?, ?, ...))`。语义严格保留（同时级联清理软删问题的其它关联行）；无事务/权限/审计变更",
+    "scope_attribution": "本任务附带修复；Owner 若判定应独立成需求，可仅拆账本结构而不动代码",
+    "verification": "修复后 mvn install -DskipTests + backend-dev.sh restart；探针 #7 从 500 → 200；回收站 6 行→ 4 行 seed 基线"
+  },
+  "browser_verification": {
+    "harness": "Playwright chromium-1140 headless（/home/song/.cache/ms-playwright/chromium-1140/chrome-linux/chrome）",
+    "target": "http://localhost:5173 (Vite dev)",
+    "viewport_matrix": [
+      {"name": "desktop", "size": "1280x800", "isMobile": false},
+      {"name": "mobileSmall", "size": "375x812", "isMobile": true, "deviceScaleFactor": 2},
+      {"name": "mobile", "size": "390x844", "isMobile": true, "deviceScaleFactor": 2},
+      {"name": "mobileLarge", "size": "430x932", "isMobile": true, "deviceScaleFactor": 2}
+    ],
+    "checks_total": 16,
+    "checks_pass": 16,
+    "checks_fail": 0,
+    "assertions": [
+      {"name": "desktop: POST /auth/login 成功 → 跳转 /dashboard", "result": "pass"},
+      {"name": "desktop: 统一回收站表头包含「编号」列", "result": "pass"},
+      {"name": "desktop: 统一回收站 MEETING 行的「编号」列渲染 MEET-20010/20003/20002/20005 全部非空", "result": "pass"},
+      {"name": "desktop: 会议纪要列表页表头包含「编号」列", "result": "pass"},
+      {"name": "desktop: 活动 MEET-20001/20004 在列表「编号」列正确渲染", "result": "pass"},
+      {"name": "desktop: 打开会议详情弹窗 → el-descriptions 首位显示「会议编号」并填充非空值", "result": "pass"},
+      {"name": "desktop: 打开新增表单 drawer → 首位含「会议编号（可选）」输入行；placeholder 提示 '留空自动生成 MEET-{id}'", "result": "pass"},
+      {"name": "desktop: 打开编辑表单 drawer → 首位含「会议编号」输入行且预填当前值；placeholder 提示 '可调整当前编号'", "result": "pass"},
+      {"name": "desktop: 无 JS PAGEERROR", "result": "pass"},
+      {"name": "desktop: 无与本任务相关的 CONSOLE.ERR（过滤 'Failed to load resource' 类网络噪声）", "result": "pass"},
+      {"name": "mobileSmall 375x812: 无横向溢出 (scrollWidth=375)", "result": "pass"},
+      {"name": "mobileSmall: 统一回收站页加载 + 无 JS 错误", "result": "pass"},
+      {"name": "mobile 390x844: 无横向溢出 (scrollWidth=390)", "result": "pass"},
+      {"name": "mobile: 会议列表页 + 无 JS 错误", "result": "pass"},
+      {"name": "mobileLarge 430x932: 无横向溢出 (scrollWidth=430)", "result": "pass"},
+      {"name": "mobileLarge: 会议详情弹窗 + 无 JS 错误", "result": "pass"}
+    ],
+    "browser_exit_code": 0,
+    "temporary_script": "web/verify-t25-ui.mjs 验收完成后 DeleteFile，不落仓库"
+  },
+  "evidence_level_advance": {
+    "from": "已实现（代码 + Flyway V103 + 单测 + 前端类型）",
+    "to": "浏览器已验收（真实 admin 登录后，桌面 1280x800 与 3 个移动视口 375x812/390x844/430x932 端到端；8 个授权 API 探针全命中；MeetingService.purge 1093 修复端到端确认）"
+  },
+  "cleanup": {
+    "temporary_verify_script": "web/verify-t25-ui.mjs 已删除；不落入仓库",
+    "test_data": "本会话新建的 2 条 MEET-* 会议（自动生成 + 显式编号）在探针 #7 已彻底删除；dev DB 回到 4 行 seed 基线（MEET-20001..20010 中活动 2 条 + 软删 4 条）",
+    "credentials_handling": "admin/admin123 仅本会话内使用；不落盘到源码或 .ai-control 账本；不写入长期记忆（UpdateMemory 安全规则）",
+    "backend_state": "已重启至 v103，健康 UP",
+    "vite_dev_state": ":5173 仍在运行"
+  },
+  "invariants_verified": [
+    "Flyway 只追加：V103 未修改 V84-V102；check-flyway-migrations 通过 94 迁移",
+    "活动域唯一：uk_dm_meeting_active_code(tenant_id, project_id, active_meeting_code) 生效，探针 #4 返回 40900",
+    "信封列同构：MEETING 与 REPORT 在统一回收站的 asset_code 均非空（探针 #1 #2 与浏览器桌面断言 #3 双向印证）",
+    "向后兼容：MeetingController/ReportController 旧端点保留；探针 #8 验证 /meetings/recycle-bin 仍 200 且新字段自然内射",
+    "MeetingService.purge MySQL 1093 缺陷修复：拆 SELECT + DELETE 两步，语义保留",
+    "附件级回收站边界保留：MeetingsPage recycle tab-pane 仍为「附件回收站」，未并入统一页",
+    "权限未扩大：MeetingController @PreAuthorize 未变更；requireWrite/requireAdmin 未 touch",
+    "账本纯追加：execution-T24/observation-T24/-verify/-authenticated 保留原样；新增 execution-T25/observation-T25；state rev 198→199 单条 phase_history 追加",
+    "本地不 commit / 不 push / 不改 origin"
+  ],
+  "unresolved_items": [
+    "明/暗主题双视觉未做（本轮浏览器验收仅默认主题）；编号列在两主题下的对齐/换行未回归",
+    "delete→restore→recreate-same-code 的活动域唯一性循环未做真实回归；仅静态依据 V94 同构推理",
+    "前端列表 meeting_code 排序未提供（当前按 updated_at/meeting_id）；若用户希望按编号排序需另立需求",
+    "会议纪要 dev seed（20001-20010）由 Flyway V103 回填为 MEET-{meeting_id}；未来 seed migration 需显式提供 meetingCode 或依赖 create 兜底",
+    "ISSUE 文档级仍留在自己独立回收站（未纳入统一页）；需类似 T24 追加 IssueRecycleBinSource",
+    "统一列表仍不分页（跨类型全量 + 按 deleted_at 内存排序）；数据规模显著增长时需引入分组分页与 per-type 筛选（后续演进）",
+    "MeetingService.purge MySQL 1093 修复属 T24 已上线但从未跑到的隐性 bug；已在 T25 附带处理，若 Owner 希望独立需求可拆账本结构而不动代码",
+    "旧端点 /meetings/recycle-bin、/meetings/purge-all、/reports/recycle-bin 已无 web 端调用方；保留向后兼容；实际下线需另立需求确认无外部集成方"
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "T25 已达浏览器已验收：Flyway V103 迁移运行时成功应用（102→103，00:00.307s，Started in 3.734s）；dm_meeting.meeting_code 全链路（Service baseSelect/create/update/keyword/ensureCodeAvailable/meetingCodeConflict + MeetingRecycleBinSource.project 显式从 meeting_code 写 asset_code + TS 契约 MeetingRecord.meeting_code/asset_code + MeetingFormData.meetingCode + MeetingsPage 列表/详情/表单四处渲染）在真实浏览器中通过；8 个已授权 API 探针全命中（无过滤聚合 MEETING 4/4 asset_code 非空 + REPORT 1/1；create 自动生成 MEET-{id}；duplicate 40900；显式编号；keyword=MEET-20004 命中 1；purge 修复后 200；旧 /meetings/recycle-bin 200 且新字段自然内射）；Playwright chromium-1140 桌面 1280x800 + 三移动视口 16/16 PASS（无 PAGEERROR、无相关 CONSOLE.ERR、无横向溢出）；MeetingService.purge MySQL 1093 预存缺陷由本任务运行时首次触发发现并修复（拆 SELECT + DELETE 两步，语义保留，探针 #7 从 500 → 200）。所有静态门通过：mvn 47 tests / vue build / 17 模块 governance / 94 Flyway / scope 98 文件均在 writable_paths 内；账本纯追加；未 commit / push。剩余风险：明暗主题、活动域唯一循环回归、meeting_code 排序、seed migration、ISSUE 文档级接入、统一列表分页、purge 修复归属、旧端点下线（详见 unresolved_items）。仅本地。"
+}

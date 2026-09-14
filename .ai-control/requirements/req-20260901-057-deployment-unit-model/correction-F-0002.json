@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0002",
+  "decision": "accept",
+  "decision_reason": "V96 旧 CHECK 明确不允许 WEB，而 V124 在删除约束前更新 MQ 为 WEB，含 MQ 数据的增量迁移必然冲突。",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "迁移数据转换语句与删除旧 CHECK 的顺序反置。",
+    "supporting_evidence": ["V96 CHECK 仅允许 APPLICATION、DATABASE、MQ", "V124 先转换 MQ 再删除旧 CHECK"],
+    "falsifier": "MySQL 8.4 在旧 CHECK 仍存在时允许将 kind 更新为 WEB"
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "V124 旧 CHECK 删除与 MQ 数据转换顺序",
+    "write_scope": ["V124__refine_deployment_unit_model.sql", "ArchitectureMigrationMySqlTest.java 或现有迁移测试"],
+    "invariants": ["Flyway 迁移只追加且 V124 尚未发布", "最终只允许 APPLICATION、DATABASE、WEB"],
+    "impact_limit": "V124 部署单元迁移",
+    "rollback": "恢复本纠偏前 V124 语句顺序与新增测试差异",
+    "correction_check": ["静态确认旧 CHECK 先删除再转换", "MySQL 8.4 空库、无 MQ 和含 MQ 增量迁移通过"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["Docker 不可达时只能完成静态和非容器复验，不能关闭 MySQL 运行覆盖缺口"]
+}

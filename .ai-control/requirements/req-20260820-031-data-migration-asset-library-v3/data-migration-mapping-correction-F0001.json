@@ -1,0 +1,44 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "isolated role projection, permission metadata and source guards independently show that a read action is accepted as Mapping create/update/delete authority, directly violating R8",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "MappingController and MappingsPage copied broad legacy data-migration:manage/write fallbacks instead of using the approved mapping action permissions",
+    "supporting_evidence": [
+      "DATA_MIGRATION_DEVELOPER has mappings read but no mappings:create/update/delete",
+      "data-migration:manage has action_code read and is assigned to DATA_MIGRATION_DEVELOPER",
+      "Mapping write guards explicitly accept data-migration:manage"
+    ],
+    "falsifier": "a runtime POST/PUT/DELETE request from DATA_MIGRATION_DEVELOPER returns 403 and the page hides write controls without changing the guards"
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "Mapping-specific write permission expressions and matching frontend visibility",
+    "write_scope": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+      "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+      "web/src/modules/data-migration/views/content/MappingsPage.vue"
+    ],
+    "invariants": [
+      "view and download remain available to the Mapping read permission",
+      "DATA_MIGRATION_ADMIN and SUPER_ADMIN retain mapping write ability through granular permissions or system authority",
+      "service-level owner/admin, project and attachment authorization remains unchanged",
+      "no public permission implementation or other content menu is modified"
+    ],
+    "impact_limit": "three Mapping-specific files and direct regression checks",
+    "rollback": "restore only the three Mapping-specific permission expressions/tests",
+    "correction_check": [
+      "MappingControllerSecurityTest rejects data-migration:manage and data-migration:write in write annotations",
+      "focused Mapping backend tests pass",
+      "DATA_MIGRATION_DEVELOPER POST/PUT/DELETE requests return 403",
+      "mobile Mapping page hides create and manage actions while retaining download",
+      "admin Mapping actions remain available"
+    ],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": [
+    "other data-migration menus continue to use legacy fallbacks and are outside this Mapping-specific requirement scope"
+  ]
+}

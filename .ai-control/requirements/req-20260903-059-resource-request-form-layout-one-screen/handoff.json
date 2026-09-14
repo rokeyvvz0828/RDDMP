@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260903-059-resource-request-form-layout-one-screen",
+  "handoff_status": "approved",
+  "created_at": "2026-09-03T16:05:25+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260903-059-resource-request-form-layout-one-screen",
+    "design_revision": 4,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+    "objective": "通过重排容量字段和压缩摘要占行，使资源申请当前项表单在宽桌面尽量一屏完整展示。",
+    "users": ["资源申请人"],
+    "requirements": [{"id": "R14", "statement": "非数据库容量字段必须按部署条件、核心容量和边车配置顺序紧凑排列，计算摘要与容量标题同行，技术栈在宽桌面三项同行。", "acceptance": ["1920x1080 下容量字段按 3、4、3 分组排列", "有边车开关位于两个边车数值字段之前", "计算摘要与容量标题同行且技术栈三项同行", "手机单列且无页面级横向溢出"], "priority": "must", "source": "用户确认", "counterexample": ["字段散落产生额外换行"]}],
+    "invariants": ["字段绑定、联动、计算、校验、状态和提交载荷不变", "数据库申请项布局不变", "短数值输入、内部滚动和 footer 可见性不变"],
+    "constraints": ["产品修改仅限 ResourceRequestPage.vue 和 architecture.css", "不修改公共组件、后端、API、数据库、权限、审计或工作流"],
+    "non_goals": ["改变字段含义", "修改请求契约"],
+    "selected_approach": {"name": "语义顺序重排与局部紧凑布局", "reason": "利用现有 Flex 宽度并减少独立占行", "alternatives": []},
+    "architecture": {"boundary": {"inside": ["资源申请模板和局部 CSS"], "outside": ["API、后端和公共 UI"]}, "components": [{"name": "容量布局", "responsibility": "按新顺序排列字段并同行展示摘要", "depends_on": ["现有 Flex 和计算函数"]}], "interfaces": [{"name": "资源申请载荷", "producer": "ResourceRequestPage.vue", "consumers": ["现有 API"], "contract": "布局不改变数据"}], "data_flows": [{"input": "当前项", "transitions": ["现有绑定和计算"], "output": "紧凑布局"}]},
+    "error_handling": [{"condition": "宽度不足", "behavior": "自然换行", "recovery": "内部滚动"}],
+    "quality_attributes": {"security": ["不变"], "performance": ["不增加请求"], "compatibility": ["载荷不变"], "operations": ["回退前端提交"]},
+    "verification_strategy": [{"requirement_ids": ["R14"], "signal": "字段位置和根宽", "method": "构建与五视口浏览器验收"}],
+    "assumptions": [{"text": "宽桌面可容纳目标分组", "basis": "上一轮运行数据", "falsifier": "DOM 几何不满足"}],
+    "unknowns": [],
+    "decisions": [{"id": "D11", "decision": "字段重排并移动摘要", "reason": "提高一屏密度", "source": "用户"}],
+    "risks": [{"risk": "中等宽度标题拥挤", "impact": "换行", "mitigation": "响应式换行"}],
+    "approval": {"status": "approved", "evidence": "用户要求直接实施查看效果", "confirmed_at": "2026-09-03T16:05:25+08:00"}
+  },
+  "implementation_plan": {
+    "plan_revision": 4,
+    "human_document": "docs/engineering-control/plans/2026-09-03-resource-request-form-layout-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": ["只修改授权文件", "业务和请求不变", "手机单列"],
+    "file_map": [
+      {"path": "web/src/modules/architecture/ResourceRequestPage.vue", "status": "existing", "responsibility": "字段顺序与布局语义", "evidence": "当前容量和技术栈模板"},
+      {"path": "web/src/modules/architecture/architecture.css", "status": "existing", "responsibility": "标题摘要、技术栈和响应式样式", "evidence": "资源申请局部规则"}
+    ],
+    "tasks": [{
+      "id": "T9",
+      "goal": "完成并验证资源申请一屏字段布局",
+      "requirement_ids": ["R14"],
+      "prerequisites": [],
+      "input_facts": ["现有容量 Flex 在 1920 下为 3/4/3", "现有技术栈被编辑器覆盖为两列"],
+      "files": {"create": [".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/execution-T9.json", ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/observation-T9.json", ".ai-control/requirements/req-20260903-059-resource-request-form-layout-one-screen/convergence.json"], "modify": ["web/src/modules/architecture/ResourceRequestPage.vue", "web/src/modules/architecture/architecture.css"], "test": []},
+      "interfaces": {"consumes": ["现有字段绑定和计算函数"], "produces": ["3/4/3 容量顺序", "标题摘要", "技术栈三列"]},
+      "steps": [
+        {"id": "T9-S1", "action": "重排模板并增加局部类", "command": null, "expected": "绑定不变且顺序符合设计", "evidence": "模板 diff"},
+        {"id": "T9-S2", "action": "增加紧凑和响应式样式", "command": null, "expected": "宽桌面紧凑、手机单列", "evidence": "CSS diff"},
+        {"id": "T9-S3", "action": "运行构建和多视口验收", "command": "npm --prefix web run build; git diff --check; scope check; browser UAT", "expected": "检查通过且无溢出", "evidence": "退出码和 DOM 指标"}
+      ],
+      "acceptance_checks": ["1920 容量 3/4/3", "摘要与标题同行", "技术栈三列", "手机单列无溢出", "边车联动与计算不变"],
+      "risks": ["响应式换行受字体影响"],
+      "rollback": "回退 T9 产品提交",
+      "stop_conditions": ["需要修改公共组件或业务逻辑", "页面根溢出", "请求变化"],
+      "escalation_conditions": ["需要新公共断点或后端契约"]
+    }],
+    "dependency_edges": [],
+    "parallel_groups": [["T9"]],
+    "integration_checks": [{"after_tasks": ["T9"], "command": "build、scope、五视口浏览器检查", "expected": "R14 通过"}],
+    "coverage": [{"requirement_id": "R14", "task_ids": ["T9"]}],
+    "approval": {"status": "approved", "evidence": "用户确认方案并要求直接实施", "confirmed_at": "2026-09-03T16:05:25+08:00"}
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["容量 DOM", "技术栈 DOM", "局部 CSS"],
+    "state_variable_candidates": ["字段 offsetTop", "容器宽度", "根 scrollWidth"],
+    "interface_candidates": ["容量标题类", "技术栈三列类"],
+    "sensor_candidates": ["Vite build", "DOM 几何", "五视口截图", "Console"],
+    "actuator_candidates": ["DOM 顺序", "局部 CSS"],
+    "disturbance_candidates": ["字体", "视口宽度", "Element Plus 默认样式"],
+    "delay_candidates": ["Vite HMR", "Dialog 布局"],
+    "assumptions": [{"text": "目标排列可由现有宽度实现", "basis": "上一轮运行结果", "falsifier": "浏览器几何不满足"}]
+  }
+}

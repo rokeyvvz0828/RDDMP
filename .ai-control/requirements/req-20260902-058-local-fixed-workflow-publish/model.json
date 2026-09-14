@@ -1,0 +1,15 @@
+{
+  "baseline_revision":"baseline-1",
+  "plant_boundary":{"inside":["local profile 启动器","wf_definition 状态读取","WorkflowService.publish"],"environment":["Flyway 草稿种子","Flowable RepositoryService","本地 MySQL"]},
+  "state_variables":[{"name":"fixed_workflow_state","owner":"workflow","valid_values":["missing","DRAFT","PUBLISHED","invalid"]}],
+  "causal_paths":[{"requirement_id":"R1","input":"local 应用启动","transitions":["读取固定编码","调用平台发布","编译 BPMN 并部署"],"outputs":["PUBLISHED 且 deployment_id 可用"]},{"requirement_id":"R2","input":"已发布、缺失或异常定义","transitions":["状态分类","跳过或失败关闭"],"outputs":["幂等成功或明确启动失败"]},{"requirement_id":"R3","input":"非 local profile","transitions":["Profile 条件不装配"],"outputs":["保持人工发布"]}],
+  "interfaces":[{"name":"WorkflowService.publish","producers":["platform/workflow"],"consumers":["platform/boot local 启动器"],"invariant":"只有 DRAFT 可发布并生成真实 deployment"}],
+  "sensors":[{"id":"S1","target":"R1/R2","method":"LocalSeededWorkflowPublisherTest","blind_spots":["本地 Docker/MySQL 不可用时无法验证真实 deployment"],"independence":"观察平台服务调用边界"},{"id":"S2","target":"R3","method":"检查 @Profile(local) 与 application-local.yml","blind_spots":[],"independence":"静态配置检查"},{"id":"S3","target":"R4","method":"三个 MySQL 迁移集成测试和 ccb-boot 完整反应堆","blind_spots":["Testcontainers 依赖本地 Docker"],"independence":"真实 MySQL 8.4 执行 Flyway"}],
+  "actuators":[{"id":"A1","target":"本地启动发布准备","action":"新增 boot ApplicationRunner 和 local 配置","authority":"本任务 writable_paths","impact_radius":"local profile 启动","rollback":"删除新增组件并回退 local 配置"}],
+  "measurements":[{"requirement_id":"R1","sensor_ids":["S1"],"observable":"yes"},{"requirement_id":"R2","sensor_ids":["S1"],"observable":"yes"},{"requirement_id":"R3","sensor_ids":["S2"],"observable":"yes"},{"requirement_id":"R4","sensor_ids":["S3"],"observable":"yes"}],
+  "disturbances":[{"source":"Docker/MySQL 当前不可访问","effect":"无法完成真实启动部署验收","detectable":true,"controllable":false}],
+  "delays":[{"source":"ApplicationRunner 在上下文启动末期执行","consequence":"健康就绪前完成发布","sampling_rule":"runner 返回后再判定启动成功"}],
+  "assumptions":[{"text":"WorkflowService 可由 boot 组合根直接装配","evidence":"ccb-boot 已依赖 ccb-workflow","falsifier":"编译或上下文装配失败"}],
+  "control_assessment":[{"requirement_id":"R1","observable":"yes","controllable":"yes","action":"实现 T1"},{"requirement_id":"R2","observable":"yes","controllable":"yes","action":"实现状态守卫测试"},{"requirement_id":"R3","observable":"yes","controllable":"yes","action":"限制 local profile"}],
+  "model_status":"ready"
+}

@@ -1,0 +1,140 @@
+{
+  "sample_label": "本地六权限普通账号与非参与管理员API验收",
+  "date": "2026-09-07",
+  "account": "req066.executor",
+  "admin_execution": [
+    {
+      "label": "管理员启动",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    },
+    {
+      "label": "管理员重开",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    },
+    {
+      "label": "管理员完成",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    }
+  ],
+  "task_assignment_boundary": [
+    {
+      "label": "仅系统成员启动",
+      "status": 403,
+      "message": "仅当前有效任务负责人或参与人可以执行，管理者不能代执行"
+    },
+    {
+      "label": "仅系统成员重开",
+      "status": 403,
+      "message": "仅当前有效任务负责人或参与人可以执行，管理者不能代执行"
+    },
+    {
+      "label": "仅系统成员仍有资源资格",
+      "status": 200,
+      "message": "OK",
+      "total": 1
+    }
+  ],
+  "revoked_resource_operations": [
+    {
+      "label": "旧草稿编辑",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    },
+    {
+      "label": "旧草稿提交",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    },
+    {
+      "label": "复制旧草稿",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    },
+    {
+      "label": "旧单元候选",
+      "status": 403,
+      "message": "仅有效系统参与人员可以执行该操作"
+    }
+  ],
+  "resource_lifecycle": [
+    {
+      "operation": "创建本人系统草稿",
+      "status": 200
+    },
+    {
+      "operation": "编辑本人草稿",
+      "status": 200
+    },
+    {
+      "operation": "复制本人系统规格",
+      "status": 200
+    },
+    {
+      "operation": "提交本人草稿",
+      "status": 200
+    },
+    {
+      "operation": "取消复制草稿",
+      "status": 200
+    },
+    {
+      "operation": "合成主单经管理员拒绝结束",
+      "status": 200,
+      "state": "REJECTED"
+    }
+  ],
+  "limitations": [
+    "旧token为独立API会话，不冒充浏览器旧页面",
+    "跨项目真实部署单元和附件全路径尚未在本轮UI逐项验证",
+    "审批中取消被既有工作流权限拒绝，改用管理员拒绝本次合成单，不扩大普通角色权限"
+  ],
+  "secrets": "口令和会话令牌仅保留本地内存，不入库",
+  "revoked_plan_reads": [
+    {
+      "path": "detail",
+      "status": 403,
+      "code": 40300,
+      "message": "搭建计划不存在或无权访问"
+    },
+    {
+      "path": "/dashboard",
+      "status": 403,
+      "code": 40300,
+      "message": "搭建计划不存在或无权访问"
+    },
+    {
+      "path": "/timeline",
+      "status": 403,
+      "code": 40300,
+      "message": "搭建计划不存在或无权访问"
+    }
+  ],
+  "resource_option_permissions": [
+    {
+      "path": "/architecture/options/physical-subsystem/users",
+      "status": 200,
+      "code": 0
+    },
+    {
+      "path": "/architecture/options/physical-subsystem/parameters/ARCH_SERVER_TYPE",
+      "status": 200,
+      "code": 0
+    },
+    {
+      "path": "/architecture/options/physical-subsystem/organizations",
+      "status": 403,
+      "code": 40300
+    }
+  ],
+  "browser_resource_cleanup": {
+    "resource_deployed": false,
+    "theme_restored": "light",
+    "request": "RR1788761891729496",
+    "status": "CANCELLED",
+    "viewport_restored": true,
+    "evidence": "普通角色真实浏览器确认取消后列表显示已取消"
+  }
+}

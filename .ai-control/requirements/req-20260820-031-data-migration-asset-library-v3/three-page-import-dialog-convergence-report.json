@@ -1,0 +1,179 @@
+{
+  "gate_result": "pass",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "status": "pass",
+      "evidence": "两页 UiPageHeader 均有批量导入（次要按钮）和新增（主按钮），表结构页按 category 切换文案，源码契约通过"
+    },
+    {
+      "id": "R2",
+      "status": "pass",
+      "evidence": "模板下载、上传、确认导入和结果均在 el-dialog 内，工具栏已移除导入入口，不改变路由"
+    },
+    {
+      "id": "R3",
+      "status": "pass",
+      "evidence": "实现了初始、已选文件、提交中、全部成功、部分失败、请求失败、关闭重置七个状态，提交中禁止关闭，请求失败保留文件，错误最多20条"
+    },
+    {
+      "id": "R4",
+      "status": "pass",
+      "evidence": "工具栏 actions 仅保留筛选、查询、重置、导出和删除，无导入/新增按钮"
+    },
+    {
+      "id": "R5",
+      "status": "pass",
+      "evidence": "对话框 width=min(720px, calc(100vw - 24px))，正文 max-height: min(60vh, 520px)，支持滚动，构建通过无样式错误"
+    },
+    {
+      "id": "R6",
+      "status": "pass",
+      "evidence": "API 调用路径和参数未变，仅修改 REQ-031 范围内两个文件，无越界"
+    },
+    {
+      "id": "R7",
+      "status": "pass",
+      "evidence": "TargetTablesPage 有 watch(resolvedCategory) 重置导入对话框状态，按 category 切换文案和模板文件名"
+    }
+  ],
+  "task_results": [
+    {
+      "id": "T1",
+      "status": "verified",
+      "evidence": "ParametersPage.vue 改造完成，构建通过，源码契约14项通过"
+    },
+    {
+      "id": "T2",
+      "status": "verified",
+      "evidence": "TargetTablesPage.vue 改造完成，构建通过，源码契约16项通过"
+    },
+    {
+      "id": "T3",
+      "status": "verified",
+      "evidence": "集成验收：构建通过、空白检查通过、源码契约通过、采样趋势递减至0"
+    }
+  ],
+  "sample_trend": [
+    {
+      "id": "S-0001",
+      "label": 3,
+      "score": 10,
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 2,
+        "P3": 0
+      }
+    },
+    {
+      "id": "S-0002",
+      "label": "S-T1 参数页完成",
+      "score": 5,
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 1,
+        "P3": 0
+      }
+    },
+    {
+      "id": "S-0003",
+      "label": "S-FINAL 三页完成",
+      "score": 0,
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "regression_checks": [
+    {
+      "name": "前端构建",
+      "status": "pass",
+      "evidence": "npm --prefix web run build exit 0"
+    },
+    {
+      "name": "空白检查",
+      "status": "pass",
+      "evidence": "git diff --check 两文件均通过"
+    },
+    {
+      "name": "既有治理diff保留",
+      "status": "pass",
+      "evidence": "两页修改为增量叠加，未回退既有改动"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "不修改 API 路径、参数和权限",
+      "status": "pass",
+      "evidence": "仅调用既有 API，签名不变"
+    },
+    {
+      "invariant": "不修改共享 CSS 或公共组件",
+      "status": "pass",
+      "evidence": "样式均为 scoped，复用已有公共组件"
+    },
+    {
+      "invariant": "不修改路由配置",
+      "status": "pass",
+      "evidence": "路由文件未修改"
+    }
+  ],
+  "disturbance_resilience": [
+    {
+      "disturbance": "两页已有未提交治理diff",
+      "status": "handled",
+      "evidence": "增量修改，保留既有改动"
+    },
+    {
+      "disturbance": "TargetTablesPage 双路由共用",
+      "status": "handled",
+      "evidence": "通过 category watch 隔离状态"
+    },
+    {
+      "disturbance": "REQ-061 范围外治理问题",
+      "status": "accepted",
+      "evidence": "忽略，不影响本主题验收"
+    }
+  ],
+  "residual_risks": [
+    {
+      "risk": "未在真实移动端设备验证软键盘弹起场景",
+      "severity": "low",
+      "mitigation": "Playwright 模拟视口，正文 max-height 与 footer 固定已覆盖主要场景"
+    },
+    {
+      "risk": "未验证低权限账号显示",
+      "severity": "low",
+      "mitigation": "源码检查 hasCreate 权限判断与 UiPageHeader 条件渲染一致"
+    }
+  ],
+  "baseline_revision": "baseline-revision-1",
+  "feedback_summary": {
+    "total": 0,
+    "open": 0,
+    "closed": 0,
+    "by_severity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "scope_audit": {
+    "writable_paths_used": [
+      "web/src/modules/data-migration/views/content/ParametersPage.vue",
+      "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+      ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/"
+    ],
+    "out_of_scope_writes": 0,
+    "shared_css_modified": false,
+    "api_modified": false,
+    "backend_modified": false
+  },
+  "route_reason": "直接 pass：三次采样误差单调递减至 0，7 项 must 需求全部覆盖并通过，T1/T2/T3 均已 verified，无未关闭反馈。"
+}

@@ -1,0 +1,95 @@
+{
+  "sample_label": "T21 final development migration and issue governance observation",
+  "task_ids": ["T6", "T21"],
+  "baseline_revision": "design-8-governance-increment with approved V93/V94 development cleanup semantics",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S3 focused Reactor regression plus prior T1/T5/T17 runtime and browser observations",
+      "result": "pass",
+      "raw_evidence": "The final focused Reactor passed and previously verified database-backed menu, dashboard snapshot and drill-down paths remain covered; full Maven passed ccb-data-migration before the external architecture failure",
+      "limitation": ["T21 did not recreate the complete dashboard browser fixture after issue-specific cleanup"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 focused service tests plus prior verified base-data API and export observations",
+      "result": "pass",
+      "raw_evidence": "The final ccb-data-migration test suite ran 23 tests with no failure or error; existing T5 verification covers project, component and table structure maintenance and export",
+      "limitation": ["Repository-wide Maven stops later in ccb-architecture for a separately owned test baseline error"]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S2 authorization tests plus independent S5 runtime HTTP probe and S4 audit query",
+      "result": "pass",
+      "raw_evidence": "Earlier T21 probes returned 403 for no-role list/create/restore and 401 anonymously; the final observer probe returned authenticated list 200 and anonymous list 401; dm_operation_log retains 25 ISSUE audit entries after purge",
+      "limitation": ["Authorization was sampled with local virtual users and administrator credentials, not production identities"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 lifecycle tests plus S4 authenticated delete/purge and database state",
+      "result": "pass",
+      "raw_evidence": "Issue delete and purge returned HTTP 200; fixture ISSUE rows and ISSUE relations are 0 while ISSUE audit entries remain 25; prior verified tasks cover all other content types",
+      "limitation": ["T21's destructive lifecycle sampling was intentionally limited to virtual ISSUE fixtures"]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S2 IssueService tests, S4 MySQL 8.4 migration/constraint tests and S5 browser payload capture",
+      "result": "pass",
+      "raw_evidence": "Focused tests cover relation preserve/clear/replace, uniqueness races and atomic restore; isolated V92 to V94 migration passes; browser capture observed all three relation arrays including empty clears; development database is at V94 with the stored generated column present",
+      "limitation": ["Flyway emits an upgrade recommendation because its declared tested MySQL ceiling is 8.1"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "S3 final focused regression plus prior T5 import/export and dashboard drill-down observations",
+      "result": "pass",
+      "raw_evidence": "The complete data-migration module suite still passes after issue governance changes; previously verified XLSX row limits, per-row failures, exports and deterministic drill-down mappings remain unchanged",
+      "limitation": ["T21 did not rerun every historical XLSX browser journey"]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S4 isolated MySQL 8.4 test, development database query and S6 diff/scope inspection",
+      "result": "pass",
+      "raw_evidence": "V93 remains unchanged, V94 is additive, isolated V92 to V94 tests pass, development Flyway is 94, legacy ISSUE assets are 0, non-ISSUE assets remain 1, and the current task scope plus diff checks pass",
+      "limitation": ["Per approved test-environment semantics, V93-deleted legacy ISSUE rows are intentionally unrecoverable by application rollback"]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "S3 production build and S5 non-Mock four-viewport Playwright network/DOM observation",
+      "result": "pass",
+      "raw_evidence": "Production build succeeds; 22/22 Playwright checks passed at 1280x800, 375x812, 390x844 and 430x932 with detail-before-edit, explicit relation clears, failure-closed drawer, no page/drawer overflow and no unexpected console or network errors",
+      "limitation": ["Browser acceptance used local Chromium and does not claim coverage of unlisted browser engines"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "Full Maven fails in ccb-architecture after ccb-data-migration succeeds",
+      "classification": "external module disturbance",
+      "effect": "PhysicalSubsystemConcurrencyMySqlTest migrates only to V36 and queries a table introduced at V77; REQ-031 criterion 9 excludes unrelated module failures"
+    },
+    {
+      "event": "Global governance detects malformed or incomplete ledgers for other requirement prefixes",
+      "classification": "historical governance disturbance",
+      "effect": "Module governance, repository skill, development entry and current REQ-031 scope pass; other prefixes were not modified"
+    },
+    {
+      "event": "Flyway warns that MySQL 8.4 exceeds its declared tested support through 8.1",
+      "classification": "dependency compatibility warning",
+      "effect": "Both isolated migration and real development migration reach V94 successfully; warning remains a release review item"
+    },
+    {
+      "event": "Vite emits existing large-chunk and third-party PURE annotation warnings",
+      "classification": "build warning",
+      "effect": "Type checking and production bundle generation complete successfully"
+    }
+  ],
+  "coverage_gaps": [
+    "Production deployment and production data are prohibited and intentionally unobserved",
+    "Unlisted browser engines and production topology remain release-stage verification concerns",
+    "Architecture-module tests and historical ledgers require separate governance tasks"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "observer_independence": "Separate observing phase in the same Codex context; fresh focused Maven, HTTP, database, scope and diff sensors were rerun after execution and combined with independently captured T20 browser evidence, but this is not an independent human review.",
+  "conclusion": "No data-migration P0-P3 deviation was observed; external repository failures are reproducible but outside the approved REQ-031 controlled plant."
+}

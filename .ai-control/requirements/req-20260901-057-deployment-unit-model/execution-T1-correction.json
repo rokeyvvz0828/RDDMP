@@ -1,0 +1,35 @@
+{
+  "task_id": "T1",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource":"server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java","purpose":"把模板示例改为当前五列契约"},
+    {"path_or_resource":"server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java","purpose":"校验五列表头、示例列和模板回传 VALID"},
+    {"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql","purpose":"先删除旧类型 CHECK，再把遗留 MQ 转换为 WEB"},
+    {"path_or_resource":"server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java","purpose":"覆盖 V123 含 MQ 数据升级到 V124"}
+  ],
+  "requirements_addressed": ["R6"],
+  "commands": [
+    {"command":"mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitControllerTest,DeploymentUnitServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"38 tests，0 failures/errors，BUILD SUCCESS；同时编译全部 41 个架构测试源文件"},
+    {"command":"node scripts/check-flyway-migrations.mjs","exit_code":0,"salient_output":"115 migrations 和 1 approved callback 检查通过"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误，仅 LF/CRLF 提示"},
+    {"command":"docker version","exit_code":1,"salient_output":"dockerDesktopLinuxEngine 命名管道不存在"}
+  ],
+  "local_checks": [
+    {"check":"Java 编译与非容器聚焦回归","result":"pass","evidence":"38/38 测试通过，新增 MySQL 测试源码编译通过","limitations":["未执行 Testcontainers 测试"]},
+    {"check":"Flyway 静态治理","result":"pass","evidence":"check-flyway-migrations 退出码 0","limitations":["不能替代 MySQL 8.4 实际执行"]},
+    {"check":"Docker/MySQL 运行验证","result":"blocked","evidence":"Docker Linux 引擎命名管道不存在","limitations":["V123 含 MQ 增量迁移尚未运行"]}
+  ],
+  "diff_summary": [
+    "模板示例从旧六列顺序修正为 W0001A、ECIP_AP、应用、描述、备注五列",
+    "V124 将旧 CHECK 删除移动到 MQ→WEB 转换之前",
+    "补充模板回传和含 MQ 增量迁移回归测试"
+  ],
+  "invariants_checked": [
+    {"invariant":"保持五列公开导入契约且不恢复旧字段","result":"pass","evidence":"模板和测试均断言五列，第六列为空"},
+    {"invariant":"最终类型仅 APPLICATION、DATABASE、WEB","result":"pass","evidence":"V124 新 CHECK 未变化，Flyway 静态检查通过"}
+  ],
+  "disturbances": ["Docker Desktop Linux 引擎不可达；wsl --shutdown 因未获得对所有 WSL 进程中断副作用的明确授权而未执行。"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["运行 DeploymentUnitImportMySqlTest 和 ArchitectureMigrationMySqlTest，验证模板回传及 V123 含 MQ 增量迁移。"],
+  "recommended_next": "observe"
+}

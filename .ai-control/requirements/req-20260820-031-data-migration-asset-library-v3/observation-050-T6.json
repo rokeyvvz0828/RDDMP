@@ -1,0 +1,21 @@
+{
+  "sample_label": "T6 全量验证与浏览器验收观测",
+  "task_ids": ["T6"],
+  "measurements": [
+    {"requirement_id": "R3", "sensor": "重启后端真实加载 T3 代码 + curl 逐资源端点（admin/admin123）", "result": "pass", "raw_evidence": "Started CcbApplication 3.684s；/data-migration/{plans,mappings,rules,parameters,dependencies,programs,topics,release-drills,structured/INTERMEDIATE_TABLE,recycle-bin} 全 200；meetings/issues/reports 含记录；旧 /assets/PLAN 已下线（NoResourceFoundException）。发现并修复 T3 遗留两处运行期缺陷：① Spring Bean 循环依赖 registry→AssetAccessPolicy→ContentFileAssetService→AttachmentGateway→registry（Policy 改回注入 JdbcTemplate）；② md5UnionSql 14 占位符仅传 2 参数致 check-md5/上传 500（新增 md5UnionArgs 逐表传参）。修复后 data-migration 模块 test 退出码 0", "limitation": ["上传 submit（multipart+TEMP 附件）因只读约束未实机提交，仅验证其依赖 helper 与弹层形态"]},
+    {"requirement_id": "R5", "sensor": "浏览器统一回收站 + 端点", "result": "pass", "raw_evidence": "/recycle-bin 200；前端回收站页内容类型下拉展开含 9 类；桌面/移动渲染无异常无 console error", "limitation": ["当前回收站无软删演示数据，表格行体未在实机渲染，列头经源码核实"]},
+    {"requirement_id": "R6", "sensor": "check-md5 跨 7 文件表", "result": "pass", "raw_evidence": "修复后 GET /content/check-md5?md5=... 返回 200 {available:true}，不再 500；跨 7 表 UNION 传参正确", "limitation": ["未构造真实重复文件验证 CONFLICT 命中路径，属只读约束"]},
+    {"requirement_id": "R7", "sensor": "运行期 Flyway 落库 + information_schema 断言", "result": "pass", "raw_evidence": "flyway_schema_history 99/100/101 success=1；旧表 dm_asset/dm_asset_relation/dm_meeting_attachment 计数=0；新内容表命中 7/7（含 dm_content_attachment/dm_issue_relation/dm_meeting_system/dm_rule/dm_parameter）", "limitation": ["本地 dev 库非生产；生产删表须按 V100、V101 分发布 + V101 前全量备份的上线约束执行"]},
+    {"requirement_id": "R8", "sensor": "真实浏览器 12 路由 × 桌面(1472x893≥1280)/移动(同源 iframe 390x844 DOM 量测) 遍历", "result": "pass_with_limitation", "raw_evidence": "24 项检查 0 失败：无白屏/无错误 toast/无无限 loading/0 console error/0 个 4xx/5xx；plans 上传弹层、issues 编辑抽屉(含关联纪要/相关表/相关字段区，证明 dm_issue_relation 读写)、recycle-bin 下拉正常；移动端 scrollWidth==clientWidth==386 无横向溢出、汉堡导航与操作按钮可达", "limitation": ["受窗口管理器限制，桌面实际 1472x893 未精确 1280x800；移动用同源 iframe 模拟并 DOM 量测；浏览器窗口中途隐藏致 3 张移动端要求截图未能产出（功能已由度量验证，需前台恢复后补拍）；明暗主题未单独复核"]},
+    {"requirement_id": "治理与范围", "sensor": "check-governance/check-repo-skill/check-flyway + AI layout/scope 隔离校验", "result": "pass", "raw_evidence": "governance 17 模块、repo-skill、flyway 92 通过；本任务 54 改动文件全部落在 writable_paths、public capability 申报 OK、req-20260831-050 在 AI layout 命中=0（control-definition→model.json）", "limitation": ["check-all-governance 整体退出码仍 1，全部为其他历史目录与兄弟 REQ-20260820-031 未提交产物的 pre-existing 违规，本任务不越权改动"]},
+    {"requirement_id": "回归", "sensor": "全 reactor mvn test + npm build", "result": "pass_with_known_preexisting_exception", "raw_evidence": "324 tests，唯一错误为 architecture PhysicalSubsystemConcurrencyMySqlTest(target V36 但表建于 V77，pre-existing，非本任务)；前端 build EXIT 0", "limitation": []},
+    {"requirement_id": "无生产访问", "sensor": "运行环境核对", "result": "pass", "raw_evidence": "仅本地 docker MySQL/MinIO + spring profile local + 演示数据；未连接生产，未处理真实凭据（口令仅本地 dev 用途，未写入任何账本或代码）", "limitation": []}
+  ],
+  "feedback": [
+    "真实启动与端到端浏览器暴露了两个自动化测试（手工/桩装配）无法覆盖的缺陷：跨模块 Spring Bean 循环依赖、多表 UNION 占位符与参数数量不匹配。教训：新增被平台注册器收集的 Policy/组件且其依赖链触达平台服务时，必须有加载 boot 全上下文的集成测试或本地启动冒烟，不能只靠模块单测。"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 2, "P3": 2},
+  "error_notes": "P2：启动循环依赖、check-md5/上传 500（均已在 T6 修复并复验通过）；P3：演示数据中文乱码、枚举未本地化（存量数据/展示层，超出本任务范围，仅记录）",
+  "observation_status": "complete",
+  "conclusion": "T6 全量验证收敛：治理/范围（本任务文件）通过、全量构建/测试通过（唯一失败为无关 pre-existing 架构用例）、真实后端启动通过（修复两处 T3 遗留运行期缺陷后）、11 内容菜单+统一回收站在桌面与移动视口端到端可用且无 console/网络异常。R3-R8 的自动化+运行期+浏览器证据达成，V100/V101 分发布与全量备份属上线流程约束，浏览器移动截图为 harness 局限可后续补拍。可将 REQ-20260831-050 phase 提升至 converged（附局限性说明）。"
+}

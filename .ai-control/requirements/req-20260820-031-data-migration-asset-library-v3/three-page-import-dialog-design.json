@@ -1,0 +1,361 @@
+{
+  "schema_version": 1,
+  "topic": "three-page-import-dialog",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-07-data-migration-three-page-import-dialog-design.md",
+  "objective": "统一迁移参数、目标表结构和中间表结构三个页面的页面级操作与当前页批量导入流程。",
+  "users": [
+    "有相应新增权限的数据迁移人员在当前项目内新增单条记录或批量导入 Excel",
+    "只读或受限用户继续按既有权限浏览和使用已授权列表操作"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "三个页面必须使用 UiPageHeader，并按顺序展示次要操作批量导入和页面对应的主操作新增。",
+      "acceptance": [
+        "迁移参数显示批量导入和 primary 新增迁移参数",
+        "目标表结构显示批量导入和 primary 新增目标表结构",
+        "中间表结构显示批量导入和 primary 新增中间表结构",
+        "无新增权限或项目未就绪时两个入口均不可见"
+      ],
+      "priority": "must",
+      "source": "2026-09-07 用户确认方案 A，并要求三个页面采用迁移检核规则相同方式处理。",
+      "counterexample": [
+        "批量导入或新增仍位于筛选工具栏",
+        "批量导入使用主按钮样式",
+        "目标表与中间表显示错误文案或权限"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "模板下载、Excel 选择、确认导入和结果反馈必须集中在当前列表页对话框内。",
+      "acceptance": [
+        "打开和关闭导入对话框不改变路由、筛选或分页",
+        "工具栏不包含模板或导入步骤",
+        "关闭后再次打开为干净初始状态"
+      ],
+      "priority": "must",
+      "source": "用户指定复用已批准的迁移检核规则当前页对话框模式。",
+      "counterexample": [
+        "跳转独立导入页面",
+        "模板下载仍散落在工具栏",
+        "关闭后保留旧文件或结果"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "三个页面的导入流程必须覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+      "acceptance": [
+        "无文件、项目不可用或提交中时确认按钮禁用",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功刷新列表并保持对话框打开",
+        "请求失败保留文件供重试",
+        "最多展示20条错误和剩余数量",
+        "迁移参数展示rows/accepted/failed，表结构展示accepted/failed"
+      ],
+      "priority": "must",
+      "source": "方案 A 与项目全状态设计要求。",
+      "counterexample": [
+        "成功后自动关闭",
+        "请求失败清空文件",
+        "提交中可关闭或重复提交",
+        "错误列表无界渲染"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "列表工具栏必须只承载筛选和既有列表操作，导入与新增移至页面级操作。",
+      "acceptance": [
+        "迁移参数工具栏保留筛选、查询、重置、导出和批量删除",
+        "表结构工具栏保留筛选、刷新、查询、重置和导出",
+        "表结构既有表格底部批量删除保持"
+      ],
+      "priority": "must",
+      "source": "方案 A 的统一操作层级。",
+      "counterexample": [
+        "模板下载或批量导入仍在工具栏",
+        "既有导出、刷新或删除能力被移除"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "三个页面必须复用数据迁移上传样式，并在桌面及规定手机视口无横向溢出、正文可滚动且底部操作可达。",
+      "acceptance": [
+        "复用 dm-upload-dropzone 与 dm-attachment-*",
+        "导入弹框不使用会造成移动端纵向拉伸的 align-center",
+        "1280x800、375x812、390x844、430x932 页面与对话框无横向溢出",
+        "长文件名和错误文本不撑破容器",
+        "长结果正文可滚动且 footer 可达",
+        "深浅主题内容可辨识"
+      ],
+      "priority": "must",
+      "source": "AGENTS.md、design-h5.md、前端上传治理与 F-0001 已验证经验。",
+      "counterexample": [
+        "复制页面私有上传配色",
+        "移动端弹框被拉伸或超出视口",
+        "错误列表遮挡底部操作"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "现有模板、导入 API、RBAC、projectId、表结构 category、Excel、后端和数据库契约必须保持不变。",
+      "acceptance": [
+        "迁移参数继续调用 downloadParameterTemplate 和 importParameters({ projectId }, file)",
+        "表结构继续调用 downloadTargetTableTemplate 和 importTargetTables(category, projectId, file)",
+        "projectId 继续来自 useProjectScope，category 继续来自当前路由",
+        "不修改 API、路由、公共 UI、共享 CSS、后端或数据库"
+      ],
+      "priority": "must",
+      "source": "方案 A 的最小写入边界和现有代码契约。",
+      "counterexample": [
+        "新增预校验 API 或路由",
+        "允许对话框覆盖项目或分类",
+        "修改模板内容、后端或公共组件"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "共用表结构页必须在 TARGET 与 INTERMEDIATE 分类切换时隔离文案、文件、结果和请求参数。",
+      "acceptance": [
+        "分类切换时关闭并重置导入状态",
+        "标题、新增文案、导入标题和模板文件名匹配当前分类",
+        "导入请求携带当前 resolvedCategory"
+      ],
+      "priority": "must",
+      "source": "路由和 TargetTablesPage.vue 共用组件的工程事实。",
+      "counterexample": [
+        "切换路由后保留上一分类文件或结果",
+        "中间表请求携带 TARGET",
+        "中间表模板下载名仍为目标表结构"
+      ]
+    }
+  ],
+  "invariants": [
+    "产品代码只修改 ParametersPage.vue 和 TargetTablesPage.vue",
+    "保留两个文件已有未提交治理 diff",
+    "hasCreate 和 canCreate 继续控制新增与批量导入入口",
+    "projectId 继续来自顶部项目上下文",
+    "表结构 category 继续由当前路由决定",
+    "成功或部分成功刷新列表但保持对话框打开",
+    "关闭、项目切换或分类切换清理导入状态"
+  ],
+  "constraints": [
+    "只写入 REQ-031 writable_paths",
+    "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和数据迁移共享上传样式",
+    "不修改 web/src/components/ui、data-migration.css、API、路由、后端、数据库、权限或审计",
+    "验收覆盖1280x800、375x812、390x844、430x932",
+    "不得覆盖当前工作区其他修改"
+  ],
+  "non_goals": [
+    "不抽取公共导入组件",
+    "不新增独立导入页或路由",
+    "不增加导入预览、预校验、字段映射或导入历史",
+    "不修改 Excel 模板和服务端响应",
+    "不治理其他页面或数据迁移以外模块",
+    "不处理范围外 REQ-061"
+  ],
+  "selected_approach": {
+    "name": "方案 A：两个现有文件内复用已验证导入模式",
+    "reason": "两个文件覆盖三个页面，能够保持各自 API 和响应差异，影响面最小，并避免重新修改已收敛的迁移检核规则页面或公共组件。",
+    "alternatives": [
+      {
+        "name": "方案 B：抽取共享导入组件",
+        "rejected_because": "需要扩大到已验收页面或公共组件，并为不同响应结构引入额外抽象。"
+      },
+      {
+        "name": "方案 C：只移动按钮",
+        "rejected_because": "迁移参数和表结构的成功、失败与重置行为仍不一致，不能满足相同方式处理。"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "web/src/modules/data-migration/views/content/ParametersPage.vue",
+        "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+        "本主题设计、计划和 REQ-031 前缀控制证据"
+      ],
+      "outside": [
+        "web/src/components/ui",
+        "web/src/modules/data-migration/data-migration.css",
+        "web/src/api/data-migration.ts",
+        "web/src/router/index.ts",
+        "server、数据库、权限和审计",
+        "REQ-061"
+      ]
+    },
+    "components": [
+      {
+        "name": "ParametersPage.vue",
+        "responsibility": "迁移参数页面头部、列表和带总行数的导入状态",
+        "depends_on": ["UiPageHeader", "UiToolbar", "Element Plus", "parameter APIs", "useProjectScope"]
+      },
+      {
+        "name": "TargetTablesPage.vue",
+        "responsibility": "TARGET/INTERMEDIATE 共用页面头部、列表、分类隔离和表结构导入状态",
+        "depends_on": ["UiPageHeader", "UiToolbar", "Element Plus", "target table APIs", "route meta", "useProjectScope"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "迁移参数导入",
+        "producer": "data-migration API",
+        "consumers": ["ParametersPage.vue"],
+        "contract": "importParameters({ projectId }, file) -> rows/accepted/failed/errors"
+      },
+      {
+        "name": "表结构导入",
+        "producer": "data-migration API",
+        "consumers": ["TargetTablesPage.vue"],
+        "contract": "importTargetTables(category, projectId, file) -> accepted/failed/errors"
+      },
+      {
+        "name": "共享上传视觉",
+        "producer": "data-migration.css",
+        "consumers": ["ParametersPage.vue", "TargetTablesPage.vue"],
+        "contract": "dm-upload-dropzone 和 dm-attachment-* 提供一致上传区与文件状态"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "用户打开对话框并选择 Excel",
+        "transitions": ["清理旧状态", "保存单个 File", "启用确认导入"],
+        "output": "可提交的当前项目和当前分类导入上下文"
+      },
+      {
+        "input": "导入成功或部分成功响应",
+        "transitions": ["保存汇总和最多20条错误", "刷新当前列表", "保持对话框打开"],
+        "output": "持续可见的导入结果和更新后的列表"
+      },
+      {
+        "input": "请求失败、关闭、项目或分类切换",
+        "transitions": ["失败时保留文件", "关闭或上下文切换时清理状态"],
+        "output": "可重试失败状态或干净初始状态"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "项目未就绪或无文件",
+      "behavior": "入口隐藏或确认按钮禁用，不发送请求",
+      "recovery": "选择有效项目和 Excel 文件"
+    },
+    {
+      "condition": "导入请求失败",
+      "behavior": "对话框显示错误并保留已选文件",
+      "recovery": "用户原地重试或重新选择文件"
+    },
+    {
+      "condition": "部分行失败",
+      "behavior": "显示 warning 汇总、最多20条错误和剩余数量，同时刷新成功数据",
+      "recovery": "用户修订文件后重新选择并提交"
+    },
+    {
+      "condition": "项目或表结构分类切换",
+      "behavior": "关闭对话框并清理旧文件、结果和错误",
+      "recovery": "在新上下文重新打开导入"
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "沿用既有 hasCreate/canCreate 与服务端 RBAC",
+      "不引入生产数据、敏感信息或外部访问"
+    ],
+    "performance": [
+      "单文件上传且不增加并发",
+      "错误列表最多渲染20条"
+    ],
+    "compatibility": [
+      "API、响应、Excel 内容、项目范围和路由不变",
+      "两个分类继续共用 TargetTablesPage.vue"
+    ],
+    "operations": [
+      "无数据库、配置或发布流程变化",
+      "REQ-061 治理失败仅记录为范围外扰动"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R1", "R2", "R4", "R6", "R7"],
+      "signal": "源码结构、按钮顺序、工具栏职责、API 和分类重置符合契约",
+      "method": "定向源码契约检查与最终 diff 审查"
+    },
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R5", "R7"],
+      "signal": "三个路由在四个视口完成导入状态且无溢出",
+      "method": "Chromium/Playwright 在1280x800、375x812、390x844、430x932验收"
+    },
+    {
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "signal": "Vue/TypeScript 构建和范围门禁通过",
+      "method": "npm --prefix web run build、git diff --check、REQ-031 定向范围检查"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "hasCreate 和 canCreate 合法控制单条新增与批量导入",
+      "basis": "现有页面实现和已批准迁移检核规则模式",
+      "falsifier": "发现独立导入权限或服务端拒绝当前权限组合"
+    },
+    {
+      "text": "单一表结构模板同时适用于 TARGET 与 INTERMEDIATE",
+      "basis": "现有 downloadTargetTableTemplate 无 category 参数",
+      "falsifier": "接口或真实模板只支持一种分类"
+    },
+    {
+      "text": "共享上传样式足以覆盖三个页面",
+      "basis": "迁移检核规则和当前表结构弹框已复用 dm-upload-dropzone",
+      "falsifier": "四视口验收必须修改共享 CSS 才能满足"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "采用两个现有文件覆盖三个页面的局部复用方案",
+      "reason": "最小写入范围并保持页面特有 API 契约",
+      "source": "2026-09-07 用户确认按方案 A 实施"
+    },
+    {
+      "id": "D2",
+      "decision": "成功或部分成功后刷新列表但保持对话框打开",
+      "reason": "让结果持续可见并与迁移检核规则一致",
+      "source": "方案 A"
+    },
+    {
+      "id": "D3",
+      "decision": "请求失败保留文件，关闭、项目切换或分类切换重置",
+      "reason": "兼顾低成本重试和上下文隔离",
+      "source": "方案 A"
+    },
+    {
+      "id": "D4",
+      "decision": "三个页面统一使用批量导入和确认导入术语",
+      "reason": "建立一致操作语义",
+      "source": "用户要求相同方式处理"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "共用表结构页在分类切换时残留上一分类状态",
+      "impact": "错误文案或错误分类提交",
+      "mitigation": "分类变化时重置并用浏览器验证请求 category"
+    },
+    {
+      "risk": "align-center 与移动端全局 dialog 样式再次导致纵向拉伸",
+      "impact": "移动端弹框出现大面积空白",
+      "mitigation": "导入弹框不使用 align-center并复验三个手机视口"
+    },
+    {
+      "risk": "现有未提交治理 diff 被覆盖",
+      "impact": "丢失用户工作或扩大变更",
+      "mitigation": "按两个文件当前内容增量修改并逐文件审查 diff"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认落盘设计修订 1",
+    "confirmed_at": "2026-09-07T18:06:59+08:00"
+  }
+}

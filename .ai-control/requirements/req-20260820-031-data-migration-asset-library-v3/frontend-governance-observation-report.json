@@ -1,0 +1,67 @@
+{
+  "sample_label": "数据迁移前端治理最终运行观测",
+  "task_ids": ["T1", "T2", "T3", "T4"],
+  "baseline_revision": "frontend-governance-baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 静态项目字段扫描 + S4 四视口可见文本断言",
+      "result": "pass",
+      "raw_evidence": "静态扫描无项目字段标签或 scopeProjectName 命中；7 页面 x 4 视口均无所属项目或项目名称可见文本",
+      "limitation": ["脱敏空态数据未覆盖每种业务详情记录，但被移除字段的模板路径已静态扫描"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 共享 CSS 检查 + S4 上传区边界与 document scrollWidth 测量",
+      "result": "pass",
+      "raw_evidence": "dm-upload-dropzone、el-upload、el-upload-dragger 均为全宽；1280x800、375x812、390x844、430x932 的目标表、问题和 Reports 上传区未超出容器，所有目标页 scrollWidth 不大于 clientWidth",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S2 模板/CSS 重复样式扫描 + S4 附件空态与操作区可见性",
+      "result": "pass",
+      "raw_evidence": "旧 attachment-* 页面类和局部定义无命中；共享 dm-attachment-* 覆盖计划页面；Meetings 与 Plans 四视口共享空态和上传操作区可见",
+      "limitation": ["真实附件数据状态未连接后端，现有/待上传视觉由模板类和空态交互组合验证"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 Reports 配置扫描 + S4 文件选择 DOM 断言",
+      "result": "pass",
+      "raw_evidence": "Reports 三处 el-upload 均配置 show-file-list=false；四个视口选择本地文件后文件名出现次数均为 1",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "S2 语义变量扫描 + S3 构建/范围检查 + S5 全仓治理",
+      "result": "pass-with-disturbance",
+      "raw_evidence": "上传页面无目标硬编码颜色或局部主题兜底；前端构建和 REQ-031 范围检查退出 0；全仓治理在范围外 REQ-061 JSON-compatible YAML 解析处退出 1",
+      "limitation": ["REQ-061 修正前不能声称全仓治理通过"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "classification": "disturbance",
+      "event": "REQ-061 codex-task-scope.yaml 不是治理脚本要求的 JSON-compatible YAML",
+      "evidence": "check-all-governance.mjs 报 Unexpected token 's' 并指向 REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml",
+      "scope_effect": "阻断全仓治理，但不改变 REQ-031 专项测量结果"
+    },
+    {
+      "classification": "disturbance",
+      "event": "本地 8080 后端未运行",
+      "evidence": "Vite 代理目标不可用，浏览器验收改用 Playwright API 拦截提供脱敏空态响应",
+      "scope_effect": "不影响布局和 DOM 断言，限制真实上传集成覆盖"
+    }
+  ],
+  "coverage_gaps": [
+    "未在真实后端环境执行附件上传、下载或持久化回归；本次差异未修改相关 API 和状态转换"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

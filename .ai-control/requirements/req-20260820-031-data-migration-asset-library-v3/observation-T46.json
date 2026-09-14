@@ -1,0 +1,99 @@
+{
+  "sample_label": "T46 schema4 convergence repair independent observation",
+  "task_ids": [
+    "T2",
+    "T4",
+    "T19",
+    "T20"
+  ],
+  "baseline_revision": "baseline artifact revision 1; active schema 4 ledger revision 219",
+  "measurements": [
+    {
+      "requirement_id": "R3",
+      "sensor": "IssueServiceTest and DataMigrationPermissionServiceTest",
+      "result": "pass",
+      "raw_evidence": "Focused Maven observation ran 16 authorization/lifecycle tests in these two classes with zero failures or errors; the complete 36-test observation set passed.",
+      "limitation": [
+        "Production IAM identities and production data are outside local verification authority."
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "IssueExcelServiceTest plus DataMigrationModuleRegistrationTest",
+      "result": "pass",
+      "raw_evidence": "20 import/export and module contract tests passed; the final page calls importIssues(pid, importFile.value) and contains no browser XLSX parser or 500-row import path.",
+      "limitation": [
+        "The observation uses generated test workbooks rather than production files."
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "IssueExcelServiceTest and final source contract scan",
+      "result": "pass",
+      "raw_evidence": "Backend bounded import/export tests passed and the Vue page displays complete success/failure counts plus rowErrors from the server response.",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "vue-tsc plus Vite production build and final source contract scan",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build exited 0 with 2567 modules transformed in 18.34s; edit/delete selection guards, manage-only recycle tab and preserved previousTableIds are present.",
+      "limitation": [
+        "No fresh browser role/viewport run was performed in this correction observation; earlier browser samples remain historical evidence."
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "Full data-migration Reactor suite with disposable MySQL 8.4",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-data-migration -am test exited 0; ccb-data-migration ran 84 tests with zero failures/errors/skips, including migration suites through V178 and focused V169 execution.",
+      "limitation": [
+        "Flyway emits a support warning because MySQL 8.4 is newer than its declared tested support through 8.1."
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "Flyway version inventory and REQ-031 scope checker",
+      "result": "pass",
+      "raw_evidence": "V147-V155 are main release migrations, V156-V179 are the data-migration sequence, no duplicate versions were found, and the scope checker passed for 230 changed files.",
+      "limitation": [
+        "The official Flyway checker remains non-zero only for the user-approved ignored V84_1 filename."
+      ]
+    },
+    {
+      "requirement_id": "engineering-control-ledger",
+      "sensor": "schema 4 ledger phase and artifact timestamp audit",
+      "result": "pass",
+      "raw_evidence": "execution-T46 was recorded as executing artifact revision 15 before control_loop.py immediately transitioned executing to observing at ledger revision 219; both records share the same audited timestamp and preserve causal order in the ledger.",
+      "limitation": [
+        "Historical delayed phase entries remain visible and are not rewritten."
+      ]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "event": "An initial source scan matched pm_project_member in explanatory comments and exited 1.",
+      "impact": "Classified as sensor-fault; the scan was calibrated to SQL string literals containing FROM/JOIN and then exited 0."
+    },
+    {
+      "event": "Global governance stops on main-owned REQ-20260904-061 malformed scope before reaching later child checks.",
+      "impact": "External baseline failure outside data-migration writable scope; current REQ-031 scope, module tests and build remain independently observable."
+    },
+    {
+      "event": "V84_1 violates the repository Flyway filename grammar.",
+      "impact": "Existing user-approved ignored exception; no data-migration migration version collision was observed."
+    }
+  ],
+  "coverage_gaps": [
+    "Fresh browser role and mobile viewport probes were not rerun during T46.",
+    "Global governance cannot complete until REQ-061 is corrected by its owner under separate authorization."
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

@@ -11,6 +11,9 @@ import com.ccb.architecture.network.service.NetworkAccessApplicationSubmissionSe
 import com.ccb.architecture.network.service.NetworkAccessService;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
@@ -29,19 +32,24 @@ public class NetworkAccessWorkflowLifecycleConsumer implements WorkflowLifecycle
 
     private final NetworkAccessStore store;
     private final NetworkAccessService access;
+    private final ProjectAccessService projectAccessService;
     private final LongSupplier idSupplier;
 
     @Autowired
     public NetworkAccessWorkflowLifecycleConsumer(NetworkAccessStore store,
-                                                  NetworkAccessService access) {
-        this(store, access, () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
+                                                  NetworkAccessService access,
+                                                  ProjectAccessService projectAccessService) {
+        this(store, access, projectAccessService,
+                () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
     }
 
     NetworkAccessWorkflowLifecycleConsumer(NetworkAccessStore store,
                                            NetworkAccessService access,
+                                           ProjectAccessService projectAccessService,
                                            LongSupplier idSupplier) {
         this.store = Objects.requireNonNull(store, "网络访问存储不能为空");
         this.access = Objects.requireNonNull(access, "网络访问服务不能为空");
+        this.projectAccessService = Objects.requireNonNull(projectAccessService, "项目访问服务不能为空");
         this.idSupplier = Objects.requireNonNull(idSupplier, "标识生成器不能为空");
     }
 
@@ -59,77 +67,85 @@ public class NetworkAccessWorkflowLifecycleConsumer implements WorkflowLifecycle
     @Transactional
     public void consume(WorkflowLifecycleEvent event) {
         long applicationId = validateAndApplicationId(event);
-        NetworkAccessApplication application = store.lockApplication(event.tenantId(), applicationId)
+        ProjectAccess project = projectAccessService.requireAccessible(
+                event.context().projectRef(), workflowOperator(event));
+        if (!Objects.equals(project.projectName(), event.context().projectName())) {
+            throw conflict("工作流事件项目上下文与可信项目不一致");
+        }
+        NetworkAccessApplication application = store.lockApplication(event.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> conflict("工作流事件关联的网络访问申请不存在"));
-        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), event.eventId(),
+        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), project.id(), event.eventId(),
                 SUBSCRIBER_KEY, applicationId, event.context().businessRound(), event.instanceId(),
                 event.eventType().name()))) {
             return;
         }
 
-        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), event.instanceId())
+        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), project.id(), event.instanceId())
                 .orElseThrow(() -> conflict("工作流事件关联的网络访问审批轮次不存在"));
         if (!matches(application, round, event)
-                || !store.isLatestWorkflowRound(event.tenantId(), application.id(), round.roundNo())) {
-            ignored(event, "事件不匹配当前实例、轮次或摘要");
+                || !store.isLatestWorkflowRound(event.tenantId(), project.id(), application.id(), round.roundNo())) {
+            ignored(event, project.id(), "事件不匹配当前实例、轮次或摘要");
             return;
         }
 
         switch (event.eventType()) {
-            case STARTED -> consumeStarted(event, application, round);
-            case APPROVED -> consumeApproved(event, application, round);
-            case RETURNED -> consumeReviewOutcome(event, application, round,
+            case STARTED -> consumeStarted(event, project.id(), application, round);
+            case APPROVED -> consumeApproved(event, project.id(), application, round);
+            case RETURNED -> consumeReviewOutcome(event, project.id(), application, round,
                     ApplicationStatus.RETURNED, WorkflowRoundStatus.RETURNED);
-            case REJECTED -> consumeReviewOutcome(event, application, round,
+            case REJECTED -> consumeReviewOutcome(event, project.id(), application, round,
                     ApplicationStatus.REJECTED, WorkflowRoundStatus.REJECTED);
-            case TERMINATED -> consumeTerminated(event, application, round);
+            case TERMINATED -> consumeTerminated(event, project.id(), application, round);
         }
     }
 
-    private void consumeStarted(WorkflowLifecycleEvent event, NetworkAccessApplication application,
+    private void consumeStarted(WorkflowLifecycleEvent event, long projectId, NetworkAccessApplication application,
                                 WorkflowRound round) {
         if (!isActiveReview(application, round)) {
-            ignored(event, "STARTED 事件对应的网络访问申请或轮次已完成");
+            ignored(event, projectId, "STARTED 事件对应的网络访问申请或轮次已完成");
             return;
         }
-        processed(event, "已确认当前审批轮次启动");
+        processed(event, projectId, "已确认当前审批轮次启动");
     }
 
-    private void consumeApproved(WorkflowLifecycleEvent event, NetworkAccessApplication application,
+    private void consumeApproved(WorkflowLifecycleEvent event, long projectId, NetworkAccessApplication application,
                                  WorkflowRound round) {
         if (!isActiveReview(application, round) || application.cancellationRequested()) {
-            ignored(event, "APPROVED 事件对应的网络访问申请已变化或正在取消");
+            ignored(event, projectId, "APPROVED 事件对应的网络访问申请已变化或正在取消");
             return;
         }
-        access.applyApprovalInCurrentTransaction(event.tenantId(), application.id(),
+        access.applyApprovalInCurrentTransaction(event.tenantId(), projectId, application.id(),
                 application.rowVersion(), event.operatorId());
         completeRound(event, application, round, WorkflowRoundStatus.APPROVED);
-        processed(event, "已批准并完成网络访问申请");
+        processed(event, projectId, "已批准并完成网络访问申请");
     }
 
-    private void consumeReviewOutcome(WorkflowLifecycleEvent event, NetworkAccessApplication application,
+    private void consumeReviewOutcome(WorkflowLifecycleEvent event, long projectId,
+                                      NetworkAccessApplication application,
                                       WorkflowRound round, ApplicationStatus outcome,
                                       WorkflowRoundStatus roundStatus) {
         if (!isActiveReview(application, round) || application.cancellationRequested()) {
-            ignored(event, event.eventType() + " 事件对应的网络访问申请已变化或正在取消");
+            ignored(event, projectId, event.eventType() + " 事件对应的网络访问申请已变化或正在取消");
             return;
         }
-        access.applyReviewOutcomeInCurrentTransaction(event.tenantId(), application.id(),
+        access.applyReviewOutcomeInCurrentTransaction(event.tenantId(), projectId, application.id(),
                 application.rowVersion(), event.operatorId(), outcome);
         completeRound(event, application, round, roundStatus);
-        processed(event, outcome == ApplicationStatus.RETURNED ? "已退回申请人修改" : "已拒绝并结束办理");
+        processed(event, projectId,
+                outcome == ApplicationStatus.RETURNED ? "已退回申请人修改" : "已拒绝并结束办理");
     }
 
-    private void consumeTerminated(WorkflowLifecycleEvent event, NetworkAccessApplication application,
+    private void consumeTerminated(WorkflowLifecycleEvent event, long projectId,
+                                   NetworkAccessApplication application,
                                    WorkflowRound round) {
         if (!isActiveReview(application, round) || !application.cancellationRequested()) {
-            ignored(event, "TERMINATED 事件没有匹配的取消请求");
+            ignored(event, projectId, "TERMINATED 事件没有匹配的取消请求");
             return;
         }
-        access.applyCancellationConfirmationInCurrentTransaction(event.tenantId(), application.id(),
+        access.applyCancellationConfirmationInCurrentTransaction(event.tenantId(), projectId, application.id(),
                 application.rowVersion(), event.operatorId());
         completeRound(event, application, round, WorkflowRoundStatus.TERMINATED);
-        processed(event, "已确认工作流终止并取消网络访问申请");
+        processed(event, projectId, "已确认工作流终止并取消网络访问申请");
     }
 
     private boolean isActiveReview(NetworkAccessApplication application, WorkflowRound round) {
@@ -138,7 +154,8 @@ public class NetworkAccessWorkflowLifecycleConsumer implements WorkflowLifecycle
 
     private void completeRound(WorkflowLifecycleEvent event, NetworkAccessApplication application,
                                WorkflowRound round, WorkflowRoundStatus nextStatus) {
-        if (!store.completeStartedWorkflowRound(event.tenantId(), application.id(), round.roundNo(),
+        if (!store.completeStartedWorkflowRound(event.tenantId(), application.projectId(),
+                application.id(), round.roundNo(),
                 nextStatus, event.occurredAt())) {
             throw conflict("审批轮次状态已变化");
         }
@@ -185,15 +202,15 @@ public class NetworkAccessWorkflowLifecycleConsumer implements WorkflowLifecycle
         return left != null && right != null && left.equalsIgnoreCase(right);
     }
 
-    private void processed(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+    private void processed(WorkflowLifecycleEvent event, long projectId, String detail) {
+        if (!store.completeReceipt(event.tenantId(), projectId, event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.PROCESSED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
     }
 
-    private void ignored(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+    private void ignored(WorkflowLifecycleEvent event, long projectId, String detail) {
+        if (!store.completeReceipt(event.tenantId(), projectId, event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.IGNORED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
@@ -205,6 +222,10 @@ public class NetworkAccessWorkflowLifecycleConsumer implements WorkflowLifecycle
             throw new IllegalStateException("工作流回执标识生成器返回无效值");
         }
         return value;
+    }
+
+    private AuthUser workflowOperator(WorkflowLifecycleEvent event) {
+        return new AuthUser(event.operatorId(), event.tenantId(), "workflow", "", "工作流审批", 0L, true);
     }
 
     private BusinessException conflict(String message) {

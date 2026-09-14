@@ -1,0 +1,27 @@
+{
+  "task_id": "T38-r2",
+  "parent_task": "T38",
+  "trigger": "用户指令「更新字段说明列」，附 database-schema-and-relations.md：将各表字段表的“说明”列与 V153/V163/V164/V166 落库的最新列注释口径对齐。",
+  "status": "implemented_doc_only",
+  "scope_kind": "database_schema_doc_field_description_refresh",
+  "decision_recorded": "统一生成列“说明”列口径为「活动X（仅未删除记录取值）」+ 派生表达式：9 张内容表与公共列的 active_doc_code、dm_issue.active_issue_code（V164 注释）、dm_meeting.active_meeting_code（V164 注释）、dm_component.active_physical_subsystem_code、dm_target_table.active_table_code/active_system_code/active_table_name_en/cn、dm_target_table_field.active_field_code/active_field_name_en/cn（以上 V163 注释）、dm_plan.active_dimension_key（V166 注释）。其余字段说明与既有 info_schema 口径一致，不属本次改动。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "3.1-3.18 共 12 处生成列“说明”单元格升级为最新列注释口径（10 处 active_doc_code + 问题/会议/组件/目标表/字段/维度键各 1 处）。"
+    }
+  ],
+  "commands": [
+    "rg 一致性扫描：无「仅未删除记录取值，活动唯一键列」「时取问题编号/会议编号，活动唯一键列」「活动编号唯一键列」旧写法残留"
+  ],
+  "invariants_checked": [
+    "列数、类型、默认/约束均未改动，仅“说明”列文本",
+    "新口径与 V153/V163/V164/V166 迁移中的 COMMENT 文本一致（活动编号/问题/会议/系统/表/字段/英文名/中文名，仅未删除记录取值）",
+    "文档不出现活动表结构中的 system_id 列定义"
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "rollback": "文档改动可整体还原；不涉及代码、迁移或数据",
+  "evidence_level": "static-doc-scan"
+}

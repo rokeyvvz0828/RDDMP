@@ -1,0 +1,100 @@
+{
+  "sample_label": "T4 integrated runtime and browser sample",
+  "task_ids": ["T1", "T2", "T3", "T4"],
+  "baseline_revision": "2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "MySQL migration test plus isolated API lifecycle",
+      "result": "pass",
+      "raw_evidence": "mapping metadata persisted and returned with one business record bound to two active attachments",
+      "limitation": ["synthetic local data only"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "parameter API and Mapping service validation",
+      "result": "pass",
+      "raw_evidence": "MIGRATE_OUT and MIGRATE_IN returned from DM_MAPPING_TYPE; invalid values covered by tests",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "isolated multi-attachment API and browser upload interception",
+      "result": "pass",
+      "raw_evidence": "two files bound to one mapping; one injected upload failure retained success and retry issued only one additional upload",
+      "limitation": ["50 MB boundary primarily covered by automated service tests"]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "service validation tests and browser form",
+      "result": "pass",
+      "raw_evidence": "system code and file name required; current-project enabled component validation passed",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "isolated HTTP combined filters and four viewport DOM probes",
+      "result": "pass",
+      "raw_evidence": "positive combined filter returned one record and negative filter zero; system/type/name controls reachable",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "API download checksums, ZIP entries and browser download dialog",
+      "result": "pass",
+      "raw_evidence": "single download SHA-256 matched source and ZIP contained design-h5.md plus pom.xml; dialog exposed each file and download-all",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "delete/restore/purge HTTP lifecycle plus attachment access probes",
+      "result": "pass",
+      "raw_evidence": "record appeared once, restored with attachments, was re-deleted and purged; purged record and attachments became inaccessible while audit remained",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "auth/me role projection, permission-table query and Mapping guard inspection",
+      "result": "fail",
+      "raw_evidence": "DATA_MIGRATION_DEVELOPER is documented/seeded read-only and has no mappings:create/update/delete, but receives data-migration:manage with action_code=read; MappingController write annotations and MappingsPage write computed values accept data-migration:manage",
+      "limitation": ["observed in isolated local MySQL/auth runtime; no production roles or data sampled"]
+    },
+    {
+      "requirement_id": "R9",
+      "sensor": "Playwright at 1280x800, 375x812, 390x844 and 430x932",
+      "result": "pass",
+      "raw_evidence": "desktop table/mobile cards mutually exclusive; document and body scrollWidth did not exceed viewport; long names, edit drawer and download dialog remained reachable; real mobile-menu project switch stored P2026-002 and removed old-project state",
+      "limitation": ["light theme sampled"]
+    },
+    {
+      "requirement_id": "R10",
+      "sensor": "MySQL 8.4 Testcontainers migration and source scan",
+      "result": "pass",
+      "raw_evidence": "V186 applied from empty schema; mapping_type is non-null without default or historical backfill",
+      "limitation": []
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R8",
+      "expected": "a read-only data migration role without mappings:create/update/delete cannot see or invoke Mapping write actions",
+      "observed": "Mapping-specific controller and page accept data-migration:manage, which is a read action assigned to DATA_MIGRATION_DEVELOPER, as a create/update/delete fallback",
+      "reproduction": "assign DATA_MIGRATION_DEVELOPER to retail1_ba, authenticate, inspect /auth/me and Mapping write guards",
+      "evidence": "auth/me lacks mappings:create/update/delete but includes data-migration:manage; database action_code for manage is read; MappingController and MappingsPage include manage in write checks",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "isolated local role fixture",
+      "causal_hypothesis": "legacy menu read permission was copied into Mapping-specific write fallbacks",
+      "correction_check": "focused security test, runtime POST/PUT/DELETE 403 checks and mobile browser visibility for DATA_MIGRATION_DEVELOPER",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    "global governance aggregate is blocked by an unrelated tracked-clean malformed task scope file"
+  ],
+  "coverage_gaps": [
+    "dark theme was not sampled because the approved T4 viewport contract did not require a second theme"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

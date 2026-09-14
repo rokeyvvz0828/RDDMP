@@ -142,6 +142,10 @@ export interface LegacySystemItem {
   owner_user_id?: number | null
   owner_user_name?: string | null
   members?: Array<{ user_id: number; user_name?: string | null }>
+  start_date?: string | null
+  end_date?: string | null
+  status?: string | null
+  description?: string | null
   remark?: string | null
   created_at?: string
 }

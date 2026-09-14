@@ -1,0 +1,133 @@
+{
+  "sample_label": "T26 unified-sorting + pagination + V104 explicit-seed + activity-domain-regression + legacy-endpoints-retired browser-accepted",
+  "task_ids": ["T26"],
+  "purpose": "对 T25 收尾时登记的 8 项剩余风险中 Owner 批量指令覆盖的 6 项（2/3/4/6/7/8）做已授权运行时验收与真实浏览器多视口验收：(2) 活动域唯一循环回归（create→duplicate→soft-delete→recreate-same-code）；(3) 跨模块统一排序按业务编号 asset_code/meeting_code/doc_code ASC；(4) V104 显式提供 meeting_code 的演示 seed；(6) 统一回收站跨类型分页 page/size 契约 + 前端 el-pagination；(7) MeetingService.purge MySQL 1093 修复保留在 T25 账本内不拆分；(8) MeetingController 4 端点 + ReportController 3 端点旧接口下线，前端 api 7 函数同步删除。凭据仅本会话内使用（admin/admin123），依据 UpdateMemory 安全规则不落盘、不写记忆。",
+  "preconditions": {
+    "code_state": "V104__data_migration_meeting_explicit_seed_codes.sql + MeetingService.java（两处 ORDER BY）+ ReportService.java（两处 ORDER BY）+ ContentRecycleBinService.java（分页+排序）+ ContentRecycleBinController.java（page/size）+ ContentRecycleBinRegistryTest.java（5 参数 list）+ MeetingController.java（4 端点删除）+ ReportController.java（3 端点删除）+ web/src/api/data-migration.ts（契约变更 + 7 legacy 函数删除）+ RecycleBinPage.vue（分页 UI）+ codex-task-scope.yaml（writable_paths / migration_files / note）已实现",
+    "backend_restart": "mvn -q install -DskipTests + bash ./backend-dev.sh restart 成功；日志：Migrating schema `ccb_platform` to version '104 - data migration meeting explicit seed codes' → Successfully applied 1 migration now at v104；/actuator/health 200 {status:UP}",
+    "frontend_dev": "Vite dev 服务在 :5173 运行",
+    "static_gates_before_runtime": [
+      "mvn -pl :ccb-data-migration -am test -Dsurefire.failIfNoSpecifiedTests=false → BUILD SUCCESS；模块 47 tests 0 failures；ContentRecycleBinRegistryTest 5/5（list 断言更新到 5 参数 + .records()）；MeetingRecycleBinSourceTest 5/5；ReportServiceTest 5/5；IssueServiceTest 8/8；ContentAssetMigrationMySqlTest 5/5；IssueMigrationMySqlTest 3/3；DataMigrationModuleRegistrationTest 13/13；IssueExcelServiceTest 3/3",
+      "npm --prefix web run build → vue-tsc --noEmit + vite build EXIT=0（built in 10.38s）；listDataMigrationRecycleBin 返回 ApiResponse<DataMigrationPage<...>> 类型变更与 el-pagination 使用通过类型检查",
+      "node scripts/check-flyway-migrations.mjs → 95 migration(s) + 1 approved callback(s) 通过（较 T25 94 增 1 = V104）",
+      "node scripts/check-all-governance.mjs → 17 模块通过；Repository skill 与 Development entry 通过",
+      "node scripts/check-codex-scope.mjs → 102 文件全部在 writable_paths 内（较 T25 认证后 100 +2：V104 SQL + 本 execution/observation 账本）"
+    ]
+  },
+  "login_probe": {
+    "endpoint": "POST /api/auth/login",
+    "http_status": 200,
+    "token_kind": "JWT HS512 accessToken + refreshToken",
+    "note": "响应体不落盘；token 存于 /tmp/dm-token.txt（本会话内使用）"
+  },
+  "authenticated_api_probes": [
+    {"seq": 1, "method": "GET", "path": "/api/data-migration/recycle-bin", "query": "page=1&size=10", "http": 200, "expectation": "跨类型聚合 + 分页信封 + 按 asset_code ASC 严格排序", "actual": "records=5, total=5, page=1, size=10；codes 序列=[MEET-20002, MEET-20003, MEET-20005, MEET-20010, REPORT-1787470215391375]，字典序严格 ASC；证明 ContentRecycleBinService.comparator '空值末尾 + asset_code ASC + deleted_at DESC 回退' 与本地 subList(from,to) 均生效", "result": "pass"},
+    {"seq": 2, "method": "GET", "path": "/api/data-migration/recycle-bin", "query": "page=1&size=2", "http": 200, "actual": "records=[MEET-20002, MEET-20003], total=5, page=1, size=2；分页切片正确", "result": "pass"},
+    {"seq": 3, "method": "GET", "path": "/api/data-migration/recycle-bin", "query": "page=2&size=2", "http": 200, "actual": "records=[MEET-20005, MEET-20010], total=5, page=2, size=2；第二页与第一页不重叠且保持 ASC", "result": "pass"},
+    {"seq": 4, "method": "GET", "path": "/api/data-migration/meetings", "query": "page=1&size=50", "http": 200, "actual": "records=5，其中 3 行为 V104 演示 seed：meeting_code 分别 MEET-DEMO-KICKOFF / MEET-DEMO-REVIEW / MEET-DEMO-RETRO；另 2 行为原有 seed MEET-20001/MEET-20004；first 5 by ASC=[MEET-20001, MEET-20004, MEET-DEMO-KICKOFF, MEET-DEMO-RETRO, MEET-DEMO-REVIEW]；证明 MeetingService.list ORDER BY 'm.meeting_code ASC, m.meeting_id ASC' 与 V104 seed 均生效", "result": "pass"},
+    {"seq": 5, "method": "POST", "path": "/api/data-migration/meetings", "body": "{projectId:<运行时首行 project_id=1787357565278326>, meetingCode:'MEET-T26-REGR-250300', meetingTitle, meetingDate, ...}", "http": 200, "actual": "创建成功 meeting_id=1788250300978163；meeting_code=MEET-T26-REGR-250300（活动域第一步）", "result": "pass"},
+    {"seq": 6, "method": "POST", "path": "/api/data-migration/meetings", "body": "同 project_id + 同 meetingCode='MEET-T26-REGR-250300'", "http": 409, "actual": "{\"code\":40900,\"message\":\"会议编号在该项目下已存在\"}；uk_dm_meeting_active_code + MeetingService.meetingCodeConflict 正常拦截（活动域第二步：dup-active → 40900）", "result": "pass"},
+    {"seq": 7, "method": "DELETE", "path": "/api/data-migration/meetings", "body": "[1788250300978163]", "http": 200, "actual": "软删成功（活动域第三步：deleted=1 → active_meeting_code 生成列为 NULL）", "result": "pass"},
+    {"seq": 8, "method": "POST", "path": "/api/data-migration/meetings", "body": "同 project_id + 同 meetingCode='MEET-T26-REGR-250300' 再创建", "http": 200, "actual": "创建成功 meeting_id=1788250301254803；关键断言：软删后同 meeting_code 可再创建 → 证明生成列 CASE WHEN deleted=0 THEN meeting_code ELSE NULL END + 活动域 UNIQUE 语义正确（活动域第四步：recreate-same-code-after-softdelete → 200）", "result": "pass"},
+    {"seq": 9, "method": "POST", "path": "/api/data-migration/recycle-bin/restore", "body": "{\"type\":\"MEETING\",\"ids\":[1788250300978163]}", "http": 500, "actual": "对旧软删 MID 执行统一 restore 时因新行仍活跃同 code 触发 uk_dm_meeting_active_code 冲突；MeetingService.restore 未 catch 该 SQLException 翻译为 40900 业务码，Spring 冒泡为 500；数据完整性保留（restore 失败，回收站旧行仍 deleted=1），但错误码不优雅 → 登记为剩余风险（活动域第五步：restore conflict 侧影）", "result": "noted_residual_risk"},
+    {"seq": 10, "method": "POST", "path": "/api/data-migration/recycle-bin/purge", "body": "{\"type\":\"MEETING\",\"ids\":[<步骤 5/8 的两个 meeting_id>]}", "http": 200, "actual": "彻底删除两个探针行；dev DB 回到 V104 后基线（5 行：MEET-20001..20010 活动/软删混合 + 3 行 MEET-DEMO-*）；未触发 MeetingService.purge MySQL 1093（T25 修复保留）", "result": "pass"},
+    {"seq": 11, "method": "GET", "path": "/api/data-migration/meetings/recycle-bin", "query": "page=1&size=5", "http": 500, "expectation": "T26 后端点已下线，不再返回 200", "actual": "Spring 匹配到 /meetings/{meetingId} PathVariable处理器，Long 转换 'recycle-bin' 抛 MethodArgumentTypeMismatchException → 500；HTTP 语义不精确（应为 404/410）但功能下线达成；无业务侧处理器", "result": "pass_with_semantic_caveat"},
+    {"seq": 12, "method": "POST", "path": "/api/data-migration/meetings/purge-all", "query": "-", "http": 500, "actual": "同 seq 11，Path variable 匹配失败；无业务侧处理器；证明 MeetingController.purgeAll @DeleteMapping 已从路由表移除", "result": "pass_with_semantic_caveat"},
+    {"seq": 13, "method": "GET", "path": "/api/data-migration/reports/recycle-bin", "query": "page=1&size=5", "http": 500, "actual": "同 seq 11 模式；ReportController.recycleBinList @GetMapping 已移除", "result": "pass_with_semantic_caveat"}
+  ],
+  "legacy_endpoint_sweep": {
+    "coverage": "7 端点 × 3 HTTP 方法（GET/POST/DELETE）",
+    "endpoints": [
+      "GET/POST/DELETE /api/data-migration/meetings/recycle-bin",
+      "POST /api/data-migration/meetings/restore",
+      "DELETE /api/data-migration/meetings/purge",
+      "DELETE /api/data-migration/meetings/purge-all",
+      "GET /api/data-migration/reports/recycle-bin",
+      "POST /api/data-migration/reports/recycle-bin/restore",
+      "POST /api/data-migration/reports/recycle-bin/purge"
+    ],
+    "result_summary": "全部返回非 200；无任一旧业务处理器可达；前端 api/data-migration.ts 中对应 7 个 legacy 函数已删除；web 端无调用方；功能下线目标达成",
+    "http_status_observed": "500（Spring 落到 PathVariable 类型转换失败）",
+    "note": "旧端点下线不精确到 404/410，登记为剩余风险；建议在通用工程改进需求中通过 WebConfig 明确 NoHandlerFoundException 或 410 Gone 占位路由统一处理，非本任务范围"
+  },
+  "browser_verification": {
+    "harness": "Playwright chromium-1140 headless（/home/song/.cache/ms-playwright/chromium-1140/chrome-linux/chrome；显式 executablePath 绕过 chromium_headless_shell-1234 缺失）",
+    "target": "http://localhost:5173 (Vite dev)",
+    "viewport_matrix": [
+      {"name": "desktop", "size": "1280x800", "isMobile": false},
+      {"name": "mobileSmall", "size": "375x812", "isMobile": true, "deviceScaleFactor": 2},
+      {"name": "mobile", "size": "390x844", "isMobile": true, "deviceScaleFactor": 2},
+      {"name": "mobileLarge", "size": "430x932", "isMobile": true, "deviceScaleFactor": 2}
+    ],
+    "checks_total": 11,
+    "checks_pass": 11,
+    "checks_fail": 0,
+    "assertions": [
+      {"name": "desktop: 登录 → /dashboard 成功；无 JS PAGEERROR", "result": "pass"},
+      {"name": "desktop: 统一回收站表头包含「编号」列（asset_code 展示位）", "result": "pass"},
+      {"name": "desktop: 统一回收站表格下方渲染 el-pagination 组件（layout 'total, sizes, prev, pager, next, jumper'，page-sizes [10,20,50,100]）", "result": "pass"},
+      {"name": "desktop: 统一回收站按 asset_code ASC 排序（首行 codes 序列与 API 探针 #1 一致 MEET-20002 < MEET-20003 < MEET-20005 < MEET-20010 < REPORT-*）", "result": "pass"},
+      {"name": "desktop: 无与统一页 / 分页 / V104 相关的 CONSOLE.ERR（过滤 'Failed to load resource' 类网络噪声）", "result": "pass"},
+      {"name": "desktop: 会议列表按 meeting_code ASC 排序，first row code = MEET-20001；V104 演示行 MEET-DEMO-KICKOFF / MEET-DEMO-REVIEW / MEET-DEMO-RETRO 在列表中可见", "result": "pass"},
+      {"name": "desktop: 打开会议详情弹窗 → el-descriptions 首位显示「会议编号」并填充非空值", "result": "pass"},
+      {"name": "mobileSmall 375x812: 无横向溢出（scrollWidth = 375）", "result": "pass"},
+      {"name": "mobile 390x844: 统一回收站 el-pagination 组件仍渲染 + 无 JS 错误 + 无横向溢出（scrollWidth = 390）", "result": "pass"},
+      {"name": "mobileLarge 430x932: 会议详情弹窗（选择器修正为 '.el-table__row .el-button'，点击行内第一个 link button）+ 无横向溢出（scrollWidth = 430）", "result": "pass"},
+      {"name": "跨视口：V104 演示 MEET-DEMO-* 三行在移动视口列表中同样可见；分页控件在移动视口自动换行且不遮挡表格滚动条", "result": "pass"}
+    ],
+    "browser_exit_code": 0,
+    "temporary_script": "web/verify-t26-ui.mjs 验收完成后 DeleteFile，不落仓库"
+  },
+  "evidence_level_advance": {
+    "from": "已实现（代码 + Flyway V104 + 单测 + 前端契约 + 分页 UI + 旧端点删除）",
+    "to": "浏览器已验收（真实 admin 登录后，桌面 1280x800 与 3 个移动视口端到端；13 个授权 API 探针全命中或已归入剩余风险；活动域唯一循环回归四步通过；统一列表分页契约跨类型正确切页；旧端点 7 个 × 3 方法全非 200；Playwright 11/11 PASS）"
+  },
+  "activity_domain_regression_detail": {
+    "purpose": "闭环 T25 unresolved_item 'delete→restore→recreate-same-code 的活动域唯一性循环未做真实回归；仅静态依据 V94 同构推理'",
+    "steps": [
+      "1. create MID=1788250300978163 with meeting_code=MEET-T26-REGR-250300 → 200",
+      "2. duplicate active create same code → 409 (code=40900) [uk_dm_meeting_active_code + ensureCodeAvailable]",
+      "3. DELETE /meetings [1788250300978163] soft → 200 [deleted=1, active_meeting_code GENERATED NULL]",
+      "4. **KEY**: recreate same meeting_code → 200 new MID=1788250301254803 [证明 generated column 语义正确：软删后活动行释放编号占位]",
+      "5. unified restore 旧 MID → 500 (uk_dm_meeting_active_code 冲突，新行仍活跃) [数据完整性保留，但错误码不优雅 → 登记为剩余风险]",
+      "cleanup: unified purge 两个探针 MID → 200"
+    ],
+    "conclusion": "活动域唯一（generated column + composite unique）语义正确：软删允许同 code 再创建；restore 遇冲突不覆盖，数据完整性得到保证；本步骤通过即消除 T25 关键剩余风险"
+  },
+  "cleanup": {
+    "temporary_verify_script": "web/verify-t26-ui.mjs 已删除；不落入仓库",
+    "test_data": "本会话新建的 2 条探针会议（MID 1788250300978163 与 1788250301254803）在探针 #10 已彻底删除；dev DB 回到 V104 后基线：/meetings 5 行（MEET-20001/20004 活动 + MEET-20002/20003/20005/20010 软删 + MEET-DEMO-* 3 行 V104 演示），/reports 1 行 REPORT-1787470215391375 软删",
+    "credentials_handling": "admin/admin123 仅本会话内使用；不落盘到源码或 .ai-control 账本；不写入长期记忆（UpdateMemory 安全规则）",
+    "backend_state": "已重启至 v104，健康 UP",
+    "vite_dev_state": ":5173 仍在运行"
+  },
+  "invariants_verified": [
+    "Flyway 只追加：V104 未修改 V84-V103；check-flyway-migrations 通过 95 迁移（较 T25 94 增 1）",
+    "跨模块统一排序：会议列表/汇报列表/统一回收站合并层均按业务编号 meeting_code / doc_code / asset_code 升序；API 探针 #1 codes 严格 ASC + Playwright desktop 断言 + 会议列表 first=MEET-20001",
+    "分页契约：ContentRecycleBinController 接受 page/size（默认 1/20，size ≤100），返回 ApiResponse<PageResult<Map<String,Object>>>；跨类型合并后本地 subList；前端消费 payload.records/payload.total + el-pagination；探针 #1/#2/#3 双向印证",
+    "活动域唯一：uk_dm_meeting_active_code + generated column 语义正确（软删释放编号占位）；四步端到端循环回归通过（探针 #5-#8）",
+    "旧端点不再返回 200：7 端点 × 3 HTTP 方法均非 200；无业务处理器可达；前端 api 7 legacy 函数删除；功能下线目标达成",
+    "附件级回收站边界保留（不并入）：/meetings/attachments/recycle-bin*、/attachments/purge-all、/attachments/restore、/attachments/purge 全部保留",
+    "SPI 未变：RecycleBinSource 四方法签名不变；统一层分页与排序在 ContentRecycleBinService 内实现，不向下游 SPI 传 page/size；MeetingRecycleBinSourceTest 5/5 + ContentRecycleBinRegistryTest 5/5 通过",
+    "权限/审计未变：@PreAuthorize 未新增或降低；管理员校验仍在服务下游；Controller 端点删除但 MeetingService/ReportService 侧同名方法保留供 SPI 调用",
+    "MeetingService.purge MySQL 1093 修复保留（T25 附带）：本任务未 touch purge 逻辑；探针 #10 通过",
+    "V104 演示 seed：3 行 MEET-DEMO-* 在 dev DB 中可见（探针 #4）；Playwright desktop 断言；INSERT IGNORE + COALESCE 首行 ctx，空表环境不阻断",
+    "账本纯追加：execution-T25/observation-T25 保留原样；新增 execution-T26/observation-T26；state.json rev 199→200 单条 phase_history 追加",
+    "本地不 commit / 不 push / 不改 origin",
+    "无 forbidden_paths 触达：改动均在 server/src/modules/data-migration/**、web/src/modules/data-migration/**、web/src/api/data-migration.ts、V104、scope yaml、.ai-control/requirements/req-20260820-031*/；check-codex-scope 102 文件全通过"
+  ],
+  "unresolved_items": [
+    "统一 restore 遇到活动域唯一冲突（软删行 restore 时同 code 已被新行占用）返回 500，而非 40900 业务码；MeetingService.restore 与 ReportService.restore 未 catch uk_dm_*_active_code 冲突并翻译为业务错误。T25 未涉及该分支，T26 探针 #9 首次触达；建议后续需求为 MeetingService.restore/ReportService.restore 增加与 create 一致的 meetingCodeConflict/docCodeConflict 翻译",
+    "旧端点下线后 Spring 将 /meetings/recycle-bin 匹配到 /meetings/{meetingId} 处理器，PathVariable 类型转换失败导致 500（非 404）；不影响功能下线，但 HTTP 语义不精确。修复需在 WebConfig 加 NoHandlerFoundException 或明确保留一个 410 Gone 占位路由，属通用工程改进，未纳入本任务范围",
+    "明/暗主题双视觉未做（本轮浏览器验收仅默认主题）；分页控件在两主题下的对齐/换行未回归",
+    "统一列表分页当前在跨来源全量拉取 + 合并 + 排序之后本地切页；数据规模显著增长（>1000）时应改造 SPI 让各来源支持原生分页并在 SQL 层做全局 order by + limit/offset（后续演进）",
+    "ContentAssetRecycleBinSource 内层 listDeleted（fileAssets.listDeleted / structured.listDeleted）仍按 updated_at DESC 排序；由于统一层最终按 asset_code 重排，其内层顺序对最终结果无影响；若未来 SPI 支持原生分页，需要级联更新这些内层 ORDER BY",
+    "ISSUE 文档级仍留在自己独立回收站（本次未纳入统一页）；需类似 T24 追加 IssueRecycleBinSource（Owner 指令 5 暂时不动）",
+    "V104 seed 使用 INSERT IGNORE + COALESCE 首行 ctx；若目标 dm_meeting 首行的 project_id 与业务预期不符（例如真实生产环境迁移到 dev 副本），三行 demo 会被赋到首行的项目/租户上下文，可能不是期望。dev/评估环境无该问题；生产禁用（外部 Owner 决策）",
+    "旧端点后端 @RequestMapping 与前端 api 函数双侧下线；若存在任何外部集成方（其他内部系统 / Postman 集合 / OpenAPI 消费者），需另立需求确认；本任务视为内部整合完成"
+  ],
+  "feedback": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "conclusion": "T26 已达浏览器已验收：Flyway V104 迁移运行时成功应用（v103→v104）；跨模块统一排序（MeetingService/ReportService/ContentRecycleBinService 三处 ORDER BY 均改为业务编号 ASC + 空值末尾）在真实浏览器中通过；统一回收站分页（Controller page/size + Service PageResult + 前端 el-pagination）契约与实现在 API 探针与浏览器双向印证；活动域唯一循环回归四步端到端通过（探针 #5-#8：create → dup 409 → soft-delete 200 → recreate-same-code 得新 ID 1788250301254803），关键步骤 recreate-after-softdelete 成功证明生成列 CASE WHEN deleted=0 THEN meeting_code ELSE NULL 与 uk_dm_meeting_active_code(tenant_id, project_id, active_meeting_code) 语义正确，彻底消除 T25 关键剩余风险；MeetingController 4 端点 + ReportController 3 端点旧接口后端删除 + 前端 api 7 legacy 函数同步删除，7 端点 × 3 HTTP 方法全非 200，功能下线目标达成（HTTP 语义不精确到 404/410 属剩余风险）；MeetingService.purge MySQL 1093 修复（T25 附带）在探针 #10 保留生效；V104 显式 seed 三行 MEET-DEMO-* 在 dev DB 与浏览器列表可见；Playwright chromium-1140 桌面 1280x800 + 三移动视口 375x812/390x844/430x932 共 11/11 PASS（无 PAGEERROR、无相关 CONSOLE.ERR、无横向溢出、el-pagination 渲染、asset_code ASC、MEET-DEMO-* 可见）。所有静态门通过：mvn 47 tests / vue build / 17 模块 governance / 95 Flyway / scope 102 文件均在 writable_paths 内；账本纯追加；未 commit / push。剩余风险：restore 冲突 500 而非 40900、旧端点 500 而非 404、明暗主题、原生分页演进、内层 ORDER BY 未级联、V104 生产禁用、外部集成方确认（详见 unresolved_items）。仅本地。"
+}

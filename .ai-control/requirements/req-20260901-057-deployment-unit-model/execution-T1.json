@@ -1,0 +1,145 @@
+{
+  "task_id": "T1",
+  "status": "partial",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+      "purpose": "删除旧字段、收敛类型与名称约束，并创建规范化双向关系和只追加历史表"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+      "purpose": "删除简称、登记类型和自由文本关联，收敛为完整名称、APPLICATION/DATABASE/WEB 和结构化关联命令"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+      "purpose": "更新主记录与版本 SQL，增加租户级名称唯一、关系替换、历史和 ACTIVE 候选搜索"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+      "purpose": "实现名称/后缀/类型校验、租户状态校验、双向关系事务和有关联作废冲突"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+      "purpose": "增加 options 接口并保持 view/manage 查询权限兼容"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+      "purpose": "导入契约收敛为五列并支持应用、数据库、Web"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+      "purpose": "删除资源申请旧投影字段并只按部署单元 kind 分流 AP/DB/WB"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/**",
+      "purpose": "更新 service、资源申请、导入和生命周期测试，并新增 Controller 契约测试"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitControllerTest,DeploymentUnitServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "38 tests，0 failures，0 errors，BUILD SUCCESS"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -DskipTests -Dmaven.compiler.useIncrementalCompilation=false test-compile",
+      "exit_code": 0,
+      "salient_output": "测试源码强制重新编译通过"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "115 个迁移和 1 个批准回调检查通过，V124 未冲突"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误，仅出现仓库既有 LF/CRLF 提示"
+    },
+    {
+      "command": "docker info --format '{{.ServerVersion}}'",
+      "exit_code": 1,
+      "salient_output": "Docker Desktop 进程存在，但 dockerDesktopLinuxEngine 命名管道不存在，Linux 引擎不可达"
+    },
+    {
+      "command": "mvn -pl :ccb-architecture -am -Dtest=DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest,ArchitectureMigrationMySqlTest,EmptyDatabaseMigrationBaselineMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "未能进入测试执行：Testcontainers 所需 Docker Linux 引擎不可达"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "部署单元、资源申请和 Controller 聚焦测试",
+      "result": "pass",
+      "evidence": "38 个 JUnit/Mockito/MockMvc 测试通过",
+      "limitations": ["不替代真实 MySQL 约束、外键和并发验证"]
+    },
+    {
+      "check": "Flyway 版本与静态迁移规则",
+      "result": "pass",
+      "evidence": "check-flyway-migrations 退出码 0，V124 为唯一候选版本",
+      "limitations": ["尚未在 MySQL 8.4 实际执行 V124"]
+    },
+    {
+      "check": "旧字段和 MQ 业务残留扫描",
+      "result": "pass",
+      "evidence": "目标 Java、Vue 和公开契约无旧业务字段命中；Controller 负向断言中的字段名不属于运行时残留",
+      "limitations": []
+    },
+    {
+      "check": "V124/MySQL/Testcontainers",
+      "result": "blocked",
+      "evidence": "Docker Desktop 的 docker-desktop WSL 发行版和 Linux 引擎未成功启动",
+      "limitations": ["未获得空库/增量迁移、关系外键、唯一约束和真实 SQL 的运行证据"]
+    }
+  ],
+  "diff_summary": [
+    "部署单元公开模型删除 shortName、relatedDeploymentUnitName、deploymentUnitType",
+    "类型从 APPLICATION/DATABASE/MQ 收敛为 APPLICATION/DATABASE/WEB",
+    "增加租户内 ACTIVE 部署单元分页搜索和结构化双向关系",
+    "资源申请改为只按 kind 映射 AP/DB/WB",
+    "追加 V124 破坏性早期开发迁移和关系历史结构",
+    "查询端点补齐 deployment-unit:manage 查看兼容权限"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "HTTP DTO 不接收 tenantId，租户只来自 AuthUser",
+      "result": "pass",
+      "evidence": "DeploymentUnitControllerTest 反射和响应断言通过"
+    },
+    {
+      "invariant": "写操作继续使用 architecture:deployment-unit:manage，查询兼容 view/manage",
+      "result": "pass",
+      "evidence": "Controller PreAuthorize 契约测试通过"
+    },
+    {
+      "invariant": "只写 architecture 自有表并只追加 V124",
+      "result": "pass",
+      "evidence": "实际 diff 和 Flyway 检查未发现历史迁移修改或跨模块表写入"
+    },
+    {
+      "invariant": "关系按 tenant/min/max 单行规范化并在同一事务写历史",
+      "result": "partial",
+      "evidence": "Store/Service 代码与单元测试符合契约",
+      "limitations": ["等待 MySQL/Testcontainers 验证真实锁、约束和回滚"]
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Docker Desktop Linux 引擎未创建命名管道，docker-desktop WSL 发行版保持 Stopped",
+      "impact": "MySQL 8.4 Testcontainers、V124 空库/增量和真实关系 SQL 无法运行"
+    },
+    {
+      "event": "mock/mock-data.json 的部署单元表不在平台初始化白名单，且白名单位于 scope 外",
+      "impact": "已撤回部署单元 Mock 内容，T3 只能记录该边界，不能修改平台白名单"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Docker/MySQL 可用后必须重跑四个 MySQL/Flyway 聚焦测试并核对 V124 约束、外键和关系 SQL",
+    "EnvironmentResourceStore.replaceItems 的 30 个占位符和参数仅获得编译/单元证据，等待真实数据库执行",
+    "在完成 S2 真实 MySQL 采样前，T1 不具备高保证 verified 证据"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,96 @@
+{
+  "sample_label": "T41 目标表/字段表主键收敛为业务编号最终观测",
+  "task_ids": [
+    "T41"
+  ],
+  "baseline_revision": "T40 验收后的当前态：dm_target_table 以自增 id 为主键、table_code 为派生编号（TT+id），dm_target_table_field 以 id 为主键、field_code 为派生编号（TF+id）、table_id 引用主表 id；治理项「id 与 table_code 设计是否重复」处置口径为用户确认的五点：沿用原 id 生成方式、全局唯一、关联键联动、字段表主键一并修改、审计历史数据不管；开发阶段免备份。",
+  "observed_at": "2026-09-04T21:30:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 MySQL 8.4 Flyway V168 迁移专项（V167 旧结构基线）",
+      "result": "pass",
+      "raw_evidence": "v168ConvertsTargetTablePrimaryKeyToCode：基线含 V84 建表 id 主键 + V163 生成列/唯一键（uk_target_field_active_en/cn 引用 table_id、idx_target_field_table/key）→ migrate 167→168 后 information_schema 断言：主表/字段表无 id 列、字段表无 table_id 列；主键为 table_code/field_code；存量回填 1001/2001；active_table_code/active_field_code data_type=bigint、EXTRA=STORED GENERATED；uk_target_table_tenant_code=tenant_id,table_code；uk_target_field_active_en/cn=tenant_id,table_code,active_field_name_en/cn；组合外键 fk_target_field_table_code=(tenant_id,table_code)；旧外键 fk_target_field_table 已移除。",
+      "limitation": [
+        "夹具基线为 V167 结构，直接低基线（V84 裸建表）再由 V168 转换的增量回放依赖条件式/确保段覆盖（已断言确保段可重跑）。"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 数据零改写与服务写侧端到端",
+      "result": "pass",
+      "raw_evidence": "存量 dm_target_table SET table_code=id（1001/1002）、dm_target_table_field SET field_code=id（2001）且关联 table_code=1001；dm_issue_relation.related_id 与 dm_operation_log.entity_id 数值不变，JOIN 改按 table_code/field_code 命中；服务 createTable/addField 直接 nextId() 落库纯数字编号（无 TT/TF 前缀），TARGET_TABLE_CREATE/TARGET_TABLE_FIELD_CREATE 审计 entity_id=编号数值。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 模块与周边回归",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-data-migration -am test = 81 tests / 0 errors / 0 failures（含 DataMigrationGovernanceRemediationMySqlTest 8 项、IssueMigrationMySqlTest 3 项、ContentAssetMigrationMySqlTest 9 项、DataMigrationModuleRegistrationTest 等）；IssueMigrationMySqlTest 夹具按服务 baseSelect 契约补 table_code/field_code 列后 V92-V148 迁移链回归通过；npm --prefix web run build 成功。",
+      "limitation": [
+        "未按需启动本地 MySQL/MinIO/前后端运行时做浏览器验收（无前端交互契约变化，页面列与导出参数已按 code 对齐）。"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 范围、文档与账本一致性",
+      "result": "pass",
+      "raw_evidence": "V168 与 T41 实施计划文档已登记 writable_paths/migration_files；compatibility_and_rollback/public_capability_change.note 追加 T41；database-schema-and-relations.md 基线 V168、表列数/字段说明/约束索引/关系视图/审计语义/9.2 治理状态全部更新为最新态；check-codex-scope 仅剩他人任务 REQ-20260903-064 越界项；本任务未触碰 platform/shared 与 forbidden_paths。",
+      "limitation": [
+        "check-all-governance 存在仓库既有噪音（本前缀仅 checksum-md5-removal 任务两个遗留账本命名不符合布局检查，非本次 T41 产物，未改动）。"
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "id": "T41-S1",
+      "kind": "database migration",
+      "result": "pass",
+      "evidence": "MySQL 8.4 V167→V168：主键切换、编号回填、生成列 BIGINT、索引/组合外键重建全部断言通过。"
+    },
+    {
+      "id": "T41-S2",
+      "kind": "automated backend",
+      "result": "pass",
+      "evidence": "ccb-data-migration 全量 81/81 通过；IssueMigrationMySqlTest/ContentAssetMigrationMySqlTest 旧迁移链回归通过。"
+    },
+    {
+      "id": "T41-S3",
+      "kind": "frontend build",
+      "result": "pass",
+      "evidence": "web 构建成功，TargetTablesPage/IssuesPage/data-migration.ts 按 tableCode/fieldCode 契约编译通过。"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-T41-TEST-01",
+      "classification": "test_fixture",
+      "severity": "P3",
+      "observed": "v168 专项测试最初将写侧 DB 断言放在 transaction.executeWithoutResult lambda 内：新连接在事务提交前读取不到未提交数据且 lambda 不允许受检异常，编译失败。",
+      "resolution": "按库内既有模式重构：写侧调用留在 lambda 内，断言移到事务提交后的 connection 块；同时修正主键断言查询（按 index_name='PRIMARY' 查列）与组合外键断言（按 ordinal_position 组列），专项测试通过。"
+    },
+    {
+      "id": "F-T41-TEST-02",
+      "classification": "test_fixture",
+      "severity": "P2",
+      "observed": "IssueMigrationMySqlTest（V92-V148 旧结构夹具）因 IssueService.baseSelect 关联子查询引用 t.table_code/f.field_code 报 Unknown column，2 个测试 BadSqlGrammarException。",
+      "resolution": "夹具 dm_target_table 补 table_code、dm_target_table_field 补 field_code 列（服务新契约必需列，测试目标仅为 issue 行为），迁移链 3/3 回归通过。"
+    }
+  ],
+  "resolved_feedback": [],
+  "disturbances": [
+    "工作区存在他人任务 REQ-20260903-064 中间表收敛的越界改动与未跟踪文件（含 IntermediateTablesPage.vue 删除、V160 迁移等，本次未触碰）；两文件 checksum-md5-removal design/handoff 账本命名不符合 check-ai-control-layout 布局（既有遗留，不属于 T41）。"
+  ],
+  "coverage_gaps": [
+    "未做浏览器验收与运行时健康检查（后端契约测试 + 前端构建已覆盖本任务面）。"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete",
+  "verdict": "converged_for_T41",
+  "phase_recommendation": "保留 T41 增量证据，不重写历史 convergence.json；应用 V168 仅需执行迁移链（开发阶段免备份，用户已确认）；上生产前需按常规备份并演练主键切换，编号生成与导出契约变化需同步其他模块调用方。"
+}

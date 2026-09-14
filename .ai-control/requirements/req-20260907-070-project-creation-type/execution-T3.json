@@ -1,0 +1,38 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "local development database", "purpose": "V199 and local compatible V200 applied with unchanged original data and history"},
+    {"path_or_resource": "docs/requirements/REQ-20260907-070-project-creation-type/", "purpose": "bounded backup, migration, recovery, start and verification tools"},
+    {"path_or_resource": "local backend 8080", "purpose": "activate current Java17 modules with Flyway validation and no mock writes"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-system -am test (JBR17)", "exit_code": 0, "salient_output": "ProjectServiceTest: 42 tests, no failures/errors"},
+    {"command": "node creation-type.test.mjs", "exit_code": 0, "salient_output": "labels/defaults/sync/race/selection/3 slots pass"},
+    {"command": "mvn -q -pl :ccb-boot -am -DskipTests -Dspring-boot.repackage.skip=true install (quoted properties, authorized Maven cache)", "exit_code": 0, "salient_output": "current modules installed; dependency classpath generated"},
+    {"command": "run-compatible-migration.py trial-migrate / current-migrate", "exit_code": 0, "salient_output": "MIGRATIONS_EXECUTED=2 for each"},
+    {"command": "run-compatible-migration.py current-validate", "exit_code": 0, "salient_output": "VALIDATION_SUCCESS=true"},
+    {"command": "verify-current-preservation.py", "exit_code": 0, "salient_output": "250 original tables unchanged, 12 protected schemas unchanged, old Flyway history unchanged"},
+    {"command": "start-compatible-backend.py", "exit_code": 0, "salient_output": "backend 8080 health UP"}
+  ],
+  "local_checks": [
+    {"check": "original-value retention", "result": "pass", "evidence": "SHA-256 over sorted original-column row hashes before/after", "limitations": ["same-context verification"]},
+    {"check": "type persistence", "result": "pass", "evidence": "isolated commit then fresh connection reads CONTINUATION; test values and updated_at restored", "limitations": ["not a browser or authenticated HTTP save replay"]},
+    {"check": "runtime reachability and authentication", "result": "pass", "evidence": "8080 health 200 UP; 5173 200; anonymous project workbench 401", "limitations": ["no signed-in browser acceptance"]}
+  ],
+  "diff_summary": ["No changes to published canonical SQL", "Local compatibility migration and recovery manifest retained", "No original permission row deletion"],
+  "invariants_checked": [
+    {"invariant": "existing release tables untouched", "result": "pass", "evidence": "12 schema fingerprints and original row hashes equal"},
+    {"invariant": "no history reset", "result": "pass", "evidence": "all old history row hashes equal; only two new successful migrations"},
+    {"invariant": "preserve all original data", "result": "pass", "evidence": "250 original business tables unchanged"}
+  ],
+  "disturbances": [
+    {"event": "raw SHOW CREATE differs by redundant charset notation", "impact": "replaced text equality with real metadata comparison"},
+    {"event": "original persistence probe changed trial updated_at", "impact": "fixed full restoration and revalidated a fresh final backup"},
+    {"event": "Windows old JAR lock and Maven sandbox/property quoting", "impact": "used quoted options, authorized cache and current-module classpath startup"}
+  ],
+  "assumptions_falsified": ["Historical script names alone indicate pending migrations: V35-V46 checksums already match canonical scripts"],
+  "unresolved_items": ["canonical V156 collision and full regression remain", "browser and independent acceptance pending", "local compatibility directory must be used until migration histories are unified"],
+  "recommended_next": "observe"
+}

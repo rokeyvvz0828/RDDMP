@@ -1,0 +1,40 @@
+{
+  "sample_label": "SP1-SP2-T1首次独立观测",
+  "task_ids": ["T1", "T2"],
+  "baseline_revision": "baseline-revision-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1源码契约 + S3 Chromium", "result": "pass", "raw_evidence": "1280/375/390/430四视口均检测到2个头部操作；batchBeforeAdd=true；addIsPrimary=true；无权限路径由hasCreate静态契约保护", "limitation": ["未使用独立低权限账号运行权限隐藏分支"]},
+    {"requirement_id": "R2", "sensor": "S1源码契约 + S3 Chromium路由", "result": "pass", "raw_evidence": "四视口routeBefore与routeAfter均为/data-migration/content/validation-rules；dialogHasTemplate=true；导入步骤均在dialog，toolbarHasImportActions=false", "limitation": []},
+    {"requirement_id": "R3", "sensor": "S3 Chromium受控网络响应", "result": "pass", "raw_evidence": "initialDisabled=true、selectedEnabled=true、busyCancelDisabled=true、busyCloseHidden=true；21个错误输入渲染20个错误项加1个剩余计数；failureFileRetained=true；resetClean=true", "limitation": ["全部成功/部分失败/请求失败使用浏览器受控响应，未向真实后端写入测试数据"]},
+    {"requirement_id": "R4", "sensor": "S1 Node结构检查 + S3 Chromium", "result": "pass", "raw_evidence": "独立源码脚本退出码0；四视口toolbarHasImportActions=false；查询、重置、导出和删除仍可见", "limitation": ["无选中行，未触发真实批量删除"]},
+    {"requirement_id": "R5", "sensor": "S2构建 + S3 Chromium尺寸与截图", "result": "fail", "raw_evidence": "无横向溢出：各视口page/dialog/body scrollWidth=clientWidth，footerBottom均小于viewportHeight；但390x844初始态dm-import-dialog高度820px，header/body/footer仅约447px，footer下方出现约373px无意义空白，截图mobile-390-initial.png可复现", "limitation": ["视觉测量在Chromium headless完成，未覆盖真实触屏键盘弹出"]},
+    {"requirement_id": "R6", "sensor": "S1源码/API检查 + S2构建 + S4治理", "result": "pass", "raw_evidence": "downloadRuleTemplate与importMigrationCheckRules({projectId},file)调用保持；npm build退出码0；git diff --check退出码0；REQ-031 scope检查通过394个变更文件", "limitation": ["394个范围内文件多数来自当前分支既有工作，不全属于本主题"]}
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R5",
+      "expected": "移动端导入对话框按内容自然高度或受控最大高度呈现，正文局部滚动且footer紧随内容，不出现无意义整屏空白。",
+      "observed": "390x844初始态对话框被拉伸到820px；header、body、footer内容只到439px，剩余约373px为空白。375/430视口截图也呈现同类空白。",
+      "reproduction": "在390x844 Chromium打开/data-migration/content/validation-rules，点击批量导入，读取.dm-import-dialog getBoundingClientRect和截图。",
+      "evidence": "computed style显示.el-overlay-dialog display:flex，.dm-import-dialog height=820px、margin=12px；全局移动端.el-dialog margin:12px auto!important覆盖Element Plus align-center的margin:auto，导致flex交叉轴拉伸。截图/tmp/rddmp-validation-rule-ui-vOPOyv/mobile-390-initial.png。",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "不影响横向溢出和操作可达性，但明显降低移动端弹层视觉质量。",
+      "causal_hypothesis": "本页el-dialog的align-center使overlay成为flex容器，而全局移动端margin覆盖取消auto交叉轴约束，子项按默认align-items:stretch拉满可用高度。",
+      "correction_check": "移除或局部覆盖align-center后，在375/390/430复测对话框高度接近header+body+footer内容且不超过视口，继续满足scrollWidth<=clientWidth与footer可达。",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    {"source": "Playwright首次使用错误按钮名和错误node -e换行封装", "effect": "两次传感器调用无有效产品结论，校准后同一探针成功", "classification": "sensor-fault"},
+    {"source": "REQ-061非JSON-compatible YAML", "effect": "check-all-governance退出码1；前17个模块、repository skill和development entry检查先通过", "classification": "external-disturbance"},
+    {"source": "相对HEAD含394个REQ-031范围内变更文件", "effect": "范围检查通过但不能把全部diff归因于本主题", "classification": "workspace-disturbance"}
+  ],
+  "coverage_gaps": [
+    "未使用真实后端写入数据验证Excel解析结果；前端状态使用受控网络响应覆盖",
+    "未使用独立低权限账号运行头部入口隐藏分支；由现有hasCreate条件与源码契约覆盖",
+    "未覆盖移动端软键盘弹出"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "complete"
+}

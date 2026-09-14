@@ -1,0 +1,23 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {"id": "T1", "goal": "Compact directory and wider plan detail", "requirement_ids": ["R1", "R2", "R4", "R5"], "prerequisites": [], "input_facts": ["Old grid gives most width to list; confirmed via browser screenshot"], "write_scope": ["web/src/modules/release/components/ReleaseDrillPlanView.vue"], "invariants": ["Keep API and all handlers unchanged"], "interface_contracts": ["Original ReleasePlanDto and projectId"], "non_goals": ["Backend or other page changes"], "action_bounds": ["Change page template, display labels and scoped styles"], "acceptance_checks": ["Vue build passes", "Directory narrower than detail", "Both group entries and form controls retained"], "evidence_required": ["Diff", "Build exit", "Browser screenshot and cancellation results"], "rollback": "Reverse only T1 hunks", "stop_conditions": ["Need shared or API changes"], "escalation_conditions": ["Out-of-scope defect"]},
+    {"id": "T2", "goal": "Readable sequence drawer and responsive integration", "requirement_ids": ["R3", "R4", "R5"], "prerequisites": ["T1"], "input_facts": ["Existing sorted P sequences contain arrays of commands"], "write_scope": ["web/src/modules/release/components/ReleaseDrillPlanView.vue"], "invariants": ["Keep handlers, payloads, permissions and merged datetime range"], "interface_contracts": ["Original ReleasePlanTimelineDto and ReleasePlanItemDto"], "non_goals": ["Date axis or new business fields"], "action_bounds": ["Change drawer presentation and local responsive styles only"], "acceptance_checks": ["Vue build passes", "P columns show multiple commands", "Drawer buttons do not overlap", "Mobile local scrolling and cancellation verified or gaps disclosed"], "evidence_required": ["Diff", "Build exit", "Desktop/mobile browser results", "Scope/governance results"], "rollback": "Reverse only T2 hunks", "stop_conditions": ["Need backend or shared overlay changes"], "escalation_conditions": ["Critical verification gap"]}
+  ],
+  "dependency_edges": [{"from": "T1", "to": "T2", "reason": "Same component, serial changes"}],
+  "parallel_groups": [["T1"], ["T2"]],
+  "integration_points": [{"after_tasks": ["T1", "T2"], "checks": ["Frontend build", "Browser journeys", "Scope and governance"]}],
+  "sampling_plan": [
+    {"label": "T1-output", "trigger": "Page layout implemented", "observer": "Implementer self-check, independent review pending", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R1", "R2", "R4", "R5"]},
+    {"label": "T2-integration", "trigger": "Drawer implemented", "observer": "Implementer self-check, independent review pending", "sensors": ["S1", "S2", "S3"], "requirement_ids": ["R3", "R4", "R5"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1"], "sensor_ids": ["S1", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T2"], "sensor_ids": ["S1", "S2", "S3"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3"]}
+  ],
+  "plan_status": "ready"
+}

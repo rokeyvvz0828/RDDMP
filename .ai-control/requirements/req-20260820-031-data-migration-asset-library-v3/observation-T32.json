@@ -1,0 +1,136 @@
+{
+  "task_id": "T32",
+  "observer": "independent verification pass（直连 HTTP 反例传感器 + Playwright 真实浏览器 + 代码/Git 归因核查，与 execution-T32 记录分离复算）",
+  "observed_at": "2026-09-03T09:45:00+08:00",
+  "environment": "本地：MySQL(:3306)/MinIO(:9000)/kkfileview 容器运行中（会话中途被整体重启过一次，全部证据为重启后复跑）；后端 ./backend-dev.sh restart(:8080，09:00:19 启动完成，health UP)，前端 Vite(:5173)；角色 admin（SUPER_ADMIN，数据迁移全量权限）；项目 3001/P2026-001、3002/P2026-002、3003/P2026-003",
+  "closes": [
+    "F-T31r1-遗留「统一回收站与两个看板不做项目隔离（后端无 projectId 参数）」→ 本次后端契约追加 projectId 必填并实测生效，回收站/看板均按当前项目取值",
+    "F-T31r1-遗留「结构化端点无 projectId，由前端按 project_id 过滤」→ 后端强制过滤，前端过滤代码删除，C/C2 与 U1 传感器证明双向可见性",
+    "T31 观测未覆盖的写入侧归属变更风险 → E1~E4 证明携带他项目 projectId 的更新不改变库中归属",
+    "执行期偏差 F-T32-08（回收站前端漏传 projectId）与 F-T32-10（移动端页面级横向溢出）→ 已纠正并复跑复验"
+  ],
+  "supersedes_baseline": "本观测覆盖 T31-r1 之后所有 T32 改动（29 个已跟踪后端文件 +525/−324、3 个新增后端文件、12 个 web/src 文件、需求与范围文档），并取代 execution-T32 的自述结论",
+  "findings": [
+    {
+      "id": "F-T32-01",
+      "statement": "AC1：省略 projectId 的数据迁移查询/写入端点一律 400，且返回数据不含任何其他项目的行",
+      "requirement": "T32 AC1 / R3",
+      "method": "直连 HTTP v4：A 组逐端点去参（30 项）+ B 组非法值（9 项）+ C 组 11 类资源 × 2 项目的「本项目行可见、他项目行不可见」（22 项）+ C2 组跨项目标记互斥（11 项）；浏览器 U2 请求级传感器复核 36 个真实请求",
+      "observed": "A/A2/B 全 400，错误体 code=40000；C 组每项 records 仅含本项目夹具（非真空：夹具先建成并断言 total>0）；C2 same=[]；U2 {total:36, missingGet:0, wrongPid:0, wrongBodyPid:0}",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32-02",
+      "statement": "AC2：非成员且非豁免角色请求他项目 → 403，列表/详情/下载/删除/恢复/彻底清理一致拒绝",
+      "requirement": "T32 AC2",
+      "method": "DataMigrationPermissionServiceTest（6 用例，含非成员 403 与豁免角色放行）+ 代码复核 requireAccessible 单一入口（所有隔离路径必须经 requireProject/requireStoredProject）+ 直连未知项目反例",
+      "observed": "单元测试 6/6 通过；运行时环境无法构造非成员会话（pm_project_member 全表为空、取证账号为 SUPER_ADMIN 命中豁免 IN ('ADMIN','SUPER_ADMIN','DATA_MIGRATION_ADMIN')），因此 403 分支未获浏览器级证据；未知项目按实现返回 400「Project not found」而非 404（B 组实测，与需求「非法值 400」口径一致）",
+      "verdict": "pass_by_authorized_substitute",
+      "note": "本条按需求 AC2 自身的括号条款以替代取证结案，证据等级明确低于其余各条；真实成员数据下的 403 需在预发/上线验证复核"
+    },
+    {
+      "id": "F-T32-03",
+      "statement": "AC3：PUT/结构化更新/内容替换携带他项目 projectId 时记录归属不变",
+      "requirement": "T32 AC3 / 决策 D2",
+      "method": "E1（问题）E2（会议）E3（结构化）E4（目标表）把 body.projectId 改成对方项目后复查响应与详情 project_id；并 grep 全部 UPDATE 语句确认不含 project_id",
+      "observed": "四项均返回 200 且 project_id 保持原值；后端 UPDATE 列集合无 project_id；前端维护 DTO 以 Omit<...,'projectId'> 在类型层禁止回传（ReportUpdateParams 已删该字段）",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32-04",
+      "statement": "AC4：统一回收站与两个看板按当前项目取值，「清空全部」只清空当前项目",
+      "requirement": "T32 AC4 / 决策 D3",
+      "method": "H1~H7（软删→两项目回收站互斥→恢复限定→详情归属→彻底清理）+ I1/I2（purge-all 后对方项目行数不变）+ F1~F5（看板 overall/component）；浏览器 U1 在 content/recycle-bin、dashboard/overall、dashboard/component 三路由做 A/B 可见性双向断言",
+      "observed": "H2/H3 互斥通过，H4 证明 ISSUE 不在统一 SPI（400「不支持的内容类型：ISSUE」，既有设计）；F1 响应无 snapshotDate，F2 看板 assets 等于项目内内容表求和（按 ContentAssetTables.ALL_TABLES 文件型 7 张含 dm_plan/dm_report + 结构化 3 张），F3 两项目计数不同，F4 未知项目 400，F5 组件看板限定项目；I1 后 I2 对方行数不变",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32-05",
+      "statement": "AC5：导入请求项目与行内项目编码不一致 → 该行失败并给原因；一致行归属为请求项目",
+      "requirement": "T32 AC5 / 决策 D4",
+      "method": "G1（他项目编码行）G2（一致行入库后 project_id=请求项目）G3（向未知项目导入 400）+ A 组 import 端点缺参 400（issues.import/rules.import/mappings.upload）",
+      "observed": "G1 该行失败并返回原因，G2 归属正确，G3 400；三项通过",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32-06",
+      "statement": "AC6：聚焦与全仓 Maven、前端构建、治理与范围检查通过",
+      "requirement": "T32 AC6",
+      "method": "mvn -pl :ccb-data-migration -am test；mvn test；npm --prefix web run build；node scripts/check-all-governance.mjs；check-ai-control-layout.mjs；check-codex-scope.mjs",
+      "observed": "聚焦 BUILD SUCCESS（ccb-data-migration 59/0/0/0）；web build EXIT=0；范围检查 passed（138 changed file(s)，均在 writable_paths）；治理与账本布局检查 EXIT=1 但输出中本需求 0 命中（红项全属其他历史账本）；全仓 mvn test EXIT=1（见 F-T32-07）",
+      "verdict": "partial_pass",
+      "note": "AC6 字面要求 mvn test 通过，当前全仓不通过，故不得记为 pass；data-migration 模块本身 SUCCESS"
+    },
+    {
+      "id": "F-T32-07",
+      "statement": "全仓 mvn test 的失败归属：ccb-architecture Tests run 348 / Failures 2 / Errors 2，ccb-test-management 与 ccb-boot 被 SKIPPED",
+      "requirement": "T32 AC6 归因（不虚报）",
+      "method": "surefire 报告 + Reactor Summary + git diff 归因：git diff --stat origin/main..HEAD -- server/src/modules/architecture（空）、git diff --name-only origin/main -- server/src/platform（仅 V147~V159）、两个失败用例的 Flyway target 值",
+      "observed": "失败集：NetworkAccessMigrationMySqlTest 2 ERROR（Flyway 执行平台既有 V80__test_management_menu.sql 报 1267 Illegal mix of collations utf8mb4_0900_ai_ci vs utf8mb4_unicode_ci）+ LegacyWorkflowInboxMenuMigrationMySqlTest 2 FAILURE（sys_menu id=202 期望 0 实际 1）；两用例 target 分别为 103/105 与 122/123，本分支仅追加 V147~V159，不在其执行范围内；architecture 模块源码相对 origin/main 零改动；V80 文件本分支未改。结论：非 T32 引入，属 main 基线/本地 MySQL 8.4 排序规则环境问题；未做 origin/main 干净工作树复跑（成本 > 结构性论证收益），保留为基线复验项。对照：T21 账本同样记录过全仓在 ccb-architecture 失败（当时签名不同：PhysicalSubsystemConcurrencyMySqlTest target V36）",
+      "verdict": "external_failure_attributed"
+    },
+    {
+      "id": "F-T32-08",
+      "statement": "偏差：统一回收站页在 T32 后端下 100% 失败态（前端漏传 projectId）",
+      "requirement": "T32 AC4 / AC7",
+      "method": "首轮浏览器取证 U1 断言 + Playwright 探针 dump 实际请求",
+      "observed": "首报：页面发出 GET /api/data-migration/recycle-bin?page=1&size=20（无 projectId）→ 400 → 页面显示「回收站加载失败 projectId is required」；curl 同参带 projectId=3001 返回 1 条，证明后端正常。根因：web/src/api/data-migration.ts 的 listDataMigrationRecycleBin 入参类型声明 projectId 必填但重拼 params 时丢弃。纠正：显式转发 projectId。复验：U1 recycle-bin 双向断言通过，U2 36 请求 missingGet=0，类型审计另 2 个嫌疑（listIssueRecycleBin/listAttachmentRecycleBin）经核查整体透传 { params } 属误报",
+      "verdict": "closed"
+    },
+    {
+      "id": "F-T32-09",
+      "statement": "偏差：取证脚本自身缺陷造成假失败与证据丢失（夹具类型错、抽屉定位、崩溃吞掉清理与落盘）",
+      "requirement": "传感器可信度（观测前置条件）",
+      "method": "逐项定性：路由 component 与 meta 复核、DOM dump 探针、请求 dump",
+      "observed": "base/intermediate-tables 实际渲染 TargetTablesPage(category=INTERMEDIATE)，views/base/IntermediateTablesPage.vue 无引用 → 首报的 U1 该路由 FAIL 为夹具类型错（改建该分类目标表 + ROUTES 增加按路由的 search 选择器）；页面同时挂 3 个 .el-drawer 且首个为空，且 el-select 内层 input readonly 被 wrapper 遮挡 → 改为按标题 filter 抽屉 + 点击 .el-select + 键盘选择，U4 断言 payload.projectId=3001/respProject=3001/「新增成功」；脚本 exit 1 曾跳过 Z 清理与结果落盘 → 加 try 护栏与 X1.no_fatal_script_error（最终 PASS）",
+      "verdict": "closed"
+    },
+    {
+      "id": "F-T32-10",
+      "statement": "偏差：375/390/430 视口页面级横向溢出（首轮 24 项 FAIL）",
+      "requirement": "T32 AC7 / design-h5.md §2.1.2、§5.4",
+      "method": "空态与有数据对照（scrollW 375 vs 462）→ 枚举越出视口且无 overflow-x 祖先收容的元素 → UiPagination.vue 与 origin/main 零 diff → git log -S UiPagination 定位引入提交",
+      "observed": "真因为 .el-pagination__jump（「前往 X 页」）落在滚动容器外撑宽页面，由本分支早于 T32 的 9fec831 给 AssetListView/PlansPage 裸挂 <UiPagination> 引入；纠正只在可写范围内做（套用模块既有 .dm-table-footer + 共 N 条，与 ReportsPage 同构），不改 read_only 共享组件、不新增样式。同时按 §5.4 收紧传感器：其中 6 项由 el-tabs__content/el-tabs__item 触发，属手册允许的页签内局部横向滚动，为传感器过宽而非布局回退。复验：U6 68 项全绿（无页面级横向滚动、无越界未收容元素、0 控制台错误、0 个 ≥400 响应）",
+      "verdict": "closed"
+    },
+    {
+      "id": "F-T32-11",
+      "statement": "AC7：浏览器 A↔B 隔离、直连 API 反例被拒、新增携带当前项目、四视口无回退",
+      "requirement": "T32 AC7",
+      "method": "Playwright admin 会话，17 路由 × 1280x800/375x812/390x844/430x932，夹具前缀 T32，运行前 P0 清扫建立空基线、运行后 Z1~Z4 复核残留",
+      "observed": "137 项 0 失败：U1 51 项双向可见性（含回收站与两看板）、U3 浏览器内 fetch 直连反例 400/40000「projectId is required」与「参数 projectId 非法，必须为数字」、own project 200、U4 新增会议 payload 携带 projectId=3001 且响应 project_id=3001、U5 新增行可见、U7 same=[]（页面不再出现「所属项目」字段）、P0/Z1~Z4 残留计数全 0、console=[]",
+      "verdict": "pass"
+    },
+    {
+      "id": "F-T32-12",
+      "statement": "不变量：未触碰平台/公共能力、未新增 Flyway、未弱化租户与 RBAC、前端共享层零改动",
+      "requirement": "T32 不变量",
+      "method": "git diff --name-only origin/main -- server/src/platform；git status --porcelain 限定 platform/shared；Flyway 目录计数与 check-flyway-migrations；grep UPDATE 语句；范围检查脚本",
+      "observed": "platform 差异仅 V147~V159（先前任务已提交，本任务未新增迁移）；shared 与 stores/components/ui/AppLayout 无改动；租户条件（tenant_id）与 @PreAuthorize 动作码保留，项目判定为叠加；check-codex-scope passed（138 文件）",
+      "verdict": "pass"
+    }
+  ],
+  "regression_checks": [
+    "mvn -pl :ccb-data-migration -am test：59/0/0/0 BUILD SUCCESS（含 SPI 签名改造后的 ContentRecycleBinRegistryTest 7、MeetingRecycleBinSourceTest 5、IssueServiceTest 8、ReportServiceTest 5）",
+    "全仓 mvn test：data-migration 46.9s SUCCESS，未因本次后端改动破坏其他模块（工作流、系统、发布、需求模块均 SUCCESS）",
+    "npm --prefix web run build：EXIT=0（16.40s），api 契约类型收紧后无残留调用点",
+    "T31/T31-r1 口径回归：页面仍不展示「所属项目」字段（U7 same=[]），仍无项目筛选控件，全局切换器行为不变",
+    "既有能力回归：列表/筛选/分页/新增/详情下载/软删/回收站/恢复/彻底清理/导入/两看板在真实浏览器与直连 HTTP 中均 code=0 或按预期 400",
+    "数据卫生：运行前 P0 与运行后 Z1~Z4 均按 T32 前缀清扫并断言各端点计数 0，未在生产/共享库留下夹具残迹"
+  ],
+  "blind_spots": [
+    "403 分支无运行时非豁免账号可测（成员表空 + 取证账号豁免），无法证明真实用户界面的 403 呈现；仅静态与单元测试级",
+    "MinIO 对象层未逐项目验证隔离（下载断言的是 HTTP 归属与可见性，未逐个校验对象桶策略）",
+    "dm_operation_log 审计未逐条比对项目字段是否随隔离改动正确记录（本次未改审计写入路径，属推断未测）",
+    "多标签页/并发下切换项目与进行中的详情请求组合未测（可能出现「上下文已切到 B、详情仍展示 A 记录」被 403 拒绝的交互，未取证）",
+    "IssuesPage/MeetingsPage 的裸 <UiPagination> 未一并改造（当前无数据时不溢出，且有数据时的表现未纳入本次范围，登记为待观察）",
+    "明暗主题与超大字体（>1280x800 之外的极端视口）未做视觉复验"
+  ],
+  "verdict": "T32 的 7 条验收标准中 AC1、AC3、AC4、AC5、AC7 达到真实浏览器/直连 HTTP 取证并通过；AC2 依需求自身的授权以守卫单元测试 + API 反例结案（403 未做浏览器取证，已如实降级标注）；AC6 为部分通过——聚焦 Maven、前端构建、范围检查通过，全仓 mvn test 因 ccb-architecture 的基线/环境失败不通过，且 ccb-test-management/ccb-boot 被 SKIPPED，data-migration 模块本身 SUCCESS。执行期三条真实偏差（回收站漏传 projectId、传感器夹具/崩溃、移动端横向溢出）均已纠正并复跑复验；环境被回收后所有运行证据均重新取得，未复用过期结果。",
+  "phase_recommendation": "converged_with_registered_residuals",
+  "required_before_release": [
+    "Owner 复核：只读 pm_project_member 的口径重复让步，决定是否补 platform Port",
+    "在存在真实项目成员数据的预发环境复测非成员 403（列表/详情/下载/删除/恢复/彻底清理一致拒绝）",
+    "全仓 mvn test 需由平台/架构侧处理 MySQL 8.4 排序规则与 V123 inbox 菜单迁移断言（另立任务，不属本需求），或 CI 以 data-migration 模块 SUCCESS + 基线红清单为放行依据"
+  ]
+}

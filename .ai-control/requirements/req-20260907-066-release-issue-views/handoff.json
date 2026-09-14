@@ -1,0 +1,587 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260907-066-release-issue-views",
+  "handoff_status": "approved",
+  "created_at": "2026-09-07T14:05:44+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "req-20260907-066-release-issue-views",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-07-release-issue-views-design.md",
+    "objective": "Make release issues readable and maintainable through drawers with interchangeable card/list presentation.",
+    "users": [
+      "Project members viewing release issues",
+      "Authorized issue maintainers"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "Read-only issue details are available from either view.",
+        "acceptance": [
+          "Click title or detail control and read all returned issue fields without entering an editable form."
+        ],
+        "counterexample": [
+          "Only maintainers can read issue descriptions through the edit form."
+        ],
+        "priority": "must",
+        "source": "User-confirmed design and existing project contracts"
+      },
+      {
+        "id": "R2",
+        "statement": "Create and edit issues in drawers with existing fields, validation and feedback.",
+        "acceptance": [
+          "Original required fields and CLOSED timestamp rule apply; footer is reachable; failure retains input and concurrent submits are prevented."
+        ],
+        "counterexample": [
+          "Create still opens the old dialog or cancellation mutates the source record."
+        ],
+        "priority": "must",
+        "source": "User-confirmed design and existing project contracts"
+      },
+      {
+        "id": "R3",
+        "statement": "Switch card/list presentation without losing query or pagination context.",
+        "acceptance": [
+          "Current record IDs, total, page, page size and filters remain unchanged; switching alone makes no list request."
+        ],
+        "counterexample": [
+          "Switching resets the page or shows a different data set."
+        ],
+        "priority": "must",
+        "source": "User-confirmed design and existing project contracts"
+      },
+      {
+        "id": "R4",
+        "statement": "Both views and drawers remain usable on desktop and mobile.",
+        "acceptance": [
+          "Desktop defaults to list and mobile to cards on initial entry; explicit user choice survives resize; 375x812, 390x844, 430x932 and desktop have no page overflow."
+        ],
+        "counterexample": [
+          "Mobile mode is forced after every resize, or drawer footer is clipped."
+        ],
+        "priority": "must",
+        "source": "User-confirmed design and existing project contracts"
+      },
+      {
+        "id": "R5",
+        "statement": "Preserve project isolation, service-side pagination and permission/error/cancel semantics.",
+        "acceptance": [
+          "Read-only viewers can open details without write controls; project switching clears old details; cancelled deletion sends no delete request or failure message."
+        ],
+        "counterexample": [
+          "A previous project's issue remains in the drawer after switching."
+        ],
+        "priority": "must",
+        "source": "User-confirmed design and existing project contracts"
+      }
+    ],
+    "invariants": [
+      "Permissions and project boundaries unchanged",
+      "One records and pagination state for both views",
+      "Details do not mutate the editing form or source record"
+    ],
+    "constraints": [
+      "Only modify the issue component and this task's metadata",
+      "Preserve ReleaseIssueDto/Write, projectId, rowVersion and API contracts",
+      "No backend, SQL, public UI, shared styles, router or dependency changes",
+      "No production/.env access, commit, push or branch switch",
+      "Preserve all pre-existing worktree changes"
+    ],
+    "non_goals": [
+      "New APIs or database fields",
+      "Persistent view preferences",
+      "Changes to other release pages"
+    ],
+    "selected_approach": {
+      "name": "Detail and maintenance drawers plus shared-data dual views",
+      "reason": "Preserves browsing context and avoids route changes",
+      "alternatives": [
+        {
+          "name": "Separate detail route",
+          "rejected_because": "Adds navigation and return steps without a requested permalink requirement"
+        }
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": [
+          "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+        ],
+        "outside": [
+          "release API",
+          "Parent project switch",
+          "Global UI/theme"
+        ]
+      },
+      "components": [
+        {
+          "name": "ReleaseIssueTrackingView",
+          "responsibility": "Shared query state, issue presentation and drawer modes",
+          "depends_on": [
+            "UiPageHeader",
+            "UiToolbar",
+            "UiStatusTag",
+            "UiEmptyState",
+            "Element Plus",
+            "api/release.ts",
+            "auth store"
+          ]
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "ReleaseIssueDto and ReleaseIssueWrite",
+          "producer": "web/src/api/release.ts",
+          "consumers": [
+            "ReleaseIssueTrackingView"
+          ],
+          "contract": "Use full list DTO for detail; keep create/update/delete parameters and concurrency version"
+        }
+      ],
+      "data_flows": [
+        {
+          "input": "Current project and query",
+          "transitions": [
+            "Load paginated issues",
+            "Render selected view",
+            "Open details or copied edit form",
+            "Use existing API and refresh after save"
+          ],
+          "output": "Project-scoped issue data with unchanged query context"
+        }
+      ]
+    },
+    "error_handling": [
+      {
+        "condition": "403 or load error",
+        "behavior": "Existing forbidden/error result",
+        "recovery": "Existing permission grant or retry"
+      },
+      {
+        "condition": "Validation or save failure",
+        "behavior": "Keep input and original validation rules",
+        "recovery": "Correct fields or retry"
+      },
+      {
+        "condition": "Dirty form dismissal",
+        "behavior": "Confirm discard; cancellation retains draft",
+        "recovery": "Continue editing or explicitly discard"
+      }
+    ],
+    "quality_attributes": {
+      "security": [
+        "View entry independent of manage permission; write controls retain manage guard",
+        "Plain text detail, no v-html"
+      ],
+      "performance": [
+        "No new fetch on view switch or detail open"
+      ],
+      "compatibility": [
+        "Existing Vue/Element Plus and semantic tokens"
+      ],
+      "operations": [
+        "Local-only verification; no server restart required"
+      ]
+    },
+    "verification_strategy": [
+      {
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "signal": "Matching records, contexts and accessible drawer controls",
+        "method": "Build, diff review and specified desktop/mobile browser journeys including permission and write fixtures where available"
+      }
+    ],
+    "assumptions": [
+      {
+        "text": "Current list responses contain full detail values",
+        "basis": "ReleaseIssueDto includes every long-text field and display name",
+        "falsifier": "Runtime list response omits or truncates detail fields"
+      },
+      {
+        "text": "Local browser test session can exercise relevant roles and fixtures",
+        "basis": "Existing local app and prior test session",
+        "falsifier": "Unavailable account, session or browser capability"
+      }
+    ],
+    "unknowns": [],
+    "decisions": [
+      {
+        "id": "D1",
+        "decision": "Use drawers for detail and maintenance",
+        "reason": "Avoid leaving current query",
+        "source": "User confirmed the proposed design"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "Separate view state or aliased form data drifts",
+        "impact": "Wrong rows or unintended edits",
+        "mitigation": "Share records and pagination; copy values into the form"
+      },
+      {
+        "risk": "Teleport styles and small-screen dimensions",
+        "impact": "Unreachable controls or overflow",
+        "mitigation": "Component-qualified styles and multi-viewport checks"
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User replied 'confirm' to the proposed design. confirmed_at is the approval recording timestamp, not an asserted message timestamp; no separate Owner approval is claimed.",
+      "confirmed_at": "2026-09-07T14:05:44+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-07-release-issue-views-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "Only modify the issue component and this task's metadata",
+      "Preserve ReleaseIssueDto/Write, projectId, rowVersion and API contracts",
+      "No backend, SQL, public UI, shared styles, router or dependency changes",
+      "No production/.env access, commit, push or branch switch",
+      "Preserve all pre-existing worktree changes"
+    ],
+    "file_map": [
+      {
+        "path": "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+        "status": "existing",
+        "responsibility": "Issue query, display and overlays",
+        "evidence": "Read in this task; no existing changes to this component in git status"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "Read-only details and create/edit drawers",
+        "requirement_ids": [
+          "R1",
+          "R2",
+          "R4",
+          "R5"
+        ],
+        "prerequisites": [],
+        "input_facts": [
+          "ReleaseIssueDto already has all detail text fields",
+          "Current UI uses one edit dialog and has no detail entry",
+          "Existing save validates issueNo, issueTitle and closedAt for CLOSED"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+          ],
+          "test": [
+            "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "ReleaseIssueDto",
+            "ReleaseIssueWrite",
+            "issues",
+            "form",
+            "editingIssue",
+            "canManage",
+            "saveIssue"
+          ],
+          "produces": [
+            "Component-local openDetail(issue: ReleaseIssueDto)",
+            "Exclusive detail/create/edit drawer mode"
+          ]
+        },
+        "steps": [
+          {
+            "id": "T1-S1",
+            "action": "Record component diff and existing browser baseline",
+            "command": "git diff -- web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+            "expected": "No pre-existing changes in issue component; list and edit dialog baseline identified",
+            "evidence": "Baseline diff and browser observations"
+          },
+          {
+            "id": "T1-S2",
+            "action": "Introduce read-only detail state and title/detail entry points; render full existing DTO as text",
+            "command": null,
+            "expected": "Viewers can read full issue without edit permission; source record is not mutated",
+            "evidence": "Component diff and detail field comparison"
+          },
+          {
+            "id": "T1-S3",
+            "action": "Replace dialog with an exclusive-mode drawer, retain fields/payloads, add dirty-close protection and accessible footer",
+            "command": null,
+            "expected": "Original validation applies; cancelled close retains draft; saving prevents duplicate submit and closure",
+            "evidence": "Drawer state and form test observations"
+          },
+          {
+            "id": "T1-S4",
+            "action": "Check whitespace",
+            "command": "git diff --check",
+            "expected": "Exit 0",
+            "evidence": "Exit code"
+          },
+          {
+            "id": "T1-S5",
+            "action": "Build frontend",
+            "command": "npm --prefix web run build",
+            "expected": "Exit 0",
+            "evidence": "Type/build diagnostics"
+          },
+          {
+            "id": "T1-S6",
+            "action": "Verify detail/edit transition, cancellation, required fields, CLOSED time rule and failures",
+            "command": null,
+            "expected": "No source mutation; original query context retained; failures keep input",
+            "evidence": "execution-T1 with actual scenarios and explicit gaps"
+          }
+        ],
+        "acceptance_checks": [
+          "All issue detail fields visible read-only",
+          "Create/edit use drawer with reachable footer",
+          "Original validation and API contract retained",
+          "Cancellation and dirty-form behavior tested"
+        ],
+        "risks": [
+          "Aliased DTO/form state",
+          "Unavailable failure or read-only test role"
+        ],
+        "rollback": "Reverse only T1 component hunks and own evidence, preserving other work.",
+        "stop_conditions": [
+          "Runtime detail requires a different API or public UI change"
+        ],
+        "escalation_conditions": [
+          "Missing detail fields or unverified permission contract"
+        ]
+      },
+      {
+        "id": "T2",
+        "goal": "Card/list switching and integrated responsive verification",
+        "requirement_ids": [
+          "R3",
+          "R4",
+          "R5"
+        ],
+        "prerequisites": [
+          "T1"
+        ],
+        "input_facts": [
+          "Current component has one records array and server pagination state",
+          "Parent project key recreates issue component",
+          "Frontend package has build but no configured unit test runner"
+        ],
+        "files": {
+          "create": [],
+          "modify": [
+            "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+          ],
+          "test": [
+            "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+          ]
+        },
+        "interfaces": {
+          "consumes": [
+            "T1 openDetail",
+            "Existing openIssue/removeIssue",
+            "issues/page/pageSize/total/keyword/priority/status"
+          ],
+          "produces": []
+        },
+        "steps": [
+          {
+            "id": "T2-S1",
+            "action": "Initialize viewMode from the 760px initial viewport boundary and add icon segmented switch",
+            "command": null,
+            "expected": "Desktop list/mobile cards by default; user choice is not overwritten by resizing",
+            "evidence": "View mode DOM and resize checks"
+          },
+          {
+            "id": "T2-S2",
+            "action": "Render table and responsive cards from the same issues array with shared paging and guarded actions",
+            "command": null,
+            "expected": "View switching does not fetch or reset filters/pages; all entries remain usable",
+            "evidence": "Record ID and query context comparisons"
+          },
+          {
+            "id": "T2-S3",
+            "action": "Verify two-view details, query/pagination retention, empty/error/loading, read-only/403 and project switching",
+            "command": null,
+            "expected": "No view data drift, stale project details or unauthorized write controls",
+            "evidence": "Browser results and any unavailable scenarios"
+          },
+          {
+            "id": "T2-S4",
+            "action": "Verify 375x812, 390x844, 430x932 and >=1280 desktop in light/dark themes",
+            "command": null,
+            "expected": "No page overflow; local table scroll, pagination and drawer footer reachable",
+            "evidence": "DOM dimensions and screenshots"
+          },
+          {
+            "id": "T2-S5",
+            "action": "Exercise isolated synthetic create/edit/read-back/delete fixture only when safe test setup is available",
+            "command": null,
+            "expected": "Correct persisted values; existing data untouched; deletion cancellation has no DELETE request",
+            "evidence": "Fixture identifiers and results without confidential data, or explicit untested gap"
+          },
+          {
+            "id": "T2-S6",
+            "action": "Check whitespace",
+            "command": "git diff --check",
+            "expected": "Exit 0",
+            "evidence": "Exit code"
+          },
+          {
+            "id": "T2-S7",
+            "action": "Build frontend",
+            "command": "npm --prefix web run build",
+            "expected": "Exit 0",
+            "evidence": "Build diagnostics"
+          },
+          {
+            "id": "T2-S8",
+            "action": "Run governance checks",
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "Report exact results, separating pre-existing format failures",
+            "evidence": "Exit code and relevant error"
+          },
+          {
+            "id": "T2-S9",
+            "action": "Run scope check without expanding task for prior work",
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-066-release-issue-views/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+            "expected": "New changes within scope; disclose existing licon naming and unrelated worktree limitations",
+            "evidence": "Scope result and manual diff attribution"
+          }
+        ],
+        "acceptance_checks": [
+          "Mode switching preserves records and query",
+          "Cards and list both expose details and authorized maintenance",
+          "Responsive dimensions and themes checked",
+          "Original project/permission/cancel behavior retained"
+        ],
+        "risks": [
+          "Long fields and table minimum width",
+          "Browser/role availability",
+          "Pre-existing governance checks fail"
+        ],
+        "rollback": "Reverse only T2 presentation hunks; do not revert unrelated tasks.",
+        "stop_conditions": [
+          "Needs new API, persistent preferences or shared UI changes"
+        ],
+        "escalation_conditions": [
+          "Project leakage, unauthorized actions or write regression"
+        ]
+      }
+    ],
+    "dependency_edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "reason": "Same component; T2 uses T1 detail entry"
+      }
+    ],
+    "parallel_groups": [
+      [
+        "T1"
+      ],
+      [
+        "T2"
+      ]
+    ],
+    "integration_checks": [
+      {
+        "after_tasks": [
+          "T1",
+          "T2"
+        ],
+        "command": "npm --prefix web run build",
+        "expected": "Exit 0; browser acceptance required separately"
+      }
+    ],
+    "coverage": [
+      {
+        "requirement_id": "R1",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R2",
+        "task_ids": [
+          "T1"
+        ]
+      },
+      {
+        "requirement_id": "R3",
+        "task_ids": [
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R4",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      },
+      {
+        "requirement_id": "R5",
+        "task_ids": [
+          "T1",
+          "T2"
+        ]
+      }
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "User replied 确认 after the written implementation plan link and approval request in this conversation.",
+      "confirmed_at": "2026-09-07T06:34:04.267Z"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": [
+      "web/src/modules/release/components/ReleaseIssueTrackingView.vue"
+    ],
+    "state_variable_candidates": [
+      "projectId",
+      "issues",
+      "query and pagination",
+      "viewMode",
+      "drawer mode",
+      "selected detail",
+      "form and saving"
+    ],
+    "interface_candidates": [
+      "Existing release issue APIs"
+    ],
+    "sensor_candidates": [
+      "Git diff",
+      "Vue build",
+      "Browser DOM, screenshot and network checks"
+    ],
+    "actuator_candidates": [
+      "Local component script, template and styles"
+    ],
+    "disturbance_candidates": [
+      "Global styles",
+      "Long records",
+      "Role/API availability",
+      "Browser delays"
+    ],
+    "delay_candidates": [
+      "Network results",
+      "Vue next render",
+      "Drawer transitions"
+    ],
+    "assumptions": [
+      {
+        "text": "Current paginated records provide full issue details",
+        "basis": "ReleaseIssueDto fields",
+        "falsifier": "Runtime truncation or missing data"
+      }
+    ]
+  }
+}

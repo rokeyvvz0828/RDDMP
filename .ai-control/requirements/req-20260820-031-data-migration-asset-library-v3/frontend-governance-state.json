@@ -1,0 +1,2586 @@
+{
+  "schema_version": 4,
+  "revision": 24,
+  "created_at": "2026-09-07T04:31:29+00:00",
+  "updated_at": "2026-09-07T04:59:55+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-07 用户回复‘按计划逐项执行’。；计划确认=2026-09-07 用户回复‘按计划逐项执行’。",
+      "recorded_at": "2026-09-07T04:31:29+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "基准包含五项可测量 must 需求且无阻塞未知项",
+      "recorded_at": "2026-09-07T04:33:41+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "五项需求均可观测且在 REQ-031 范围内可控",
+      "recorded_at": "2026-09-07T04:33:41+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "受控任务包、依赖和回滚条件已登记",
+      "recorded_at": "2026-09-07T04:33:41+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "执行产物可独立测量，全部任务已产生验证证据",
+      "recorded_at": "2026-09-07T04:57:52+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "观测完成且无产品偏差，T1-T4 全部 verified",
+      "recorded_at": "2026-09-07T04:58:41+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "账本 gate 通过，must 需求、任务、采样、反馈、范围和不变量均满足",
+      "recorded_at": "2026-09-07T04:59:55+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=2026-09-07 用户回复‘按计划逐项执行’。；计划确认=2026-09-07 用户回复‘按计划逐项执行’。",
+        "recorded_at": "2026-09-07T04:31:29+00:00",
+        "data": {
+          "objective": "数据迁移模块不再展示项目归属信息，并在桌面和移动端使用一致、响应式、主题兼容的文件上传样式。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "数据迁移业务可见 UI 不得展示所属项目、项目名称或动态项目名称。",
+              "acceptance": [
+                "参数和检核规则列表及详情无项目字段",
+                "导入和清空确认文案不回显项目名称"
+              ],
+              "priority": "must",
+              "source": "REQ-031 T31-r1 与用户批准计划",
+              "counterexample": [
+                "列表仍存在项目名称列",
+                "确认框包含当前项目名称"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "主要文件和 Excel 导入拖拽区必须占满父容器且不造成移动端横向溢出。",
+              "acceptance": [
+                "上传根节点和拖拽器宽度均为 100%",
+                "三个移动视口无页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "design-h5.md 与用户批准计划",
+              "counterexample": [
+                "375px 视口出现横向滚动"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "同类上传入口必须使用统一的拖拽区或附件按钮加文件列表形态。",
+              "acceptance": [
+                "模块共享 CSS 定义两种标准形态",
+                "各页面不再复制同名附件样式"
+              ],
+              "priority": "must",
+              "source": "用户批准计划",
+              "counterexample": [
+                "页面继续保留独立 attachment-item 视觉定义"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "自定义文件预览场景不得同时显示 Element Plus 默认文件列表。",
+              "acceptance": [
+                "ReportsPage 三个上传入口关闭默认列表",
+                "文件仅在自定义预览区域出现一次"
+              ],
+              "priority": "must",
+              "source": "静态审查发现",
+              "counterexample": [
+                "同一文件名出现两套删除或预览操作"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "上传相关业务样式必须使用语义主题变量并完成分层治理验收。",
+              "acceptance": [
+                "上传区域无内联十六进制颜色",
+                "构建和范围检查通过",
+                "REQ-061 仅作为外部扰动记录"
+              ],
+              "priority": "must",
+              "source": "项目规范与用户批准计划",
+              "counterexample": [
+                "业务模板保留 color:#909399",
+                "将 REQ-061 错报为本次回归"
+              ]
+            }
+          ],
+          "invariants": [
+            "projectId 继续来自顶部全局项目上下文并参与请求",
+            "上传 API、权限、审计和后端契约不变",
+            "目标表模板所属项目编码列说明保留"
+          ],
+          "constraints": [
+            "仅修改 REQ-031 可写路径",
+            "不修改公共 UI、全局 store、后端或数据库",
+            "四个规定视口完成浏览器验收"
+          ],
+          "non_goals": [
+            "不修复 REQ-061",
+            "不重构上传 API",
+            "不统一非数据迁移模块样式"
+          ],
+          "assumptions": [
+            "data-migration.css 已由所有目标页面引入",
+            "现有本地浏览器验收环境可启动"
+          ],
+          "unknowns": [],
+          "decisions": [
+            "REQ-061 可从数据迁移整改范围排除，但不得宣称仓库全量治理通过。"
+          ],
+          "measurement_intents": [
+            "静态扫描",
+            "Vue/Vite 构建",
+            "任务范围检查",
+            "四视口浏览器验收"
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准计划，需求冲突已按 T31-r1 消歧",
+        "recorded_at": "2026-09-07T04:33:40+00:00",
+        "data": {
+          "objective": "数据迁移模块不再展示项目归属信息，并在桌面和移动端提供一致、响应式、主题兼容的文件上传体验。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "数据迁移业务可见 UI 不得展示所属项目、项目名称或动态项目名称。",
+              "acceptance": [
+                "参数和检核规则列表及详情无项目字段",
+                "导入与清空确认文案不回显项目名称",
+                "projectId 请求归属保持不变"
+              ],
+              "priority": "must",
+              "source": "REQ-031 T31-r1 与 2026-09-07 用户批准计划",
+              "counterexample": [
+                "列表存在项目名称列",
+                "确认框显示当前项目名称"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "主要文件和 Excel 导入拖拽区必须占满父容器且不造成规定移动视口横向溢出。",
+              "acceptance": [
+                "el-upload 与 el-upload-dragger 宽度均为 100%",
+                "375x812、390x844、430x932 无页面级横向溢出"
+              ],
+              "priority": "must",
+              "source": "design-h5.md 与用户批准计划",
+              "counterexample": [
+                "移动端弹框出现横向滚动"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "数据迁移同类上传入口必须收敛为全宽拖拽区或附件按钮加统一文件列表两种形态。",
+              "acceptance": [
+                "共享 CSS 定义两种形态",
+                "页面不重复定义 attachment-list/item/icon/name"
+              ],
+              "priority": "must",
+              "source": "用户批准计划",
+              "counterexample": [
+                "相同附件列表在多个页面维持不同间距和颜色"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "自定义文件预览场景不得同时显示 Element Plus 默认文件列表。",
+              "acceptance": [
+                "ReportsPage 三处上传关闭默认列表",
+                "浏览器中文件名和操作仅呈现一次"
+              ],
+              "priority": "must",
+              "source": "静态审查发现",
+              "counterexample": [
+                "同一文件同时出现在默认列表和自定义列表"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "上传样式必须使用语义主题变量，并以分层检查完成数据迁移专项验收。",
+              "acceptance": [
+                "上传区域无内联十六进制颜色",
+                "前端构建与任务范围检查通过",
+                "REQ-061 仅记录为范围外治理扰动"
+              ],
+              "priority": "must",
+              "source": "项目规范与用户批准计划",
+              "counterexample": [
+                "业务页保留 color:#909399",
+                "把 REQ-061 失败归因于本次变更"
+              ]
+            }
+          ],
+          "invariants": [
+            "projectId 继续来自顶部项目上下文并参与请求",
+            "上传 API、权限、审计和后端契约不变",
+            "目标表模板所属项目编码说明保留"
+          ],
+          "constraints": [
+            "仅修改 REQ-031 可写路径",
+            "不修改公共 UI、全局 store、后端、数据库和 REQ-061",
+            "浏览器验收覆盖四个规定视口"
+          ],
+          "non_goals": [
+            "不修复 REQ-061",
+            "不重构上传 API",
+            "不统一其他业务模块上传样式"
+          ],
+          "assumptions": [
+            {
+              "text": "data-migration.css 已由所有目标页面加载",
+              "basis": "源码 import 扫描",
+              "falsifier": "构建产物或浏览器计算样式显示目标页未加载共享 CSS"
+            },
+            {
+              "text": "本地浏览器验收环境可启动",
+              "basis": "仓库已有 web/verify_ui.mjs 和历史验收记录",
+              "falsifier": "服务或测试依赖无法启动"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "真实浏览器环境是否仍具备可用测试账号和服务",
+              "impact": "可能限制运行态证据，但不影响静态实现",
+              "owner": "T4 执行阶段",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "REQ-061 是否纳入本次修复",
+              "options": [
+                "范围外记录",
+                "修改投产需求"
+              ],
+              "selected": "范围外记录",
+              "blocking": false,
+              "source": "2026-09-07 用户确认可忽略并批准计划"
+            },
+            {
+              "question": "后续规则域文字与 T31-r1 冲突时采用何者",
+              "options": [
+                "遵循模块级 T31-r1",
+                "重新展示项目列"
+              ],
+              "selected": "遵循模块级 T31-r1",
+              "blocking": false,
+              "source": "用户批准的执行计划"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "运行时项目字段文本和请求 projectId",
+              "candidate_sensor": "静态模板扫描加浏览器文本断言"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "上传区计算宽度和页面 scrollWidth",
+              "candidate_sensor": "CSS 扫描加四视口 Playwright"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "共享类使用和重复页面样式数量",
+              "candidate_sensor": "rg 类名扫描加截图比较"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "单个已选文件的 DOM 列表数量",
+              "candidate_sensor": "模板配置扫描加浏览器 DOM 断言"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "颜色来源、构建退出码、治理退出原因",
+              "candidate_sensor": "rg、Vite build、范围与全量治理命令"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "源码扫描确认页面、CSS、上传配置和外部治理扰动边界",
+        "recorded_at": "2026-09-07T04:33:41+00:00",
+        "data": {
+          "baseline_revision": "frontend-governance-baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "数据迁移页面模板",
+              "data-migration.css",
+              "页面本地文件状态",
+              "REQ-031 当前增量文档"
+            ],
+            "environment": [
+              "Element Plus 上传组件",
+              "全局项目上下文",
+              "现有上传 API",
+              "本地浏览器环境",
+              "REQ-061 治理文件"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "project_context_visibility",
+              "owner": "数据迁移 Vue 模板",
+              "valid_values": [
+                "hidden",
+                "visible"
+              ]
+            },
+            {
+              "name": "upload_layout",
+              "owner": "data-migration.css 与页面类名",
+              "valid_values": [
+                "full-width-dropzone",
+                "attachment-button-list",
+                "inconsistent"
+              ]
+            },
+            {
+              "name": "file_list_renderer",
+              "owner": "el-upload 配置和页面自定义列表",
+              "valid_values": [
+                "custom-only",
+                "element-only",
+                "duplicate"
+              ]
+            },
+            {
+              "name": "theme_source",
+              "owner": "CSS 声明",
+              "valid_values": [
+                "semantic-token",
+                "hardcoded-color"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "全局当前项目和页面数据",
+              "transitions": [
+                "页面模板选择字段与文案",
+                "Element Plus 渲染"
+              ],
+              "outputs": [
+                "列表、详情、提示和确认框文本"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "视口宽度和弹层内容宽度",
+              "transitions": [
+                "el-upload 根节点布局",
+                "el-upload-dragger 默认或共享宽度"
+              ],
+              "outputs": [
+                "上传区计算宽度和页面 scrollWidth"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "页面文件状态",
+              "transitions": [
+                "页面选择上传形态",
+                "共享或局部附件类渲染"
+              ],
+              "outputs": [
+                "上传入口和文件列表视觉"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "用户选择文件",
+              "transitions": [
+                "Element Plus 内部列表更新",
+                "页面自定义预览状态更新"
+              ],
+              "outputs": [
+                "文件列表 DOM 数量"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "主题变量和构建源文件",
+              "transitions": [
+                "CSS 解析",
+                "vue-tsc 与 Vite 编译",
+                "治理脚本扫描"
+              ],
+              "outputs": [
+                "主题样式、构建状态和治理结果"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "project_scope",
+              "producers": [
+                "useProjectScope"
+              ],
+              "consumers": [
+                "数据迁移页面请求和提交"
+              ],
+              "invariant": "projectId 继续参与业务归属且项目名称不进入 UI"
+            },
+            {
+              "name": "upload_event_contract",
+              "producers": [
+                "Element Plus el-upload"
+              ],
+              "consumers": [
+                "页面 on-change/on-remove 回调"
+              ],
+              "invariant": "现有 File/UploadFile 回调语义不变"
+            },
+            {
+              "name": "upload_style_contract",
+              "producers": [
+                "data-migration.css"
+              ],
+              "consumers": [
+                "数据迁移上传和附件列表模板"
+              ],
+              "invariant": "拖拽区全宽，附件列表可收缩且使用语义变量"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "项目字段和动态名称残留",
+              "method": "rg 扫描 Vue 模板并人工分类注释/文件契约",
+              "blind_spots": [
+                "运行时第三方文案"
+              ],
+              "independence": "直接读取模板源代码"
+            },
+            {
+              "id": "S2",
+              "target": "上传样式和默认列表配置",
+              "method": "rg 扫描 upload、attachment 类和十六进制颜色",
+              "blind_spots": [
+                "浏览器计算样式级联"
+              ],
+              "independence": "静态结构传感器"
+            },
+            {
+              "id": "S3",
+              "target": "TypeScript 和 Vue 模板完整性",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "视觉布局"
+              ],
+              "independence": "编译与打包传感器"
+            },
+            {
+              "id": "S4",
+              "target": "四视口布局和 DOM 重复",
+              "method": "真实浏览器截图、scrollWidth 与文件列表 DOM 断言",
+              "blind_spots": [
+                "未打开的权限受限入口"
+              ],
+              "independence": "运行时渲染传感器"
+            },
+            {
+              "id": "S5",
+              "target": "任务授权和仓库治理状态",
+              "method": "check-codex-scope、git diff --check、check-all-governance",
+              "blind_spots": [
+                "REQ-061 为不可控外部失败"
+              ],
+              "independence": "治理脚本传感器"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "项目字段渲染模板",
+              "action": "删除项目列/详情项并改写动态项目文案",
+              "authority": "REQ-031 web/src/modules/data-migration/** 可写",
+              "impact_radius": "五个数据迁移页面",
+              "rollback": "恢复任务开始前页面 diff"
+            },
+            {
+              "id": "A2",
+              "target": "上传布局与主题来源",
+              "action": "增加共享 CSS 并替换页面类名和内联颜色",
+              "authority": "数据迁移模块 CSS/Vue 可写",
+              "impact_radius": "所有引入共享 CSS 的数据迁移页面",
+              "rollback": "移除共享块并恢复页面类名"
+            },
+            {
+              "id": "A3",
+              "target": "默认文件列表",
+              "action": "在自定义预览上传入口设置 show-file-list=false",
+              "authority": "ReportsPage 可写",
+              "impact_radius": "汇报材料三个上传入口",
+              "rollback": "恢复属性"
+            },
+            {
+              "id": "A4",
+              "target": "需求文字冲突",
+              "action": "在 REQ-031 登记增量并修正规则域显示口径",
+              "authority": "REQ-031 文档可写",
+              "impact_radius": "当前需求基准",
+              "rollback": "恢复需求文档"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "REQ-061 非 JSON-compatible YAML",
+              "effect": "仓库全量治理在读取投产需求范围时失败",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "本地后端或测试账号不可用",
+              "effect": "真实浏览器业务入口无法完成",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "共享 CSS 级联",
+              "effect": "未显式修改页面可能继承新样式",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite 构建和浏览器页面加载",
+              "consequence": "静态修改后视觉证据延迟",
+              "sampling_rule": "构建完成且页面 network idle 后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "所有目标页面加载 data-migration.css",
+              "evidence": "rg 显示目标 Vue 文件均直接 import 共享 CSS",
+              "falsifier": "构建分块或浏览器计算样式未包含共享选择器"
+            },
+            {
+              "text": "两个上传视觉形态足以覆盖当前入口",
+              "evidence": "源码入口分为拖拽导入和按钮附件两类",
+              "falsifier": "执行时发现需要第三种独立状态或布局"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "修改页面模板并用 S1/S4 复验"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "共享全宽 CSS 并用 S2/S4 复验"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "迁移共享类并用 S2/S4 复验"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "关闭默认列表并用 S2/S4 复验"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "语义变量替换和分层治理采样"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "四个串行任务覆盖全部需求、写入边界和采样点",
+        "recorded_at": "2026-09-07T04:33:41+00:00",
+        "data": {
+          "baseline_revision": "frontend-governance-baseline-1",
+          "model_revision": "frontend-governance-model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "消除需求文字冲突并登记当前增量",
+              "requirement_ids": [
+                "R1",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "T31-r1 禁止项目回显",
+                "后续规则域文字仍要求项目列"
+              ],
+              "write_scope": [
+                "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-*.json"
+              ],
+              "invariants": [
+                "保留历史增量和文件契约说明"
+              ],
+              "interface_contracts": [
+                "当前基准以 T31-r1 模块级口径为准"
+              ],
+              "non_goals": [
+                "不修改 REQ-061"
+              ],
+              "action_bounds": [
+                "仅追加当前增量并修正直接冲突的规则域文字"
+              ],
+              "acceptance_checks": [
+                "需求不再同时要求展示和禁止项目字段"
+              ],
+              "evidence_required": [
+                "需求文档 diff",
+                "项目文字扫描"
+              ],
+              "rollback": "恢复需求文档并保留账本历史",
+              "stop_conditions": [
+                "发现更晚的用户明确要求展示项目"
+              ],
+              "escalation_conditions": [
+                "需要修改范围外治理文件"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "清理业务可见项目字段与动态名称",
+              "requirement_ids": [
+                "R1"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "参数、规则、目标表、问题和会议页面存在静态残留"
+              ],
+              "write_scope": [
+                "web/src/modules/data-migration/views/content/ParametersPage.vue",
+                "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+                "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+                "web/src/modules/data-migration/views/content/IssuesPage.vue",
+                "web/src/modules/data-migration/views/content/MeetingsPage.vue"
+              ],
+              "invariants": [
+                "projectId 请求和项目隔离逻辑不变",
+                "模板所属项目编码说明保留"
+              ],
+              "interface_contracts": [
+                "useProjectScope.projectId 继续作为请求归属"
+              ],
+              "non_goals": [
+                "不改变服务端响应 DTO"
+              ],
+              "action_bounds": [
+                "删除渲染字段和动态名称依赖，改写提示文案"
+              ],
+              "acceptance_checks": [
+                "列表详情无项目字段",
+                "确认文案无项目名称",
+                "projectId 数据流未改变"
+              ],
+              "evidence_required": [
+                "Vue diff",
+                "rg 扫描输出",
+                "构建结果"
+              ],
+              "rollback": "恢复五个 Vue 文件",
+              "stop_conditions": [
+                "移除展示会改变 API 请求"
+              ],
+              "escalation_conditions": [
+                "后端要求页面选择项目"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "统一上传区、附件列表与默认文件列表行为",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "共享 CSS 被目标页加载",
+                "拖拽器默认宽度未统一",
+                "页面重复附件 CSS",
+                "Reports 自定义预览与默认列表并存"
+              ],
+              "write_scope": [
+                "web/src/modules/data-migration/data-migration.css",
+                "web/src/modules/data-migration/components/AssetListView.vue",
+                "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+                "web/src/modules/data-migration/views/content/IssuesPage.vue",
+                "web/src/modules/data-migration/views/content/ReportsPage.vue",
+                "web/src/modules/data-migration/views/content/MeetingsPage.vue",
+                "web/src/modules/data-migration/views/content/PlansPage.vue",
+                "web/src/modules/data-migration/views/content/MappingsPage.vue",
+                "web/src/modules/data-migration/views/content/ProgramsPage.vue",
+                "web/src/modules/data-migration/views/content/TopicsPage.vue",
+                "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue",
+                "web/src/modules/data-migration/views/content/RecycleBinPage.vue"
+              ],
+              "invariants": [
+                "上传事件、校验、失败重试和 API 不变",
+                "文件名可收缩且操作可达"
+              ],
+              "interface_contracts": [
+                "dm-upload-dropzone 控制全宽拖拽区",
+                "dm-attachment-* 控制按钮型附件列表",
+                "自定义预览使用 show-file-list=false"
+              ],
+              "non_goals": [
+                "不创建跨模块公共上传组件",
+                "不改变文件大小和数量规则"
+              ],
+              "action_bounds": [
+                "共享 CSS 和模板类名配置范围内收敛"
+              ],
+              "acceptance_checks": [
+                "拖拽区全宽",
+                "无重复默认列表",
+                "无上传内联十六进制颜色",
+                "重复附件样式迁移到共享 CSS"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "静态扫描",
+                "前端构建",
+                "浏览器证据"
+              ],
+              "rollback": "恢复目标页面和共享 CSS",
+              "stop_conditions": [
+                "需要修改上传 API 或公共 UI"
+              ],
+              "escalation_conditions": [
+                "发现无法映射到两种形态的上传流程"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "完成分层自动化和四视口浏览器验收",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "规定四个验收视口",
+                "REQ-061 是范围外扰动"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-*.json"
+              ],
+              "invariants": [
+                "失败如实记录，不绕过 Required Checks"
+              ],
+              "interface_contracts": [
+                "专项传感器与全量治理结果分开报告"
+              ],
+              "non_goals": [
+                "不修复 REQ-061"
+              ],
+              "action_bounds": [
+                "运行静态、构建、范围、浏览器和治理传感器并记录证据"
+              ],
+              "acceptance_checks": [
+                "四视口无横向溢出",
+                "上传文件列表不重复",
+                "专项检查通过",
+                "外部失败准确归因"
+              ],
+              "evidence_required": [
+                "命令退出码",
+                "浏览器断言和截图",
+                "治理错误原文"
+              ],
+              "rollback": "回退产品改动并保留失败证据",
+              "stop_conditions": [
+                "真实浏览器环境不可用且无替代运行证据"
+              ],
+              "escalation_conditions": [
+                "出现本次导致的 P0/P1 回归"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "实现以已消歧需求为准"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "共享三个 Vue 写入面"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "最终验收依赖稳定产品输出"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "项目字段静态扫描",
+                "前端构建"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "上传样式静态扫描",
+                "前端构建",
+                "四视口浏览器验收"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "REQ-031 范围检查",
+                "git diff --check",
+                "全量治理外部失败归因"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T2 完成采样",
+              "trigger": "项目字段改动完成",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1"
+              ]
+            },
+            {
+              "label": "T3 集成采样",
+              "trigger": "上传样式改动完成",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "最终运行采样",
+              "trigger": "本地服务可用且产品改动稳定",
+              "observer": "Playwright 与治理脚本",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "真实 diff、构建、静态扫描、范围检查、四视口 Playwright 与全量治理输出",
+        "recorded_at": "2026-09-07T04:57:52+00:00",
+        "data": {
+          "task_id": "T1-T4",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+              "purpose": "消除项目字段展示口径冲突并登记 T47 前端治理增量"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/data-migration.css",
+              "purpose": "提供全宽拖拽上传区和统一附件列表共享样式"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/components/AssetListView.vue",
+              "purpose": "接入共享拖拽上传区"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+              "purpose": "移除动态项目名称并接入共享拖拽上传区"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content",
+              "purpose": "清理项目字段回显并统一上传区、附件列表、待上传状态和附件选择样式"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 与 vite build 通过；仅有既有 Rollup 注释和大 chunk 警告"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed for REQ-20260820-031; 22 changed file(s)."
+            },
+            {
+              "command": "node /tmp/rddmp-data-migration-ui-check.mjs",
+              "exit_code": 0,
+              "salient_output": "1280x800、375x812、390x844、430x932 共 144 项浏览器断言通过"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "模块治理、仓库 Skill、开发准入通过；随后 REQ-061 codex-task-scope.yaml 因非 JSON-compatible YAML 解析失败"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "项目字段静态扫描",
+              "result": "pass",
+              "evidence": "数据迁移 Vue 文件无项目字段标签、scopeProjectName 或运行时项目名称命中",
+              "limitations": []
+            },
+            {
+              "check": "上传样式静态扫描",
+              "result": "pass",
+              "evidence": "无旧 attachment-* 类、重复预览类、上传内联十六进制颜色或页面局部主题兜底色命中",
+              "limitations": []
+            },
+            {
+              "check": "四视口浏览器验收",
+              "result": "pass",
+              "evidence": "7 个目标页面在 4 个视口完成路由、文本、横向溢出、上传宽度、文件名唯一性和脚本错误断言，144/144 通过",
+              "limitations": [
+                "8080 后端未运行，浏览器通过 API 拦截使用脱敏空态数据，未执行真实上传请求"
+              ]
+            },
+            {
+              "check": "全仓治理",
+              "result": "external-failure",
+              "evidence": "失败文件为范围外 REQ-061 codex-task-scope.yaml，错误为 must be JSON-compatible YAML",
+              "limitations": [
+                "在 REQ-061 修正前不能声称全仓治理通过"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "参数和检核规则列表及详情不再展示项目字段，确认与导入文案不再回显动态项目名称",
+            "共享 dm-upload-* 与 dm-attachment-* 样式替代页面重复样式，并提供移动端收缩规则",
+            "Reports 三处自定义文件预览关闭 Element Plus 默认文件列表",
+            "上传事件、校验、API、projectId 归属和目标表模板项目编码契约保持不变"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "projectId 继续来自顶部项目上下文并参与请求",
+              "result": "pass",
+              "evidence": "仅删除 projectName 读取和模板回显，scopeProjectId 及请求参数未改"
+            },
+            {
+              "invariant": "上传 API、权限、审计和后端契约不变",
+              "result": "pass",
+              "evidence": "差异仅涉及模板类、show-file-list 和 CSS；无 API、store、server 或迁移文件变更"
+            },
+            {
+              "invariant": "目标表模板所属项目编码说明保留",
+              "result": "pass",
+              "evidence": "导入提示仍保留模板所属项目编码与当前项目不一致时按行失败的文件契约"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "REQ-061 范围文件不是 JSON-compatible YAML",
+              "impact": "全仓治理在数据迁移专项检查之后退出 1；不影响 REQ-031 定向范围、构建和浏览器验收"
+            },
+            {
+              "event": "本地 8080 后端未运行",
+              "impact": "浏览器验收使用 Playwright API 拦截验证前端布局与交互状态，未覆盖真实上传集成"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "REQ-061 修正前全仓治理保持失败，该事项不在本次写入范围",
+            "真实后端上传回归依赖后续集成环境；本次未修改上传请求逻辑"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "五条 must 需求逐项观测，144/144 浏览器断言、构建与范围检查通过，外部扰动独立分类",
+        "recorded_at": "2026-09-07T04:58:41+00:00",
+        "data": {
+          "sample_label": "数据迁移前端治理最终运行观测",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ],
+          "baseline_revision": "frontend-governance-baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 静态项目字段扫描 + S4 四视口可见文本断言",
+              "result": "pass",
+              "raw_evidence": "静态扫描无项目字段标签或 scopeProjectName 命中；7 页面 x 4 视口均无所属项目或项目名称可见文本",
+              "limitation": [
+                "脱敏空态数据未覆盖每种业务详情记录，但被移除字段的模板路径已静态扫描"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 共享 CSS 检查 + S4 上传区边界与 document scrollWidth 测量",
+              "result": "pass",
+              "raw_evidence": "dm-upload-dropzone、el-upload、el-upload-dragger 均为全宽；1280x800、375x812、390x844、430x932 的目标表、问题和 Reports 上传区未超出容器，所有目标页 scrollWidth 不大于 clientWidth",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S2 模板/CSS 重复样式扫描 + S4 附件空态与操作区可见性",
+              "result": "pass",
+              "raw_evidence": "旧 attachment-* 页面类和局部定义无命中；共享 dm-attachment-* 覆盖计划页面；Meetings 与 Plans 四视口共享空态和上传操作区可见",
+              "limitation": [
+                "真实附件数据状态未连接后端，现有/待上传视觉由模板类和空态交互组合验证"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 Reports 配置扫描 + S4 文件选择 DOM 断言",
+              "result": "pass",
+              "raw_evidence": "Reports 三处 el-upload 均配置 show-file-list=false；四个视口选择本地文件后文件名出现次数均为 1",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2 语义变量扫描 + S3 构建/范围检查 + S5 全仓治理",
+              "result": "pass-with-disturbance",
+              "raw_evidence": "上传页面无目标硬编码颜色或局部主题兜底；前端构建和 REQ-031 范围检查退出 0；全仓治理在范围外 REQ-061 JSON-compatible YAML 解析处退出 1",
+              "limitation": [
+                "REQ-061 修正前不能声称全仓治理通过"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "classification": "disturbance",
+              "event": "REQ-061 codex-task-scope.yaml 不是治理脚本要求的 JSON-compatible YAML",
+              "evidence": "check-all-governance.mjs 报 Unexpected token 's' 并指向 REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml",
+              "scope_effect": "阻断全仓治理，但不改变 REQ-031 专项测量结果"
+            },
+            {
+              "classification": "disturbance",
+              "event": "本地 8080 后端未运行",
+              "evidence": "Vite 代理目标不可用，浏览器验收改用 Playwright API 拦截提供脱敏空态响应",
+              "scope_effect": "不影响布局和 DOM 断言，限制真实上传集成覆盖"
+            }
+          ],
+          "coverage_gaps": [
+            "未在真实后端环境执行附件上传、下载或持久化回归；本次差异未修改相关 API 和状态转换"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "最终需求追踪、三次采样、构建、范围、静态与四视口浏览器证据审计",
+        "recorded_at": "2026-09-07T04:59:55+00:00",
+        "data": {
+          "baseline_revision": "frontend-governance-baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4"
+              ],
+              "evidence": [
+                "需求文档按 T31-r1 消歧并登记 T47",
+                "项目字段静态扫描无命中",
+                "7 页面 x 4 视口无所属项目或项目名称可见文本"
+              ],
+              "limitations": [
+                "真实详情记录由静态模板扫描补充空态浏览器数据的覆盖"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "共享 dm-upload-dropzone 同时约束 el-upload 和 el-upload-dragger 为 100% 宽",
+                "1280x800、375x812、390x844、430x932 的上传区边界与页面 scrollWidth 断言通过"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "共享 dm-upload-* 与 dm-attachment-* 样式覆盖目标页面",
+                "旧 attachment-* 页面类与局部样式扫描无命中",
+                "Meetings 与 Plans 的共享附件空态和上传操作区在四视口可见"
+              ],
+              "limitations": [
+                "现有附件和待上传附件的数据态未连接真实后端"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "Reports 三处自定义预览上传均配置 show-file-list=false",
+                "四个视口选择测试文件后文件名出现次数均为 1"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "上传相关页面硬编码色和局部主题兜底扫描无命中",
+                "npm --prefix web run build 退出码 0",
+                "REQ-031 工作区范围检查退出码 0",
+                "REQ-061 解析失败被独立记录为范围外治理扰动"
+              ],
+              "limitations": [
+                "全仓治理在 REQ-061 修正前仍退出 1"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "需求冲突扫描无命中，T47 增量已登记"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "项目字段扫描、projectId 差异审计和前端构建通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "共享样式扫描、Reports 配置检查、前端构建和浏览器布局断言通过"
+              ]
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": [
+                "四视口 144/144 浏览器断言、REQ-031 范围检查和 diff 检查通过，外部治理失败已归因"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Vue TypeScript 与 Vite 生产构建",
+              "result": "pass",
+              "evidence": "npm --prefix web run build 退出码 0"
+            },
+            {
+              "check": "数据迁移项目字段与上传样式静态检查",
+              "result": "pass",
+              "evidence": "两组 rg 反向扫描均无违规命中"
+            },
+            {
+              "check": "REQ-031 写入范围",
+              "result": "pass",
+              "evidence": "check-codex-scope.mjs 报 24 个工作区变更文件均在范围内"
+            },
+            {
+              "check": "桌面和移动端运行布局",
+              "result": "pass",
+              "evidence": "Playwright 144/144 断言通过且四个视口无页面脚本错误"
+            },
+            {
+              "check": "全仓治理",
+              "result": "external-failure",
+              "evidence": "数据迁移相关前置检查通过，随后范围外 REQ-061 YAML 解析失败"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "projectId 继续来自顶部项目上下文并参与请求",
+              "result": "pass",
+              "evidence": "scopeProjectId 与请求逻辑未改，仅移除 projectName 展示依赖"
+            },
+            {
+              "invariant": "上传 API、权限、审计和后端契约不变",
+              "result": "pass",
+              "evidence": "最终 diff 无 API、store、server、数据库迁移或公共 UI 修改"
+            },
+            {
+              "invariant": "目标表模板所属项目编码说明保留",
+              "result": "pass",
+              "evidence": "文件契约提示文本仍保留"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "REQ-061 非 JSON-compatible YAML 阻断全仓治理",
+              "result": "isolated",
+              "evidence": "REQ-031 专项范围、构建、静态和浏览器检查独立通过；未修改 REQ-061"
+            },
+            {
+              "disturbance": "本地 8080 后端未运行",
+              "result": "degraded-but-observable",
+              "evidence": "使用 Playwright API 拦截提供脱敏空态数据，真实渲染前端并测量布局与交互 DOM"
+            }
+          ],
+          "residual_risks": [
+            "REQ-061 修正前仓库全量治理仍失败，不能作为本次通过项报告",
+            "真实后端文件上传/下载集成未在本地复验；本次差异未改变上传 API 和状态转换"
+          ],
+          "gate_result": "pass",
+          "route_reason": "五条 must 需求均由 verified 任务覆盖并有静态、构建、范围和四视口运行证据；三次采样 P0-P3 均为零，无开放反馈，范围和不变量通过，外部扰动已披露且未被误归因"
+        }
+      }
+    ]
+  },
+  "objective": "数据迁移模块不再展示项目归属信息，并在桌面和移动端提供一致、响应式、主题兼容的文件上传体验。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "数据迁移业务可见 UI 不得展示所属项目、项目名称或动态项目名称。",
+      "acceptance": [
+        "参数和检核规则列表及详情无项目字段",
+        "导入与清空确认文案不回显项目名称",
+        "projectId 请求归属保持不变"
+      ],
+      "priority": "must",
+      "source": "REQ-031 T31-r1 与 2026-09-07 用户批准计划",
+      "counterexample": [
+        "列表存在项目名称列",
+        "确认框显示当前项目名称"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "主要文件和 Excel 导入拖拽区必须占满父容器且不造成规定移动视口横向溢出。",
+      "acceptance": [
+        "el-upload 与 el-upload-dragger 宽度均为 100%",
+        "375x812、390x844、430x932 无页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "design-h5.md 与用户批准计划",
+      "counterexample": [
+        "移动端弹框出现横向滚动"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "数据迁移同类上传入口必须收敛为全宽拖拽区或附件按钮加统一文件列表两种形态。",
+      "acceptance": [
+        "共享 CSS 定义两种形态",
+        "页面不重复定义 attachment-list/item/icon/name"
+      ],
+      "priority": "must",
+      "source": "用户批准计划",
+      "counterexample": [
+        "相同附件列表在多个页面维持不同间距和颜色"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "自定义文件预览场景不得同时显示 Element Plus 默认文件列表。",
+      "acceptance": [
+        "ReportsPage 三处上传关闭默认列表",
+        "浏览器中文件名和操作仅呈现一次"
+      ],
+      "priority": "must",
+      "source": "静态审查发现",
+      "counterexample": [
+        "同一文件同时出现在默认列表和自定义列表"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "上传样式必须使用语义主题变量，并以分层检查完成数据迁移专项验收。",
+      "acceptance": [
+        "上传区域无内联十六进制颜色",
+        "前端构建与任务范围检查通过",
+        "REQ-061 仅记录为范围外治理扰动"
+      ],
+      "priority": "must",
+      "source": "项目规范与用户批准计划",
+      "counterexample": [
+        "业务页保留 color:#909399",
+        "把 REQ-061 失败归因于本次变更"
+      ]
+    }
+  ],
+  "invariants": [
+    "projectId 继续来自顶部项目上下文并参与请求",
+    "上传 API、权限、审计和后端契约不变",
+    "目标表模板所属项目编码说明保留"
+  ],
+  "constraints": [
+    "仅修改 REQ-031 可写路径",
+    "不修改公共 UI、全局 store、后端、数据库和 REQ-061",
+    "浏览器验收覆盖四个规定视口"
+  ],
+  "non_goals": [
+    "不修复 REQ-061",
+    "不重构上传 API",
+    "不统一其他业务模块上传样式"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-handoff.json",
+    "imported_at": "2026-09-07T04:31:29+00:00",
+    "topic": "data-migration-frontend-governance",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-frontend-governance",
+      "handoff_status": "approved",
+      "created_at": "2026-09-07T12:27:50+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-frontend-governance",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-07-data-migration-frontend-governance-design.md",
+        "objective": "数据迁移模块不再展示项目归属信息，并在桌面和移动端使用一致、响应式、主题兼容的文件上传样式。",
+        "users": [
+          "数据迁移模块业务用户"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "数据迁移业务可见 UI 不得展示所属项目、项目名称或动态项目名称。",
+            "acceptance": [
+              "参数和检核规则列表及详情无项目字段",
+              "导入和清空确认文案不回显项目名称"
+            ],
+            "priority": "must",
+            "source": "REQ-031 T31-r1 与用户批准计划",
+            "counterexample": [
+              "列表仍存在项目名称列",
+              "确认框包含当前项目名称"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "主要文件和 Excel 导入拖拽区必须占满父容器且不造成移动端横向溢出。",
+            "acceptance": [
+              "上传根节点和拖拽器宽度均为 100%",
+              "三个移动视口无页面级横向溢出"
+            ],
+            "priority": "must",
+            "source": "design-h5.md 与用户批准计划",
+            "counterexample": [
+              "375px 视口出现横向滚动"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "同类上传入口必须使用统一的拖拽区或附件按钮加文件列表形态。",
+            "acceptance": [
+              "模块共享 CSS 定义两种标准形态",
+              "各页面不再复制同名附件样式"
+            ],
+            "priority": "must",
+            "source": "用户批准计划",
+            "counterexample": [
+              "页面继续保留独立 attachment-item 视觉定义"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "自定义文件预览场景不得同时显示 Element Plus 默认文件列表。",
+            "acceptance": [
+              "ReportsPage 三个上传入口关闭默认列表",
+              "文件仅在自定义预览区域出现一次"
+            ],
+            "priority": "must",
+            "source": "静态审查发现",
+            "counterexample": [
+              "同一文件名出现两套删除或预览操作"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "上传相关业务样式必须使用语义主题变量并完成分层治理验收。",
+            "acceptance": [
+              "上传区域无内联十六进制颜色",
+              "构建和范围检查通过",
+              "REQ-061 仅作为外部扰动记录"
+            ],
+            "priority": "must",
+            "source": "项目规范与用户批准计划",
+            "counterexample": [
+              "业务模板保留 color:#909399",
+              "将 REQ-061 错报为本次回归"
+            ]
+          }
+        ],
+        "invariants": [
+          "projectId 继续来自顶部全局项目上下文并参与请求",
+          "上传 API、权限、审计和后端契约不变",
+          "目标表模板所属项目编码列说明保留"
+        ],
+        "constraints": [
+          "仅修改 REQ-031 可写路径",
+          "不修改公共 UI、全局 store、后端或数据库",
+          "四个规定视口完成浏览器验收"
+        ],
+        "non_goals": [
+          "不修复 REQ-061",
+          "不重构上传 API",
+          "不统一非数据迁移模块样式"
+        ],
+        "selected_approach": {
+          "name": "模块共享 CSS 双形态收敛",
+          "reason": "保持页面业务状态和 API 不变，以最小共享样式消除重复和响应式偏差。",
+          "alternatives": [
+            "创建承载全部业务状态的复杂上传组件",
+            "仅逐页打补丁"
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "data-migration Vue 页面",
+              "data-migration.css",
+              "REQ-031 当前前缀账本"
+            ],
+            "outside": [
+              "Element Plus",
+              "公共 UI 组件",
+              "上传服务端",
+              "REQ-061"
+            ]
+          },
+          "components": [
+            "项目字段渲染模板",
+            "拖拽上传入口",
+            "附件列表入口",
+            "模块共享 CSS"
+          ],
+          "interfaces": [
+            "useProjectScope.projectId",
+            "el-upload change/remove 事件",
+            "dm-upload 与 dm-attachment CSS 类"
+          ],
+          "data_flows": [
+            "顶部项目上下文 -> 页面请求参数",
+            "文件选择 -> 页面本地状态 -> 现有上传 API"
+          ]
+        },
+        "error_handling": [
+          "项目不可用时提示用户使用顶部项目切换器，不回显项目名称",
+          "上传失败和重试行为沿用现有页面状态"
+        ],
+        "quality_attributes": {
+          "security": [
+            "不改变服务端授权"
+          ],
+          "performance": [
+            "不增加网络请求和依赖"
+          ],
+          "compatibility": [
+            "保留现有上传事件和 API"
+          ],
+          "operations": [
+            "REQ-061 外部失败单独记录"
+          ]
+        },
+        "verification_strategy": [
+          "静态扫描",
+          "Vue/Vite 构建",
+          "任务范围检查",
+          "四视口浏览器验收"
+        ],
+        "assumptions": [
+          "data-migration.css 已由所有目标页面引入",
+          "现有本地浏览器验收环境可启动"
+        ],
+        "unknowns": [],
+        "decisions": [
+          "REQ-061 可从数据迁移整改范围排除，但不得宣称仓库全量治理通过。"
+        ],
+        "risks": [
+          "共享 CSS 可能影响多个页面",
+          "历史需求文字存在项目展示冲突"
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-07 用户回复‘按计划逐项执行’。",
+          "confirmed_at": "2026-09-07T12:27:50+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-07-data-migration-frontend-governance-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "仅修改 REQ-031 可写路径",
+          "不修改后端、数据库、公共 UI 和 REQ-061",
+          "四视口浏览器验收"
+        ],
+        "file_map": [
+          {
+            "path": "web/src/modules/data-migration/data-migration.css",
+            "status": "existing",
+            "responsibility": "数据迁移模块共享布局和上传样式",
+            "evidence": "源码已被所有目标页面 import"
+          },
+          {
+            "path": "web/src/modules/data-migration/components/AssetListView.vue",
+            "status": "existing",
+            "responsibility": "通用文件资产上传入口",
+            "evidence": "源码第 223 行存在拖拽上传"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+            "status": "existing",
+            "responsibility": "目标表 Excel 导入",
+            "evidence": "源码第 787-794 行存在导入弹框和拖拽上传"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/IssuesPage.vue",
+            "status": "existing",
+            "responsibility": "问题 Excel 导入和回收站确认",
+            "evidence": "源码第 420-431 行存在 Excel 拖拽上传"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/ReportsPage.vue",
+            "status": "existing",
+            "responsibility": "汇报材料单文件、批量和替换上传",
+            "evidence": "源码第 1005、1030、1122 行存在三处拖拽上传"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/MeetingsPage.vue",
+            "status": "existing",
+            "responsibility": "会议附件选择和列表",
+            "evidence": "源码第 634-703 行存在附件列表和文件选择"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/PlansPage.vue",
+            "status": "existing",
+            "responsibility": "方案源文件选择和列表",
+            "evidence": "源码第 431-465 行存在附件列表和多文件选择"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/MappingsPage.vue",
+            "status": "existing",
+            "responsibility": "映射多文件上传状态列表",
+            "evidence": "源码第 462-475 行存在带状态的多文件列表"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/ProgramsPage.vue",
+            "status": "existing",
+            "responsibility": "程序源文件选择和列表",
+            "evidence": "源码第 314-328 行存在源文件列表和选择"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/TopicsPage.vue",
+            "status": "existing",
+            "responsibility": "专题源文件选择和列表",
+            "evidence": "源码第 372-386 行存在源文件列表和选择"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue",
+            "status": "existing",
+            "responsibility": "演练资料源文件选择和列表",
+            "evidence": "源码第 300-314 行存在源文件列表和选择"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/RecycleBinPage.vue",
+            "status": "existing",
+            "responsibility": "回收站附件列表",
+            "evidence": "源码第 363-382 行存在附件列表和重复样式"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "消除需求文字冲突并登记控制基准",
+            "requirement_ids": [
+              "R1",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "T31-r1 禁止项目回显",
+              "规则域后续文字仍要求项目列"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-state.json"
+              ],
+              "modify": [
+                "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "REQ-031 requirement"
+              ],
+              "produces": [
+                "一致的当前需求基准"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "登记本次增量并修正规则域冲突文字",
+                "command": "rg -n '项目名称|所属项目' docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+                "expected": "项目展示要求仅保留历史说明或文件契约",
+                "evidence": "需求文档 diff 和扫描输出"
+              }
+            ],
+            "acceptance_checks": [
+              "需求不再同时要求展示和禁止项目字段"
+            ],
+            "risks": [
+              "误改历史契约"
+            ],
+            "rollback": "恢复需求文档，保留账本历史",
+            "stop_conditions": [
+              "发现更晚的用户明确要求展示项目"
+            ],
+            "escalation_conditions": [
+              "需要修改 REQ-061"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "清理数据迁移业务可见项目字段和名称",
+            "requirement_ids": [
+              "R1"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "五个页面存在静态残留"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/data-migration/views/content/ParametersPage.vue",
+                "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+                "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+                "web/src/modules/data-migration/views/content/IssuesPage.vue",
+                "web/src/modules/data-migration/views/content/MeetingsPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "useProjectScope.projectId"
+              ],
+              "produces": [
+                "无项目回显的页面模板"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "删除字段并改写确认和错误文案",
+                "command": "rg -n '所属项目|项目名称|scopeProjectName' web/src/modules/data-migration",
+                "expected": "运行时命中为零，注释和模板契约命中经人工分类",
+                "evidence": "diff 和扫描输出"
+              }
+            ],
+            "acceptance_checks": [
+              "列表和详情无项目列",
+              "确认文案不包含项目名",
+              "projectId 请求逻辑不变"
+            ],
+            "risks": [
+              "误删请求归属"
+            ],
+            "rollback": "恢复五个页面文件",
+            "stop_conditions": [
+              "projectId 数据流被改变"
+            ],
+            "escalation_conditions": [
+              "后端要求页面选择项目"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "统一上传区和附件列表视觉及文件列表行为",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "共享 CSS 已被目标页面引入",
+              "Element Plus 拖拽器需要显式全宽",
+              "ReportsPage 有自定义预览"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/modules/data-migration/data-migration.css",
+                "web/src/modules/data-migration/components/AssetListView.vue",
+                "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+                "web/src/modules/data-migration/views/content/IssuesPage.vue",
+                "web/src/modules/data-migration/views/content/ReportsPage.vue",
+                "web/src/modules/data-migration/views/content/MeetingsPage.vue",
+                "web/src/modules/data-migration/views/content/PlansPage.vue",
+                "web/src/modules/data-migration/views/content/MappingsPage.vue",
+                "web/src/modules/data-migration/views/content/ProgramsPage.vue",
+                "web/src/modules/data-migration/views/content/TopicsPage.vue",
+                "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue",
+                "web/src/modules/data-migration/views/content/RecycleBinPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "el-upload callbacks",
+                "页面文件状态"
+              ],
+              "produces": [
+                "dm-upload-dropzone 和 dm-attachment CSS 契约"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "增加共享样式并替换页面类名和配置",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc 与 Vite 通过",
+                "evidence": "构建输出、diff 和静态扫描"
+              }
+            ],
+            "acceptance_checks": [
+              "拖拽区全宽",
+              "Reports 默认列表关闭",
+              "无上传内联十六进制颜色",
+              "附件列表共享样式"
+            ],
+            "risks": [
+              "共享样式影响多个页面"
+            ],
+            "rollback": "恢复目标页面和共享 CSS",
+            "stop_conditions": [
+              "需要改变 API 或公共 UI"
+            ],
+            "escalation_conditions": [
+              "出现无法映射的第三种上传形态"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "完成自动化和四视口真实浏览器验收",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "项目规定四个验收视口",
+              "REQ-061 是仓库级外部失败"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-state.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "修改后的页面"
+              ],
+              "produces": [
+                "构建、浏览器、范围与治理证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "运行构建、范围、静态和浏览器传感器",
+                "command": "npm --prefix web run build && git diff --check",
+                "expected": "数据迁移专项检查通过，REQ-061 外部失败被单独记录",
+                "evidence": "命令输出和四视口截图/断言"
+              }
+            ],
+            "acceptance_checks": [
+              "四视口无横向溢出",
+              "上传文件列表不重复",
+              "专项检查通过"
+            ],
+            "risks": [
+              "本地服务不可用"
+            ],
+            "rollback": "回退产品修改并保留证据",
+            "stop_conditions": [
+              "无法获得浏览器证据"
+            ],
+            "escalation_conditions": [
+              "出现本次导致的 P0/P1 回归"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "项目字段实现必须基于已消歧的需求基准"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "两个任务共享 TargetTables、Issues 和 Meetings 页面，需串行保护写入面"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "浏览器与构建验收依赖所有产品改动稳定"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T3",
+              "T4"
+            ],
+            "command": "npm --prefix web run build && git diff --check",
+            "expected": "退出码 0"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "2026-09-07 用户回复‘按计划逐项执行’。",
+          "confirmed_at": "2026-09-07T12:27:50+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "数据迁移 Vue 页面",
+          "data-migration.css"
+        ],
+        "state_variable_candidates": [
+          "项目字段可见性",
+          "上传区宽度",
+          "文件列表渲染模式",
+          "主题颜色来源"
+        ],
+        "interface_candidates": [
+          "useProjectScope.projectId",
+          "el-upload 事件",
+          "共享 CSS 类"
+        ],
+        "sensor_candidates": [
+          "rg 静态扫描",
+          "Vue/Vite 构建",
+          "Playwright 四视口检查"
+        ],
+        "actuator_candidates": [
+          "模板字段删除",
+          "共享 CSS",
+          "show-file-list 配置",
+          "类名替换"
+        ],
+        "disturbance_candidates": [
+          "REQ-061 普通 YAML 阻断全量治理",
+          "本地服务可用性"
+        ],
+        "delay_candidates": [
+          "浏览器启动和接口加载"
+        ],
+        "assumptions": [
+          {
+            "text": "共享 CSS 已覆盖所有目标页面",
+            "basis": "源码 import 扫描",
+            "falsifier": "目标页面运行时未加载 data-migration.css"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Element Plus 上传组件\", \"全局项目上下文\", \"现有上传 API\", \"本地浏览器环境\", \"REQ-061 治理文件\"], \"inside\": [\"数据迁移页面模板\", \"data-migration.css\", \"页面本地文件状态\", \"REQ-031 当前增量文档\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"运行时第三方文案\"], \"id\": \"S1\", \"independence\": \"直接读取模板源代码\", \"method\": \"rg 扫描 Vue 模板并人工分类注释/文件契约\", \"target\": \"项目字段和动态名称残留\"}",
+      "{\"blind_spots\": [\"浏览器计算样式级联\"], \"id\": \"S2\", \"independence\": \"静态结构传感器\", \"method\": \"rg 扫描 upload、attachment 类和十六进制颜色\", \"target\": \"上传样式和默认列表配置\"}",
+      "{\"blind_spots\": [\"视觉布局\"], \"id\": \"S3\", \"independence\": \"编译与打包传感器\", \"method\": \"npm --prefix web run build\", \"target\": \"TypeScript 和 Vue 模板完整性\"}",
+      "{\"blind_spots\": [\"未打开的权限受限入口\"], \"id\": \"S4\", \"independence\": \"运行时渲染传感器\", \"method\": \"真实浏览器截图、scrollWidth 与文件列表 DOM 断言\", \"target\": \"四视口布局和 DOM 重复\"}",
+      "{\"blind_spots\": [\"REQ-061 为不可控外部失败\"], \"id\": \"S5\", \"independence\": \"治理脚本传感器\", \"method\": \"check-codex-scope、git diff --check、check-all-governance\", \"target\": \"任务授权和仓库治理状态\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"删除项目列/详情项并改写动态项目文案\", \"authority\": \"REQ-031 web/src/modules/data-migration/** 可写\", \"id\": \"A1\", \"impact_radius\": \"五个数据迁移页面\", \"rollback\": \"恢复任务开始前页面 diff\", \"target\": \"项目字段渲染模板\"}",
+      "{\"action\": \"增加共享 CSS 并替换页面类名和内联颜色\", \"authority\": \"数据迁移模块 CSS/Vue 可写\", \"id\": \"A2\", \"impact_radius\": \"所有引入共享 CSS 的数据迁移页面\", \"rollback\": \"移除共享块并恢复页面类名\", \"target\": \"上传布局与主题来源\"}",
+      "{\"action\": \"在自定义预览上传入口设置 show-file-list=false\", \"authority\": \"ReportsPage 可写\", \"id\": \"A3\", \"impact_radius\": \"汇报材料三个上传入口\", \"rollback\": \"恢复属性\", \"target\": \"默认文件列表\"}",
+      "{\"action\": \"在 REQ-031 登记增量并修正规则域显示口径\", \"authority\": \"REQ-031 文档可写\", \"id\": \"A4\", \"impact_radius\": \"当前需求基准\", \"rollback\": \"恢复需求文档\", \"target\": \"需求文字冲突\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"仓库全量治理在读取投产需求范围时失败\", \"source\": \"REQ-061 非 JSON-compatible YAML\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"真实浏览器业务入口无法完成\", \"source\": \"本地后端或测试账号不可用\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"未显式修改页面可能继承新样式\", \"source\": \"共享 CSS 级联\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"rg 显示目标 Vue 文件均直接 import 共享 CSS\", \"falsifier\": \"构建分块或浏览器计算样式未包含共享选择器\", \"text\": \"所有目标页面加载 data-migration.css\"}",
+      "{\"evidence\": \"源码入口分为拖拽导入和按钮附件两类\", \"falsifier\": \"执行时发现需要第三种独立状态或布局\", \"text\": \"两个上传视觉形态足以覆盖当前入口\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S3\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "消除需求文字冲突并登记当前增量",
+      "requirements": [
+        "R1",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "T31-r1 禁止项目回显",
+        "后续规则域文字仍要求项目列"
+      ],
+      "write_scope": [
+        "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-*.json"
+      ],
+      "invariants": [
+        "保留历史增量和文件契约说明"
+      ],
+      "interface_contracts": [
+        "当前基准以 T31-r1 模块级口径为准"
+      ],
+      "non_goals": [
+        "不修改 REQ-061"
+      ],
+      "action_bounds": [
+        "仅追加当前增量并修正直接冲突的规则域文字"
+      ],
+      "acceptance": [
+        "需求不再同时要求展示和禁止项目字段"
+      ],
+      "evidence_required": [
+        "需求文档 diff",
+        "项目文字扫描"
+      ],
+      "rollback": "恢复需求文档并保留账本历史",
+      "stop_conditions": [
+        "发现更晚的用户明确要求展示项目"
+      ],
+      "escalation_conditions": [
+        "需要修改范围外治理文件"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T04:34:01+00:00",
+          "text": "开始修正规则域与 T31-r1 的项目展示冲突并登记本次前端治理增量"
+        },
+        {
+          "recorded_at": "2026-09-07T04:35:05+00:00",
+          "text": "需求冲突 rg 扫描无命中，T47 已登记且 diff-check 通过"
+        }
+      ],
+      "updated_at": "2026-09-07T04:35:05+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "清理业务可见项目字段与动态名称",
+      "requirements": [
+        "R1"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "参数、规则、目标表、问题和会议页面存在静态残留"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/views/content/ParametersPage.vue",
+        "web/src/modules/data-migration/views/content/ValidationRulesPage.vue",
+        "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+        "web/src/modules/data-migration/views/content/IssuesPage.vue",
+        "web/src/modules/data-migration/views/content/MeetingsPage.vue"
+      ],
+      "invariants": [
+        "projectId 请求和项目隔离逻辑不变",
+        "模板所属项目编码说明保留"
+      ],
+      "interface_contracts": [
+        "useProjectScope.projectId 继续作为请求归属"
+      ],
+      "non_goals": [
+        "不改变服务端响应 DTO"
+      ],
+      "action_bounds": [
+        "删除渲染字段和动态名称依赖，改写提示文案"
+      ],
+      "acceptance": [
+        "列表详情无项目字段",
+        "确认文案无项目名称",
+        "projectId 数据流未改变"
+      ],
+      "evidence_required": [
+        "Vue diff",
+        "rg 扫描输出",
+        "构建结果"
+      ],
+      "rollback": "恢复五个 Vue 文件",
+      "stop_conditions": [
+        "移除展示会改变 API 请求"
+      ],
+      "escalation_conditions": [
+        "后端要求页面选择项目"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T04:35:05+00:00",
+          "text": "开始清理五个页面的项目字段与动态项目名称"
+        },
+        {
+          "recorded_at": "2026-09-07T04:39:01+00:00",
+          "text": "项目字段静态扫描无运行时命中，projectId 数据流未改，前端构建通过"
+        }
+      ],
+      "updated_at": "2026-09-07T04:39:01+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "统一上传区、附件列表与默认文件列表行为",
+      "requirements": [
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "共享 CSS 被目标页加载",
+        "拖拽器默认宽度未统一",
+        "页面重复附件 CSS",
+        "Reports 自定义预览与默认列表并存"
+      ],
+      "write_scope": [
+        "web/src/modules/data-migration/data-migration.css",
+        "web/src/modules/data-migration/components/AssetListView.vue",
+        "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+        "web/src/modules/data-migration/views/content/IssuesPage.vue",
+        "web/src/modules/data-migration/views/content/ReportsPage.vue",
+        "web/src/modules/data-migration/views/content/MeetingsPage.vue",
+        "web/src/modules/data-migration/views/content/PlansPage.vue",
+        "web/src/modules/data-migration/views/content/MappingsPage.vue",
+        "web/src/modules/data-migration/views/content/ProgramsPage.vue",
+        "web/src/modules/data-migration/views/content/TopicsPage.vue",
+        "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue",
+        "web/src/modules/data-migration/views/content/RecycleBinPage.vue"
+      ],
+      "invariants": [
+        "上传事件、校验、失败重试和 API 不变",
+        "文件名可收缩且操作可达"
+      ],
+      "interface_contracts": [
+        "dm-upload-dropzone 控制全宽拖拽区",
+        "dm-attachment-* 控制按钮型附件列表",
+        "自定义预览使用 show-file-list=false"
+      ],
+      "non_goals": [
+        "不创建跨模块公共上传组件",
+        "不改变文件大小和数量规则"
+      ],
+      "action_bounds": [
+        "共享 CSS 和模板类名配置范围内收敛"
+      ],
+      "acceptance": [
+        "拖拽区全宽",
+        "无重复默认列表",
+        "无上传内联十六进制颜色",
+        "重复附件样式迁移到共享 CSS"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "静态扫描",
+        "前端构建",
+        "浏览器证据"
+      ],
+      "rollback": "恢复目标页面和共享 CSS",
+      "stop_conditions": [
+        "需要修改上传 API 或公共 UI"
+      ],
+      "escalation_conditions": [
+        "发现无法映射到两种形态的上传流程"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T04:39:01+00:00",
+          "text": "开始统一上传区与附件列表共享样式"
+        },
+        {
+          "recorded_at": "2026-09-07T04:46:53+00:00",
+          "text": "共享上传和附件样式已覆盖目标页面，旧局部类与硬编码色扫描无命中，前端构建通过"
+        }
+      ],
+      "updated_at": "2026-09-07T04:46:53+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "完成分层自动化和四视口浏览器验收",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "规定四个验收视口",
+        "REQ-061 是范围外扰动"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/frontend-governance-*.json"
+      ],
+      "invariants": [
+        "失败如实记录，不绕过 Required Checks"
+      ],
+      "interface_contracts": [
+        "专项传感器与全量治理结果分开报告"
+      ],
+      "non_goals": [
+        "不修复 REQ-061"
+      ],
+      "action_bounds": [
+        "运行静态、构建、范围、浏览器和治理传感器并记录证据"
+      ],
+      "acceptance": [
+        "四视口无横向溢出",
+        "上传文件列表不重复",
+        "专项检查通过",
+        "外部失败准确归因"
+      ],
+      "evidence_required": [
+        "命令退出码",
+        "浏览器断言和截图",
+        "治理错误原文"
+      ],
+      "rollback": "回退产品改动并保留失败证据",
+      "stop_conditions": [
+        "真实浏览器环境不可用且无替代运行证据"
+      ],
+      "escalation_conditions": [
+        "出现本次导致的 P0/P1 回归"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T04:46:53+00:00",
+          "text": "开始四视口浏览器验收与治理检查"
+        },
+        {
+          "recorded_at": "2026-09-07T04:57:52+00:00",
+          "text": "四视口 144/144 浏览器断言通过；REQ-031 范围与 diff 检查通过；REQ-061 全量治理失败已作为范围外扰动记录"
+        }
+      ],
+      "updated_at": "2026-09-07T04:57:52+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T2 项目回显治理",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "项目字段 rg 扫描无运行时命中；npm --prefix web run build 退出码 0",
+      "recorded_at": "2026-09-07T04:46:53+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T3 上传样式治理",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "旧 attachment 类、局部上传硬编码色和重复预览类扫描无命中；Reports 三处 show-file-list=false；npm --prefix web run build 退出码 0",
+      "recorded_at": "2026-09-07T04:46:53+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "最终运行观测",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "7 页面 x 4 视口共 144 项 Playwright 断言通过；构建、REQ-031 范围和静态扫描通过；REQ-061 全仓治理失败分类为范围外扰动",
+      "recorded_at": "2026-09-07T04:58:41+00:00"
+    }
+  ]
+}

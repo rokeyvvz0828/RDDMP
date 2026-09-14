@@ -1,4 +1,5 @@
 import type {
+  DeliveryUnitStatus,
   DeploymentUnitImportBatchStatus,
   DeploymentUnitImportItemStatus,
   DeploymentUnitKind,
@@ -28,7 +29,7 @@ export const actionTypeLabels: Record<SubsystemActionType, string> = {
   OFFLINE: '下线',
   REACTIVATE: '重新启用',
   VOID: '作废',
-  REPLACE: '更换归属'
+  REPLACE: '替换'
 }
 
 export const targetKindLabels: Record<SubsystemTargetKind, string> = {
@@ -71,14 +72,6 @@ export function allowedPublishedActions(kind: SubsystemTargetKind, status: Publi
   if (status === 'VOIDED') return []
   if (status === 'OFFLINE') return ['REACTIVATE', 'VOID']
   return kind === 'PHYSICAL' ? ['UPDATE', 'OFFLINE', 'VOID', 'REPLACE'] : ['UPDATE', 'OFFLINE', 'VOID']
-}
-
-export function formatLogicalNumber(sequence?: number | null) {
-  return sequence && sequence > 0 ? `A${String(sequence).padStart(4, '0')}` : '待生成'
-}
-
-export function formatPhysicalNumber(logicalSequence?: number | null, slot?: string | null) {
-  return logicalSequence && slot ? `W${String(logicalSequence).padStart(4, '0')}${slot}` : '待生成'
 }
 
 export function formatDateTime(value?: string | null) {
@@ -129,7 +122,7 @@ export function httpErrorCode(error: unknown) {
 export const deploymentUnitKindLabels: Record<DeploymentUnitKind, string> = {
   APPLICATION: '应用',
   DATABASE: '数据库',
-  MQ: '消息队列'
+  WEB: 'Web'
 }
 
 export const deploymentUnitStatusLabels: Record<DeploymentUnitStatus, string> = {
@@ -157,6 +150,17 @@ export function deploymentUnitStatusTone(status: DeploymentUnitStatus) {
   if (status === 'ACTIVE') return 'success' as const
   if (status === 'INACTIVE') return 'warning' as const
   return 'danger' as const
+}
+
+// ---------- 交付单元 ----------
+
+export const deliveryUnitStatusLabels: Record<DeliveryUnitStatus, string> = {
+  ACTIVE: '启用',
+  INACTIVE: '已停用'
+}
+
+export function deliveryUnitStatusTone(status: DeliveryUnitStatus) {
+  return status === 'ACTIVE' ? 'success' as const : 'warning' as const
 }
 
 export function importBatchStatusTone(status: DeploymentUnitImportBatchStatus) {

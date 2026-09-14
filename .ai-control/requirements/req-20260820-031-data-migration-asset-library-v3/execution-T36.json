@@ -1,0 +1,120 @@
+{
+  "task_id": "T36",
+  "trigger": "用户批准治理 9 张内容表的 id/doc_code 派生冗余：id 仅作技术主键，doc_code 由服务端生成，UUID 段不含连字符；模块尚未投产，无历史数据兼容要求。",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentDocCodeGenerator.java",
+      "purpose": "统一生成 9 类内容业务编号，格式为类型前缀加 32 位小写十六进制 UUID 段。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/{PlanService,ReportService,ContentFileAssetService,StructuredAssetService,ExcelService}.java",
+      "purpose": "创建和导入统一使用服务端编号；更新、替换、删除和恢复不改写 doc_code；结构化删除关系检查参数与两张受管表一致。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+      "purpose": "五类通用文件 POST 始终新增，新增按记录 id 的 PUT 文件替换入口。"
+    },
+    {
+      "path_or_resource": "web/src/api/data-migration.ts and web/src/modules/data-migration/**",
+      "purpose": "移除业务编号写入，增加按 id 替换文件，移除技术 ID 的业务展示并保持响应中的业务编号只读展示。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/** and approved engineering-control design/plan documents",
+      "purpose": "同步 id、doc_code、active_doc_code 职责、编号格式、创建/更新/替换/导入契约和回退口径。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/*DocCodeGovernanceTest.java",
+      "purpose": "覆盖 9 类编号格式、未知类型拒绝、客户端编号忽略、文件替换/结构化更新保号、Excel 导入生成编号和结构化删除回归。"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=ContentDocCodeGeneratorTest,ContentFileAssetDocCodeGovernanceTest,StructuredDocCodeGovernanceTest,ReportServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "10 tests, 0 failures, 0 errors."
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit_code": 0,
+      "salient_output": "Final regression after the relation-argument correction: 76 tests, 0 failures, 0 errors."
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc and Vite build completed; 2556 modules transformed. Existing Rollup annotation and chunk-size warnings only."
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "Module, repository-skill and development-entry checks passed. Global AI-control layout failed only on pre-existing ledgers in other requirement prefixes; T36 temporary non-standard ledger files were removed and this requirement prefix has no new layout violation."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit_code": 1,
+      "salient_output": "T36 design and plan paths are registered. Remaining failures are existing REQ-20260903-064 files and V160 in the shared dirty worktree, outside this task."
+    },
+    {
+      "command": "git diff --check plus targeted obsolete-contract search",
+      "exit_code": 0,
+      "salient_output": "No whitespace errors; obsolete id-derived/client-write patterns absent except the requirement's explicit forbidden examples."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "isolated runtime API on 8081 with MySQL and MinIO",
+      "result": "pass",
+      "evidence": "MAPPING_DOC create ignored client assetCode, generated MAP-<32hex>, PUT /mappings/{id}/upload preserved the code; RULE create/update/delete/restore preserved RULE-<32hex>; probe data and attachments were purged.",
+      "limitations": []
+    },
+    {
+      "check": "Playwright desktop and mobile acceptance",
+      "result": "pass",
+      "evidence": "1280x800 upload/replace/edit drawers omit business-code inputs; plan/report headers omit technical ID; 390x844 document scrollWidth equals 390; no page, console, or HTTP 5xx errors.",
+      "limitations": ["Browser rows used two fixed local fixtures that were deleted immediately after the check."]
+    }
+  ],
+  "diff_summary": [
+    "id no longer supplies or represents the business document code.",
+    "All nine content types use one server-side generator with a hyphen-free UUID segment.",
+    "Client forms, multipart writes, structured updates, and imports cannot set or overwrite doc_code.",
+    "File replacement is a PUT addressed by the technical id and preserves doc_code.",
+    "No Flyway, platform, or shared-module change was introduced for T36."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "doc_code is immutable after creation and does not encode id",
+      "result": "pass",
+      "evidence": "Focused tests, static search, and runtime create/update/replace/delete/restore probes."
+    },
+    {
+      "invariant": "tenant/project/RBAC/entity authorization and attachment binding remain in the existing service path",
+      "result": "pass",
+      "evidence": "Full module regression and authenticated runtime probes; replacement resolves project ownership from the stored record."
+    },
+    {
+      "invariant": "no database migration is required",
+      "result": "pass",
+      "evidence": "Existing varchar(96) doc_code and active_doc_code uniqueness contract supports the new values; no T36 migration file added."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "Shared worktree contains unrelated REQ-20260903-064 and historical AI-control violations.",
+      "impact": "Global governance/scope commands remain non-zero; failures are recorded and were not hidden or modified."
+    },
+    {
+      "event": "Initial local MinIO endpoint host.docker.internal was not resolvable from the host JVM.",
+      "impact": "The isolated 8081 process was restarted with MINIO_ENDPOINT=127.0.0.1:9000; file runtime probe then passed."
+    }
+  ],
+  "assumptions_falsified": [
+    "Structured relation checks still supplied arguments for three structured tables although only RULE and PARAMETER remain; the extra group was removed and covered by regression test."
+  ],
+  "unresolved_items": [
+    "Global governance and scope commands require owners of unrelated requirement prefixes/worktree changes to repair or isolate their files before they can return zero."
+  ],
+  "recommended_next": "observe",
+  "control_note": "The requirement's canonical state.json was already converged before T36 and the state machine has no outgoing transition from converged. T36 is therefore recorded as a compliant incremental execution/observation pair without rewriting historical state or convergence evidence."
+}

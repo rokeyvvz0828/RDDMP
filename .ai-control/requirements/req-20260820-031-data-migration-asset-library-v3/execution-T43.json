@@ -1,0 +1,38 @@
+{
+  "task_id": "T43",
+  "parent_task": "T42",
+  "trigger": "用户指令「dm_project 已经完全废弃了，必须删除，下次提交代码会作一次初始化，因此要调整为当前最终态」；开发阶段免备份（用户此前确认）。",
+  "status": "implemented_and_verified",
+  "scope_kind": "data_migration_dm_project_deprecation",
+  "decision_recorded": "dm_project 为 V84 迁移创建的遗留表（历史保留，项目主数据已统一由平台 pm_project 承载），已完全废弃；追加 V170（DROP TABLE IF EXISTS dm_project，天然幂等）将其从最终模型删除，下次初始化执行完整迁移链后最终态不再包含 dm_project；不改历史脚本。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V170__data_migration_drop_dm_project.sql（新增）",
+      "purpose": "追加式迁移删除已废弃的 dm_project 表：DROP TABLE IF EXISTS dm_project（天然幂等，只影响该遗留表，不影响平台表与既有服务契约）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "新增 dmProjectIsDroppedFromFinalModelByV170 断言：V170 文件存在且包含 DROP TABLE IF EXISTS dm_project，ContentAssetTables 登记常量不含 dm_project。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/database-schema-and-relations.md",
+      "purpose": "DDL 基线 V169→V170；最终模型表述更新为 19 张 dm_ 表且不含已废弃删除的 dm_project。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml",
+      "purpose": "writable_paths 与 migration_files 登记 V170；public_capability_change.note 与 database.compatibility_and_rollback 追加 T43 说明。"
+    },
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/execution-T43.json / observation-T43.json（新增）",
+      "purpose": "任务执行与独立观测账本。"
+    }
+  ],
+  "verification": [
+    "测试库 ccb_platform 应用 V170 成功（Flyway 10.20.1，target 170）：dm_project 表已删除，dm_* 表共 19 张，无 active_* 生成列，其余约束/组合外键/审计索引不受影响。",
+    "迁移历史：84-170 中 dm 相关 31 条记录 success=1，数据库当前版本 v170。",
+    "DataMigrationModuleRegistrationTest 通过（含新增 dmProjectIsDroppedFromFinalModelByV170 断言）。",
+    "范围检查：check-codex-scope.mjs 仅报告他人任务 REQ-20260903-064 越界项（本任务未触碰）；V170 已登记 writable_paths/migration_files。"
+  ],
+  "not_done": "未重跑全量后端测试套件（本任务仅追加一条幂等 DROP TABLE 迁移，注册测试与针对性 MySQL 校验已覆盖）；不提交、不推送、不合并。",
+  "noted_risk": "重新初始化后 dm_project 不再存在；若后续有依赖该遗留表的脚本或查询需要同步移除；开发阶段免备份，上生产前需按常规备份演练。"
+}

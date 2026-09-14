@@ -1,0 +1,275 @@
+{
+  "objective": "迁移程序菜单可从通用文件列表升级为带程序类型/系统编号/说明/多文件上传与下载/编辑/删除/统一回收站的独立管理能力",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "程序类型、系统编号、程序包名称必填，程序包说明选填，新增至少绑定一个源文件。",
+      "acceptance": [
+        "缺少任一必填项返回400",
+        "文件超过50MB返回400",
+        "新增无文件返回400",
+        "说明允许为空"
+      ],
+      "priority": "must",
+      "source": "用户消息：必填录入项为程序类型、系统编号、程序包名称；选填项为程序包说明；文件大小不超过50MB。",
+      "counterexample": [
+        "新增记录未填程序类型仍成功",
+        "文件超过50MB仍被绑定",
+        "新增无源文件仍成功"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "程序类型通过系统管理/参数管理维护，新增DM_PROGRAM_TYPE并使用迁出程序/迁入程序预置。",
+      "acceptance": [
+        "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序",
+        "停用或未知编码不能写入",
+        "前端不硬编码程序类型"
+      ],
+      "priority": "must",
+      "source": "用户消息：程序类型使用系统管理/参数管理维护。",
+      "counterexample": [
+        "前端写死程序类型列表",
+        "停用类型仍可新增"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "系统编号单选且候选为当前项目 enabled=1 的 dm_component，前端按编号/名称本地筛选。",
+      "acceptance": [
+        "未选系统返回400",
+        "项目外或停用系统返回400",
+        "系统选项一次返回全量并在浏览器内筛选"
+      ],
+      "priority": "must",
+      "source": "用户消息：系统编号参考其他菜单；候选数据源保持 dm_component 只允许已纳入迁移范围的系统。",
+      "counterexample": [
+        "选择项目外系统成功",
+        "系统选项每次输入都请求后端模糊搜索"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "列表支持程序类型、系统编号、程序包名称关键字组合筛选和服务端分页。",
+      "acceptance": [
+        "筛选变化回第一页",
+        "列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作",
+        "分页符合20/50/100"
+      ],
+      "priority": "must",
+      "source": "用户消息：筛选功能程序类型、系统编号、程序包名称模糊搜索。",
+      "counterexample": [
+        "关键字筛选不生效",
+        "筛选后停留第5页"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "一个程序包记录可绑定多个≤50MB源文件；编辑可保留、增删、替换；下载支持单个与全部打包。",
+      "acceptance": [
+        "新增可绑定多个文件",
+        "编辑删除单个附件后附件列表同步",
+        "单个下载返回指定附件",
+        "全部下载返回ZIP"
+      ],
+      "priority": "must",
+      "source": "用户选择方案B：一条记录可绑定多个≤50MB文件，下载支持单个和全部打包。",
+      "counterexample": [
+        "编辑只允许单文件",
+        "下载全部返回空ZIP且无提示"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "SCRIPT不再由通用ContentAsset链路认领，统一回收站由ProgramRecycleBinSource唯一接管。",
+      "acceptance": [
+        "统一回收站列表/恢复/彻底删除走专用服务",
+        "删除/恢复保持多附件与审计",
+        "彻底删除清理全部附件",
+        "无重复回收站认领"
+      ],
+      "priority": "must",
+      "source": "用户消息：回收站功能采用统一回收站功能。",
+      "counterexample": [
+        "SCRIPT在回收站同时出现两条来源",
+        "恢复后附件缺失"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "写操作强制认证、RBAC、项目隔离、实体授权、附件校验并写审计日志。",
+      "acceptance": [
+        "省略projectId被拒绝",
+        "跨项目ID被拒绝",
+        "普通用户越权返回403",
+        "写操作产生PROGRAM_*审计"
+      ],
+      "priority": "must",
+      "source": "用户消息：上传、编辑、删除、下载、回收站管理均纳入权限管控；项目统一规则。",
+      "counterexample": [
+        "普通用户可编辑他人程序包",
+        "写操作无审计"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "前端遵循design-h5和统一组件，桌面与手机视口无页面级横向滚动，覆盖加载/空/失败/无权限/提交中状态。",
+      "acceptance": [
+        "375/390/430/桌面视口无横向溢出",
+        "上传失败/重复提交有反馈",
+        "长文本和说明不撑破容器"
+      ],
+      "priority": "must",
+      "source": "项目AGENTS与design-h5. .md",
+      "counterexample": [
+        "手机端出现页面级横向滚动",
+        "保存期间可重复点击提交"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "数据库仅对dm_script追加字段并新增追加式Flyway迁移，不修改已发布迁移和无关模块。",
+      "acceptance": [
+        "dm_script包含program_type与program_description",
+        "新迁移幂等且仅追加",
+        "范围检查无越界文件",
+        "后端测试和前端构建通过"
+      ],
+      "priority": "must",
+      "source": "项目AGENTS与用户确认方案。",
+      "counterexample": [
+        "修改V184及以前脚本",
+        "改动公共附件表结构"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "当前数据库无历史dm_script数据，不做历史兼容回填，新字段直接按新必填规则运行。",
+      "acceptance": [
+        "迁移从空表创建后可创建符合新字段的记录"
+      ],
+      "priority": "must",
+      "source": "用户消息：目前数据库没有历史数据",
+      "counterexample": [
+        "为历史数据写入空程序类型仍成功"
+      ]
+    }
+  ],
+  "invariants": [
+    "单租户，每次查询和写入绑定tenant_id与当前项目",
+    "Flyway只追加，不修改已发布脚本",
+    "业务关联统一使用(project_id, system_code)",
+    "doc_code由服务端生成且不可修改",
+    "页面遵循design-h5与统一状态组件",
+    "当前数据库无历史dm_script数据，不需要历史兼容迁移"
+  ],
+  "constraints": [
+    "程序类型编码必须来自参数管理DM_PROGRAM_TYPE",
+    "系统编号必须是当前项目enabled=1的dm_component",
+    "单个文件大小上限50MB",
+    "不得绕过服务契约直接写其他模块数据表",
+    "普通任务不进行包名或目录重构"
+  ],
+  "non_goals": [
+    "不做程序包版本历史或增量比对",
+    "不改参数管理实现、公共附件表结构或全局项目切换器",
+    "不新增独立dm_program_type业务字典表",
+    "不迁移历史业务数据"
+  ],
+  "assumptions": [
+    {
+      "text": "当前数据库没有历史dm_script数据",
+      "basis": "用户消息：目前数据库没有历史数据",
+      "falsifier": "目标环境存在旧dm_script活动记录且无法按新必填规则写入"
+    },
+    {
+      "text": "统一回收站继续使用SCRIPT作为内容类型标识",
+      "basis": "现有RecycleBinPage对SCRIPT显示迁移程序",
+      "falsifier": "用户要求改为PROGRAM新内容类型"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "question": "一个程序包记录可绑定多个≤50MB源文件",
+      "options": [],
+      "selected": "一个程序包记录可绑定多个≤50MB源文件",
+      "blocking": false,
+      "source": "用户选择方案B"
+    },
+    {
+      "question": "程序类型、系统编号、程序包名称必填，说明选填",
+      "options": [],
+      "selected": "程序类型、系统编号、程序包名称必填，说明选填",
+      "blocking": false,
+      "source": "用户需求文本"
+    },
+    {
+      "question": "程序类型使用DM_PROGRAM_TYPE参数管理预置迁出/迁入",
+      "options": [],
+      "selected": "程序类型使用DM_PROGRAM_TYPE参数管理预置迁出/迁入",
+      "blocking": false,
+      "source": "用户需求文本"
+    },
+    {
+      "question": "当前无历史数据，不做旧数据兼容回填",
+      "options": [],
+      "selected": "当前无历史数据，不做旧数据兼容回填",
+      "blocking": false,
+      "source": "用户本轮确认"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "requirement_id": "R1",
+      "observable": "缺少任一必填项返回400 文件超过50MB返回400 新增无文件返回400 说明允许为空",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序 停用或未知编码不能写入 前端不硬编码程序类型",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "未选系统返回400 项目外或停用系统返回400 系统选项一次返回全量并在浏览器内筛选",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "筛选变化回第一页 列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作 分页符合20/50/100",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "新增可绑定多个文件 编辑删除单个附件后附件列表同步 单个下载返回指定附件 全部下载返回ZIP",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "统一回收站列表/恢复/彻底删除走专用服务 删除/恢复保持多附件与审计 彻底删除清理全部附件 无重复回收站认领",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "省略projectId被拒绝 跨项目ID被拒绝 普通用户越权返回403 写操作产生PROGRAM_*审计",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R8",
+      "observable": "375/390/430/桌面视口无横向溢出 上传失败/重复提交有反馈 长文本和说明不撑破容器",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R9",
+      "observable": "dm_script包含program_type与program_description 新迁移幂等且仅追加 范围检查无越界文件 后端测试和前端构建通过",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    },
+    {
+      "requirement_id": "R10",
+      "observable": "迁移从空表创建后可创建符合新字段的记录",
+      "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+    }
+  ],
+  "baseline_status": "ready"
+}

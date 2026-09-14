@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "created_at": "2026-09-06T16:10:00+08:00",
+  "task_id": "T1",
+  "goal": "数据库迁移 + 后端参数专属服务/接口/回收站 + 清理旧结构化参数链路 + 聚焦单测",
+  "steps": [
+    "V197 dm_parameter 域化迁移 + DM_PARAMETER_TYPE / DM_PARAMETER_SCOPE 码值",
+    "DataMigrationCodeValueService 登记两个新类别",
+    "ParameterService（列表/详情/新增/编辑/删除/模板/导入/导出/回收站）",
+    "ParameterController 与 ParameterRecycleBinSource",
+    "清理旧链路：StructuredAssetService.TYPES 移除 PARAMETER、StructuredAssetController 移除 parameters 端点、ContentAssetTables.STRUCTURED_TABLES 移除 dm_parameter",
+    "聚焦单测与 MySQL 迁移校验"
+  ],
+  "inputs": [
+    "docs/requirements/REQ-20260906-067-data-migration-parameter/requirement.md",
+    "web/src/modules/data-migration/views/content/ValidationRulesPage.vue（前端范本，只读）",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RuleService.java（后端范本，只读）"
+  ],
+  "outputs": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V198__data_migration_parameter_domain.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterRecycleBinSource.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ParameterController.java",
+    "数据迁移模块相关修改与测试"
+  ],
+  "verification": [
+    "mvn -pl :ccb-data-migration -am test",
+    "迁移脚本在 MySQL 生效且幂等"
+  ],
+  "rollback": "回退本任务增量文件；V197 为追加迁移，可在未发布环境清理"
+}

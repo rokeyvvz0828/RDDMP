@@ -1,0 +1,43 @@
+{
+  "sample_label": "T28 data-migration dashboard menu repair",
+  "task_ids": ["T28"],
+  "purpose": "验证补偿迁移的菜单、权限、角色绑定、动态路由和看板端点",
+  "independence": "同一工作会话内的独立检查，非外部人工复核",
+  "database_assertions": [
+    "DataMigrationDashboard/DataMigrationOverall/DataMigrationComponent 各 1 条，ID 分别为 1350/1351/1352，均启用、可见且未删除",
+    "role_id 1/200/201 各绑定 1350/1351/1352，共 9 条菜单绑定",
+    "13511/13521 查看权限存在，三角色共 6 条权限绑定",
+    "迁移脚本重复执行后仍为 3 条菜单、2 条权限、9 条菜单绑定和 6 条权限绑定"
+  ],
+  "runtime_probes": [
+    {
+      "endpoint": "GET /api/auth/routes",
+      "http": 200,
+      "actual": "管理员路由包含 DataMigrationDashboard、DataMigrationOverall、DataMigrationComponent"
+    },
+    {
+      "endpoint": "GET /api/data-migration/dashboard/overall",
+      "http": 200,
+      "actual": "看板整体接口可达"
+    },
+    {
+      "endpoint": "GET /api/data-migration/dashboard/components",
+      "http": 200,
+      "actual": "看板组件接口可达"
+    },
+    {
+      "surface": "管理员浏览器导航",
+      "result": "pass",
+      "actual": "展开“数据迁移”及“数迁资产看板”后可见“整体看板”和“组件看板”；无新增页面错误"
+    }
+  ],
+  "static_checks": {
+    "flyway": "pass",
+    "focused_maven": "pass",
+    "frontend_build": "pass",
+    "scope": "blocked_by_preexisting_unrelated_changes",
+    "scope_detail": "当前工作树已有 .gitignore、ccb-architecture 两个 Java 文件和 V127 的用户改动，不属于 T28；V135 与范围登记匹配"
+  },
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "conclusion": "看板菜单缺失已由追加式迁移修复；当前本地数据库和管理员动态导航均可见，未执行 commit 或 push。"
+}

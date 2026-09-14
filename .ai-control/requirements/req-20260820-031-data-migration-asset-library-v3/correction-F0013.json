@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0013",
+  "decision": "accept",
+  "decision_reason": "Project choices must follow the platform project workbench/member scope instead of a tenant-wide module query.",
+  "dynamic_pattern": "systemic",
+  "causal_assessment": {
+    "hypothesis": "T31/T32 removed the issue-local project selector and delegated project accessibility to ProjectWorkflowDirectoryService.",
+    "supporting_evidence": ["DataMigrationPermissionService injects the platform project capability", "IssuesPage consumes useProjectScope", "module tests assert no duplicated project-member SQL"],
+    "falsifier": "The final module exposes tenant-wide issue project options or queries pm_project_member directly."
+  },
+  "control_action": {
+    "gain": "medium",
+    "target": "data-migration project-scope delegation",
+    "write_scope": ["server/src/modules/data-migration/**", "web/src/modules/data-migration/**", "web/src/api/data-migration.ts", ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json"],
+    "invariants": ["platform/system remains read-only", "no module-owned pm_project_member SQL", "unknown or inaccessible projects fail closed"],
+    "impact_limit": "data-migration project context consumers",
+    "rollback": "No product edit is planned; revert only new control evidence if the sensor is invalid.",
+    "correction_check": ["DataMigrationPermissionServiceTest", "module registration residual scan", "IssuesPage project selector scan"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["Production IAM identities are outside local verification authority."]
+}

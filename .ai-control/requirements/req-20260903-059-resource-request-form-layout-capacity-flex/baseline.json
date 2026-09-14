@@ -1,0 +1,66 @@
+{
+  "objective": "资源申请人在不同视口填写非数据库容量信息时，字段能充分利用可用宽度并保持全部内容可达。",
+  "requirements": [
+    {
+      "id": "R13",
+      "statement": "容量与部署字段区必须使用 Flex 自适应换行。",
+      "acceptance": [
+        "1920x1080 桌面端按可用宽度排列且每行尽量展示 3 至 4 个字段",
+        "选择类字段宽于数值字段且 1280x800 下自然换行",
+        "计算摘要独占整行",
+        "375x812、390x844、430x932 下字段单列满宽且页面根无横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户批准的设计修订 3",
+      "counterexample": [
+        "容量区继续固定两列并产生大面积空白",
+        "字段被固定行或最小宽度挤出容器",
+        "手机端产生页面级横向滚动"
+      ]
+    }
+  ],
+  "invariants": [
+    "R1-R12 和前两轮已收敛行为保持",
+    "字段顺序、绑定、条件显示、计算、校验、权限和请求契约不变",
+    "数据库资源区继续使用原有 Grid",
+    "桌面数字输入保持 140 至 180px，手机端恢复满宽",
+    "Dialog 内部滚动和 footer 可见性保持"
+  ],
+  "constraints": [
+    "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+    "只在资源申请容量区局部作用域使用 Flex",
+    "不得修改公共组件、后端、API、DTO、数据库、权限、审计或工作流",
+    "不得缩小字号或引入页面级横向滚动"
+  ],
+  "non_goals": [
+    "固定每行字段数量",
+    "重排字段业务顺序",
+    "修改数据库申请项布局",
+    "新增公共布局组件或断点"
+  ],
+  "assumptions": [
+    {
+      "text": "宽桌面可容纳 3 至 4 个按类型设置首选宽度的字段",
+      "basis": "用户 UAT 截图显示容量区固定两列存在明显空白",
+      "falsifier": "真实浏览器在 1920x1080 下只能稳定容纳两项"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "question": "容量字段采用何种布局模型",
+      "options": ["字段项 Flex 自适应换行", "统一宽度 Flex", "固定 Flex 行"],
+      "selected": "字段项 Flex 自适应换行",
+      "blocking": false,
+      "source": "用户于 2026-09-03 批准设计修订 3"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "requirement_id": "R13",
+      "observable": "容量容器 display/flex-wrap、字段 offsetTop/offsetWidth、摘要宽度、数字输入宽度、根 scrollWidth 和业务请求",
+      "candidate_sensor": "真实浏览器五视口明暗主题探针，辅以构建、源码和 Network 检查"
+    }
+  ],
+  "baseline_status": "ready"
+}

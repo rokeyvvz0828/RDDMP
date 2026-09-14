@@ -1,0 +1,25 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "trigger": "继续 REQ-20260831-050 执行：T3 后端端点收敛后，前端从旧通用 /assets 契约切换到资源型端点 + 统一回收站，破坏性变更与后端同版本",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "新增 FILE_RESOURCE_SEGMENTS/STRUCTURED_RESOURCE_SEGMENTS 与 fileSegment()/structuredBase() 映射；listDataMigrationAssets/upload/delete/download 改走 /{plans|mappings|dependencies|programs|topics|release-drills} 资源端点；check-md5 改 /content/check-md5；结构化 RULE/PARAMETER 改 /rules、/parameters，INTERMEDIATE_TABLE 沿用 /structured/{type}；回收站函数改统一契约 listDataMigrationRecycleBin({contentTypes,keyword}) 与 restore/purgeDataMigrationAssets(type, ids) body {type, ids}；新增 DataMigrationContentRecycleRow 类型"},
+    {"path_or_resource": "web/src/modules/data-migration/components/AssetListView.vue", "purpose": "四个调用点适配新签名（list/upload/delete/download 传 assetType 与 keyword），移除无效 'REPORT' 回退"},
+    {"path_or_resource": "web/src/modules/data-migration/views/content/RecycleBinPage.vue", "purpose": "重写为统一回收站页：内容类型下拉（9 类）+ 关键词 + 通用列（类型/编号/名称/删除人/删除时间/操作），选择按 asset_type 分组分发 restore/purge；汇报材料回收站仍由其自身页内管理，无回归"}
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit 通过 + vite build ✓ 2451 modules transformed, built in 12.44s；仅 @vueuse 注释与 chunk 体积告警"}
+  ],
+  "invariants_checked": [
+    {"invariant": "前端仅调用新资源/统一端点，不再出现 /data-migration/assets 与 /assets/check-md5", "result": "pass", "evidence": "api 层全部改走资源段与 /content/check-md5；grep 调用点仅 AssetListView 与 RecycleBinPage，均已更新"},
+    {"invariant": "类型映射与后端 RESOURCE_TYPES/CONTENT_RESOURCES 一致", "result": "pass", "evidence": "plans→PLAN…release-drills→RELEASE_DRILL、rules→RULE、parameters→PARAMETER、INTERMEDIATE_TABLE 回退 /structured/{type} 与后端控制器一致"},
+    {"invariant": "统一回收站覆盖 6 文件 + 3 结构化并可分类恢复/彻底删除", "result": "pass", "evidence": "RecycleBinPage typeOptions 列 9 类，restore/purge 按 asset_type 分组携带类型分发；build 通过类型校验"},
+    {"invariant": "上传链路契约不变（前端算 MD5 → 查重 → 公共附件上传 → 业务保存）", "result": "pass", "evidence": "uploadDataMigrationAsset 流程未改，仅端点段与 check-md5 路径更新"},
+    {"invariant": "汇报材料回收站无回归", "result": "pass", "evidence": "ReportsPage 自带 list/restore/purgeReport* 回收站未触碰；RecycleBinPage 不再依赖 report 接口但功能仍可达"}
+  ],
+  "unresolved_items": [
+    "浏览器桌面/移动视口端到端验收（11 菜单上传→预览→软删→回收站恢复、控制台错误、遮挡溢出）由 T6 承接；本任务证据仅到类型检查与构建层",
+    "统一回收站行的项目名/删除人投影：结构化类型无 deleted_by_name，页面以 — 占位；如需展示项目名需后端补充投影"
+  ],
+  "recommended_next": "observe"
+}

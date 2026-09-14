@@ -1,0 +1,99 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+      "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+      "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+    },
+    {
+      "path_or_resource": "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+      "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs",
+      "purpose": "remaining three drawer fullscreen wiring and expanded preservation tests"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "commands": [
+    {
+      "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all",
+      "exit_code": 0,
+      "salient_output": "PASS: reactive fullscreen/reset/isolation; 5 drawers; original scripts, bindings, guards and dialogs preserved"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "2569 modules transformed; built in 35.21s; existing PURE annotations and large chunk warnings"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "Only CRLF normalization warnings"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "REQ-20260904-061 scope must be JSON-compatible YAML"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-069-release-drawer-fullscreen/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "exit_code": 1,
+      "salient_output": "Branch must follow <type>/REQ-YYYYMMDD-NNN-short-name; current licon"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "all five drawer and reactive assertions",
+      "result": "pass",
+      "evidence": "PASS: reactive fullscreen/reset/isolation; 5 drawers; original scripts, bindings, guards and dialogs preserved",
+      "limitations": [
+        "does not measure browser geometry, network or focus"
+      ]
+    },
+    {
+      "check": "type/build",
+      "result": "pass",
+      "evidence": "2569 modules transformed; built in 35.21s; existing PURE annotations and large chunk warnings",
+      "limitations": [
+        "not browser rendering"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "environment/steps/issues wired to independent fullscreen state",
+    "readable 960px fullscreen form/detail containers",
+    "original scripts, events, models and dialogs preserved by AST comparison"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "business behavior untouched",
+      "result": "pass",
+      "evidence": "original script byte comparison after stripping only helper imports/calls; AST models/events/guards/dialog comparison"
+    },
+    {
+      "invariant": "project remount reset",
+      "result": "pass",
+      "evidence": "local effectScope creation test and existing project-key component wiring; no browser project switching measured"
+    }
+  ],
+  "disturbances": [
+    "existing REQ061 scope and licon branch governance failures",
+    "prior localhost authorization remains unresolved; inventory only"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "R3 four viewports/light-dark real browser acceptance",
+    "R2 nested focus, no extra requests and visual state preservation real browser checks"
+  ],
+  "recommended_next": "observe"
+}

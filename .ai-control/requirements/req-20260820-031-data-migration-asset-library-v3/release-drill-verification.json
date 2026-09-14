@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "V184加granularity/material_type_code/drill_round与索引参数，服务端必填/组件级系统/单文件测试通过"
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "DM_RELEASE_DRILL_GRANULARITY/TYPE经参数管理读取；未知/停用被400拒绝"
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "列表返回system_code/system_name/drill_round，页面展示涉及物理子系统与所属轮次"
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "ReleaseDrillControllerSecurityTest验证类级+写操作权限码"
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "单文件新增/编辑替换/删除/审计经服务测试覆盖"
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "逻辑删除进入统一回收站；ReleaseDrillRecycleBinSource唯一认领"
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": "回收站SPI与模块注册测试通过，无双来源"
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "仅改动数据迁移模块与V184；Maven全量、治理模块、前端构建通过"
+    }
+  ],
+  "task_results": [
+    {
+      "task_id": "T1",
+      "status": "verified",
+      "evidence": "V184+码值测试通过"
+    },
+    {
+      "task_id": "T2",
+      "status": "verified",
+      "evidence": "ReleaseDrillService/Controller与其测试通过"
+    },
+    {
+      "task_id": "T3",
+      "status": "verified",
+      "evidence": "回收站摘除+来源测试/注册测试"
+    },
+    {
+      "task_id": "T4",
+      "status": "verified",
+      "evidence": "前端API与页面重写，npm build通过"
+    },
+    {
+      "task_id": "T5",
+      "status": "verified",
+      "evidence": "数据迁移模块全量测试、治理模块检查、前端构建通过"
+    }
+  ],
+  "feedback_summary": "无未裁决或已接受未关闭的负反馈。",
+  "sample_trend": [
+    "误差分数 0 -> 0 -> 0"
+  ],
+  "regression_checks": [
+    "mvn -pl :ccb-data-migration -am test 退出码0",
+    "node scripts/check-governance.mjs 通过（17模块）",
+    "npm --prefix web run build 退出码0",
+    "check-all-governance 在数据迁移模块/技能/开发入口通过，仅既有REQ-20260904-061 YAML解析失败提前退出"
+  ],
+  "invariant_results": [
+    {
+      "invariant": "Flyway只追加V184",
+      "result": "pass"
+    },
+    {
+      "invariant": "颗粒度/资料类型来自参数管理",
+      "result": "pass"
+    },
+    {
+      "invariant": "tenant/project恒参与查询与写入",
+      "result": "pass"
+    },
+    {
+      "invariant": "组件级系统须为当前项目启用组件",
+      "result": "pass"
+    },
+    {
+      "invariant": "RELEASE_DRILL无通用链路重复认领",
+      "result": "pass"
+    },
+    {
+      "invariant": "未修改平台/shared与全局项目切换器",
+      "result": "pass"
+    }
+  ],
+  "scope_audit": "只修改REQ-031 codex-task-scope writable_paths覆盖文件；未修改其他需求目录。",
+  "disturbance_resilience": [
+    "仓库级check-all-governance因既有REQ-20260904-061 YAML错误提前退出，非本次改动引入",
+    "真实浏览器验收需干净本地后端环境补测"
+  ],
+  "residual_risks": [
+    "P2：真实浏览器/多视口路径未验收",
+    "P2：本地开发库Flyway历史校验已有不匹配，未做在线SPA运行态验收"
+  ],
+  "gate_result": "pass",
+  "route_reason": "静态契约、独立服务/回收站测试、Maven全量集成、前端构建与治理模块检查构成可复验闭环；剩余P2为运行环境/浏览器项，不影响代码收敛判定，上线前需在干净环境补测。"
+}

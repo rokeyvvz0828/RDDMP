@@ -1,0 +1,17 @@
+{
+  "sample_label": "T1 采集、脱敏、去重和迁移采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "策略测试、全量 Maven 与运行态数据库查询", "result": "pass", "raw_evidence": "关键 POST/PUT/PATCH/DELETE、审批、导入导出和敏感 GET 按类型记录；成功与失败均包含操作人、模块、结果、耗时、IP、User-Agent 和 Trace ID。", "limitation": []},
+    {"requirement_id": "R2", "sensor": "OperationAuditPolicyTest", "result": "pass", "raw_evidence": "普通列表、健康、轮询、选项及预览校验路径被集中策略排除。", "limitation": ["后续新增敏感 GET 时仍需显式加入集中策略"]},
+    {"requirement_id": "R3", "sensor": "持久化命令审计与数据库哨兵采样", "result": "pass", "raw_evidence": "未发现密码、Token、文件、URL、审批意见或字段值；更新只保存 [\"display_name\"]。", "limitation": []},
+    {"requirement_id": "R4", "sensor": "OperationAuditContextTest 和 JdbcSystemOperationAuditTest", "result": "pass", "raw_evidence": "请求内手工审计只补充上下文并由拦截器统一写一次；无请求上下文时仍独立写入一次。", "limitation": []},
+    {"requirement_id": "R8", "sensor": "MySQL 8.4 Flyway 迁移与 git diff", "result": "pass", "raw_evidence": "V156 在隔离 MySQL 成功应用，历史迁移无修改，git diff --check 退出码 0。", "limitation": ["仓库命名脚本因既有 V84_1 文件返回 1，与 V156 无关"]}
+  ],
+  "feedback": [],
+  "disturbances": ["Java 26 与 Mockito/Byte Buddy 不兼容；切换至 JDK 17 后同一全量命令通过。"],
+  "coverage_gaps": ["未在生产反向代理链路验证真实客户端 IP；部署时需限定可信代理。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

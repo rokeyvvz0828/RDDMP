@@ -1,0 +1,24 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V127__release_drill_management_restructure.sql", "purpose": "append normalized plans, environments, drill rounds, steps, issue linkage, menus and legacy backfill"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5"],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed"},
+    {"command": "Flyway application startup against ccb_platform_licon", "exit_code": 0, "salient_output": "Successfully applied 1 migration; schema now at version v127"}
+  ],
+  "local_checks": [
+    {"check": "migration shape and append-only rule", "result": "passed", "evidence": "static migration check passed and V127 applied", "limitations": ["backfill was read through the running application rather than exporting production data"]}
+  ],
+  "diff_summary": ["added V127 normalized release drill schema", "disabled legacy time-sequence menus", "backfilled default plan/environment and preserved legacy compatibility"],
+  "invariants_checked": [
+    {"invariant": "Flyway migrations are append-only", "result": "passed", "evidence": "migration checker exit code 0"},
+    {"invariant": "tenant and project scope is preserved", "result": "passed", "evidence": "schema and service tests use project-scoped records"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

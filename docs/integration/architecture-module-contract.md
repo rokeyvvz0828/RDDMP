@@ -119,7 +119,7 @@ V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlat
 | `ParameterOption` | `code,label` | 不分页 |
 | `LogicalSubsystemOption` | `id,code,name` | 只返回当前租户未删除记录 |
 | `PhysicalSubsystemOption` | `id,code,shortName,name,businessGroupName,businessContinuityLevel,collectedSystemLevel,deploymentPlatform,disasterRecoveryMode,systemLevelCode,status` | 只返回当前租户 ACTIVE 物理子系统；资源申请只消费 `businessGroupName,systemLevelCode,deploymentPlatform,disasterRecoveryMode` 作为物理子系统只读带出信息 |
-| `DeploymentUnitOption` | `id,code,name,kind,physicalSubsystemId,relatedDeploymentUnitName,deploymentUnitType,description` | 只返回所选 ACTIVE 物理子系统下的 ACTIVE 部署单元（资源申请级联选择和部署单元信息带出） |
+| `DeploymentUnitOption` | `id,code,name,kind,physicalSubsystemId,description,defaultNetworkZoneId,defaultNetworkZoneName` | 只返回所选 ACTIVE 物理子系统下的 ACTIVE 部署单元（资源申请级联选择和部署单元信息带出）；资源分流只依据 `kind` |
 
 逻辑上下文参数分类白名单为 `ARCH_DEPLOYMENT_PLATFORM`、`ARCH_SYSTEM_TYPE`、`ARCH_SYSTEM_OWNERSHIP`；物理上下文为 `ARCH_RUNTIME`、`ARCH_SYSTEM_LEVEL`、`ARCH_DEVELOPMENT_FRAMEWORK`、`ARCH_DEPLOYMENT_PLATFORM`、`ARCH_DISASTER_RECOVERY_MODE`、`ARCH_SERVER_TYPE`、`ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM`。跨上下文分类返回 400。
 
@@ -176,6 +176,7 @@ V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlat
 | 方法 | 路径 | 权限 |
 | --- | --- | --- |
 | GET | `/deployment-units` | `architecture:deployment-unit:view`，或 `view`/`apply`/`manage` 任一 |
+| GET | `/deployment-units/options` | 同上；当前租户 ACTIVE 候选分页搜索，支持 `keyword,page,size,excludeId` |
 | GET | `/deployment-units/{id}` | 同上 |
 | GET | `/deployment-units/{id}/versions` | 同上 |
 | POST | `/deployment-units` | `architecture:deployment-unit:manage` |
@@ -184,16 +185,17 @@ V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlat
 | POST | `/deployment-units/{id}/reactivate` | `architecture:deployment-unit:manage` |
 | POST | `/deployment-units/{id}/void` | `architecture:deployment-unit:manage` |
 
-列表查询只接受 `page,size,code,shortName,name,physicalSubsystemId,kind,status`。`kind` 取 `APPLICATION|DATABASE|MQ`；`status` 取 `ACTIVE|INACTIVE|VOIDED`。
+列表查询只接受 `page,size,code,name,physicalSubsystemId,kind,status`。`kind` 取 `APPLICATION|DATABASE|WEB`；`status` 取 `ACTIVE|INACTIVE|VOIDED`。
 
 创建请求体：
 
 ```json
 {
   "physicalSubsystemId": 501,
-  "shortName": "ECIP-AP",
-  "name": "电子渠道接入应用",
+  "name": "ECIP_AP",
   "kind": "APPLICATION",
+  "relatedDeploymentUnitIds": [502, 503],
+  "defaultNetworkZoneId": null,
   "description": null,
   "remark": null
 }
@@ -201,15 +203,17 @@ V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlat
 
 更新请求体与创建相同但必须携带 `rowVersion`（乐观锁）；`physicalSubsystemId` 忽略。创建响应与详情记录字段固定为：
 
-`id,code,physicalSubsystemId,physicalSubsystemCode,physicalSubsystemName,physicalSubsystemStatus,shortName,name,kind,status,currentVersion,description,remark,createdBy,createdByDisplayName,updatedBy,updatedByDisplayName,createdAt,updatedAt,rowVersion`。
+`id,code,physicalSubsystemId,physicalSubsystemCode,physicalSubsystemName,physicalSubsystemStatus,name,kind,relatedDeploymentUnits,status,defaultNetworkZoneId,defaultNetworkZoneName,currentVersion,description,remark,createdBy,createdByDisplayName,updatedBy,updatedByDisplayName,createdAt,updatedAt,rowVersion`。`relatedDeploymentUnits[]` 固定包含 `id,code,name,kind,physicalSubsystemId,physicalSubsystemName,status`。
 
 - `code`：永久编号 `D<物理编号><三位序号>`（如 `DW0001A001`），创建即分配，之后不可修改、不可复用；每物理子系统最多 999 个。
 - `currentVersion`：当前版本号；每次更新 ACTIVE 单元自动 +1 并新增不可改写版本行。
 - `status`：`ACTIVE|INACTIVE|VOIDED`；`INACTIVE` 阻止新的引用但保留历史，可重新启用；`VOIDED` 为终态，仅从未被引用（`com.ccb.architecture.integration.DeploymentUnitReferenceChecker` 全部 CLEAR）允许，检查异常按存在引用失败关闭（503）。
 - `rowVersion`：更新必须等于服务端当前值，冲突返回 409。
+- `name`：统一转大写，格式为 `^[A-Z0-9]+_[A-Z0-9]{1,8}$`，在租户内永久唯一；`_AP/_DB/_WB` 必须分别对应 `APPLICATION/DATABASE/WEB`，其他合法后缀保留并由 `kind` 表达业务类型。
 - `kind` 可随版本变化；`physicalSubsystemId` 创建后不可变更。
+- 关联为双向无向关系，按较小/较大部署单元 ID 只保存一行；候选仅允许当前租户 ACTIVE 部署单元，可跨物理子系统。停用保留既有关联，存在关联时作废返回 409。
 
-版本历史 `GET /deployment-units/{id}/versions` 返回 `[{versionNo,shortName,name,kind,description,remark,publishedBy,publishedByDisplayName,publishedAt}]`，按 `versionNo` 升序；版本行无更新/删除接口。
+版本历史 `GET /deployment-units/{id}/versions` 返回 `[{versionNo,name,kind,defaultNetworkZoneId,defaultNetworkZoneName,description,remark,publishedBy,publishedByDisplayName,publishedAt}]`，按 `versionNo` 升序；版本行无更新/删除接口。关联变化写入独立只追加关系历史，不改写被关联端版本。
 
 ### 初始化导入
 
@@ -224,7 +228,7 @@ V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlat
 | GET | `/deployment-unit-imports/{id}/error-report` | 失败行 CSV（UTF-8 BOM），`Content-Disposition` 下载 |
 | GET | `/deployment-unit-imports/template` | xlsx 模板下载 |
 
-模板表头固定：`物理子系统编号,部署单元简称,部署单元名称,部署单元类型,描述,备注`；类型取 `应用|数据库|消息队列`（或 `APPLICATION|DATABASE|MQ`）。预览行状态 `VALID|INVALID`；确认后 `SUCCESS|FAILED|SKIPPED`（SKIPPED 为幂等重导时已存在的 ACTIVE 同名同物理行）。批次状态 `PREVIEW|SUCCESS|PARTIAL|FAILED`；确认时预期行级失败记录明细并继续，意外异常整批回滚并标记 FAILED。批次字段：`id,fileName,fileSize,totalRows,validRows,successRows,failedRows,skippedRows,status,errorMessage,createdBy,createdByDisplayName,createdAt,completedAt`；行明细：`itemId,lineNo,row{physicalCode,shortName,name,kindLabel,description,remark},rowStatus,errorMessage,note,unitId`。
+模板表头固定：`物理子系统编号,部署单元名称,部署单元类型,描述,备注`；类型取 `应用|数据库|Web`（或 `APPLICATION|DATABASE|WEB`）。预览行状态 `VALID|INVALID`；确认后 `SUCCESS|FAILED|SKIPPED`（SKIPPED 为幂等重导时已存在的 ACTIVE 同名记录）。批次状态 `PREVIEW|SUCCESS|PARTIAL|FAILED`；确认时预期行级失败记录明细并继续，意外异常整批回滚并标记 FAILED。批次字段：`id,fileName,fileSize,totalRows,validRows,successRows,failedRows,skippedRows,status,errorMessage,createdBy,createdByDisplayName,createdAt,completedAt`；行明细：`itemId,lineNo,row{physicalCode,name,kindLabel,description,remark},rowStatus,errorMessage,note,unitId`。
 
 
 ## 具体环境与资源申请（REQ-20260824-052）
@@ -296,11 +300,11 @@ V95 后额外包含 `businessContinuityLevel,collectedSystemLevel,deploymentPlat
 }
 ```
 
-明细请求体只接收申请人可填写的资源需求字段；物理子系统字段由服务端从物理子系统主数据带出并写入申请级快照，部署单元字段从部署单元主数据带出并写入明细快照。`DB` 部署单元仅接收数据库存储需求、数据库和数据库版本，`AP/WB/PL` 接收除 `DB` 专属字段外的资源、网络、技术栈和附加需求字段。服务器类型来源于 `ARCH_SERVER_TYPE`，默认 `architecture.server-type.container`；灾备模式和系统等级来源于物理子系统。JDK、中间件和产品化操作系统分别来源于 `ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM`。容量、CPU、内存和存储类字段均为非负整数；`plannedNodeCount` 允许为 0，用于数据库存储类登记行。申请态汇总按 `cpuCores * plannedNodeCount + sidecarCpuCores`、`memoryGb * plannedNodeCount + sidecarMemoryGb` 和 `databaseStorageGb + fileStorageGb + extraCbsGb + localDiskGb` 计算。
+明细请求体只接收申请人可填写的资源需求字段；物理子系统字段由服务端从物理子系统主数据带出并写入申请级快照，部署单元字段从部署单元主数据带出并写入明细快照。`kind=DATABASE` 仅接收数据库存储需求、数据库和数据库版本，`kind=APPLICATION|WEB` 接收除数据库专属字段外的资源、网络、技术栈和附加需求字段；自定义名称后缀不改变分流。服务器类型来源于 `ARCH_SERVER_TYPE`，默认 `architecture.server-type.container`；灾备模式和系统等级来源于物理子系统。JDK、中间件和产品化操作系统分别来源于 `ARCH_JDK_VERSION`、`ARCH_MIDDLEWARE`、`ARCH_OPERATING_SYSTEM`。容量、CPU、内存和存储类字段均为非负整数；`plannedNodeCount` 允许为 0，用于数据库存储类登记行。申请态汇总按 `cpuCores * plannedNodeCount + sidecarCpuCores`、`memoryGb * plannedNodeCount + sidecarMemoryGb` 和 `databaseStorageGb + fileStorageGb + extraCbsGb + localDiskGb` 计算。
 
 `requestType=INITIAL|EXPANSION|SHRINK|ADJUSTMENT`；工单状态机：`DRAFT → IN_REVIEW → APPROVED/REJECTED`，`IN_REVIEW → RETURNED → IN_REVIEW`（新轮次），`DRAFT/RETURNED → CANCELLED`，`IN_REVIEW → CANCELLED`（终止事件确认）。批准只将资源申请置为 `APPROVED`，不生成机器、IP、环境部署实例、实际资源分配或搭建任务。
 
-详情响应 `data`：`{request, items[], history[]}`。`request` 含 `id,requestNo,physicalSubsystemId,physicalSubsystemCode,physicalSubsystemShortName,physicalSubsystemName,physicalSubsystemBusinessGroupName,physicalSubsystemSystemLevelCode,physicalSubsystemDeploymentPlatform,physicalSubsystemDisasterRecoveryMode,environmentId,environmentCode,environmentName,environmentTypeName,applicantId,contactUserId,requestType,reason,status,currentBusinessRound,cancellationRequested,rowVersion,createdBy,updatedBy,createdAt,updatedAt`。`items[]` 含 `id,itemSeq,deploymentUnitId,deploymentUnitCode,deploymentUnitName,deploymentUnitKind,relatedDeploymentUnitName,deploymentUnitDescription,deploymentUnitType,databaseStorageGb,fileStorageGb,networkZone,serverType,cpuCores,memoryGb,appWebGroupCount,plannedNodeCount,totalCpuCores,totalMemoryGb,sidecarCpuCores,sidecarMemoryGb,sidecarMemoryRatio,hasSidecar,databaseName,databaseVersion,jdkVersion,middleware,operatingSystem,extraCbsGb,localDiskGb,needsNft,needsFserver,needsJobexecutor,remark`。`history[]` 为不可变业务事件。
+详情响应 `data`：`{request, items[], history[]}`。`request` 含 `id,requestNo,physicalSubsystemId,physicalSubsystemCode,physicalSubsystemShortName,physicalSubsystemName,physicalSubsystemBusinessGroupName,physicalSubsystemSystemLevelCode,physicalSubsystemDeploymentPlatform,physicalSubsystemDisasterRecoveryMode,environmentId,environmentCode,environmentName,environmentTypeName,applicantId,contactUserId,requestType,reason,status,currentBusinessRound,cancellationRequested,rowVersion,createdBy,updatedBy,createdAt,updatedAt`。`items[]` 含 `id,itemSeq,deploymentUnitId,deploymentUnitCode,deploymentUnitName,deploymentUnitKind,deploymentUnitDescription,databaseStorageGb,fileStorageGb,networkZoneId,networkZoneName,networkZone,serverType,cpuCores,memoryGb,appWebGroupCount,plannedNodeCount,totalCpuCores,totalMemoryGb,sidecarCpuCores,sidecarMemoryGb,sidecarMemoryRatio,hasSidecar,databaseName,databaseVersion,jdkVersion,middleware,operatingSystem,extraCbsGb,localDiskGb,needsNft,needsFserver,needsJobexecutor,remark`。`history[]` 为不可变业务事件。
 
 工作流与审计：
 

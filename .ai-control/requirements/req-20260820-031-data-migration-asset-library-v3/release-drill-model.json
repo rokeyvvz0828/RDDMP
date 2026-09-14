@@ -1,0 +1,77 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["dm_release_drill元数据", "参数码值读取", "单附件绑定", "项目隔离", "回收站状态", "前端页面"],
+    "environment": ["系统管理参数", "平台附件", "pm_project项目上下文", "数据迁移其他内容类型"]
+  },
+  "state_variables": [
+    {"name": "deleted", "owner": "dm_release_drill", "valid_values": ["0", "1"]},
+    {"name": "granularity", "owner": "dm_release_drill", "valid_values": ["PROJECT", "COMPONENT"]},
+    {"name": "material_type_code", "owner": "dm_release_drill", "valid_values": ["8类参数启用编码"]},
+    {"name": "drill_round", "owner": "dm_release_drill", "valid_values": ["可空手填文本"]},
+    {"name": "system_code", "owner": "dm_release_drill", "valid_values": ["空串哨兵或当前项目启用组件编码"]},
+    {"name": "main_attachment", "owner": "dm_content_attachment", "valid_values": ["sort_order=0单一主文件"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "新增/编辑请求", "transitions": ["必填校验", "参数校验", "系统校验", "写入dm_release_drill", "绑定附件"], "outputs": ["详情/列表元数据"]},
+    {"requirement_id": "R2", "input": "参数类别读取", "transitions": ["DataMigrationCodeValueService", "SystemReferenceQuery"], "outputs": ["粒度/类型选项"]},
+    {"requirement_id": "R3", "input": "列表查询", "transitions": ["项目过滤", "dm_component+arch投影", "分页投影"], "outputs": ["system_name/drill_round"]},
+    {"requirement_id": "R4", "input": "源文件上传", "transitions": ["临时附件校验", "replaceMainFile", "edit保留或替换"], "outputs": ["单主文件"]},
+    {"requirement_id": "R5", "input": "筛选参数", "transitions": ["服务端组合查询", "分页", "前端状态重置"], "outputs": ["分页列表"]},
+    {"requirement_id": "R6", "input": "写操作", "transitions": ["RBAC", "项目守卫", "实体授权", "审计"], "outputs": ["拒绝/成功+审计行"]},
+    {"requirement_id": "R7", "input": "删除/回收站", "transitions": ["逻辑删除", "ReleaseDrillRecycleBinSource", "恢复/彻底清理"], "outputs": ["回收站一致"]},
+    {"requirement_id": "R8", "input": "代码范围", "transitions": ["只在REQ-031路径写入", "不引入投产模块依赖"], "outputs": ["范围内diff"]}
+  ],
+  "interfaces": [
+    {"name": "GET /api/data-migration/release-drills", "producers": ["ReleaseDrillController"], "consumers": ["ReleaseDrillsPage"], "invariant": "projectId必填"},
+    {"name": "POST/PUT/DELETE /api/data-migration/release-drills[/{id}]", "producers": ["ReleaseDrillController"], "consumers": ["ReleaseDrillsPage"], "invariant": "写操作RBAC+项目+实体+附件校验"},
+    {"name": "GET /api/data-migration/release-drills/options/systems", "producers": ["ReleaseDrillController"], "consumers": ["ReleaseDrillsPage"], "invariant": "仅当前项目enabled=1组件"},
+    {"name": "GET /api/data-migration/options/{category}", "producers": ["DataMigrationParameterOptionsController"], "consumers": ["ReleaseDrillsPage"], "invariant": "DM_RELEASE_DRILL_GRANULARITY/DM_RELEASE_DRILL_TYPE"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1/R2/R4/R6服务行为", "method": "ReleaseDrillServiceTest", "blind_spots": ["真实数据库权限差异"], "independence": "单元/集成测试直接观察"},
+    {"id": "S2", "target": "V184迁移与参数初始化", "method": "ContentAssetMigrationMySqlTest+码值服务测试", "blind_spots": ["非MySQL8.4环境"], "independence": "数据库迁移传感器"},
+    {"id": "S3", "target": "回收站注册唯一性", "method": "DataMigrationModuleRegistrationTest+ReleaseDrillRecycleBinSourceTest", "blind_spots": ["真实浏览器回收站交互"], "independence": "注册/SPI测试"},
+    {"id": "S4", "target": "前端契约与构建", "method": "npm --prefix web run build", "blind_spots": ["浏览器布局细节"], "independence": "TypeScript/构建检查"},
+    {"id": "S5", "target": "真实用户路径", "method": "浏览器验收", "blind_spots": ["无法覆盖所有异常分支"], "independence": "真实运行观察"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "dm_release_drill和参数初始化", "action": "实现V184", "authority": "REQ-031迁移写入", "impact_radius": "数据迁移模块", "rollback": "不发布V184并回退应用"},
+    {"id": "A2", "target": "业务服务/控制器", "action": "实现ReleaseDrillService/Controller", "authority": "REQ-031后端写入", "impact_radius": "/api/data-migration/release-drills", "rollback": "删除新增类并恢复通用链路"},
+    {"id": "A3", "target": "回收站与通用链路", "action": "新增ReleaseDrillRecycleBinSource并从MANAGED_TYPES/ContentAssetController移除", "authority": "REQ-031数据迁移模块", "impact_radius": "data-migration recycle/route", "rollback": "恢复通用映射和MANAGED_TYPES"},
+    {"id": "A4", "target": "前端页面与API契约", "action": "重写ReleaseDrillsPage并扩展data-migration.ts", "authority": "REQ-031前端写入", "impact_radius": "data-migration内容页面", "rollback": "回退API与页面改动"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S3"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S2", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "系统管理参数被管理员停用/新增", "effect": "选项变化或写入拒绝", "detectable": true, "controllable": false},
+    {"source": "项目切换器切换项目", "effect": "列表/选项变化", "detectable": true, "controllable": false},
+    {"source": "数据迁移其他内容类型回归", "effect": "注册/回收站回归", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "环境启动/构建", "consequence": "浏览器验收不能即时执行", "sampling_rule": "先静态检查，再按环境可用性补充浏览器证据"}
+  ],
+  "assumptions": [
+    {"text": "测试环境代表目标运行时", "evidence": "REQ-031既有构建/迁移环境", "falsifier": "目标环境配置不同"},
+    {"text": "dm_release_drill无存量业务行", "evidence": "REQ-031本地计数", "falsifier": "发现存量业务行"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "进入planning"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "进入planning"}
+  ],
+  "model_status": "ready"
+}

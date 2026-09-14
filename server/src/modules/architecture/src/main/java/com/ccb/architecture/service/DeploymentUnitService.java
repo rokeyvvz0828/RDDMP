@@ -11,12 +11,14 @@ import com.ccb.architecture.network.service.NetworkAccessService.ZoneRef;
 import com.ccb.architecture.persistence.DeploymentUnitNumberCapacityExceededException;
 import com.ccb.architecture.persistence.DeploymentUnitStore;
 import com.ccb.architecture.persistence.DeploymentUnitStore.PhysicalSubsystemRef;
+import com.ccb.architecture.persistence.DeploymentUnitStore.RelatedDeploymentUnitRow;
 import com.ccb.architecture.web.ArchitectureNotFoundException;
 import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.ccb.system.capability.SystemReferenceQuery;
@@ -27,6 +29,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
+import java.util.regex.Pattern;
 
 /**
  * 部署单元生命周期：创建即发布版本 1；更新即发布新版本；停用/启用/作废状态机。
@@ -51,7 +55,11 @@ public class DeploymentUnitService {
     private static final Set<String> PUBLISHED_STATUSES = Set.of(
             DeploymentUnitStatus.ACTIVE.name(), DeploymentUnitStatus.INACTIVE.name(),
             DeploymentUnitStatus.VOIDED.name());
-    private static final Set<String> REGISTRATION_TYPES = Set.of("DB", "AP", "WB", "PL");
+    private static final Pattern NAME_PATTERN = Pattern.compile("^[A-Z0-9]+_[A-Z0-9]{1,8}$");
+    private static final Map<String, DeploymentUnitKind> STANDARD_SUFFIX_KIND = Map.of(
+            "AP", DeploymentUnitKind.APPLICATION,
+            "DB", DeploymentUnitKind.DATABASE,
+            "WB", DeploymentUnitKind.WEB);
 
     private final DeploymentUnitStore store;
     private final DeploymentUnitReferenceGuard referenceGuard;
@@ -60,6 +68,18 @@ public class DeploymentUnitService {
     private final TransactionTemplate transactions;
     private final LongSupplier identifiers;
     private final NetworkAccessService networkAccessService;
+
+    private SubsystemParticipationService participation;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(SubsystemParticipationService participation) {
+        this.participation = java.util.Objects.requireNonNull(participation);
+    }
+
+    private void requireUnitParticipation(AuthUser actor, ProjectAccess project, long id) {
+        DeploymentUnit unit = store.findUnit(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound(id));
+        participation.lockAndRequireSystemParticipant(actor, project, unit.physicalSubsystemId());
+    }
 
     @org.springframework.beans.factory.annotation.Autowired
     public DeploymentUnitService(DeploymentUnitStore store,
@@ -100,35 +120,39 @@ public class DeploymentUnitService {
 
     // ---------- 查询 ----------
 
-    public PageResult<DeploymentUnitView> list(AuthUser actor, PageQuery page, DeploymentUnitQuery query) {
+    public PageResult<DeploymentUnitView> list(AuthUser actor, ProjectAccess project, PageQuery page,
+                                                DeploymentUnitQuery query) {
         requireActor(actor);
-        PageResult<DeploymentUnit> result = store.pageUnits(actor.tenantId(), page, normalizeQuery(query));
+        requireProject(project);
+        PageResult<DeploymentUnit> result = store.pageUnits(actor.tenantId(), project.id(), page,
+                normalizeQuery(query));
         Map<Long, PhysicalSubsystemRef> physicals = new HashMap<>();
         Map<Long, Optional<SystemUserReference>> users = new HashMap<>();
         List<DeploymentUnitView> records = result.records().stream()
-                .map(item -> toView(actor, item, physicals, users))
+                .map(item -> toView(actor, project, item, physicals, users))
                 .toList();
         return new PageResult<>(records, result.total(), result.page(), result.size());
     }
 
-    public DeploymentUnitView detail(AuthUser actor, long id) {
+    public DeploymentUnitView detail(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        DeploymentUnit unit = store.findUnit(actor.tenantId(), id).orElseThrow(() -> notFound(id));
-        return toView(actor, unit, new HashMap<>(), new HashMap<>());
+        DeploymentUnit unit = store.findUnit(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound(id));
+        return toView(actor, project, unit, new HashMap<>(), new HashMap<>());
     }
 
-    public List<DeploymentUnitVersionView> versions(AuthUser actor, long id) {
+    public List<DeploymentUnitVersionView> versions(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        if (store.findUnit(actor.tenantId(), id).isEmpty()) {
+        if (store.findUnit(actor.tenantId(), project.id(), id).isEmpty()) {
             throw notFound(id);
         }
         Map<Long, Optional<SystemUserReference>> users = new HashMap<>();
-        return store.findVersions(actor.tenantId(), id).stream()
+        return store.findVersions(actor.tenantId(), project.id(), id).stream()
                 .map(version -> new DeploymentUnitVersionView(
-                        version.versionNo(), version.shortName(), version.name(),
-                        version.relatedDeploymentUnitName(), version.deploymentUnitType(), version.kind(),
+                        version.versionNo(), version.name(), version.kind(),
                         version.defaultNetworkZoneId(), version.defaultNetworkZoneName(),
                         version.description(), version.remark(),
                         version.publishedBy(), displayName(actor, version.publishedBy(), users),
@@ -136,38 +160,74 @@ public class DeploymentUnitService {
                 .toList();
     }
 
+    public PageResult<RelatedDeploymentUnitView> options(AuthUser actor, ProjectAccess project, String keyword,
+                                                          Long excludeId, PageQuery page) {
+        return options(actor, project, keyword, excludeId, null, page);
+    }
+
+    /**
+     * 启用部署单元候选查询；{@code physicalSubsystemId} 非空时限定归属物理子系统，
+     * 供交付单元关联选择复用。
+     */
+    public PageResult<RelatedDeploymentUnitView> options(AuthUser actor, ProjectAccess project, String keyword,
+                                                          Long excludeId, Long physicalSubsystemId,
+                                                          PageQuery page) {
+        requireActor(actor);
+        requireProject(project);
+        if (excludeId != null) {
+            requirePositiveId(excludeId);
+        }
+        PageResult<DeploymentUnit> result = store.searchActiveOptions(actor.tenantId(), project.id(), keyword,
+                excludeId, physicalSubsystemId, page);
+        Map<Long, PhysicalSubsystemRef> physicals = new HashMap<>();
+        List<RelatedDeploymentUnitView> records = result.records().stream()
+                .map(unit -> {
+                    PhysicalSubsystemRef physical = physicals.computeIfAbsent(unit.physicalSubsystemId(),
+                            key -> store.findPhysical(actor.tenantId(), project.id(), key).orElse(null));
+                    return new RelatedDeploymentUnitView(unit.id(), unit.code(), unit.name(), unit.kind(),
+                            unit.physicalSubsystemId(), physical == null ? null : physical.name(), unit.status());
+                })
+                .toList();
+        return new PageResult<>(records, result.total(), result.page(), result.size());
+    }
+
     // ---------- 写操作 ----------
 
-    public DeploymentUnitView create(AuthUser actor, DeploymentUnitCommand command, String traceId) {
+    public DeploymentUnitView create(AuthUser actor, ProjectAccess project, DeploymentUnitCommand command,
+                                     String traceId) {
         requireActor(actor);
-        PreparedCommand prepared = prepare(actor, command, null);
+        requireProject(project);
+        PreparedCommand prepared = prepare(actor, project, command, null);
         long unitId;
         try {
-            unitId = transactions.execute(status -> publishInitial(actor, prepared.physicalSubsystemId(),
-                    prepared.shortName(), prepared.name(), prepared.kind(), prepared.description(),
-                    prepared.relatedDeploymentUnitName(), prepared.deploymentUnitType(),
+            unitId = transactions.execute(status -> publishInitial(actor, project, prepared.physicalSubsystemId(),
+                    prepared.name(), prepared.kind(), prepared.description(), prepared.relatedDeploymentUnitIds(),
                     prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName(), prepared.remark()));
         } catch (DuplicateKeyException exception) {
             throw recordFailure(actor, CREATE_OPERATION, "POST", conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
         } catch (RuntimeException exception) {
             throw recordFailure(actor, CREATE_OPERATION, "POST", exception, traceId);
         }
-        DeploymentUnit unit = store.findUnit(actor.tenantId(), unitId).orElseThrow(() -> notFound(unitId));
+        DeploymentUnit unit = store.findUnit(actor.tenantId(), project.id(), unitId)
+                .orElseThrow(() -> notFound(unitId));
         operationAudit.recordSuccess(auditCommand(actor, CREATE_OPERATION, "POST", RESOURCE_PATH, null, traceId));
-        return toView(actor, unit, new HashMap<>(), new HashMap<>());
+        return toView(actor, project, unit, new HashMap<>(), new HashMap<>());
     }
 
     /**
      * 更新 ACTIVE 部署单元展示内容并发布新版本；乐观锁 rowVersion 冲突时拒绝。
      * 编号与物理归属不在更新命令中，天然不可变更。
      */
-    public DeploymentUnitView update(AuthUser actor, long id, DeploymentUnitCommand command, String traceId) {
+    public DeploymentUnitView update(AuthUser actor, ProjectAccess project, long id, DeploymentUnitCommand command,
+                                     String traceId) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        PreparedCommand prepared = prepare(actor, command, id);
+        PreparedCommand prepared = prepare(actor, project, command, id);
         try {
             transactions.executeWithoutResult(status -> {
-                DeploymentUnit locked = store.lockUnit(actor.tenantId(), id)
+                requireUnitParticipation(actor, project, id);
+                DeploymentUnit locked = store.lockUnit(actor.tenantId(), project.id(), id)
                         .orElseThrow(() -> notFound(id));
                 if (locked.status().equals(DeploymentUnitStatus.INACTIVE.name())) {
                     throw conflict("已停用部署单元不能直接修改，请先重新启用");
@@ -175,73 +235,77 @@ public class DeploymentUnitService {
                 if (locked.status().equals(DeploymentUnitStatus.VOIDED.name())) {
                     throw conflict("已作废部署单元不可修改");
                 }
-                if (store.unitNameExists(actor.tenantId(), locked.physicalSubsystemId(), prepared.name(), id)) {
+                if (store.unitNameExists(actor.tenantId(), project.id(), prepared.name(), id)) {
                     throw conflict("部署单元名称已被占用，停用或作废后也不可复用");
                 }
+                validateRelationTargets(actor.tenantId(), project.id(), id, prepared.relatedDeploymentUnitIds());
                 int updated = hasDefaultNetworkZone(prepared)
-                        ? store.updateUnitContent(actor.tenantId(), id, prepared.rowVersion(),
-                        prepared.shortName(), prepared.name(), prepared.relatedDeploymentUnitName(),
-                        prepared.deploymentUnitType(), prepared.kind(),
+                        ? store.updateUnitContent(actor.tenantId(), project.id(), id, prepared.rowVersion(),
+                        prepared.name(), prepared.kind(),
                         prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName(), prepared.description(),
                         prepared.remark(), actor.id())
-                        : store.updateUnitContent(actor.tenantId(), id, prepared.rowVersion(),
-                        prepared.shortName(), prepared.name(), prepared.relatedDeploymentUnitName(),
-                        prepared.deploymentUnitType(), prepared.kind(), prepared.description(),
+                        : store.updateUnitContent(actor.tenantId(), project.id(), id, prepared.rowVersion(),
+                        prepared.name(), prepared.kind(), prepared.description(),
                         prepared.remark(), actor.id());
                 if (updated != 1) {
                     throw conflict("部署单元已被其他操作修改，请刷新后重试");
                 }
                 int nextVersion = locked.currentVersion() + 1;
                 if (hasDefaultNetworkZone(prepared)) {
-                    store.insertVersion(nextId(), actor.tenantId(), id, nextVersion, prepared.shortName(),
-                            prepared.name(), prepared.relatedDeploymentUnitName(), prepared.deploymentUnitType(),
+                    store.insertVersion(nextId(), actor.tenantId(), project.id(), id, nextVersion, prepared.name(),
                             prepared.kind(), prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName(),
                             prepared.description(), prepared.remark(), actor.id());
                 } else {
-                    store.insertVersion(nextId(), actor.tenantId(), id, nextVersion, prepared.shortName(),
-                            prepared.name(), prepared.relatedDeploymentUnitName(), prepared.deploymentUnitType(),
+                    store.insertVersion(nextId(), actor.tenantId(), project.id(), id, nextVersion, prepared.name(),
                             prepared.kind(), prepared.description(), prepared.remark(), actor.id());
                 }
-                store.updateUnitCurrentVersion(actor.tenantId(), id, nextVersion, actor.id());
+                store.updateUnitCurrentVersion(actor.tenantId(), project.id(), id, nextVersion, actor.id());
+                store.replaceRelations(actor.tenantId(), project.id(), id, prepared.relatedDeploymentUnitIds(),
+                        actor.id(), nextVersion);
             });
         } catch (DuplicateKeyException exception) {
             throw recordFailure(actor, UPDATE_OPERATION, "PUT", conflict("部署单元名称已被占用，停用或作废后也不可复用"), traceId);
         } catch (RuntimeException exception) {
             throw recordFailure(actor, UPDATE_OPERATION, "PUT", exception, traceId);
         }
-        DeploymentUnit unit = store.findUnit(actor.tenantId(), id).orElseThrow(() -> notFound(id));
+        DeploymentUnit unit = store.findUnit(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound(id));
         operationAudit.recordSuccess(auditCommand(actor, UPDATE_OPERATION, "PUT", RESOURCE_PATH + "/" + id, null, traceId));
-        return toView(actor, unit, new HashMap<>(), new HashMap<>());
+        return toView(actor, project, unit, new HashMap<>(), new HashMap<>());
     }
 
-    public DeploymentUnitView deactivate(AuthUser actor, long id, String traceId) {
+    public DeploymentUnitView deactivate(AuthUser actor, ProjectAccess project, long id, String traceId) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        transition(actor, id, DeploymentUnitStatus.ACTIVE, DeploymentUnitStatus.INACTIVE, false,
+        transition(actor, project, id, DeploymentUnitStatus.ACTIVE, DeploymentUnitStatus.INACTIVE, false,
                 DEACTIVATE_OPERATION, "POST", traceId);
-        return detail(actor, id);
+        return detail(actor, project, id);
     }
 
-    public DeploymentUnitView reactivate(AuthUser actor, long id, String traceId) {
+    public DeploymentUnitView reactivate(AuthUser actor, ProjectAccess project, long id, String traceId) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        transition(actor, id, DeploymentUnitStatus.INACTIVE, DeploymentUnitStatus.ACTIVE, false,
+        transition(actor, project, id, DeploymentUnitStatus.INACTIVE, DeploymentUnitStatus.ACTIVE, false,
                 REACTIVATE_OPERATION, "POST", traceId);
-        return detail(actor, id);
+        return detail(actor, project, id);
     }
 
-    public DeploymentUnitView voidUnit(AuthUser actor, long id, String traceId) {
+    public DeploymentUnitView voidUnit(AuthUser actor, ProjectAccess project, long id, String traceId) {
         requireActor(actor);
+        requireProject(project);
         requirePositiveId(id);
-        transition(actor, id, null, DeploymentUnitStatus.VOIDED, true, VOID_OPERATION, "POST", traceId);
-        return detail(actor, id);
+        transition(actor, project, id, null, DeploymentUnitStatus.VOIDED, true, VOID_OPERATION, "POST", traceId);
+        return detail(actor, project, id);
     }
 
-    private void transition(AuthUser actor, long id, DeploymentUnitStatus from, DeploymentUnitStatus to,
+    private void transition(AuthUser actor, ProjectAccess project, long id, DeploymentUnitStatus from,
+                            DeploymentUnitStatus to,
                             boolean referenceCheck, String operation, String method, String traceId) {
         try {
             transactions.executeWithoutResult(status -> {
-                DeploymentUnit locked = store.lockUnit(actor.tenantId(), id)
+                requireUnitParticipation(actor, project, id);
+                DeploymentUnit locked = store.lockUnit(actor.tenantId(), project.id(), id)
                         .orElseThrow(() -> notFound(id));
                 if (from != null && !locked.status().equals(from.name())) {
                     throw conflict("部署单元当前状态不允许该操作（当前 " + locked.status() + "）");
@@ -251,11 +315,15 @@ public class DeploymentUnitService {
                             && !locked.status().equals(DeploymentUnitStatus.INACTIVE.name())) {
                         throw conflict("已作废部署单元不可重复作废");
                     }
+                    if (store.hasRelations(actor.tenantId(), project.id(), id)) {
+                        throw conflict("部署单元仍存在关联，请先解除关联后再作废");
+                    }
                     referenceGuard.requireClear(
                             new com.ccb.architecture.integration.DeploymentUnitReferenceCheckRequest(
                                     actor.tenantId(), id));
                 }
-                int updated = store.updateUnitStatus(actor.tenantId(), id, locked.status(), to.name(), actor.id());
+                int updated = store.updateUnitStatus(actor.tenantId(), project.id(), id, locked.status(),
+                        to.name(), actor.id());
                 if (updated != 1) {
                     throw conflict("部署单元状态已被其他操作修改，请刷新后重试");
                 }
@@ -272,55 +340,59 @@ public class DeploymentUnitService {
      * 在调用方事务内创建并发布版本 1（分配编号）。所有校验先于编号分配，
      * 避免失败行消耗序号。导入服务在事务内调用本方法。
      */
-    long publishInitial(AuthUser actor, long physicalSubsystemId, String shortName, String name,
-                        String kind, String description, String relatedDeploymentUnitName,
-                        String deploymentUnitType, Long defaultNetworkZoneId,
+    long publishInitial(AuthUser actor, ProjectAccess project, long physicalSubsystemId, String name,
+                        String kind, String description, Set<Long> relatedDeploymentUnitIds,
+                        Long defaultNetworkZoneId,
                         String defaultNetworkZoneName, String remark) {
         long tenantId = actor.tenantId();
-        PhysicalSubsystemRef physical = store.findPhysical(tenantId, physicalSubsystemId)
-                .orElseThrow(() -> badRequest("物理子系统不存在或不属于当前租户"));
+        requireProject(project);
+        participation.lockAndRequireSystemParticipant(actor, project, physicalSubsystemId);
+        PhysicalSubsystemRef physical = store.findPhysical(tenantId, project.id(), physicalSubsystemId)
+                .orElseThrow(() -> badRequest("物理子系统不存在或不属于当前项目"));
         if (physical.deleted()) {
             throw badRequest("物理子系统已删除，不能在其下创建部署单元");
         }
         if (!"ACTIVE".equals(physical.status())) {
             throw badRequest("物理子系统当前状态不允许创建部署单元（状态 " + physical.status() + "）");
         }
-        if (store.unitNameExists(tenantId, physicalSubsystemId, name, null)) {
+        if (store.unitNameExists(tenantId, project.id(), name, null)) {
             throw conflict("部署单元名称已被占用，停用或作废后也不可复用");
         }
         long unitId = nextId();
+        validateRelationTargets(tenantId, project.id(), unitId, relatedDeploymentUnitIds);
         String code;
         try {
-            code = store.allocateNumber(tenantId, physicalSubsystemId, physical.code());
+            code = store.allocateNumber(tenantId, project.id(), physicalSubsystemId, physical.code());
         } catch (DeploymentUnitNumberCapacityExceededException exception) {
             throw conflict(exception.getMessage());
         }
         if (hasDefaultNetworkZone(defaultNetworkZoneId, defaultNetworkZoneName)) {
-            store.insertUnit(unitId, tenantId, code, physicalSubsystemId, shortName, name,
-                    relatedDeploymentUnitName, deploymentUnitType, kind, defaultNetworkZoneId,
+            store.insertUnit(unitId, tenantId, project.id(), code, physicalSubsystemId, name,
+                    kind, defaultNetworkZoneId,
                     defaultNetworkZoneName, description, remark, actor.id());
-            store.insertVersion(nextId(), tenantId, unitId, 1, shortName, name,
-                    relatedDeploymentUnitName, deploymentUnitType, kind, defaultNetworkZoneId,
+            store.insertVersion(nextId(), tenantId, project.id(), unitId, 1, name,
+                    kind, defaultNetworkZoneId,
                     defaultNetworkZoneName, description, remark, actor.id());
         } else {
-            store.insertUnit(unitId, tenantId, code, physicalSubsystemId, shortName, name,
-                    relatedDeploymentUnitName, deploymentUnitType, kind, description, remark, actor.id());
-            store.insertVersion(nextId(), tenantId, unitId, 1, shortName, name,
-                    relatedDeploymentUnitName, deploymentUnitType, kind, description, remark, actor.id());
+            store.insertUnit(unitId, tenantId, project.id(), code, physicalSubsystemId, name,
+                    kind, description, remark, actor.id());
+            store.insertVersion(nextId(), tenantId, project.id(), unitId, 1, name,
+                    kind, description, remark, actor.id());
         }
+        store.replaceRelations(tenantId, project.id(), unitId, relatedDeploymentUnitIds, actor.id(), 1);
         return unitId;
     }
 
-    long publishInitial(AuthUser actor, long physicalSubsystemId, String shortName, String name,
-                        String kind, String description, String relatedDeploymentUnitName,
-                        String deploymentUnitType, String remark) {
-        return publishInitial(actor, physicalSubsystemId, shortName, name, kind, description,
-                relatedDeploymentUnitName, deploymentUnitType, null, null, remark);
+    long publishInitial(AuthUser actor, ProjectAccess project, long physicalSubsystemId, String name,
+                        String kind, String description, String remark) {
+        return publishInitial(actor, project, physicalSubsystemId, name, kind, description,
+                Set.of(), null, null, remark);
     }
 
     // ---------- 校验与投影 ----------
 
-    private PreparedCommand prepare(AuthUser actor, DeploymentUnitCommand command, Long targetId) {
+    private PreparedCommand prepare(AuthUser actor, ProjectAccess project, DeploymentUnitCommand command,
+                                    Long targetId) {
         if (command == null) {
             throw badRequest("请求内容不能为空");
         }
@@ -331,55 +403,81 @@ public class DeploymentUnitService {
         try {
             kind = DeploymentUnitKind.valueOf(command.kind().trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            throw badRequest("部署单元类型仅支持 应用（APPLICATION）、数据库（DATABASE）、消息队列（MQ）");
+            throw badRequest("部署单元类型仅支持 应用（APPLICATION）、数据库（DATABASE）、Web（WEB）");
         }
-        String shortName = required(command.shortName(), "部署单元简称", 2, 100);
-        String name = required(command.name(), "部署单元名称", 2, 200);
-        String relatedDeploymentUnitName = optional(command.relatedDeploymentUnitName(), "关联部署单元名称", 500);
-        String deploymentUnitType = optional(command.deploymentUnitType(), "登记表部署单元类型", 32);
-        deploymentUnitType = deploymentUnitType == null
-                ? defaultDeploymentUnitType(kind.name())
-                : deploymentUnitType.toUpperCase(Locale.ROOT);
-        if (!REGISTRATION_TYPES.contains(deploymentUnitType)) {
-            throw badRequest("登记表部署单元类型仅支持 DB、AP、WB、PL");
+        String name = required(command.name(), "部署单元名称", 4, 200).toUpperCase(Locale.ROOT);
+        if (!NAME_PATTERN.matcher(name).matches()) {
+            throw badRequest("部署单元名称格式必须为主名称_后缀，主名称只允许大写字母和数字，后缀为1—8位大写字母或数字");
         }
-        if (kind == DeploymentUnitKind.DATABASE && !"DB".equals(deploymentUnitType)) {
-            throw badRequest("数据库部署单元的登记表类型必须为 DB");
+        String suffix = name.substring(name.lastIndexOf('_') + 1);
+        DeploymentUnitKind standardKind = STANDARD_SUFFIX_KIND.get(suffix);
+        if (standardKind != null && standardKind != kind) {
+            throw badRequest("标准后缀_" + suffix + "与部署单元类型" + kind.name() + "不一致");
         }
-        if (kind != DeploymentUnitKind.DATABASE && "DB".equals(deploymentUnitType)) {
-            throw badRequest("非数据库部署单元不能登记为 DB");
-        }
+        Set<Long> relatedDeploymentUnitIds = normalizeRelationIds(command.relatedDeploymentUnitIds(), targetId);
         String description = optional(command.description(), "描述", 2000);
         String remark = optional(command.remark(), "备注", 1000);
-        ZoneRef zone = validateDefaultNetworkZone(actor, command.defaultNetworkZoneId());
+        ZoneRef zone = validateDefaultNetworkZone(actor, project.id(), command.defaultNetworkZoneId());
         if (targetId == null) {
             long physicalSubsystemId = requiredId(command.physicalSubsystemId(), "所属物理子系统");
-            PhysicalSubsystemRef physical = store.findPhysical(actor.tenantId(), physicalSubsystemId)
-                    .orElseThrow(() -> badRequest("物理子系统不存在或不属于当前租户"));
+            PhysicalSubsystemRef physical = store.findPhysical(actor.tenantId(), project.id(), physicalSubsystemId)
+                    .orElseThrow(() -> badRequest("物理子系统不存在或不属于当前项目"));
             if (physical.deleted()) {
                 throw badRequest("物理子系统已删除，不能在其下创建部署单元");
             }
             if (!physical.status().equals("ACTIVE")) {
                 throw badRequest("只能选择已发布的物理子系统创建部署单元（当前状态 " + physical.status() + "）");
             }
-            return new PreparedCommand(physicalSubsystemId, shortName, name, relatedDeploymentUnitName,
-                    deploymentUnitType, kind.name(), zone == null ? null : zone.id(),
+            return new PreparedCommand(physicalSubsystemId, name, kind.name(), relatedDeploymentUnitIds,
+                    zone == null ? null : zone.id(),
                     zone == null ? null : zone.name(), description, remark, null);
         }
-        return new PreparedCommand(null, shortName, name, relatedDeploymentUnitName, deploymentUnitType,
-                kind.name(), zone == null ? null : zone.id(), zone == null ? null : zone.name(),
+        return new PreparedCommand(null, name, kind.name(), relatedDeploymentUnitIds,
+                zone == null ? null : zone.id(), zone == null ? null : zone.name(),
                 description, remark,
                 requiredRowVersion(command.rowVersion()));
     }
 
-    private ZoneRef validateDefaultNetworkZone(AuthUser actor, Long zoneId) {
+    private Set<Long> normalizeRelationIds(List<Long> values, Long targetId) {
+        Set<Long> ids = new LinkedHashSet<>();
+        if (values == null) {
+            return ids;
+        }
+        for (Long value : values) {
+            if (value == null || value <= 0) {
+                throw badRequest("关联部署单元编号必须为正整数");
+            }
+            if (targetId != null && value.equals(targetId)) {
+                throw badRequest("部署单元不能关联自身");
+            }
+            ids.add(value);
+        }
+        return ids;
+    }
+
+    private void validateRelationTargets(long tenantId, long projectId, long sourceUnitId, Set<Long> targetIds) {
+        if (targetIds == null || targetIds.isEmpty()) {
+            return;
+        }
+        if (targetIds.contains(sourceUnitId)) {
+            throw badRequest("部署单元不能关联自身");
+        }
+        List<DeploymentUnit> lockedTargets = store.lockActiveUnits(tenantId, projectId,
+                targetIds.stream().sorted().toList());
+        if (lockedTargets.size() != targetIds.size()) {
+            throw badRequest("关联部署单元不存在、不属于当前项目或已非 ACTIVE 状态");
+        }
+    }
+
+    private ZoneRef validateDefaultNetworkZone(AuthUser actor, long projectId, Long zoneId) {
         if (zoneId == null) {
             return null;
         }
         if (networkAccessService == null) {
             return new ZoneRef(zoneId, null, null);
         }
-        return networkAccessService.requireActiveLeafZone(actor.tenantId(), zoneId, "部署单元默认网络分区");
+        return networkAccessService.requireActiveLeafZone(
+                actor.tenantId(), projectId, zoneId, "部署单元默认网络分区");
     }
 
     /** 乐观锁版本允许从 0 开始；负数视为无效。 */
@@ -390,22 +488,30 @@ public class DeploymentUnitService {
         return value;
     }
 
-    private DeploymentUnitView toView(AuthUser actor, DeploymentUnit item,
+    private DeploymentUnitView toView(AuthUser actor, ProjectAccess project, DeploymentUnit item,
                                       Map<Long, PhysicalSubsystemRef> physicals,
                                       Map<Long, Optional<SystemUserReference>> users) {
         PhysicalSubsystemRef physical = physicals.computeIfAbsent(item.physicalSubsystemId(),
-                key -> store.findPhysical(actor.tenantId(), key).orElse(null));
+                key -> store.findPhysical(actor.tenantId(), project.id(), key).orElse(null));
         SystemUserReference creator = userReference(actor, item.createdBy(), users);
         SystemUserReference updater = userReference(actor, item.updatedBy(), users);
+        List<RelatedDeploymentUnitView> relatedUnits = store.findRelatedUnits(actor.tenantId(), project.id(),
+                        item.id()).stream()
+                .map(this::toRelatedView)
+                .toList();
         return new DeploymentUnitView(item.id(), item.code(), item.physicalSubsystemId(),
                 physical == null ? null : physical.code(), physical == null ? null : physical.name(),
-                physical == null ? null : physical.status(), item.shortName(), item.name(), item.kind(),
-                item.relatedDeploymentUnitName(), item.deploymentUnitType(), item.status(),
+                physical == null ? null : physical.status(), item.name(), item.kind(), relatedUnits, item.status(),
                 item.defaultNetworkZoneId(), item.defaultNetworkZoneName(),
                 item.currentVersion(), item.description(), item.remark(), item.createdBy(),
                 creator == null ? null : creator.displayName(), item.updatedBy(),
                 updater == null ? null : updater.displayName(), item.createdAt(), item.updatedAt(),
                 item.rowVersion());
+    }
+
+    private RelatedDeploymentUnitView toRelatedView(RelatedDeploymentUnitRow row) {
+        return new RelatedDeploymentUnitView(row.id(), row.code(), row.name(), row.kind(),
+                row.physicalSubsystemId(), row.physicalSubsystemName(), row.status());
     }
 
     private SystemUserReference userReference(AuthUser actor, Long userId,
@@ -434,14 +540,14 @@ public class DeploymentUnitService {
             try {
                 DeploymentUnitKind.valueOf(kind.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException exception) {
-                throw badRequest("部署单元类型仅支持 APPLICATION、DATABASE 或 MQ");
+                throw badRequest("部署单元类型仅支持 APPLICATION、DATABASE 或 WEB");
             }
         }
         if (status != null && !PUBLISHED_STATUSES.contains(status.toUpperCase(Locale.ROOT))) {
             throw badRequest("发布状态仅支持 ACTIVE、INACTIVE 或 VOIDED");
         }
-        return new DeploymentUnitQuery(normalizeOptional(query.code()), normalizeOptional(query.shortName()),
-                normalizeOptional(query.name()), query.physicalSubsystemId(),
+        return new DeploymentUnitQuery(normalizeOptional(query.code()), normalizeOptional(query.name()),
+                query.physicalSubsystemId(),
                 kind == null ? null : kind.toUpperCase(Locale.ROOT),
                 status == null ? null : status.toUpperCase(Locale.ROOT));
     }
@@ -478,6 +584,12 @@ public class DeploymentUnitService {
     private void requireActor(AuthUser actor) {
         if (actor == null || actor.id() <= 0 || actor.tenantId() <= 0) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "需要有效的认证用户和租户");
+        }
+    }
+
+    private void requireProject(ProjectAccess project) {
+        if (project == null || project.id() <= 0) {
+            throw badRequest("请选择项目后重试");
         }
     }
 
@@ -534,10 +646,6 @@ public class DeploymentUnitService {
         return identifiers.getAsLong();
     }
 
-    private String defaultDeploymentUnitType(String kind) {
-        return "DATABASE".equalsIgnoreCase(kind) ? "DB" : "AP";
-    }
-
     private boolean hasDefaultNetworkZone(PreparedCommand prepared) {
         return hasDefaultNetworkZone(prepared.defaultNetworkZoneId(), prepared.defaultNetworkZoneName());
     }
@@ -546,8 +654,8 @@ public class DeploymentUnitService {
         return zoneId != null || zoneName != null;
     }
 
-    private record PreparedCommand(Long physicalSubsystemId, String shortName, String name,
-                                   String relatedDeploymentUnitName, String deploymentUnitType, String kind,
+    private record PreparedCommand(Long physicalSubsystemId, String name, String kind,
+                                   Set<Long> relatedDeploymentUnitIds,
                                    Long defaultNetworkZoneId, String defaultNetworkZoneName,
                                    String description, String remark, Long rowVersion) {
     }
@@ -559,11 +667,9 @@ public class DeploymentUnitService {
             String physicalSubsystemCode,
             String physicalSubsystemName,
             String physicalSubsystemStatus,
-            String shortName,
             String name,
             String kind,
-            String relatedDeploymentUnitName,
-            String deploymentUnitType,
+            List<RelatedDeploymentUnitView> relatedDeploymentUnits,
             String status,
             Long defaultNetworkZoneId,
             String defaultNetworkZoneName,
@@ -581,10 +687,7 @@ public class DeploymentUnitService {
 
     public record DeploymentUnitVersionView(
             int versionNo,
-            String shortName,
             String name,
-            String relatedDeploymentUnitName,
-            String deploymentUnitType,
             String kind,
             Long defaultNetworkZoneId,
             String defaultNetworkZoneName,
@@ -593,5 +696,15 @@ public class DeploymentUnitService {
             long publishedBy,
             String publishedByDisplayName,
             LocalDateTime publishedAt) {
+    }
+
+    public record RelatedDeploymentUnitView(
+            long id,
+            String code,
+            String name,
+            String kind,
+            long physicalSubsystemId,
+            String physicalSubsystemName,
+            String status) {
     }
 }

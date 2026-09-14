@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "task_id": "system-options-unify",
+  "parent_task": "REQ-20260820-031-data-migration-asset-library-v3",
+  "trigger": "用户确认方案B：将数据迁移模块大量重复的 getSystemOptions / /options/systems 统一到「系统/组件清单」后端接口，前端只保留一个取数入口。",
+  "status": "implemented_and_checked",
+  "scope_kind": "data_migration_system_options_unify",
+  "decision_recorded": "唯一端点 GET /api/data-migration/components/options/systems 由新增 DataMigrationSystemOptionsController 调用 ProjectComponentService.getSystemOptions；删除 issues/mappings/meetings/topics/release-drills/plans/programs/rules/target-tables 各自的 /options/systems 及其 Service.getSystemOptions；统一端点权限采用原各页面查看权限并集（data-migration:access/write/manage/system:admin + 各内容页查看权限 + 目标/中间表结构查看权限 + components/dashboard），避免单一页面角色失去系统下拉；前端 web/src/api/data-migration.ts 仅保留 getSystemOptions，10 个页面统一调用。",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/DataMigrationSystemOptionsController.java", "purpose": "新增唯一 /components/options/systems 入口（方案B）。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java", "purpose": "移除 /components/options/systems（迁移到统一控制器）。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/*.java", "purpose": "移除 9 个 Controller 的 /options/systems 端点。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/*.java", "purpose": "移除 9 个 Service 重复 getSystemOptions，仅保留 ProjectComponentService 一份实现。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/*SecurityTest.java", "purpose": "同步移除对已下线 systemOptions 方法的断言。"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/*ServiceTest.java", "purpose": "同步移除对已知服务 getSystemOptions 的测试断言。"},
+    {"path_or_resource": "web/src/api/data-migration.ts", "purpose": "删除 10 个重复系统选项函数，仅保留 getSystemOptions。"},
+    {"path_or_resource": "web/src/modules/data-migration/views/**", "purpose": "10 个页面统一调用 getSystemOptions。"},
+    {"path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md", "purpose": "补充系统下拉统一入口说明。"}
+  ],
+  "commands": [
+    {"command": "mvn -q -pl server/src/modules/data-migration -am test-compile", "exit": 0, "observed": "后端编译通过。"},
+    {"command": "mvn -q -pl server/src/modules/data-migration test -Dtest='MappingControllerSecurityTest,RuleControllerSecurityTest,ProgramControllerSecurityTest,ReleaseDrillControllerSecurityTest,MappingServiceTest,ProgramServiceTest,RuleServiceTest,DataMigrationModuleRegistrationTest' -Dsurefire.failIfNoSpecifiedTests=false", "exit": 0, "observed": "安全/受影响 Service/模块注册定向测试通过。"},
+    {"command": "npm --prefix web run build", "exit": 0, "observed": "前端 vue-tsc + Vite 构建通过。"}
+  ],
+  "risk_notes": [
+    "这是公共接口路径变更：旧 /xxx/options/systems 已下线，外部客户端需改为 components/options/systems。",
+    "统一端点权限为原页面查看权限并集，未新增/未硬编码调用方权限；数据范围仍由 ProjectComponentService.getSystemOptions -> permissions.requireProject 校验。",
+    "全量模块测试中 4 个 DataMigrationGovernanceRemediationMySqlTest（sys_user_role/sys_role_permission BadSqlGrammar）为本任务既有失败，与本次统一无关。"
+  ]
+}

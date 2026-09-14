@@ -1,0 +1,15 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {"inside": ["ResourceRequestPage.vue 当前项模板", "architecture.css 资源申请局部规则"], "environment": ["Element Plus", "Vite 浏览器运行时", "视口和字体"]},
+  "state_variables": [{"name": "field_geometry", "owner": "浏览器布局引擎", "valid_values": ["desktop-3-4-3", "wrapped", "mobile-single", "overflow"]}, {"name": "request_contract", "owner": "现有提交逻辑", "valid_values": ["unchanged", "regressed"]}],
+  "causal_paths": [{"requirement_id": "R14", "input": "当前申请项和编辑器宽度", "transitions": ["Vue DOM 顺序决定 Flex 排列", "局部 CSS 决定标题摘要和技术栈列数", "响应式断点恢复单列"], "outputs": ["宽桌面紧凑排列", "移动端无溢出"]}],
+  "interfaces": [{"name": "resource_request_payload", "producers": ["ResourceRequestPage.vue 提交逻辑"], "consumers": ["现有 API"], "invariant": "仅布局变化，items[] 和字段值不变"}],
+  "sensors": [{"id": "S1", "target": "布局和一屏密度", "method": "五视口读取 offsetTop、clientHeight、scrollHeight 和根 scrollWidth", "blind_spots": ["未覆盖系统字体"], "independence": "直接观察浏览器布局输出"}, {"id": "S2", "target": "构建和业务不变量", "method": "Vite build、diff、scope、边车联动与计算检查", "blind_spots": ["Mock 与真实后端差异"], "independence": "编译与运行交互组合"}],
+  "actuators": [{"id": "A1", "target": "容量和技术栈 DOM", "action": "重排字段并增加局部语义类", "authority": "codex-task-scope writable_paths", "impact_radius": "ResourceRequestPage.vue 当前项", "rollback": "回退 T9 提交"}, {"id": "A2", "target": "局部布局", "action": "调整标题摘要、技术栈列数和间距", "authority": "codex-task-scope writable_paths", "impact_radius": "architecture.css 资源申请规则", "rollback": "回退 T9 提交"}],
+  "measurements": [{"requirement_id": "R14", "sensor_ids": ["S1", "S2"], "observable": "yes"}],
+  "disturbances": [{"source": "字体与长标签", "effect": "字段换行变化", "detectable": true, "controllable": true}],
+  "delays": [{"source": "Vite HMR 和 Dialog 布局", "consequence": "过早读取旧几何", "sampling_rule": "页面稳定后采样"}],
+  "assumptions": [{"text": "现有 Flex basis 支持目标顺序", "evidence": "上一轮运行几何", "falsifier": "S1 显示目标行不成立"}],
+  "control_assessment": [{"requirement_id": "R14", "observable": "yes", "controllable": "yes", "action": "进入 planning"}],
+  "model_status": "ready"
+}

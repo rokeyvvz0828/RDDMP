@@ -1,0 +1,17 @@
+{
+  "objective":"本地环境启动后，物理子系统变更和资源申请固定流程可直接用于工单提交。",
+  "requirements":[
+    {"id":"R1","statement":"local profile 必须正式发布两个固定流程。","acceptance":["草稿流程调用 WorkflowService.publish","发布由 Flowable deployment 支撑"],"priority":"must","source":"用户 2026-09-02 请求","counterexample":["仅修改数据库发布状态"]},
+    {"id":"R2","statement":"发布准备必须幂等并失败关闭。","acceptance":["已发布跳过","缺失或异常状态导致启动失败"],"priority":"must","source":"运行可靠性约束","counterexample":["启动成功后提交仍报流程不存在"]},
+    {"id":"R3","statement":"非 local 环境保持人工发布策略。","acceptance":["组件仅在 local profile 生效"],"priority":"must","source":"既有发布约束","counterexample":["生产启动自动发布草稿"]},
+    {"id":"R4","statement":"本次发现的架构迁移测试必须同步到当前 Flyway 版本并使用项目排序规则。","acceptance":["三个迁移集成测试类通过","ccb-boot 完整反应堆不再被这些测试阻断"],"priority":"must","source":"用户 2026-09-02 明确要求纳入本次变更","counterexample":["仅忽略完整测试失败"]}
+  ],
+  "invariants":["不修改历史 Flyway","不直接操作 Flowable ACT_* 表","业务提交继续走 WorkflowBusinessGateway","发布写审计"],
+  "constraints":["只修改 boot 组合根、三个授权测试类和本任务证据","保护工作区既有未跟踪文件"],
+  "non_goals":["不改变流程模型","不自动发布其他流程","不修改生产配置"],
+  "assumptions":[{"text":"本地租户 1 的用户 1 是启用的启动操作用户","basis":"现有初始化契约","falsifier":"启动查询找不到该用户"}],
+  "unknowns":[],
+  "decisions":[{"question":"自动发布适用环境","options":["仅 local","全部环境"],"selected":"仅 local","blocking":false,"source":"最小修复与既有人工发布约束"}],
+  "measurement_intents":[{"requirement_id":"R1","observable":"两个草稿编码均调用发布服务","candidate_sensor":"boot 单元测试"},{"requirement_id":"R2","observable":"已发布跳过且缺失失败","candidate_sensor":"boot 单元测试"},{"requirement_id":"R3","observable":"Spring profile 条件存在","candidate_sensor":"源码静态检查"},{"requirement_id":"R4","observable":"迁移测试和 boot 完整反应堆通过","candidate_sensor":"Maven Testcontainers 测试"}],
+  "baseline_status":"ready"
+}

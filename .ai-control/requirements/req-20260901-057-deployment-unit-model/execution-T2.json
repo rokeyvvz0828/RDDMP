@@ -1,0 +1,30 @@
+{
+  "task_id":"T2",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"web/src/modules/architecture/DeploymentUnitPage.vue","purpose":"单名称输入、类型后缀联动、远程搜索多选和状态处理"},
+    {"path_or_resource":"web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue","purpose":"展示结构化双向关联"},
+    {"path_or_resource":"web/src/modules/architecture/api.ts","purpose":"切换部署单元 DTO 和 options 搜索 API"},
+    {"path_or_resource":"web/src/modules/architecture/types.ts","purpose":"删除旧字段并定义新类型和关联视图"},
+    {"path_or_resource":"web/src/modules/architecture/utils.ts","purpose":"名称规范化和标准后缀联动"},
+    {"path_or_resource":"web/src/modules/architecture/DeploymentUnitImportPage.vue","purpose":"导入列与三类型契约同步"},
+    {"path_or_resource":"web/src/modules/architecture/ResourceRequestPage.vue","purpose":"资源申请消费新部署单元名称和类型"},
+    {"path_or_resource":"web/src/modules/architecture/architecture.css","purpose":"醒目名称输入和移动布局局部样式"}
+  ],
+  "requirements_addressed":["R1","R2","R3","R4","R6","R8"],
+  "commands":[
+    {"command":"npm ci && npm run build（临时 web 副本）","exit_code":0,"salient_output":"vue-tsc --noEmit 与 vite build 通过，2513 modules transformed"},
+    {"command":"in-app Browser 四视口验收","exit_code":0,"salient_output":"1280×800、375×812、390×844、430×932 无页面级横向溢出；控制台 warn/error 为空"}
+  ],
+  "local_checks":[
+    {"check":"单输入与后缀联动","result":"pass","evidence":"smslj→SMSLJ_AP；BATCH_DB 切 Web→BATCH_WB；BATCH_JOB1 切类型保持自定义后缀","limitations":[]},
+    {"check":"关联远程搜索多选","result":"pass","evidence":"跨物理子系统选择 YGQL1_DB、PORTAL_WB；搜索失败保留已选项","limitations":["使用临时内存 Mock API，不代表真实后端/MySQL"]},
+    {"check":"响应式与主题","result":"pass","evidence":"四视口 scrollWidth===innerWidth，浅色/深色可读，手机底部按钮可达","limitations":[]}
+  ],
+  "diff_summary":["部署单元前端统一为一个醒目名称输入框","标准后缀与类型双向联动且保留自定义后缀","关联部署单元支持搜索、选择和多选","详情、导入和资源申请消费新模型"],
+  "invariants_checked":[{"invariant":"不修改共享 UI 和应用壳","result":"pass","evidence":"修改限制在 architecture 模块"},{"invariant":"桌面表格与手机卡片同一业务规则","result":"pass","evidence":"四视口浏览器验收"}],
+  "disturbances":[],
+  "assumptions_falsified":[],
+  "unresolved_items":["真实后端 API 联调由 T3/MySQL 环境验证"],
+  "recommended_next":"observe"
+}

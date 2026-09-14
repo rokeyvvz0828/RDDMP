@@ -1,0 +1,58 @@
+{
+  "schema_version": 2,
+  "revision": 1,
+  "created_at": "2026-09-06T11:05:00+08:00",
+  "updated_at": "2026-09-06T11:05:00+08:00",
+  "task_id": "T7",
+  "task_goal": "验证构建通过",
+  "summary": "所有权限硬编码修复已完成，构建验证通过",
+  "actual_files": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V191__data_migration_permission_hardcode_fix.sql",
+    "web/src/router/index.ts",
+    "web/src/modules/data-migration/views/content/MappingsPage.vue",
+    "web/src/modules/data-migration/components/AssetListView.vue"
+  ],
+  "commands_executed": [
+    {
+      "command": "grep -rn \"'ADMIN'\\|'SUPER_ADMIN'\\|'DATA_MIGRATION_ADMIN'\" server/src/modules/data-migration/src/main/java/ --include=\"*.java\" | grep -v \"//\\|/\\*\\|import\" | wc -l",
+      "result": "0 - 后端无残留角色硬编码",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -rn \"ADMIN\\|SUPER_ADMIN\\|DATA_MIGRATION_ADMIN\" web/src/modules/data-migration/ --include=\"*.vue\" --include=\"*.ts\" | grep -v \"//\\|sub-title\\|title=\" | wc -l",
+      "result": "0 - 前端无残留角色硬编码",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -c \"permission:\" web/src/router/index.ts",
+      "result": "29 - 所有 data-migration 路由均有 permission + menuPath",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -c \"data-migration:manage\" server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+      "result": "4 - MappingController 所有 @PreAuthorize 包含 data-migration:manage",
+      "exit_code": 0
+    },
+    {
+      "command": "mvn -pl server/src/modules/data-migration test -Dtest=\"MappingControllerSecurityTest,DataMigrationPermissionServiceTest,ProgramControllerSecurityTest,ReleaseDrillControllerSecurityTest\"",
+      "result": "Tests run: 11, Failures: 0, Errors: 0 - 所有安全测试通过",
+      "exit_code": 0
+    },
+    {
+      "command": "npm --prefix web run build",
+      "result": "✓ built in 18.90s - Vue 构建通过",
+      "exit_code": 0
+    }
+  ],
+  "scope_consistency": "所有修改文件均在 codex-task-scope.yaml 的 writable_paths 范围内",
+  "risks": [
+    {
+      "description": "MySQL 集成测试 DataMigrationGovernanceRemediationMySqlTest 有预存失败（cleanFixtureTables 删除 sys_role 但 Flyway 不会重新创建），与本次修改无关",
+      "residual_risk": "低 - 预存问题，非本次引入"
+    }
+  ],
+  "status": "completed"
+}

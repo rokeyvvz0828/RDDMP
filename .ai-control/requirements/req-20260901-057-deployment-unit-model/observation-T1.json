@@ -1,0 +1,46 @@
+{
+  "sample_label": "T1 完成采样（独立静态复核，2026-09-02）",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id":"R1","sensor":"S6 源码/契约负向扫描","result":"pass","raw_evidence":"新模型、存储、服务、资源申请和 Controller 已删除部署单元简称、旧关联名称、旧类型字段；Controller DTO 无 tenantId。","limitation":["未覆盖完整运行时序列化"]},
+    {"requirement_id":"R2","sensor":"S1 代码与测试证据","result":"partial","raw_evidence":"名称使用大写规范化、命名正则和标准后缀校验；执行报告记录非容器聚焦测试 38 passed。","limitation":["本轮观察者未重跑 Maven","未覆盖真实 MySQL 唯一约束"]},
+    {"requirement_id":"R3","sensor":"S1/S6 代码与负向扫描","result":"pass","raw_evidence":"APPLICATION、DATABASE、WEB 枚举及 AP、DB、WB 映射存在；MQ 已从 Java 新模型移除。","limitation":["未覆盖真实 API 和导入运行旅程"]},
+    {"requirement_id":"R4","sensor":"S1/S6 存储与服务复核","result":"partial","raw_evidence":"关联选项按当前租户、ACTIVE、名称/编号/物理子系统名称和编号搜索并支持 excludeId；服务校验目标租户和 ACTIVE 状态。","limitation":["未获得真实 MySQL 查询、跨租户和并发证据"]},
+    {"requirement_id":"R5","sensor":"S1/S2 代码与迁移复核","result":"partial","raw_evidence":"关系表以 tenant_id、unit_low_id、unit_high_id 主键规范化；服务在事务内写当前关系和 LINK/UNLINK 历史。","limitation":["Docker Linux 引擎不可达，真实外键、事务回滚和并发未采样"]},
+    {"requirement_id":"R6","sensor":"S1/S6 导入实现与契约复核","result":"fail","raw_evidence":"导入模板表头已改为五列，但示例行仍按旧六列顺序写入；V124 在删除旧 CHECK 前将 MQ 更新为 WEB。","limitation":["未运行模板上传真实 HTTP 旅程","未在 MySQL 8.4 实际执行迁移"]},
+    {"requirement_id":"R7","sensor":"S1/S6 Controller 契约复核","result":"pass","raw_evidence":"查询权限兼容 view/manage，写操作保持 manage；命令和视图 DTO 无 tenantId。","limitation":["缺少真实认证矩阵"]}
+  ],
+  "feedback": [
+    {
+      "requirement_id":"R6",
+      "expected":"下载的 xlsx 模板可按当前五列表头直接重新上传，并产生 VALID 示例行。",
+      "observed":"模板示例仍为旧六列顺序，解析前五列后名称和类型均不合法。",
+      "reproduction":"下载部署单元导入模板后原样重新上传，或按五列解析示例行。",
+      "evidence":"DeploymentUnitImportService 模板写入五列表头却保留旧六列示例；解析器只读取前五列；公开契约声明五列表头。",
+      "severity":"P1",
+      "confidence":"high",
+      "sensor_limit":"未启动真实 API，但列位置和校验失败可由源码稳定确定。",
+      "causal_hypothesis":"模板示例数据未随导入契约从六列迁移为五列。",
+      "correction_check":"增加模板下载后再解析的 round-trip 测试，并确认示例行 VALID。",
+      "classification":"deviation"
+    },
+    {
+      "requirement_id":"R6",
+      "expected":"V124 可从含遗留 MQ 数据的 V123 数据库增量升级。",
+      "observed":"V124 在删除只允许 APPLICATION、DATABASE、MQ 的旧 CHECK 前先把 MQ 更新为 WEB，含 MQ 行时会被旧 CHECK 拒绝。",
+      "reproduction":"在 V123 数据库插入 kind=MQ 的部署单元或版本记录后执行 Flyway migrate 到 V124。",
+      "evidence":"V96 旧 CHECK 不允许 WEB；V124 第 4-10 行先更新 MQ 为 WEB，第 25-45 行才删除旧 CHECK。",
+      "severity":"P1",
+      "confidence":"high",
+      "sensor_limit":"Docker 不可达，未进行 MySQL 8.4 实际执行。",
+      "causal_hypothesis":"迁移数据转换语句与删除旧 CHECK 的顺序反置。",
+      "correction_check":"在 MySQL 8.4 验证空库、无 MQ 增量库和含 MQ 增量库；确认转换在旧约束删除后执行。",
+      "classification":"deviation"
+    }
+  ],
+  "disturbances":["Docker Desktop Linux 引擎命名管道不可达，Testcontainers MySQL 聚焦测试未执行。"],
+  "coverage_gaps":["关系并发、重复提交、半边关系、历史与回滚需真实 MySQL 采样。","APPLICATION/WEB 资源申请路径缺少显式 WEB 集成测试。","Controller 权限缺少真实 403 和租户越界运行证据。"],
+  "error_counts":{"P0":0,"P1":2,"P2":0,"P3":0},
+  "observation_status":"complete"
+}

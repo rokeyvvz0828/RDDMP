@@ -1,0 +1,122 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "本地 Vite 与虚构 architecture Mock 运行环境",
+      "purpose": "执行新建、编辑、重复部署单元、失败恢复、权限和响应式验收，不改变产品代码或生产数据"
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "Development entry check passed."
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "vue-tsc 与 Vite 构建通过，2513 modules transformed，built in 22.90s；仅既有 PURE 和大 chunk 警告"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "模块治理、仓库 Skill 和开发入口通过；AI control layout 因 REQ-20260813/17/18/19/27 等既有其他需求账本 topic/JSON/缺证据问题失败，本需求前缀未出现在错误清单"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260903-059-resource-request-form-layout/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "将本需求 requirement.md 从 CRLF 机械规范为 LF 以规避脚本将 ready\\r 误判后，scope 检查通过，8 个变更文件均在授权路径"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "salient_output": "无空白错误，仅 CRLF 转换提示"
+    },
+    {
+      "command": "真实浏览器新建/编辑/失败/权限/四视口明暗主题旅程",
+      "exit_code": 0,
+      "salient_output": "新建 POST、编辑 PUT、重复 deploymentUnitId、切换保护、候选/保存失败恢复、只读/无权限显隐和滚动边界均通过；Console 无 error"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "新建与编辑请求兼容",
+      "result": "pass",
+      "evidence": "POST items 顺序为 7001/7001/7002，规格 2/4、3/6、DB 20；PUT 回显三项并默认选中第一项，修改后顺序不变且 clientId 不在请求中",
+      "limitations": ["使用本地虚构 Mock，未连接生产或真实后端"]
+    },
+    {
+      "check": "切换、错误与关闭保护",
+      "result": "pass",
+      "evidence": "物理子系统切换取消保留旧项，确认后重建一个空项；保存首错定位；脏关闭选择继续编辑后内容保持",
+      "limitations": []
+    },
+    {
+      "check": "失败恢复与重复提交",
+      "result": "pass",
+      "evidence": "候选 500 显示重新加载且保留原因，恢复后候选重新出现；保存 500 后表单和输入保留、按钮恢复可用、请求未计入成功数组，服务恢复后一次重试成功",
+      "limitations": ["未量化极端网络延迟，仅验证失败后状态恢复和保存中禁用契约"]
+    },
+    {
+      "check": "权限显隐",
+      "result": "pass",
+      "evidence": "view-only 权限隐藏新建按钮并显示仅本人范围；无 view/apply/manage 权限显示明确权限提示且无新建入口",
+      "limitations": ["后端 RBAC 由既有服务负责，本任务未修改后端"]
+    },
+    {
+      "check": "四视口与主题",
+      "result": "pass",
+      "evidence": "1280x800、375x812、390x844、430x932 的浅色和深色 documentElement.scrollWidth 均不超过 innerWidth；手机三申请项仅列表局部横向滚动，footer 可达",
+      "limitations": []
+    }
+  ],
+  "diff_summary": [
+    "T3 未修改产品代码，仅补充运行、权限、请求和仓库门禁证据",
+    "最终请求证明确保重复部署单元、items[] 顺序和 DB/非 DB 字段分流兼容",
+    "最终浏览器覆盖新建、编辑、失败恢复、权限和四视口明暗主题"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "不连接生产且只使用虚构测试数据",
+      "result": "pass",
+      "evidence": "浏览器仅访问 127.0.0.1:5174，API 由 127.0.0.1:8080 本地 Mock 提供"
+    },
+    {
+      "invariant": "API、DTO、后端、权限和工作流不变",
+      "result": "pass",
+      "evidence": "两个产品提交仅修改 ResourceRequestPage.vue 与 architecture.css；请求仍为既有 POST/PUT ResourceRequestPayload"
+    },
+    {
+      "invariant": "重复 deploymentUnitId 与 items[] 顺序保持",
+      "result": "pass",
+      "evidence": "POST 和 PUT 均捕获 7001、7001、7002，且两条 7001 规格独立"
+    },
+    {
+      "invariant": "修改范围受 codex-task-scope 限制",
+      "result": "pass",
+      "evidence": "scope 检查通过；产品文件仅两个授权路径，其余均为本需求文档和前缀账本"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "全仓治理被其他历史需求账本的 topic mismatch、无效 JSON 和缺少收敛证据阻塞",
+      "impact": "本需求前缀未被报告；按任务边界不修复其他需求，仅如实保留仓库级历史风险"
+    },
+    {
+      "event": "scope 脚本在 Windows CRLF 下把 frontmatter status 读取为 ready\\r",
+      "impact": "本需求 requirement.md 仅机械改为 LF，无语义 diff，重跑 scope 通过"
+    },
+    {
+      "event": "运行构建期间 Vite 开发连接曾短暂重连",
+      "impact": "最终页面重新连接成功，Console 无 error，用户旅程复测通过"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "全仓 check-all-governance 仍被范围外历史账本问题阻塞",
+    "真实后端和生产权限未连接，接口兼容证据来自现有类型、构建与本地虚构 Mock"
+  ],
+  "recommended_next": "observe"
+}

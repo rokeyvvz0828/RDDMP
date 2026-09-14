@@ -1,0 +1,22 @@
+{
+  "control_prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "increment": "迁移检核规则专属域优化观测记录",
+  "observation_date": "2026-09-06",
+  "evidence": [
+    "flyway_schema_history：194/195/196 success=true",
+    "dm_rule 列：id, tenant_id, project_id, system_code, check_target_type, rule_category, rule_code, rule_code_desc, rule_description, table_name_en/cn, field_name_en/cn, owner_id, deleted, deleted_by, deleted_at, created_by, created_at, updated_by",
+    "dm_rule 索引：uk_dm_rule_code(tenant_id,rule_code), idx_dm_rule_query, idx_dm_rule_keyword 等",
+    "参数管理：DM_RULE_TARGET_TYPE（三值）与 DM_RULE_CATEGORY（四值）均为启用状态",
+    "API 冒烟：list/detail/create/update/delete/import/export/template/recycle restore+purge 通过",
+    "批量导入验证：3 行模板，其中文件内重复规则编码 1 行失败跳过，其余 2 行正常入库（失败行数=1）",
+    "统一回收站：RULE 资产编码以规则编码呈现；恢复后 detail 可查，彻底删除后 404/不存在",
+    "定向测试：RuleServiceTest 6 + RuleRecycleBinSourceTest 1 + RuleControllerSecurityTest 1 + StructuredDocCodeGovernanceTest 3 + ContentDocCodeGeneratorTest 2 + DataMigrationModuleRegistrationTest 19 + ContentRecycleBinRegistryTest 7 + MappingControllerSecurityTest 1 = 40/40 通过",
+    "前端：npm run build 通过"
+  ],
+  "sensor_notes": [
+    "未认证访问受保护规则接口返回 401（认证守卫生效）",
+    "projectId 缺失时后端明确返回 projectId is required（项目隔离口径生效）",
+    "规则编码重复、参数停用、项目外系统均被服务端拒绝",
+    "回收站接口原先因 data-migration:manage/system:admin 权限节点缺失对管理员 403，经 V196 恢复管理员豁免后通过"
+  ]
+}

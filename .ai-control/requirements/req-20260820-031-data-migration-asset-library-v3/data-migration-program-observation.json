@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "sample_label": "T5-browser-and-regression",
+  "task_ids": ["T5"],
+  "baseline_revision": "2",
+  "measurements": [
+    {
+      "id": "desktop-browser-flow",
+      "description": "桌面端新建/编辑/详情/单附件及打包下载/删除/回收站恢复",
+      "result": "pass",
+      "evidence": ["/tmp/program_acceptance_result.json"]
+    },
+    {
+      "id": "mobile-viewports",
+      "description": "375x812、390x844、430x932 无页面级横向滚动且无 console 错误",
+      "result": "pass",
+      "evidence": ["/tmp/program_acceptance_result.json"]
+    },
+    {
+      "id": "program-edit-attachment",
+      "description": "编辑时保留既有附件并可上传新附件，PUT 返回 200 且抽屉关闭",
+      "result": "pass",
+      "evidence": ["node /tmp/diag_put.cjs -> PUT 200"]
+    },
+    {
+      "id": "backend-module-tests",
+      "description": "数据迁移模块全量测试",
+      "result": "pass",
+      "evidence": ["28 reports / 129 cases / 0 failures"]
+    },
+    {
+      "id": "frontend-build",
+      "description": "前端生产构建",
+      "result": "pass",
+      "evidence": ["npm --prefix web run build exit 0"]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "noise_and_baseline": [
+    "开发库中存在浏览器验收产生的测试记录（程序包），不影响代码与迁移",
+    "scripts/check-all-governance.mjs 因仓库内另一无关需求 codex-task-scope 不兼容失败，与本任务无关"
+  ]
+}

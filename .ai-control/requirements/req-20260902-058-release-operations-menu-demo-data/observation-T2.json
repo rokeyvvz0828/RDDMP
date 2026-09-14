@@ -1,0 +1,21 @@
+{
+  "sample_label": "T2-release-demo-data-observation",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "observer_context": "同一 Codex 上下文的数据库/API/浏览器复核，非独立人工复核",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "S2/S3", "result": "pass", "raw_evidence": "A/B each: drill plan 1, rounds 3; browser selectors stable at 3 rounds"},
+    {"requirement_id": "R3", "sensor": "S2/S3", "result": "pass", "raw_evidence": "A/B each: NORMAL 4 items and ROLLBACK 3 items; browser selectors stable at 4/3"},
+    {"requirement_id": "R4", "sensor": "S2/S3", "result": "pass", "raw_evidence": "A/B each: 3 issue records; issue endpoint returned 200 and total=3"},
+    {"requirement_id": "R5", "sensor": "S2/S3", "result": "pass", "raw_evidence": "A/B each: 2 groups; member endpoint returned 200 with 5 members and group members stayed in project"},
+    {"requirement_id": "R6", "sensor": "S3", "result": "pass", "raw_evidence": "A/B fixed project codes were visible on every route; opposite project code was absent"}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"type": "correction", "source": "V126 issue status", "effect": "after migration issue pages returned 200"},
+    {"type": "correction", "source": "V125 admin membership", "effect": "project-scoped APIs returned 200"}
+  ],
+  "coverage_gaps": ["Exact SQL duplicate-run comparison was not rerun in this sampling turn; seed statements retain NOT EXISTS guards and Flyway version check passed."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

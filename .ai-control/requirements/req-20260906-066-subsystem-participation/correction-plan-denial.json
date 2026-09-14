@@ -1,0 +1,35 @@
+{
+  "dynamic_pattern": "local",
+  "feedback_id": "F-0005",
+  "resolution": "open",
+  "residual_risk": [
+    "完整UI权限矩阵未闭合"
+  ],
+  "decision_reason": "拒绝异常未映射导致500",
+  "causal_assessment": {
+    "falsifier": "相同旧token撤权后读取计划返回受控403而非500",
+    "hypothesis": "ArchitectureNotFoundException不适用于计划包统一错误映射",
+    "supporting_evidence": [
+      "本地撤权GET500；PlanQueryService.detail:123抛异常"
+    ]
+  },
+  "control_action": {
+    "target": "计划不可见的错误语义",
+    "correction_check": [
+      "撤权读取403",
+      "PersonalTaskBoardTest断言统一业务拒绝码"
+    ],
+    "impact_limit": "只调整不可见计划的业务异常类型，不变更原授权条件",
+    "invariants": [
+      "保留全部原授权条件，不扩大可见范围"
+    ],
+    "rollback": "回退本纠偏提交，不扩大账号权限",
+    "route": "executing",
+    "write_scope": [
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/service/PlanQueryService.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/service/PersonalTaskBoardTest.java"
+    ],
+    "gain": "medium"
+  },
+  "decision": "accept"
+}

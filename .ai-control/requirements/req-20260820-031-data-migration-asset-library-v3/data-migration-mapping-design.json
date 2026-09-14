@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-mapping",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-05-data-migration-mapping-design.md",
+  "objective": "将数迁资产内容的迁移映射升级为独立业务域，使一条受权限保护的映射记录绑定多个不超过50MB的文件，并提供受控码值、项目系统、组合筛选、下载和统一回收站能力。",
+  "users": [
+    "数据迁移管理员维护当前项目全部迁移映射并管理统一回收站",
+    "普通数据迁移人员查看和下载当前项目映射，并在有写权限时维护本人创建的记录"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "映射类型、系统编号和文件名称必填，文件名称最多200字符，文件编号由服务端生成且不可修改。",
+      "acceptance": ["任一必填字段缺失时服务端返回400且不写业务记录", "文件名称超过200字符时拒绝保存", "创建成功后返回不可编辑的文件编号"],
+      "priority": "must",
+      "source": "用户需求及2026-09-06确认的数据设计",
+      "counterexample": ["缺少系统编号仍创建成功", "前端可以修改文件编号"]
+    },
+    {
+      "id": "R2",
+      "statement": "映射类型由系统管理参数DM_MAPPING_TYPE维护，预置迁出程序和迁入程序，停用或未知编码禁止写入。",
+      "acceptance": ["类型选项接口只返回启用参数项", "停用或未知映射类型创建和编辑均返回400", "前端不硬编码映射类型标签"],
+      "priority": "must",
+      "source": "用户需求及2026-09-06确认的数据设计",
+      "counterexample": ["页面写死迁出和迁入选项", "停用类型仍可保存"]
+    },
+    {
+      "id": "R3",
+      "statement": "系统编号只能选择当前项目dm_component启用清单中的系统，选项展示编号和名称并在前端本地筛选。",
+      "acceptance": ["当前项目启用系统可选择", "项目外或停用系统被服务端拒绝", "切换项目后旧系统选项和表单立即清空"],
+      "priority": "must",
+      "source": "用户需求及2026-09-06确认的数据设计",
+      "counterexample": ["可提交其他项目系统编号", "项目切换后仍显示上一项目数据"]
+    },
+    {
+      "id": "R4",
+      "statement": "一条迁移映射记录绑定多个普通文件或压缩包，新增至少一个附件，每个附件不超过50MB且服务端不解压。",
+      "acceptance": ["一条记录可绑定两个以上附件", "新增无附件时返回400", "单个附件超过50MB时前后端均拒绝", "压缩包按原文件保存且不展开"],
+      "priority": "must",
+      "source": "用户2026-09-06明确确认一条迁移映射记录绑定多个文件",
+      "counterexample": ["每个上传文件生成独立映射记录", "只校验整批大小而允许单文件超过50MB"]
+    },
+    {
+      "id": "R5",
+      "statement": "列表展示系统、映射类型、文件编号和文件名称，并按映射类型、系统编号和文件名称组合筛选及服务端分页。",
+      "acceptance": ["三个筛选条件可单独或组合生效", "文件名称执行有限字段模糊匹配", "筛选变化回到第一页", "分页仅允许20、50、100"],
+      "priority": "must",
+      "source": "用户需求及2026-09-06确认的页面设计",
+      "counterexample": ["关键字扫描无关字段", "筛选后仍停留在旧页码"]
+    },
+    {
+      "id": "R6",
+      "statement": "编辑支持修改元数据和保留、追加、移除附件；下载支持指定附件和全部附件ZIP。",
+      "acceptance": ["编辑未移除的附件保持绑定", "新增和移除附件后详情与下载一致", "单附件下载只能访问本记录附件", "全部下载包含当前记录所有活动附件"],
+      "priority": "must",
+      "source": "用户2026-09-06确认的接口设计",
+      "counterexample": ["编辑自动删除所有旧附件", "可通过附件ID下载其他记录文件"]
+    },
+    {
+      "id": "R7",
+      "statement": "MAPPING_DOC由专属来源唯一接入统一回收站，删除、恢复和彻底清理保持业务记录、附件和审计一致。",
+      "acceptance": ["逻辑删除后记录只在当前项目统一回收站出现一次", "恢复后全部附件仍可用", "彻底清理解绑并删除全部附件和业务记录", "审计记录不随彻底清理删除"],
+      "priority": "must",
+      "source": "用户需求及2026-09-06确认的接口设计",
+      "counterexample": ["通用与专属来源重复认领MAPPING_DOC", "恢复后附件丢失"]
+    },
+    {
+      "id": "R8",
+      "statement": "查看、下载、上传新增、编辑、删除和回收站管理全部执行服务端RBAC、租户、项目、实体及附件归属校验，写操作记录审计。",
+      "acceptance": ["匿名和无权限请求被拒绝", "普通人员不能编辑或删除他人记录", "跨项目记录和附件ID被拒绝", "新增、编辑、删除、恢复和彻底清理均产生MAPPING审计"],
+      "priority": "must",
+      "source": "用户权限需求及2026-09-06确认的权限设计",
+      "counterexample": ["仅通过前端隐藏按钮控制权限", "写操作成功但无审计"]
+    },
+    {
+      "id": "R9",
+      "statement": "页面覆盖全状态、多文件部分失败重试和响应式布局，并通过数据库、后端、构建、治理和真实浏览器验证。",
+      "acceptance": ["部分上传失败时保留表单和成功项并只重试失败项", "保存期间不能重复提交", "桌面1280x800及375x812、390x844、430x932无页面级横向溢出", "聚焦后端测试、全量后端测试、前端构建、治理和范围检查有真实结果"],
+      "priority": "must",
+      "source": "RDDMP前端规则、design-h5及用户2026-09-06确认的页面验收设计",
+      "counterexample": ["手机端直接压缩桌面表格导致整页横向滚动", "上传失败只显示总提示且无法定位失败文件"]
+    },
+    {
+      "id": "R10",
+      "statement": "当前dm_mapping_doc无历史数据，追加迁移不执行历史回填或兼容默认值。",
+      "acceptance": ["迁移脚本不存在旧记录统一赋值逻辑", "新记录必须按新字段规则写入"],
+      "priority": "must",
+      "source": "用户2026-09-06明确确认目前没有历史数据",
+      "counterexample": ["迁移把未知旧记录默认回填为迁入程序", "mapping_type允许空字符串保存"]
+    }
+  ],
+  "invariants": ["一条dm_mapping_doc记录绑定零到多条MAPPING_DOC附件关系，但新增和活动编辑结果至少保留一条附件", "租户和操作者来自认证主体，所有查询和写入绑定当前项目", "doc_code由服务端生成且不可修改", "Flyway只追加，不修改已发布脚本", "业务表不保存对象存储路径或凭据", "MAPPING_DOC在统一回收站只有一个来源"],
+  "constraints": ["映射类型必须来自启用的DM_MAPPING_TYPE参数", "系统编号必须来自当前项目启用的dm_component", "单个附件大小上限为52428800字节", "不修改平台附件、参数管理、权限实现和全局项目切换器", "前端遵循交付示范中心、公共UI组件和design-h5"],
+  "non_goals": ["不解析或展开压缩包", "不实现文件版本历史、内容查重或在线编辑", "不把多文件拆成多条映射记录", "不抽象迁移程序与迁移映射的统一领域服务", "不迁移历史dm_mapping_doc数据"],
+  "selected_approach": {
+    "name": "独立迁移映射服务和页面，复用公共附件、参数管理、权限校验和统一回收站",
+    "reason": "隔离映射专属字段、多附件、筛选、权限和审计规则，同时保持现有平台契约和其他文件菜单稳定。",
+    "alternatives": [
+      {"name": "扩展通用ContentFileAssetService和AssetListView", "rejected_because": "会把映射专属字段、多附件与条件权限塞入通用链路并扩大其他菜单回归面。"},
+      {"name": "抽象迁移程序与迁移映射统一领域服务", "rejected_because": "两个领域字段和演进节奏不同，当前抽象属于超范围跨菜单重构。"}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["dm_mapping_doc新增mapping_type和查询索引", "dm_content_attachment的MAPPING_DOC关系", "MappingService、MappingController、MappingRecycleBinSource", "data-migration API和MappingsPage", "当前需求测试与控制账本"], "outside": ["平台附件表结构和对象存储实现", "系统管理参数实现", "全局项目切换器", "其他数据迁移内容菜单", "生产数据和生产环境"]},
+    "components": [
+      {"name": "MappingService", "responsibility": "迁移映射CRUD、筛选、码值与系统校验、多附件、下载、授权、审计和回收站业务。", "depends_on": ["JdbcTemplate", "ContentAttachmentService", "DataMigrationCodeValueService", "DataMigrationPermissionService", "ContentDocCodeGenerator"]},
+      {"name": "MappingController", "responsibility": "提供/api/data-migration/mappings路由并实施方法级RBAC。", "depends_on": ["MappingService", "AttachmentStreamService"]},
+      {"name": "MappingRecycleBinSource", "responsibility": "作为MAPPING_DOC的唯一统一回收站来源。", "depends_on": ["MappingService"]},
+      {"name": "MappingsPage.vue", "responsibility": "筛选、桌面表格、移动卡片、表单抽屉、多文件状态和权限体验。", "depends_on": ["web/src/api/data-migration.ts", "公共UI组件", "全局项目上下文", "附件上传API"]}
+    ],
+    "interfaces": [
+      {"name": "GET /api/data-migration/mappings", "producer": "MappingController", "consumers": ["MappingsPage.vue"], "contract": "按当前项目、映射类型、系统编号和文件名称分页返回活动映射。"},
+      {"name": "POST /api/data-migration/mappings", "producer": "MappingController", "consumers": ["MappingsPage.vue"], "contract": "校验必填、码值、系统、附件和权限后创建一条多附件映射。"},
+      {"name": "PUT /api/data-migration/mappings/{id}", "producer": "MappingController", "consumers": ["MappingsPage.vue"], "contract": "项目和文件编号不可改，传files时按完整集合更新附件绑定。"},
+      {"name": "GET /api/data-migration/mappings/{id}/download", "producer": "MappingController", "consumers": ["MappingsPage.vue"], "contract": "只返回属于当前活动映射的指定附件受控下载路径。"},
+      {"name": "GET /api/data-migration/mappings/{id}/download-all", "producer": "MappingController", "consumers": ["MappingsPage.vue"], "contract": "流式输出当前映射全部活动附件ZIP，失败时不返回空或不完整成功包。"},
+      {"name": "GET /api/data-migration/recycle-bin", "producer": "ContentRecycleBinController和MappingRecycleBinSource", "consumers": ["RecycleBinPage.vue"], "contract": "在当前项目统一回收站中唯一聚合MAPPING_DOC并执行管理员恢复或彻底清理。"}
+    ],
+    "data_flows": [
+      {"input": "当前项目上下文", "transitions": ["加载启用映射类型", "加载当前项目启用系统", "按筛选分页查询"], "output": "项目隔离的迁移映射列表和表单选项"},
+      {"input": "新增或编辑表单与多个本地文件", "transitions": ["逐文件上传临时附件并记录状态", "服务端校验附件大小和归属", "事务更新映射元数据和附件关系", "记录审计"], "output": "一条绑定多个附件的活动迁移映射"},
+      {"input": "逻辑删除的迁移映射", "transitions": ["统一回收站唯一聚合", "管理员恢复或彻底清理", "彻底清理时移除全部附件"], "output": "恢复的活动记录或已清理业务对象，审计记录保留"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "必填、长度、附件大小、码值或系统校验失败", "behavior": "返回可读400且不产生成功审计。", "recovery": "保留表单并定位字段或文件，用户修正后重试。"},
+    {"condition": "无权限、跨项目、非所有者或附件归属不符", "behavior": "返回403或受控业务错误且不泄露对象信息。", "recovery": "展示无权限状态或移除无权操作。"},
+    {"condition": "部分附件上传失败", "behavior": "逐项显示成功和失败，禁止直接提交不完整的新增。", "recovery": "保留成功项并仅重试失败文件。"},
+    {"condition": "记录并发变化、编号或恢复冲突", "behavior": "返回409且不覆盖当前数据。", "recovery": "刷新记录后重新操作。"},
+    {"condition": "ZIP中任一附件读取失败", "behavior": "终止打包并返回明确错误，不返回空或不完整成功包。", "recovery": "修复附件状态后重试或改为下载可用单附件。"}
+  ],
+  "quality_attributes": {"security": ["服务端RBAC、租户隔离、项目可达性、实体所有者和附件归属校验", "写操作记录MAPPING审计且不记录对象存储凭据"], "performance": ["系统选项按项目一次加载并在前端本地筛选", "列表服务端分页并使用项目、软删、类型和系统组合索引", "多附件ZIP采用流式响应"], "compatibility": ["保留MAPPING_DOC类型供看板和附件关系识别", "不修改平台附件、参数、权限或全局项目切换契约", "当前无历史数据，不提供不真实的默认映射类型"], "operations": ["Flyway只追加并在MySQL 8.4验证", "应用回退保留已执行迁移，结构撤销另走前向补偿", "生产拓扑、数据和身份不在本任务访问范围"]},
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R2", "R3", "R4", "R6", "R7", "R8", "R10"], "signal": "服务和安全测试覆盖必填、码值、系统、多附件、大小、权限、审计和回收站边界。", "method": "MappingServiceTest、MappingControllerSecurityTest、MappingRecycleBinSourceTest及MySQL迁移测试"},
+    {"requirement_ids": ["R5", "R9"], "signal": "桌面表格、移动卡片、筛选、全状态和多文件失败重试可用且无溢出。", "method": "npm构建与1280x800、375x812、390x844、430x932真实浏览器验收"},
+    {"requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"], "signal": "实现范围、模块回归和工程治理均符合当前任务事实源。", "method": "聚焦Maven测试、mvn test、前端构建、治理检查和当前scope检查"}
+  ],
+  "assumptions": [{"text": "当前dm_mapping_doc没有历史业务数据。", "basis": "用户2026-09-06明确确认。", "falsifier": "目标环境发现任何必须保留的dm_mapping_doc记录。"}, {"text": "附件平台既有临时附件生命周期会清理业务保存失败后未绑定的上传。", "basis": "现有RDDMP附件公开契约和数据迁移模块使用方式。", "falsifier": "运行验证发现未绑定附件没有生命周期清理机制。"}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "一条迁移映射记录绑定多个文件，文件名称是映射记录名称。", "reason": "满足多文件归档和统一元数据管理，附件仍保留各自原始名称。", "source": "用户2026-09-06明确确认。"}, {"id": "D2", "decision": "采用独立迁移映射服务和页面，复用公共附件、参数管理、权限校验和统一回收站。", "reason": "隔离映射专属规则并控制其他内容菜单回归面。", "source": "用户2026-09-06明确确认。"}, {"id": "D3", "decision": "当前无历史数据，不执行历史回填或兼容默认值。", "reason": "避免把未知历史记录错误归类为迁入程序。", "source": "用户2026-09-06明确确认。"}, {"id": "D4", "decision": "多文件上传逐项展示状态并支持部分失败重试。", "reason": "多个接近50MB的文件上传可能部分失败，必须让失败可观察且可恢复。", "source": "用户2026-09-06确认的页面与状态设计。"}],
+  "risks": [{"risk": "完整附件集合更新可能错误解绑仍需保留的附件。", "impact": "编辑后文件丢失或错误删除。", "mitigation": "服务端附件归属校验、事务边界及保留/追加/移除组合测试。"}, {"risk": "专属与通用回收站来源同时认领MAPPING_DOC。", "impact": "回收站重复记录或恢复清理路由不确定。", "mitigation": "从通用链路摘除MAPPING_DOC并以注册测试断言唯一来源。"}, {"risk": "多个50MB附件连续上传和打包造成较长响应或较高内存占用。", "impact": "页面误判卡死、重复提交或服务资源峰值。", "mitigation": "逐文件状态、提交门禁、流式ZIP及运行期资源观测。"}],
+  "approval": {"status": "approved", "evidence": "用户于2026-09-06依次确认一条记录绑定多个文件、独立服务和页面、无历史数据，以及数据接口权限与页面状态验收设计。", "confirmed_at": "2026-09-06T07:39:14+08:00"}
+}

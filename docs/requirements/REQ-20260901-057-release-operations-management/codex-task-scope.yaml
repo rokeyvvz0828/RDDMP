@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260901-057",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260901-057-release-operations-management/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {"developer": "Codex", "module": "business/release + frontend/application", "module_owner": "rokeyvvz0828", "branch": "licon", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "browser"]},
+  "scope": {
+    "writable_paths": [
+      "governance/modules.yaml",
+      "docs/integration/system-project-members-contract.md",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectMemberReference.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/ProjectMemberReferenceQuery.java",
+      "server/src/platform/system/src/main/java/com/ccb/system/internal/capability/JdbcProjectMemberReferenceQuery.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/capability/ProjectMemberReferenceQueryTest.java",
+      "server/src/platform/system/pom.xml",
+      "server/src/modules/release/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V123__release_operations_management.sql",
+      "web/src/modules/release/**",
+      "web/src/api/release.ts",
+      "web/src/router/index.ts",
+      "docs/requirements/REQ-20260901-057-release-operations-management/**",
+      "docs/engineering-control/designs/2026-09-01-release-operations-management-design.md",
+      "docs/engineering-control/plans/2026-09-01-release-operations-management-implementation-plan.md",
+      ".ai-control/requirements/req-20260901-057-release-operations-management/*.json"
+    ],
+    "read_only_paths": ["server/src/shared/**", "server/src/platform/security/**", "server/src/platform/workflow/**", "server/src/platform/attachment/**", "web/src/components/ui/**", "web/src/modules/delivery-showcase/**", "web/src/views/AppLayout.vue", "web/src/stores/auth.ts", "web/src/stores/project-context.ts", "design-h5.md", ".env", ".env.*", "**/target/**", "**/node_modules/**"],
+    "forbidden_paths": [".env", ".env.*", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/ai/**", "server/src/modules/architecture/**", "server/src/modules/data-migration/**", "server/src/modules/requirement/**", "server/src/modules/test-management/**"]
+  },
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V123__release_operations_management.sql"], "compatibility_and_rollback": "Append-only V123; all records remain available on application rollback and menu visibility can be disabled without deleting data."},
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260901-057",
+    "owner_approved": true,
+    "approval_evidence": "User explicitly approved the minimum scope expansion to expose a read-only project-member reference capability for release group membership validation.",
+    "old_behavior_preserved": true,
+    "regression_tests": ["Existing configuration-management release routes and APIs remain unchanged.", "Existing project member management APIs remain unchanged; the new capability is read-only and tenant/project scoped.", "New menu permissions are additive and do not remove existing role grants."]
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "release-backend-tests", "command": "mvn -pl :ccb-release -am test '-Dnet.bytebuddy.experimental=true'", "expected": "Operations CRUD, project scope, member validation, permissions and optimistic locking tests pass."},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "TypeScript and Vite production build pass."},
+    {"name": "migration-check", "command": "node scripts/check-flyway-migrations.mjs", "expected": "V123 is unique and migration structure passes."},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "Governance checks pass or pre-existing ledger blockers are recorded."},
+    {"name": "diff-check", "command": "git diff --check", "expected": "No whitespace errors."}
+  ],
+  "risk": {"level": "high", "items": ["New project-scoped schema and Flyway ordering.", "Cross-module reference to existing project members.", "Five-page project switching and stale edit state.", "Timeline ordering and optimistic-concurrency behavior."]},
+  "completion": {"control_mode": "standard", "control_prefix": "req-20260901-057-release-operations-management", "control_justification": "Cross-page release operations feature requiring database, backend permissions, project scope, and frontend route integration.", "acceptance_evidence": [".ai-control/requirements/req-20260901-057-release-operations-management/execution-T1.json", ".ai-control/requirements/req-20260901-057-release-operations-management/observation-T1.json"], "rollback": "Revert application changes by task boundary, keep V123 and its data, and disable the new menu permissions if required."}
+}

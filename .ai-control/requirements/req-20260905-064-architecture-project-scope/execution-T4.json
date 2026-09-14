@@ -1,0 +1,38 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**", "purpose": "环境、资源申请、部署实例、灾备、自动部署和工作流生命周期按可信项目读写"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/**", "purpose": "覆盖项目参数、可信上下文、跨项目直接 ID 和同项目关联"}
+  ],
+  "requirements_addressed": ["R1", "R3", "R4", "R5", "R7"],
+  "commands": [
+    {"command": "mvn -pl :ccb-architecture -am -Dtest=EnvironmentResourceServiceTest,ResourceRequestSubmissionServiceTest,ResourceRequestWorkflowLifecycleConsumerTest,EnvironmentResourceControllerTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "25/25 通过，BUILD SUCCESS。"},
+    {"command": "mvn -pl :ccb-architecture -am -Dtest=EnvironmentResourceProjectIsolationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "1/1 通过，完整迁移到 V156；同租户双项目编号可复用且直接 ID 不可见。"},
+    {"command": "mvn -pl :ccb-architecture -am test", "exit_code": 0, "salient_output": "286/286 通过，BUILD SUCCESS，总耗时 17:38。"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误，仅有既有 LF/CRLF 提示。"}
+  ],
+  "local_checks": [
+    {"check": "环境 Store SQL 项目范围扫描", "result": "pass", "evidence": "项目私有查询、更新、删除、插入和关联 JOIN 均使用 tenant_id+project_id；环境类型字典仍仅按 tenant_id。", "limitations": []},
+    {"check": "Controller 项目参数扫描", "result": "pass", "evidence": "环境、资源申请和实例项目私有端点均声明必填 projectRef，并通过 ProjectAccessService 解析。", "limitations": []},
+    {"check": "自动部署与工作流项目一致性", "result": "pass", "evidence": "自动部署请求携带可信 projectId/projectRef/projectName；工作流启动与回调拒绝冲突项目上下文。", "limitations": []}
+  ],
+  "diff_summary": [
+    "环境、资源申请、明细、历史、工作流轮次与回执、实例和灾备关系增加 projectId",
+    "Store 全链路按 tenantId+projectId 定位，项目内唯一且跨项目可重复",
+    "Controller 强制 projectRef，Service 只使用 ProjectAccess 产生的可信项目",
+    "自动部署与工作流生命周期验证项目引用和名称一致"
+  ],
+  "invariants_checked": [
+    {"invariant": "环境类型字典保持租户共享", "result": "pass", "evidence": "EnvironmentType 模型、接口和 Store 未增加 projectId。"},
+    {"invariant": "申请、实例、灾备关联均同项目", "result": "pass", "evidence": "MySQL 双项目测试和 JOIN 静态扫描通过。"},
+    {"invariant": "工作流平台源码不修改", "result": "pass", "evidence": "工作流变更仅在 architecture environment 消费者和提交服务内。"}
+  ],
+  "disturbances": [
+    {"event": "完整架构回归逐用例启动 MySQL 并执行 Flyway", "impact": "测试耗时 17:38；既有 MySQL 8.4/Flyway 兼容性告警不影响结果。"},
+    {"event": "迁移门禁测试刻意触发一次 V156 失败", "impact": "验证无唯一默认项目时迁移失败，随后清库并完成成功路径；用例最终通过。"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

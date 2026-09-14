@@ -24,7 +24,6 @@ public record ReferenceCheckRequest(
 
     /** 子系统目标类型，避免向 SPI 泄露内部领域模型。 */
     public enum SubsystemKind {
-        LOGICAL,
         PHYSICAL
     }
 

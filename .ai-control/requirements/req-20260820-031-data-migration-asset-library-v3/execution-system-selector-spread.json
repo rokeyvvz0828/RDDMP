@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "task_id": "system-selector-spread",
+  "parent_task": "REQ-20260820-031-data-migration-asset-library-v3",
+  "trigger": "用户确认专题材料/组件清单系统下拉方案（一次性加载+浏览器本地随输随筛）后，授权将同一策略推广到数据迁移模块其他页面。",
+  "status": "implemented_and_verified",
+  "scope_kind": "frontend_system_selector_governance",
+  "decision_recorded": "审计数据迁移模块后确认：问题、会议纪要、迁移方案页的系统下拉已经是一次性加载+filterable 本地过滤（对应各域 options/systems 接口，标签为「编号 - 名称」），无需重复改造；唯一残留旧交互的是目标表/中间表页。目标表页筛选栏由「系统编号输入框」改为 project 组件清单 filterable 下拉，新增抽屉由「输入框+查询按钮」改为 filterable 下拉且只允许选择已纳入项目组件清单的系统，物理子系统主数据一次性加载用于联动展示系统名称/事业群。新增 target-tables/options/systems 接口，权限口径与目标表页一致，避免仅具备 target table 权限的用户访问 /components/options/systems 被拒。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "移除已无引用 listPhysicalSubsystemsByCode；新增 getTargetTableSystemOptions；保留 listAllPhysicalSubsystems 供组件/目标表页一次性加载架构主数据。"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/base/TargetTablesPage.vue",
+      "purpose": "筛选栏系统编号改为 filterable 下拉（候选=getTargetTableSystemOptions）；新增系统改为 filterable 下拉，候选限项目组件系统，本地过滤编号/名称、不区分大小写；系统名称/事业群由物理子系统全量数据联动；清理旧查询按钮、搜索函数与死 CSS。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java",
+      "purpose": "新增 getSystemOptions(Long, AuthUser)，一次性返回项目组件清单系统（label「编号 - 名称」）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/TargetTableController.java",
+      "purpose": "新增 GET /api/data-migration/target-tables/options/systems，权限口径沿用目标表/中间表控制器的 class-level 授权。"
+    }
+  ],
+  "commands": [
+    {
+      "command": "cd web && npx vue-tsc --noEmit",
+      "exit": 0,
+      "observed": "前端类型检查通过。"
+    },
+    {
+      "command": "mvn -q -pl server/src/modules/data-migration -am -Dtest=DataMigrationModuleRegistrationTest,TopicServiceTest,TopicRecycleBinSourceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit": 0,
+      "observed": "后端模块测试通过。"
+    },
+    {
+      "command": "./backend-dev.sh restart",
+      "exit": 0,
+      "observed": "Started CcbApplication in 4.792s，Tomcat on 8080，无路由二义或 Flyway 错误。"
+    },
+    {
+      "command": "admin 登录后直连 GET /api/data-migration/target-tables/options/systems?projectId=3002 等",
+      "exit": 0,
+      "observed": "target-tables/components/topics 三个 options/systems 均 200，label 形如「SYS-ACCT-001 - 内部账系统」。"
+    }
+  ],
+  "risk_notes": [
+    "浏览器/角色级验收尚未执行；目标表新增抽屉若架构物理子系统接口无权限，系统仍可选但无法联动事业群/系统名称。",
+    "未修改问题/会议纪要/迁移方案页，因为审计确认其已采用同一策略。"
+  ]
+}

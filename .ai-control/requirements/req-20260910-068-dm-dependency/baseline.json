@@ -1,0 +1,233 @@
+{
+  "objective": "将迁移过程依赖文件改造为可单条维护和批量导入的迁移参数与使用方系统关系管理能力，并彻底下线文件上传下载契约。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "dm_dependency 增加 parameter_id，system_code 表示使用方，空表迁移删除 doc_code/doc_name。",
+      "acceptance": [
+        "空表应用 V199 后新列、旧列和索引符合设计",
+        "非空表在任何结构修改前失败"
+      ],
+      "priority": "must",
+      "source": "用户确认的数据模型和历史数据策略",
+      "counterexample": [
+        "为历史行生成默认参数 ID",
+        "修改已发布迁移"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "列表展示参数中英文名、使用方编号/名称、提供方编号/名称、更新时间和更新人。",
+      "acceptance": [
+        "列表数据由当前项目关系和参数、系统投影得到",
+        "桌面与移动列表均可观察全部信息"
+      ],
+      "priority": "must",
+      "source": "用户列表需求及字段映射确认",
+      "counterexample": [
+        "提供方名称显示系统编号",
+        "名称冗余写入 dm_dependency"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "提供单条新增、编辑和逻辑删除，并保证租户、项目、参数与使用方关系唯一。",
+      "acceptance": [
+        "有效关系可新增和编辑",
+        "重复、跨项目、无效参数或停用系统被服务端拒绝"
+      ],
+      "priority": "must",
+      "source": "用户确认的操作范围和唯一规则",
+      "counterexample": [
+        "仅前端判重",
+        "更新允许改变所属项目"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Excel 模板使用参数英文名和使用方系统编号，逐行校验并允许部分成功。",
+      "acceptance": [
+        "模板仅有两列",
+        "零命中、多义、无效系统和重复行报告实际行号",
+        "合法行继续写入并审计"
+      ],
+      "priority": "must",
+      "source": "用户确认的导入模板和歧义处理",
+      "counterexample": [
+        "模板暴露参数 ID",
+        "多义时任取参数",
+        "一行错误回滚所有合法行"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "取消依赖文件上传、替换和下载，DEPENDENCY 从通用附件服务与回收站来源剥离。",
+      "acceptance": [
+        "页面无文件操作",
+        "旧上传替换下载端点不可用",
+        "专属回收站来源承接 DEPENDENCY"
+      ],
+      "priority": "must",
+      "source": "用户删除文件上传功能的要求和方案 A 确认",
+      "counterexample": [
+        "隐藏按钮但保留可调用上传端点"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "菜单 750 使用查看、新增、编辑、删除细粒度权限，所有写操作执行项目/实体授权和审计。",
+      "acceptance": [
+        "V199 补充权限节点",
+        "无权限请求返回 403",
+        "写操作产生 DEPENDENCY 审计"
+      ],
+      "priority": "must",
+      "source": "用户确认的权限设计与仓库治理",
+      "counterexample": [
+        "硬编码角色",
+        "仅依赖前端按钮显隐"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "依赖关系接入统一回收站并保护参数引用完整性。",
+      "acceptance": [
+        "管理员可恢复和彻底删除",
+        "活动依赖阻止参数逻辑删除",
+        "任意依赖阻止参数彻底删除"
+      ],
+      "priority": "must",
+      "source": "用户确认的回收站范围和工程数据完整性约束",
+      "counterexample": [
+        "删除参数后活动列表无法显示参数名称"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "看板 DEPENDENCY 指标适配新结构，前端覆盖完整状态与桌面/移动验收。",
+      "acceptance": [
+        "看板计数和下钻不引用旧列",
+        "页面覆盖加载空失败无权限和提交中",
+        "三个手机视口无页面级横向溢出"
+      ],
+      "priority": "must",
+      "source": "现有看板引用事实与 RDDMP 前端规约",
+      "counterexample": [
+        "V199 后看板 SQL 因 doc_code 不存在而失败",
+        "手机仅展示被裁剪桌面表格"
+      ]
+    }
+  ],
+  "invariants": [
+    "数据 Owner 和菜单路由不变",
+    "提供方编号来自 dm_parameter.system_code，使用方编号来自 dm_dependency.system_code",
+    "系统名称只读投影，不在依赖表冗余",
+    "不改变迁移参数英文名唯一范围",
+    "只追加 V199，不修改已发布迁移",
+    "不读取或写入生产数据、真实附件和密钥"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot 3.4.4、MySQL 8.4、Vue 3",
+    "只能修改 REQ-20260910-068 任务范围授权路径",
+    "当前工作区存在 REQ-20260906-067 用户改动，必须保护",
+    "V199 和新应用必须同批发布"
+  ],
+  "non_goals": [
+    "依赖关系导出",
+    "迁移参数或系统组件清单改造",
+    "历史依赖数据迁移",
+    "公共 UI 组件或主题变更",
+    "删除 component_id 兼容列"
+  ],
+  "assumptions": [
+    {
+      "text": "部署目标 dm_dependency 为空",
+      "basis": "用户确认不处理历史数据并采用空表失败关闭",
+      "falsifier": "迁移前 COUNT(*) 大于 0"
+    },
+    {
+      "text": "迁移参数 V197/V198 与专属接口在本任务实施前可用",
+      "basis": "当前工作区已有 REQ-067 实现",
+      "falsifier": "参数模块测试或 V198 迁移失败"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "提供方编号取 dm_parameter.system_code，名称取对应中文名",
+      "reason": "修正原始列表描述中的编号名称对调",
+      "source": "2026-09-10 用户确认"
+    },
+    {
+      "id": "D2",
+      "decision": "历史数据采用空表失败关闭",
+      "reason": "不静默删除或猜测关系",
+      "source": "2026-09-10 用户采纳"
+    },
+    {
+      "id": "D3",
+      "decision": "模板为参数英文名和使用方系统编号，多义参数行失败",
+      "reason": "满足业务录入习惯且不扩大参数唯一范围",
+      "source": "2026-09-10 用户确认"
+    },
+    {
+      "id": "D4",
+      "decision": "关系唯一键为租户、项目、参数 ID、使用方系统编号",
+      "reason": "防止同一使用关系重复登记",
+      "source": "2026-09-10 用户采纳"
+    },
+    {
+      "id": "D5",
+      "decision": "提供单条维护、导入、逻辑删除和回收站，不保留文件动作",
+      "reason": "依赖对象已转为结构化关系",
+      "source": "2026-09-10 用户采纳"
+    },
+    {
+      "id": "D6",
+      "decision": "采用专属领域方案 A",
+      "reason": "职责和接口边界清晰",
+      "source": "2026-09-10 用户确认"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "requirement_ids": [
+        "R1",
+        "R6"
+      ],
+      "signal": "V199 结构、空表门禁和权限节点符合设计",
+      "method": "MySQL 迁移集成测试"
+    },
+    {
+      "requirement_ids": [
+        "R2",
+        "R3",
+        "R4",
+        "R7"
+      ],
+      "signal": "关系、投影、导入、审计和引用保护行为可重复",
+      "method": "DependencyService 与 ParameterService 聚焦测试"
+    },
+    {
+      "requirement_ids": [
+        "R5",
+        "R6",
+        "R8"
+      ],
+      "signal": "旧端点消失、专属权限和看板 SQL 生效",
+      "method": "模块注册、权限和 Dashboard MySQL 测试"
+    },
+    {
+      "requirement_ids": [
+        "R2",
+        "R3",
+        "R4",
+        "R8"
+      ],
+      "signal": "桌面与手机用户路径可达且无溢出",
+      "method": "前端构建和真实浏览器验收"
+    }
+  ],
+  "baseline_status": "ready"
+}

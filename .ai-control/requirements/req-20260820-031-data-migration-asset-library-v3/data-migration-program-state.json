@@ -1,0 +1,3736 @@
+{
+  "schema_version": 5,
+  "revision": 21,
+  "created_at": "2026-09-05T13:55:13+00:00",
+  "updated_at": "2026-09-05T15:03:24+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认方案B一条记录多文件且下载支持单文件/打包；确认当前库无历史数据；确认本设计无歧义后落盘；计划确认=用户确认开发阶段无历史数据风险，确认T3可直接实施并批准计划",
+      "recorded_at": "2026-09-05T13:55:13+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "需求基准门禁通过",
+      "recorded_at": "2026-09-05T13:55:34+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "建模门禁通过",
+      "recorded_at": "2026-09-05T13:56:00+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "规划门禁通过",
+      "recorded_at": "2026-09-05T13:56:31+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "已记录ExecutionReport（T5）",
+      "recorded_at": "2026-09-05T15:02:29+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "观测已完成且3个采样零误差",
+      "recorded_at": "2026-09-05T15:02:57+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁PASS，T1-T5全部verified，浏览器验收通过",
+      "recorded_at": "2026-09-05T15:03:24+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认方案B一条记录多文件且下载支持单文件/打包；确认当前库无历史数据；确认本设计无歧义后落盘；计划确认=用户确认开发阶段无历史数据风险，确认T3可直接实施并批准计划",
+        "recorded_at": "2026-09-05T13:55:13+00:00",
+        "data": {
+          "objective": "将数据迁移/数迁资产内容/迁移程序升级为独立程序包管理能力，支持程序类型（参数管理）、系统编号、程序包名称/说明、多文件上传与下载、编辑、删除和统一回收站。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "程序类型、系统编号、程序包名称必填，程序包说明选填，新增至少绑定一个源文件。",
+              "acceptance": [
+                "缺少任一必填项返回400",
+                "文件超过50MB返回400",
+                "新增无文件返回400",
+                "说明允许为空"
+              ],
+              "priority": "must",
+              "source": "用户消息：必填录入项为程序类型、系统编号、程序包名称；选填项为程序包说明；文件大小不超过50MB。",
+              "counterexample": [
+                "新增记录未填程序类型仍成功",
+                "文件超过50MB仍被绑定",
+                "新增无源文件仍成功"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "程序类型通过系统管理/参数管理维护，新增DM_PROGRAM_TYPE并使用迁出程序/迁入程序预置。",
+              "acceptance": [
+                "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序",
+                "停用或未知编码不能写入",
+                "前端不硬编码程序类型"
+              ],
+              "priority": "must",
+              "source": "用户消息：程序类型使用系统管理/参数管理维护。",
+              "counterexample": [
+                "前端写死程序类型列表",
+                "停用类型仍可新增"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "系统编号单选且候选为当前项目 enabled=1 的 dm_component，前端按编号/名称本地筛选。",
+              "acceptance": [
+                "未选系统返回400",
+                "项目外或停用系统返回400",
+                "系统选项一次返回全量并在浏览器内筛选"
+              ],
+              "priority": "must",
+              "source": "用户消息：系统编号参考其他菜单；候选数据源保持 dm_component 只允许已纳入迁移范围的系统。",
+              "counterexample": [
+                "选择项目外系统成功",
+                "系统选项每次输入都请求后端模糊搜索"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "列表支持程序类型、系统编号、程序包名称关键字组合筛选和服务端分页。",
+              "acceptance": [
+                "筛选变化回第一页",
+                "列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作",
+                "分页符合20/50/100"
+              ],
+              "priority": "must",
+              "source": "用户消息：筛选功能程序类型、系统编号、程序包名称模糊搜索。",
+              "counterexample": [
+                "关键字筛选不生效",
+                "筛选后停留第5页"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "一个程序包记录可绑定多个≤50MB源文件；编辑可保留、增删、替换；下载支持单个与全部打包。",
+              "acceptance": [
+                "新增可绑定多个文件",
+                "编辑删除单个附件后附件列表同步",
+                "单个下载返回指定附件",
+                "全部下载返回ZIP"
+              ],
+              "priority": "must",
+              "source": "用户选择方案B：一条记录可绑定多个≤50MB文件，下载支持单个和全部打包。",
+              "counterexample": [
+                "编辑只允许单文件",
+                "下载全部返回空ZIP且无提示"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "SCRIPT不再由通用ContentAsset链路认领，统一回收站由ProgramRecycleBinSource唯一接管。",
+              "acceptance": [
+                "统一回收站列表/恢复/彻底删除走专用服务",
+                "删除/恢复保持多附件与审计",
+                "彻底删除清理全部附件",
+                "无重复回收站认领"
+              ],
+              "priority": "must",
+              "source": "用户消息：回收站功能采用统一回收站功能。",
+              "counterexample": [
+                "SCRIPT在回收站同时出现两条来源",
+                "恢复后附件缺失"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "写操作强制认证、RBAC、项目隔离、实体授权、附件校验并写审计日志。",
+              "acceptance": [
+                "省略projectId被拒绝",
+                "跨项目ID被拒绝",
+                "普通用户越权返回403",
+                "写操作产生PROGRAM_*审计"
+              ],
+              "priority": "must",
+              "source": "用户消息：上传、编辑、删除、下载、回收站管理均纳入权限管控；项目统一规则。",
+              "counterexample": [
+                "普通用户可编辑他人程序包",
+                "写操作无审计"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "前端遵循design-h5和统一组件，桌面与手机视口无页面级横向滚动，覆盖加载/空/失败/无权限/提交中状态。",
+              "acceptance": [
+                "375/390/430/桌面视口无横向溢出",
+                "上传失败/重复提交有反馈",
+                "长文本和说明不撑破容器"
+              ],
+              "priority": "must",
+              "source": "项目AGENTS与design-h5. .md",
+              "counterexample": [
+                "手机端出现页面级横向滚动",
+                "保存期间可重复点击提交"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "数据库仅对dm_script追加字段并新增追加式Flyway迁移，不修改已发布迁移和无关模块。",
+              "acceptance": [
+                "dm_script包含program_type与program_description",
+                "新迁移幂等且仅追加",
+                "范围检查无越界文件",
+                "后端测试和前端构建通过"
+              ],
+              "priority": "must",
+              "source": "项目AGENTS与用户确认方案。",
+              "counterexample": [
+                "修改V184及以前脚本",
+                "改动公共附件表结构"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "当前数据库无历史dm_script数据，不做历史兼容回填，新字段直接按新必填规则运行。",
+              "acceptance": [
+                "迁移从空表创建后可创建符合新字段的记录"
+              ],
+              "priority": "must",
+              "source": "用户消息：目前数据库没有历史数据",
+              "counterexample": [
+                "为历史数据写入空程序类型仍成功"
+              ]
+            }
+          ],
+          "invariants": [
+            "单租户，每次查询和写入绑定tenant_id与当前项目",
+            "Flyway只追加，不修改已发布脚本",
+            "业务关联统一使用(project_id, system_code)",
+            "doc_code由服务端生成且不可修改",
+            "页面遵循design-h5与统一状态组件",
+            "当前数据库无历史dm_script数据，不需要历史兼容迁移"
+          ],
+          "constraints": [
+            "程序类型编码必须来自参数管理DM_PROGRAM_TYPE",
+            "系统编号必须是当前项目enabled=1的dm_component",
+            "单个文件大小上限50MB",
+            "不得绕过服务契约直接写其他模块数据表",
+            "普通任务不进行包名或目录重构"
+          ],
+          "non_goals": [
+            "不做程序包版本历史或增量比对",
+            "不改参数管理实现、公共附件表结构或全局项目切换器",
+            "不新增独立dm_program_type业务字典表",
+            "不迁移历史业务数据"
+          ],
+          "assumptions": [
+            {
+              "text": "当前数据库没有历史dm_script数据",
+              "basis": "用户消息：目前数据库没有历史数据",
+              "falsifier": "目标环境存在旧dm_script活动记录且无法按新必填规则写入"
+            },
+            {
+              "text": "统一回收站继续使用SCRIPT作为内容类型标识",
+              "basis": "现有RecycleBinPage对SCRIPT显示迁移程序",
+              "falsifier": "用户要求改为PROGRAM新内容类型"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "一个程序包记录可绑定多个≤50MB源文件",
+              "reason": "满足支持多文件上传且下载提供单文件与打包",
+              "source": "用户选择方案B"
+            },
+            {
+              "id": "D2",
+              "decision": "程序类型、系统编号、程序包名称必填，说明选填",
+              "reason": "功能说明明确必填与选填",
+              "source": "用户需求文本"
+            },
+            {
+              "id": "D3",
+              "decision": "程序类型使用DM_PROGRAM_TYPE参数管理预置迁出/迁入",
+              "reason": "项目统一参数管理模式",
+              "source": "用户需求文本"
+            },
+            {
+              "id": "D4",
+              "decision": "当前无历史数据，不做旧数据兼容回填",
+              "reason": "用户确认数据库无历史数据",
+              "source": "用户本轮确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R6",
+                "R7"
+              ],
+              "signal": "单测覆盖必填、系统、附件、回收站和权限",
+              "method": "ProgramServiceTest与RecycleBinSourceTest"
+            },
+            {
+              "requirement_ids": [
+                "R2"
+              ],
+              "signal": "参数选项和迁移测试通过",
+              "method": "码值服务测试和Flyway MySQL测试"
+            },
+            {
+              "requirement_ids": [
+                "R4",
+                "R8"
+              ],
+              "signal": "前端构建和浏览器验收无报错无横向溢出",
+              "method": "npm build + Playwright桌面/移动视口"
+            },
+            {
+              "requirement_ids": [
+                "R9"
+              ],
+              "signal": "模块测试、范围检查、构建通过",
+              "method": "mvn -pl :ccb-data-migration -am test + check-all-governance + npm build"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户确认设计、无历史数据、方案B多文件；需求基准审查通过",
+        "recorded_at": "2026-09-05T13:55:34+00:00",
+        "data": {
+          "objective": "迁移程序菜单可从通用文件列表升级为带程序类型/系统编号/说明/多文件上传与下载/编辑/删除/统一回收站的独立管理能力",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "程序类型、系统编号、程序包名称必填，程序包说明选填，新增至少绑定一个源文件。",
+              "acceptance": [
+                "缺少任一必填项返回400",
+                "文件超过50MB返回400",
+                "新增无文件返回400",
+                "说明允许为空"
+              ],
+              "priority": "must",
+              "source": "用户消息：必填录入项为程序类型、系统编号、程序包名称；选填项为程序包说明；文件大小不超过50MB。",
+              "counterexample": [
+                "新增记录未填程序类型仍成功",
+                "文件超过50MB仍被绑定",
+                "新增无源文件仍成功"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "程序类型通过系统管理/参数管理维护，新增DM_PROGRAM_TYPE并使用迁出程序/迁入程序预置。",
+              "acceptance": [
+                "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序",
+                "停用或未知编码不能写入",
+                "前端不硬编码程序类型"
+              ],
+              "priority": "must",
+              "source": "用户消息：程序类型使用系统管理/参数管理维护。",
+              "counterexample": [
+                "前端写死程序类型列表",
+                "停用类型仍可新增"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "系统编号单选且候选为当前项目 enabled=1 的 dm_component，前端按编号/名称本地筛选。",
+              "acceptance": [
+                "未选系统返回400",
+                "项目外或停用系统返回400",
+                "系统选项一次返回全量并在浏览器内筛选"
+              ],
+              "priority": "must",
+              "source": "用户消息：系统编号参考其他菜单；候选数据源保持 dm_component 只允许已纳入迁移范围的系统。",
+              "counterexample": [
+                "选择项目外系统成功",
+                "系统选项每次输入都请求后端模糊搜索"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "列表支持程序类型、系统编号、程序包名称关键字组合筛选和服务端分页。",
+              "acceptance": [
+                "筛选变化回第一页",
+                "列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作",
+                "分页符合20/50/100"
+              ],
+              "priority": "must",
+              "source": "用户消息：筛选功能程序类型、系统编号、程序包名称模糊搜索。",
+              "counterexample": [
+                "关键字筛选不生效",
+                "筛选后停留第5页"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "一个程序包记录可绑定多个≤50MB源文件；编辑可保留、增删、替换；下载支持单个与全部打包。",
+              "acceptance": [
+                "新增可绑定多个文件",
+                "编辑删除单个附件后附件列表同步",
+                "单个下载返回指定附件",
+                "全部下载返回ZIP"
+              ],
+              "priority": "must",
+              "source": "用户选择方案B：一条记录可绑定多个≤50MB文件，下载支持单个和全部打包。",
+              "counterexample": [
+                "编辑只允许单文件",
+                "下载全部返回空ZIP且无提示"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "SCRIPT不再由通用ContentAsset链路认领，统一回收站由ProgramRecycleBinSource唯一接管。",
+              "acceptance": [
+                "统一回收站列表/恢复/彻底删除走专用服务",
+                "删除/恢复保持多附件与审计",
+                "彻底删除清理全部附件",
+                "无重复回收站认领"
+              ],
+              "priority": "must",
+              "source": "用户消息：回收站功能采用统一回收站功能。",
+              "counterexample": [
+                "SCRIPT在回收站同时出现两条来源",
+                "恢复后附件缺失"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "写操作强制认证、RBAC、项目隔离、实体授权、附件校验并写审计日志。",
+              "acceptance": [
+                "省略projectId被拒绝",
+                "跨项目ID被拒绝",
+                "普通用户越权返回403",
+                "写操作产生PROGRAM_*审计"
+              ],
+              "priority": "must",
+              "source": "用户消息：上传、编辑、删除、下载、回收站管理均纳入权限管控；项目统一规则。",
+              "counterexample": [
+                "普通用户可编辑他人程序包",
+                "写操作无审计"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "前端遵循design-h5和统一组件，桌面与手机视口无页面级横向滚动，覆盖加载/空/失败/无权限/提交中状态。",
+              "acceptance": [
+                "375/390/430/桌面视口无横向溢出",
+                "上传失败/重复提交有反馈",
+                "长文本和说明不撑破容器"
+              ],
+              "priority": "must",
+              "source": "项目AGENTS与design-h5. .md",
+              "counterexample": [
+                "手机端出现页面级横向滚动",
+                "保存期间可重复点击提交"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "数据库仅对dm_script追加字段并新增追加式Flyway迁移，不修改已发布迁移和无关模块。",
+              "acceptance": [
+                "dm_script包含program_type与program_description",
+                "新迁移幂等且仅追加",
+                "范围检查无越界文件",
+                "后端测试和前端构建通过"
+              ],
+              "priority": "must",
+              "source": "项目AGENTS与用户确认方案。",
+              "counterexample": [
+                "修改V184及以前脚本",
+                "改动公共附件表结构"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "当前数据库无历史dm_script数据，不做历史兼容回填，新字段直接按新必填规则运行。",
+              "acceptance": [
+                "迁移从空表创建后可创建符合新字段的记录"
+              ],
+              "priority": "must",
+              "source": "用户消息：目前数据库没有历史数据",
+              "counterexample": [
+                "为历史数据写入空程序类型仍成功"
+              ]
+            }
+          ],
+          "invariants": [
+            "单租户，每次查询和写入绑定tenant_id与当前项目",
+            "Flyway只追加，不修改已发布脚本",
+            "业务关联统一使用(project_id, system_code)",
+            "doc_code由服务端生成且不可修改",
+            "页面遵循design-h5与统一状态组件",
+            "当前数据库无历史dm_script数据，不需要历史兼容迁移"
+          ],
+          "constraints": [
+            "程序类型编码必须来自参数管理DM_PROGRAM_TYPE",
+            "系统编号必须是当前项目enabled=1的dm_component",
+            "单个文件大小上限50MB",
+            "不得绕过服务契约直接写其他模块数据表",
+            "普通任务不进行包名或目录重构"
+          ],
+          "non_goals": [
+            "不做程序包版本历史或增量比对",
+            "不改参数管理实现、公共附件表结构或全局项目切换器",
+            "不新增独立dm_program_type业务字典表",
+            "不迁移历史业务数据"
+          ],
+          "assumptions": [
+            {
+              "text": "当前数据库没有历史dm_script数据",
+              "basis": "用户消息：目前数据库没有历史数据",
+              "falsifier": "目标环境存在旧dm_script活动记录且无法按新必填规则写入"
+            },
+            {
+              "text": "统一回收站继续使用SCRIPT作为内容类型标识",
+              "basis": "现有RecycleBinPage对SCRIPT显示迁移程序",
+              "falsifier": "用户要求改为PROGRAM新内容类型"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "一个程序包记录可绑定多个≤50MB源文件",
+              "options": [],
+              "selected": "一个程序包记录可绑定多个≤50MB源文件",
+              "blocking": false,
+              "source": "用户选择方案B"
+            },
+            {
+              "question": "程序类型、系统编号、程序包名称必填，说明选填",
+              "options": [],
+              "selected": "程序类型、系统编号、程序包名称必填，说明选填",
+              "blocking": false,
+              "source": "用户需求文本"
+            },
+            {
+              "question": "程序类型使用DM_PROGRAM_TYPE参数管理预置迁出/迁入",
+              "options": [],
+              "selected": "程序类型使用DM_PROGRAM_TYPE参数管理预置迁出/迁入",
+              "blocking": false,
+              "source": "用户需求文本"
+            },
+            {
+              "question": "当前无历史数据，不做旧数据兼容回填",
+              "options": [],
+              "selected": "当前无历史数据，不做旧数据兼容回填",
+              "blocking": false,
+              "source": "用户本轮确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "缺少任一必填项返回400 文件超过50MB返回400 新增无文件返回400 说明允许为空",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序 停用或未知编码不能写入 前端不硬编码程序类型",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "未选系统返回400 项目外或停用系统返回400 系统选项一次返回全量并在浏览器内筛选",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "筛选变化回第一页 列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作 分页符合20/50/100",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "新增可绑定多个文件 编辑删除单个附件后附件列表同步 单个下载返回指定附件 全部下载返回ZIP",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "统一回收站列表/恢复/彻底删除走专用服务 删除/恢复保持多附件与审计 彻底删除清理全部附件 无重复回收站认领",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "省略projectId被拒绝 跨项目ID被拒绝 普通用户越权返回403 写操作产生PROGRAM_*审计",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "375/390/430/桌面视口无横向溢出 上传失败/重复提交有反馈 长文本和说明不撑破容器",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "dm_script包含program_type与program_description 新迁移幂等且仅追加 范围检查无越界文件 后端测试和前端构建通过",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "迁移从空表创建后可创建符合新字段的记录",
+              "candidate_sensor": "后端单测/Maven容器测试/前端构建/Playwright浏览器验收"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "系统模型已建立并被初步门禁确认",
+        "recorded_at": "2026-09-05T13:55:59+00:00",
+        "data": {
+          "baseline_revision": 2,
+          "plant_boundary": {
+            "inside": [
+              "dm_script",
+              "dm_content_attachment(business_type=SCRIPT)",
+              "DM_PROGRAM_TYPE参数",
+              "ProgramService/ProgramController/ProgramRecycleBinSource",
+              "ProgramsPage.vue",
+              "内容回收站SCRIPT入口"
+            ],
+            "environment": [
+              "系统管理参数管理",
+              "dm_component组件清单",
+              "平台附件能力",
+              "现有ContentRecycleBinService",
+              "现有ContentAssetRecycleBinSource"
+            ]
+          },
+          "state_variables": [
+            "程序记录活动状态/逻辑删除标志",
+            "程序记录多附件活动状态",
+            "DM_PROGRAM_TYPE参数启用集合",
+            "组件enabled状态",
+            "项目切换器当前项目"
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "input": "用户表单/接口请求",
+              "transitions": [
+                "参数/组件/附件校验",
+                "ProgramService写操作",
+                "附件绑定或回收站状态变化"
+              ],
+              "outputs": [
+                "程序列表/详情/下载/回收站状态"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET/POST/PUT/DELETE /api/data-migration/programs",
+              "producers": [
+                "ProgramController"
+              ],
+              "consumers": [
+                "ProgramsPage.vue"
+              ],
+              "invariant": "项目恒定、元数据和附件校验"
+            },
+            {
+              "name": "GET /api/data-migration/options/DM_PROGRAM_TYPE",
+              "producers": [
+                "数据迁移码值服务"
+              ],
+              "consumers": [
+                "ProgramsPage.vue"
+              ],
+              "invariant": "只返回启用项"
+            },
+            {
+              "name": "GET /api/data-migration/recycle-bin",
+              "producers": [
+                "ContentRecycleBinController"
+              ],
+              "consumers": [
+                "RecycleBinPage.vue"
+              ],
+              "invariant": "SCRIPT由ProgramRecycleBinSource唯一认领"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "后端Service行为",
+              "method": "ProgramServiceTest",
+              "blind_spots": [
+                "未覆盖浏览器交互"
+              ],
+              "independence": "单元测试独立于浏览器"
+            },
+            {
+              "id": "S2",
+              "target": "Flyway迁移/参数种子",
+              "method": "DataMigrationProgramMigrationMySqlTest",
+              "blind_spots": [
+                "不校验真实开发库"
+              ],
+              "independence": "独立容器"
+            },
+            {
+              "id": "S3",
+              "target": "RBAC和回收站认领",
+              "method": "ProgramControllerSecurityTest/ProgramRecycleBinSourceTest",
+              "blind_spots": [
+                "只做方法级校验"
+              ],
+              "independence": "独立安全测试"
+            },
+            {
+              "id": "S4",
+              "target": "前端构建",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "不验证运行行为"
+              ],
+              "independence": "独立编译器"
+            },
+            {
+              "id": "S5",
+              "target": "真实浏览器行为",
+              "method": "Playwright桌面/移动视口",
+              "blind_spots": [
+                "可能依赖本地开发库数据"
+              ],
+              "independence": "部分独立，运行同一开发环境"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "V185迁移与DM_PROGRAM_TYPE",
+              "action": "写SQL和注册码值类别",
+              "authority": "T1任务包",
+              "impact_radius": "dm_script/参数管理",
+              "rollback": "未发布迁移可移除"
+            },
+            {
+              "id": "A2",
+              "target": "ProgramService",
+              "action": "新增CRUD/附件/回收站方法",
+              "authority": "T2任务包",
+              "impact_radius": "数据迁移后端",
+              "rollback": "未引用时删除文件"
+            },
+            {
+              "id": "A3",
+              "target": "ProgramController和回收站摘除",
+              "action": "新增路由/来源，移除SCRIPT通用认领",
+              "authority": "T3任务包",
+              "impact_radius": "迁移程序与统一回收站",
+              "rollback": "恢复通用认领"
+            },
+            {
+              "id": "A4",
+              "target": "ProgramsPage/API",
+              "action": "重写页面和扩展API",
+              "authority": "T4任务包",
+              "impact_radius": "迁移程序前端",
+              "rollback": "恢复旧页面"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S5"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S5"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R9",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            },
+            {
+              "requirement_id": "R10",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "相关测试与浏览器验收断言"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "参数管理停用程序类型",
+              "effect": "新增/编辑被拒",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "组件停用",
+              "effect": "系统选项减少、历史只读",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "开发库残留旧数据",
+              "effect": "可能影响迁移服务启动",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "平台附件清理",
+              "effect": "临时附件丢失",
+              "detectable": false,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "附件上传/下载",
+              "consequence": "保存和打包耗时变长",
+              "sampling_rule": "浏览器等待超时上限60秒"
+            },
+            {
+              "source": "ZIP打包",
+              "consequence": "download-all响应慢",
+              "sampling_rule": "接口耗时记录并设置明确错误"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "dm_script无历史数据",
+              "evidence": "用户确认",
+              "falsifier": "存在环境包含旧记录"
+            },
+            {
+              "text": "活动附件可多文件在SCRIPT类型复用",
+              "evidence": "dm_content_attachment已有Meeting多附件模式",
+              "falsifier": "批量恢复/清理能力不足"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": [
+                "通过T1-T4实施",
+                "通过T5观测"
+              ]
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "计划门禁通过，任务依赖无环且覆盖所有must需求",
+        "recorded_at": "2026-09-05T13:56:31+00:00",
+        "data": {
+          "baseline_revision": "2",
+          "model_revision": "1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "V185迁移、DM_PROGRAM_TYPE参数种子和迁移测试",
+              "requirement_ids": [
+                "R2",
+                "R9"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "当前最高迁移为V184（事实：构建日志schema ccb_platform=184）"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_program_domain.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java"
+              ],
+              "invariants": [
+                "只在授权路径写入",
+                "不改已发布迁移",
+                "不扩大需求范围"
+              ],
+              "interface_contracts": [
+                "consumes: [\"DataMigrationCodeValueService\", \"sys_dict_type\", \"sys_config\"]",
+                "produces: [\"dm_script.program_type/program_description\", \"DM_PROGRAM_TYPE options\"]"
+              ],
+              "non_goals": [
+                "不重构无关模块"
+              ],
+              "action_bounds": [
+                "编写V185含幂等类别/配置与dm_script加列",
+                "添加DM_PROGRAM_TYPE常量并加入ALLOWED_CATEGORIES",
+                "跑MySQL迁移测试"
+              ],
+              "acceptance_checks": [
+                "dm_script两列存在",
+                "DM_PROGRAM_TYPE两配置存在",
+                "Flyway clean+migrate成功"
+              ],
+              "evidence_required": [
+                "migration文件",
+                "git diff",
+                "surefire报告"
+              ],
+              "rollback": "未发布迁移可移除，删除测试断言",
+              "stop_conditions": [
+                "迁移容器失败",
+                "真实数据需回填却无回填规则"
+              ],
+              "escalation_conditions": [
+                "发现dm_script有真实业务行需要补录"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "ProgramService完整实现",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "ReleaseDrillService是参考模板（事实：现有Service）",
+                "ProjectComponentService.getSystemOptions可复用（事实：接口存在）"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java"
+              ],
+              "invariants": [
+                "只在授权路径写入",
+                "不改已发布迁移",
+                "不扩大需求范围"
+              ],
+              "interface_contracts": [
+                "consumes: [\"JdbcTemplate\", \"ContentAttachmentService\", \"DataMigrationCodeValueService\", \"DataMigrationPermissionService\", \"ContentDocCodeGenerator\", \"ProjectComponentService\"]",
+                "produces: [\"ProgramService字面方法集\"]"
+              ],
+              "non_goals": [
+                "不重构无关模块"
+              ],
+              "action_bounds": [
+                "实现list/create/update/detail/download/listAttachments/recycle",
+                "实现多附件创建编辑与打包下载",
+                "运行ProgramServiceTest"
+              ],
+              "acceptance_checks": [
+                "必填和50MB校验",
+                "系统启用校验",
+                "编辑保留/增删附件",
+                "回收站四方法"
+              ],
+              "evidence_required": [
+                "ProgramService.java",
+                "单测断言",
+                "surefire"
+              ],
+              "rollback": "删除未引用Service",
+              "stop_conditions": [
+                "附件原子性无法保证"
+              ],
+              "escalation_conditions": [
+                "公共附件能力不支持按列表批量恢复或清理"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "ProgramController、RecycleBinSource并从通用链路摘除SCRIPT",
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R7",
+                "R9"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "ContentRecycleBinService根据RecycleBinSource supports注册（现有代码）",
+                "ContentAssetRecycleBinSource基于MANAGED_TYPES生成（现有代码）"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProgramController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRecycleBinSource.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java"
+              ],
+              "invariants": [
+                "只在授权路径写入",
+                "不改已发布迁移",
+                "不扩大需求范围"
+              ],
+              "interface_contracts": [
+                "consumes: [\"ProgramService\", \"ProjectComponentService.getSystemOptions\"]",
+                "produces: [\"/api/data-migration/programs/**\", \"SCRIPT由ProgramRecycleBinSource认领\"]"
+              ],
+              "non_goals": [
+                "不重构无关模块"
+              ],
+              "action_bounds": [
+                "新建Controller全部端点",
+                "新建RecycleBinSource",
+                "摘除通用SCRIPT",
+                "跑后端测试"
+              ],
+              "acceptance_checks": [
+                "匿名401",
+                "只读可读",
+                "无权限写403",
+                "回收站无重复认领"
+              ],
+              "evidence_required": [
+                "Controller文件",
+                "Source文件",
+                "diff",
+                "surefire"
+              ],
+              "rollback": "恢复SCRIPT到通用链路并删除新Controller",
+              "stop_conditions": [
+                "ContentRecycleBinService重复认领启动失败"
+              ],
+              "escalation_conditions": [
+                "发现其他调用方依赖通用SCRIPT接口"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "前端API和ProgramsPage多文件交互",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R8"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "ReleaseDrillsPage为现有参考页面",
+                "系统选项需浏览器内筛选（用户此前确认）"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/ProgramsPage.vue"
+              ],
+              "invariants": [
+                "只在授权路径写入",
+                "不改已发布迁移",
+                "不扩大需求范围"
+              ],
+              "interface_contracts": [
+                "consumes: [\"T3 programs REST\", \"平台附件上传\"]",
+                "produces: [\"ProgramsPage.vue完整页面\"]"
+              ],
+              "non_goals": [
+                "不重构无关模块"
+              ],
+              "action_bounds": [
+                "扩展data-migration.ts programs API",
+                "重写ProgramsPage包含筛选、表单、多文件、下载",
+                "前端构建"
+              ],
+              "acceptance_checks": [
+                "类型/名称/系统筛选",
+                "系统本地筛选",
+                "多文件上传",
+                "单个+打包下载",
+                "删除/编辑"
+              ],
+              "evidence_required": [
+                "api文件",
+                "vue文件",
+                "web/dist"
+              ],
+              "rollback": "恢复旧AssetListView",
+              "stop_conditions": [
+                "浏览器无法选择多个文件"
+              ],
+              "escalation_conditions": [
+                "需要新增后端契约字段或路由变更时升级"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "全量回归、范围检查和浏览器验收",
+              "requirement_ids": [
+                "R6",
+                "R8",
+                "R9",
+                "R10"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "input_facts": [
+                "design R6要求回收站唯一认领",
+                "design-h5要求移动端无横向滚动"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-convergence.json"
+              ],
+              "invariants": [
+                "只在授权路径写入",
+                "不改已发布迁移",
+                "不扩大需求范围"
+              ],
+              "interface_contracts": [
+                "consumes: [\"T1-T4结果\"]",
+                "produces: [\"execution/observation/convergence证据\"]"
+              ],
+              "non_goals": [
+                "不重构无关模块"
+              ],
+              "action_bounds": [
+                "后端module test",
+                "治理与范围检查",
+                "编写并运行浏览器验收脚本 /tmp/program_acceptance_playwright.mjs，覆盖桌面1280x800和375/390/430视口",
+                "写convergence"
+              ],
+              "acceptance_checks": [
+                "0失败",
+                "范围无越界",
+                "浏览器无4xx/5xx",
+                "移动无溢出"
+              ],
+              "evidence_required": [
+                "surefire",
+                "退出码0",
+                "截图与console",
+                "convergence.json"
+              ],
+              "rollback": "应用回退保留表与附件",
+              "stop_conditions": [
+                "任一验收失败未修复"
+              ],
+              "escalation_conditions": [
+                "需要生产/测试环境数据才能继续时升级"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "数据库和参数类别是Service依赖"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Controller依赖Service"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "前端依赖后端契约"
+            },
+            {
+              "from": "T1",
+              "to": "T5",
+              "reason": "T5集成包含T1验证"
+            },
+            {
+              "from": "T2",
+              "to": "T5",
+              "reason": "T5集成包含T2验证"
+            },
+            {
+              "from": "T3",
+              "to": "T5",
+              "reason": "T5集成包含T3验证"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "T5浏览器验收依赖T4页面"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "command": "mvn -q -pl :ccb-data-migration -am -Dtest=DataMigrationProgramMigrationMySqlTest test",
+              "expected": "BUILD SUCCESS"
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "command": "mvn -q -pl :ccb-data-migration -am test",
+              "expected": "BUILD SUCCESS"
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "command": "npm --prefix web run build",
+              "expected": "构建成功"
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1完成采样",
+              "trigger": "T1返回",
+              "observer": "独立观察者",
+              "sensors": [
+                "S2"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R9"
+              ]
+            },
+            {
+              "label": "T2完成采样",
+              "trigger": "T2返回",
+              "observer": "独立观察者",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R7"
+              ]
+            },
+            {
+              "label": "T3完成采样",
+              "trigger": "T3返回",
+              "observer": "独立观察者",
+              "sensors": [
+                "S3"
+              ],
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R7",
+                "R9"
+              ]
+            },
+            {
+              "label": "T4完成采样",
+              "trigger": "T4返回",
+              "observer": "独立观察者",
+              "sensors": [
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4",
+                "R5",
+                "R8"
+              ]
+            },
+            {
+              "label": "最终验收采样",
+              "trigger": "T5",
+              "observer": "独立观察者",
+              "sensors": [
+                "S5"
+              ],
+              "requirement_ids": [
+                "R6",
+                "R8",
+                "R9",
+                "R10"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "task_ids": [
+                "T1",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T5全量回归与浏览器验收执行报告",
+        "recorded_at": "2026-09-05T15:02:24+00:00",
+        "data": {
+          "schema_version": 1,
+          "prefix": "req-20260820-031-data-migration-asset-library-v3",
+          "phase": "executing",
+          "task_id": "T5",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/ProgramsPage.vue",
+              "purpose": "修复移动端分页导致页面级横向溢出，增加 program-pagination 局部响应式容器"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java",
+              "purpose": "编辑附件解析区分已绑定附件与临时上传附件，修复编辑保存 403/500"
+            }
+          ],
+          "requirements_addressed": [
+            "R6",
+            "R8",
+            "R9",
+            "R10"
+          ],
+          "commands": [
+            "node /tmp/program_acceptance_playwright.cjs -> 退出码 0，桌面 created/edited/deleted/restored/downloadsZip 全 true，无 console error 与 4xx/5xx",
+            "node /tmp/mobile_debug.cjs -> scrollWidth 390 / clientWidth 390，无页面级横向溢出",
+            "node /tmp/diag_put.cjs -> PUT /api/data-migration/programs/{id} 200，编辑抽屉自动关闭",
+            "npm --prefix web run build -> 退出码 0",
+            "后端数据迁移模块全量测试：28 个报告、130 用例、0 失败"
+          ],
+          "local_checks": [
+            "375x812、390x844、430x932 三视口 widthOk=true 且无 console 错误",
+            "桌面新增/编辑/删除/回收站恢复/详情/单附件与打包下载全流程通过",
+            "系统编号下拉仅使用当前项目 dm_component enabled=1 数据",
+            "程序类型来自系统管理/参数管理 DM_PROGRAM_TYPE"
+          ],
+          "diff_summary": [
+            "ProgramsPage.vue：局部修复移动端分页横向溢出，不改共享组件",
+            "ProgramService.java：参照 TopicService 已绑定附件复用模式，补齐编辑附件保留/替换"
+          ],
+          "invariants_checked": [
+            "未修改已发布 Flyway",
+            "未改动共享 web/src/components/ui/**",
+            "程序类型未在业务代码硬编码",
+            "涉及系统候选仅限当前项目启用组件"
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [
+            "编辑回传既有附件时不能按临时附件校验（已按已绑定附件复用修复）"
+          ],
+          "unresolved_items": [],
+          "recommended_next": "将 T5 证据写入观测/收敛文件并推进 verifying/converged"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T5浏览器验收与模块回归观测",
+        "recorded_at": "2026-09-05T15:02:29+00:00",
+        "data": {
+          "schema_version": 1,
+          "prefix": "req-20260820-031-data-migration-asset-library-v3",
+          "sample_label": "T5-browser-and-regression",
+          "task_ids": [
+            "T5"
+          ],
+          "baseline_revision": "2",
+          "measurements": [
+            {
+              "id": "desktop-browser-flow",
+              "description": "桌面端新建/编辑/详情/单附件及打包下载/删除/回收站恢复",
+              "result": "pass",
+              "evidence": [
+                "/tmp/program_acceptance_result.json"
+              ]
+            },
+            {
+              "id": "mobile-viewports",
+              "description": "375x812、390x844、430x932 无页面级横向滚动且无 console 错误",
+              "result": "pass",
+              "evidence": [
+                "/tmp/program_acceptance_result.json"
+              ]
+            },
+            {
+              "id": "program-edit-attachment",
+              "description": "编辑时保留既有附件并可上传新附件，PUT 返回 200 且抽屉关闭",
+              "result": "pass",
+              "evidence": [
+                "node /tmp/diag_put.cjs -> PUT 200"
+              ]
+            },
+            {
+              "id": "backend-module-tests",
+              "description": "数据迁移模块全量测试",
+              "result": "pass",
+              "evidence": [
+                "28 reports / 130 cases / 0 failures"
+              ]
+            },
+            {
+              "id": "frontend-build",
+              "description": "前端生产构建",
+              "result": "pass",
+              "evidence": [
+                "npm --prefix web run build exit 0"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete",
+          "noise_and_baseline": [
+            "开发库中存在浏览器验收产生的测试记录（程序包），不影响代码与迁移",
+            "scripts/check-all-governance.mjs 因仓库内另一无关需求 codex-task-scope 不兼容失败，与本任务无关"
+          ]
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "T5验收与回归证据",
+        "recorded_at": "2026-09-05T15:03:19+00:00",
+        "data": {
+          "schema_version": 1,
+          "prefix": "req-20260820-031-data-migration-asset-library-v3",
+          "baseline_revision": "2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "status": "pass",
+              "evidence": "必填校验与50MB限制单测、浏览器新增保存成功"
+            },
+            {
+              "id": "R2",
+              "status": "pass",
+              "evidence": "DM_PROGRAM_TYPE参数管理种子与选项接口测试通过"
+            },
+            {
+              "id": "R3",
+              "status": "pass",
+              "evidence": "系统选项仅含项目3002启用组件，浏览器下拉验证通过"
+            },
+            {
+              "id": "R4",
+              "status": "pass",
+              "evidence": "程序类型/系统编号/关键字组合筛选与分页单测通过"
+            },
+            {
+              "id": "R5",
+              "status": "pass",
+              "evidence": "多文件新增、编辑保留既有附件、单附件与打包下载浏览器验收通过"
+            },
+            {
+              "id": "R6",
+              "status": "pass",
+              "evidence": "ProgramRecycleBinSource唯一认领SCRIPT，浏览器删除/恢复通过"
+            },
+            {
+              "id": "R7",
+              "status": "pass",
+              "evidence": "ControllerSecurityTest与项目隔离测试通过"
+            },
+            {
+              "id": "R8",
+              "status": "pass",
+              "evidence": "375/390/430及桌面视口无横向溢出、无console错误"
+            },
+            {
+              "id": "R9",
+              "status": "pass",
+              "evidence": "V185迁移容器测试通过，本地库应用成功"
+            },
+            {
+              "id": "R10",
+              "status": "pass",
+              "evidence": "程序包名称关键字模糊检索在ProgramService测试通过"
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": "V185迁移测试"
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": "ProgramService单测"
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": "Controller/RecycleBinSource单测"
+            },
+            {
+              "id": "T4",
+              "status": "verified",
+              "evidence": "前端构建与ProgramsPage交互"
+            },
+            {
+              "id": "T5",
+              "status": "verified",
+              "evidence": "全量回归与浏览器验收"
+            }
+          ],
+          "feedback_summary": [],
+          "sample_trend": [
+            {
+              "label": "desktop-full-flow",
+              "score": 0
+            },
+            {
+              "label": "mobile-three-viewports",
+              "score": 0
+            },
+            {
+              "label": "backend-module-regression",
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "name": "backend-module-tests",
+              "result": "pass",
+              "evidence": "28 reports / 130 cases / 0 failures"
+            },
+            {
+              "name": "frontend-build",
+              "result": "pass",
+              "evidence": "npm --prefix web run build exit 0"
+            },
+            {
+              "name": "governance-scope",
+              "result": "pass",
+              "evidence": "scripts/check-governance.mjs通过；全量脚本因无关需求REQ-20260904-061格式不兼容失败，与本任务无冲突"
+            }
+          ],
+          "invariant_results": [
+            {
+              "name": "no-published-flyway-change",
+              "result": "pass",
+              "evidence": "仅新增未发布V185"
+            },
+            {
+              "name": "shared-ui-not-modified",
+              "result": "pass",
+              "evidence": "移动端修复限定ProgramsPage局部样式"
+            },
+            {
+              "name": "program-type-parameter-driven",
+              "result": "pass",
+              "evidence": "前端与后端均从DM_PROGRAM_TYPE读取"
+            }
+          ],
+          "scope_audit": {
+            "result": "pass",
+            "evidence": "改动均落在codex-task-scope writable_paths内"
+          },
+          "disturbance_resilience": [
+            {
+              "source": "无关仓库需求校验失败",
+              "result": "isolated",
+              "evidence": "不影响本任务范围与验收结论"
+            }
+          ],
+          "residual_risks": [
+            "生产部署前应在干净测试库重跑Flyway并做一次端到端浏览器验收",
+            "开发库浏览器测试产生的程序包测试数据不进入代码交付"
+          ],
+          "gate_result": "pass",
+          "route_reason": "T1-T5均已verified，3个采样零误差，需求覆盖完整，浏览器验收通过"
+        }
+      }
+    ]
+  },
+  "objective": "迁移程序菜单可从通用文件列表升级为带程序类型/系统编号/说明/多文件上传与下载/编辑/删除/统一回收站的独立管理能力",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "程序类型、系统编号、程序包名称必填，程序包说明选填，新增至少绑定一个源文件。",
+      "acceptance": [
+        "缺少任一必填项返回400",
+        "文件超过50MB返回400",
+        "新增无文件返回400",
+        "说明允许为空"
+      ],
+      "priority": "must",
+      "source": "用户消息：必填录入项为程序类型、系统编号、程序包名称；选填项为程序包说明；文件大小不超过50MB。",
+      "counterexample": [
+        "新增记录未填程序类型仍成功",
+        "文件超过50MB仍被绑定",
+        "新增无源文件仍成功"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "程序类型通过系统管理/参数管理维护，新增DM_PROGRAM_TYPE并使用迁出程序/迁入程序预置。",
+      "acceptance": [
+        "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序",
+        "停用或未知编码不能写入",
+        "前端不硬编码程序类型"
+      ],
+      "priority": "must",
+      "source": "用户消息：程序类型使用系统管理/参数管理维护。",
+      "counterexample": [
+        "前端写死程序类型列表",
+        "停用类型仍可新增"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "系统编号单选且候选为当前项目 enabled=1 的 dm_component，前端按编号/名称本地筛选。",
+      "acceptance": [
+        "未选系统返回400",
+        "项目外或停用系统返回400",
+        "系统选项一次返回全量并在浏览器内筛选"
+      ],
+      "priority": "must",
+      "source": "用户消息：系统编号参考其他菜单；候选数据源保持 dm_component 只允许已纳入迁移范围的系统。",
+      "counterexample": [
+        "选择项目外系统成功",
+        "系统选项每次输入都请求后端模糊搜索"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "列表支持程序类型、系统编号、程序包名称关键字组合筛选和服务端分页。",
+      "acceptance": [
+        "筛选变化回第一页",
+        "列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作",
+        "分页符合20/50/100"
+      ],
+      "priority": "must",
+      "source": "用户消息：筛选功能程序类型、系统编号、程序包名称模糊搜索。",
+      "counterexample": [
+        "关键字筛选不生效",
+        "筛选后停留第5页"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "一个程序包记录可绑定多个≤50MB源文件；编辑可保留、增删、替换；下载支持单个与全部打包。",
+      "acceptance": [
+        "新增可绑定多个文件",
+        "编辑删除单个附件后附件列表同步",
+        "单个下载返回指定附件",
+        "全部下载返回ZIP"
+      ],
+      "priority": "must",
+      "source": "用户选择方案B：一条记录可绑定多个≤50MB文件，下载支持单个和全部打包。",
+      "counterexample": [
+        "编辑只允许单文件",
+        "下载全部返回空ZIP且无提示"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "SCRIPT不再由通用ContentAsset链路认领，统一回收站由ProgramRecycleBinSource唯一接管。",
+      "acceptance": [
+        "统一回收站列表/恢复/彻底删除走专用服务",
+        "删除/恢复保持多附件与审计",
+        "彻底删除清理全部附件",
+        "无重复回收站认领"
+      ],
+      "priority": "must",
+      "source": "用户消息：回收站功能采用统一回收站功能。",
+      "counterexample": [
+        "SCRIPT在回收站同时出现两条来源",
+        "恢复后附件缺失"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "写操作强制认证、RBAC、项目隔离、实体授权、附件校验并写审计日志。",
+      "acceptance": [
+        "省略projectId被拒绝",
+        "跨项目ID被拒绝",
+        "普通用户越权返回403",
+        "写操作产生PROGRAM_*审计"
+      ],
+      "priority": "must",
+      "source": "用户消息：上传、编辑、删除、下载、回收站管理均纳入权限管控；项目统一规则。",
+      "counterexample": [
+        "普通用户可编辑他人程序包",
+        "写操作无审计"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "前端遵循design-h5和统一组件，桌面与手机视口无页面级横向滚动，覆盖加载/空/失败/无权限/提交中状态。",
+      "acceptance": [
+        "375/390/430/桌面视口无横向溢出",
+        "上传失败/重复提交有反馈",
+        "长文本和说明不撑破容器"
+      ],
+      "priority": "must",
+      "source": "项目AGENTS与design-h5. .md",
+      "counterexample": [
+        "手机端出现页面级横向滚动",
+        "保存期间可重复点击提交"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "数据库仅对dm_script追加字段并新增追加式Flyway迁移，不修改已发布迁移和无关模块。",
+      "acceptance": [
+        "dm_script包含program_type与program_description",
+        "新迁移幂等且仅追加",
+        "范围检查无越界文件",
+        "后端测试和前端构建通过"
+      ],
+      "priority": "must",
+      "source": "项目AGENTS与用户确认方案。",
+      "counterexample": [
+        "修改V184及以前脚本",
+        "改动公共附件表结构"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "当前数据库无历史dm_script数据，不做历史兼容回填，新字段直接按新必填规则运行。",
+      "acceptance": [
+        "迁移从空表创建后可创建符合新字段的记录"
+      ],
+      "priority": "must",
+      "source": "用户消息：目前数据库没有历史数据",
+      "counterexample": [
+        "为历史数据写入空程序类型仍成功"
+      ]
+    }
+  ],
+  "invariants": [
+    "单租户，每次查询和写入绑定tenant_id与当前项目",
+    "Flyway只追加，不修改已发布脚本",
+    "业务关联统一使用(project_id, system_code)",
+    "doc_code由服务端生成且不可修改",
+    "页面遵循design-h5与统一状态组件",
+    "当前数据库无历史dm_script数据，不需要历史兼容迁移"
+  ],
+  "constraints": [
+    "程序类型编码必须来自参数管理DM_PROGRAM_TYPE",
+    "系统编号必须是当前项目enabled=1的dm_component",
+    "单个文件大小上限50MB",
+    "不得绕过服务契约直接写其他模块数据表",
+    "普通任务不进行包名或目录重构"
+  ],
+  "non_goals": [
+    "不做程序包版本历史或增量比对",
+    "不改参数管理实现、公共附件表结构或全局项目切换器",
+    "不新增独立dm_program_type业务字典表",
+    "不迁移历史业务数据"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-handoff.json",
+    "imported_at": "2026-09-05T13:55:13+00:00",
+    "topic": "data-migration-program",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-program",
+      "handoff_status": "approved",
+      "created_at": "2026-09-05T22:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-program",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-05-data-migration-program-design.md",
+        "objective": "将数据迁移/数迁资产内容/迁移程序升级为独立程序包管理能力，支持程序类型（参数管理）、系统编号、程序包名称/说明、多文件上传与下载、编辑、删除和统一回收站。",
+        "users": [
+          "数据迁移管理员维护迁出/迁入程序包",
+          "普通数据迁移人员查看/下载/维护本人程序包"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "程序类型、系统编号、程序包名称必填，程序包说明选填，新增至少绑定一个源文件。",
+            "acceptance": [
+              "缺少任一必填项返回400",
+              "文件超过50MB返回400",
+              "新增无文件返回400",
+              "说明允许为空"
+            ],
+            "priority": "must",
+            "source": "用户消息：必填录入项为程序类型、系统编号、程序包名称；选填项为程序包说明；文件大小不超过50MB。",
+            "counterexample": [
+              "新增记录未填程序类型仍成功",
+              "文件超过50MB仍被绑定",
+              "新增无源文件仍成功"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "程序类型通过系统管理/参数管理维护，新增DM_PROGRAM_TYPE并使用迁出程序/迁入程序预置。",
+            "acceptance": [
+              "GET /api/data-migration/options/DM_PROGRAM_TYPE 返回迁出程序与迁入程序",
+              "停用或未知编码不能写入",
+              "前端不硬编码程序类型"
+            ],
+            "priority": "must",
+            "source": "用户消息：程序类型使用系统管理/参数管理维护。",
+            "counterexample": [
+              "前端写死程序类型列表",
+              "停用类型仍可新增"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "系统编号单选且候选为当前项目 enabled=1 的 dm_component，前端按编号/名称本地筛选。",
+            "acceptance": [
+              "未选系统返回400",
+              "项目外或停用系统返回400",
+              "系统选项一次返回全量并在浏览器内筛选"
+            ],
+            "priority": "must",
+            "source": "用户消息：系统编号参考其他菜单；候选数据源保持 dm_component 只允许已纳入迁移范围的系统。",
+            "counterexample": [
+              "选择项目外系统成功",
+              "系统选项每次输入都请求后端模糊搜索"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "列表支持程序类型、系统编号、程序包名称关键字组合筛选和服务端分页。",
+            "acceptance": [
+              "筛选变化回第一页",
+              "列表展示程序包编号、程序类型、系统编号、程序包名称、说明和操作",
+              "分页符合20/50/100"
+            ],
+            "priority": "must",
+            "source": "用户消息：筛选功能程序类型、系统编号、程序包名称模糊搜索。",
+            "counterexample": [
+              "关键字筛选不生效",
+              "筛选后停留第5页"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "一个程序包记录可绑定多个≤50MB源文件；编辑可保留、增删、替换；下载支持单个与全部打包。",
+            "acceptance": [
+              "新增可绑定多个文件",
+              "编辑删除单个附件后附件列表同步",
+              "单个下载返回指定附件",
+              "全部下载返回ZIP"
+            ],
+            "priority": "must",
+            "source": "用户选择方案B：一条记录可绑定多个≤50MB文件，下载支持单个和全部打包。",
+            "counterexample": [
+              "编辑只允许单文件",
+              "下载全部返回空ZIP且无提示"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "SCRIPT不再由通用ContentAsset链路认领，统一回收站由ProgramRecycleBinSource唯一接管。",
+            "acceptance": [
+              "统一回收站列表/恢复/彻底删除走专用服务",
+              "删除/恢复保持多附件与审计",
+              "彻底删除清理全部附件",
+              "无重复回收站认领"
+            ],
+            "priority": "must",
+            "source": "用户消息：回收站功能采用统一回收站功能。",
+            "counterexample": [
+              "SCRIPT在回收站同时出现两条来源",
+              "恢复后附件缺失"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "写操作强制认证、RBAC、项目隔离、实体授权、附件校验并写审计日志。",
+            "acceptance": [
+              "省略projectId被拒绝",
+              "跨项目ID被拒绝",
+              "普通用户越权返回403",
+              "写操作产生PROGRAM_*审计"
+            ],
+            "priority": "must",
+            "source": "用户消息：上传、编辑、删除、下载、回收站管理均纳入权限管控；项目统一规则。",
+            "counterexample": [
+              "普通用户可编辑他人程序包",
+              "写操作无审计"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "前端遵循design-h5和统一组件，桌面与手机视口无页面级横向滚动，覆盖加载/空/失败/无权限/提交中状态。",
+            "acceptance": [
+              "375/390/430/桌面视口无横向溢出",
+              "上传失败/重复提交有反馈",
+              "长文本和说明不撑破容器"
+            ],
+            "priority": "must",
+            "source": "项目AGENTS与design-h5. .md",
+            "counterexample": [
+              "手机端出现页面级横向滚动",
+              "保存期间可重复点击提交"
+            ]
+          },
+          {
+            "id": "R9",
+            "statement": "数据库仅对dm_script追加字段并新增追加式Flyway迁移，不修改已发布迁移和无关模块。",
+            "acceptance": [
+              "dm_script包含program_type与program_description",
+              "新迁移幂等且仅追加",
+              "范围检查无越界文件",
+              "后端测试和前端构建通过"
+            ],
+            "priority": "must",
+            "source": "项目AGENTS与用户确认方案。",
+            "counterexample": [
+              "修改V184及以前脚本",
+              "改动公共附件表结构"
+            ]
+          },
+          {
+            "id": "R10",
+            "statement": "当前数据库无历史dm_script数据，不做历史兼容回填，新字段直接按新必填规则运行。",
+            "acceptance": [
+              "迁移从空表创建后可创建符合新字段的记录"
+            ],
+            "priority": "must",
+            "source": "用户消息：目前数据库没有历史数据",
+            "counterexample": [
+              "为历史数据写入空程序类型仍成功"
+            ]
+          }
+        ],
+        "invariants": [
+          "单租户，每次查询和写入绑定tenant_id与当前项目",
+          "Flyway只追加，不修改已发布脚本",
+          "业务关联统一使用(project_id, system_code)",
+          "doc_code由服务端生成且不可修改",
+          "页面遵循design-h5与统一状态组件",
+          "当前数据库无历史dm_script数据，不需要历史兼容迁移"
+        ],
+        "constraints": [
+          "程序类型编码必须来自参数管理DM_PROGRAM_TYPE",
+          "系统编号必须是当前项目enabled=1的dm_component",
+          "单个文件大小上限50MB",
+          "不得绕过服务契约直接写其他模块数据表",
+          "普通任务不进行包名或目录重构"
+        ],
+        "non_goals": [
+          "不做程序包版本历史或增量比对",
+          "不改参数管理实现、公共附件表结构或全局项目切换器",
+          "不新增独立dm_program_type业务字典表",
+          "不迁移历史业务数据"
+        ],
+        "selected_approach": {
+          "name": "专用ProgramService/Controller/RecycleBinSource + dm_script加列 + 参数管理",
+          "reason": "与专题材料、投产演练一致，字段、多附件、回收站和审计边界清晰",
+          "alternatives": [
+            {
+              "name": "继续扩展通用ContentFileAssetService/AssetListView",
+              "rejected_because": "无法表达程序类型、说明、多附件编辑和程序专属审计，通用组件会过度膨胀"
+            },
+            {
+              "name": "新建独立dm_program表",
+              "rejected_because": "dm_script已是程序内容表并接入现有附件和回收站，应保留类型语义"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "dm_script",
+              "dm_content_attachment",
+              "dm_operation_log",
+              "参数管理码值DM_PROGRAM_TYPE",
+              "ProgramService/ProgramController/ProgramRecycleBinSource",
+              "数据迁移前端迁移程序页面与API"
+            ],
+            "outside": [
+              "投产模块",
+              "系统管理参数实现",
+              "全局项目切换器",
+              "公共附件表结构",
+              "其他数据迁移内容类型"
+            ]
+          },
+          "components": [
+            {
+              "name": "ProgramService",
+              "responsibility": "程序包CRUD、筛选、码值与系统校验、多附件绑定、下载打包、审计、回收站SPI",
+              "depends_on": [
+                "JdbcTemplate",
+                "ContentAttachmentService",
+                "DataMigrationCodeValueService",
+                "DataMigrationPermissionService",
+                "ProjectComponentService"
+              ]
+            },
+            {
+              "name": "ProgramController",
+              "responsibility": "/api/data-migration/programs路由与RBAC",
+              "depends_on": [
+                "ProgramService"
+              ]
+            },
+            {
+              "name": "ProgramRecycleBinSource",
+              "responsibility": "统一回收站认领SCRIPT",
+              "depends_on": [
+                "ProgramService"
+              ]
+            },
+            {
+              "name": "ProgramsPage.vue",
+              "responsibility": "列表、筛选、抽屉表单、多文件上传、下载、编辑、删除",
+              "depends_on": [
+                "data-migration api",
+                "UiToolbar",
+                "UiDataTable",
+                "UiFormDrawer"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET /api/data-migration/programs",
+              "producer": "ProgramController",
+              "consumers": [
+                "ProgramsPage.vue"
+              ],
+              "contract": "项目内分页筛选，返回程序类型/系统编号/程序包字段"
+            },
+            {
+              "name": "POST /api/data-migration/programs",
+              "producer": "ProgramController",
+              "consumers": [
+                "ProgramsPage.vue"
+              ],
+              "contract": "必填校验、多附件绑定、创建成功返回详情"
+            },
+            {
+              "name": "PUT /api/data-migration/programs/{id}",
+              "producer": "ProgramController",
+              "consumers": [
+                "ProgramsPage.vue"
+              ],
+              "contract": "更新元数据与附件，不可改项目与doc_code"
+            },
+            {
+              "name": "GET /api/data-migration/programs/{id}/download-all",
+              "producer": "ProgramController",
+              "consumers": [
+                "ProgramsPage.vue"
+              ],
+              "contract": "返回当前记录全部附件打包ZIP流"
+            },
+            {
+              "name": "GET /api/data-migration/recycle-bin",
+              "producer": "ContentRecycleBinController",
+              "consumers": [
+                "RecycleBinPage.vue"
+              ],
+              "contract": "SCRIPT通过ProgramRecycleBinSource接入统一回收站"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "当前项目",
+              "transitions": [
+                "加载参数管理类型",
+                "加载启用组件选项"
+              ],
+              "output": "筛选与表单可选值"
+            },
+            {
+              "input": "新增表单",
+              "transitions": [
+                "上传临时附件",
+                "ProgramService create生成SCR编号并绑定多附件",
+                "写审计"
+              ],
+              "output": "程序包详情"
+            },
+            {
+              "input": "编辑表单",
+              "transitions": [
+                "读取记录归属",
+                "更新元数据",
+                "增量维护附件"
+              ],
+              "output": "更新后的程序包"
+            },
+            {
+              "input": "下载全部",
+              "transitions": [
+                "读取活动附件",
+                "生成ZIP流"
+              ],
+              "output": "浏览器保存打包文件"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "必填缺失或编码无效",
+            "behavior": "返回可读中文400",
+            "recovery": "前端展示字段错误并允许重试"
+          },
+          {
+            "condition": "越权或项目外",
+            "behavior": "403/项目守卫拒绝",
+            "recovery": "前端无权限状态"
+          },
+          {
+            "condition": "编号冲突或恢复冲突",
+            "behavior": "409并提示刷新",
+            "recovery": "刷新后重试"
+          },
+          {
+            "condition": "打包附件读取失败",
+            "behavior": "返回明确错误不产空ZIP",
+            "recovery": "提示单个附件下载"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "服务端RBAC",
+            "项目守卫",
+            "实体授权",
+            "附件归属校验",
+            "操作审计"
+          ],
+          "performance": [
+            "系统选项按项目一次返回并本地筛选",
+            "列表服务端分页并复用项目索引"
+          ],
+          "compatibility": [
+            "ContentAssetTables保留SCRIPT映射供看板/历史",
+            "新专用链路不重复认领回收站"
+          ],
+          "operations": [
+            "新增Flyway幂等",
+            "INSERT IGNORE不覆盖参数管理",
+            "应用回退保留表和附件"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R6",
+              "R7"
+            ],
+            "signal": "单测覆盖必填、系统、附件、回收站和权限",
+            "method": "ProgramServiceTest与RecycleBinSourceTest"
+          },
+          {
+            "requirement_ids": [
+              "R2"
+            ],
+            "signal": "参数选项和迁移测试通过",
+            "method": "码值服务测试和Flyway MySQL测试"
+          },
+          {
+            "requirement_ids": [
+              "R4",
+              "R8"
+            ],
+            "signal": "前端构建和浏览器验收无报错无横向溢出",
+            "method": "npm build + Playwright桌面/移动视口"
+          },
+          {
+            "requirement_ids": [
+              "R9"
+            ],
+            "signal": "模块测试、范围检查、构建通过",
+            "method": "mvn -pl :ccb-data-migration -am test + check-all-governance + npm build"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "当前数据库没有历史dm_script数据",
+            "basis": "用户消息：目前数据库没有历史数据",
+            "falsifier": "目标环境存在旧dm_script活动记录且无法按新必填规则写入"
+          },
+          {
+            "text": "统一回收站继续使用SCRIPT作为内容类型标识",
+            "basis": "现有RecycleBinPage对SCRIPT显示迁移程序",
+            "falsifier": "用户要求改为PROGRAM新内容类型"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "一个程序包记录可绑定多个≤50MB源文件",
+            "reason": "满足支持多文件上传且下载提供单文件与打包",
+            "source": "用户选择方案B"
+          },
+          {
+            "id": "D2",
+            "decision": "程序类型、系统编号、程序包名称必填，说明选填",
+            "reason": "功能说明明确必填与选填",
+            "source": "用户需求文本"
+          },
+          {
+            "id": "D3",
+            "decision": "程序类型使用DM_PROGRAM_TYPE参数管理预置迁出/迁入",
+            "reason": "项目统一参数管理模式",
+            "source": "用户需求文本"
+          },
+          {
+            "id": "D4",
+            "decision": "当前无历史数据，不做旧数据兼容回填",
+            "reason": "用户确认数据库无历史数据",
+            "source": "用户本轮确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "多附件与回收站耦合改动影响SCRIPT场景",
+            "impact": "回收站或看板可能回归",
+            "mitigation": "先摘除通用认领再实现专用来源，回归测试覆盖"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认方案B一条记录多文件且下载支持单文件/打包；确认当前库无历史数据；确认本设计无歧义后落盘",
+          "confirmed_at": "2026-09-05T21:30:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-05-data-migration-program-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只修改数据迁移模块、追加Flyway V185、数据迁移前端API/页面及同前缀文档账本",
+          "不修改已发布迁移、公共附件表结构和全局项目切换器",
+          "程序类型仅来自参数管理DM_PROGRAM_TYPE，系统编号仅当前项目enabled组件",
+          "单文件≤50MB，新增至少一个源文件",
+          "doc_code不可改，写操作强制项目隔离/RBAC/审计",
+          "页面遵循design-h5和统一组件"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_program_domain.sql",
+            "status": "candidate-new",
+            "responsibility": "dm_script加列与DM_PROGRAM_TYPE参数种子",
+            "evidence": "design R2/R9"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+            "status": "existing",
+            "responsibility": "注册DM_PROGRAM_TYPE码值类别",
+            "evidence": "现有码值服务"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java",
+            "status": "candidate-new",
+            "responsibility": "程序包CRUD、多附件、回收站、下载",
+            "evidence": "design架构"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProgramController.java",
+            "status": "candidate-new",
+            "responsibility": "programs路由与RBAC",
+            "evidence": "design接口"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRecycleBinSource.java",
+            "status": "candidate-new",
+            "responsibility": "SCRIPT统一回收站认领",
+            "evidence": "design R6"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+            "status": "existing",
+            "responsibility": "MANAGED_TYPES移除SCRIPT",
+            "evidence": "T3"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+            "status": "existing",
+            "responsibility": "移除programs/SCRIPT映射",
+            "evidence": "T3"
+          },
+          {
+            "path": "web/src/api/data-migration.ts",
+            "status": "existing",
+            "responsibility": "programs专属API与方法",
+            "evidence": "T4"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/ProgramsPage.vue",
+            "status": "existing",
+            "responsibility": "独立迁移程序页面与多文件上传",
+            "evidence": "T4"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "V185迁移、DM_PROGRAM_TYPE参数种子和迁移测试",
+            "requirement_ids": [
+              "R2",
+              "R9"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "当前最高迁移为V184（事实：构建日志schema ccb_platform=184）"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_program_domain.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "DataMigrationCodeValueService",
+                "sys_dict_type",
+                "sys_config"
+              ],
+              "produces": [
+                "dm_script.program_type/program_description",
+                "DM_PROGRAM_TYPE options"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "编写V185含幂等类别/配置与dm_script加列",
+                "command": null,
+                "expected": "SQL可幂等执行",
+                "evidence": "migration文件"
+              },
+              {
+                "id": "T1-S2",
+                "action": "添加DM_PROGRAM_TYPE常量并加入ALLOWED_CATEGORIES",
+                "command": null,
+                "expected": "编译通过",
+                "evidence": "git diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "跑MySQL迁移测试",
+                "command": "mvn -q -pl :ccb-data-migration -am -Dtest=DataMigrationProgramMigrationMySqlTest test",
+                "expected": "0失败",
+                "evidence": "surefire报告"
+              }
+            ],
+            "acceptance_checks": [
+              "dm_script两列存在",
+              "DM_PROGRAM_TYPE两配置存在",
+              "Flyway clean+migrate成功"
+            ],
+            "risks": [
+              "ID冲突",
+              "真实业务行无程序类型"
+            ],
+            "rollback": "未发布迁移可移除，删除测试断言",
+            "stop_conditions": [
+              "迁移容器失败",
+              "真实数据需回填却无回填规则"
+            ],
+            "escalation_conditions": [
+              "发现dm_script有真实业务行需要补录"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "ProgramService完整实现",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R5",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "ReleaseDrillService是参考模板（事实：现有Service）",
+              "ProjectComponentService.getSystemOptions可复用（事实：接口存在）"
+            ],
+            "files": {
+              "create": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "JdbcTemplate",
+                "ContentAttachmentService",
+                "DataMigrationCodeValueService",
+                "DataMigrationPermissionService",
+                "ContentDocCodeGenerator",
+                "ProjectComponentService"
+              ],
+              "produces": [
+                "ProgramService字面方法集"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "实现list/create/update/detail/download/listAttachments/recycle",
+                "command": null,
+                "expected": "方法与ReleaseDrillService对齐",
+                "evidence": "ProgramService.java"
+              },
+              {
+                "id": "T2-S2",
+                "action": "实现多附件创建编辑与打包下载",
+                "command": null,
+                "expected": "sort_order递增，ZIP输出正确",
+                "evidence": "单测断言"
+              },
+              {
+                "id": "T2-S3",
+                "action": "运行ProgramServiceTest",
+                "command": "mvn -q -pl :ccb-data-migration -am -Dtest=ProgramServiceTest test",
+                "expected": "BUILD SUCCESS",
+                "evidence": "surefire"
+              }
+            ],
+            "acceptance_checks": [
+              "必填和50MB校验",
+              "系统启用校验",
+              "编辑保留/增删附件",
+              "回收站四方法"
+            ],
+            "risks": [
+              "多附件和附件回收状态耦合"
+            ],
+            "rollback": "删除未引用Service",
+            "stop_conditions": [
+              "附件原子性无法保证"
+            ],
+            "escalation_conditions": [
+              "公共附件能力不支持按列表批量恢复或清理"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "ProgramController、RecycleBinSource并从通用链路摘除SCRIPT",
+            "requirement_ids": [
+              "R5",
+              "R6",
+              "R7",
+              "R9"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "ContentRecycleBinService根据RecycleBinSource supports注册（现有代码）",
+              "ContentAssetRecycleBinSource基于MANAGED_TYPES生成（现有代码）"
+            ],
+            "files": {
+              "create": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProgramController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRecycleBinSource.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java"
+              ],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "ProgramService",
+                "ProjectComponentService.getSystemOptions"
+              ],
+              "produces": [
+                "/api/data-migration/programs/**",
+                "SCRIPT由ProgramRecycleBinSource认领"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "新建Controller全部端点",
+                "command": null,
+                "expected": "路由权限齐全",
+                "evidence": "Controller文件"
+              },
+              {
+                "id": "T3-S2",
+                "action": "新建RecycleBinSource",
+                "command": null,
+                "expected": "supports=SCRIPT",
+                "evidence": "Source文件"
+              },
+              {
+                "id": "T3-S3",
+                "action": "摘除通用SCRIPT",
+                "command": null,
+                "expected": "MANAGED_TYPES与Controller映射不含SCRIPT",
+                "evidence": "diff"
+              },
+              {
+                "id": "T3-S4",
+                "action": "跑后端测试",
+                "command": "mvn -q -pl :ccb-data-migration -am test",
+                "expected": "BUILD SUCCESS",
+                "evidence": "surefire"
+              }
+            ],
+            "acceptance_checks": [
+              "匿名401",
+              "只读可读",
+              "无权限写403",
+              "回收站无重复认领"
+            ],
+            "risks": [
+              "其他页面仍依赖通用programs端点"
+            ],
+            "rollback": "恢复SCRIPT到通用链路并删除新Controller",
+            "stop_conditions": [
+              "ContentRecycleBinService重复认领启动失败"
+            ],
+            "escalation_conditions": [
+              "发现其他调用方依赖通用SCRIPT接口"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "前端API和ProgramsPage多文件交互",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4",
+              "R5",
+              "R8"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "ReleaseDrillsPage为现有参考页面",
+              "系统选项需浏览器内筛选（用户此前确认）"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/ProgramsPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T3 programs REST",
+                "平台附件上传"
+              ],
+              "produces": [
+                "ProgramsPage.vue完整页面"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "扩展data-migration.ts programs API",
+                "command": null,
+                "expected": "TypeScript方法齐全",
+                "evidence": "api文件"
+              },
+              {
+                "id": "T4-S2",
+                "action": "重写ProgramsPage包含筛选、表单、多文件、下载",
+                "command": null,
+                "expected": "页面可编译",
+                "evidence": "vue文件"
+              },
+              {
+                "id": "T4-S3",
+                "action": "前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "构建成功",
+                "evidence": "web/dist"
+              }
+            ],
+            "acceptance_checks": [
+              "类型/名称/系统筛选",
+              "系统本地筛选",
+              "多文件上传",
+              "单个+打包下载",
+              "删除/编辑"
+            ],
+            "risks": [
+              "大文件上传交互"
+            ],
+            "rollback": "恢复旧AssetListView",
+            "stop_conditions": [
+              "浏览器无法选择多个文件"
+            ],
+            "escalation_conditions": [
+              "需要新增后端契约字段或路由变更时升级"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "全量回归、范围检查和浏览器验收",
+            "requirement_ids": [
+              "R6",
+              "R8",
+              "R9",
+              "R10"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "input_facts": [
+              "design R6要求回收站唯一认领",
+              "design-h5要求移动端无横向滚动"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-convergence.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T4结果"
+              ],
+              "produces": [
+                "execution/observation/convergence证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "后端module test",
+                "command": "mvn -q -pl :ccb-data-migration -am test",
+                "expected": "BUILD SUCCESS",
+                "evidence": "surefire"
+              },
+              {
+                "id": "T5-S2",
+                "action": "治理与范围检查",
+                "command": "node scripts/check-all-governance.mjs",
+                "expected": "通过",
+                "evidence": "退出码0"
+              },
+              {
+                "id": "T5-S3",
+                "action": "编写并运行浏览器验收脚本 /tmp/program_acceptance_playwright.mjs，覆盖桌面1280x800和375/390/430视口",
+                "command": "NODE_PATH=web/node_modules node /tmp/program_acceptance_playwright.mjs",
+                "expected": "无错误无横向溢出",
+                "evidence": "截图与console"
+              },
+              {
+                "id": "T5-S4",
+                "action": "写convergence",
+                "command": null,
+                "expected": "阶段可收敛",
+                "evidence": "convergence.json"
+              }
+            ],
+            "acceptance_checks": [
+              "0失败",
+              "范围无越界",
+              "浏览器无4xx/5xx",
+              "移动无溢出"
+            ],
+            "risks": [
+              "本地数据/权限依赖"
+            ],
+            "rollback": "应用回退保留表与附件",
+            "stop_conditions": [
+              "任一验收失败未修复"
+            ],
+            "escalation_conditions": [
+              "需要生产/测试环境数据才能继续时升级"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "数据库和参数类别是Service依赖"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Controller依赖Service"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "前端依赖后端契约"
+          },
+          {
+            "from": "T1",
+            "to": "T5",
+            "reason": "T5集成包含T1验证"
+          },
+          {
+            "from": "T2",
+            "to": "T5",
+            "reason": "T5集成包含T2验证"
+          },
+          {
+            "from": "T3",
+            "to": "T5",
+            "reason": "T5集成包含T3验证"
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "T5浏览器验收依赖T4页面"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -q -pl :ccb-data-migration -am -Dtest=DataMigrationProgramMigrationMySqlTest test",
+            "expected": "BUILD SUCCESS"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "mvn -q -pl :ccb-data-migration -am test",
+            "expected": "BUILD SUCCESS"
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "构建成功"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T4",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R9",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T5"
+            ]
+          },
+          {
+            "requirement_id": "R10",
+            "task_ids": [
+              "T1",
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认开发阶段无历史数据风险，确认T3可直接实施并批准计划",
+          "confirmed_at": "2026-09-05T22:30:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "dm_script",
+          "dm_content_attachment(business_type=SCRIPT)",
+          "DM_PROGRAM_TYPE参数",
+          "ProgramsPage路由",
+          "内容回收站SCRIPT"
+        ],
+        "state_variable_candidates": [
+          "活动程序记录",
+          "程序附属活动附件",
+          "已删除记录及附件",
+          "程序类型参数启用集合",
+          "组件启用集合"
+        ],
+        "interface_candidates": [
+          "GET/POST/PUT/DELETE /api/data-migration/programs",
+          "options/types",
+          "options/systems",
+          "download/download-all",
+          "recycle-bin"
+        ],
+        "sensor_candidates": [
+          "ProgramServiceTest",
+          "ProgramRecycleBinSourceTest",
+          "Maven test",
+          "npm build",
+          "Playwright浏览器状态"
+        ],
+        "actuator_candidates": [
+          "ProgramService写操作",
+          "ProgramRecycleBinSource恢复/清理",
+          "前端表单与下载动作"
+        ],
+        "disturbance_candidates": [
+          "参数管理码值被停用",
+          "组件被停用或删除",
+          "附件临时文件被清理",
+          "加载旧进程代码"
+        ],
+        "delay_candidates": [
+          "附件上传响应",
+          "大文件ZIP组装",
+          "浏览器打包下载耗时"
+        ],
+        "assumptions": [
+          {
+            "text": "dm_script无历史数据",
+            "basis": "用户确认",
+            "falsifier": "某环境存在旧dm_script记录"
+          },
+          {
+            "text": "现有dm_content_attachment和ContentAttachmentService可按SCRIPT多文件工作",
+            "basis": "现有附件表与ReleaseDrill/Meeting复用模式",
+            "falsifier": "多文件批量恢复/清理缺少能力"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"系统管理参数管理\", \"dm_component组件清单\", \"平台附件能力\", \"现有ContentRecycleBinService\", \"现有ContentAssetRecycleBinSource\"], \"inside\": [\"dm_script\", \"dm_content_attachment(business_type=SCRIPT)\", \"DM_PROGRAM_TYPE参数\", \"ProgramService/ProgramController/ProgramRecycleBinSource\", \"ProgramsPage.vue\", \"内容回收站SCRIPT入口\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"未覆盖浏览器交互\"], \"id\": \"S1\", \"independence\": \"单元测试独立于浏览器\", \"method\": \"ProgramServiceTest\", \"target\": \"后端Service行为\"}",
+      "{\"blind_spots\": [\"不校验真实开发库\"], \"id\": \"S2\", \"independence\": \"独立容器\", \"method\": \"DataMigrationProgramMigrationMySqlTest\", \"target\": \"Flyway迁移/参数种子\"}",
+      "{\"blind_spots\": [\"只做方法级校验\"], \"id\": \"S3\", \"independence\": \"独立安全测试\", \"method\": \"ProgramControllerSecurityTest/ProgramRecycleBinSourceTest\", \"target\": \"RBAC和回收站认领\"}",
+      "{\"blind_spots\": [\"不验证运行行为\"], \"id\": \"S4\", \"independence\": \"独立编译器\", \"method\": \"npm --prefix web run build\", \"target\": \"前端构建\"}",
+      "{\"blind_spots\": [\"可能依赖本地开发库数据\"], \"id\": \"S5\", \"independence\": \"部分独立，运行同一开发环境\", \"method\": \"Playwright桌面/移动视口\", \"target\": \"真实浏览器行为\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"写SQL和注册码值类别\", \"authority\": \"T1任务包\", \"id\": \"A1\", \"impact_radius\": \"dm_script/参数管理\", \"rollback\": \"未发布迁移可移除\", \"target\": \"V185迁移与DM_PROGRAM_TYPE\"}",
+      "{\"action\": \"新增CRUD/附件/回收站方法\", \"authority\": \"T2任务包\", \"id\": \"A2\", \"impact_radius\": \"数据迁移后端\", \"rollback\": \"未引用时删除文件\", \"target\": \"ProgramService\"}",
+      "{\"action\": \"新增路由/来源，移除SCRIPT通用认领\", \"authority\": \"T3任务包\", \"id\": \"A3\", \"impact_radius\": \"迁移程序与统一回收站\", \"rollback\": \"恢复通用认领\", \"target\": \"ProgramController和回收站摘除\"}",
+      "{\"action\": \"重写页面和扩展API\", \"authority\": \"T4任务包\", \"id\": \"A4\", \"impact_radius\": \"迁移程序前端\", \"rollback\": \"恢复旧页面\", \"target\": \"ProgramsPage/API\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"新增/编辑被拒\", \"source\": \"参数管理停用程序类型\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"系统选项减少、历史只读\", \"source\": \"组件停用\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"可能影响迁移服务启动\", \"source\": \"开发库残留旧数据\"}",
+      "{\"controllable\": false, \"detectable\": false, \"effect\": \"临时附件丢失\", \"source\": \"平台附件清理\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"用户确认\", \"falsifier\": \"存在环境包含旧记录\", \"text\": \"dm_script无历史数据\"}",
+      "{\"evidence\": \"dm_content_attachment已有Meeting多附件模式\", \"falsifier\": \"批量恢复/清理能力不足\", \"text\": \"活动附件可多文件在SCRIPT类型复用\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "[\"S5\"]"
+      },
+      {
+        "requirement": "R9",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R10",
+        "sensor": "[\"S1\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "V185迁移、DM_PROGRAM_TYPE参数种子和迁移测试",
+      "requirements": [
+        "R2",
+        "R9"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "当前最高迁移为V184（事实：构建日志schema ccb_platform=184）"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V186__data_migration_program_domain.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationProgramMigrationMySqlTest.java"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"DataMigrationCodeValueService\", \"sys_dict_type\", \"sys_config\"]",
+        "produces: [\"dm_script.program_type/program_description\", \"DM_PROGRAM_TYPE options\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "编写V185含幂等类别/配置与dm_script加列",
+        "添加DM_PROGRAM_TYPE常量并加入ALLOWED_CATEGORIES",
+        "跑MySQL迁移测试"
+      ],
+      "acceptance": [
+        "dm_script两列存在",
+        "DM_PROGRAM_TYPE两配置存在",
+        "Flyway clean+migrate成功"
+      ],
+      "evidence_required": [
+        "migration文件",
+        "git diff",
+        "surefire报告"
+      ],
+      "rollback": "未发布迁移可移除，删除测试断言",
+      "stop_conditions": [
+        "迁移容器失败",
+        "真实数据需回填却无回填规则"
+      ],
+      "escalation_conditions": [
+        "发现dm_script有真实业务行需要补录"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T14:12:53+00:00",
+          "text": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-execution-T1.json"
+        }
+      ],
+      "updated_at": "2026-09-05T14:12:53+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "ProgramService完整实现",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ReleaseDrillService是参考模板（事实：现有Service）",
+        "ProjectComponentService.getSystemOptions可复用（事实：接口存在）"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"JdbcTemplate\", \"ContentAttachmentService\", \"DataMigrationCodeValueService\", \"DataMigrationPermissionService\", \"ContentDocCodeGenerator\", \"ProjectComponentService\"]",
+        "produces: [\"ProgramService字面方法集\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "实现list/create/update/detail/download/listAttachments/recycle",
+        "实现多附件创建编辑与打包下载",
+        "运行ProgramServiceTest"
+      ],
+      "acceptance": [
+        "必填和50MB校验",
+        "系统启用校验",
+        "编辑保留/增删附件",
+        "回收站四方法"
+      ],
+      "evidence_required": [
+        "ProgramService.java",
+        "单测断言",
+        "surefire"
+      ],
+      "rollback": "删除未引用Service",
+      "stop_conditions": [
+        "附件原子性无法保证"
+      ],
+      "escalation_conditions": [
+        "公共附件能力不支持按列表批量恢复或清理"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T14:12:53+00:00",
+          "text": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-execution-T2.json"
+        }
+      ],
+      "updated_at": "2026-09-05T14:12:53+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "ProgramController、RecycleBinSource并从通用链路摘除SCRIPT",
+      "requirements": [
+        "R5",
+        "R6",
+        "R7",
+        "R9"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "ContentRecycleBinService根据RecycleBinSource supports注册（现有代码）",
+        "ContentAssetRecycleBinSource基于MANAGED_TYPES生成（现有代码）"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProgramController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRecycleBinSource.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ProgramControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramRecycleBinSourceTest.java"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"ProgramService\", \"ProjectComponentService.getSystemOptions\"]",
+        "produces: [\"/api/data-migration/programs/**\", \"SCRIPT由ProgramRecycleBinSource认领\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "新建Controller全部端点",
+        "新建RecycleBinSource",
+        "摘除通用SCRIPT",
+        "跑后端测试"
+      ],
+      "acceptance": [
+        "匿名401",
+        "只读可读",
+        "无权限写403",
+        "回收站无重复认领"
+      ],
+      "evidence_required": [
+        "Controller文件",
+        "Source文件",
+        "diff",
+        "surefire"
+      ],
+      "rollback": "恢复SCRIPT到通用链路并删除新Controller",
+      "stop_conditions": [
+        "ContentRecycleBinService重复认领启动失败"
+      ],
+      "escalation_conditions": [
+        "发现其他调用方依赖通用SCRIPT接口"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T14:12:53+00:00",
+          "text": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-execution-T3.json"
+        }
+      ],
+      "updated_at": "2026-09-05T14:12:53+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "前端API和ProgramsPage多文件交互",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R8"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "ReleaseDrillsPage为现有参考页面",
+        "系统选项需浏览器内筛选（用户此前确认）"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/content/ProgramsPage.vue"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"T3 programs REST\", \"平台附件上传\"]",
+        "produces: [\"ProgramsPage.vue完整页面\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "扩展data-migration.ts programs API",
+        "重写ProgramsPage包含筛选、表单、多文件、下载",
+        "前端构建"
+      ],
+      "acceptance": [
+        "类型/名称/系统筛选",
+        "系统本地筛选",
+        "多文件上传",
+        "单个+打包下载",
+        "删除/编辑"
+      ],
+      "evidence_required": [
+        "api文件",
+        "vue文件",
+        "web/dist"
+      ],
+      "rollback": "恢复旧AssetListView",
+      "stop_conditions": [
+        "浏览器无法选择多个文件"
+      ],
+      "escalation_conditions": [
+        "需要新增后端契约字段或路由变更时升级"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T14:12:53+00:00",
+          "text": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-execution-T4.json"
+        }
+      ],
+      "updated_at": "2026-09-05T14:12:53+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "全量回归、范围检查和浏览器验收",
+      "requirements": [
+        "R6",
+        "R8",
+        "R9",
+        "R10"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "input_facts": [
+        "design R6要求回收站唯一认领",
+        "design-h5要求移动端无横向滚动"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-convergence.json"
+      ],
+      "invariants": [
+        "只在授权路径写入",
+        "不改已发布迁移",
+        "不扩大需求范围"
+      ],
+      "interface_contracts": [
+        "consumes: [\"T1-T4结果\"]",
+        "produces: [\"execution/observation/convergence证据\"]"
+      ],
+      "non_goals": [
+        "不重构无关模块"
+      ],
+      "action_bounds": [
+        "后端module test",
+        "治理与范围检查",
+        "编写并运行浏览器验收脚本 /tmp/program_acceptance_playwright.mjs，覆盖桌面1280x800和375/390/430视口",
+        "写convergence"
+      ],
+      "acceptance": [
+        "0失败",
+        "范围无越界",
+        "浏览器无4xx/5xx",
+        "移动无溢出"
+      ],
+      "evidence_required": [
+        "surefire",
+        "退出码0",
+        "截图与console",
+        "convergence.json"
+      ],
+      "rollback": "应用回退保留表与附件",
+      "stop_conditions": [
+        "任一验收失败未修复"
+      ],
+      "escalation_conditions": [
+        "需要生产/测试环境数据才能继续时升级"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-05T15:00:59+00:00",
+          "text": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-program-execution-T5.json"
+        }
+      ],
+      "updated_at": "2026-09-05T15:00:59+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "desktop-full-flow",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "/tmp/program_acceptance_result.json desktop created/edited/deleted/restored/downloadsZip true",
+      "recorded_at": "2026-09-05T15:02:52+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "mobile-three-viewports",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "/tmp/program_acceptance_result.json mobile widthOk all true",
+      "recorded_at": "2026-09-05T15:02:52+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "backend-module-regression",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "28 reports 130 cases 0 failures",
+      "recorded_at": "2026-09-05T15:02:52+00:00"
+    }
+  ]
+}

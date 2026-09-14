@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import PersonalTaskBoard from './components/PersonalTaskBoard.vue'
+import { getTaskAssignment, assignTask } from './planApi'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowLeft, Download, Plus, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import { loadPhysicalSubsystemOptions, loadResourceDeploymentUnitOptions } from './api'
 import * as XLSX from 'xlsx'
 import { computed as vueComputed, markRaw, onBeforeUnmount, ref as vueRef, shallowRef } from 'vue'
@@ -52,7 +56,7 @@ import {
   setTaskDependencies,
   startTask,
   suggestCancelCheckItem,
-  loadPlanUserOptions,
+  getNewTaskAssignment,
   updatePlanSchedule,
   updateTaskSchedule
 } from './planApi' 
@@ -75,12 +79,19 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const planId = Number(route.params.id)
 const canManage = computed(() => auth.hasPermission('architecture:plan:manage') || auth.hasPermission('architecture:manage'))
 
 const loading = ref(false)
 const loadError = ref('')
 const detail = ref<PlanDetailView | null>(null)
+const targetsWithoutDedicatedTasks = computed(() => {
+  if (!detail.value) return []
+  const tasks = detail.value.stages.flatMap(stage => stage.tasks).filter(task => !task.cancelled)
+  return detail.value.targets.filter(target => !target.removed && !tasks.some(task =>
+    task.targetType === target.targetType && task.targetId === target.targetId)).map(target => target.targetName)
+})
 const dashboard = ref<DashboardView | null>(null)
 const timeline = ref<TimelineView | null>(null)
 const suggestions = ref<SuggestionView[]>([])
@@ -106,35 +117,110 @@ const workOrderTypeLabels: Record<WorkOrderType, string> = {
   NETWORK_CERT: '证书工单', CRYPTO_POOL: '加密机入池（预留）'
 }
 
+const boardAll = ref(false)
+const boardLoading = ref(false)
+async function changeBoardScope(all: boolean) {
+  boardLoading.value = true
+  try { dashboard.value = await getPlanDashboard(planId, all); boardAll.value = all }
+  catch (error) { ElMessage.error(apiErrorMessage(error, '看板加载失败')) }
+  finally { boardLoading.value = false }
+}
+function openBoardTask(id: number) {
+  const task = detail.value?.stages.flatMap(stage => stage.tasks).find(task => task.id === id)
+  if (task) { currentTask.value = task; taskDrawerVisible.value = true }
+}
+const assignmentVisible = ref(false)
+const assignmentSaving = ref(false)
+const assignmentLoading = ref(false)
+const assignmentForm = reactive({ ownerUserId: null as number | null, participantUserIds: [] as number[], rowVersion: 0, reason: '' })
+const assignmentCandidates = ref<{ userId: number; displayName: string }[]>([])
+async function openAssignment() {
+  if (!currentTask.value) return
+  assignmentLoading.value = true
+  try {
+    const value = await getTaskAssignment(currentTask.value.id)
+    Object.assign(assignmentForm, value, { reason: '' })
+    assignmentCandidates.value = value.candidates
+    assignmentVisible.value = true
+  } catch (error) { ElMessage.error(apiErrorMessage(error, '加载任务分工失败')) }
+  finally { assignmentLoading.value = false }
+}
+function changeAssignmentOwner() {
+  if (assignmentForm.ownerUserId && !assignmentForm.participantUserIds.includes(assignmentForm.ownerUserId)) assignmentForm.participantUserIds.push(assignmentForm.ownerUserId)
+}
+async function saveAssignment() {
+  if (!currentTask.value || !assignmentForm.ownerUserId || !assignmentForm.reason.trim()) { ElMessage.warning('负责人和分派原因必填'); return }
+  assignmentSaving.value = true
+  try {
+    await assignTask(currentTask.value.id, assignmentForm)
+    assignmentVisible.value = false
+    ElMessage.success('任务分工已更新')
+    await loadAll()
+    const task = detail.value?.stages.flatMap(s => s.tasks).find(t => t.id === currentTask.value?.id)
+    if (task) currentTask.value = task
+  } catch (error) { ElMessage.error(apiErrorMessage(error, '任务分派失败，请刷新后重试')) }
+  finally { assignmentSaving.value = false }
+}
+
+let loadSequence = 0
 async function loadAll() {
+  if (!projectContext.currentRef) return
+  const sequence = ++loadSequence
+  const projectRef = projectContext.currentRef
+  const isCurrent = () => sequence === loadSequence && projectRef === projectContext.currentRef
   loading.value = true
   loadError.value = ''
   try {
-    detail.value = await getPlan(planId)
+    const loadedDetail = await getPlan(planId)
+    if (!isCurrent()) return
+    detail.value = loadedDetail
+    if (currentTask.value && !detail.value.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
+      currentTask.value = null
+      taskDrawerVisible.value = false
+    }
     if (openStages.value.length === 0 && detail.value.stages.length > 0) {
       openStages.value = [String(detail.value.stages[0].id)]
     }
-    dashboard.value = await getPlanDashboard(planId)
-    timeline.value = await getPlanTimeline(planId)
-    suggestions.value = await listPlanSuggestions(planId).catch(() => [])
+    const loadedDashboard = await getPlanDashboard(planId, boardAll.value)
+    if (!isCurrent()) return
+    dashboard.value = loadedDashboard
+    const loadedTimeline = await getPlanTimeline(planId)
+    if (!isCurrent()) return
+    timeline.value = loadedTimeline
+    const loadedSuggestions = await listPlanSuggestions(planId).catch(() => [])
+    if (!isCurrent()) return
+    suggestions.value = loadedSuggestions
     buildFlowchart()
     void nextTick(() => {
+      if (!isCurrent()) return
       flowInitialized.value = true
       window.setTimeout(() => {
+        if (!isCurrent()) return
         const { fitView } = useVueFlow()
         void fitView({ padding: 0.15 })
       }, 150)
     })
   } catch (error) {
-    loadError.value = apiErrorMessage(error, "操作失败")
+    if (isCurrent()) loadError.value = apiErrorMessage(error, "操作失败")
   } finally {
-    loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 
 onMounted(() => {
-  loadUserMap()
-  loadAll()
+  // 直达详情时项目上下文仍在初始化，不能抢先发送缺少项目的请求。
+  watch(() => projectContext.currentRef, projectRef => {
+    ++loadSequence
+    loading.value = false
+    detail.value = null
+    dashboard.value = null
+    timeline.value = null
+    suggestions.value = []
+    currentTask.value = null
+    taskDrawerVisible.value = false
+    loadError.value = ''
+    if (projectRef) void loadAll()
+  }, { immediate: true })
 })
 
 function isPlanOwner() {
@@ -143,7 +229,7 @@ function isPlanOwner() {
 }
 
 function isTaskExecutor(task: TaskDetailView) {
-  return auth.user?.id === task.ownerUserId || task.participantUserIds.includes(auth.user?.id ?? -1) || auth.hasPermission('architecture:manage')
+  return task.canExecute === true
 }
 
 // ---------- 计划级操作 ----------
@@ -307,34 +393,67 @@ async function doRestoreStage(stage: StageDetailView) {
 
 const taskVisible = ref(false)
 const taskForm = reactive({
-  stageId: 0, targetId: null as number | null, name: '', checkItemNames: '' as string
+  stageId: 0, targetId: null as number | null, name: '', checkItemNames: '' as string,
+  ownerUserId: null as number | null, participantUserIds: [] as number[]
 })
 
+const taskCandidates = ref<{ userId: number; displayName: string }[]>([])
+const taskAssignmentLoading = ref(false)
+const taskAssignmentError = ref('')
+const taskSaving = ref(false)
+let taskAssignmentRequest = 0
+async function loadNewTaskAssignment() {
+  const request = ++taskAssignmentRequest
+  taskAssignmentLoading.value = true
+  taskAssignmentError.value = ''
+  taskForm.ownerUserId = null
+  taskForm.participantUserIds = []
+  taskCandidates.value = []
+  try {
+    const result = await getNewTaskAssignment(planId, taskForm.targetId || null)
+    if (request !== taskAssignmentRequest) return
+    taskForm.ownerUserId = result.ownerUserId
+    taskForm.participantUserIds = result.participantUserIds
+    taskCandidates.value = result.candidates
+  } catch (error) {
+    if (request === taskAssignmentRequest) taskAssignmentError.value = apiErrorMessage(error, '默认分工加载失败，请重试')
+  } finally {
+    if (request === taskAssignmentRequest) taskAssignmentLoading.value = false
+  }
+}
+function includeNewTaskOwner() {
+  if (taskForm.ownerUserId && !taskForm.participantUserIds.includes(taskForm.ownerUserId))
+    taskForm.participantUserIds.push(taskForm.ownerUserId)
+}
 function openAddTask(stage: StageDetailView) {
   taskForm.stageId = stage.id
   taskForm.targetId = null
   taskForm.name = ''
   taskForm.checkItemNames = ''
   taskVisible.value = true
+  void loadNewTaskAssignment()
 }
 
 async function saveTask() {
+  if (taskSaving.value || taskAssignmentLoading.value || taskAssignmentError.value) return
+  if (!taskForm.ownerUserId) { ElMessage.warning('请选择具备参与资格的任务负责人'); return }
   const checkItems = taskForm.checkItemNames.split('\n').map(item => item.trim()).filter(Boolean)
   if (!taskForm.name.trim() || checkItems.length === 0) {
     ElMessage.warning('请填写任务名称与至少一个检查项（每行一个）')
     return
   }
+  taskSaving.value = true
   try {
     await addPlanTask(planId, {
       stageId: taskForm.stageId, name: taskForm.name.trim(), targetId: taskForm.targetId,
-      ownerUserId: detail.value?.plan.planOwnerUserId ?? 0, checkItemNames: checkItems
+      ownerUserId: taskForm.ownerUserId, participantUserIds: taskForm.participantUserIds, checkItemNames: checkItems
     })
     ElMessage.success('任务已新增')
     taskVisible.value = false
     await loadAll()
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, "操作失败"))
-  }
+  } finally { taskSaving.value = false }
 }
 
 async function doStartTask(task: TaskDetailView) {
@@ -407,7 +526,16 @@ function openTask(task: TaskDetailView, stage: StageDetailView) {
 async function refreshCurrentTask() {
   const plan = await getPlan(planId)
   detail.value = plan
+  // 执行结果同时影响看板和时间视图，不能只更新抽屉留下旧卡片。
+  dashboard.value = await getPlanDashboard(planId, boardAll.value)
+  timeline.value = await getPlanTimeline(planId)
+  buildFlowchart()
   if (currentTask.value) {
+    if (!plan.stages.some(s => s.tasks.some(t => t.id === currentTask.value?.id))) {
+      currentTask.value = null
+      taskDrawerVisible.value = false
+      return
+    }
     for (const stage of plan.stages) {
       const found = stage.tasks.find(task => task.id === currentTask.value?.id)
       if (found) {
@@ -693,29 +821,6 @@ async function onRejectSuggestion(suggestion: SuggestionView) {
 }
 
 // ---------- 看板/时间视图/报告 ----------
-const users = ref<Record<number, string>>({})
-
-async function loadUserMap() {
-  try {
-    let page = 1
-    while (page <= 5) {
-      const result = await loadPlanUserOptions('', 100)
-      for (const user of result.records) {
-        users.value[user.id] = user.displayName
-      }
-      if (page * 100 >= result.total || result.records.length === 0) break
-      page += 1
-    }
-  } catch {
-    // 映射加载失败不阻断页面，仅显示原始 id
-  }
-}
-
-function userName(userId: number | null | undefined) {
-  if (!userId) return '—'
-  return users.value[userId] || String(userId)
-}
-
 const reportLoading = ref(false)
 const reportData = ref<Awaited<ReturnType<typeof getPlanReport>> | null>(null)
 
@@ -977,7 +1082,9 @@ function formatRange(start: string | null, end: string | null) {
       </template>
     </UiPageHeader>
 
-    <div v-if="loadError" class="architecture-page__error">
+    <el-skeleton v-if="!detail && (loading || projectContext.loading)" :rows="6" animated />
+    <el-alert v-else-if="!projectContext.currentRef" :title="projectContext.error || '请先选择项目'" type="warning" :closable="false" />
+    <div v-else-if="loadError" class="architecture-page__error">
       <el-result icon="error" :title="loadError">
         <template #extra><el-button type="primary" @click="loadAll">重试</el-button></template>
       </el-result>
@@ -1000,8 +1107,8 @@ function formatRange(start: string | null, end: string | null) {
         </header>
         <div class="plan-summary-context">
           <div class="plan-summary-context__progress">
-            <small>整体进度</small>
-            <strong>{{ detail.progress ?? 0 }}%</strong>
+            <small>已配置任务进度</small>
+            <strong>{{ detail.progress == null ? '暂无可统计检查项' : detail.progress + '%' }}</strong>
             <el-progress :percentage="detail.progress ?? 0" :stroke-width="6" :show-text="false" />
           </div>
           <div>
@@ -1041,6 +1148,8 @@ function formatRange(start: string | null, end: string | null) {
         </div>
       </div>
 
+      <el-alert v-if="!detail.stages.some(s => s.tasks.length)" title="待补充任务" description="当前计划尚未配置任务，保持未开始。请由有维护权限的人员在执行明细中新增任务；如无环节，请先新增环节。" type="warning" :closable="false" />
+      <el-alert v-else-if="targetsWithoutDedicatedTasks.length" :title="`以下目标没有专属任务：${targetsWithoutDedicatedTasks.join('、')}`" description="请确认公共任务是否覆盖这些目标，必要时补充任务。当前状态及进度反映已配置任务，不代表这些目标已完成搭建。" type="warning" :closable="false" />
       <el-tabs v-model="activeTab">
         <el-tab-pane label="执行视图" name="execution">
           <div class="plan-exec-editor">
@@ -1163,22 +1272,8 @@ function formatRange(start: string | null, end: string | null) {
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="看板" name="dashboard">
-          <div v-if="dashboard" class="plan-board">
-            <div v-for="stage in dashboard.stages" :key="stage.id" class="plan-board__stage">
-              <div class="plan-board__stage-header">
-                <span>{{ stage.name }}</span>
-                <span class="plan-board__stage-progress">{{ stage.progress ?? 0 }}%</span>
-              </div>
-              <div v-for="task in stage.tasks" :key="task.id" class="plan-board__task">
-                <div class="plan-board__task-name">{{ task.name }}</div>
-                <div class="plan-board__task-meta">
-                  <el-tag size="small" :type="task.hasBlocked ? 'danger' : task.overdue ? 'danger' : 'info'">{{ taskStatusLabels[task.status as TaskStatus] }}</el-tag>
-                  <span>{{ task.progress ?? 0 }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <el-tab-pane label="敏捷看板" name="dashboard">
+          <PersonalTaskBoard v-if="dashboard" :dashboard="dashboard" :all="boardAll" :manager="isPlanOwner()" :loading="boardLoading" @scope="changeBoardScope" @open="openBoardTask" />
         </el-tab-pane>
 
         <el-tab-pane label="时间视图" name="timeline">
@@ -1195,8 +1290,8 @@ function formatRange(start: string | null, end: string | null) {
             <el-table-column prop="occurredAt" label="时间" width="170" />
             <el-table-column prop="objectType" label="对象类型" width="110" />
             <el-table-column prop="eventType" label="事件" width="110" />
-            <el-table-column label="操作人" width="120">
-              <template #default="{ row }">{{ userName(row.operatorUserId) }}</template>
+            <el-table-column label="操作人" min-width="130">
+              <template #default="{ row }"><UiUserIdentity :user-id="row.operatorUserId" variant="compact" /></template>
             </el-table-column>
             <el-table-column prop="reason" label="原因/说明" min-width="180" show-overflow-tooltip />
             <el-table-column label="操作" width="110">
@@ -1257,13 +1352,26 @@ function formatRange(start: string | null, end: string | null) {
     </el-dialog>
 
     <!-- 新增任务 -->
-    <el-dialog v-model="taskVisible" title="新增任务" width="520px">
-      <el-form label-width="100px">
+    <el-dialog v-model="taskVisible" title="新增任务" width="min(520px, 96vw)" :close-on-click-modal="false" :close-on-press-escape="!taskSaving" :show-close="!taskSaving">
+      <el-form label-position="top" :disabled="taskSaving">
         <el-form-item label="任务名称" required><el-input v-model="taskForm.name" maxlength="300" /></el-form-item>
         <el-form-item label="目标">
-          <el-select v-model="taskForm.targetId" clearable filterable placeholder="计划级任务可不选" style="width: 100%">
+          <el-select v-model="taskForm.targetId" clearable filterable @change="loadNewTaskAssignment" placeholder="计划级任务可不选" style="width: 100%">
             <el-option v-for="target in detail?.targets.filter(item => !item.removed)" :key="target.id"
                        :label="`${target.targetType === 'PHYSICAL_SUBSYSTEM' ? '物理子系统' : '部署单元'}：${target.targetName}`" :value="target.targetId" />
+          </el-select>
+        </el-form-item>
+        <el-alert v-if="taskAssignmentError" :title="taskAssignmentError" type="error" :closable="false" />
+        <el-button v-if="taskAssignmentError" link type="primary" @click="loadNewTaskAssignment">重试加载分工</el-button>
+        <el-alert v-else-if="!taskAssignmentLoading && !taskForm.ownerUserId" title="默认负责人不具备参与资格，请选择有效成员；没有候选时请先完善项目或系统参与人员。" type="warning" :closable="false" />
+        <el-form-item label="任务负责人" required>
+          <el-select v-model="taskForm.ownerUserId" :loading="taskAssignmentLoading" :disabled="taskAssignmentLoading || !!taskAssignmentError" filterable placeholder="选择任务负责人" style="width:100%" @change="includeNewTaskOwner">
+            <el-option v-for="person in taskCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="任务参与人员">
+          <el-select v-model="taskForm.participantUserIds" multiple filterable :disabled="taskAssignmentLoading || !!taskAssignmentError" style="width:100%">
+            <el-option v-for="person in taskCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" :disabled="person.userId === taskForm.ownerUserId" />
           </el-select>
         </el-form-item>
         <el-form-item label="检查项" required>
@@ -1271,14 +1379,29 @@ function formatRange(start: string | null, end: string | null) {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="taskVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveTask">保存</el-button>
+        <el-button :disabled="taskSaving" @click="taskVisible = false">取消</el-button>
+        <el-button type="primary" :loading="taskSaving" :disabled="taskAssignmentLoading || !!taskAssignmentError || !taskForm.ownerUserId" @click="saveTask">保存</el-button>
       </template>
     </el-dialog>
 
     <!-- 任务抽屉 -->
+    <el-dialog v-model="assignmentVisible" title="任务分工" width="min(520px, 96vw)" :close-on-click-modal="false" :close-on-press-escape="!assignmentSaving" :show-close="!assignmentSaving">
+      <p role="status">负责人自动参与；更换负责人后旧负责人默认保留，可手工移除。失效人员需移交或移除。</p>
+      <el-form label-position="top" :disabled="assignmentSaving">
+        <el-form-item label="任务负责人" required><el-select v-model="assignmentForm.ownerUserId" filterable style="width:100%" @change="changeAssignmentOwner">
+          <el-option v-for="person in assignmentCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" />
+        </el-select></el-form-item>
+        <el-form-item label="参与人员"><el-select v-model="assignmentForm.participantUserIds" class="plan-assignment-participants" multiple filterable style="width:100%">
+          <el-option v-for="person in assignmentCandidates" :key="person.userId" :value="person.userId" :label="person.displayName" :disabled="person.userId === assignmentForm.ownerUserId" />
+        </el-select></el-form-item>
+        <el-form-item label="分派原因" required><el-input v-model="assignmentForm.reason" type="textarea" maxlength="1000" /></el-form-item>
+      </el-form>
+      <template #footer><el-button :disabled="assignmentSaving" @click="assignmentVisible=false">取消</el-button><el-button type="primary" :loading="assignmentSaving" @click="saveAssignment">保存分工</el-button></template>
+    </el-dialog>
+
     <el-drawer v-model="taskDrawerVisible" size="min(760px, 96vw)" :title="currentTask ? `任务 · ${currentTask.name}` : ''" destroy-on-close>
       <template v-if="currentTask">
+        <p v-if="!isTaskExecutor(currentTask)" role="status">当前任务仅可查看或按管理权限维护；只有有效任务参与人员可以执行任务和检查项。</p>
         <el-descriptions :column="2" border size="small" class="plan-task-desc">
           <el-descriptions-item label="状态">
             <UiStatusTag :value="currentTask.status" :labels="taskStatusLabels" :tone="taskStatusTones[currentTask.status]" />
@@ -1287,7 +1410,7 @@ function formatRange(start: string | null, end: string | null) {
           </el-descriptions-item>
           <el-descriptions-item label="目标">{{ currentTask.targetName ?? '计划级' }}</el-descriptions-item>
           <el-descriptions-item label="进度">{{ currentTask.progress ?? 0 }}%</el-descriptions-item>
-          <el-descriptions-item label="责任人">{{ currentTask.ownerUserId }}</el-descriptions-item>
+          <el-descriptions-item label="责任人"><UiUserIdentity :user-id="currentTask.ownerUserId" variant="standard" /></el-descriptions-item>
           <el-descriptions-item label="计划时间">{{ currentTask.plannedStart ?? '—' }} ~ {{ currentTask.plannedEnd ?? '—' }}</el-descriptions-item>
           <el-descriptions-item label="实际时间">{{ currentTask.actualStart ?? '—' }} ~ {{ currentTask.actualEnd ?? '—' }}</el-descriptions-item>
         </el-descriptions>
@@ -1299,6 +1422,7 @@ function formatRange(start: string | null, end: string | null) {
             <el-button v-if="isTaskExecutor(currentTask) && currentTask.status !== 'NOT_STARTED' && currentTask.status !== 'COMPLETED' && currentTask.status !== 'CANCELLED'" link type="primary" @click="openDependency">前置依赖</el-button>
             <el-button v-if="isTaskExecutor(currentTask) && currentTask.status !== 'COMPLETED' && currentTask.status !== 'CANCELLED'" link type="primary" @click="openBlock">登记阻塞</el-button>
             <el-button v-if="isTaskExecutor(currentTask)" link type="primary" @click="openWorkOrder">关联工单</el-button>
+            <el-button v-if="isPlanOwner()" link type="primary" :loading="assignmentLoading" @click="openAssignment">任务分工</el-button>
             <el-button v-if="isTaskExecutor(currentTask) || isPlanOwner()" link type="primary" @click="openTaskSchedule">任务时间</el-button>
           </span>
         </div>
@@ -1317,7 +1441,7 @@ function formatRange(start: string | null, end: string | null) {
             </header>
             <p v-if="item.guide" class="plan-detail-check__guide">{{ item.guide }}</p>
             <dl v-if="item.completedBy || item.completedAt || item.cancelReason" class="plan-detail-check__meta">
-              <div v-if="item.completedBy"><dt>完成人</dt><dd>{{ userName(item.completedBy) }}</dd></div>
+              <div v-if="item.completedBy"><dt>完成人</dt><dd><UiUserIdentity :user-id="item.completedBy" variant="compact" /></dd></div>
               <div v-if="item.completedAt"><dt>完成时间</dt><dd>{{ item.completedAt?.replace('T', ' ').slice(0, 19) }}</dd></div>
               <div v-if="item.cancelReason"><dt>取消原因</dt><dd>{{ item.cancelReason }}</dd></div>
             </dl>
@@ -1375,7 +1499,7 @@ function formatRange(start: string | null, end: string | null) {
         <el-table :data="currentTask.events" size="small">
           <el-table-column prop="occurredAt" label="时间" width="170" />
           <el-table-column prop="eventType" label="事件" width="110" />
-          <el-table-column prop="operatorUserId" label="操作人" width="90" />
+          <el-table-column label="操作人" min-width="130"><template #default="{ row }"><UiUserIdentity :user-id="row.operatorUserId" variant="compact" /></template></el-table-column>
           <el-table-column prop="reason" label="原因" min-width="150" show-overflow-tooltip />
         </el-table>
       </template>
@@ -1448,6 +1572,12 @@ function formatRange(start: string | null, end: string | null) {
 </template>
 
 <style scoped>
+.plan-assignment-participants :deep(.el-tag) {
+  color: var(--text);
+  background: var(--panel-muted);
+  border-color: var(--line);
+}
+
 .plan-summary-panel {
   margin-bottom: 14px;
   overflow: hidden;

@@ -1,0 +1,3069 @@
+{
+  "schema_version": 4,
+  "revision": 36,
+  "created_at": "2026-09-07T08:58:20+00:00",
+  "updated_at": "2026-09-08T01:20:05+00:00",
+  "mode": "high-assurance",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户在落盘设计修订1及后端、迁移、顶部栏范围复核请求后回复确认；计划确认=用户在实施计划修订1链接后回复确认，批准进入开发",
+      "recorded_at": "2026-09-07T08:58:20+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "approved-baseline-reviewed",
+      "recorded_at": "2026-09-07T08:58:24+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model-ready",
+      "recorded_at": "2026-09-07T09:00:50+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "implementation-authorized",
+      "recorded_at": "2026-09-07T09:00:52+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-implemented",
+      "recorded_at": "2026-09-07T09:05:15+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "continue-frontend",
+      "recorded_at": "2026-09-07T09:05:23+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2-measurable",
+      "recorded_at": "2026-09-07T09:19:28+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "modeling",
+      "evidence": "user-authorized-preserve-data-deployment",
+      "recorded_at": "2026-09-07T10:09:55+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "preserved-data-constraints",
+      "recorded_at": "2026-09-07T10:09:58+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "bounded-compatible-deployment",
+      "recorded_at": "2026-09-07T10:10:02+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "retain-existing-task-contracts",
+      "recorded_at": "2026-09-07T10:10:34+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "bounded-compatible-deployment",
+      "recorded_at": "2026-09-07T10:11:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "deployed-and-measured",
+      "recorded_at": "2026-09-08T01:19:59+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户在落盘设计修订1及后端、迁移、顶部栏范围复核请求后回复确认；计划确认=用户在实施计划修订1链接后回复确认，批准进入开发",
+        "recorded_at": "2026-09-07T08:58:20+00:00",
+        "data": {
+          "objective": "持久化项目创建类型并在顶部项目切换所有入口一致展示",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "新建和编辑项目可维护创建类型，仅新建/续建",
+              "acceptance": [
+                "新建默认NEW，选择CONTINUATION后保存、详情读取、编辑回显一致",
+                "显式空值或非法值由服务端拒绝且不写库"
+              ],
+              "priority": "must",
+              "source": "用户请求及确认",
+              "counterexample": [
+                "仅前端显示，刷新丢失"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "已有项目统一新建，之后可编辑为续建",
+              "acceptance": [
+                "追加迁移使存量项目creation_type为NEW",
+                "旧客户端创建不传时默认NEW；更新不传时保留原值"
+              ],
+              "priority": "must",
+              "source": "用户确认已有项目默认规则",
+              "counterexample": [
+                "编辑无关字段将续建覆盖为新建"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "顶部当前项目及下拉选项展示创建类型，保存后同步",
+              "acceptance": [
+                "桌面侧栏/顶栏及移动三个选择入口均显示名称和类型标签",
+                "保存成功后当前项目标签同步；不改变选中项目、不触发切换确认或页面重载",
+                "刷新后保持正确标签"
+              ],
+              "priority": "must",
+              "source": "用户请求与已确认提案",
+              "counterexample": [
+                "只显示下拉选项，收起时无类型",
+                "需退出登录才刷新类型"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "保持原权限、审计、切换与响应式可用性",
+              "acceptance": [
+                "读写继续认证、RBAC、租户/实体权限与原审计",
+                "四种规定视口及明暗主题下标签可见、长名称不遮挡，表单提交/取消可达",
+                "加载、空、失败、无权限、提交中及取消切换行为保持"
+              ],
+              "priority": "must",
+              "source": "仓库规约及功能不变量",
+              "counterexample": [
+                "为显示标签更改项目选择值或绕过权限"
+              ]
+            }
+          ],
+          "invariants": [
+            "保留现有项目权限/数据范围/审计",
+            "不改变项目切换确认和选中引用",
+            "不覆盖其他未提交改动"
+          ],
+          "constraints": [
+            "只追加Flyway迁移；不直接修改现有库",
+            "涉及platform/system、迁移及应用壳的写入须经范围和Owner批准",
+            "不读取.env，不重启服务，不提交推送",
+            "设计批准后先编写实施计划，实施须通过计划批准及控制门禁"
+          ],
+          "non_goals": [
+            "类型字典维护",
+            "续建关联原项目或复制数据",
+            "按类型驱动计划/投产规则",
+            "项目列表改版、筛选和统计"
+          ],
+          "assumptions": [
+            {
+              "text": "创建类型不触发额外业务流程",
+              "basis": "用户仅要求字段和顶部体现",
+              "falsifier": "新增续建复制/关联规则"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "平台及应用壳设计范围已由用户确认",
+              "impact": "本次范围获准，精确文件和高风险操作仍受实施计划门禁",
+              "owner": "rokeyvvz0828",
+              "blocking": false
+            },
+            {
+              "question": "真实浏览器访问授权与隔离数据库验证条件",
+              "impact": "执行前检查，缺失不可宣称验收",
+              "owner": "实施阶段",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "已有项目默认NEW且可改为CONTINUATION",
+              "reason": "用户确认",
+              "source": "本轮确认"
+            },
+            {
+              "id": "D2",
+              "decision": "保存后同步标签，不自动切换项目",
+              "reason": "保持现有选择行为",
+              "source": "上轮提案与用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "signal": "合法/非法/省略类型、存量默认、租户权限与审计",
+              "method": "ProjectService聚焦测试、隔离MySQL迁移检查、Maven全量回归"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R4"
+              ],
+              "signal": "三个入口标签与保存同步、不改变currentRef",
+              "method": "前端状态与模板测试、vue-tsc/Vite、真实浏览器四视口明暗主题"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "source-reviewed-JBR17-baseline30pass",
+        "recorded_at": "2026-09-07T09:00:48+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "web/src/types/project.ts",
+              "web/src/types/project-context.ts",
+              "web/src/stores/project-context.ts",
+              "web/src/views/ProjectView.vue",
+              "web/src/views/AppLayout.vue",
+              "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+              "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs"
+            ],
+            "environment": [
+              "MySQL8.4 isolated test only",
+              "Vue/ElementPlus",
+              "JBR17 Maven"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "creation_type",
+              "owner": "pm_project/ProjectService",
+              "valid_values": [
+                "NEW",
+                "CONTINUATION"
+              ]
+            },
+            {
+              "name": "projects/currentRef/inflight list",
+              "owner": "project-context",
+              "valid_values": [
+                "loading",
+                "ready",
+                "error"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "create/update",
+              "transitions": [
+                "validate enum",
+                "SQL write",
+                "return DTO"
+              ],
+              "outputs": [
+                "新建和编辑项目可维护创建类型，仅新建/续建"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "missing field/legacy rows",
+              "transitions": [
+                "default NEW on create/migration",
+                "omit update assignment when absent"
+              ],
+              "outputs": [
+                "已有项目统一新建，之后可编辑为续建"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "save response/project selection",
+              "transitions": [
+                "map creation_type",
+                "sync saved metadata",
+                "render three label/option slots"
+              ],
+              "outputs": [
+                "顶部当前项目及下拉选项展示创建类型，保存后同步"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "unauthorized or small viewport",
+              "transitions": [
+                "retain auth/audit",
+                "responsive form and tag"
+              ],
+              "outputs": [
+                "保持原权限、审计、切换与响应式可用性"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "creation_type",
+              "producers": [
+                "ProjectService"
+              ],
+              "consumers": [
+                "ProjectView",
+                "project-context"
+              ],
+              "invariant": "two allowed values; missing update preserves"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "backend contract",
+              "method": "JUnit/Mockito SQL capture and authorization; baseline30passed JBR17",
+              "blind_spots": [
+                "real database"
+              ],
+              "independence": "service execution assertions"
+            },
+            {
+              "id": "S2",
+              "target": "frontend state/templates",
+              "method": "Node Vue/Pinia deferred promises and SFC parser",
+              "blind_spots": [
+                "real layout"
+              ],
+              "independence": "state execution"
+            },
+            {
+              "id": "S3",
+              "target": "integration",
+              "method": "isolated MySQL and authorized browser",
+              "blind_spots": [
+                "environment access not yet established"
+              ],
+              "independence": "real runtime"
+            },
+            {
+              "id": "S4",
+              "target": "build/regression",
+              "method": "Maven and Vite",
+              "blind_spots": [
+                "UI geometry"
+              ],
+              "independence": "compilers and existing tests"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "pm_project and ProjectService",
+              "action": "append column and localized field validation/read/write",
+              "authority": "user approved scope",
+              "impact_radius": "project APIs",
+              "rollback": "revert code hunks retain migrated data"
+            },
+            {
+              "id": "A2",
+              "target": "form/store/three selectors",
+              "action": "type metadata projection/sync and scoped UI",
+              "authority": "approved scope",
+              "impact_radius": "project selectors",
+              "rollback": "revert only task hunks"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "default JDK25",
+              "effect": "Mockito initialization fails; corrected process JAVA_HOME JBR17 baseline pass",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "old list response",
+              "effect": "overwrite saved metadata",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "browser/isolated DB",
+              "effect": "may prevent real acceptance",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "list/save requests",
+              "consequence": "stale metadata overwrite",
+              "sampling_rule": "deferred promise race tests"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "new additive column backward compatible",
+              "evidence": "explicit SQL projections; optional Map update",
+              "falsifier": "isolated migration regression"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement bounded change; retain missing runtime evidence"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement bounded change; retain missing runtime evidence"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement bounded change; retain missing runtime evidence"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "implement bounded change; retain missing runtime evidence"
+            }
+          ],
+          "model_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "verified-local-lineage",
+        "recorded_at": "2026-09-07T10:09:57+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "local development schema",
+              "preserved Flyway lineage",
+              "ProjectService",
+              "project selectors"
+            ],
+            "environment": [
+              "local MySQL8.4",
+              "isolated restore container",
+              "JBR17"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "creation_type/schema/history/data",
+              "owner": "development database",
+              "valid_values": [
+                "backed-up",
+                "trial-verified",
+                "migrated"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "save type",
+              "transitions": [
+                "compatible migration",
+                "updated service"
+              ],
+              "outputs": [
+                "persisted type"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "existing rows",
+              "transitions": [
+                "add default NEW column"
+              ],
+              "outputs": [
+                "editable default"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "saved response",
+              "transitions": [
+                "existing tested frontend synchronization"
+              ],
+              "outputs": [
+                "selector label"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "schema reconciliation",
+              "transitions": [
+                "backup restore",
+                "preserve all original values and release tables"
+              ],
+              "outputs": [
+                "unchanged authorization and business data"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "local Flyway location",
+              "producers": [
+                "verified historical SQL plus new additive compatibility SQL"
+              ],
+              "consumers": [
+                "local backend"
+              ],
+              "invariant": "no history reset, checksum mismatch or fabricated success"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "database preservation",
+              "method": "restore trial, schema comparison, original-column row hashes",
+              "blind_spots": [
+                "concurrent writes require final recheck"
+              ],
+              "independence": "actual MySQL"
+            },
+            {
+              "id": "S2",
+              "target": "backend/frontend",
+              "method": "JUnit, frontend tests, health check",
+              "blind_spots": [
+                "authenticated browser remains unavailable"
+              ],
+              "independence": "application execution"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A3",
+              "target": "local development runtime",
+              "action": "restore exact historical scripts for validation and append compatible structural migrations",
+              "authority": "user explicitly confirmed data retention and release-table protection",
+              "impact_radius": "local development only",
+              "rollback": "retain full backup; do not drop additive columns or overwrite concurrent data"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "divergent historical migration identities",
+              "effect": "canonical classpath cannot validate current database",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "backend restart",
+              "consequence": "old code persists until restart",
+              "sampling_rule": "wait for healthy replacement process"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "retained legacy columns can coexist with new structural contracts",
+              "evidence": "old DM business tables empty; one snapshot row",
+              "falsifier": "isolated migration or write-contract failure"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "migration and service verification"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "default verification"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "tests and manual acceptance disclosure"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "preservation hashes and permission regression"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "approved-bounded-tasks",
+        "recorded_at": "2026-09-07T09:00:51+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "项目类型持久化、兼容读写并保持授权审计",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ProjectService.create/update采用Map输入和JdbcTemplate，保留requireAction、requireProjectAccess及audit",
+                "workbench第81行与project第896行显式SELECT，均需增加creation_type",
+                "ProjectServiceTest已有Mockito JdbcTemplate与权限测试",
+                "迁移文件当前最高V198，V199为候选，执行前重查"
+              ],
+              "acceptance_checks": [
+                "NEW/CONTINUATION创建和互相编辑",
+                "缺失创建NEW；更新缺失保留CONTINUATION",
+                "非法/空值不持久化；读写权限和审计保持",
+                "隔离MySQL存量行默认NEW"
+              ],
+              "rollback": "反向撤销本次代码增量；已执行迁移保留列和值，不删除数据；数据库纠偏仅追加迁移",
+              "stop_conditions": [
+                "V199冲突",
+                "需读取.env或当前业务库",
+                "需改历史迁移或权限模型"
+              ],
+              "escalation_conditions": [
+                "隔离MySQL不可用需明确验收缺口",
+                "授权文件以外平台改动"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ],
+              "invariants": [
+                "保留现有项目权限/数据范围/审计",
+                "不改变项目切换确认和选中引用",
+                "不覆盖其他未提交改动"
+              ],
+              "interface_contracts": [
+                "pm_project、现有project接口Map输入",
+                "AuthUser与现有项目权限",
+                "creation_type=NEW|CONTINUATION；创建缺失默认NEW，更新缺失不改，显式空或非法400",
+                "workbench/detail/create/update响应包含creation_type"
+              ],
+              "non_goals": [
+                "类型字典维护",
+                "续建关联原项目或复制数据",
+                "按类型驱动计划/投产规则",
+                "项目列表改版、筛选和统计"
+              ],
+              "action_bounds": [
+                "Only approved field additions and local sync/UI; no current DB or services"
+              ],
+              "evidence_required": [
+                "diff",
+                "tests exit codes",
+                "real runtime evidence or explicit gaps"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "表单维护类型并在顶部三个入口即时一致展示",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "project-context将workbench映射为ref/name/shortName/status；ref当前为project_code",
+                "AppLayout第244/262/271行有三个选择器且共享confirmProjectSwitch",
+                "ProjectView.resetProjectForm/openEditProject/saveProject负责表单流，目前保存后不更新顶部store",
+                "api/project.ts现有Record请求和Project响应可复用无需更改"
+              ],
+              "acceptance_checks": [
+                "表单选择保存并回显",
+                "三个入口展开/收起均展示标签",
+                "保存后即时同步，不自动切项目；旧列表响应不覆盖新类型",
+                "现有切换确认、失败/空/加载、权限不变",
+                "四视口无溢出及遮挡"
+              ],
+              "rollback": "仅撤销T2新增字段、标签、store同步和本次专项样式；不回退其他页面改动",
+              "stop_conditions": [
+                "需要改变项目引用身份或其他业务选择逻辑",
+                "共享UI实现需要修改"
+              ],
+              "escalation_conditions": [
+                "无法在既有project_code引用下保持正确选择",
+                "真实浏览器验收受阻，保留待验收状态"
+              ],
+              "write_scope": [
+                "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+                "web/src/types/project.ts",
+                "web/src/types/project-context.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue"
+              ],
+              "invariants": [
+                "保留现有项目权限/数据范围/审计",
+                "不改变项目切换确认和选中引用",
+                "不覆盖其他未提交改动"
+              ],
+              "interface_contracts": [
+                "T1新增creation_type",
+                "现有Project和ProjectContextItem、Vue/Pinia、UiStatusTag",
+                "ProjectCreationType联合类型及统一中文标签",
+                "ProjectContextItem携带creationType",
+                "store.syncProject(project: Project): void，更新服务端确认的项目元数据，不触发select/路由/业务请求"
+              ],
+              "non_goals": [
+                "类型字典维护",
+                "续建关联原项目或复制数据",
+                "按类型驱动计划/投产规则",
+                "项目列表改版、筛选和统计"
+              ],
+              "action_bounds": [
+                "Only approved field additions and local sync/UI; no current DB or services"
+              ],
+              "evidence_required": [
+                "diff",
+                "tests exit codes",
+                "real runtime evidence or explicit gaps"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "先固定类型读写与兼容契约，再接入消费者"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "mvn test JBR17",
+                "frontend test/build",
+                "browser and isolated DB if authorized"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "baseline",
+              "trigger": "baseline",
+              "observer": "main agent separate pass (not independent)",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "T1",
+              "trigger": "T1",
+              "observer": "main agent separate pass (not independent)",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "T2",
+              "trigger": "T2",
+              "observer": "main agent separate pass (not independent)",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "preserve-T1-T2-and-add-T3",
+        "recorded_at": "2026-09-07T10:10:59+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "deployment-model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "项目类型持久化、兼容读写并保持授权审计",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ProjectService.create/update采用Map输入和JdbcTemplate，保留requireAction、requireProjectAccess及audit",
+                "workbench第81行与project第896行显式SELECT，均需增加creation_type",
+                "ProjectServiceTest已有Mockito JdbcTemplate与权限测试",
+                "迁移文件当前最高V198，V199为候选，执行前重查"
+              ],
+              "acceptance_checks": [
+                "NEW/CONTINUATION创建和互相编辑",
+                "缺失创建NEW；更新缺失保留CONTINUATION",
+                "非法/空值不持久化；读写权限和审计保持",
+                "隔离MySQL存量行默认NEW"
+              ],
+              "rollback": "反向撤销本次代码增量；已执行迁移保留列和值，不删除数据；数据库纠偏仅追加迁移",
+              "stop_conditions": [
+                "V199冲突",
+                "需读取.env或当前业务库",
+                "需改历史迁移或权限模型"
+              ],
+              "escalation_conditions": [
+                "隔离MySQL不可用需明确验收缺口",
+                "授权文件以外平台改动"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ],
+              "invariants": [
+                "保留现有项目权限/数据范围/审计",
+                "不改变项目切换确认和选中引用",
+                "不覆盖其他未提交改动"
+              ],
+              "interface_contracts": [
+                "pm_project、现有project接口Map输入",
+                "AuthUser与现有项目权限",
+                "creation_type=NEW|CONTINUATION；创建缺失默认NEW，更新缺失不改，显式空或非法400",
+                "workbench/detail/create/update响应包含creation_type"
+              ],
+              "non_goals": [
+                "类型字典维护",
+                "续建关联原项目或复制数据",
+                "按类型驱动计划/投产规则",
+                "项目列表改版、筛选和统计"
+              ],
+              "action_bounds": [
+                "Only approved field additions and local sync/UI; no current DB or services"
+              ],
+              "evidence_required": [
+                "diff",
+                "tests exit codes",
+                "real runtime evidence or explicit gaps"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "表单维护类型并在顶部三个入口即时一致展示",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "project-context将workbench映射为ref/name/shortName/status；ref当前为project_code",
+                "AppLayout第244/262/271行有三个选择器且共享confirmProjectSwitch",
+                "ProjectView.resetProjectForm/openEditProject/saveProject负责表单流，目前保存后不更新顶部store",
+                "api/project.ts现有Record请求和Project响应可复用无需更改"
+              ],
+              "acceptance_checks": [
+                "表单选择保存并回显",
+                "三个入口展开/收起均展示标签",
+                "保存后即时同步，不自动切项目；旧列表响应不覆盖新类型",
+                "现有切换确认、失败/空/加载、权限不变",
+                "四视口无溢出及遮挡"
+              ],
+              "rollback": "仅撤销T2新增字段、标签、store同步和本次专项样式；不回退其他页面改动",
+              "stop_conditions": [
+                "需要改变项目引用身份或其他业务选择逻辑",
+                "共享UI实现需要修改"
+              ],
+              "escalation_conditions": [
+                "无法在既有project_code引用下保持正确选择",
+                "真实浏览器验收受阻，保留待验收状态"
+              ],
+              "write_scope": [
+                "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+                "web/src/types/project.ts",
+                "web/src/types/project-context.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue"
+              ],
+              "invariants": [
+                "保留现有项目权限/数据范围/审计",
+                "不改变项目切换确认和选中引用",
+                "不覆盖其他未提交改动"
+              ],
+              "interface_contracts": [
+                "T1新增creation_type",
+                "现有Project和ProjectContextItem、Vue/Pinia、UiStatusTag",
+                "ProjectCreationType联合类型及统一中文标签",
+                "ProjectContextItem携带creationType",
+                "store.syncProject(project: Project): void，更新服务端确认的项目元数据，不触发select/路由/业务请求"
+              ],
+              "non_goals": [
+                "类型字典维护",
+                "续建关联原项目或复制数据",
+                "按类型驱动计划/投产规则",
+                "项目列表改版、筛选和统计"
+              ],
+              "action_bounds": [
+                "Only approved field additions and local sync/UI; no current DB or services"
+              ],
+              "evidence_required": [
+                "diff",
+                "tests exit codes",
+                "real runtime evidence or explicit gaps"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Compatible local schema update and backend activation without losing data",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "251 tables backed up and restored",
+                "12 release tables unchanged in full isolated trial",
+                "canonical pending migrations delete permission rows; must not apply directly",
+                "all currently available applied scripts match stored Flyway checksums"
+              ],
+              "write_scope": [
+                "docs/requirements/REQ-20260907-070-project-creation-type/**",
+                ".runtime-logs/req070-preserve-data/**",
+                ".ai-control/requirements/req-20260907-070-project-creation-type/*.json",
+                "local development schema and backend process"
+              ],
+              "invariants": [
+                "all original row values retained",
+                "existing rel_* structure and data unchanged",
+                "no credential output",
+                "no history reset or false successful migration entries",
+                "no edits to published source SQL"
+              ],
+              "interface_contracts": [
+                "creation_type NEW or CONTINUATION",
+                "local compatible migration location is separate from canonical classpath and preserves original history"
+              ],
+              "non_goals": [
+                "canonical historical migration unification",
+                "permission cleanup",
+                "production or Git changes"
+              ],
+              "action_bounds": [
+                "verified backup",
+                "derive additive DDL from isolated target using metadata",
+                "recover historical SQL only with matching checksums",
+                "trial Flyway validation and migration",
+                "only apply after original-value and protected-schema checks",
+                "restart backend with mock writes disabled"
+              ],
+              "acceptance_checks": [
+                "trial Flyway validate/migrate succeeds",
+                "original-column data hashes and protected schemas unchanged",
+                "creation_type default and save tests",
+                "replacement backend healthy"
+              ],
+              "evidence_required": [
+                "backup identity",
+                "trial results",
+                "actual migration count",
+                "data-preservation report",
+                "build and health results"
+              ],
+              "rollback": "Keep full pre-migration backup; keep additive fields; restore only with explicit approval if needed",
+              "stop_conditions": [
+                "unrecoverable historical checksum",
+                "nonempty column destructive change",
+                "protected table delta",
+                "data hash mismatch"
+              ],
+              "escalation_conditions": [
+                "required data conversion cannot retain original values"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "先固定类型读写与兼容契约，再接入消费者"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "health and preservation report"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "deployment",
+              "trigger": "each trial and current migration",
+              "observer": "same-context non-independent verification",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "tests-pass",
+        "recorded_at": "2026-09-07T09:05:07+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+              "purpose": "creation type persistence and tests"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "creation type persistence and tests"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "purpose": "creation type persistence and tests"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "JAVA_HOME=JBR17 mvn -q -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "ProjectServiceTest:42, failures0 errors0; reactor exit0"
+            },
+            {
+              "command": "pre-implementation new tests",
+              "exit_code": 1,
+              "salient_output": "42 tests,11 expected failures (missing persistence and validation)"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "service contract",
+              "result": "pass",
+              "evidence": "42 tests pass",
+              "limitations": [
+                "Mockito not real database"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "new V199 column/check",
+            "create/update enum validation and read projections"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "old tests, auth and audit retained",
+              "result": "pass",
+              "evidence": "30 baseline plus12 new cases pass"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "default Java25",
+              "impact": "resolved via process-local JBR17"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "isolated MySQL verification"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "implemented-tests-build-pass",
+        "recorded_at": "2026-09-07T09:19:25+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+              "purpose": "creation type form/selector metadata sync and tests"
+            },
+            {
+              "path_or_resource": "web/src/types/project.ts",
+              "purpose": "creation type form/selector metadata sync and tests"
+            },
+            {
+              "path_or_resource": "web/src/types/project-context.ts",
+              "purpose": "creation type form/selector metadata sync and tests"
+            },
+            {
+              "path_or_resource": "web/src/stores/project-context.ts",
+              "purpose": "creation type form/selector metadata sync and tests"
+            },
+            {
+              "path_or_resource": "web/src/views/ProjectView.vue",
+              "purpose": "creation type form/selector metadata sync and tests"
+            },
+            {
+              "path_or_resource": "web/src/views/AppLayout.vue",
+              "purpose": "creation type form/selector metadata sync and tests"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "node docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+              "exit_code": 0,
+              "salient_output": "PASS: type labels, defaults, sync, request race, failed refresh, selection preservation and3selector slots"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2584 modules; built in30.70s; existing PURE/chunk warnings"
+            },
+            {
+              "command": "JAVA_HOME=JBR17 mvn -q test (authorized Docker)",
+              "exit_code": 1,
+              "salient_output": "WorkflowPlatformRetirementMigrationMySqlTest: duplicate Flyway version156; existing platform_operation_audit and rename_release_drill_plan_menu"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "CRLF warnings only"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "existing REQ061 JSON-compatible YAML failure"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-070-project-creation-type/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+              "exit_code": 1,
+              "salient_output": "licon branch naming fails; missing metadata corrected before rerun"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Node state/three selectors",
+              "result": "pass",
+              "evidence": "PASS: type labels, defaults, sync, request race, failed refresh, selection preservation and3selector slots",
+              "limitations": [
+                "no actual browser screenshots or network observation"
+              ]
+            },
+            {
+              "check": "type/build",
+              "result": "pass",
+              "evidence": "2584 modules; built in30.70s; existing PURE/chunk warnings",
+              "limitations": [
+                "not real UI acceptance"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "type options and validation in create/edit",
+            "saved response metadata synchronization with stale-list protection",
+            "all3selected/option tag slots",
+            "bounded form and label styles"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "selection and API untouched",
+              "result": "pass",
+              "evidence": "sync tests request count and currentRef; original confirmProjectSwitch unchanged in diff"
+            },
+            {
+              "invariant": "existing project data untouched",
+              "result": "pass",
+              "evidence": "no current database access; ephemeral synthetic Docker test only"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "duplicate existing V156",
+              "impact": "full Maven/Flyway blocked"
+            },
+            {
+              "event": "governance historical files/branch",
+              "impact": "automated governance not green"
+            },
+            {
+              "event": "test transpilation default ES5",
+              "impact": "corrected test harness target toES2022; final test passes"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "real browser and independent verification",
+            "full schema migration blocked byV156",
+            "current environment not migrated/deployed"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "current-db-and-runtime-verified",
+        "recorded_at": "2026-09-08T01:19:55+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "local development database",
+              "purpose": "V199 and local compatible V200 applied with unchanged original data and history"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260907-070-project-creation-type/",
+              "purpose": "bounded backup, migration, recovery, start and verification tools"
+            },
+            {
+              "path_or_resource": "local backend 8080",
+              "purpose": "activate current Java17 modules with Flyway validation and no mock writes"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -q -pl :ccb-system -am test (JBR17)",
+              "exit_code": 0,
+              "salient_output": "ProjectServiceTest: 42 tests, no failures/errors"
+            },
+            {
+              "command": "node creation-type.test.mjs",
+              "exit_code": 0,
+              "salient_output": "labels/defaults/sync/race/selection/3 slots pass"
+            },
+            {
+              "command": "mvn -q -pl :ccb-boot -am -DskipTests -Dspring-boot.repackage.skip=true install (quoted properties, authorized Maven cache)",
+              "exit_code": 0,
+              "salient_output": "current modules installed; dependency classpath generated"
+            },
+            {
+              "command": "run-compatible-migration.py trial-migrate / current-migrate",
+              "exit_code": 0,
+              "salient_output": "MIGRATIONS_EXECUTED=2 for each"
+            },
+            {
+              "command": "run-compatible-migration.py current-validate",
+              "exit_code": 0,
+              "salient_output": "VALIDATION_SUCCESS=true"
+            },
+            {
+              "command": "verify-current-preservation.py",
+              "exit_code": 0,
+              "salient_output": "250 original tables unchanged, 12 protected schemas unchanged, old Flyway history unchanged"
+            },
+            {
+              "command": "start-compatible-backend.py",
+              "exit_code": 0,
+              "salient_output": "backend 8080 health UP"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "original-value retention",
+              "result": "pass",
+              "evidence": "SHA-256 over sorted original-column row hashes before/after",
+              "limitations": [
+                "same-context verification"
+              ]
+            },
+            {
+              "check": "type persistence",
+              "result": "pass",
+              "evidence": "isolated commit then fresh connection reads CONTINUATION; test values and updated_at restored",
+              "limitations": [
+                "not a browser or authenticated HTTP save replay"
+              ]
+            },
+            {
+              "check": "runtime reachability and authentication",
+              "result": "pass",
+              "evidence": "8080 health 200 UP; 5173 200; anonymous project workbench 401",
+              "limitations": [
+                "no signed-in browser acceptance"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "No changes to published canonical SQL",
+            "Local compatibility migration and recovery manifest retained",
+            "No original permission row deletion"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "existing release tables untouched",
+              "result": "pass",
+              "evidence": "12 schema fingerprints and original row hashes equal"
+            },
+            {
+              "invariant": "no history reset",
+              "result": "pass",
+              "evidence": "all old history row hashes equal; only two new successful migrations"
+            },
+            {
+              "invariant": "preserve all original data",
+              "result": "pass",
+              "evidence": "250 original business tables unchanged"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "raw SHOW CREATE differs by redundant charset notation",
+              "impact": "replaced text equality with real metadata comparison"
+            },
+            {
+              "event": "original persistence probe changed trial updated_at",
+              "impact": "fixed full restoration and revalidated a fresh final backup"
+            },
+            {
+              "event": "Windows old JAR lock and Maven sandbox/property quoting",
+              "impact": "used quoted options, authorized cache and current-module classpath startup"
+            }
+          ],
+          "assumptions_falsified": [
+            "Historical script names alone indicate pending migrations: V35-V46 checksums already match canonical scripts"
+          ],
+          "unresolved_items": [
+            "canonical V156 collision and full regression remain",
+            "browser and independent acceptance pending",
+            "local compatibility directory must be used until migration histories are unified"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "42-tests-pass",
+        "recorded_at": "2026-09-07T09:05:17+00:00",
+        "data": {
+          "sample_label": "T1",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "JUnit/Mockito",
+              "result": "pass",
+              "raw_evidence": "42 tests 0 failures/errors; module reactor exit0",
+              "limitation": [
+                "no real DB persistence measurement",
+                "same agent non-independent review"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "JUnit/Mockito",
+              "result": "pass",
+              "raw_evidence": "42 tests 0 failures/errors; module reactor exit0",
+              "limitation": [
+                "no real DB persistence measurement",
+                "same agent non-independent review"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "JUnit/Mockito",
+              "result": "pass",
+              "raw_evidence": "42 tests 0 failures/errors; module reactor exit0",
+              "limitation": [
+                "no real DB persistence measurement",
+                "same agent non-independent review"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "isolated migration not yet tested"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "automated-pass-runtime-gaps",
+        "recorded_at": "2026-09-07T09:19:29+00:00",
+        "data": {
+          "sample_label": "T2",
+          "task_ids": [
+            "T1",
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "JUnit/Node",
+              "result": "pass",
+              "raw_evidence": "42 backend tests; state/selector tests pass",
+              "limitation": [
+                "save UI not driven in browser"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "isolated MySQL8.4",
+              "result": "pass",
+              "raw_evidence": "legacy1,2NEW; update2CONTINUATION; insert3defaultNEW; invalidERROR3819; temporary container removed",
+              "limitation": [
+                "minimal table, not entire Flyway chain"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Node Pinia/SFC",
+              "result": "pass",
+              "raw_evidence": "PASS: type labels, defaults, sync, request race, failed refresh, selection preservation and3selector slots",
+              "limitation": [
+                "real layout/network not measured"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Maven/build/governance",
+              "result": "incomplete",
+              "raw_evidence": [
+                {
+                  "command": "npm --prefix web run build",
+                  "exit_code": 0,
+                  "salient_output": "2584 modules; built in30.70s; existing PURE/chunk warnings"
+                },
+                {
+                  "command": "JAVA_HOME=JBR17 mvn -q test (authorized Docker)",
+                  "exit_code": 1,
+                  "salient_output": "WorkflowPlatformRetirementMigrationMySqlTest: duplicate Flyway version156; existing platform_operation_audit and rename_release_drill_plan_menu"
+                },
+                {
+                  "command": "git diff --check",
+                  "exit_code": 0,
+                  "salient_output": "CRLF warnings only"
+                },
+                {
+                  "command": "node scripts/check-all-governance.mjs",
+                  "exit_code": 1,
+                  "salient_output": "existing REQ061 JSON-compatible YAML failure"
+                },
+                {
+                  "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-070-project-creation-type/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+                  "exit_code": 1,
+                  "salient_output": "licon branch naming fails; missing metadata corrected before rerun"
+                }
+              ],
+              "limitation": [
+                "full regression blocked byexistingV156",
+                "four browser viewports/light-dark missing",
+                "same agent not independent"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "existing migration version collision",
+            "historicalREQ061scope/branch failures"
+          ],
+          "coverage_gaps": [
+            "Browser matrix, independent observation, current environment deployment and complete migration chain"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "current-development-database-readonly-preflight",
+        "recorded_at": "2026-09-07T09:30:39+00:00",
+        "data": {
+          "sample_label": "current-development-database-preflight",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "local MySQL information_schema",
+              "result": "fail",
+              "raw_evidence": "pm_project.creation_type column count is 0; V199 absent from migration history",
+              "limitation": [
+                "No authenticated browser save was replayed"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "migration history and source filename comparison",
+              "result": "blocked",
+              "raw_evidence": "Applied V156 is rename_release_drill_plan_menu; source also includes platform_operation_audit at V156. Applied V35-V50 include absent project migration filenames; pending migrations include cross-module drop operations.",
+              "limitation": [
+                "Filename comparison is not a schema or checksum equivalence proof"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R1",
+              "expected": "Current development backend persists creation_type",
+              "observed": "Current development schema lacks the column",
+              "reproduction": "Query information_schema.columns for pm_project.creation_type",
+              "evidence": "Read-only query returned 0",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "Database only; no browser replay",
+              "causal_hypothesis": "Implementation has not been deployed to current backend and database",
+              "correction_check": "Migrate safely, restart, and verify authenticated save/read after refresh",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "Current database migration lineage differs from source beyond the originally identified V156 collision"
+          ],
+          "coverage_gaps": [
+            "Cross-module historical migration reconciliation requires a separately bounded backup and recovery plan",
+            "No database write, history repair, migration disabling, process stop or restart performed",
+            "Observation is not independent"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "post-start-preservation-and-health",
+        "recorded_at": "2026-09-08T01:20:03+00:00",
+        "data": {
+          "sample_label": "local-deployment-20260908",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "actual MySQL and service tests",
+              "result": "pass",
+              "raw_evidence": "creation_type exists; isolated commit/read passes; service42pass; current backend healthy",
+              "limitation": [
+                "no authenticated HTTP or browser save replay"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "actual schema and row hash",
+              "result": "pass",
+              "raw_evidence": "valid NEW/CONTINUATION domain and unchanged preexisting columns",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "frontend tests and resource check",
+              "result": "partial",
+              "raw_evidence": "sync/race/3 selector slot tests pass; frontend HTTP200",
+              "limitation": [
+                "visual and interaction acceptance pending"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "metadata and data hashes plus anonymous API",
+              "result": "pass",
+              "raw_evidence": "250 business tables retained;12 release schemas unchanged;old history retained;anonymous401",
+              "limitation": [
+                "same-context observation",
+                "canonical full regression unresolved"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "Canonical migration lineage intentionally not claimed reconciled"
+          ],
+          "coverage_gaps": [
+            "Independent and signed-in browser acceptance",
+            "Full canonical migration regression"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "持久化项目创建类型并在顶部项目切换所有入口一致展示",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "新建和编辑项目可维护创建类型，仅新建/续建",
+      "acceptance": [
+        "新建默认NEW，选择CONTINUATION后保存、详情读取、编辑回显一致",
+        "显式空值或非法值由服务端拒绝且不写库"
+      ],
+      "priority": "must",
+      "source": "用户请求及确认",
+      "counterexample": [
+        "仅前端显示，刷新丢失"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "已有项目统一新建，之后可编辑为续建",
+      "acceptance": [
+        "追加迁移使存量项目creation_type为NEW",
+        "旧客户端创建不传时默认NEW；更新不传时保留原值"
+      ],
+      "priority": "must",
+      "source": "用户确认已有项目默认规则",
+      "counterexample": [
+        "编辑无关字段将续建覆盖为新建"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "顶部当前项目及下拉选项展示创建类型，保存后同步",
+      "acceptance": [
+        "桌面侧栏/顶栏及移动三个选择入口均显示名称和类型标签",
+        "保存成功后当前项目标签同步；不改变选中项目、不触发切换确认或页面重载",
+        "刷新后保持正确标签"
+      ],
+      "priority": "must",
+      "source": "用户请求与已确认提案",
+      "counterexample": [
+        "只显示下拉选项，收起时无类型",
+        "需退出登录才刷新类型"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "保持原权限、审计、切换与响应式可用性",
+      "acceptance": [
+        "读写继续认证、RBAC、租户/实体权限与原审计",
+        "四种规定视口及明暗主题下标签可见、长名称不遮挡，表单提交/取消可达",
+        "加载、空、失败、无权限、提交中及取消切换行为保持"
+      ],
+      "priority": "must",
+      "source": "仓库规约及功能不变量",
+      "counterexample": [
+        "为显示标签更改项目选择值或绕过权限"
+      ]
+    }
+  ],
+  "invariants": [
+    "保留现有项目权限/数据范围/审计",
+    "不改变项目切换确认和选中引用",
+    "不覆盖其他未提交改动"
+  ],
+  "constraints": [
+    "只追加Flyway迁移；不直接修改现有库",
+    "涉及platform/system、迁移及应用壳的写入须经范围和Owner批准",
+    "不读取.env，不重启服务，不提交推送",
+    "设计批准后先编写实施计划，实施须通过计划批准及控制门禁"
+  ],
+  "non_goals": [
+    "类型字典维护",
+    "续建关联原项目或复制数据",
+    "按类型驱动计划/投产规则",
+    "项目列表改版、筛选和统计"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260907-070-project-creation-type\\handoff.json",
+    "imported_at": "2026-09-07T08:58:20+00:00",
+    "topic": "project-creation-type",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "project-creation-type",
+      "handoff_status": "approved",
+      "created_at": "2026-09-07T08:49:29.205Z",
+      "design": {
+        "schema_version": 1,
+        "topic": "project-creation-type",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-07-project-creation-type-design.md",
+        "objective": "持久化项目创建类型并在顶部项目切换所有入口一致展示",
+        "users": [
+          "项目管理员维护类型",
+          "项目成员切换项目前识别类型"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "新建和编辑项目可维护创建类型，仅新建/续建",
+            "acceptance": [
+              "新建默认NEW，选择CONTINUATION后保存、详情读取、编辑回显一致",
+              "显式空值或非法值由服务端拒绝且不写库"
+            ],
+            "priority": "must",
+            "source": "用户请求及确认",
+            "counterexample": [
+              "仅前端显示，刷新丢失"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "已有项目统一新建，之后可编辑为续建",
+            "acceptance": [
+              "追加迁移使存量项目creation_type为NEW",
+              "旧客户端创建不传时默认NEW；更新不传时保留原值"
+            ],
+            "priority": "must",
+            "source": "用户确认已有项目默认规则",
+            "counterexample": [
+              "编辑无关字段将续建覆盖为新建"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "顶部当前项目及下拉选项展示创建类型，保存后同步",
+            "acceptance": [
+              "桌面侧栏/顶栏及移动三个选择入口均显示名称和类型标签",
+              "保存成功后当前项目标签同步；不改变选中项目、不触发切换确认或页面重载",
+              "刷新后保持正确标签"
+            ],
+            "priority": "must",
+            "source": "用户请求与已确认提案",
+            "counterexample": [
+              "只显示下拉选项，收起时无类型",
+              "需退出登录才刷新类型"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "保持原权限、审计、切换与响应式可用性",
+            "acceptance": [
+              "读写继续认证、RBAC、租户/实体权限与原审计",
+              "四种规定视口及明暗主题下标签可见、长名称不遮挡，表单提交/取消可达",
+              "加载、空、失败、无权限、提交中及取消切换行为保持"
+            ],
+            "priority": "must",
+            "source": "仓库规约及功能不变量",
+            "counterexample": [
+              "为显示标签更改项目选择值或绕过权限"
+            ]
+          }
+        ],
+        "invariants": [
+          "保留现有项目权限/数据范围/审计",
+          "不改变项目切换确认和选中引用",
+          "不覆盖其他未提交改动"
+        ],
+        "constraints": [
+          "只追加Flyway迁移；不直接修改现有库",
+          "涉及platform/system、迁移及应用壳的写入须经范围和Owner批准",
+          "不读取.env，不重启服务，不提交推送",
+          "设计批准后先编写实施计划，实施须通过计划批准及控制门禁"
+        ],
+        "non_goals": [
+          "类型字典维护",
+          "续建关联原项目或复制数据",
+          "按类型驱动计划/投产规则",
+          "项目列表改版、筛选和统计"
+        ],
+        "selected_approach": {
+          "name": "项目独立枚举字段",
+          "reason": "两种固定语义，已有Map API与SQL可增量扩展；刷新和跨页有一致数据源",
+          "alternatives": [
+            {
+              "name": "通用配置字典",
+              "rejected_because": "用户未要求可配置类型，增加无关维护入口和状态"
+            },
+            {
+              "name": "前端会话标记",
+              "rejected_because": "不能满足跨会话持久化和统一读取"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "web/src/types/project.ts",
+              "web/src/types/project-context.ts",
+              "web/src/stores/project-context.ts",
+              "web/src/views/ProjectView.vue",
+              "web/src/views/AppLayout.vue",
+              "候选追加Flyway迁移，版本在实施前检查唯一性",
+              "docs/requirements/REQ-20260907-070-project-creation-type",
+              ".ai-control/requirements/req-20260907-070-project-creation-type"
+            ],
+            "outside": [
+              "其他业务模块",
+              "公共UiStatusTag实现",
+              "已发布迁移",
+              "生产库与.env"
+            ]
+          },
+          "components": [
+            {
+              "name": "ProjectService/pm_project",
+              "responsibility": "类型校验、持久化、列表详情返回和原审计",
+              "depends_on": [
+                "原项目权限及JdbcTemplate"
+              ]
+            },
+            {
+              "name": "ProjectView",
+              "responsibility": "创建/编辑字段与保存成功同步元数据",
+              "depends_on": [
+                "原project API",
+                "project-context store",
+                "Element Plus"
+              ]
+            },
+            {
+              "name": "project-context/AppLayout",
+              "responsibility": "携带类型并呈现三个入口标签",
+              "depends_on": [
+                "workbench response",
+                "UiStatusTag"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "creation_type",
+              "producer": "project API",
+              "consumers": [
+                "ProjectView",
+                "project-context"
+              ],
+              "contract": "NEW/CONTINUATION；创建缺失默认NEW，更新缺失保留；显式空或非法值400；列表详情包含字段"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "创建/编辑保存",
+              "transitions": [
+                "前端枚举选择",
+                "原服务端授权及类型校验",
+                "事务写入与原审计",
+                "响应更新业务页和顶部项目元数据"
+              ],
+              "output": "类型持久化且标签立即一致"
+            },
+            {
+              "input": "切换项目",
+              "transitions": [
+                "读取现有项目选项及类型",
+                "沿用原确认与select"
+              ],
+              "output": "新项目标签和内容一致"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "保存失败/非法类型",
+            "behavior": "保留表单和顶部原值，显示原错误反馈及字段校验",
+            "recovery": "修改后重试"
+          },
+          {
+            "condition": "顶部加载失败/空列表",
+            "behavior": "沿用加载、空及重试，不伪造项目",
+            "recovery": "原retry"
+          },
+          {
+            "condition": "旧响应缺少新增字段",
+            "behavior": "仅缺失值兼容NEW；不把非法类型静默解释为续建",
+            "recovery": "后端升级和刷新"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "沿用requireAction/requireProjectAccess/tenant和audit；不新增权限"
+          ],
+          "performance": [
+            "类型取自原workbench，不为每个选项查询",
+            "元数据同步不重载页面、不重新选择项目"
+          ],
+          "compatibility": [
+            "创建字段缺省兼容，更新字段缺省不覆盖",
+            "项目类型与status独立"
+          ],
+          "operations": [
+            "先追加迁移再部署后端前端",
+            "迁移MySQL8.4，版本实施前检查",
+            "不在本设计阶段执行SQL"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "signal": "合法/非法/省略类型、存量默认、租户权限与审计",
+            "method": "ProjectService聚焦测试、隔离MySQL迁移检查、Maven全量回归"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "signal": "三个入口标签与保存同步、不改变currentRef",
+            "method": "前端状态与模板测试、vue-tsc/Vite、真实浏览器四视口明暗主题"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "创建类型不触发额外业务流程",
+            "basis": "用户仅要求字段和顶部体现",
+            "falsifier": "新增续建复制/关联规则"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "平台及应用壳设计范围已由用户确认",
+            "impact": "本次范围获准，精确文件和高风险操作仍受实施计划门禁",
+            "owner": "rokeyvvz0828",
+            "blocking": false
+          },
+          {
+            "question": "真实浏览器访问授权与隔离数据库验证条件",
+            "impact": "执行前检查，缺失不可宣称验收",
+            "owner": "实施阶段",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "已有项目默认NEW且可改为CONTINUATION",
+            "reason": "用户确认",
+            "source": "本轮确认"
+          },
+          {
+            "id": "D2",
+            "decision": "保存后同步标签，不自动切换项目",
+            "reason": "保持现有选择行为",
+            "source": "上轮提案与用户确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "顶部缓存陈旧或请求乱序",
+            "impact": "标签显示旧值",
+            "mitigation": "复用服务端保存结果，同步元数据时保留选择，覆盖并发场景测试"
+          },
+          {
+            "risk": "手机名称挤压标签",
+            "impact": "类型不可见",
+            "mitigation": "名称可收缩省略并提供完整提示，类型标签不压缩；限定弹框宽高"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户在落盘设计修订1及后端、迁移、顶部栏范围复核请求后回复确认",
+          "confirmed_at": "2026-09-07"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-07-project-creation-type-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只追加Flyway迁移；不直接修改现有库",
+          "涉及platform/system、迁移及应用壳的写入须经范围和Owner批准",
+          "不读取.env，不重启服务，不提交推送",
+          "设计批准后先编写实施计划，实施须通过计划批准及控制门禁",
+          "同一licon工作区串行增量，不新建worktree、切分支、提交或推送",
+          "不启动/停止现有服务；不连接当前库；隔离测试条件不足时报告缺口",
+          "不改api/project.ts、公共UiStatusTag或其他业务模块"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "项目类型读写校验",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+            "status": "existing",
+            "responsibility": "后端回归测试",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "web/src/types/project.ts",
+            "status": "existing",
+            "responsibility": "类型、表单及顶部同步",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "web/src/types/project-context.ts",
+            "status": "existing",
+            "responsibility": "类型、表单及顶部同步",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "web/src/stores/project-context.ts",
+            "status": "existing",
+            "responsibility": "类型、表单及顶部同步",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "existing",
+            "responsibility": "类型、表单及顶部同步",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "web/src/views/AppLayout.vue",
+            "status": "existing",
+            "responsibility": "类型、表单及顶部同步",
+            "evidence": "已读取源文件"
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+            "status": "candidate-new",
+            "responsibility": "追加项目创建类型列与默认约束",
+            "evidence": "当前最大迁移V198，实施前复查"
+          },
+          {
+            "path": "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+            "status": "candidate-new",
+            "responsibility": "Node/Vue/Pinia状态与SFC接入检查",
+            "evidence": "计划新增，不安装依赖"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "项目类型持久化、兼容读写并保持授权审计",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ProjectService.create/update采用Map输入和JdbcTemplate，保留requireAction、requireProjectAccess及audit",
+              "workbench第81行与project第896行显式SELECT，均需增加creation_type",
+              "ProjectServiceTest已有Mockito JdbcTemplate与权限测试",
+              "迁移文件当前最高V198，V199为候选，执行前重查"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql"
+              ],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "pm_project、现有project接口Map输入",
+                "AuthUser与现有项目权限"
+              ],
+              "produces": [
+                "creation_type=NEW|CONTINUATION；创建缺失默认NEW，更新缺失不改，显式空或非法400",
+                "workbench/detail/create/update响应包含creation_type"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "记录工作区基线并确认迁移版本无冲突",
+                "command": "git status --short",
+                "expected": "保留既有改动；若V199已存在暂停重新确定迁移文件",
+                "evidence": "文件基线及迁移文件列表"
+              },
+              {
+                "id": "T1-S2",
+                "action": "添加后端失败测试",
+                "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "新增创建类型字段SQL参数与非法值断言在实现前失败；原测试结果单独记录",
+                "evidence": "测试名、失败断言及退出码"
+              },
+              {
+                "id": "T1-S3",
+                "action": "追加列和CHECK约束；增量修改create/update与两个读取SELECT",
+                "command": null,
+                "expected": "creation_type VARCHAR(16) NOT NULL DEFAULT 'NEW'；CHECK仅允许NEW/CONTINUATION；禁止编辑历史迁移",
+                "evidence": "实际diff；新增字段检查"
+              },
+              {
+                "id": "T1-S4",
+                "action": "验证合法创建/更新、缺省保留、显式空及非法类型不写库、读取返回与权限审计",
+                "command": "mvn -pl :ccb-system -am test",
+                "expected": "目标模块与依赖测试退出0；新测试捕获SQL及绑定参数而非只比较字符串",
+                "evidence": "Surefire报告与权限/审计断言"
+              },
+              {
+                "id": "T1-S5",
+                "action": "在授权隔离MySQL验证迁移的存量及新行默认值",
+                "command": null,
+                "expected": "仅独立测试库执行候选迁移：原项目得NEW，续建可写，非法值拒绝；无隔离环境则留缺口，不访问当前库或.env",
+                "evidence": "隔离目标证明、SQL结果与迁移校验；不可用记录原因"
+              },
+              {
+                "id": "T1-S6",
+                "action": "记录执行与第一次采样",
+                "command": null,
+                "expected": "不创建Git提交；只保存T1执行与观测证据",
+                "evidence": "execution-T1、observation-T1"
+              }
+            ],
+            "acceptance_checks": [
+              "NEW/CONTINUATION创建和互相编辑",
+              "缺失创建NEW；更新缺失保留CONTINUATION",
+              "非法/空值不持久化；读写权限和审计保持",
+              "隔离MySQL存量行默认NEW"
+            ],
+            "risks": [
+              "新增列部署顺序",
+              "Mockito不能证明真实SQL执行"
+            ],
+            "rollback": "反向撤销本次代码增量；已执行迁移保留列和值，不删除数据；数据库纠偏仅追加迁移",
+            "stop_conditions": [
+              "V199冲突",
+              "需读取.env或当前业务库",
+              "需改历史迁移或权限模型"
+            ],
+            "escalation_conditions": [
+              "隔离MySQL不可用需明确验收缺口",
+              "授权文件以外平台改动"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "表单维护类型并在顶部三个入口即时一致展示",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "project-context将workbench映射为ref/name/shortName/status；ref当前为project_code",
+              "AppLayout第244/262/271行有三个选择器且共享confirmProjectSwitch",
+              "ProjectView.resetProjectForm/openEditProject/saveProject负责表单流，目前保存后不更新顶部store",
+              "api/project.ts现有Record请求和Project响应可复用无需更改"
+            ],
+            "files": {
+              "create": [
+                "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs"
+              ],
+              "modify": [
+                "web/src/types/project.ts",
+                "web/src/types/project-context.ts",
+                "web/src/stores/project-context.ts",
+                "web/src/views/ProjectView.vue",
+                "web/src/views/AppLayout.vue"
+              ],
+              "test": [
+                "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1新增creation_type",
+                "现有Project和ProjectContextItem、Vue/Pinia、UiStatusTag"
+              ],
+              "produces": [
+                "ProjectCreationType联合类型及统一中文标签",
+                "ProjectContextItem携带creationType",
+                "store.syncProject(project: Project): void，更新服务端确认的项目元数据，不触发select/路由/业务请求"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "建立前端测试并记录预期失败",
+                "command": "node docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+                "expected": "实现前因缺少类型投影/三个标签入口/保存同步出现可定位失败",
+                "evidence": "退出码及断言"
+              },
+              {
+                "id": "T2-S2",
+                "action": "补类型与store元数据同步",
+                "command": null,
+                "expected": "project.ts新增NEW|CONTINUATION和标签映射，响应缺字段仅兼容NEW；同步按已知项目身份更新或添加选项，类型变更不修改currentRef/localStorage；在途列表不能覆盖已确认新值",
+                "evidence": "状态测试；原select/确认逻辑保留"
+              },
+              {
+                "id": "T2-S3",
+                "action": "补创建/编辑字段及保存成功同步",
+                "command": null,
+                "expected": "reset默认NEW，编辑反显原值，必填选择器；新增saving早退防重入；失败保留输入与原顶部值；成功调用syncProject",
+                "evidence": "表单模型与保存调用断言"
+              },
+              {
+                "id": "T2-S4",
+                "action": "三个el-select增加当前选中label插槽和选项标签",
+                "command": null,
+                "expected": "保留ref值、confirmProjectSwitch、loading/empty/retry及原label；名称可省略并有完整提示，类型标签不压缩",
+                "evidence": "SFC结构及三个入口检查"
+              },
+              {
+                "id": "T2-S5",
+                "action": "仅调整本表单和选择器的响应式边界",
+                "command": null,
+                "expected": "项目弹窗宽min(600px,calc(100vw - 24px))、内容局部滚动、标题页脚可达；760px以下单列；复用UiStatusTag和主题，不改全局UI",
+                "evidence": "局部diff和四视口检查"
+              },
+              {
+                "id": "T2-S6",
+                "action": "运行前端状态和接入测试",
+                "command": "node docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+                "expected": "新建/续建映射、保存同步、在途旧响应、失败、已选项保持、三个入口全部通过",
+                "evidence": "Node输出及SFC断言"
+              },
+              {
+                "id": "T2-S7",
+                "action": "完整构建与后端回归",
+                "command": "npm --prefix web run build",
+                "expected": "vue-tsc/Vite退出0；另执行mvn test，原失败独立报告不绕过",
+                "evidence": "命令退出码和构建/测试报告"
+              },
+              {
+                "id": "T2-S8",
+                "action": "治理与范围检查",
+                "command": "git diff --check",
+                "expected": "空白检查通过；执行check-all-governance和当前scope检查，已知REQ061 YAML和licon命名故障如实记录",
+                "evidence": "diff、归属、治理命令输出"
+              },
+              {
+                "id": "T2-S9",
+                "action": "浏览器验收及最终记录",
+                "command": null,
+                "expected": "四视口与明暗主题：新增/编辑、三个顶部入口、当前标签、取消切换、刷新和错误；浏览器无授权不绕过，不宣称converged",
+                "evidence": "截图、DOM尺寸及实际操作；execution-T2/observation-T2与独立验收"
+              }
+            ],
+            "acceptance_checks": [
+              "表单选择保存并回显",
+              "三个入口展开/收起均展示标签",
+              "保存后即时同步，不自动切项目；旧列表响应不覆盖新类型",
+              "现有切换确认、失败/空/加载、权限不变",
+              "四视口无溢出及遮挡"
+            ],
+            "risks": [
+              "共享store影响所有业务项目选择消费者",
+              "项目编码可编辑是既有身份风险，本任务不改变身份模型",
+              "浏览器授权缺口"
+            ],
+            "rollback": "仅撤销T2新增字段、标签、store同步和本次专项样式；不回退其他页面改动",
+            "stop_conditions": [
+              "需要改变项目引用身份或其他业务选择逻辑",
+              "共享UI实现需要修改"
+            ],
+            "escalation_conditions": [
+              "无法在既有project_code引用下保持正确选择",
+              "真实浏览器验收受阻，保留待验收状态"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "先固定类型读写与兼容契约，再接入消费者"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "mvn test",
+            "expected": "退出0或如实记录独立基线失败"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "退出0"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "node docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+            "expected": "状态及三个入口断言通过"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "实际结果，既有REQ061失败不得伪称通过"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-070-project-creation-type/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+            "expected": "实际结果，licon命名故障不通过改分支绕过"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户在实施计划修订1链接后回复确认，批准进入开发",
+          "confirmed_at": "2026-09-07"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+          "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+          "web/src/types/project.ts",
+          "web/src/types/project-context.ts",
+          "web/src/stores/project-context.ts",
+          "web/src/views/ProjectView.vue",
+          "web/src/views/AppLayout.vue",
+          "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+          "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs"
+        ],
+        "state_variable_candidates": [
+          "pm_project.creation_type",
+          "projectForm.creation_type",
+          "projectContext.currentRef/projects",
+          "inflight list and saved metadata revision"
+        ],
+        "interface_candidates": [
+          "creation_type",
+          "syncProject(Project)"
+        ],
+        "sensor_candidates": [
+          "Mockito SQL capture and permissions",
+          "isolated MySQL",
+          "Node Vue/Pinia/SFC",
+          "Maven/Vite",
+          "authorized browser"
+        ],
+        "actuator_candidates": [
+          "new migration",
+          "bounded ProjectService field changes",
+          "local types/store/form/selector changes"
+        ],
+        "disturbance_candidates": [
+          "dirty worktree",
+          "migration version conflict",
+          "old response races",
+          "browser/isolated DB availability",
+          "existing governance failures"
+        ],
+        "delay_candidates": [
+          "list requests",
+          "save transaction",
+          "UI updates"
+        ],
+        "assumptions": [
+          {
+            "text": "创建类型不触发额外业务流程",
+            "basis": "用户仅要求字段和顶部体现",
+            "falsifier": "新增续建复制/关联规则"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"local MySQL8.4\", \"isolated restore container\", \"JBR17\"], \"inside\": [\"local development schema\", \"preserved Flyway lineage\", \"ProjectService\", \"project selectors\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"concurrent writes require final recheck\"], \"id\": \"S1\", \"independence\": \"actual MySQL\", \"method\": \"restore trial, schema comparison, original-column row hashes\", \"target\": \"database preservation\"}",
+      "{\"blind_spots\": [\"authenticated browser remains unavailable\"], \"id\": \"S2\", \"independence\": \"application execution\", \"method\": \"JUnit, frontend tests, health check\", \"target\": \"backend/frontend\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"restore exact historical scripts for validation and append compatible structural migrations\", \"authority\": \"user explicitly confirmed data retention and release-table protection\", \"id\": \"A3\", \"impact_radius\": \"local development only\", \"rollback\": \"retain full backup; do not drop additive columns or overwrite concurrent data\", \"target\": \"local development runtime\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"canonical classpath cannot validate current database\", \"source\": \"divergent historical migration identities\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"old DM business tables empty; one snapshot row\", \"falsifier\": \"isolated migration or write-contract failure\", \"text\": \"retained legacy columns can coexist with new structural contracts\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "项目类型持久化、兼容读写并保持授权审计",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ProjectService.create/update采用Map输入和JdbcTemplate，保留requireAction、requireProjectAccess及audit",
+        "workbench第81行与project第896行显式SELECT，均需增加creation_type",
+        "ProjectServiceTest已有Mockito JdbcTemplate与权限测试",
+        "迁移文件当前最高V198，V199为候选，执行前重查"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__project_creation_type.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+      ],
+      "invariants": [
+        "保留现有项目权限/数据范围/审计",
+        "不改变项目切换确认和选中引用",
+        "不覆盖其他未提交改动"
+      ],
+      "interface_contracts": [
+        "pm_project、现有project接口Map输入",
+        "AuthUser与现有项目权限",
+        "creation_type=NEW|CONTINUATION；创建缺失默认NEW，更新缺失不改，显式空或非法400",
+        "workbench/detail/create/update响应包含creation_type"
+      ],
+      "non_goals": [
+        "类型字典维护",
+        "续建关联原项目或复制数据",
+        "按类型驱动计划/投产规则",
+        "项目列表改版、筛选和统计"
+      ],
+      "action_bounds": [
+        "Only approved field additions and local sync/UI; no current DB or services"
+      ],
+      "acceptance": [
+        "NEW/CONTINUATION创建和互相编辑",
+        "缺失创建NEW；更新缺失保留CONTINUATION",
+        "非法/空值不持久化；读写权限和审计保持",
+        "隔离MySQL存量行默认NEW"
+      ],
+      "evidence_required": [
+        "diff",
+        "tests exit codes",
+        "real runtime evidence or explicit gaps"
+      ],
+      "rollback": "反向撤销本次代码增量；已执行迁移保留列和值，不删除数据；数据库纠偏仅追加迁移",
+      "stop_conditions": [
+        "V199冲突",
+        "需读取.env或当前业务库",
+        "需改历史迁移或权限模型"
+      ],
+      "escalation_conditions": [
+        "隔离MySQL不可用需明确验收缺口",
+        "授权文件以外平台改动"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T09:00:54+00:00",
+          "text": "baseline30pass"
+        },
+        {
+          "recorded_at": "2026-09-07T09:05:10+00:00",
+          "text": "ready-to-measure"
+        }
+      ],
+      "updated_at": "2026-09-07T10:10:59+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "表单维护类型并在顶部三个入口即时一致展示",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "project-context将workbench映射为ref/name/shortName/status；ref当前为project_code",
+        "AppLayout第244/262/271行有三个选择器且共享confirmProjectSwitch",
+        "ProjectView.resetProjectForm/openEditProject/saveProject负责表单流，目前保存后不更新顶部store",
+        "api/project.ts现有Record请求和Project响应可复用无需更改"
+      ],
+      "write_scope": [
+        "docs/requirements/REQ-20260907-070-project-creation-type/creation-type.test.mjs",
+        "web/src/types/project.ts",
+        "web/src/types/project-context.ts",
+        "web/src/stores/project-context.ts",
+        "web/src/views/ProjectView.vue",
+        "web/src/views/AppLayout.vue"
+      ],
+      "invariants": [
+        "保留现有项目权限/数据范围/审计",
+        "不改变项目切换确认和选中引用",
+        "不覆盖其他未提交改动"
+      ],
+      "interface_contracts": [
+        "T1新增creation_type",
+        "现有Project和ProjectContextItem、Vue/Pinia、UiStatusTag",
+        "ProjectCreationType联合类型及统一中文标签",
+        "ProjectContextItem携带creationType",
+        "store.syncProject(project: Project): void，更新服务端确认的项目元数据，不触发select/路由/业务请求"
+      ],
+      "non_goals": [
+        "类型字典维护",
+        "续建关联原项目或复制数据",
+        "按类型驱动计划/投产规则",
+        "项目列表改版、筛选和统计"
+      ],
+      "action_bounds": [
+        "Only approved field additions and local sync/UI; no current DB or services"
+      ],
+      "acceptance": [
+        "表单选择保存并回显",
+        "三个入口展开/收起均展示标签",
+        "保存后即时同步，不自动切项目；旧列表响应不覆盖新类型",
+        "现有切换确认、失败/空/加载、权限不变",
+        "四视口无溢出及遮挡"
+      ],
+      "evidence_required": [
+        "diff",
+        "tests exit codes",
+        "real runtime evidence or explicit gaps"
+      ],
+      "rollback": "仅撤销T2新增字段、标签、store同步和本次专项样式；不回退其他页面改动",
+      "stop_conditions": [
+        "需要改变项目引用身份或其他业务选择逻辑",
+        "共享UI实现需要修改"
+      ],
+      "escalation_conditions": [
+        "无法在既有project_code引用下保持正确选择",
+        "真实浏览器验收受阻，保留待验收状态"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T09:05:27+00:00",
+          "text": "approved-contract"
+        },
+        {
+          "recorded_at": "2026-09-07T09:19:26+00:00",
+          "text": "real-acceptance-pending"
+        }
+      ],
+      "updated_at": "2026-09-07T10:10:59+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Compatible local schema update and backend activation without losing data",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "251 tables backed up and restored",
+        "12 release tables unchanged in full isolated trial",
+        "canonical pending migrations delete permission rows; must not apply directly",
+        "all currently available applied scripts match stored Flyway checksums"
+      ],
+      "write_scope": [
+        "docs/requirements/REQ-20260907-070-project-creation-type/**",
+        ".runtime-logs/req070-preserve-data/**",
+        ".ai-control/requirements/req-20260907-070-project-creation-type/*.json",
+        "local development schema and backend process"
+      ],
+      "invariants": [
+        "all original row values retained",
+        "existing rel_* structure and data unchanged",
+        "no credential output",
+        "no history reset or false successful migration entries",
+        "no edits to published source SQL"
+      ],
+      "interface_contracts": [
+        "creation_type NEW or CONTINUATION",
+        "local compatible migration location is separate from canonical classpath and preserves original history"
+      ],
+      "non_goals": [
+        "canonical historical migration unification",
+        "permission cleanup",
+        "production or Git changes"
+      ],
+      "action_bounds": [
+        "verified backup",
+        "derive additive DDL from isolated target using metadata",
+        "recover historical SQL only with matching checksums",
+        "trial Flyway validation and migration",
+        "only apply after original-value and protected-schema checks",
+        "restart backend with mock writes disabled"
+      ],
+      "acceptance": [
+        "trial Flyway validate/migrate succeeds",
+        "original-column data hashes and protected schemas unchanged",
+        "creation_type default and save tests",
+        "replacement backend healthy"
+      ],
+      "evidence_required": [
+        "backup identity",
+        "trial results",
+        "actual migration count",
+        "data-preservation report",
+        "build and health results"
+      ],
+      "rollback": "Keep full pre-migration backup; keep additive fields; restore only with explicit approval if needed",
+      "stop_conditions": [
+        "unrecoverable historical checksum",
+        "nonempty column destructive change",
+        "protected table delta",
+        "data hash mismatch"
+      ],
+      "escalation_conditions": [
+        "required data conversion cannot retain original values"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-07T10:17:49+00:00",
+          "text": "compatible-lane-generated"
+        },
+        {
+          "recorded_at": "2026-09-08T01:19:57+00:00",
+          "text": "current-runtime-ready"
+        }
+      ],
+      "updated_at": "2026-09-08T01:19:57+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T1",
+      "source": "local-development-db",
+      "requirement": "R1",
+      "expected": "creation_type-persisted",
+      "observed": "column-absent",
+      "evidence": "runtime-observation.json",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "database-only",
+      "causal_hypothesis": null,
+      "correction_check": "authenticated-save-read-refresh",
+      "decision": null,
+      "decision_reason": null,
+      "created_at": "2026-09-07T09:30:54+00:00",
+      "resolved_at": null,
+      "resolution_evidence": null
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "baseline",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "original30tests-pass-JBR17",
+      "recorded_at": "2026-09-07T09:00:55+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T1",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "service42pass-isolatedDB-pending",
+      "recorded_at": "2026-09-07T09:05:20+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T2",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "local-tests-pass-external-regression-and-browser-gaps",
+      "recorded_at": "2026-09-07T09:19:31+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "runtime-preflight",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "runtime-observation.json",
+      "recorded_at": "2026-09-07T09:31:17+00:00"
+    },
+    {
+      "id": "S-0005",
+      "label": "local-deployment-20260908",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "observation-T3.json",
+      "recorded_at": "2026-09-08T01:20:05+00:00"
+    }
+  ]
+}

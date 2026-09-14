@@ -1,0 +1,117 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "后端、V124、导入和资源申请完成部署单元新模型原子切换",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": [],
+      "input_facts": [
+        "V96/V106 定义旧三个字段、MQ 和 DB/AP/WB/PL 契约",
+        "DeploymentUnitService/Store 是主记录、版本和生命周期唯一写入口",
+        "EnvironmentResourceStore/Service 是资源申请部署单元投影与分流所有者",
+        "2026-09-02 检查 V124 尚未占用"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V124__refine_deployment_unit_model.sql",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeploymentUnitModels.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitController.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeploymentUnitImportService.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/**"
+      ],
+      "invariants": [
+        "code、物理归属、生命周期、网络分区、乐观锁、权限、租户和审计职责保持",
+        "只写 architecture 自有表并只追加 V124",
+        "HTTP DTO 不接收 tenantId"
+      ],
+      "interface_contracts": [
+        "DeploymentUnitCommand(name,kind,relatedDeploymentUnitIds,defaultNetworkZoneId,description,remark,rowVersion)",
+        "DeploymentUnitView 含 relatedDeploymentUnits 且删除旧三个字段",
+        "GET /api/architecture/deployment-units/options 返回当前租户 ACTIVE 分页候选",
+        "资源申请依据 kind 映射 APPLICATION->AP、DATABASE->DB、WEB->WB"
+      ],
+      "non_goals": ["不保留 MQ/PL 或旧客户端兼容", "不修改 platform/shared/公共 UI", "不改变编号和权限码"],
+      "action_bounds": [
+        "先补失败测试，再追加 V124 和最小 Java 修改",
+        "关系只用 tenant/min/max 单行与差量 LINK/UNLINK 历史",
+        "发现 V124 冲突或 scope 外消费者立即停止"
+      ],
+      "acceptance_checks": [
+        "名称格式、唯一性、标准/自定义后缀测试通过",
+        "搜索分页、权限、租户、自关联/失效目标拒绝测试通过",
+        "双向增删、重复、并发、停用保留和有关联作废 409 通过",
+        "导入五列与资源申请三类分流通过",
+        "V124 空库/增量和 Flyway 检查通过"
+      ],
+      "evidence_required": ["实际 diff", "S1/S2/S6 命令与退出码", "迁移结构断言", "扰动和未决项"],
+      "rollback": "回退 T1 小提交；已执行 V124 的早期开发环境使用补偿迁移或重建数据库",
+      "stop_conditions": ["V124 被占用", "需修改 scope 外强依赖", "关系无法在单事务内保持一致", "发现生产数据要求"],
+      "escalation_conditions": ["需要旧客户端兼容", "主名称需要允许下划线", "双方版本需同步增长", "需修改平台/shared/公共 UI"]
+    },
+    {
+      "id": "T2",
+      "goal": "前端完成单名称输入、类型联动、远程搜索多选和下游展示切换",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R6", "R8"],
+      "prerequisites": ["T1"],
+      "input_facts": ["T1 是 DTO 和 options API 唯一所有者", "页面已复用 UiPageHeader/UiToolbar/UiDataTable/移动卡片", "Element Plus 支持 remote multiple collapse-tags"],
+      "write_scope": ["web/src/modules/architecture/**"],
+      "invariants": ["前端权限不替代后端权限", "不修改共享 UI", "桌面表格与手机卡片保持同一业务规则"],
+      "interface_contracts": ["消费 T1 DeploymentUnitView/Version/RelatedDeploymentUnitView/Payload", "名称只使用一个输入框", "标准后缀双向联动且自定义后缀不被覆盖"],
+      "non_goals": ["不新增第二后缀输入框", "不建立公共选择器", "不改路由或应用壳"],
+      "action_bounds": ["先切换 types/api 触发静态失败", "再改页面/详情/导入/资源申请和局部 CSS", "只在 architecture 模块内实现请求乱序与状态处理"],
+      "acceptance_checks": ["vue-tsc/Vite build 通过", "旧字段和 MQ 负向扫描无业务残留", "单输入大写和标准/自定义后缀旅程通过", "远程多选编辑回显和失败保留已选通过", "375px 不产生页面级横向滚动"],
+      "evidence_required": ["实际 diff", "S3/S5/S6 结果", "Network/Console/DOM 溢出证据"],
+      "rollback": "回退 T2 小提交并与 T1 配套回滚",
+      "stop_conditions": ["T1 契约未稳定", "需要修改共享 UI", "移动布局无法在模块局部修复"],
+      "escalation_conditions": ["需要公共选择器", "用户要求第二后缀输入框", "需要改变弹层基础组件"]
+    },
+    {
+      "id": "T3",
+      "goal": "同步 Mock/公开契约并完成自动化、真实 API/SQL/审计和四视口收敛验收",
+      "requirement_ids": ["R1", "R5", "R6", "R7", "R8"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["Mock 必须虚构且幂等", "architecture-module-contract 是公开契约", "high-assurance 至少需要三次采样和两类传感器"],
+      "write_scope": ["mock/mock-data.json", "docs/integration/architecture-module-contract.md", "docs/requirements/REQ-20260901-057-deployment-unit-model/**", ".ai-control/requirements/req-20260901-057-deployment-unit-model/*.json"],
+      "invariants": ["不修复其他需求历史账本", "不访问生产或真实敏感数据", "失败证据与历史噪声分开报告"],
+      "interface_contracts": ["Mock、Java、TypeScript、HTTP 和文档字段一致", "浏览器验收路由 /architecture/deployment-units"],
+      "non_goals": ["不发布、不合并、不连接生产", "不扩大公共能力"],
+      "action_bounds": ["同步虚构数据和公开契约", "执行从静态到全栈的分级验证", "只记录本任务前缀 execution/observation/convergence"],
+      "acceptance_checks": ["Mock 幂等和公开契约一致", "Maven/前端/Flyway/scope/diff 本需求检查通过", "真实 API/SQL/审计通过", "1280/375/390/430 明暗主题无新增控制台错误和页面横向滚动", "最终 P0/P1 为零"],
+      "evidence_required": ["S1-S6 原始结果", "三次离散采样", "execution/observation/convergence", "残余风险和回退说明"],
+      "rollback": "按 T3、T2、T1 逆序回退；数据库使用补偿迁移或重建早期开发库",
+      "stop_conditions": ["权限或租户越界", "双方关系不一致", "资源分流错误", "迁移破坏非开发数据", "浏览器主路径不可达"],
+      "escalation_conditions": ["需要生产数据清理", "需要 scope 外修改", "历史治理错误成为不可绕过硬门禁", "回退需删除不可恢复数据"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "T2 消费 T1 的共享 DTO 和 options API"},
+    {"from": "T2", "to": "T3", "reason": "T3 浏览器与契约验收依赖前端完成"},
+    {"from": "T1", "to": "T3", "reason": "T3 MySQL/API/审计验收依赖后端与迁移完成"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["S1 后端聚焦测试", "S2 MySQL/Flyway", "S6 旧字段扫描"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["S3 前端构建", "S6 契约残留扫描"]},
+    {"after_tasks": ["T1", "T2", "T3"], "checks": ["S1-S6 全量收敛门禁"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 完成采样", "trigger": "T1 执行报告完成", "observer": "独立观测阶段", "sensors": ["S1", "S2", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]},
+    {"label": "T2 集成采样", "trigger": "T2 执行报告完成", "observer": "独立观测阶段", "sensors": ["S3", "S5", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4", "R6", "R8"]},
+    {"label": "最终收敛采样", "trigger": "T3 全栈验收完成", "observer": "独立观测与收敛验收", "sensors": ["S1", "S2", "S3", "S4", "S5", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S3", "S6"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S2", "S5"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S3", "S5"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2"], "sensor_ids": ["S1", "S4", "S5"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T3"], "sensor_ids": ["S2", "S4"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S4", "S6"]},
+    {"requirement_id": "R7", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S4", "S6"]},
+    {"requirement_id": "R8", "task_ids": ["T2", "T3"], "sensor_ids": ["S3", "S5"]}
+  ],
+  "plan_status": "ready"
+}

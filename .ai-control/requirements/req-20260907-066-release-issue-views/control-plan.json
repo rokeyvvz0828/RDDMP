@@ -1,0 +1,245 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Read-only details and create/edit drawers",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ReleaseIssueDto already has all detail text fields",
+        "Current UI uses one edit dialog and has no detail entry",
+        "Existing save validates issueNo, issueTitle and closedAt for CLOSED"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+        ".ai-control/requirements/req-20260907-066-release-issue-views/*.json"
+      ],
+      "invariants": [
+        "Permissions and project boundaries unchanged",
+        "One records and pagination state for both views",
+        "Details do not mutate the editing form or source record"
+      ],
+      "interface_contracts": [
+        "Keep ReleaseIssueDto/Write and CRUD parameters; parent project-key remount"
+      ],
+      "non_goals": [
+        "New APIs or database fields",
+        "Persistent view preferences",
+        "Changes to other release pages"
+      ],
+      "action_bounds": [
+        "Only modify the issue component and this task's metadata",
+        "Preserve ReleaseIssueDto/Write, projectId, rowVersion and API contracts",
+        "No backend, SQL, public UI, shared styles, router or dependency changes",
+        "No production/.env access, commit, push or branch switch",
+        "Preserve all pre-existing worktree changes"
+      ],
+      "acceptance_checks": [
+        "All issue detail fields visible read-only",
+        "Create/edit use drawer with reachable footer",
+        "Original validation and API contract retained",
+        "Cancellation and dirty-form behavior tested"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "Build exit",
+        "State behavior assertions",
+        "Browser results or explicit unavailable evidence"
+      ],
+      "rollback": "Reverse only T1 component hunks and own evidence, preserving other work.",
+      "stop_conditions": [
+        "Runtime detail requires a different API or public UI change"
+      ],
+      "escalation_conditions": [
+        "Missing detail fields or unverified permission contract"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "Card/list switching and integrated responsive verification",
+      "requirement_ids": [
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Current component has one records array and server pagination state",
+        "Parent project key recreates issue component",
+        "Frontend package has build but no configured unit test runner"
+      ],
+      "write_scope": [
+        "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+        ".ai-control/requirements/req-20260907-066-release-issue-views/*.json"
+      ],
+      "invariants": [
+        "Permissions and project boundaries unchanged",
+        "One records and pagination state for both views",
+        "Details do not mutate the editing form or source record"
+      ],
+      "interface_contracts": [
+        "Keep ReleaseIssueDto/Write and CRUD parameters; parent project-key remount"
+      ],
+      "non_goals": [
+        "New APIs or database fields",
+        "Persistent view preferences",
+        "Changes to other release pages"
+      ],
+      "action_bounds": [
+        "Only modify the issue component and this task's metadata",
+        "Preserve ReleaseIssueDto/Write, projectId, rowVersion and API contracts",
+        "No backend, SQL, public UI, shared styles, router or dependency changes",
+        "No production/.env access, commit, push or branch switch",
+        "Preserve all pre-existing worktree changes"
+      ],
+      "acceptance_checks": [
+        "Mode switching preserves records and query",
+        "Cards and list both expose details and authorized maintenance",
+        "Responsive dimensions and themes checked",
+        "Original project/permission/cancel behavior retained"
+      ],
+      "evidence_required": [
+        "Actual diff",
+        "Build exit",
+        "State behavior assertions",
+        "Browser results or explicit unavailable evidence"
+      ],
+      "rollback": "Reverse only T2 presentation hunks; do not revert unrelated tasks.",
+      "stop_conditions": [
+        "Needs new API, persistent preferences or shared UI changes"
+      ],
+      "escalation_conditions": [
+        "Project leakage, unauthorized actions or write regression"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "Same component; T2 uses T1 detail entry"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1",
+        "T2"
+      ],
+      "checks": [
+        "Build, component behavior assertions and real browser if permitted"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "T1",
+      "trigger": "Drawer implementation",
+      "observer": "Main agent self-check, not independent acceptance",
+      "sensors": [
+        "S1",
+        "S2"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ]
+    },
+    {
+      "label": "T2",
+      "trigger": "Views integrated",
+      "observer": "Main agent self-check, independent browser pending",
+      "sensors": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

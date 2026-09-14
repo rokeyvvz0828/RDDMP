@@ -1,0 +1,382 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-release-drill",
+  "handoff_status": "approved",
+  "created_at": "2026-09-05T00:00:00+08:00",
+  "design": {
+    "schema_version": 1,
+    "topic": "data-migration-release-drill",
+    "design_revision": 1,
+    "design_status": "approved",
+    "human_document": "docs/engineering-control/designs/2026-09-05-data-migration-release-drill-design.md",
+    "objective": "将数据迁移/数迁资产内容/投产及演练从通用文件资产薄页升级为参数管理码值、单文件、组件级单选系统、手填轮次、逻辑删除和统一回收站的专属域功能。",
+    "users": [
+      "数据迁移管理员：维护投产及演练资料并管理统一回收站",
+      "普通数据迁移人员：查看、下载、上传并维护本人资料"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "statement": "dm_release_drill保存颗粒度/资料类型/所属轮次/资料名称，组件级必填一个系统，新增必填一个源文件，轮次手填可空。",
+        "acceptance": ["必填缺失400", "项目级传系统400", "组件级缺系统400", "轮次可空"],
+        "priority": "must",
+        "source": "用户功能说明与确认",
+        "counterexample": ["只保存doc_name和system_code"]
+      },
+      {
+        "id": "R2",
+        "statement": "颗粒度与资料类型由系统管理参数维护，V184初始化DM_RELEASE_DRILL_GRANULARITY和DM_RELEASE_DRILL_TYPE。",
+        "acceptance": ["参数选项接口可读", "停用/未知编码拒绝", "重复执行不覆盖管理员配置"],
+        "priority": "must",
+        "source": "用户确认Granularity指向参数管理",
+        "counterexample": ["硬编码颗粒度/类型"]
+      },
+      {
+        "id": "R3",
+        "statement": "列表展示涉及物理子系统和所属轮次。",
+        "acceptance": ["列表返回system_code/system_name/drill_round", "组件级名称经投影"],
+        "priority": "must",
+        "source": "用户确认列表展示两列",
+        "counterexample": ["仅表单可见"]
+      },
+      {
+        "id": "R4",
+        "statement": "一个资料只绑定一个源文件，新增必传，编辑保留或替换。",
+        "acceptance": ["新增无文件400", "编辑不传新文件保留", "编辑传新文件替换"],
+        "priority": "must",
+        "source": "用户确认单文件",
+        "counterexample": ["多文件"]
+      },
+      {
+        "id": "R5",
+        "statement": "列表支持颗粒度/资料类型/名称关键字组合筛选和服务端分页，覆盖加载/空/失败/无权限/提交中状态。",
+        "acceptance": ["筛选回第一页", "分页20/50/100", "项目切换重置"],
+        "priority": "must",
+        "source": "用户功能说明",
+        "counterexample": ["浏览器内存筛选"]
+      },
+      {
+        "id": "R6",
+        "statement": "所有功能纳入权限管理，写操作执行项目隔离/实体授权/审计。",
+        "acceptance": ["跨项目拒绝", "普通用户仅本人记录", "RELEASE_DRILL_*审计"],
+        "priority": "must",
+        "source": "REQ-031统一规则",
+        "counterexample": ["仅前端隐藏按钮"]
+      },
+      {
+        "id": "R7",
+        "statement": "RELEASE_DRILL由ReleaseDrillRecycleBinSource唯一认领并摘除通用链路。",
+        "acceptance": ["通用控制器无release-drills", "MANAGED_TYPES无RELEASE_DRILL", "回收站无重复"],
+        "priority": "must",
+        "source": "专题/迁移方案收敛模式",
+        "counterexample": ["双来源"]
+      },
+      {
+        "id": "R8",
+        "statement": "邻接修改限定在数据迁移模块与V184。",
+        "acceptance": ["不跨投产模块", "不修改平台公共构件", "构建/治理通过"],
+        "priority": "must",
+        "source": "REQ-031范围",
+        "counterexample": ["依赖投产模块"]
+      }
+    ],
+    "invariants": [
+      "单租户且绑定当前项目与tenant_id",
+      "Flyway只追加使用V184",
+      "业务关联使用(project_id, system_code)",
+      "doc_code服务端生成",
+      "参数INSERT IGNORE"
+    ],
+    "constraints": [
+      "模块边界遵循modules.yaml",
+      "不依赖投产模块",
+      "不修改系统参数私有实现",
+      "文件单个≤50MB",
+      "遵守design-h5.md和共享UI"
+    ],
+    "non_goals": [
+      "轮次下拉来自投产模块",
+      "多文件/多系统",
+      "新增业务字典表",
+      "修改全局项目切换器"
+    ],
+    "selected_approach": {
+      "name": "专属服务+参数管理+单文件单系统+V184",
+      "reason": "与迁移方案/专题材料一致",
+      "alternatives": [
+        {"name": "通用AssetListView", "rejected_because": "无法表达字段联动且弱化校验"},
+        {"name": "独立字典表", "rejected_because": "与参数管理冲突"}
+      ]
+    },
+    "architecture": {
+      "boundary": {
+        "inside": ["dm_release_drill字段", "参数初始化", "ReleaseDrillService/Controller/RecycleBinSource", "前端页面API"],
+        "outside": ["投产模块", "platform/system参数实现", "全局项目切换器", "公共附件审计表结构"]
+      },
+      "components": [
+        {"name": "ReleaseDrillService", "responsibility": "CRUD/筛选/校验/附件/审计/回收站", "depends_on": ["DataMigrationPermissionService", "ContentAttachmentService", "DataMigrationCodeValueService", "ContentDocCodeGenerator"]},
+        {"name": "ReleaseDrillController", "responsibility": "路由与权限", "depends_on": ["ReleaseDrillService"]},
+        {"name": "ReleaseDrillRecycleBinSource", "responsibility": "统一回收站认领", "depends_on": ["ReleaseDrillService"]},
+        {"name": "ReleaseDrillsPage", "responsibility": "列表/筛选/抽屉/上传/下载/删除", "depends_on": ["data-migration.ts"]}
+      ],
+      "interfaces": [
+        {"name": "GET /api/data-migration/release-drills", "producer": "ReleaseDrillController", "consumers": ["ReleaseDrillsPage"], "contract": "list(projectId,granularity,materialTypeCode,keyword,page,size)"},
+        {"name": "POST/PUT/DELETE /api/data-migration/release-drills[/{id}]", "producer": "ReleaseDrillController", "consumers": ["ReleaseDrillsPage"], "contract": "create/update/delete with RBAC/project/attachment checks"},
+        {"name": "GET /api/data-migration/release-drills/options/systems", "producer": "ReleaseDrillController", "consumers": ["ReleaseDrillsPage"], "contract": "component options"},
+        {"name": "GET /api/data-migration/options/{category}", "producer": "DataMigrationParameterOptionsController", "consumers": ["ReleaseDrillsPage"], "contract": "granularity/material type options"}
+      ],
+      "data_flows": [
+        {"input": "当前项目+元数据+单文件", "transitions": ["附件校验", "参数/系统校验", "写入dm_release_drill", "绑定附件", "写审计"], "output": "详情/列表"},
+        {"input": "筛选条件", "transitions": ["项目隔离", "组合查询", "系统名称投影"], "output": "分页列表"}
+      ]
+    },
+    "error_handling": [
+      {"condition": "必填/组件级缺系统", "behavior": "400", "recovery": "前端标红"},
+      {"condition": "参数未启用", "behavior": "400", "recovery": "提示启用后重试"},
+      {"condition": "附件无效/超限", "behavior": "400", "recovery": "重新上传"},
+      {"condition": "越权/跨项目", "behavior": "403/守卫拒绝", "recovery": "切换项目"},
+      {"condition": "回收站恢复冲突", "behavior": "409", "recovery": "刷新查看"}
+    ],
+    "quality_attributes": {
+      "security": ["RBAC", "项目守卫", "实体授权", "附件校验", "审计"],
+      "performance": ["系统选项一次返回", "服务端分页"],
+      "compatibility": ["ContentAssetTables保留RELEASE_DRILL", "回收站不回退认领"],
+      "operations": ["V184幂等", "INSERT IGNORE"]
+    },
+    "verification_strategy": [
+      {"requirement_ids": ["R1","R4","R6"], "signal": "Service/Controller测试", "method": "mvn -pl :ccb-data-migration -am -Dtest=ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest test"},
+      {"requirement_ids": ["R2"], "signal": "码值/迁移测试", "method": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationCodeValueServiceTest,ContentAssetMigrationMySqlTest test"},
+      {"requirement_ids": ["R7"], "signal": "回收站注册测试", "method": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ReleaseDrillRecycleBinSourceTest test"},
+      {"requirement_ids": ["R3","R5"], "signal": "前端构建/浏览器验收", "method": "npm --prefix web run build"},
+      {"requirement_ids": ["R8"], "signal": "全量回归", "method": "mvn -pl :ccb-data-migration -am test && node scripts/check-all-governance.mjs && npm --prefix web run build"}
+    ],
+    "assumptions": [
+      {"text": "dm_release_drill当前无存量业务行", "basis": "REQ-031本地表行数0", "falsifier": "发现存量业务行"},
+      {"text": "组件级等价dm_component一个启用记录", "basis": "迁移方案/专题模式", "falsifier": "需其他系统模型"},
+      {"text": "编辑不传新文件保留原文件", "basis": "附件策略", "falsifier": "用户要求编辑必须重新上传"}
+    ],
+    "unknowns": [
+      {"question": "是否存在需要保留的旧记录", "impact": "V184默认值可能不符合历史语义", "owner": "module-owner", "blocking": false}
+    ],
+    "decisions": [
+      {"id": "D1", "decision": "轮次纯手工输入", "reason": "用户确认且避免跨模块", "source": "用户消息"},
+      {"id": "D2", "decision": "组件级单选系统", "reason": "参考迁移方案", "source": "用户消息"},
+      {"id": "D3", "decision": "源文件单文件", "reason": "一个资评对应一份文档", "source": "用户消息"},
+      {"id": "D4", "decision": "颗粒度/类型走参数管理", "reason": "用户确认", "source": "用户消息"}
+    ],
+    "risks": [
+      {"risk": "摘除通用链路回归", "impact": "看板/回收站异常", "mitigation": "同批新增专用来源+注册测试"},
+      {"risk": "参数初始化缺项", "impact": "页面无法新增", "mitigation": "V184断言类别/项数"}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户确认方案并回复“确认”",
+      "confirmed_at": "2026-09-05T00:00:00+08:00"
+    }
+  },
+  "implementation_plan": {
+    "plan_revision": 1,
+    "human_document": "docs/engineering-control/plans/2026-09-05-data-migration-release-drill-implementation-plan.md",
+    "plan_status": "ready",
+    "global_constraints": [
+      "只改REQ-031 writable_paths",
+      "Flyway只追加V184",
+      "参数码值不硬编码",
+      "不依赖投产模块",
+      "系统仅dm_component启用项",
+      "文件单个≤50MB",
+      "写操作RBAC/项目/实体/附件/审计"
+    ],
+    "file_map": [
+      {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_release_drill_domain.sql", "status": "candidate-new", "responsibility": "加列/回填/索引/参数初始化", "evidence": "V180/V183模式"},
+      {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java", "status": "existing", "responsibility": "注册新类别", "evidence": "V183实现"},
+      {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java", "status": "candidate-new", "responsibility": "专属CRUD/筛选/校验/附件/审计/回收站", "evidence": "TopicService/PlanService"},
+      {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java", "status": "candidate-new", "responsibility": "release-drills路由与权限", "evidence": "TopicController/PlanController"},
+      {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSource.java", "status": "candidate-new", "responsibility": "统一回收站认领", "evidence": "TopicRecycleBinSource"},
+      {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java", "status": "existing", "responsibility": "MANAGED_TYPES移除RELEASE_DRILL", "evidence": "现状"},
+      {"path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java", "status": "existing", "responsibility": "移除release-drills映射", "evidence": "现状"},
+      {"path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillServiceTest.java", "status": "candidate-new", "responsibility": "R1-R6测试", "evidence": "TopicServiceTest"},
+      {"path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSourceTest.java", "status": "candidate-new", "responsibility": "R7测试", "evidence": "TopicRecycleBinSource"},
+      {"path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java", "status": "existing", "responsibility": "更新注册断言", "evidence": "现状断言"},
+      {"path": "web/src/api/data-migration.ts", "status": "existing", "responsibility": "ReleaseDrill契约与参数常量", "evidence": "Topic/Plan API"},
+      {"path": "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue", "status": "existing", "responsibility": "重写为专属页面", "evidence": "PlansPage/TopicsPage"}
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "goal": "V184迁移与参数码值注册",
+        "requirement_ids": ["R1","R2","R8"],
+        "prerequisites": [],
+        "input_facts": ["V183为最新迁移", "dm_release_drill当前14列", "码值服务已存在"],
+        "files": {
+          "create": ["server/src/platform/infrastructure/src/main/resources/db/migration/V185__data_migration_release_drill_domain.sql"],
+          "modify": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TestDataMigrationCodeValues.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationCodeValueServiceTest.java"],
+          "test": ["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAssetMigrationMySqlTest.java"]
+        },
+        "interfaces": {
+          "consumes": ["SystemReferenceQuery.activeParameters"],
+          "produces": ["DM_RELEASE_DRILL_GRANULARITY", "DM_RELEASE_DRILL_TYPE options"]
+        },
+        "steps": [
+          {"id": "T1-S1", "action": "编写V184加列/回填/索引/参数初始化", "command": "apply_patch V184", "expected": "SQL幂等且SHOW CREATE包含新列索引", "evidence": "迁移文件与迁移测试"},
+          {"id": "T1-S2", "action": "扩展DataMigrationCodeValueService常量与ALLOWED_CATEGORIES", "command": null, "expected": "编译通过", "evidence": "代码diff"},
+          {"id": "T1-S3", "action": "扩展测试fixture与码值测试", "command": null, "expected": "新类别可读", "evidence": "测试断言"},
+          {"id": "T1-S4", "action": "运行局部测试", "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationCodeValueServiceTest,ContentAssetMigrationMySqlTest test", "expected": "通过0失败", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["V184可重复执行", "新类别options/requireActive可用"],
+        "risks": ["管理员配置被覆盖", "迁移幂等破坏"],
+        "rollback": "不发布V184并回退码值改动",
+        "stop_conditions": ["无法幂等", "类别/项数不符", "越界文件"],
+        "escalation_conditions": ["需修改sys_dict_type全局约束或平台参数接口"]
+      },
+      {
+        "id": "T2",
+        "goal": "ReleaseDrillService与Controller",
+        "requirement_ids": ["R1","R2","R3","R4","R5","R6"],
+        "prerequisites": ["T1"],
+        "input_facts": ["TopicService/PlanService模式", "ContentDocCodeGenerator已支持DRILL"],
+        "files": {
+          "create": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ReleaseDrillController.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillServiceTest.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillControllerSecurityTest.java"],
+          "modify": [],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["ContentAttachmentService", "DataMigrationPermissionService", "DataMigrationCodeValueService", "ContentDocCodeGenerator"],
+          "produces": ["/api/data-migration/release-drills*"]
+        },
+        "steps": [
+          {"id": "T2-S1", "action": "实现ReleaseDrillService", "command": null, "expected": "CRUD/校验/审计/回收站编译通过", "evidence": "代码diff"},
+          {"id": "T2-S2", "action": "实现ReleaseDrillController", "command": null, "expected": "路由权限与Topic/Plan一致", "evidence": "代码diff"},
+          {"id": "T2-S3", "action": "编写服务与控制器安全测试", "command": null, "expected": "覆盖R1-R6验收", "evidence": "测试代码"},
+          {"id": "T2-S4", "action": "运行局部测试", "command": "mvn -pl :ccb-data-migration -am -Dtest=ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest test", "expected": "通过0失败", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["必填/组件级/单附件/权限/审计测试通过"],
+        "risks": ["附件事务一致", "参数联动"],
+        "rollback": "删除新增服务/控制器/测试，保留T1",
+        "stop_conditions": ["参数/系统校验需直接访问平台私有SQL", "单附件无法事务一致"],
+        "escalation_conditions": ["需公共附件接口变更或新增菜单/RBAC种子"]
+      },
+      {
+        "id": "T3",
+        "goal": "回收站来源与通用链路摘除",
+        "requirement_ids": ["R6","R7","R8"],
+        "prerequisites": ["T2"],
+        "input_facts": ["MANAGED_TYPES含RELEASE_DRILL", "通用控制器含release-drills", "注册测试断言通用控制器含release-drills/delete"],
+        "files": {
+          "create": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSource.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillRecycleBinSourceTest.java"],
+          "modify": ["server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java", "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java", "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["ReleaseDrillService", "RecycleBinSource"],
+          "produces": ["RELEASE_DRILL recycle source"]
+        },
+        "steps": [
+          {"id": "T3-S1", "action": "实现ReleaseDrillRecycleBinSource", "command": null, "expected": "supports只含RELEASE_DRILL", "evidence": "代码diff"},
+          {"id": "T3-S2", "action": "从MANAGED_TYPES和ContentAssetController移除RELEASE_DRILL/release-drills", "command": null, "expected": "通用链路不再处理", "evidence": "代码diff"},
+          {"id": "T3-S3", "action": "更新注册断言并新增回收站测试", "command": null, "expected": "无重复认领", "evidence": "测试代码"},
+          {"id": "T3-S4", "action": "运行回归", "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ReleaseDrillRecycleBinSourceTest,ContentAssetMigrationMySqlTest test", "expected": "通过0失败", "evidence": "测试报告"}
+        ],
+        "acceptance_checks": ["通用控制器无release-drills", "回收站唯一来源"],
+        "risks": ["看板/历史信封回归"],
+        "rollback": "恢复通用映射和MANAGED_TYPES并移除专用来源",
+        "stop_conditions": ["看板依赖无法投影", "出现双来源"],
+        "escalation_conditions": ["需改回收站公共SPI或平台RBAC"]
+      },
+      {
+        "id": "T4",
+        "goal": "前端API与专属页面",
+        "requirement_ids": ["R3","R4","R5","R6"],
+        "prerequisites": ["T2"],
+        "input_facts": ["ReleaseDrillsPage当前薄页", "PlansPage/TopicsPage已实现模式", "data-migration.ts有参数选项API"],
+        "files": {
+          "create": [],
+          "modify": ["web/src/api/data-migration.ts", "web/src/modules/data-migration/views/content/ReleaseDrillsPage.vue"],
+          "test": []
+        },
+        "interfaces": {
+          "consumes": ["/api/data-migration/release-drills*", "/api/data-migration/options/{category}"],
+          "produces": ["ReleaseDrillsPage UI"]
+        },
+        "steps": [
+          {"id": "T4-S1", "action": "扩展data-migration.ts字段/枚举/API", "command": null, "expected": "类型契约一致", "evidence": "代码diff"},
+          {"id": "T4-S2", "action": "重写ReleaseDrillsPage列表/筛选/抽屉/上传/下载/删除", "command": null, "expected": "页面行为对齐设计", "evidence": "代码diff"},
+          {"id": "T4-S3", "action": "运行前端构建", "command": "npm --prefix web run build", "expected": "构建成功", "evidence": "构建日志"}
+        ],
+        "acceptance_checks": ["列表展示新列", "组件级系统必填", "单文件上传", "移动视口无横向滚动"],
+        "risks": ["前端类型与后端不一致"],
+        "rollback": "回退API与页面改动，路由保持不变",
+        "stop_conditions": ["后端接口字段不一致且无法修正", "参数选项未返回"],
+        "escalation_conditions": ["需修改共享UI/store/router"]
+      },
+      {
+        "id": "T5",
+        "goal": "集成检查与收敛门禁",
+        "requirement_ids": ["R1","R2","R3","R4","R5","R6","R7","R8"],
+        "prerequisites": ["T1","T2","T3","T4"],
+        "input_facts": ["T1-T4已实现并局部验证"],
+        "files": {"create": [], "modify": [], "test": ["server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**"]},
+        "interfaces": {
+          "consumes": [],
+          "produces": []
+        },
+        "steps": [
+          {"id": "T5-S1", "action": "数据迁移模块全量测试", "command": "mvn -pl :ccb-data-migration -am test", "expected": "全部通过", "evidence": "测试报告"},
+          {"id": "T5-S2", "action": "治理范围检查", "command": "node scripts/check-all-governance.mjs", "expected": "通过", "evidence": "命令输出"},
+          {"id": "T5-S3", "action": "前端构建", "command": "npm --prefix web run build", "expected": "构建成功", "evidence": "日志"},
+          {"id": "T5-S4", "action": "运行浏览器路径校验", "command": "start dev servers and verify core paths", "expected": "列表/新增/编辑/删除/回收站无控制台错误", "evidence": "浏览器记录"}
+        ],
+        "acceptance_checks": ["全量门禁通过", "浏览器验收覆盖"],
+        "risks": ["集成负反馈需重新建模"],
+        "rollback": "回退到T4前提交，不执行反向迁移",
+        "stop_conditions": ["负反馈无法在方案内修复"],
+        "escalation_conditions": ["需新增菜单/RBAC种子或重定需求"]
+      }
+    ],
+    "dependency_edges": [
+      {"from": "T1", "to": "T2", "reason": "T2依赖迁移与码值"},
+      {"from": "T2", "to": "T3", "reason": "回收站摘除依赖服务"},
+      {"from": "T2", "to": "T4", "reason": "前端依赖后端接口"},
+      {"from": "T3", "to": "T5", "reason": "集成依赖链路收敛"},
+      {"from": "T4", "to": "T5", "reason": "集成依赖前端完成"}
+    ],
+    "parallel_groups": [["T1"], ["T2"], ["T3"], ["T4"]],
+    "integration_checks": [
+      {"after_tasks": ["T1"], "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationCodeValueServiceTest,ContentAssetMigrationMySqlTest test", "expected": "通过"},
+      {"after_tasks": ["T2"], "command": "mvn -pl :ccb-data-migration -am -Dtest=ReleaseDrillServiceTest,ReleaseDrillControllerSecurityTest test", "expected": "通过"},
+      {"after_tasks": ["T3"], "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest,ReleaseDrillRecycleBinSourceTest test", "expected": "通过"},
+      {"after_tasks": ["T4"], "command": "npm --prefix web run build", "expected": "通过"},
+      {"after_tasks": ["T5"], "command": "mvn -pl :ccb-data-migration -am test && node scripts/check-all-governance.mjs && npm --prefix web run build", "expected": "通过"}
+    ],
+    "coverage": [
+      {"requirement_id": "R1", "task_ids": ["T1","T2"]},
+      {"requirement_id": "R2", "task_ids": ["T1","T2"]},
+      {"requirement_id": "R3", "task_ids": ["T2","T4"]},
+      {"requirement_id": "R4", "task_ids": ["T2","T4"]},
+      {"requirement_id": "R5", "task_ids": ["T2","T4"]},
+      {"requirement_id": "R6", "task_ids": ["T2","T3"]},
+      {"requirement_id": "R7", "task_ids": ["T3"]},
+      {"requirement_id": "R8", "task_ids": ["T1","T2","T3","T4","T5"]}
+    ],
+    "approval": {
+      "status": "approved",
+      "evidence": "用户确认“可以进入开发”并授权按计划执行",
+      "confirmed_at": "2026-09-05T00:00:00+08:00"
+    }
+  },
+  "control_seed": {
+    "seed_status": "hypotheses-only",
+    "plant_boundary_candidates": ["dm_release_drill元数据", "附件", "参数", "系统", "审计", "回收站"],
+    "state_variable_candidates": ["deleted", "granularity", "material_type_code", "drill_round", "system_code", "主附件", "参数启用态"],
+    "interface_candidates": ["/api/data-migration/release-drills*", "/api/data-migration/options/{category}", "附件上传", "回收站"],
+    "sensor_candidates": ["迁移测试", "服务测试", "回收站注册测试", "前端构建", "浏览器验收"],
+    "actuator_candidates": ["V184", "ReleaseDrillService/Controller", "ReleaseDrillRecycleBinSource", "ReleaseDrillsPage"],
+    "disturbance_candidates": ["参数停用/新增", "项目切换", "其他内容类型回归"],
+    "delay_candidates": ["迁移到前端可用的延迟", "构建/浏览器验收环境准备"],
+    "assumptions": [
+      {"text": "dm_release_drill无存量业务行", "basis": "REQ-031本地计数", "falsifier": "发现存量记录"},
+      {"text": "编辑不传新文件保留原文件", "basis": "专题/方案附件策略", "falsifier": "用户要求必须重传"},
+      {"text": "组件级等价dm_component启用记录", "basis": "既有系统口径", "falsifier": "需其他系统模型"}
+    ]
+  }
+}

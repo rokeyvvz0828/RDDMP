@@ -1,0 +1,18 @@
+{
+  "sample_label": "T3 integrated runtime observation",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "Real browser idle observation plus socket inspection", "result": "pass", "raw_evidence": "工作台空闲超过 60 秒无控制台错误，Vite 到后端持续只有 1 条 ESTABLISHED 连接", "limitation": ["浏览器工具不直接导出网络瀑布"]},
+    {"requirement_id": "R2", "sensor": "Real HTTP ticket and stream requests", "result": "pass", "raw_evidence": "43 字符随机票据可连接；复用票据和 invalid 票据均返回 401", "limitation": []},
+    {"requirement_id": "R3", "sensor": "Real SSE stream and focused transaction tests", "result": "pass", "raw_evidence": "流返回 connected，并收到两次间隔约 25 秒的 heartbeat；事务广播测试通过", "limitation": ["未在浏览器中制造新的业务通知"]},
+    {"requirement_id": "R4", "sensor": "Nginx configuration inspection and real local stream", "result": "pass", "raw_evidence": "两层精确 location 均为 HTTP/1.1、buffering/cache off、read timeout 1h；本地 Vite 代理流持续工作", "limitation": ["远程 Nginx 尚未部署本提交"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "既有演示工作流发布器与平台流程禁用规则冲突", "impact": "使用 rokey 已有本地启动修正关闭发布器后完成验证，未改变 SSE 产品实现"}
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

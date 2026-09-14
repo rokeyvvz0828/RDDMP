@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260907-065", "status": "ready", "document": "docs/requirements/REQ-20260907-065-release-plan-page-redesign/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "Codex", "module": "business/release", "module_owner": "rokeyvvz0828", "branch": "licon", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex", "local-browser"]},
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+      "docs/requirements/REQ-20260907-065-release-plan-page-redesign/**",
+      "docs/engineering-control/designs/2026-09-07-release-plan-page-redesign-design.md",
+      "docs/engineering-control/plans/2026-09-07-release-plan-page-redesign-implementation-plan.md",
+      ".ai-control/requirements/req-20260907-065-release-plan-page-redesign/*.json"
+    ],
+    "read_only_paths": ["web/src/api/**", "web/src/components/ui/**", "web/src/stores/**", "web/src/router/**", "web/src/modules/delivery-showcase/**", "web/src/modules/release/release-operations.css", "web/src/modules/release/ReleaseOperationsManagement.vue", "docs/governance/**", "docs/integration/**", "governance/modules.yaml", ".ai-control/original/state.json"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "server/**"]
+  },
+  "public_capability_change": {"required": false, "issue": null, "owner_approved": false, "old_behavior_preserved": true, "regression_tests": []},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No schema or data changes."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "whitespace", "command": "git diff --check"},
+    {"name": "frontend-build", "command": "npm --prefix web run build"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs"},
+    {"name": "scope", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-065-release-plan-page-redesign/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"}
+  ],
+  "risk": {"level": "normal", "items": ["Teleported drawers must retain scoped styling.", "Pre-existing router and V200 changes are outside this task and must be preserved."]},
+  "completion": {
+    "control_mode": "full", "control_prefix": "req-20260907-065-release-plan-page-redesign", "control_justification": null,
+    "acceptance_evidence": [".ai-control/requirements/req-20260907-065-release-plan-page-redesign/execution-T1.json", ".ai-control/requirements/req-20260907-065-release-plan-page-redesign/execution-T2.json", ".ai-control/requirements/req-20260907-065-release-plan-page-redesign/observation-T2.json", ".ai-control/requirements/req-20260907-065-release-plan-page-redesign/convergence.json"],
+    "release_verification": ["Verify plan selection, normal and rollback drawers, existing CRUD controls, cancellation, project switch, mobile scrolling and both themes."],
+    "rollback": "Revert only this task's component hunks and evidence. Preserve the existing menu rename and V200 migration."
+  }
+}

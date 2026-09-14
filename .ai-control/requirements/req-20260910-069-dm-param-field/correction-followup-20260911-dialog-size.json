@@ -1,0 +1,26 @@
+{
+ "schema_version": 1,
+ "prefix": "req-20260910-069-dm-param-field",
+ "recorded_at": "2026-09-11T01:15:00+08:00",
+ "task": "用户反馈：弹框宽度与高度仍偏小，录入不便——继续增大弹框尺寸",
+ "correction": [
+  "弹框宽度 min(960px,calc(100vw - 24px)) -> min(1120px,calc(100vw - 24px))，字段表格随容器拉伸，录入区域更宽",
+  "内容区高度上限由 min(70vh,560px) 提升为 min(calc(100dvh - 210px),760px)：宽屏高度显著增加，且按视口动态取值保证小高度屏幕不超出视口",
+  "发现 scoped 样式无法命中 el-dialog 根节点（根节点无 scoped 属性），改用 :global(.el-dialog.dm-form-dialog) 设置 --el-dialog-margin-top: 24px，收窄默认 15vh 顶部边距以让出更多录入高度"
+ ],
+ "revision_commands": [
+  { "command": "npm --prefix web run build", "exit_code": 0, "salient_output": "构建通过（仅既有 chunk 体积警告）" },
+  { "command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误" },
+  { "command": "node /tmp/probe_size.mjs（桌面弹框尺寸与视口适配测量）", "exit_code": 0, "salient_output": "1280x800/1440x900/1024x768 弹框 1120x711/1120x811/1000x679 均完整在视口内，margin-top=24px" },
+  { "command": "node /tmp/verify_param_dialog.mjs（Playwright 真实浏览器全量回归）", "exit_code": 0, "salient_output": "34/34 PASS" }
+ ],
+ "verification": [
+  "桌面 1280x800：弹框 1120x711 完整显示，body 高 590，页面级 overflow=0",
+  "桌面 1440x900：弹框 1120x811完整显示，body 高 690",
+  "桌面 1024x768：弹框 1000x679 完整显示（此前底部超出 1px，边距修正后消除）",
+  "移动 375/390/430：弹框宽 calc(100vw - 24px)，字段表格容器局部横向滚动，页面级 overflow=0，弹框在视口内",
+  "新增/编辑弹框、批量添加/移除字段、带字段保存、无未捕获异常与 console error 全通过"
+ ],
+ "state_unchanged": true,
+ "state_phase": "converged"
+}

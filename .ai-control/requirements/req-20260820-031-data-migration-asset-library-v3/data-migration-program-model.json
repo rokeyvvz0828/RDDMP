@@ -1,0 +1,485 @@
+{
+  "baseline_revision": 2,
+  "plant_boundary": {
+    "inside": [
+      "dm_script",
+      "dm_content_attachment(business_type=SCRIPT)",
+      "DM_PROGRAM_TYPE参数",
+      "ProgramService/ProgramController/ProgramRecycleBinSource",
+      "ProgramsPage.vue",
+      "内容回收站SCRIPT入口"
+    ],
+    "environment": [
+      "系统管理参数管理",
+      "dm_component组件清单",
+      "平台附件能力",
+      "现有ContentRecycleBinService",
+      "现有ContentAssetRecycleBinSource"
+    ]
+  },
+  "state_variables": [
+    "程序记录活动状态/逻辑删除标志",
+    "程序记录多附件活动状态",
+    "DM_PROGRAM_TYPE参数启用集合",
+    "组件enabled状态",
+    "项目切换器当前项目"
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "input": "用户表单/接口请求",
+      "transitions": [
+        "参数/组件/附件校验",
+        "ProgramService写操作",
+        "附件绑定或回收站状态变化"
+      ],
+      "outputs": [
+        "程序列表/详情/下载/回收站状态"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "GET/POST/PUT/DELETE /api/data-migration/programs",
+      "producers": [
+        "ProgramController"
+      ],
+      "consumers": [
+        "ProgramsPage.vue"
+      ],
+      "invariant": "项目恒定、元数据和附件校验"
+    },
+    {
+      "name": "GET /api/data-migration/options/DM_PROGRAM_TYPE",
+      "producers": [
+        "数据迁移码值服务"
+      ],
+      "consumers": [
+        "ProgramsPage.vue"
+      ],
+      "invariant": "只返回启用项"
+    },
+    {
+      "name": "GET /api/data-migration/recycle-bin",
+      "producers": [
+        "ContentRecycleBinController"
+      ],
+      "consumers": [
+        "RecycleBinPage.vue"
+      ],
+      "invariant": "SCRIPT由ProgramRecycleBinSource唯一认领"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "后端Service行为",
+      "method": "ProgramServiceTest",
+      "blind_spots": [
+        "未覆盖浏览器交互"
+      ],
+      "independence": "单元测试独立于浏览器"
+    },
+    {
+      "id": "S2",
+      "target": "Flyway迁移/参数种子",
+      "method": "DataMigrationProgramMigrationMySqlTest",
+      "blind_spots": [
+        "不校验真实开发库"
+      ],
+      "independence": "独立容器"
+    },
+    {
+      "id": "S3",
+      "target": "RBAC和回收站认领",
+      "method": "ProgramControllerSecurityTest/ProgramRecycleBinSourceTest",
+      "blind_spots": [
+        "只做方法级校验"
+      ],
+      "independence": "独立安全测试"
+    },
+    {
+      "id": "S4",
+      "target": "前端构建",
+      "method": "npm --prefix web run build",
+      "blind_spots": [
+        "不验证运行行为"
+      ],
+      "independence": "独立编译器"
+    },
+    {
+      "id": "S5",
+      "target": "真实浏览器行为",
+      "method": "Playwright桌面/移动视口",
+      "blind_spots": [
+        "可能依赖本地开发库数据"
+      ],
+      "independence": "部分独立，运行同一开发环境"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "V185迁移与DM_PROGRAM_TYPE",
+      "action": "写SQL和注册码值类别",
+      "authority": "T1任务包",
+      "impact_radius": "dm_script/参数管理",
+      "rollback": "未发布迁移可移除"
+    },
+    {
+      "id": "A2",
+      "target": "ProgramService",
+      "action": "新增CRUD/附件/回收站方法",
+      "authority": "T2任务包",
+      "impact_radius": "数据迁移后端",
+      "rollback": "未引用时删除文件"
+    },
+    {
+      "id": "A3",
+      "target": "ProgramController和回收站摘除",
+      "action": "新增路由/来源，移除SCRIPT通用认领",
+      "authority": "T3任务包",
+      "impact_radius": "迁移程序与统一回收站",
+      "rollback": "恢复通用认领"
+    },
+    {
+      "id": "A4",
+      "target": "ProgramsPage/API",
+      "action": "重写页面和扩展API",
+      "authority": "T4任务包",
+      "impact_radius": "迁移程序前端",
+      "rollback": "恢复旧页面"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S5"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R8",
+      "sensor_ids": [
+        "S5"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R9",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    },
+    {
+      "requirement_id": "R10",
+      "sensor_ids": [
+        "S1",
+        "S3"
+      ],
+      "observable": "相关测试与浏览器验收断言"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "参数管理停用程序类型",
+      "effect": "新增/编辑被拒",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "组件停用",
+      "effect": "系统选项减少、历史只读",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "开发库残留旧数据",
+      "effect": "可能影响迁移服务启动",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "平台附件清理",
+      "effect": "临时附件丢失",
+      "detectable": false,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "附件上传/下载",
+      "consequence": "保存和打包耗时变长",
+      "sampling_rule": "浏览器等待超时上限60秒"
+    },
+    {
+      "source": "ZIP打包",
+      "consequence": "download-all响应慢",
+      "sampling_rule": "接口耗时记录并设置明确错误"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "dm_script无历史数据",
+      "evidence": "用户确认",
+      "falsifier": "存在环境包含旧记录"
+    },
+    {
+      "text": "活动附件可多文件在SCRIPT类型复用",
+      "evidence": "dm_content_attachment已有Meeting多附件模式",
+      "falsifier": "批量恢复/清理能力不足"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": [
+        "通过T1-T4实施",
+        "通过T5观测"
+      ]
+    }
+  ],
+  "model_status": "ready"
+}

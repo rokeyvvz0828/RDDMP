@@ -1,16 +1,38 @@
 {
-  "task_id":"T1","status":"implemented",
-  "changed_surfaces":[
-    {"path_or_resource":"pom.xml and server/src/platform/boot/pom.xml","purpose":"register ccb-data-migration in reactor and boot composition"},
-    {"path_or_resource":"governance/modules.yaml, docs/architecture/MODULES.md, .github/CODEOWNERS","purpose":"register module boundary and ownership"},
-    {"path_or_resource":"server/src/modules/data-migration/pom.xml","purpose":"declare module dependencies including pinned POI 5.4.1"},
-    {"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V35__data_migration_asset_library_v3.sql","purpose":"add dm_* tables and 20 idempotent menu/permission nodes"},
-    {"path_or_resource":"server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java","purpose":"verify V35 ownership and registration"}
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "phase": "executing",
+  "task": "T1",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V181__data_migration_topic_domain.sql",
+      "purpose": "追加式迁移：dm_topic 增 granularity/topic_type_code/topic_summary（存量回填 PROJECT/LEGACY/空串）、dm_topic_system 关系表与唯一键/索引、DM_TOPIC_PROJECT_TYPE/DM_TOPIC_SYSTEM_TYPE 两参数类别及 23 项 INSERT IGNORE 幂等初始化；未触碰平台附件/审计表"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicDomainMigrationMySqlTest.java",
+      "purpose": "新建：MySQL 8.4 容器应用真实 V180，断言新列、历史回填、关系唯一键/索引、2 类别/19+4 参数、幂等重跑、未授权表未变化"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java",
+      "purpose": "新增 v180TopicDomainAddsColumnsRelationsAndParameterSeeds 断言（仅追加，不改既有断言）"
+    }
   ],
-  "requirements_addressed":["R1","R2","R7","R8"],
-  "commands":[{"command":"mvn -pl :ccb-data-migration -am test","exit_code":0,"salient_output":"Reactor SUCCESS; ccb-data-migration test 1 passed"}],
-  "local_checks":[{"check":"focused backend reactor","result":"pass","evidence":"Maven exit code 0; ccb-common 2, infrastructure 6, security 4, module 1 tests passed","limitations":["governance and SQL runtime checks remain for observing"]}],
-  "diff_summary":["registered new business module and boot dependency","added V35 schema for projects/components/assets/audit/snapshots","seeded 3 roots and 17 children with admin permissions","added module registration test"],
-  "invariants_checked":[{"invariant":"additive migration","result":"pass","evidence":"new V35 file only; no previous migration edited"},{"invariant":"module dependency boundary","result":"pass","evidence":"governance allows only common/infrastructure/security"},{"invariant":"formal menus and permissions are database-backed","result":"pass","evidence":"V35 inserts ids 200-219 and role/permission rows"}],
-  "disturbances":[],"assumptions_falsified":[],"unresolved_items":["SQL execution against local MySQL and governance scope check remain"],"recommended_next":"observe"
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    "基线：mvn -pl :ccb-data-migration -am -Dtest=TopicDomainMigrationMySqlTest test -> 失败退出（上游模块无匹配测试 + 测试类尚不存在），确认测试不存在基线",
+    "mvn -pl :ccb-data-migration -am -Dtest=TopicDomainMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test -> Tests run: 1, Failures: 0, Errors: 0",
+    "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test -> Tests run: 18, Failures: 0, Errors: 0"
+  ],
+  "observations": [
+    "testcontainers mysql:8.4 首次拉取镜像并启动约 9.5s；V180 语句按行解析执行，重复执行无重复列/表/键/参数",
+    "存量行 id=1 迁移后 granularity=PROJECT、topic_type_code=LEGACY、topic_summary=''",
+    "uk_dm_topic_system (tenant_id, topic_id, system_code) 拒绝同租户同专题同系统第二行（SQLIntegrityConstraintViolationException），不同系统可并存",
+    "sys_config 计数按类别关联统计：项目级 19、系统级 4、合计 23；重跑后不变"
+  ],
+  "unresolved_issues": [],
+  "risks": [
+    "V180 在真实开发库上的 Flyway 链（V1-V179 已应用）与 SHOW CREATE TABLE 取证留待 T5 本地运行验证"
+  ],
+  "recorded_at": "2026-09-05T01:40:00Z"
 }

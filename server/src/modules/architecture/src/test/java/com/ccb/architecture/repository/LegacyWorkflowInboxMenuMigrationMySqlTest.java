@@ -30,13 +30,13 @@ class LegacyWorkflowInboxMenuMigrationMySqlTest {
 
     @BeforeEach
     void cleanDatabase() throws Exception {
-        flyway("123").clean();
+        flyway("132").clean();
         configureProjectCollation();
     }
 
     @Test
     void removesReintroducedInboxMenuWithoutRevokingWorkflowAccess() {
-        assertTrue(flyway("122").migrate().success);
+        assertTrue(flyway("131").migrate().success);
         JdbcTemplate jdbc = jdbc();
 
         assertEquals(1, count(jdbc, "SELECT COUNT(*) FROM sys_menu WHERE id = 202 AND deleted = 0"));
@@ -45,7 +45,7 @@ class LegacyWorkflowInboxMenuMigrationMySqlTest {
         jdbc.update("INSERT INTO sys_role_menu (role_id,menu_id,tenant_id) VALUES (9002,200,1),(9002,201,1),(9002,202,1)");
         jdbc.update("INSERT INTO sys_role_permission (role_id,permission_id,tenant_id) VALUES (9001,2022,1),(9001,2023,1),(9001,2024,1)");
 
-        var result = flyway("123").migrate();
+        var result = flyway("132").migrate();
         assertTrue(result.success);
         assertEquals(1, result.migrationsExecuted);
 
@@ -63,7 +63,7 @@ class LegacyWorkflowInboxMenuMigrationMySqlTest {
 
     @Test
     void keepsLegacyInboxRemovedWhenMigratingAnEmptyDatabase() {
-        var result = flyway("123").migrate();
+        var result = flyway("132").migrate();
         assertTrue(result.success);
 
         JdbcTemplate jdbc = jdbc();

@@ -1,0 +1,14 @@
+{
+  "task_id":"T1",
+  "status":"partial",
+  "changed_surfaces":[{"path_or_resource":"server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureMigrationMySqlTest.java","purpose":"补齐 V123 必填 deployment_unit_type，使含 MQ 增量迁移传感器有效"}],
+  "requirements_addressed":["R6"],
+  "commands":[{"command":"mvn -pl :ccb-architecture -am -DskipTests test-compile","exit_code":0,"salient_output":"41 个架构测试源文件编译通过，BUILD SUCCESS"}],
+  "local_checks":[{"check":"迁移测试编译","result":"pass","evidence":"test-compile 退出码 0","limitations":["Docker 不可达，测试仍未运行"]}],
+  "diff_summary":["主表和版本表 V123 种子均显式写入 deployment_unit_type='AP'"],
+  "invariants_checked":[{"invariant":"只修正测试传感器，不改变产品契约","result":"pass","evidence":"仅修改 ArchitectureMigrationMySqlTest"}],
+  "disturbances":["Docker Desktop Linux 引擎不可达"],
+  "assumptions_falsified":[],
+  "unresolved_items":["运行 V123→V124 含 MQ Testcontainers 测试"],
+  "recommended_next":"observe"
+}

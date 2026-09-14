@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "requirementId": "REQ-20260831-001",
+  "topic": "req-20260831-001-remove-logical-subsystem",
+  "task": "T5",
+  "phase": "executed",
+  "summary": "按方案 B 完成逻辑子系统模型退役、物理子系统字段重定标、V123 破坏性迁移、Mock 数据、前端页面与测试更新。",
+  "changedAreas": [
+    "server/src/modules/architecture",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V123__remove_logical_subsystem_model.sql",
+    "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+    "mock/mock-data.json",
+    "web/src/modules/architecture",
+    "web/src/router/index.ts",
+    "docs/requirements/REQ-20260831-001-remove-logical-subsystem",
+    "docs/engineering-control"
+  ],
+  "keyDecisions": [
+    "发布态仍保留历史 TargetKind.LOGICAL 枚举值用于读取历史工单，但新建、发布和审批路径只允许 PHYSICAL。",
+    "业务组件通过 ARCH_BUSINESS_COMPONENT 字典读取和校验，不新增字典管理页面。",
+    "物理子系统 code 字段由用户填写，不再使用编号预占、释放或生成策略。"
+  ],
+  "workspaceNotes": [
+    "未触碰 .ai-control/requirements/req-20260812-021-architecture-subsystems 下的 T11 未跟踪账本文件。",
+    "未执行生产访问、真实审批流或浏览器 UAT。"
+  ]
+}

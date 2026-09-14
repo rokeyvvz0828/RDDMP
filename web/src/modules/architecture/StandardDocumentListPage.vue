@@ -11,6 +11,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import {
   bindStandardAttachment,
   createStandardDocument,
@@ -318,8 +319,8 @@ function categoryLabel(code: string) {
       <el-table-column label="版本" width="80">
         <template #default="{ row }">{{ row.currentVersion > 0 ? `v${row.currentVersion}` : '—' }}</template>
       </el-table-column>
-      <el-table-column label="发布人" width="120">
-        <template #default="{ row }">{{ row.publishedByName || '—' }}</template>
+      <el-table-column label="发布人" min-width="130">
+        <template #default="{ row }"><UiUserIdentity v-if="row.publishedBy" :user-id="row.publishedBy" :fallback-name="row.publishedByName" variant="compact" /><span v-else>—</span></template>
       </el-table-column>
       <el-table-column label="发布时间" width="170">
         <template #default="{ row }">{{ formatDateTime(row.publishedAt) }}</template>
@@ -348,9 +349,9 @@ function categoryLabel(code: string) {
           <el-descriptions-item label="类别">{{ categoryLabel(detail.categoryCode) }}</el-descriptions-item>
           <el-descriptions-item label="状态"><UiStatusTag :value="detail.status" :labels="statusLabels" /></el-descriptions-item>
           <el-descriptions-item label="当前版本">{{ detail.currentVersion > 0 ? `v${detail.currentVersion}` : '未发布' }}</el-descriptions-item>
-          <el-descriptions-item label="发布人">{{ detail.publishedByName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="发布人"><UiUserIdentity v-if="detail.publishedBy" :user-id="detail.publishedBy" :fallback-name="detail.publishedByName" variant="compact" /><span v-else>—</span></el-descriptions-item>
           <el-descriptions-item label="发布时间">{{ formatDateTime(detail.publishedAt) }}</el-descriptions-item>
-          <el-descriptions-item label="创建人">{{ detail.createdByName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="创建人"><UiUserIdentity :user-id="detail.createdBy" :fallback-name="detail.createdByName" variant="compact" /></el-descriptions-item>
         </el-descriptions>
         <el-divider content-position="left">摘要</el-divider>
         <p class="standard-detail-text">{{ detail.summary || '—' }}</p>
@@ -378,7 +379,11 @@ function categoryLabel(code: string) {
     <!-- 版本快照弹窗 -->
     <el-dialog v-model="versionOpen" title="发布版本快照（不可变）" width="min(720px, 92vw)">
       <el-timeline v-if="versions.length">
-        <el-timeline-item v-for="version in versions" :key="version.id" :timestamp="`${formatDateTime(version.publishedAt)} · ${version.publishedByName || '—'}`" placement="top">
+        <el-timeline-item v-for="version in versions" :key="version.id" placement="top">
+          <template #timestamp>
+            <span class="standard-muted">{{ formatDateTime(version.publishedAt) }}</span>
+            <UiUserIdentity :user-id="version.publishedBy" :fallback-name="version.publishedByName" variant="compact" />
+          </template>
           <el-card shadow="never">
             <strong>v{{ version.versionNo }} · {{ version.title }}</strong>
             <p class="standard-detail-text">{{ version.summary || '—' }}</p>

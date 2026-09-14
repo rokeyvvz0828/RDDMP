@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "created_at": "2026-09-06T16:10:00+08:00",
+  "updated_at": "2026-09-06T16:10:00+08:00",
+  "objective": "优化数据迁移「迁移参数」菜单功能：域化 dm_parameter、参数专属前后端、Excel 批量导入、逻辑删除与统一回收站、多维筛选分页",
+  "must": [
+    "R1: 迁移参数页按 参数类型/参数范围分类/关联系统(系统编号)/关键字 筛选并分页展示，列表含 项目名称/参数类型/参数范围分类/系统编号/系统名称/参数名称/参数说明/操作",
+    "R2: 单条新增/编辑必填校验（所属项目/参数类型/参数范围分类/关联系统/参数名称），参数名称在 租户+项目+系统编号 内唯一",
+    "R3: Excel 模板五列（参数类型/参数范围分类/系统编号/参数名称/参数说明）逐行校验批量导入，失败行跳过并逐行报错",
+    "R4: 删除为逻辑删除并进入统一回收站，支持恢复与彻底删除；恢复时唯一约束冲突阻断",
+    "R5: 权限沿用既有菜单 RBAC 节点（read/create/update/delete），写操作后端强制校验，无硬编码角色",
+    "R6: 写操作与导入/删除/恢复均写入 dm_operation_log（entity_type=PARAMETER）；上传/删除时间与人员系统回填"
+  ],
+  "constraints": [
+    "C1: 只追加 Flyway 迁移（V197），不改历史脚本",
+    "C2: 只在 codex-task-scope.yaml writable_paths 内修改",
+    "C3: 关联系统下拉复用 /components/options/systems；码值复用 /options/{category}",
+    "C4: 前端优先复用 components/ui 与 delivery-showcase 范式，遵循 design-h5.md 移动端规则",
+    "C5: 不硬编码参数类型/范围码值，统一由系统管理/参数管理维护"
+  ],
+  "non_goals": [
+    "NG1: 不改造系统管理/参数管理页面",
+    "NG2: 不改变其他内容类型既有行为",
+    "NG3: 不新增公共组件或新样式体系"
+  ],
+  "unknowns": [],
+  "user_decisions": [
+    "D1: Excel 模板列 关联系统 使用「系统编号」",
+    "D2: 参数名称唯一域：租户 + 项目 + 系统编号",
+    "D3: 批量导入维度逐行填写"
+  ],
+  "measurement": {
+    "observable": "前端页面操作可达且接口契约可测；dm_parameter 域化列生效；回收站 PARAMETER 恢复/彻底删除可用；后端权限与唯一约束可被测试覆盖",
+    "verify_command": [
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build",
+      "node scripts/check-all-governance.mjs",
+      "node scripts/check-codex-scope.mjs"
+    ]
+  }
+}

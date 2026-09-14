@@ -1,0 +1,132 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Create and verify bounded synthetic drill data",
+      "requirement_ids": [
+        "R1",
+        "R2"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "DB ccb_platform_licon MySQL8.4 local container",
+        "Projects940001/940002 tenant1; A4/B3 existing rounds",
+        "Own plans100942001/100943001 and environments200942001/200943001 exist"
+      ],
+      "write_scope": [
+        "docs/requirements/REQ-20260907-068-release-drill-demo-data/**",
+        ".ai-control/requirements/req-20260907-068-release-drill-demo-data/*.json",
+        "Local database: rel_release_drill_round and rel_release_drill_step fixture batch REQ068 only"
+      ],
+      "invariants": [
+        "No production access",
+        "No credential disclosure",
+        "No application, schema, permission or account changes",
+        "Only release-owned round and step table inserts"
+      ],
+      "interface_contracts": [
+        "Current ReleaseOperationsStore joins and optional owners"
+      ],
+      "non_goals": [
+        "Create projects, plans, environments, issues, users",
+        "UI changes or login repair"
+      ],
+      "action_bounds": [
+        "Write SQL and local runner in task directory",
+        "Assert IDs, names, tenant and references; serializable insert-only transaction",
+        "Use created_by=0 explicitly offline seed; no user impersonation or sys_audit writes",
+        "Run SQL then fresh readback and idempotency check"
+      ],
+      "acceptance_checks": [
+        "6 new rounds/36 steps across two projects",
+        "Existing row fingerprints unchanged",
+        "Second run0 inserts",
+        "No invalid dates or joins"
+      ],
+      "evidence_required": [
+        "SQL and runner",
+        "Command exits and sanitized JSON result",
+        "Original fingerprints and batch IDs"
+      ],
+      "rollback": "Only unmodified/unreferenced exact batch IDs; never pre-existing records",
+      "stop_conditions": [
+        "Wrong DB or missing project/reference",
+        "ID collision or duplicate round number",
+        "Any validation failure"
+      ],
+      "escalation_conditions": [
+        "Requires schema/account/permission change",
+        "Cannot validate local target"
+      ]
+    }
+  ],
+  "dependency_edges": [],
+  "parallel_groups": [
+    [
+      "T1"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "checks": [
+        "Fresh connection readback and rerun"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "preflight",
+      "trigger": "Before seed",
+      "observer": "Main agent direct database check",
+      "sensors": [
+        "S1",
+        "S2"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2"
+      ]
+    },
+    {
+      "label": "postcommit",
+      "trigger": "After commit and repeat",
+      "observer": "Fresh MySQL process; self-verification clearly identified",
+      "sensors": [
+        "S1",
+        "S2"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

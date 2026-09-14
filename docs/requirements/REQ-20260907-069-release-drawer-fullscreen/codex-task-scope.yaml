@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260907-069",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "licon",
+    "worktree": "D:/ai_project/ccb_rd"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": [
+      "local-shell",
+      "codex",
+      "local-browser"
+    ]
+  },
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/release/components/ReleaseDrillPlanView.vue",
+      "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue",
+      "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+      "web/src/modules/release/components/ReleaseIssueTrackingView.vue",
+      "web/src/modules/release/release-operations.css",
+      "web/src/modules/release/composables/useReleaseDrawerFullscreen.ts",
+      "web/src/modules/release/components/ReleaseDrawerHeader.vue",
+      "docs/requirements/REQ-20260907-069-release-drawer-fullscreen/**",
+      ".ai-control/requirements/req-20260907-069-release-drawer-fullscreen/*.json",
+      "docs/engineering-control/designs/2026-09-07-release-drawer-fullscreen-design.md",
+      "docs/engineering-control/plans/2026-09-07-release-drawer-fullscreen-implementation-plan.md"
+    ],
+    "read_only_paths": [
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "web/src/api/**",
+      "web/src/stores/**",
+      "web/src/modules/release/ReleaseOperationsManagement.vue",
+      "governance/modules.yaml",
+      "docs/governance/**",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "server/**",
+      "**/*.pem",
+      "**/*.key"
+    ]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": null,
+    "owner_approved": false,
+    "old_behavior_preserved": true,
+    "regression_tests": []
+  },
+  "database": {
+    "changed": false,
+    "migration_files": [],
+    "compatibility_and_rollback": "No data changes"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "fullscreen",
+      "command": "node docs/requirements/REQ-20260907-069-release-drawer-fullscreen/fullscreen.test.mjs --phase all"
+    },
+    {
+      "name": "build",
+      "command": "npm --prefix web run build"
+    },
+    {
+      "name": "whitespace",
+      "command": "git diff --check"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-all-governance.mjs"
+    },
+    {
+      "name": "scope",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260907-069-release-drawer-fullscreen/codex-task-scope.yaml --base HEAD --head HEAD --working-tree"
+    }
+  ],
+  "risk": {
+    "level": "normal",
+    "items": [
+      "Preserve dirty workspace and original close guards",
+      "Teleport/max-width/nested drawers",
+      "Browser availability"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260907-069-release-drawer-fullscreen",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260907-069-release-drawer-fullscreen/execution-T1.json",
+      ".ai-control/requirements/req-20260907-069-release-drawer-fullscreen/execution-T2.json",
+      ".ai-control/requirements/req-20260907-069-release-drawer-fullscreen/observation-T2.json",
+      ".ai-control/requirements/req-20260907-069-release-drawer-fullscreen/convergence.json"
+    ],
+    "release_verification": [
+      "5 drawer instances; fullscreen/restore; nested isolation",
+      "4 viewports and light/dark",
+      "Form and close guards unchanged"
+    ],
+    "rollback": "Reverse only this task's full-screen-specific hunks and new module-local helpers; retain existing page changes and fixtures"
+  },
+  "execution_gate": {
+    "implementation_plan_approval": "approved",
+    "note": "Design and plan approved; implementation recorded; observing pending real browser acceptance"
+  }
+}

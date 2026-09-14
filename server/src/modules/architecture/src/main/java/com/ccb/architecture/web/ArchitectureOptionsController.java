@@ -1,6 +1,5 @@
 package com.ccb.architecture.web;
 
-import com.ccb.architecture.model.LogicalSubsystemOption;
 import com.ccb.architecture.model.OrganizationOption;
 import com.ccb.architecture.model.ParameterOption;
 import com.ccb.architecture.model.PhysicalSubsystemOption;
@@ -11,6 +10,8 @@ import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,64 +26,60 @@ import java.util.List;
 @RequestMapping("/api/architecture/options")
 public class ArchitectureOptionsController {
     private final ArchitectureOptionsService service;
+    private final ProjectAccessService projectAccessService;
 
-    public ArchitectureOptionsController(ArchitectureOptionsService service) {
+    public ArchitectureOptionsController(ArchitectureOptionsService service,
+                                         ProjectAccessService projectAccessService) {
         this.service = service;
-    }
-
-    @GetMapping("/logical-subsystem/organizations")
-    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<PageResult<OrganizationOption>> logicalOrganizations(
-            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
-        return success(service.organizations(actor, new PageQuery(page, size), keyword));
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping("/physical-subsystem/organizations")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PageResult<OrganizationOption>> physicalOrganizations(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
+            @RequestParam(required = false) String keyword, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
         return success(service.organizations(actor, new PageQuery(page, size), keyword));
     }
 
-    @GetMapping("/logical-subsystem/users")
-    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<PageResult<UserOption>> logicalUsers(
-            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
-        return success(service.users(actor, new PageQuery(page, size), keyword));
-    }
-
     @GetMapping("/physical-subsystem/users")
-    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')")
     public ApiResponse<PageResult<UserOption>> physicalUsers(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String keyword, @AuthenticationPrincipal AuthUser actor) {
+            @RequestParam(required = false) String keyword, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
         return success(service.users(actor, new PageQuery(page, size), keyword));
     }
 
-    @GetMapping("/logical-subsystem/parameters/{categoryCode}")
-    @PreAuthorize("hasAnyAuthority('architecture:logical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<List<ParameterOption>> logicalParameters(
-            @PathVariable String categoryCode, @AuthenticationPrincipal AuthUser actor) {
-        return success(service.parameters(actor, ArchitectureOptionsService.LOGICAL_RESOURCE, categoryCode));
+    /** 交付单元可用字典类别候选（当前仅制品类型）。 */
+    @GetMapping("/delivery-unit/parameters/{categoryCode}")
+    @PreAuthorize("hasAnyAuthority('architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
+            + "'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<List<ParameterOption>> deliveryUnitParameters(
+            @PathVariable String categoryCode, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
+        return success(service.parameters(actor, ArchitectureOptionsService.DELIVERY_UNIT_RESOURCE, categoryCode));
     }
 
     @GetMapping("/physical-subsystem/parameters/{categoryCode}")
-    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
+    @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage', 'architecture:resource-request:apply', 'architecture:resource-request:manage')")
     public ApiResponse<List<ParameterOption>> physicalParameters(
-            @PathVariable String categoryCode, @AuthenticationPrincipal AuthUser actor) {
+            @PathVariable String categoryCode, @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
         return success(service.parameters(actor, ArchitectureOptionsService.PHYSICAL_RESOURCE, categoryCode));
     }
 
-    @GetMapping("/physical-subsystem/logical-subsystems")
+    @GetMapping("/physical-subsystem/business-components")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
-    public ApiResponse<PageResult<LogicalSubsystemOption>> physicalLogicalSubsystems(
-            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
-            @AuthenticationPrincipal AuthUser actor) {
-        return success(service.logicalSubsystems(actor, new PageQuery(page, size), code, name));
+    public ApiResponse<List<ParameterOption>> businessComponents(@RequestParam String projectRef,
+                                                                  @AuthenticationPrincipal AuthUser actor) {
+        project(projectRef, actor);
+        return success(service.businessComponents(actor));
     }
 
     @GetMapping("/deployment-unit/physical-subsystems")
@@ -90,8 +87,32 @@ public class ArchitectureOptionsController {
     public ApiResponse<PageResult<PhysicalSubsystemOption>> deploymentUnitPhysicalSubsystems(
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.physicalSubsystems(actor, new PageQuery(page, size), code, name));
+        return success(service.physicalSubsystems(actor, project(projectRef, actor),
+                new PageQuery(page, size), code, name));
+    }
+
+    /** 交付单元归属物理子系统候选；使用交付单元自身权限，不放宽既有选项接口。 */
+    @GetMapping("/delivery-unit/physical-subsystems")
+    @PreAuthorize("hasAnyAuthority('architecture:delivery-unit:view', 'architecture:delivery-unit:manage', "
+            + "'architecture:view', 'architecture:apply', 'architecture:manage')")
+    public ApiResponse<PageResult<PhysicalSubsystemOption>> deliveryUnitPhysicalSubsystems(
+            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "50") long size,
+            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @RequestParam String projectRef,
+            @AuthenticationPrincipal AuthUser actor) {
+        return success(service.physicalSubsystems(actor, project(projectRef, actor), new PageQuery(page, size),
+                code, name));
+    }
+
+    @GetMapping("/resource-request/physical-subsystems")
+    @PreAuthorize("hasAnyAuthority('architecture:resource-request:apply','architecture:resource-request:manage','architecture:apply','architecture:manage')")
+    public ApiResponse<PageResult<PhysicalSubsystemOption>> participatingPhysicals(
+            @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "100") long size,
+            @RequestParam(required = false) String code, @RequestParam(required = false) String name,
+            @RequestParam String projectRef, @AuthenticationPrincipal AuthUser actor) {
+        return success(service.participatingPhysicals(actor, project(projectRef, actor), new PageQuery(page, size), code, name));
     }
 
     @GetMapping("/{resource}/organizations")
@@ -112,14 +133,18 @@ public class ArchitectureOptionsController {
         throw unknownResource(resource);
     }
 
-    @GetMapping("/{resource}/logical-subsystems")
+    @GetMapping("/{resource}/business-components")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<Void> unknownLogicalSubsystems(@PathVariable String resource) {
+    public ApiResponse<Void> unknownBusinessComponents(@PathVariable String resource) {
         throw unknownResource(resource);
     }
 
     private ArchitectureNotFoundException unknownResource(String resource) {
         return new ArchitectureNotFoundException("未知或不支持的选项资源上下文：" + resource);
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 
     private <T> ApiResponse<T> success(T data) {

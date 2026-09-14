@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Testcontainers
 class NetworkWorkflowIntegrationMySqlTest {
     private static final long TENANT_ID = 1L;
+    private static final long PROJECT_ID = 88000L;
     private static final long DEFINITION_ID = 900000000000032L;
     private static final long VERSION_ID = 900000000000033L;
     private static final long WORK_ORDER_ID = 88001L;
@@ -49,7 +50,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     private static final String PAYLOAD_DIGEST = "e".repeat(64);
     private static final LocalDateTime STARTED_AT = LocalDateTime.of(2026, 8, 23, 12, 30);
     private static final String DATABASE = "network_workflow_integration";
-    private static final String CONFLICT_DATABASE = "network_v90_conflict";
+    private static final String CONFLICT_DATABASE = "network_v101_conflict";
 
     @Container
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
@@ -71,15 +72,11 @@ class NetworkWorkflowIntegrationMySqlTest {
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .locations("filesystem:" + migrationDirectory())
-                .placeholders(java.util.Map.of("bootstrap_admin_password_hash", "test-hash"))
-                .target(MigrationVersion.fromVersion("101"))
-                .cleanDisabled(false)
-                .load();
-        flyway.clean();
-        assertThat(flyway.migrate().success).isTrue();
+        Flyway v208 = flyway(dataSource, "208");
+        v208.clean();
+        assertThat(v208.migrate().success).isTrue();
+        ensureProject(jdbc);
+        assertThat(flyway(dataSource, "209").migrate().success).isTrue();
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     }
 
@@ -100,7 +97,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90预置工单菜单三级权限与办理角色() {
+    void v101预置工单菜单三级权限与办理角色() {
         assertThat(jdbc.queryForObject("SELECT CONCAT(route_name, '|', route_path, '|', permission_code) "
                         + "FROM sys_menu WHERE id = 808 AND tenant_id = 1 AND deleted = 0", String.class))
                 .isEqualTo("ArchitectureNetworkWorkOrders|/architecture/network-work-orders"
@@ -123,7 +120,10 @@ class NetworkWorkflowIntegrationMySqlTest {
         assertThat(jdbc.queryForList("SELECT menu_id FROM sys_role_menu "
                         + "WHERE tenant_id = 1 AND role_id = 113 AND menu_id IN (200, 201, 202, 203, 204) "
                         + "ORDER BY menu_id", Long.class))
-                .containsExactly(200L, 202L);
+                .isEmpty();
+        assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
+                + "WHERE tenant_id = 1 AND role_id = 113 AND permission_id = 2001"))
+                .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_user_role WHERE tenant_id = 1 AND user_id = 1 AND role_id = 113"))
                 .isEqualTo(1L);
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission "
@@ -132,7 +132,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90存量角色兼容映射() {
+    void v101存量角色兼容映射() {
         assertThat(count("SELECT COUNT(*) FROM sys_role_permission role_permission "
                 + "JOIN sys_role_permission inherited ON inherited.role_id = role_permission.role_id "
                 + "AND inherited.tenant_id = role_permission.tenant_id AND inherited.permission_id = 8081 "
@@ -146,7 +146,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90遇到稳定菜单Id身份冲突时失败关闭() {
+    void v101遇到稳定菜单Id身份冲突时失败关闭() {
         try (MySQLContainer<?> conflictMysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName(CONFLICT_DATABASE)
                 .withUsername("test")
@@ -173,7 +173,7 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v90只预置未发布的固定角色审批模型() throws Exception {
+    void v101只预置未发布的固定角色审批模型() throws Exception {
         assertThat(jdbc.queryForObject("SELECT code FROM wf_definition WHERE id = ? AND tenant_id = ?",
                 String.class, DEFINITION_ID, TENANT_ID)).isEqualTo("architecture.network.work-order");
         assertThat(jdbc.queryForObject("SELECT status FROM wf_definition WHERE id = ? AND tenant_id = ?",
@@ -210,20 +210,20 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     @Test
-    void v89Store持久化工作流上下文轮次与幂等回执() {
+    void v100Store持久化工作流上下文轮次与幂等回执() {
         inTransaction(() -> {
             store.insertWorkOrder(workOrder());
             store.insertPendingWorkflowRound(pendingRound());
-            assertThat(store.bindWorkflowRoundStarted(TENANT_ID, WORK_ORDER_ID, 1,
+            assertThat(store.bindWorkflowRoundStarted(TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 1,
                     DEFINITION_ID, 1L, WORKFLOW_INSTANCE_ID, PAYLOAD_DIGEST, STARTED_AT)).isTrue();
-            assertThat(store.compareAndSetWorkflowContext(TENANT_ID, WORK_ORDER_ID,
+            assertThat(store.compareAndSetWorkflowContext(TENANT_ID, PROJECT_ID, WORK_ORDER_ID,
                     0, 0, 1, DEFINITION_ID, 1L, WORKFLOW_INSTANCE_ID, PAYLOAD_DIGEST, 1)).isTrue();
             assertThat(store.beginReceipt(receipt(RECEIPT_ID))).isTrue();
-            assertThat(store.completeReceipt(TENANT_ID, "event-88003", SUBSCRIBER_KEY,
+            assertThat(store.completeReceipt(TENANT_ID, PROJECT_ID, "event-88003", SUBSCRIBER_KEY,
                     WorkflowReceiptStatus.PROCESSED, "已持久化工作流事件")).isTrue();
         });
 
-        WorkflowRound round = store.findWorkflowRound(TENANT_ID, WORK_ORDER_ID, 1).orElseThrow();
+        WorkflowRound round = store.findWorkflowRound(TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 1).orElseThrow();
         assertThat(round)
                 .extracting(WorkflowRound::workflowDefinitionId, WorkflowRound::workflowVersionId,
                         WorkflowRound::workflowInstanceId, WorkflowRound::payloadDigest,
@@ -240,7 +240,7 @@ class NetworkWorkflowIntegrationMySqlTest {
 
     private com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkOrder workOrder() {
         return new com.ccb.architecture.network.model.NetworkWorkOrderModels.WorkOrder(
-                WORK_ORDER_ID, TENANT_ID,
+                WORK_ORDER_ID, TENANT_ID, PROJECT_ID,
                 com.ccb.architecture.network.model.NetworkWorkOrderModels.Kind.DNS,
                 com.ccb.architecture.network.model.NetworkWorkOrderModels.ActionType.ADD,
                 "demo.example.test", 1L, "验证工作流持久化",
@@ -251,13 +251,13 @@ class NetworkWorkflowIntegrationMySqlTest {
     }
 
     private WorkflowRound pendingRound() {
-        return new WorkflowRound(ROUND_ID, TENANT_ID, WORK_ORDER_ID, 1,
+        return new WorkflowRound(ROUND_ID, TENANT_ID, PROJECT_ID, WORK_ORDER_ID, 1,
                 null, null, null, null, WorkflowRoundStatus.PENDING,
                 null, null, null, null);
     }
 
     private WorkflowReceiptStart receipt(long id) {
-        return new WorkflowReceiptStart(id, TENANT_ID, "event-88003", SUBSCRIBER_KEY,
+        return new WorkflowReceiptStart(id, TENANT_ID, PROJECT_ID, "event-88003", SUBSCRIBER_KEY,
                 WORK_ORDER_ID, 1, WORKFLOW_INSTANCE_ID, "APPROVED");
     }
 
@@ -287,6 +287,15 @@ class NetworkWorkflowIntegrationMySqlTest {
     private long count(String sql) {
         Long value = jdbc.queryForObject(sql, Long.class);
         return value == null ? 0 : value;
+    }
+
+    private static void ensureProject(JdbcTemplate target) {
+        target.update("DELETE FROM pm_project WHERE tenant_id = ? AND project_code = 'RDDMP-PLATFORM'",
+                TENANT_ID);
+        target.update("INSERT INTO pm_project (id, tenant_id, project_code, project_name, status, owner_id, "
+                + "created_by, deleted) SELECT ?, ?, 'RDDMP-PLATFORM', '网络工作流测试项目', "
+                + "'RUNNING', 1, 1, 0 WHERE NOT EXISTS (SELECT 1 FROM pm_project WHERE tenant_id = ? AND id = ?)",
+                PROJECT_ID, TENANT_ID, TENANT_ID, PROJECT_ID);
     }
 
     private static String migrationDirectory() {

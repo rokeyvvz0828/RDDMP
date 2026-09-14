@@ -1,0 +1,157 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "Local ccb_platform_licon release drill rounds and steps for tenant1/projects940001,940002"
+    ],
+    "environment": [
+      "Existing localhost backend and MySQL8.4 container",
+      "UI reads current release store joins"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "seed_records",
+      "owner": "business/release",
+      "valid_values": [
+        "absent",
+        "partial",
+        "complete"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "Identified synthetic batch",
+      "transitions": [
+        "Validate database, exact projects and own plan/environment",
+        "Transaction with ID collision assertions",
+        "Insert missing rounds and steps",
+        "Commit and fresh readback"
+      ],
+      "outputs": [
+        "6 rounds/36 steps with project scope; existing rows unchanged"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "Identified synthetic batch",
+      "transitions": [
+        "Validate database, exact projects and own plan/environment",
+        "Transaction with ID collision assertions",
+        "Insert missing rounds and steps",
+        "Commit and fresh readback"
+      ],
+      "outputs": [
+        "6 rounds/36 steps with project scope; existing rows unchanged"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "ReleaseOperationsStore.findReleaseDrillRounds/findDrillSteps",
+      "producers": [
+        "rel_release_drill_round",
+        "rel_release_drill_step",
+        "rel_release_plan",
+        "rel_release_drill_environment"
+      ],
+      "consumers": [
+        "ReleaseDrillExecutionView"
+      ],
+      "invariant": "tenant/project relationships and deleted=0; optional owner null"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "Fixture persistence and relationships",
+      "method": "Fresh MySQL connection count/join/field checks",
+      "blind_spots": [
+        "Rendered browser and HTTP auth"
+      ],
+      "independence": "Direct database readback separate from insert transaction"
+    },
+    {
+      "id": "S2",
+      "target": "Existing data preservation and idempotency",
+      "method": "Sorted original-row SHA256 snapshot before/after and second-run inserted row counts",
+      "blind_spots": [
+        "Concurrent legitimate edits may change snapshot"
+      ],
+      "independence": "Exact row digest, not based only on insert success"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "Two release-owned tables",
+      "action": "Guarded insert-only fixture transaction",
+      "authority": "User explicitly requested test data for current DB projects A/B",
+      "impact_radius": "6 rounds36 steps only",
+      "rollback": "Transaction rollback on failure; exact batch IDs cleanup if unmodified and unreferenced"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "Documented mock.release account returned401",
+      "effect": "No API write or browser acceptance via that account",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "Concurrent project edits",
+      "effect": "Seed preconditions or preservation snapshot can change",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "Database commit",
+      "consequence": "Other connection must read after commit",
+      "sampling_rule": "Verify using a fresh mysql process after commit"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "Current localhost DB is intended test target",
+      "evidence": "User explicitly current DB; DB_URL loopback ccb_platform_licon; matching synthetic projects",
+      "falsifier": "Non-local configuration or exact project assertions fail"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "Bounded fixture inserts then readback"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "Bounded fixture inserts then readback"
+    }
+  ],
+  "model_status": "ready"
+}

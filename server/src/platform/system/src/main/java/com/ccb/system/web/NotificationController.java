@@ -7,15 +7,18 @@ import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.SystemPage;
 import com.ccb.system.notification.NotificationArchiveResult;
 import com.ccb.system.notification.NotificationReadAllResult;
+import com.ccb.system.notification.NotificationStreamTicket;
 import com.ccb.system.notification.NotificationModuleSummary;
 import com.ccb.system.notification.NotificationUnreadCount;
 import com.ccb.system.notification.NotificationView;
 import com.ccb.system.notification.SystemNotificationItem;
 import com.ccb.system.service.SystemNotificationService;
+import com.ccb.system.service.NotificationSseService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,9 +31,16 @@ import java.util.List;
 @PreAuthorize("isAuthenticated()")
 public class NotificationController {
     private final SystemNotificationService service;
+    private final NotificationSseService streams;
 
-    public NotificationController(SystemNotificationService service) {
+    public NotificationController(SystemNotificationService service, NotificationSseService streams) {
         this.service = service;
+        this.streams = streams;
+    }
+
+    @PostMapping("/stream-ticket")
+    public ApiResponse<NotificationStreamTicket> streamTicket(@AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(streams.issueTicket(user), TraceId.getOrCreate());
     }
 
     @GetMapping

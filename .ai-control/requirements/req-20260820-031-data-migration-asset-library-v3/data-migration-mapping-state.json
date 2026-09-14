@@ -1,0 +1,4472 @@
+{
+  "schema_version": 4,
+  "revision": 44,
+  "created_at": "2026-09-06T00:01:50+00:00",
+  "updated_at": "2026-09-06T01:48:46+00:00",
+  "mode": "standard",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=2；设计确认=用户于2026-09-06确认完整设计；计划确认=用户确认设计后明确要求制定实施计划并进入代码修改",
+      "recorded_at": "2026-09-06T00:01:50+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "baseline_status=ready；需求、范围、权限和无历史数据决策已复核",
+      "recorded_at": "2026-09-06T00:05:28+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model_status=ready；每个must具备因果链、测量和可控动作",
+      "recorded_at": "2026-09-06T00:08:46+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "plan_status=ready; all must requirements covered; task write scopes, invariants, checks, evidence, rollback, stop and escalation conditions recorded",
+      "recorded_at": "2026-09-06T00:12:31+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 execution report implemented; write scope respected; minimum local checks passed",
+      "recorded_at": "2026-09-06T00:17:05+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified; no pending feedback; T2 prerequisites satisfied",
+      "recorded_at": "2026-09-06T00:19:11+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution report implemented; focused checks pass and write scope respected",
+      "recorded_at": "2026-09-06T00:28:07+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 verified; no pending feedback; T3 prerequisites satisfied",
+      "recorded_at": "2026-09-06T00:30:14+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 execution report implemented; web build passes and write scope respected",
+      "recorded_at": "2026-09-06T00:43:07+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T3 verified; no pending feedback; T4 prerequisites satisfied",
+      "recorded_at": "2026-09-06T00:44:48+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T4 partial execution recorded; read-only role permission boundary requires formal observation",
+      "recorded_at": "2026-09-06T01:47:20+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "correcting",
+      "evidence": "T4 observation complete with one actionable P1 R8 feedback",
+      "recorded_at": "2026-09-06T01:48:13+00:00"
+    },
+    {
+      "from": "correcting",
+      "to": "executing",
+      "evidence": "F-0001 accepted with bounded write scope and repeatable correction checks",
+      "recorded_at": "2026-09-06T01:48:46+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=2；设计确认=用户于2026-09-06确认完整设计；计划确认=用户确认设计后明确要求制定实施计划并进入代码修改",
+        "recorded_at": "2026-09-06T00:01:50+00:00",
+        "data": {
+          "objective": "将数迁资产内容的迁移映射升级为独立业务域，使一条受权限保护的映射记录绑定多个不超过50MB的文件，并提供受控码值、项目系统、组合筛选、下载和统一回收站能力。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "映射类型、系统编号和文件名称必填，文件名称最多200字符，文件编号由服务端生成且不可修改。",
+              "acceptance": [
+                "缺少必填字段或名称超长返回400",
+                "成功记录具有不可编辑文件编号"
+              ],
+              "priority": "must",
+              "source": "用户需求及2026-09-06确认",
+              "counterexample": [
+                "缺少系统编号仍创建成功"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "映射类型来自启用的DM_MAPPING_TYPE参数，预置迁出程序和迁入程序，前端不硬编码。",
+              "acceptance": [
+                "选项接口返回启用参数",
+                "停用或未知类型拒绝写入"
+              ],
+              "priority": "must",
+              "source": "用户需求及2026-09-06确认",
+              "counterexample": [
+                "停用类型仍可保存"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "系统编号只能选择当前项目dm_component启用清单中的系统。",
+              "acceptance": [
+                "项目外或停用系统被拒绝",
+                "切换项目清空旧系统和数据"
+              ],
+              "priority": "must",
+              "source": "用户需求及2026-09-06确认",
+              "counterexample": [
+                "可提交其他项目系统"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "一条迁移映射记录绑定多个普通文件或压缩包，新增至少一个附件，每个附件不超过50MB且服务端不解压。",
+              "acceptance": [
+                "一条记录绑定多个附件",
+                "无附件或单文件超过50MB被拒绝",
+                "压缩包原样保存"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-06明确确认",
+              "counterexample": [
+                "每个文件生成独立映射记录"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "列表展示系统、映射类型、文件编号和文件名称，并按三项组合筛选及服务端分页。",
+              "acceptance": [
+                "三个条件可组合",
+                "名称只做有限字段模糊匹配",
+                "筛选回第一页且分页为20/50/100"
+              ],
+              "priority": "must",
+              "source": "用户需求及确认设计",
+              "counterexample": [
+                "关键字扫描无关字段"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "编辑支持元数据和附件保留、追加、移除；下载支持指定附件和全部附件ZIP。",
+              "acceptance": [
+                "附件集合更新一致",
+                "单附件不能跨记录下载",
+                "ZIP包含全部活动附件"
+              ],
+              "priority": "must",
+              "source": "用户确认设计",
+              "counterexample": [
+                "编辑自动丢失旧附件"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "MAPPING_DOC由专属来源唯一接入统一回收站并保持业务记录、附件和审计一致。",
+              "acceptance": [
+                "回收站只出现一次",
+                "恢复保留附件",
+                "彻底清理附件和业务记录但保留审计"
+              ],
+              "priority": "must",
+              "source": "用户需求及确认设计",
+              "counterexample": [
+                "通用和专属来源重复认领"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "查看、下载、上传新增、编辑、删除和回收站管理执行服务端RBAC、租户、项目、实体和附件归属校验并审计成功写操作。",
+              "acceptance": [
+                "匿名无权跨项目和非所有者请求被拒绝",
+                "成功写操作有MAPPING审计"
+              ],
+              "priority": "must",
+              "source": "用户权限需求及确认设计",
+              "counterexample": [
+                "仅前端隐藏按钮控制权限"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "页面覆盖全状态、多文件部分失败重试和响应式布局，并通过工程和真实浏览器验证。",
+              "acceptance": [
+                "失败文件可单独重试且成功项保留",
+                "桌面和三个手机视口无页面级横向溢出",
+                "构建治理范围检查有真实结果"
+              ],
+              "priority": "must",
+              "source": "RDDMP规则及用户确认设计",
+              "counterexample": [
+                "上传失败无法定位文件"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "当前dm_mapping_doc无历史数据，追加迁移不执行历史回填或兼容默认值。",
+              "acceptance": [
+                "V186没有历史回填SQL",
+                "新记录必须提供新字段"
+              ],
+              "priority": "must",
+              "source": "用户2026-09-06明确确认",
+              "counterexample": [
+                "旧记录默认回填迁入程序"
+              ]
+            }
+          ],
+          "invariants": [
+            "租户和操作者来自认证主体且访问绑定当前项目",
+            "doc_code服务端生成且不可修改",
+            "Flyway只追加",
+            "业务表不保存对象键或凭据",
+            "MAPPING_DOC只有一个回收站来源"
+          ],
+          "constraints": [
+            "类型来自启用DM_MAPPING_TYPE",
+            "系统来自当前项目启用dm_component",
+            "单附件上限52428800字节",
+            "不修改平台公共实现",
+            "前端遵循公共UI和design-h5"
+          ],
+          "non_goals": [
+            "不解压压缩包",
+            "不实现版本历史查重或在线编辑",
+            "不拆分多文件为多条记录",
+            "不重构其他内容菜单",
+            "不迁移历史数据"
+          ],
+          "assumptions": [
+            {
+              "text": "当前无历史映射数据",
+              "basis": "用户明确确认",
+              "falsifier": "发现必须保留的旧行"
+            },
+            {
+              "text": "临时未绑定附件由平台生命周期清理",
+              "basis": "现有附件契约",
+              "falsifier": "运行检查发现无清理机制"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "一条记录绑定多个文件",
+              "reason": "统一元数据和附件归档",
+              "source": "用户确认"
+            },
+            {
+              "id": "D2",
+              "decision": "独立服务页面并复用公共能力",
+              "reason": "控制回归面",
+              "source": "用户确认"
+            },
+            {
+              "id": "D3",
+              "decision": "无历史回填",
+              "reason": "当前无历史数据",
+              "source": "用户确认"
+            },
+            {
+              "id": "D4",
+              "decision": "逐文件状态和失败重试",
+              "reason": "让部分失败可观察恢复",
+              "source": "用户确认"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R6",
+                "R7",
+                "R8",
+                "R10"
+              ],
+              "signal": "MySQL和JUnit验证数据后端权限附件回收站",
+              "method": "迁移和聚焦测试"
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R9"
+              ],
+              "signal": "构建和四视口浏览器无错误无溢出",
+              "method": "Vue构建与Playwright"
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10"
+              ],
+              "signal": "工程范围回归收敛",
+              "method": "Maven治理范围和运行检查"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准设计修订2；十条must均有验收、反例和测量意图；无阻塞未知项",
+        "recorded_at": "2026-09-06T00:05:28+00:00",
+        "data": {
+          "objective": "用户能够在当前项目内安全管理一条绑定多个文件的迁移映射，并通过受控类型、系统筛选、下载和统一回收站获得可验证的一致结果。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "映射类型、系统编号和文件名称必填，文件名称最多200字符，文件编号由服务端生成且不可修改。",
+              "acceptance": [
+                "缺少必填或名称超长返回400",
+                "成功记录包含不可编辑编号"
+              ],
+              "priority": "must",
+              "source": "用户需求和批准设计",
+              "counterexample": [
+                "缺少系统编号仍创建成功"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "映射类型来自启用的DM_MAPPING_TYPE参数，预置迁出程序和迁入程序，前端不硬编码。",
+              "acceptance": [
+                "选项接口只返回启用项",
+                "停用或未知类型拒绝写入"
+              ],
+              "priority": "must",
+              "source": "用户需求和批准设计",
+              "counterexample": [
+                "停用类型仍保存成功"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "系统编号只能选择当前项目启用的dm_component系统。",
+              "acceptance": [
+                "项目外或停用系统被拒绝",
+                "切换项目清空旧系统和业务状态"
+              ],
+              "priority": "must",
+              "source": "用户需求和批准设计",
+              "counterexample": [
+                "跨项目系统可提交"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "一条迁移映射记录绑定多个普通文件或压缩包，新增至少一个附件，每个附件不超过50MB且不解压。",
+              "acceptance": [
+                "一条记录可绑定多个附件",
+                "无附件或超限附件被拒绝"
+              ],
+              "priority": "must",
+              "source": "用户明确确认",
+              "counterexample": [
+                "每个文件拆成一条记录"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "列表展示系统、映射类型、文件编号和文件名称，并按三项组合筛选及服务端分页。",
+              "acceptance": [
+                "筛选可组合且名称模糊匹配",
+                "筛选回第一页并支持20/50/100"
+              ],
+              "priority": "must",
+              "source": "用户需求和批准设计",
+              "counterexample": [
+                "名称搜索扫描无关字段"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "编辑支持元数据和附件保留、追加、移除；下载支持指定附件和全部附件ZIP。",
+              "acceptance": [
+                "附件集合更新后详情下载一致",
+                "单附件下载不可跨记录",
+                "ZIP包含全部活动附件"
+              ],
+              "priority": "must",
+              "source": "批准设计",
+              "counterexample": [
+                "编辑导致未移除附件丢失"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "MAPPING_DOC由专属来源唯一接入统一回收站并保持业务记录、附件和审计一致。",
+              "acceptance": [
+                "删除项只出现一次",
+                "恢复保留附件",
+                "彻底清理业务和附件但保留审计"
+              ],
+              "priority": "must",
+              "source": "用户需求和批准设计",
+              "counterexample": [
+                "回收站重复认领"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "查看、下载、上传新增、编辑、删除和回收站管理执行服务端RBAC、租户、项目、实体和附件归属校验并审计成功写操作。",
+              "acceptance": [
+                "匿名无权跨项目非所有者请求被拒绝",
+                "成功写操作有MAPPING审计"
+              ],
+              "priority": "must",
+              "source": "用户权限需求和批准设计",
+              "counterexample": [
+                "只靠前端按钮控制权限"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "页面覆盖全状态、多文件部分失败重试和响应式布局，并通过工程和真实浏览器验证。",
+              "acceptance": [
+                "失败文件可单独重试且成功项保留",
+                "桌面和三个手机视口无页面级溢出",
+                "工程检查有真实结果"
+              ],
+              "priority": "must",
+              "source": "RDDMP规则和批准设计",
+              "counterexample": [
+                "部分失败后丢失全部上传状态"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "当前dm_mapping_doc无历史数据，追加迁移不执行历史回填或兼容默认值。",
+              "acceptance": [
+                "V186无历史回填SQL",
+                "新记录必须提供mapping_type"
+              ],
+              "priority": "must",
+              "source": "用户明确确认",
+              "counterexample": [
+                "历史行被默认回填为迁入程序"
+              ]
+            }
+          ],
+          "invariants": [
+            "租户操作者来自认证主体且访问绑定当前项目",
+            "文件编号服务端生成且不可修改",
+            "Flyway只追加",
+            "业务表不保存对象键或凭据",
+            "MAPPING_DOC只有一个回收站来源"
+          ],
+          "constraints": [
+            "只写REQ-031授权路径",
+            "不修改平台公共实现",
+            "单附件上限52428800字节",
+            "保护现有交叠修改",
+            "不提交推送合并发布或访问生产"
+          ],
+          "non_goals": [
+            "不解压压缩包",
+            "不实现版本历史查重在线编辑",
+            "不拆分多文件为多记录",
+            "不重构其他内容菜单",
+            "不迁移历史数据"
+          ],
+          "assumptions": [
+            {
+              "text": "当前无历史映射数据",
+              "basis": "用户2026-09-06明确确认",
+              "falsifier": "发现必须保留的旧行"
+            },
+            {
+              "text": "临时未绑定附件由平台生命周期清理",
+              "basis": "现有附件契约",
+              "falsifier": "运行检查发现未绑定附件永久残留"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "多文件如何归属",
+              "options": [
+                "一条记录多附件",
+                "每文件一条记录"
+              ],
+              "selected": "一条记录多附件",
+              "blocking": false,
+              "source": "用户确认"
+            },
+            {
+              "question": "领域实现方式",
+              "options": [
+                "独立服务页面",
+                "扩展通用链路"
+              ],
+              "selected": "独立服务页面并复用公共能力",
+              "blocking": false,
+              "source": "用户确认"
+            },
+            {
+              "question": "历史数据处理",
+              "options": [
+                "不处理",
+                "回填默认类型"
+              ],
+              "selected": "不处理",
+              "blocking": false,
+              "source": "用户确认当前无历史数据"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "400响应、名称边界和服务端编号",
+              "candidate_sensor": "MappingServiceTest和HTTP"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "参数选项及停用拒绝",
+              "candidate_sensor": "MySQL迁移测试和服务测试"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "项目系统选择和跨项目拒绝",
+              "candidate_sensor": "服务测试和浏览器项目切换"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "多附件绑定、无附件和50MB边界",
+              "candidate_sensor": "服务测试和真实上传"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "列表列、组合筛选、页码",
+              "candidate_sensor": "SQL断言和浏览器请求DOM"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "附件集合和单个/ZIP下载内容",
+              "candidate_sensor": "服务测试和HTTP字节检查"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "回收站唯一项和恢复清理结果",
+              "candidate_sensor": "注册服务测试和数据库附件检查"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "401/403、跨项目、所有者和审计行",
+              "candidate_sensor": "安全服务测试和角色HTTP"
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "逐文件状态、失败重试、四视口溢出和控制台",
+              "candidate_sensor": "Vue构建和Playwright"
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "迁移脚本无默认回填",
+              "candidate_sensor": "静态扫描和MySQL迁移测试"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "代码、工具和运行入口已核对；R1-R10均有真实传感器与有权执行器；已记录脏工作树和Docker扰动",
+        "recorded_at": "2026-09-06T00:08:46+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "dm_mapping_doc schema and rows",
+              "dm_content_attachment MAPPING_DOC relations",
+              "MappingService and MappingController",
+              "MappingRecycleBinSource registration",
+              "MappingsPage and Mapping API",
+              "focused tests and task ledger"
+            ],
+            "environment": [
+              "MySQL 8.4 and Flyway",
+              "platform attachment and MinIO",
+              "platform parameter tables",
+              "authentication and project capability",
+              "Vue application shell and global project context",
+              "Chromium browser",
+              "existing dirty REQ-031 worktree"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "mapping_schema",
+              "owner": "V186",
+              "valid_values": [
+                "missing",
+                "non-null-without-history-default"
+              ]
+            },
+            {
+              "name": "mapping_lifecycle",
+              "owner": "dm_mapping_doc",
+              "valid_values": [
+                "active",
+                "deleted",
+                "purged"
+              ]
+            },
+            {
+              "name": "attachment_set",
+              "owner": "dm_content_attachment and attachment platform",
+              "valid_values": [
+                "temporary",
+                "bound-active",
+                "removed"
+              ]
+            },
+            {
+              "name": "upload_item_state",
+              "owner": "MappingsPage",
+              "valid_values": [
+                "pending",
+                "uploading",
+                "uploaded",
+                "error"
+              ]
+            },
+            {
+              "name": "project_scope",
+              "owner": "global project context and DataMigrationPermissionService",
+              "valid_values": [
+                "loading",
+                "ready",
+                "unselected",
+                "unavailable",
+                "error"
+              ]
+            },
+            {
+              "name": "page_state",
+              "owner": "MappingsPage",
+              "valid_values": [
+                "loading",
+                "ready",
+                "empty",
+                "filtered-empty",
+                "error",
+                "forbidden",
+                "saving"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "mapping metadata",
+              "transitions": [
+                "controller authentication",
+                "service required and length validation",
+                "server doc code generation",
+                "database insert"
+              ],
+              "outputs": [
+                "400 rejection or persisted record with code"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "mapping type code",
+              "transitions": [
+                "V186 parameter seed",
+                "active code lookup",
+                "service validation"
+              ],
+              "outputs": [
+                "enabled option or 400 rejection"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "projectId and systemCode",
+              "transitions": [
+                "project accessibility check",
+                "enabled dm_component lookup",
+                "project switch reset"
+              ],
+              "outputs": [
+                "project system option or rejected request and cleared UI"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "one metadata form and local files",
+              "transitions": [
+                "frontend per-file precheck and upload",
+                "attachment ownership and size resolution",
+                "ordered relation replacement"
+              ],
+              "outputs": [
+                "one record with multiple attachments or atomic rejection"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "type system name and pagination filters",
+              "transitions": [
+                "query parameter normalization",
+                "tenant and project SQL filters",
+                "ordered page query",
+                "desktop/mobile rendering"
+              ],
+              "outputs": [
+                "bounded filtered page with four required fields"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "edited metadata attachment set or download selection",
+              "transitions": [
+                "owner and project validation",
+                "full attachment set replacement",
+                "attachment membership check or streamed ZIP"
+              ],
+              "outputs": [
+                "consistent detail or authorized file response"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "input": "delete restore or purge command",
+              "transitions": [
+                "soft delete",
+                "unique source aggregation",
+                "admin project validation",
+                "restore or attachment cleanup"
+              ],
+              "outputs": [
+                "single recycle item, restored record, or purged record with audit retained"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "input": "authenticated or unauthorized operation",
+              "transitions": [
+                "method RBAC",
+                "tenant project and owner checks",
+                "attachment ownership validation",
+                "success audit"
+              ],
+              "outputs": [
+                "authorized result, 401/403, and correct audit row"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "input": "page load project change multi-file upload and viewport",
+              "transitions": [
+                "async state transitions",
+                "per-file retry",
+                "desktop table or mobile cards",
+                "drawer and pagination constraints"
+              ],
+              "outputs": [
+                "recoverable UI with no duplicate submit or page overflow"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "input": "clean database applying V186",
+              "transitions": [
+                "add non-null column",
+                "create index",
+                "seed parameters without data update"
+              ],
+              "outputs": [
+                "new schema with no history classification"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Mapping REST",
+              "producers": [
+                "MappingController"
+              ],
+              "consumers": [
+                "MappingsPage"
+              ],
+              "invariant": "all data is tenant and current-project scoped and DTO never exposes object keys"
+            },
+            {
+              "name": "attachment binding",
+              "producers": [
+                "ContentAttachmentService",
+                "attachment platform"
+              ],
+              "consumers": [
+                "MappingService"
+              ],
+              "invariant": "only owned temporary or already-bound attachments can enter the mapping set"
+            },
+            {
+              "name": "mapping code values",
+              "producers": [
+                "sys_dict_type and sys_config via DataMigrationCodeValueService"
+              ],
+              "consumers": [
+                "MappingService",
+                "MappingsPage"
+              ],
+              "invariant": "only active values are writable and labels are not hard-coded by the page"
+            },
+            {
+              "name": "project systems",
+              "producers": [
+                "dm_component and architecture name projection"
+              ],
+              "consumers": [
+                "MappingService",
+                "MappingsPage"
+              ],
+              "invariant": "systemCode belongs to the current accessible project and is enabled"
+            },
+            {
+              "name": "recycle source SPI",
+              "producers": [
+                "MappingRecycleBinSource"
+              ],
+              "consumers": [
+                "ContentRecycleBinService"
+              ],
+              "invariant": "MAPPING_DOC has exactly one source"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "V186 schema and no-history SQL",
+              "method": "DataMigrationMappingMigrationMySqlTest plus static migration scan",
+              "blind_spots": [
+                "shared environment where V186 may already be applied"
+              ],
+              "independence": "MySQL information_schema and source text"
+            },
+            {
+              "id": "S2",
+              "target": "Mapping service data, permission, attachment, audit and recycle behavior",
+              "method": "MappingServiceTest, MappingRecycleBinSourceTest and registration test",
+              "blind_spots": [
+                "real MinIO byte lifecycle"
+              ],
+              "independence": "JUnit behavior assertions over service boundary"
+            },
+            {
+              "id": "S3",
+              "target": "Controller RBAC annotations",
+              "method": "MappingControllerSecurityTest and authenticated HTTP status probes",
+              "blind_spots": [
+                "unmodeled global security filter changes"
+              ],
+              "independence": "reflection and HTTP authorization boundary"
+            },
+            {
+              "id": "S4",
+              "target": "frontend contract and type correctness",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "runtime layout and request payload behavior"
+              ],
+              "independence": "Vue TypeScript compiler and Vite bundler"
+            },
+            {
+              "id": "S5",
+              "target": "database, attachment and REST lifecycle",
+              "method": "local MySQL MinIO backend authenticated HTTP flow",
+              "blind_spots": [
+                "production topology and identities"
+              ],
+              "independence": "running services and persisted state"
+            },
+            {
+              "id": "S6",
+              "target": "responsive states, interaction and overflow",
+              "method": "local Chromium at 1280x800, 375x812, 390x844 and 430x932 with DOM console network and scrollWidth probes",
+              "blind_spots": [
+                "non-Chromium engines"
+              ],
+              "independence": "rendered browser state"
+            },
+            {
+              "id": "S7",
+              "target": "module and writable path boundaries",
+              "method": "governance and codex scope scripts plus git diff inspection",
+              "blind_spots": [
+                "uncommitted changes predating this increment require manual attribution"
+              ],
+              "independence": "repository policy scripts"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "V186 and migration test",
+              "action": "remove history default and backfill and align MySQL assertions",
+              "authority": "REQ-031 writable migration path",
+              "impact_radius": "new unpublished V186 only",
+              "rollback": "restore task-start V186 diff"
+            },
+            {
+              "id": "A2",
+              "target": "Mapping backend and tests",
+              "action": "apply bounded validation permission attachment and recycle corrections",
+              "authority": "business/data-migration writable path",
+              "impact_radius": "Mapping files and MAPPING_DOC branches in overlapping generic files",
+              "rollback": "revert only Mapping hunks"
+            },
+            {
+              "id": "A3",
+              "target": "Mapping frontend and API",
+              "action": "add upload item state retry download choice mobile cards and error states",
+              "authority": "data-migration frontend writable path",
+              "impact_radius": "MappingsPage and Mapping API segment",
+              "rollback": "revert only Mapping page and API hunks"
+            },
+            {
+              "id": "A4",
+              "target": "measurement coverage",
+              "action": "add or tighten focused tests and browser probes",
+              "authority": "REQ-031 tests and local execution",
+              "impact_radius": "task tests and generated evidence",
+              "rollback": "remove task-only sensor changes"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S2",
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S2",
+                "S5",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S2",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R8",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R9",
+              "sensor_ids": [
+                "S4",
+                "S6"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R10",
+              "sensor_ids": [
+                "S1",
+                "S7"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "existing dirty REQ-031 worktree",
+              "effect": "diff and global tests include changes not created by this increment",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Docker daemon or MySQL MinIO availability",
+              "effect": "migration and runtime sensors may be skipped or fail",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "global governance failures from other requirements",
+              "effect": "repository-wide check can be non-zero without Mapping defect",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "large sequential uploads and ZIP generation",
+              "effect": "long response and increased resource use",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "temporary attachment upload before business save",
+              "consequence": "partial success precedes mapping transaction",
+              "sampling_rule": "observe every file state and only sample business result after all required uploads succeed"
+            },
+            {
+              "source": "streaming ZIP response",
+              "consequence": "headers may succeed before later attachment read fails",
+              "sampling_rule": "consume response bytes and verify archive entries, not only HTTP headers"
+            },
+            {
+              "source": "global project context loading",
+              "consequence": "early page query can omit or reuse project",
+              "sampling_rule": "sample requests after scope ready and immediately after project switch"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "V186 is unpublished and may be corrected in place",
+              "evidence": "file is untracked in current feature worktree",
+              "falsifier": "owner reports or Flyway history shows V186 deployed in shared environment"
+            },
+            {
+              "text": "current database has no mapping history",
+              "evidence": "user explicit confirmation",
+              "falsifier": "pre-migration query finds rows requiring preservation"
+            },
+            {
+              "text": "Chromium sensor is available locally",
+              "evidence": "/snap/bin/chromium exists",
+              "falsifier": "browser cannot launch or connect to local app"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 and A2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 and A2"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 and A3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 and A3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 and A3"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 and A3"
+            },
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2"
+            },
+            {
+              "requirement_id": "R8",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2 and A3"
+            },
+            {
+              "requirement_id": "R9",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3 and A4"
+            },
+            {
+              "requirement_id": "R10",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "control plan revision 1; four serial controlled tasks; R1-R10 all mapped to task and sensor; dirty same-requirement worktree protected by file-scoped rollback and attribution",
+        "recorded_at": "2026-09-06T00:12:31+00:00",
+        "data": {
+          "baseline_revision": "2",
+          "model_revision": "1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "使 V186 和迁移测试满足无历史数据、非空映射类型和参数种子契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R10"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "用户明确确认 dm_mapping_doc 当前无历史数据",
+                "工作区已有未发布的 V186 和 DataMigrationMappingMigrationMySqlTest",
+                "当前 V186 含 mapping_type DEFAULT '' 和历史 UPDATE，与基准 R10 冲突"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationMappingMigrationMySqlTest.java"
+              ],
+              "invariants": [
+                "Flyway 只追加且不修改 V185 及更早脚本",
+                "不回填历史映射记录且不引入兼容默认类型",
+                "保护工作区中其他需求的迁移和测试修改"
+              ],
+              "interface_contracts": [
+                "dm_mapping_doc.mapping_type 为非空字段且写入方必须显式提供",
+                "DM_MAPPING_TYPE 提供启用的 MIGRATE_OUT 和 MIGRATE_IN 参数项",
+                "V186 可由 Flyway 在 MySQL 8.4 上应用"
+              ],
+              "non_goals": [
+                "不处理历史数据",
+                "不修改参数管理公共实现",
+                "不访问共享或生产数据库"
+              ],
+              "action_bounds": [
+                "先用迁移测试和静态扫描建立基准",
+                "只修正 V186 的 mapping_type 定义、无历史回填约束及直接测试断言",
+                "运行聚焦 MySQL 迁移测试和 git diff --check"
+              ],
+              "acceptance_checks": [
+                "DataMigrationMappingMigrationMySqlTest 通过且字段不可空、无默认值",
+                "V186 中不存在 UPDATE dm_mapping_doc SET mapping_type 或 mapping_type DEFAULT ''",
+                "两个映射类型参数项可读且重复迁移不覆盖已维护值"
+              ],
+              "evidence_required": [
+                "T1 实际 diff",
+                "聚焦 Maven 命令、退出码和 Surefire 结果",
+                "V186 静态扫描结果",
+                "发现的环境扰动"
+              ],
+              "rollback": "仅撤销 T1 对尚未发布 V186 和其直接测试的增量修改，不触碰更早迁移或其他工作区变更",
+              "stop_conditions": [
+                "发现 V186 已在共享环境发布",
+                "发现必须保留的 dm_mapping_doc 历史行"
+              ],
+              "escalation_conditions": [
+                "非空字段必须依赖新的产品默认值",
+                "参数表约束无法表达两个受控类型"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "使迁移映射专属后端满足项目隔离、多附件、下载、权限、审计和统一回收站契约",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "工作区已有 MappingService、MappingController、MappingRecycleBinSource 和初版测试",
+                "ContentFileAssetService 与 ContentAssetController 含同一需求的交叠修改，只核对 MAPPING_DOC 摘除事实",
+                "附件、参数、权限、审计和回收站公共能力通过现有公开契约消费"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingRecycleBinSourceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ],
+              "invariants": [
+                "认证主体决定租户和操作者且所有实体访问绑定当前项目",
+                "文件编号由服务端生成且不可更新",
+                "单附件最大 52428800 字节且业务表不保存对象键或凭据",
+                "MAPPING_DOC 只有 MappingRecycleBinSource 一个回收站来源",
+                "失败写操作不得记录成功审计",
+                "不修改 platform 或 shared 公共实现"
+              ],
+              "interface_contracts": [
+                "GET/POST/PUT/DELETE /api/data-migration/mappings 及详情、附件、单附件下载和 ZIP 下载按统一响应语义工作",
+                "mappingType 必须是启用的 DM_MAPPING_TYPE，systemCode 必须是当前项目启用的 dm_component",
+                "创建至少一个附件，编辑后的活动附件集合不得为空且附件不得重复",
+                "指定附件下载必须同时验证记录归属和附件绑定归属",
+                "删除、恢复和彻底清理分别保持记录、附件及审计的一致性"
+              ],
+              "non_goals": [
+                "不扩展通用文件资产服务承载映射专属字段",
+                "不重构其他内容菜单",
+                "不改变附件、参数、安全或回收站公共契约"
+              ],
+              "action_bounds": [
+                "先运行聚焦测试并检查现有实现",
+                "补充 200 字符、空附件、重复附件、项目和附件归属、空 ZIP、成功审计等失败路径测试",
+                "在 Mapping 专属类内实施最小修正，仅保留通用链路中 MAPPING_DOC 的摘除",
+                "运行 Mapping 服务、安全、回收站和模块注册聚焦测试"
+              ],
+              "acceptance_checks": [
+                "缺失必填、名称超长、未知或停用类型、项目外系统、无附件和超限附件均被拒绝",
+                "多附件创建和编辑保留、追加、移除行为可重复验证",
+                "单附件不可跨记录下载且 ZIP 包含全部活动附件，空或不完整流失败可观察",
+                "匿名、无权限、跨项目和非所有者访问被服务端拒绝",
+                "MAPPING_CREATE、UPDATE、DELETE、RESTORE、PURGE 只在成功后记录",
+                "MAPPING_DOC 只有一个统一回收站来源"
+              ],
+              "evidence_required": [
+                "T2 实际 diff 和源契约扫描",
+                "聚焦 Maven 命令、退出码、用例数和 Surefire 结果",
+                "权限、附件、审计和回收站断言摘要",
+                "发现的公共契约缺口或工作区扰动"
+              ],
+              "rollback": "仅回退 Mapping 专属新增修改和通用链路中针对 MAPPING_DOC 的摘除，不覆盖相同文件的其他菜单增量",
+              "stop_conditions": [
+                "完成契约必须修改 platform、shared 或未授权路径",
+                "发现现有用户改动与 Mapping 契约不可兼容",
+                "附件所有权或回收站唯一性无法在现有公开能力内保证"
+              ],
+              "escalation_conditions": [
+                "必须变更公共附件、安全、参数或回收站契约",
+                "彻底清理无法同时保证附件生命周期和审计保留",
+                "聚焦测试暴露未建模跨模块消费者"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "使独立迁移映射页面满足桌面与移动布局、多文件部分失败恢复、单个及全部下载和全状态交互",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R8",
+                "R9"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "初版 MappingsPage 只有桌面表格和顺序上传",
+                "初版页面缺少持久逐文件状态、失败重试、单附件下载、移动卡片和持久错误态",
+                "页面可复用现有 UI 组件、项目上下文和附件 API"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/MappingsPage.vue",
+                "web/src/modules/data-migration/data-migration.css"
+              ],
+              "invariants": [
+                "前端权限只控制可见交互且不能替代服务端校验",
+                "切换项目时不得保留旧项目数据、选项、抽屉或附件状态",
+                "失败文件重试不得丢失已经成功上传的附件 ID",
+                "移动端无页面级横向滚动且桌面表格与移动卡片互斥",
+                "不修改公共 UI、store 或全局主题"
+              ],
+              "interface_contracts": [
+                "页面消费 T2 的 Mapping REST 和公共 uploadAttachment/getAttachmentDownload",
+                "上传项状态为 pending、uploading、uploaded、error，失败项可单独重试",
+                "存在上传失败或上传中项目时不得提交业务记录",
+                "列表列和移动卡片都展示系统、映射类型、文件编号和文件名称",
+                "附件入口支持逐附件下载和全部 ZIP 下载"
+              ],
+              "non_goals": [
+                "不新增全局组件或新设计系统",
+                "不实现压缩包解压、在线编辑或附件版本历史",
+                "不修改其他内容页面"
+              ],
+              "action_bounds": [
+                "先建立前端构建和现有页面契约基准",
+                "在 Mapping 页面内实现逐文件上传状态、部分失败保留和单项重试",
+                "补充附件列表、单附件和 ZIP 下载入口",
+                "实现桌面表格、移动卡片、加载失败重试、空状态和项目切换清理",
+                "运行 Vue TypeScript 和 Vite 构建"
+              ],
+              "acceptance_checks": [
+                "多文件中部分失败时成功项保留且失败项可单独重试",
+                "前端预检单附件 50MB 且提交按钮覆盖上传中、失败和提交中状态",
+                "单附件与全部 ZIP 下载均可达且错误可见",
+                "加载失败有持久重试入口，筛选无结果和无权限状态明确",
+                "项目切换清空旧状态，移动卡片与桌面表格互斥",
+                "npm --prefix web run build 退出码为 0"
+              ],
+              "evidence_required": [
+                "T3 实际 diff",
+                "前端构建命令和退出码",
+                "上传状态、项目切换、下载和响应式 DOM 契约摘要",
+                "发现的后端契约或公共组件缺口"
+              ],
+              "rollback": "仅回退 data-migration.ts 的 Mapping 段、MappingsPage 和 Mapping 专属样式，不覆盖同文件其他业务增量",
+              "stop_conditions": [
+                "必须修改公共 UI、store 或全局主题才能满足验收",
+                "现有附件 API 无法提供受认证的单附件下载",
+                "前端实现需要未经批准的后端字段或路由"
+              ],
+              "escalation_conditions": [
+                "浏览器上传接口无法区分逐文件结果",
+                "移动布局必须改变已批准的业务字段或操作层级",
+                "T2 API 契约在实现中发生破坏性变化"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "以独立工程、运行和浏览器传感器验证组合实现并形成收敛证据",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "T1 至 T3 提供数据库、后端和前端局部证据",
+                "当前工作树包含同一 REQ 的其他既有修改，全局结果需要人工归因",
+                "本地 Java、Maven、Node、Docker 和 Chromium 可用性已探测但运行服务仍需复核"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T1.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T2.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T3.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T4.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-observation.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-verification.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-convergence.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-state.json"
+              ],
+              "invariants": [
+                "未执行或受环境阻塞的检查不得描述为通过",
+                "全量检查中的既有失败与本增量失败分开归因",
+                "不使用生产身份、数据、凭据、附件或环境",
+                "不提交、推送、合并或发布"
+              ],
+              "interface_contracts": [
+                "消费 T1 至 T3 的实现和局部证据",
+                "产出可重复的 Maven、前端、治理、范围、HTTP 和四视口浏览器证据",
+                "所有 must 需求必须映射到至少一个有效传感器且 P0/P1 反馈为零才能收敛"
+              ],
+              "non_goals": [
+                "不修改生产或共享环境",
+                "不为通过全局检查而修复无关需求",
+                "不自行批准或集成分支"
+              ],
+              "action_bounds": [
+                "运行 diff、聚焦、模块、全量 Maven、前端、治理和范围检查",
+                "本地基础设施可用时启动隔离服务并执行管理员和普通人员 HTTP 生命周期",
+                "用 Chromium 在 1280x800、375x812、390x844 和 430x932 采集 DOM、控制台、网络和溢出信号",
+                "记录执行、观察、纠偏和最终收敛证据"
+              ],
+              "acceptance_checks": [
+                "聚焦与模块测试通过且全量失败均完成归因",
+                "前端构建、治理和范围检查有真实退出码",
+                "本地运行验证覆盖组合筛选、多附件部分失败重试、编辑、单附件和 ZIP 下载、删除、恢复与彻底清理",
+                "普通人员越权请求被拒绝且成功操作有审计",
+                "四个视口无页面级横向溢出、遮挡或不可达操作",
+                "所有 R1-R10 有证据且没有未裁决 P0/P1 反馈"
+              ],
+              "evidence_required": [
+                "全部命令、退出码、测试数和失败归因",
+                "本地服务版本、路由、角色和 HTTP 结果",
+                "四视口尺寸、DOM、console、network 和 scrollWidth 结果",
+                "最终观察与收敛 JSON",
+                "残余风险、上线验证和回退说明"
+              ],
+              "rollback": "应用变更按 T3、T2、T1 逆序回退；已执行迁移不反向修改，只能通过另行批准的前向补偿处理",
+              "stop_conditions": [
+                "数据库迁移失败或发现数据损坏风险",
+                "越权请求成功、附件跨项目可访问或对象信息泄露",
+                "构建失败或任一目标视口出现页面级横向溢出",
+                "出现无法归因的 P0/P1 反馈"
+              ],
+              "escalation_conditions": [
+                "只有生产身份、数据或拓扑才能完成必需验证",
+                "全局治理失败需要修改本任务禁止路径",
+                "本地运行基础设施连续不可用且没有等价独立传感器"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "后端依赖稳定的 mapping_type 数据库和参数契约"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "前端依赖稳定的 Mapping REST、附件和权限语义"
+            },
+            {
+              "from": "T1",
+              "to": "T4",
+              "reason": "最终验收包含数据库迁移契约"
+            },
+            {
+              "from": "T2",
+              "to": "T4",
+              "reason": "最终验收包含服务端生命周期和授权"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "最终验收包含页面和浏览器行为"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "MySQL 迁移测试通过",
+                "V186 无默认值和历史回填"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "Mapping 服务、安全、回收站和模块注册聚焦测试通过",
+                "MAPPING_DOC 唯一认领"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "Vue TypeScript 与 Vite 构建通过",
+                "页面源契约覆盖逐文件状态、单附件下载和移动卡片"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "模块和全量工程检查完成",
+                "本地 HTTP 和四视口浏览器证据完成或明确记录环境阻塞",
+                "需求覆盖与反馈闭合"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 返回执行报告",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S1",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R10"
+              ]
+            },
+            {
+              "label": "T2 完成采样",
+              "trigger": "T2 返回执行报告",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S2",
+                "S3",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8"
+              ]
+            },
+            {
+              "label": "T3 完成采样",
+              "trigger": "T3 返回执行报告",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S4",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R8",
+                "R9"
+              ]
+            },
+            {
+              "label": "集成运行采样",
+              "trigger": "T1 至 T3 局部检查完成",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10"
+              ]
+            },
+            {
+              "label": "纠偏后复验",
+              "trigger": "任何有效负反馈完成纠正",
+              "observer": "主 Agent 独立复核",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5",
+                "R6",
+                "R7",
+                "R8",
+                "R9",
+                "R10"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4",
+                "S5",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S5",
+                "S7"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S5",
+                "S6"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5",
+                "S6",
+                "S7"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S7"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 implemented; MySQL 8.4 focused test 1/1 passed; no historical backfill/default; diff check passed",
+        "recorded_at": "2026-09-06T00:17:05+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql",
+              "purpose": "移除 mapping_type 空字符串默认值和历史回填 SQL"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationMappingMigrationMySqlTest.java",
+              "purpose": "断言 mapping_type 非空、无默认值且迁移不包含历史回填"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R10"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test (修改前基准)",
+              "exit_code": 0,
+              "salient_output": "Tests run: 1, Failures: 0, Errors: 0, Skipped: 0；旧测试未检测空默认值和历史回填"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test (修改后)",
+              "exit_code": 0,
+              "salient_output": "MySQL 8.4 Testcontainers；Tests run: 1, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS"
+            },
+            {
+              "command": "rg -n \"UPDATE dm_mapping_doc SET mapping_type|mapping_type[^\\n]*DEFAULT ''\" V187__data_migration_mapping_domain.sql",
+              "exit_code": 0,
+              "salient_output": "无匹配；命令通过 || true 归一化退出码，结果为空"
+            },
+            {
+              "command": "git diff --check -- V187__data_migration_mapping_domain.sql DataMigrationMappingMigrationMySqlTest.java",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "MySQL 迁移结构、参数种子和幂等检查",
+              "result": "pass",
+              "evidence": "DataMigrationMappingMigrationMySqlTest 在 mysql:8.4 上 1/1 通过",
+              "limitations": [
+                "测试直接执行 V186 语句，不代表共享环境 Flyway 状态"
+              ]
+            },
+            {
+              "check": "无历史回填与无兼容默认值",
+              "result": "pass",
+              "evidence": "information_schema 返回 IS_NULLABLE=NO、COLUMN_DEFAULT=NULL；迁移语句扫描无 UPDATE dm_mapping_doc SET mapping_type",
+              "limitations": []
+            }
+          ],
+          "diff_summary": [
+            "mapping_type 定义从 NOT NULL DEFAULT '' 收紧为 NOT NULL",
+            "删除把空类型历史行回填为 MIGRATE_IN 的 UPDATE",
+            "测试新增列默认值和迁移源码反例断言"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Flyway 只追加且不修改 V185 及更早脚本",
+              "result": "pass",
+              "evidence": "仅修改工作区尚未发布的 V186 和其直接测试"
+            },
+            {
+              "invariant": "不回填历史映射记录且不引入兼容默认类型",
+              "result": "pass",
+              "evidence": "静态扫描和 MySQL 元数据断言通过"
+            },
+            {
+              "invariant": "保护工作区中其他需求的迁移和测试修改",
+              "result": "pass",
+              "evidence": "修改面仅限 T1 两个既定文件"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "T1 两个目标文件在任务开始前均为未跟踪文件",
+              "impact": "普通 git diff 无法展示新增文件内部增量，因此以源码扫描、文件读取和运行测试作为证据"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "完整 Flyway 链、模块回归和共享环境发布状态由 T4 验证或上线前人工确认"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 implemented; focused backend 35/35 passed; Mapping-only validation and purge consistency fixed; unique recycle source confirmed",
+        "recorded_at": "2026-09-06T00:28:06+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java",
+              "purpose": "补齐文件名称边界、非空和非重复附件集合、清理并发一致性规则"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingServiceTest.java",
+              "purpose": "覆盖 200/201 字符、空附件、重复附件和失败清理不解绑不审计"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+              "purpose": "枚举查询、选项、详情、附件和下载入口的类级查看权限继承"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test (基准)",
+              "exit_code": 0,
+              "salient_output": "Tests run: 32, Failures: 0, Errors: 0, Skipped: 0；基准测试未覆盖已识别反例"
+            },
+            {
+              "command": "mvn -q -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingControllerSecurityTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 1,
+              "salient_output": "新增 200 字符接受断言因测试桩详情回读固定旧名称失败；判定为测试传感器故障并修正断言"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test (最终)",
+              "exit_code": 0,
+              "salient_output": "Tests run: 35, Failures: 0, Errors: 0, Skipped: 0；BUILD SUCCESS"
+            },
+            {
+              "command": "git diff --check -- <T2 Mapping 目标文件>",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "rg MAPPING_DOC 和 /mappings 通用认领及专属 RecycleBinSource",
+              "exit_code": 0,
+              "salient_output": "通用 ContentFileAssetService/ContentAssetController 无 MAPPING_DOC 或 /mappings；仅 MappingRecycleBinSource 返回 Set.of(\"MAPPING_DOC\")"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Mapping 服务正常、边界和失败路径",
+              "result": "pass",
+              "evidence": "MappingServiceTest 14 个用例通过，覆盖必填、200 字符、多附件、50MB、类型、系统、所有者、附件集合、下载、审计和回收站",
+              "limitations": [
+                "JdbcTemplate 与附件服务使用测试桩，真实 MySQL/MinIO 生命周期留待 T4"
+              ]
+            },
+            {
+              "check": "Controller RBAC 和统一回收站唯一认领",
+              "result": "pass",
+              "evidence": "MappingControllerSecurityTest、MappingRecycleBinSourceTest、DataMigrationModuleRegistrationTest 共 21 个用例通过",
+              "limitations": [
+                "当前为反射和委托测试，真实 401/403 留待 T4 HTTP 验收"
+              ]
+            },
+            {
+              "check": "通用链路摘除 MAPPING_DOC",
+              "result": "pass",
+              "evidence": "源扫描在通用 Service/Controller 中无 MAPPING_DOC 或 /mappings，专属 Source 是唯一静态认领者",
+              "limitations": [
+                "Spring 运行时 Bean 唯一性由模块测试及 T4 启动验证补充"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "文件名称按 Unicode 码点执行最多 200 字符校验",
+            "显式 files 空集合被拒绝，防止编辑后无附件",
+            "重复 attachmentId 在进入公共绑定服务前返回 400",
+            "purge 先确认并删除回收站业务行，再清理附件；并发失败不解绑且不写成功审计",
+            "Controller 测试覆盖全部查看和下载入口的类级权限"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "租户、项目、实体和附件归属检查保持在服务端",
+              "result": "pass",
+              "evidence": "所有详情、附件和下载入口经 findRaw + requireStoredProject；新附件经 resolveAttachment；指定附件必须属于记录绑定集合"
+            },
+            {
+              "invariant": "单附件最大 52428800 字节且附件集合非空唯一",
+              "result": "pass",
+              "evidence": "服务测试覆盖 50MB+1、空集合和重复 ID 拒绝"
+            },
+            {
+              "invariant": "MAPPING_DOC 只有一个回收站来源",
+              "result": "pass",
+              "evidence": "注册测试与源扫描均确认专属认领"
+            },
+            {
+              "invariant": "失败写操作不记录成功审计",
+              "result": "pass",
+              "evidence": "非所有者删除、超长名称、空/重复附件和并发 purge 失败均断言无对应成功审计"
+            },
+            {
+              "invariant": "不修改 platform/shared 公共实现",
+              "result": "pass",
+              "evidence": "T2 实际修改只在 data-migration Mapping 专属服务及直接测试"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "现有 Mapping 文件均为工作区未跟踪或与同需求交叠修改",
+              "impact": "以限定源扫描、运行测试和文件级修改记录取代相对 HEAD 的精确作者 diff"
+            },
+            {
+              "event": "新增 200 字符接受断言首次被测试桩固定回读值误报",
+              "impact": "仅修正测试断言为成功创建和审计信号，业务实现未为迁就桩而改变"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实附件字节流、ZIP 中途失败和 HTTP 401/403 由 T4 本地运行验收",
+            "完整模块回归由 T4 执行"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 implemented; two post-change web builds passed; four-state upload, retry, mobile cards, individual/ZIP download and project reset present",
+        "recorded_at": "2026-09-06T00:43:07+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/content/MappingsPage.vue",
+              "purpose": "实现独立响应式页面、逐文件上传恢复、附件下载、全状态和项目切换隔离"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R8",
+            "R9"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build (修改前基准)",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 成功；2571 modules transformed；仅有既有 Rollup PURE 注释和大 chunk 警告"
+            },
+            {
+              "command": "npm --prefix web run build (页面重构后)",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 成功；2571 modules transformed；built in 17.08s"
+            },
+            {
+              "command": "npm --prefix web run build (状态边界修正后)",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 与 Vite 成功；2571 modules transformed；built in 16.96s"
+            },
+            {
+              "command": "git diff --check -- web/src/api/data-migration.ts web/src/modules/data-migration/views/content/MappingsPage.vue",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "rg Mapping 页面上传状态、下载、响应式和项目切换契约",
+              "exit_code": 0,
+              "salient_output": "四个上传状态、retryUpload、getMappingDownloadPath/getAttachmentDownload/getMappingDownloadAll、dm-desktop-table/dm-mobile-list、watch(scopeProjectId) 和持久 listError 均有匹配"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Vue/TypeScript/API 编译契约",
+              "result": "pass",
+              "evidence": "修改后两次完整 web build 退出码 0",
+              "limitations": [
+                "构建不验证真实请求、视觉布局和下载字节"
+              ]
+            },
+            {
+              "check": "部分上传失败恢复",
+              "result": "pass",
+              "evidence": "上传项保存 pending/uploading/uploaded/error、attachmentId 和 error；失败时保留成功项并阻断业务提交，error 项有单独 retryUpload",
+              "limitations": [
+                "真实网络失败注入由 T4 浏览器验收"
+              ]
+            },
+            {
+              "check": "项目切换和错误状态",
+              "result": "pass",
+              "evidence": "watch(scopeProjectId) 关闭抽屉/下载弹层并清空列表、筛选、选项和附件；上传后提交前再次核对 projectId；列表、选项、附件加载和提交错误均有持久状态及重试入口",
+              "limitations": [
+                "项目切换交互尚未在浏览器触发"
+              ]
+            },
+            {
+              "check": "桌面/移动结构和下载入口",
+              "result": "pass",
+              "evidence": "桌面表格由 dm-desktop-table 包裹，移动卡片使用 dm-mobile-list；下载弹层列出单附件并提供全部下载",
+              "limitations": [
+                "四视口尺寸和溢出由 T4 测量"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "移除重复说明型页面副标题并保留紧凑业务标题和新增操作",
+            "列表增加持久加载错误、选项错误、筛选空状态和重试入口",
+            "桌面表格与移动卡片互斥，卡片展示系统、类型、编号和名称",
+            "上传队列增加四态、成功附件 ID 保留、失败项单独重试和前后端 50MB/200 字符门禁",
+            "编辑附件加载失败与业务提交失败分离，避免误清空或阻断重试",
+            "下载弹层支持指定附件授权校验后下载及全部 ZIP 下载",
+            "项目切换关闭弹层并清空旧状态，异步请求和最终提交都校验当前项目"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "前端权限只控制交互可见性且不替代服务端授权",
+              "result": "pass",
+              "evidence": "页面仍调用 T2 受保护 API；按钮使用现有 read/create/update/delete/manage 权限口径"
+            },
+            {
+              "invariant": "部分失败不丢失成功附件 ID",
+              "result": "pass",
+              "evidence": "uploaded 项保留 attachmentId，handleSave 仅上传 pending，error 必须单独重试或移除"
+            },
+            {
+              "invariant": "项目切换不保留旧业务和表单状态",
+              "result": "pass",
+              "evidence": "resetForProject 清空列表、筛选、选项、抽屉、下载和附件状态；异步响应带项目令牌检查"
+            },
+            {
+              "invariant": "不修改公共 UI、store 或全局主题",
+              "result": "pass",
+              "evidence": "实际修改面仅 MappingsPage.vue；公共组件和全局样式只读复用"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "web 构建持续报告既有第三方 PURE 注释和大 chunk 警告",
+              "impact": "不影响构建退出码，且与 Mapping 页面行为无直接因果关系"
+            },
+            {
+              "event": "Mapping API 段在任务开始前已完整存在于交叠工作区修改",
+              "impact": "T3 只验证并消费该契约，没有重写同文件其他业务增量"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "真实上传失败、下载和项目切换交互由 T4 本地浏览器验收",
+            "1280x800 与三个手机视口的横向溢出和遮挡由 T4 测量"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 automated, runtime and browser execution report; read-only RBAC deviation remains observable",
+        "recorded_at": "2026-09-06T01:47:20+00:00",
+        "data": {
+          "task_id": "T4",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "isolated MySQL 8.4, MinIO, backend :8080 and frontend :5173",
+              "purpose": "运行迁移映射 API、附件、权限、审计、回收站和浏览器组合验收"
+            },
+            {
+              "path_or_resource": "/tmp/rddmp-mapping-1280x800.png and three mobile screenshots",
+              "purpose": "记录桌面及 375x812、390x844、430x932 响应式证据"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "R7",
+            "R8",
+            "R9",
+            "R10"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am test",
+              "exit_code": 0,
+              "salient_output": "15 reactor modules succeeded; data-migration module 147 tests, 0 failures/errors; MySQL 8.4 Testcontainers passed"
+            },
+            {
+              "command": "mvn test",
+              "exit_code": 0,
+              "salient_output": "all 15 reactor modules passed; total time 19:47; data-migration 147 tests"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "2571 modules transformed; build passed with existing PURE annotation and chunk-size warnings"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "scope passed for 323 changed files"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "blocked by tracked-clean unrelated REQ-20260904-061 scope file that is not JSON-compatible YAML"
+            },
+            {
+              "command": "isolated API lifecycle probes",
+              "exit_code": 0,
+              "salient_output": "multi-attachment create/update/download, combined filters, project isolation, delete/restore/purge and MAPPING audit counts passed"
+            },
+            {
+              "command": "Playwright partial-upload and four-viewport probes",
+              "exit_code": 0,
+              "salient_output": "partial failure retained successful upload and retried only the failed file; desktop/mobile views were mutually exclusive with no page-level horizontal overflow; drawer and download dialog fit mobile viewports"
+            },
+            {
+              "command": "Playwright read-only role probe with DATA_MIGRATION_DEVELOPER",
+              "exit_code": 1,
+              "salient_output": "browser could not observe the mapping record because mapping-page write visibility and legacy permission semantics required direct RBAC calibration; database/auth probe showed the read-only role carries data-migration:manage as a read action while Mapping Controller/page treat it as a write fallback"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "automated regression and isolated runtime lifecycle",
+              "result": "pass",
+              "evidence": "module/full Maven, frontend build, scope, HTTP lifecycle, audit and four viewport probes passed",
+              "limitations": [
+                "global governance remains blocked by an unrelated tracked-clean baseline file"
+              ]
+            },
+            {
+              "check": "R8 read-only role boundary",
+              "result": "fail",
+              "evidence": "DATA_MIGRATION_DEVELOPER has only mapping read action but also legacy data-migration:manage(read); MappingController write annotations and MappingsPage write guards include data-migration:manage",
+              "limitations": [
+                "failure is isolated to Mapping-specific write fallback; public permission implementation and other menus were not modified"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "T1-T3 implementation reached complete automated, API and responsive runtime sampling",
+            "T4 browser role calibration found one reproducible Mapping-specific authorization deviation"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "no production identity, data, attachment or environment is used",
+              "result": "pass",
+              "evidence": "all probes used isolated Docker services and synthetic fixtures"
+            },
+            {
+              "invariant": "read-only roles cannot obtain mapping write actions",
+              "result": "fail",
+              "evidence": "legacy data-migration:manage is a read action assigned to DATA_MIGRATION_DEVELOPER but currently accepted by Mapping write guards"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "global governance baseline parser failure outside current requirement",
+              "impact": "governance aggregate cannot pass without modifying an unrelated read-only task file"
+            }
+          ],
+          "assumptions_falsified": [
+            "data-migration:manage cannot be treated as an administrator write authority because the role seed assigns it as a read action to DATA_MIGRATION_DEVELOPER"
+          ],
+          "unresolved_items": [
+            "remove Mapping-specific legacy write fallbacks, add direct regression coverage and repeat API/browser role checks"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "T1 independent sample: MySQL metadata/idempotency plus source scan; R1/R2/R10 pass; no feedback",
+        "recorded_at": "2026-09-06T00:18:11+00:00",
+        "data": {
+          "sample_label": "T1 完成采样",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 MySQL 8.4 information_schema",
+              "result": "pass",
+              "raw_evidence": "独立复跑 DataMigrationMappingMigrationMySqlTest 退出码 0；mapping_type IS_NULLABLE=NO、COLUMN_DEFAULT=NULL",
+              "limitation": [
+                "未检查共享环境的 Flyway 历史"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 MySQL 参数种子与幂等断言",
+              "result": "pass",
+              "raw_evidence": "独立复跑测试确认 DM_MAPPING_TYPE 启用配置数为 2，重复执行后仍为 2",
+              "limitation": [
+                "参数服务运行时筛选由 T2 验证"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "S1 独立 awk 源码扫描和迁移测试源码断言",
+              "result": "pass",
+              "raw_evidence": "awk 对历史 UPDATE 和空默认值无输出、退出码 0；JUnit 迁移语句反例断言通过",
+              "limitation": []
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "目标迁移和测试均为任务前已存在的未跟踪文件，无法用 HEAD diff 区分所有者增量"
+          ],
+          "coverage_gaps": [
+            "共享环境是否已执行 V186 需在上线前由人工核验；本任务未访问共享环境"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 independent sample: focused tests exit 0 plus authorization/ownership/source scan; R1-R8 pass; runtime gaps deferred to T4",
+        "recorded_at": "2026-09-06T00:30:14+00:00",
+        "data": {
+          "sample_label": "T2 完成采样",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S2 MappingServiceTest 与服务源扫描",
+              "result": "pass",
+              "raw_evidence": "200 字符创建成功，201 字符创建和编辑返回 BAD_REQUEST；文件编号仍由 ContentDocCodeGenerator 生成",
+              "limitation": [
+                "未以真实 HTTP 发送超长请求"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 码值服务测试路径",
+              "result": "pass",
+              "raw_evidence": "类型选项来自 DataMigrationCodeValueService；UNKNOWN 写入和筛选均被拒绝",
+              "limitation": [
+                "真实参数表读取在 T4 验证"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S2 项目系统与 requireStoredProject 源扫描",
+              "result": "pass",
+              "raw_evidence": "项目外系统测试拒绝；详情、附件、下载、回收站路径均存在 requireStoredProject/requireAccessible",
+              "limitation": [
+                "真实跨项目身份由 T4 HTTP 传感器覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 多附件和边界单元测试",
+              "result": "pass",
+              "raw_evidence": "多附件创建、50MB+1、创建无附件、编辑空附件和重复 attachmentId 断言通过",
+              "limitation": [
+                "附件元数据来自测试桩"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S2 列表 SQL 与筛选测试",
+              "result": "pass",
+              "raw_evidence": "列表强制项目、校验 mappingType，并仅对 a.doc_name 使用 LIKE；查询投影含系统、类型、编号和名称",
+              "limitation": [
+                "组合 SQL 结果未在真实 MySQL 数据集测量"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S2 附件集合与下载归属测试",
+              "result": "pass",
+              "raw_evidence": "编辑 files 完整集合调用 replaceAll；指定 101/102 成功，999 被拒绝；空集合被拒绝",
+              "limitation": [
+                "真实 ZIP 字节和中途读取失败由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S2 回收站测试加 S7 唯一来源扫描",
+              "result": "pass",
+              "raw_evidence": "恢复/清理委托测试通过；并发 purge 不解绑不审计；源码仅 MappingRecycleBinSource 返回 MAPPING_DOC",
+              "limitation": [
+                "运行时 Bean 集合由模块启动验证补充"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "S3 Controller 权限测试与服务授权扫描",
+              "result": "pass",
+              "raw_evidence": "类级查看权限覆盖 7 个读/下载方法；create/update/delete 有对应动作码；非所有者与失败审计用例通过",
+              "limitation": [
+                "匿名和无权限 HTTP 状态尚未运行"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "工作区中 Mapping 初版和同一 REQ 其他菜单改动无法按 Git 作者边界拆分",
+            "执行阶段一次失败来自测试桩固定详情值，修正传感器后未复现产品偏差"
+          ],
+          "coverage_gaps": [
+            "真实 MySQL/MinIO 附件生命周期、ZIP 字节完整性和 HTTP 401/403 延后至 T4",
+            "普通用户跨项目和非所有者真实请求延后至 T4"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 independent sample: web build exit 0 and nine-state source contract probe all true; browser gaps assigned to T4",
+        "recorded_at": "2026-09-06T00:44:48+00:00",
+        "data": {
+          "sample_label": "T3 完成采样",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S4 Vue TypeScript 编译和源码契约探针",
+              "result": "pass",
+              "raw_evidence": "文件名称必填、maxlength=200 且保存前按 Array.from 长度校验；web build 退出码 0",
+              "limitation": [
+                "服务端边界由 T2 覆盖，真实表单提交由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S4 API 和页面选项来源扫描",
+              "result": "pass",
+              "raw_evidence": "筛选和表单共用 getMappingTypeOptions 返回值，无 MIGRATE_OUT/MIGRATE_IN 页面硬编码",
+              "limitation": [
+                "真实参数响应由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S4 项目状态流探针",
+              "result": "pass",
+              "raw_evidence": "projectReset=true；watch(scopeProjectId) 清空旧状态，异步响应和业务提交前校验当前 projectId",
+              "limitation": [
+                "浏览器切换交互尚未触发"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S4 上传队列契约探针",
+              "result": "pass",
+              "raw_evidence": "uploadStates=true、retry=true、preserveUploaded=true；file input multiple 且每个 File 独立校验 0/50MB",
+              "limitation": [
+                "真实上传失败注入由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S4 模板和 API 查询扫描",
+              "result": "pass",
+              "raw_evidence": "三个筛选项映射 mappingType/systemCode/keyword；桌面和移动均展示系统、类型、编号、名称；分页 20/50/100",
+              "limitation": [
+                "服务端组合结果和浏览器呈现由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "S4 下载契约探针",
+              "result": "pass",
+              "raw_evidence": "individualDownload=true、zipDownload=true；编辑保留 existingAttachments 并追加 uploaded attachmentId",
+              "limitation": [
+                "真实下载字节由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "S4 权限可见性和 API 调用扫描",
+              "result": "pass",
+              "raw_evidence": "新增、编辑、删除入口按对应权限和所有者显示；查看/下载继续调用服务端受保护 API",
+              "limitation": [
+                "前端不作为服务端授权证据；HTTP 401/403 由 T4 覆盖"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "S4 完整构建和九项独立状态探针",
+              "result": "pass",
+              "raw_evidence": "web build 退出码 0，2571 modules transformed，built in 16.94s；uploadStates/retry/preserveUploaded/individualDownload/zipDownload/responsive/projectReset/persistentErrors/noHeaderDescription 全为 true",
+              "limitation": [
+                "四视口像素、交互、console 和 network 留待 S6"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            "构建存在既有第三方 PURE 注释及大 chunk 警告，但退出码为 0 且与本页面无直接因果关系"
+          ],
+          "coverage_gaps": [
+            "真实浏览器的多文件部分失败、项目切换、单附件/ZIP 下载和持久错误交互由 T4 覆盖",
+            "1280x800、375x812、390x844、430x932 的布局、遮挡和 scrollWidth 由 T4 覆盖"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "independent T4 integration sample calibrated against runtime roles, permission table, API lifecycle and browser views",
+        "recorded_at": "2026-09-06T01:48:13+00:00",
+        "data": {
+          "sample_label": "T4 integrated runtime and browser sample",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ],
+          "baseline_revision": "2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "MySQL migration test plus isolated API lifecycle",
+              "result": "pass",
+              "raw_evidence": "mapping metadata persisted and returned with one business record bound to two active attachments",
+              "limitation": [
+                "synthetic local data only"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "parameter API and Mapping service validation",
+              "result": "pass",
+              "raw_evidence": "MIGRATE_OUT and MIGRATE_IN returned from DM_MAPPING_TYPE; invalid values covered by tests",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "isolated multi-attachment API and browser upload interception",
+              "result": "pass",
+              "raw_evidence": "two files bound to one mapping; one injected upload failure retained success and retry issued only one additional upload",
+              "limitation": [
+                "50 MB boundary primarily covered by automated service tests"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "service validation tests and browser form",
+              "result": "pass",
+              "raw_evidence": "system code and file name required; current-project enabled component validation passed",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "isolated HTTP combined filters and four viewport DOM probes",
+              "result": "pass",
+              "raw_evidence": "positive combined filter returned one record and negative filter zero; system/type/name controls reachable",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "API download checksums, ZIP entries and browser download dialog",
+              "result": "pass",
+              "raw_evidence": "single download SHA-256 matched source and ZIP contained design-h5.md plus pom.xml; dialog exposed each file and download-all",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "delete/restore/purge HTTP lifecycle plus attachment access probes",
+              "result": "pass",
+              "raw_evidence": "record appeared once, restored with attachments, was re-deleted and purged; purged record and attachments became inaccessible while audit remained",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "auth/me role projection, permission-table query and Mapping guard inspection",
+              "result": "fail",
+              "raw_evidence": "DATA_MIGRATION_DEVELOPER is documented/seeded read-only and has no mappings:create/update/delete, but receives data-migration:manage with action_code=read; MappingController write annotations and MappingsPage write computed values accept data-migration:manage",
+              "limitation": [
+                "observed in isolated local MySQL/auth runtime; no production roles or data sampled"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "Playwright at 1280x800, 375x812, 390x844 and 430x932",
+              "result": "pass",
+              "raw_evidence": "desktop table/mobile cards mutually exclusive; document and body scrollWidth did not exceed viewport; long names, edit drawer and download dialog remained reachable; real mobile-menu project switch stored P2026-002 and removed old-project state",
+              "limitation": [
+                "light theme sampled"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "MySQL 8.4 Testcontainers migration and source scan",
+              "result": "pass",
+              "raw_evidence": "V186 applied from empty schema; mapping_type is non-null without default or historical backfill",
+              "limitation": []
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R8",
+              "expected": "a read-only data migration role without mappings:create/update/delete cannot see or invoke Mapping write actions",
+              "observed": "Mapping-specific controller and page accept data-migration:manage, which is a read action assigned to DATA_MIGRATION_DEVELOPER, as a create/update/delete fallback",
+              "reproduction": "assign DATA_MIGRATION_DEVELOPER to retail1_ba, authenticate, inspect /auth/me and Mapping write guards",
+              "evidence": "auth/me lacks mappings:create/update/delete but includes data-migration:manage; database action_code for manage is read; MappingController and MappingsPage include manage in write checks",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "isolated local role fixture",
+              "causal_hypothesis": "legacy menu read permission was copied into Mapping-specific write fallbacks",
+              "correction_check": "focused security test, runtime POST/PUT/DELETE 403 checks and mobile browser visibility for DATA_MIGRATION_DEVELOPER",
+              "classification": "deviation"
+            }
+          ],
+          "disturbances": [
+            "global governance aggregate is blocked by an unrelated tracked-clean malformed task scope file"
+          ],
+          "coverage_gaps": [
+            "dark theme was not sampled because the approved T4 viewport contract did not require a second theme"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 1,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [
+      {
+        "revision": 1,
+        "evidence": "F-0001 accepted as local Mapping-specific permission expression defect with bounded correction",
+        "recorded_at": "2026-09-06T01:48:46+00:00",
+        "data": {
+          "feedback_id": "F-0001",
+          "decision": "accept",
+          "decision_reason": "isolated role projection, permission metadata and source guards independently show that a read action is accepted as Mapping create/update/delete authority, directly violating R8",
+          "dynamic_pattern": "local",
+          "causal_assessment": {
+            "hypothesis": "MappingController and MappingsPage copied broad legacy data-migration:manage/write fallbacks instead of using the approved mapping action permissions",
+            "supporting_evidence": [
+              "DATA_MIGRATION_DEVELOPER has mappings read but no mappings:create/update/delete",
+              "data-migration:manage has action_code read and is assigned to DATA_MIGRATION_DEVELOPER",
+              "Mapping write guards explicitly accept data-migration:manage"
+            ],
+            "falsifier": "a runtime POST/PUT/DELETE request from DATA_MIGRATION_DEVELOPER returns 403 and the page hides write controls without changing the guards"
+          },
+          "control_action": {
+            "gain": "medium",
+            "target": "Mapping-specific write permission expressions and matching frontend visibility",
+            "write_scope": [
+              "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+              "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+              "web/src/modules/data-migration/views/content/MappingsPage.vue"
+            ],
+            "invariants": [
+              "view and download remain available to the Mapping read permission",
+              "DATA_MIGRATION_ADMIN and SUPER_ADMIN retain mapping write ability through granular permissions or system authority",
+              "service-level owner/admin, project and attachment authorization remains unchanged",
+              "no public permission implementation or other content menu is modified"
+            ],
+            "impact_limit": "three Mapping-specific files and direct regression checks",
+            "rollback": "restore only the three Mapping-specific permission expressions/tests",
+            "correction_check": [
+              "MappingControllerSecurityTest rejects data-migration:manage and data-migration:write in write annotations",
+              "focused Mapping backend tests pass",
+              "DATA_MIGRATION_DEVELOPER POST/PUT/DELETE requests return 403",
+              "mobile Mapping page hides create and manage actions while retaining download",
+              "admin Mapping actions remain available"
+            ],
+            "route": "executing"
+          },
+          "resolution": "open",
+          "residual_risk": [
+            "other data-migration menus continue to use legacy fallbacks and are outside this Mapping-specific requirement scope"
+          ]
+        }
+      }
+    ],
+    "verifying": []
+  },
+  "objective": "用户能够在当前项目内安全管理一条绑定多个文件的迁移映射，并通过受控类型、系统筛选、下载和统一回收站获得可验证的一致结果。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "映射类型、系统编号和文件名称必填，文件名称最多200字符，文件编号由服务端生成且不可修改。",
+      "acceptance": [
+        "缺少必填或名称超长返回400",
+        "成功记录包含不可编辑编号"
+      ],
+      "priority": "must",
+      "source": "用户需求和批准设计",
+      "counterexample": [
+        "缺少系统编号仍创建成功"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "映射类型来自启用的DM_MAPPING_TYPE参数，预置迁出程序和迁入程序，前端不硬编码。",
+      "acceptance": [
+        "选项接口只返回启用项",
+        "停用或未知类型拒绝写入"
+      ],
+      "priority": "must",
+      "source": "用户需求和批准设计",
+      "counterexample": [
+        "停用类型仍保存成功"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "系统编号只能选择当前项目启用的dm_component系统。",
+      "acceptance": [
+        "项目外或停用系统被拒绝",
+        "切换项目清空旧系统和业务状态"
+      ],
+      "priority": "must",
+      "source": "用户需求和批准设计",
+      "counterexample": [
+        "跨项目系统可提交"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "一条迁移映射记录绑定多个普通文件或压缩包，新增至少一个附件，每个附件不超过50MB且不解压。",
+      "acceptance": [
+        "一条记录可绑定多个附件",
+        "无附件或超限附件被拒绝"
+      ],
+      "priority": "must",
+      "source": "用户明确确认",
+      "counterexample": [
+        "每个文件拆成一条记录"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "列表展示系统、映射类型、文件编号和文件名称，并按三项组合筛选及服务端分页。",
+      "acceptance": [
+        "筛选可组合且名称模糊匹配",
+        "筛选回第一页并支持20/50/100"
+      ],
+      "priority": "must",
+      "source": "用户需求和批准设计",
+      "counterexample": [
+        "名称搜索扫描无关字段"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "编辑支持元数据和附件保留、追加、移除；下载支持指定附件和全部附件ZIP。",
+      "acceptance": [
+        "附件集合更新后详情下载一致",
+        "单附件下载不可跨记录",
+        "ZIP包含全部活动附件"
+      ],
+      "priority": "must",
+      "source": "批准设计",
+      "counterexample": [
+        "编辑导致未移除附件丢失"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "MAPPING_DOC由专属来源唯一接入统一回收站并保持业务记录、附件和审计一致。",
+      "acceptance": [
+        "删除项只出现一次",
+        "恢复保留附件",
+        "彻底清理业务和附件但保留审计"
+      ],
+      "priority": "must",
+      "source": "用户需求和批准设计",
+      "counterexample": [
+        "回收站重复认领"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "查看、下载、上传新增、编辑、删除和回收站管理执行服务端RBAC、租户、项目、实体和附件归属校验并审计成功写操作。",
+      "acceptance": [
+        "匿名无权跨项目非所有者请求被拒绝",
+        "成功写操作有MAPPING审计"
+      ],
+      "priority": "must",
+      "source": "用户权限需求和批准设计",
+      "counterexample": [
+        "只靠前端按钮控制权限"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "页面覆盖全状态、多文件部分失败重试和响应式布局，并通过工程和真实浏览器验证。",
+      "acceptance": [
+        "失败文件可单独重试且成功项保留",
+        "桌面和三个手机视口无页面级溢出",
+        "工程检查有真实结果"
+      ],
+      "priority": "must",
+      "source": "RDDMP规则和批准设计",
+      "counterexample": [
+        "部分失败后丢失全部上传状态"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "当前dm_mapping_doc无历史数据，追加迁移不执行历史回填或兼容默认值。",
+      "acceptance": [
+        "V186无历史回填SQL",
+        "新记录必须提供mapping_type"
+      ],
+      "priority": "must",
+      "source": "用户明确确认",
+      "counterexample": [
+        "历史行被默认回填为迁入程序"
+      ]
+    }
+  ],
+  "invariants": [
+    "租户操作者来自认证主体且访问绑定当前项目",
+    "文件编号服务端生成且不可修改",
+    "Flyway只追加",
+    "业务表不保存对象键或凭据",
+    "MAPPING_DOC只有一个回收站来源"
+  ],
+  "constraints": [
+    "只写REQ-031授权路径",
+    "不修改平台公共实现",
+    "单附件上限52428800字节",
+    "保护现有交叠修改",
+    "不提交推送合并发布或访问生产"
+  ],
+  "non_goals": [
+    "不解压压缩包",
+    "不实现版本历史查重在线编辑",
+    "不拆分多文件为多记录",
+    "不重构其他内容菜单",
+    "不迁移历史数据"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-handoff.json",
+    "imported_at": "2026-09-06T00:01:50+00:00",
+    "topic": "data-migration-mapping",
+    "design_revision": 2,
+    "plan_revision": 2,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "data-migration-mapping",
+      "handoff_status": "approved",
+      "created_at": "2026-09-06T07:39:14+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "data-migration-mapping",
+        "design_revision": 2,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-05-data-migration-mapping-design.md",
+        "objective": "将数迁资产内容的迁移映射升级为独立业务域，使一条受权限保护的映射记录绑定多个不超过50MB的文件，并提供受控码值、项目系统、组合筛选、下载和统一回收站能力。",
+        "users": [
+          "数据迁移管理员维护当前项目全部映射和回收站",
+          "普通人员查看下载当前项目映射并在有权限时维护本人记录"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "映射类型、系统编号和文件名称必填，文件名称最多200字符，文件编号由服务端生成且不可修改。",
+            "acceptance": [
+              "缺少必填字段或名称超长返回400",
+              "成功记录具有不可编辑文件编号"
+            ],
+            "priority": "must",
+            "source": "用户需求及2026-09-06确认",
+            "counterexample": [
+              "缺少系统编号仍创建成功"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "映射类型来自启用的DM_MAPPING_TYPE参数，预置迁出程序和迁入程序，前端不硬编码。",
+            "acceptance": [
+              "选项接口返回启用参数",
+              "停用或未知类型拒绝写入"
+            ],
+            "priority": "must",
+            "source": "用户需求及2026-09-06确认",
+            "counterexample": [
+              "停用类型仍可保存"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "系统编号只能选择当前项目dm_component启用清单中的系统。",
+            "acceptance": [
+              "项目外或停用系统被拒绝",
+              "切换项目清空旧系统和数据"
+            ],
+            "priority": "must",
+            "source": "用户需求及2026-09-06确认",
+            "counterexample": [
+              "可提交其他项目系统"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "一条迁移映射记录绑定多个普通文件或压缩包，新增至少一个附件，每个附件不超过50MB且服务端不解压。",
+            "acceptance": [
+              "一条记录绑定多个附件",
+              "无附件或单文件超过50MB被拒绝",
+              "压缩包原样保存"
+            ],
+            "priority": "must",
+            "source": "用户2026-09-06明确确认",
+            "counterexample": [
+              "每个文件生成独立映射记录"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "列表展示系统、映射类型、文件编号和文件名称，并按三项组合筛选及服务端分页。",
+            "acceptance": [
+              "三个条件可组合",
+              "名称只做有限字段模糊匹配",
+              "筛选回第一页且分页为20/50/100"
+            ],
+            "priority": "must",
+            "source": "用户需求及确认设计",
+            "counterexample": [
+              "关键字扫描无关字段"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "编辑支持元数据和附件保留、追加、移除；下载支持指定附件和全部附件ZIP。",
+            "acceptance": [
+              "附件集合更新一致",
+              "单附件不能跨记录下载",
+              "ZIP包含全部活动附件"
+            ],
+            "priority": "must",
+            "source": "用户确认设计",
+            "counterexample": [
+              "编辑自动丢失旧附件"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "MAPPING_DOC由专属来源唯一接入统一回收站并保持业务记录、附件和审计一致。",
+            "acceptance": [
+              "回收站只出现一次",
+              "恢复保留附件",
+              "彻底清理附件和业务记录但保留审计"
+            ],
+            "priority": "must",
+            "source": "用户需求及确认设计",
+            "counterexample": [
+              "通用和专属来源重复认领"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "查看、下载、上传新增、编辑、删除和回收站管理执行服务端RBAC、租户、项目、实体和附件归属校验并审计成功写操作。",
+            "acceptance": [
+              "匿名无权跨项目和非所有者请求被拒绝",
+              "成功写操作有MAPPING审计"
+            ],
+            "priority": "must",
+            "source": "用户权限需求及确认设计",
+            "counterexample": [
+              "仅前端隐藏按钮控制权限"
+            ]
+          },
+          {
+            "id": "R9",
+            "statement": "页面覆盖全状态、多文件部分失败重试和响应式布局，并通过工程和真实浏览器验证。",
+            "acceptance": [
+              "失败文件可单独重试且成功项保留",
+              "桌面和三个手机视口无页面级横向溢出",
+              "构建治理范围检查有真实结果"
+            ],
+            "priority": "must",
+            "source": "RDDMP规则及用户确认设计",
+            "counterexample": [
+              "上传失败无法定位文件"
+            ]
+          },
+          {
+            "id": "R10",
+            "statement": "当前dm_mapping_doc无历史数据，追加迁移不执行历史回填或兼容默认值。",
+            "acceptance": [
+              "V186没有历史回填SQL",
+              "新记录必须提供新字段"
+            ],
+            "priority": "must",
+            "source": "用户2026-09-06明确确认",
+            "counterexample": [
+              "旧记录默认回填迁入程序"
+            ]
+          }
+        ],
+        "invariants": [
+          "租户和操作者来自认证主体且访问绑定当前项目",
+          "doc_code服务端生成且不可修改",
+          "Flyway只追加",
+          "业务表不保存对象键或凭据",
+          "MAPPING_DOC只有一个回收站来源"
+        ],
+        "constraints": [
+          "类型来自启用DM_MAPPING_TYPE",
+          "系统来自当前项目启用dm_component",
+          "单附件上限52428800字节",
+          "不修改平台公共实现",
+          "前端遵循公共UI和design-h5"
+        ],
+        "non_goals": [
+          "不解压压缩包",
+          "不实现版本历史查重或在线编辑",
+          "不拆分多文件为多条记录",
+          "不重构其他内容菜单",
+          "不迁移历史数据"
+        ],
+        "selected_approach": {
+          "name": "独立迁移映射服务和页面并复用公共能力",
+          "reason": "隔离映射专属规则并保持平台及其他菜单稳定",
+          "alternatives": [
+            {
+              "name": "扩展通用文件链路",
+              "rejected_because": "会污染通用服务并扩大回归面"
+            },
+            {
+              "name": "抽象程序和映射统一服务",
+              "rejected_because": "属于超范围跨菜单重构"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "dm_mapping_doc和MAPPING_DOC附件关系",
+              "Mapping后端和页面",
+              "当前任务测试账本"
+            ],
+            "outside": [
+              "平台附件参数权限实现",
+              "全局项目切换器",
+              "其他业务菜单",
+              "生产环境"
+            ]
+          },
+          "components": [
+            {
+              "name": "MappingService",
+              "responsibility": "CRUD筛选多附件下载授权审计和回收站业务",
+              "depends_on": [
+                "JdbcTemplate",
+                "ContentAttachmentService",
+                "DataMigrationCodeValueService",
+                "DataMigrationPermissionService"
+              ]
+            },
+            {
+              "name": "MappingController",
+              "responsibility": "专属HTTP和RBAC",
+              "depends_on": [
+                "MappingService",
+                "AttachmentStreamService"
+              ]
+            },
+            {
+              "name": "MappingRecycleBinSource",
+              "responsibility": "唯一认领MAPPING_DOC",
+              "depends_on": [
+                "MappingService"
+              ]
+            },
+            {
+              "name": "MappingsPage.vue",
+              "responsibility": "桌面移动列表、筛选、附件状态和操作",
+              "depends_on": [
+                "data-migration API",
+                "公共UI",
+                "项目上下文"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Mapping REST",
+              "producer": "MappingController",
+              "consumers": [
+                "MappingsPage.vue"
+              ],
+              "contract": "当前项目分页CRUD附件下载和选项"
+            },
+            {
+              "name": "统一回收站SPI",
+              "producer": "MappingRecycleBinSource",
+              "consumers": [
+                "ContentRecycleBinController"
+              ],
+              "contract": "MAPPING_DOC查询恢复彻底清理"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "当前项目",
+              "transitions": [
+                "加载类型和系统",
+                "分页查询"
+              ],
+              "output": "项目隔离列表"
+            },
+            {
+              "input": "元数据和多个文件",
+              "transitions": [
+                "逐文件上传",
+                "服务端校验",
+                "事务绑定",
+                "审计"
+              ],
+              "output": "多附件映射"
+            },
+            {
+              "input": "删除记录",
+              "transitions": [
+                "统一回收站",
+                "恢复或清理"
+              ],
+              "output": "恢复记录或保留审计的清理结果"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "必填大小码值或系统错误",
+            "behavior": "400且不写成功审计",
+            "recovery": "保留表单修正重试"
+          },
+          {
+            "condition": "无权跨项目或附件归属错误",
+            "behavior": "403或受控错误",
+            "recovery": "展示无权限"
+          },
+          {
+            "condition": "部分上传失败",
+            "behavior": "保留成功和失败状态且不提交不完整新增",
+            "recovery": "只重试失败项"
+          },
+          {
+            "condition": "并发或恢复冲突",
+            "behavior": "409不覆盖",
+            "recovery": "刷新重试"
+          },
+          {
+            "condition": "ZIP读取失败",
+            "behavior": "终止且不返回不完整成功包",
+            "recovery": "修复附件或单独下载"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "服务端RBAC项目实体附件校验",
+            "成功写操作审计"
+          ],
+          "performance": [
+            "选项一次加载本地筛选",
+            "服务端分页组合索引",
+            "流式ZIP"
+          ],
+          "compatibility": [
+            "保留MAPPING_DOC类型",
+            "不改平台契约",
+            "无虚假历史默认"
+          ],
+          "operations": [
+            "MySQL 8.4追加迁移",
+            "应用回退保留迁移",
+            "不访问生产"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R6",
+              "R7",
+              "R8",
+              "R10"
+            ],
+            "signal": "MySQL和JUnit验证数据后端权限附件回收站",
+            "method": "迁移和聚焦测试"
+          },
+          {
+            "requirement_ids": [
+              "R5",
+              "R9"
+            ],
+            "signal": "构建和四视口浏览器无错误无溢出",
+            "method": "Vue构建与Playwright"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8",
+              "R9",
+              "R10"
+            ],
+            "signal": "工程范围回归收敛",
+            "method": "Maven治理范围和运行检查"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "当前无历史映射数据",
+            "basis": "用户明确确认",
+            "falsifier": "发现必须保留的旧行"
+          },
+          {
+            "text": "临时未绑定附件由平台生命周期清理",
+            "basis": "现有附件契约",
+            "falsifier": "运行检查发现无清理机制"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "一条记录绑定多个文件",
+            "reason": "统一元数据和附件归档",
+            "source": "用户确认"
+          },
+          {
+            "id": "D2",
+            "decision": "独立服务页面并复用公共能力",
+            "reason": "控制回归面",
+            "source": "用户确认"
+          },
+          {
+            "id": "D3",
+            "decision": "无历史回填",
+            "reason": "当前无历史数据",
+            "source": "用户确认"
+          },
+          {
+            "id": "D4",
+            "decision": "逐文件状态和失败重试",
+            "reason": "让部分失败可观察恢复",
+            "source": "用户确认"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "附件集合误解绑",
+            "impact": "文件丢失",
+            "mitigation": "归属事务和组合测试"
+          },
+          {
+            "risk": "回收站重复认领",
+            "impact": "重复或路由不确定",
+            "mitigation": "唯一来源注册测试"
+          },
+          {
+            "risk": "多大文件上传打包资源峰值",
+            "impact": "长响应重复提交",
+            "mitigation": "逐项状态流式ZIP和运行观测"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于2026-09-06确认完整设计",
+          "confirmed_at": "2026-09-06T07:39:14+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 2,
+        "human_document": "docs/engineering-control/plans/2026-09-05-data-migration-mapping-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "只写REQ-031授权路径并保护现有改动",
+          "不修改平台公共实现",
+          "V186无历史回填",
+          "服务端权限项目附件审计不可绕过",
+          "不提交推送合并发布"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql",
+            "status": "existing",
+            "responsibility": "字段索引和码值迁移",
+            "evidence": "工作区文件与已批准设计"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java",
+            "status": "existing",
+            "responsibility": "Mapping业务服务",
+            "evidence": "工作区初版实现"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+            "status": "existing",
+            "responsibility": "HTTP和RBAC",
+            "evidence": "工作区初版实现"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingRecycleBinSource.java",
+            "status": "existing",
+            "responsibility": "回收站唯一来源",
+            "evidence": "工作区初版实现"
+          },
+          {
+            "path": "web/src/api/data-migration.ts",
+            "status": "existing",
+            "responsibility": "Mapping前端API契约",
+            "evidence": "工作区初版实现"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/content/MappingsPage.vue",
+            "status": "existing",
+            "responsibility": "Mapping页面完整交互",
+            "evidence": "工作区初版实现"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingServiceTest.java",
+            "status": "existing",
+            "responsibility": "服务行为测试",
+            "evidence": "工作区初版测试"
+          },
+          {
+            "path": ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-state.json",
+            "status": "candidate-new",
+            "responsibility": "增量控制状态",
+            "evidence": "项目控制账本规则"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "V186满足无历史数据字段和码值契约",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R10"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "用户确认无历史数据",
+              "V186当前未跟踪且未发布"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationMappingMigrationMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "dm_mapping_doc",
+                "sys_dict_type",
+                "sys_config"
+              ],
+              "produces": [
+                "非空mapping_type",
+                "DM_MAPPING_TYPE码值"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "建立无回填失败或基准检查",
+                "command": "rg -n \"UPDATE dm_mapping_doc SET mapping_type|DEFAULT ''\" server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql",
+                "expected": "修正前命中需要移除的默认和回填",
+                "evidence": "静态命中"
+              },
+              {
+                "id": "T1-S2",
+                "action": "收紧V186及迁移测试",
+                "command": null,
+                "expected": "字段非空且无历史默认和回填",
+                "evidence": "最小diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "运行迁移测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "0失败或明确Docker跳过",
+                "evidence": "Surefire与退出码"
+              }
+            ],
+            "acceptance_checks": [
+              "无回填SQL",
+              "两个码值存在且幂等",
+              "字段和索引存在"
+            ],
+            "risks": [
+              "V186若已发布则不能修改"
+            ],
+            "rollback": "回退尚未发布V186及对应测试的本任务差异",
+            "stop_conditions": [
+              "发现历史数据或V186已发布"
+            ],
+            "escalation_conditions": [
+              "非空字段需要产品默认或平台参数结构不兼容"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "专属后端满足多附件权限审计和回收站契约",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "初版Mapping后端和测试已在工作区",
+              "通用文件中有其他增量交叠修改"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingRecycleBinSource.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingServiceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingRecycleBinSourceTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "附件、码值、项目权限和编号服务"
+              ],
+              "produces": [
+                "/api/data-migration/mappings*",
+                "MAPPING_DOC唯一回收站来源"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "运行并检查初版后端基准",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "得到可判别通过或失败信号",
+                "evidence": "Surefire与退出码"
+              },
+              {
+                "id": "T2-S2",
+                "action": "增加缺口测试并实施最小修正",
+                "command": null,
+                "expected": "长度空附件重复附件下载权限审计均符合设计",
+                "evidence": "测试和diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "复验聚焦后端",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "全部通过0失败",
+                "evidence": "Surefire与退出码"
+              }
+            ],
+            "acceptance_checks": [
+              "必填和50MB服务端校验",
+              "多附件集合一致",
+              "项目实体附件权限",
+              "MAPPING审计",
+              "回收站唯一来源"
+            ],
+            "risks": [
+              "交叠文件误覆盖其他菜单"
+            ],
+            "rollback": "只回退Mapping新增文件和通用链路中MAPPING_DOC摘除差异",
+            "stop_conditions": [
+              "需要修改平台公共实现或用户交叠修改冲突"
+            ],
+            "escalation_conditions": [
+              "附件端口无法保证归属清理或回收站无法唯一认领"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "独立页面满足响应式多文件恢复和单附件下载",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R8",
+              "R9"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "初版页面缺移动卡片部分失败重试和单附件入口"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/content/MappingsPage.vue",
+                "web/src/modules/data-migration/data-migration.css"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "Mapping REST",
+                "附件上传API",
+                "项目上下文",
+                "公共UI"
+              ],
+              "produces": [
+                "桌面表格移动卡片多文件状态和附件下载交互"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "建立前端构建和源契约基准",
+                "command": "npm --prefix web run build",
+                "expected": "得到当前可判别构建信号",
+                "evidence": "vue-tsc和Vite输出"
+              },
+              {
+                "id": "T3-S2",
+                "action": "实现逐文件状态失败重试和单附件下载",
+                "command": null,
+                "expected": "成功项保留失败项可重试且下载归属明确",
+                "evidence": "页面diff和浏览器请求"
+              },
+              {
+                "id": "T3-S3",
+                "action": "实现移动卡片项目切换清理和持久错误态",
+                "command": null,
+                "expected": "桌面移动互斥且旧项目无残留",
+                "evidence": "DOM和状态探针"
+              },
+              {
+                "id": "T3-S4",
+                "action": "复验前端构建",
+                "command": "npm --prefix web run build",
+                "expected": "退出码0",
+                "evidence": "构建输出"
+              }
+            ],
+            "acceptance_checks": [
+              "部分失败可恢复",
+              "单附件和ZIP可达",
+              "移动卡片无横向溢出",
+              "项目切换清理",
+              "权限和全状态可见"
+            ],
+            "risks": [
+              "大文件顺序上传时延和临时附件残留"
+            ],
+            "rollback": "只回退Mapping API段和页面本任务差异",
+            "stop_conditions": [
+              "必须修改公共UI、store或全局主题"
+            ],
+            "escalation_conditions": [
+              "附件API无法支持逐项结果或受认证下载"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "组合实现通过工程门禁和真实用户路径",
+            "requirement_ids": [
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8",
+              "R9",
+              "R10"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "脏工作树包含同一REQ其他既有修改需单独归因"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-observation.json",
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-verification.json"
+              ],
+              "modify": [
+                ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-state.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T3组合实现"
+              ],
+              "produces": [
+                "执行观察收敛证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "运行聚焦和完整工程检查",
+                "command": "mvn -pl :ccb-data-migration -am test && mvn test && npm --prefix web run build",
+                "expected": "0失败或非本需求失败被证据化归因",
+                "evidence": "退出码和测试数"
+              },
+              {
+                "id": "T4-S2",
+                "action": "运行治理和范围检查",
+                "command": "node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+                "expected": "通过或已知外部扰动被明确记录",
+                "evidence": "脚本输出"
+              },
+              {
+                "id": "T4-S3",
+                "action": "运行本地角色和四视口浏览器验收",
+                "command": null,
+                "expected": "核心流程可达无越权无控制台错误无页面溢出",
+                "evidence": "HTTP、DOM、视口和控制台记录"
+              },
+              {
+                "id": "T4-S4",
+                "action": "记录采样反馈和收敛门禁",
+                "command": "python .agents/skills/control-engineering/scripts/control_loop.py gate --state .ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-state.json",
+                "expected": "gate通过",
+                "evidence": "账本门禁输出"
+              }
+            ],
+            "acceptance_checks": [
+              "must全部绑定传感器",
+              "任务verified",
+              "P0/P1为0",
+              "至少两次采样",
+              "范围一致"
+            ],
+            "risks": [
+              "Docker端口或全局治理外部扰动"
+            ],
+            "rollback": "按T3、T2、T1逆序回退，已执行Flyway用前向补偿",
+            "stop_conditions": [
+              "迁移失败越权附件泄露构建失败或页面横向溢出"
+            ],
+            "escalation_conditions": [
+              "只能由生产身份拓扑验证或需修改禁止路径"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "后端消费字段和码值契约"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "前端消费稳定专属API"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "集成验收消费完整页面和后端"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationMappingMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+            "expected": "迁移测试0失败"
+          },
+          {
+            "after_tasks": [
+              "T2"
+            ],
+            "command": "mvn -pl :ccb-data-migration -am -Dtest=MappingServiceTest,MappingRecycleBinSourceTest,MappingControllerSecurityTest,DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+            "expected": "Mapping后端测试0失败"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "Vue构建退出码0"
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "通过或外部扰动有明确归因"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T2",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T2",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R9",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R10",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认设计后明确要求制定实施计划并进入代码修改",
+          "confirmed_at": "2026-09-06T07:45:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "dm_mapping_doc",
+          "MAPPING_DOC附件关系",
+          "Mapping后端和前端",
+          "统一回收站来源"
+        ],
+        "state_variable_candidates": [
+          "迁移版本",
+          "活动删除状态",
+          "附件绑定集合",
+          "项目上下文",
+          "上传项状态",
+          "权限主体",
+          "页面异步状态"
+        ],
+        "interface_candidates": [
+          "Mapping REST",
+          "附件上传下载",
+          "参数和系统选项",
+          "回收站SPI"
+        ],
+        "sensor_candidates": [
+          "MySQL Testcontainers",
+          "JUnit",
+          "Maven和Vue构建",
+          "治理范围脚本",
+          "HTTP和浏览器探针"
+        ],
+        "actuator_candidates": [
+          "收紧V186",
+          "修正Mapping后端",
+          "调整Mapping API和页面",
+          "补聚焦测试"
+        ],
+        "disturbance_candidates": [
+          "同一REQ脏工作树",
+          "Docker和端口不可用",
+          "公共附件时延",
+          "全局治理其他需求失败"
+        ],
+        "delay_candidates": [
+          "多个50MB文件上传",
+          "ZIP流",
+          "完整Maven测试",
+          "浏览器启动"
+        ],
+        "assumptions": [
+          {
+            "text": "当前无历史映射数据",
+            "basis": "用户确认",
+            "falsifier": "发现必须保留的旧行"
+          },
+          {
+            "text": "本地依赖可用于运行验收",
+            "basis": "仓库开发环境",
+            "falsifier": "Docker或端口检查失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL 8.4 and Flyway\", \"platform attachment and MinIO\", \"platform parameter tables\", \"authentication and project capability\", \"Vue application shell and global project context\", \"Chromium browser\", \"existing dirty REQ-031 worktree\"], \"inside\": [\"dm_mapping_doc schema and rows\", \"dm_content_attachment MAPPING_DOC relations\", \"MappingService and MappingController\", \"MappingRecycleBinSource registration\", \"MappingsPage and Mapping API\", \"focused tests and task ledger\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"shared environment where V186 may already be applied\"], \"id\": \"S1\", \"independence\": \"MySQL information_schema and source text\", \"method\": \"DataMigrationMappingMigrationMySqlTest plus static migration scan\", \"target\": \"V186 schema and no-history SQL\"}",
+      "{\"blind_spots\": [\"real MinIO byte lifecycle\"], \"id\": \"S2\", \"independence\": \"JUnit behavior assertions over service boundary\", \"method\": \"MappingServiceTest, MappingRecycleBinSourceTest and registration test\", \"target\": \"Mapping service data, permission, attachment, audit and recycle behavior\"}",
+      "{\"blind_spots\": [\"unmodeled global security filter changes\"], \"id\": \"S3\", \"independence\": \"reflection and HTTP authorization boundary\", \"method\": \"MappingControllerSecurityTest and authenticated HTTP status probes\", \"target\": \"Controller RBAC annotations\"}",
+      "{\"blind_spots\": [\"runtime layout and request payload behavior\"], \"id\": \"S4\", \"independence\": \"Vue TypeScript compiler and Vite bundler\", \"method\": \"npm --prefix web run build\", \"target\": \"frontend contract and type correctness\"}",
+      "{\"blind_spots\": [\"production topology and identities\"], \"id\": \"S5\", \"independence\": \"running services and persisted state\", \"method\": \"local MySQL MinIO backend authenticated HTTP flow\", \"target\": \"database, attachment and REST lifecycle\"}",
+      "{\"blind_spots\": [\"non-Chromium engines\"], \"id\": \"S6\", \"independence\": \"rendered browser state\", \"method\": \"local Chromium at 1280x800, 375x812, 390x844 and 430x932 with DOM console network and scrollWidth probes\", \"target\": \"responsive states, interaction and overflow\"}",
+      "{\"blind_spots\": [\"uncommitted changes predating this increment require manual attribution\"], \"id\": \"S7\", \"independence\": \"repository policy scripts\", \"method\": \"governance and codex scope scripts plus git diff inspection\", \"target\": \"module and writable path boundaries\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"remove history default and backfill and align MySQL assertions\", \"authority\": \"REQ-031 writable migration path\", \"id\": \"A1\", \"impact_radius\": \"new unpublished V186 only\", \"rollback\": \"restore task-start V186 diff\", \"target\": \"V186 and migration test\"}",
+      "{\"action\": \"apply bounded validation permission attachment and recycle corrections\", \"authority\": \"business/data-migration writable path\", \"id\": \"A2\", \"impact_radius\": \"Mapping files and MAPPING_DOC branches in overlapping generic files\", \"rollback\": \"revert only Mapping hunks\", \"target\": \"Mapping backend and tests\"}",
+      "{\"action\": \"add upload item state retry download choice mobile cards and error states\", \"authority\": \"data-migration frontend writable path\", \"id\": \"A3\", \"impact_radius\": \"MappingsPage and Mapping API segment\", \"rollback\": \"revert only Mapping page and API hunks\", \"target\": \"Mapping frontend and API\"}",
+      "{\"action\": \"add or tighten focused tests and browser probes\", \"authority\": \"REQ-031 tests and local execution\", \"id\": \"A4\", \"impact_radius\": \"task tests and generated evidence\", \"rollback\": \"remove task-only sensor changes\", \"target\": \"measurement coverage\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"diff and global tests include changes not created by this increment\", \"source\": \"existing dirty REQ-031 worktree\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"migration and runtime sensors may be skipped or fail\", \"source\": \"Docker daemon or MySQL MinIO availability\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"repository-wide check can be non-zero without Mapping defect\", \"source\": \"global governance failures from other requirements\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"long response and increased resource use\", \"source\": \"large sequential uploads and ZIP generation\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"file is untracked in current feature worktree\", \"falsifier\": \"owner reports or Flyway history shows V186 deployed in shared environment\", \"text\": \"V186 is unpublished and may be corrected in place\"}",
+      "{\"evidence\": \"user explicit confirmation\", \"falsifier\": \"pre-migration query finds rows requiring preservation\", \"text\": \"current database has no mapping history\"}",
+      "{\"evidence\": \"/snap/bin/chromium exists\", \"falsifier\": \"browser cannot launch or connect to local app\", \"text\": \"Chromium sensor is available locally\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S5\", \"S6\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S2\", \"S5\", \"S6\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S5\", \"S6\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S2\", \"S5\", \"S6\"]"
+      },
+      {
+        "requirement": "R7",
+        "sensor": "[\"S2\", \"S5\"]"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "[\"S2\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R9",
+        "sensor": "[\"S4\", \"S6\"]"
+      },
+      {
+        "requirement": "R10",
+        "sensor": "[\"S1\", \"S7\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "使 V186 和迁移测试满足无历史数据、非空映射类型和参数种子契约",
+      "requirements": [
+        "R1",
+        "R2",
+        "R10"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "用户明确确认 dm_mapping_doc 当前无历史数据",
+        "工作区已有未发布的 V186 和 DataMigrationMappingMigrationMySqlTest",
+        "当前 V186 含 mapping_type DEFAULT '' 和历史 UPDATE，与基准 R10 冲突"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V187__data_migration_mapping_domain.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationMappingMigrationMySqlTest.java"
+      ],
+      "invariants": [
+        "Flyway 只追加且不修改 V185 及更早脚本",
+        "不回填历史映射记录且不引入兼容默认类型",
+        "保护工作区中其他需求的迁移和测试修改"
+      ],
+      "interface_contracts": [
+        "dm_mapping_doc.mapping_type 为非空字段且写入方必须显式提供",
+        "DM_MAPPING_TYPE 提供启用的 MIGRATE_OUT 和 MIGRATE_IN 参数项",
+        "V186 可由 Flyway 在 MySQL 8.4 上应用"
+      ],
+      "non_goals": [
+        "不处理历史数据",
+        "不修改参数管理公共实现",
+        "不访问共享或生产数据库"
+      ],
+      "action_bounds": [
+        "先用迁移测试和静态扫描建立基准",
+        "只修正 V186 的 mapping_type 定义、无历史回填约束及直接测试断言",
+        "运行聚焦 MySQL 迁移测试和 git diff --check"
+      ],
+      "acceptance": [
+        "DataMigrationMappingMigrationMySqlTest 通过且字段不可空、无默认值",
+        "V186 中不存在 UPDATE dm_mapping_doc SET mapping_type 或 mapping_type DEFAULT ''",
+        "两个映射类型参数项可读且重复迁移不覆盖已维护值"
+      ],
+      "evidence_required": [
+        "T1 实际 diff",
+        "聚焦 Maven 命令、退出码和 Surefire 结果",
+        "V186 静态扫描结果",
+        "发现的环境扰动"
+      ],
+      "rollback": "仅撤销 T1 对尚未发布 V186 和其直接测试的增量修改，不触碰更早迁移或其他工作区变更",
+      "stop_conditions": [
+        "发现 V186 已在共享环境发布",
+        "发现必须保留的 dm_mapping_doc 历史行"
+      ],
+      "escalation_conditions": [
+        "非空字段必须依赖新的产品默认值",
+        "参数表约束无法表达两个受控类型"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T00:14:15+00:00",
+          "text": "execution pre-sample: V186 and migration test exist; V186 contains prohibited empty default and historical backfill; focused MySQL migration test started as baseline"
+        },
+        {
+          "recorded_at": "2026-09-06T00:17:05+00:00",
+          "text": "execution report recorded; independent S1/S7 observation required"
+        },
+        {
+          "recorded_at": "2026-09-06T00:19:11+00:00",
+          "text": "S1 and S7 observed R1/R2/R10 with no deviations"
+        }
+      ],
+      "updated_at": "2026-09-06T00:19:11+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "使迁移映射专属后端满足项目隔离、多附件、下载、权限、审计和统一回收站契约",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "工作区已有 MappingService、MappingController、MappingRecycleBinSource 和初版测试",
+        "ContentFileAssetService 与 ContentAssetController 含同一需求的交叠修改，只核对 MAPPING_DOC 摘除事实",
+        "附件、参数、权限、审计和回收站公共能力通过现有公开契约消费"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/MappingController.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingRecycleBinSource.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingServiceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/MappingControllerSecurityTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/MappingRecycleBinSourceTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/DataMigrationModuleRegistrationTest.java"
+      ],
+      "invariants": [
+        "认证主体决定租户和操作者且所有实体访问绑定当前项目",
+        "文件编号由服务端生成且不可更新",
+        "单附件最大 52428800 字节且业务表不保存对象键或凭据",
+        "MAPPING_DOC 只有 MappingRecycleBinSource 一个回收站来源",
+        "失败写操作不得记录成功审计",
+        "不修改 platform 或 shared 公共实现"
+      ],
+      "interface_contracts": [
+        "GET/POST/PUT/DELETE /api/data-migration/mappings 及详情、附件、单附件下载和 ZIP 下载按统一响应语义工作",
+        "mappingType 必须是启用的 DM_MAPPING_TYPE，systemCode 必须是当前项目启用的 dm_component",
+        "创建至少一个附件，编辑后的活动附件集合不得为空且附件不得重复",
+        "指定附件下载必须同时验证记录归属和附件绑定归属",
+        "删除、恢复和彻底清理分别保持记录、附件及审计的一致性"
+      ],
+      "non_goals": [
+        "不扩展通用文件资产服务承载映射专属字段",
+        "不重构其他内容菜单",
+        "不改变附件、参数、安全或回收站公共契约"
+      ],
+      "action_bounds": [
+        "先运行聚焦测试并检查现有实现",
+        "补充 200 字符、空附件、重复附件、项目和附件归属、空 ZIP、成功审计等失败路径测试",
+        "在 Mapping 专属类内实施最小修正，仅保留通用链路中 MAPPING_DOC 的摘除",
+        "运行 Mapping 服务、安全、回收站和模块注册聚焦测试"
+      ],
+      "acceptance": [
+        "缺失必填、名称超长、未知或停用类型、项目外系统、无附件和超限附件均被拒绝",
+        "多附件创建和编辑保留、追加、移除行为可重复验证",
+        "单附件不可跨记录下载且 ZIP 包含全部活动附件，空或不完整流失败可观察",
+        "匿名、无权限、跨项目和非所有者访问被服务端拒绝",
+        "MAPPING_CREATE、UPDATE、DELETE、RESTORE、PURGE 只在成功后记录",
+        "MAPPING_DOC 只有一个统一回收站来源"
+      ],
+      "evidence_required": [
+        "T2 实际 diff 和源契约扫描",
+        "聚焦 Maven 命令、退出码、用例数和 Surefire 结果",
+        "权限、附件、审计和回收站断言摘要",
+        "发现的公共契约缺口或工作区扰动"
+      ],
+      "rollback": "仅回退 Mapping 专属新增修改和通用链路中针对 MAPPING_DOC 的摘除，不覆盖相同文件的其他菜单增量",
+      "stop_conditions": [
+        "完成契约必须修改 platform、shared 或未授权路径",
+        "发现现有用户改动与 Mapping 契约不可兼容",
+        "附件所有权或回收站唯一性无法在现有公开能力内保证"
+      ],
+      "escalation_conditions": [
+        "必须变更公共附件、安全、参数或回收站契约",
+        "彻底清理无法同时保证附件生命周期和审计保留",
+        "聚焦测试暴露未建模跨模块消费者"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T00:19:17+00:00",
+          "text": "T1 verified; begin backend pre-sample across Mapping service/controller/recycle source and focused tests"
+        },
+        {
+          "recorded_at": "2026-09-06T00:28:07+00:00",
+          "text": "execution report recorded; independent S2/S3/S7 observation required"
+        },
+        {
+          "recorded_at": "2026-09-06T00:30:14+00:00",
+          "text": "S2/S3/S7 observed R1-R8 with no deviations; runtime coverage assigned to T4"
+        }
+      ],
+      "updated_at": "2026-09-06T00:30:14+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "使独立迁移映射页面满足桌面与移动布局、多文件部分失败恢复、单个及全部下载和全状态交互",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R8",
+        "R9"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "初版 MappingsPage 只有桌面表格和顺序上传",
+        "初版页面缺少持久逐文件状态、失败重试、单附件下载、移动卡片和持久错误态",
+        "页面可复用现有 UI 组件、项目上下文和附件 API"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/content/MappingsPage.vue",
+        "web/src/modules/data-migration/data-migration.css"
+      ],
+      "invariants": [
+        "前端权限只控制可见交互且不能替代服务端校验",
+        "切换项目时不得保留旧项目数据、选项、抽屉或附件状态",
+        "失败文件重试不得丢失已经成功上传的附件 ID",
+        "移动端无页面级横向滚动且桌面表格与移动卡片互斥",
+        "不修改公共 UI、store 或全局主题"
+      ],
+      "interface_contracts": [
+        "页面消费 T2 的 Mapping REST 和公共 uploadAttachment/getAttachmentDownload",
+        "上传项状态为 pending、uploading、uploaded、error，失败项可单独重试",
+        "存在上传失败或上传中项目时不得提交业务记录",
+        "列表列和移动卡片都展示系统、映射类型、文件编号和文件名称",
+        "附件入口支持逐附件下载和全部 ZIP 下载"
+      ],
+      "non_goals": [
+        "不新增全局组件或新设计系统",
+        "不实现压缩包解压、在线编辑或附件版本历史",
+        "不修改其他内容页面"
+      ],
+      "action_bounds": [
+        "先建立前端构建和现有页面契约基准",
+        "在 Mapping 页面内实现逐文件上传状态、部分失败保留和单项重试",
+        "补充附件列表、单附件和 ZIP 下载入口",
+        "实现桌面表格、移动卡片、加载失败重试、空状态和项目切换清理",
+        "运行 Vue TypeScript 和 Vite 构建"
+      ],
+      "acceptance": [
+        "多文件中部分失败时成功项保留且失败项可单独重试",
+        "前端预检单附件 50MB 且提交按钮覆盖上传中、失败和提交中状态",
+        "单附件与全部 ZIP 下载均可达且错误可见",
+        "加载失败有持久重试入口，筛选无结果和无权限状态明确",
+        "项目切换清空旧状态，移动卡片与桌面表格互斥",
+        "npm --prefix web run build 退出码为 0"
+      ],
+      "evidence_required": [
+        "T3 实际 diff",
+        "前端构建命令和退出码",
+        "上传状态、项目切换、下载和响应式 DOM 契约摘要",
+        "发现的后端契约或公共组件缺口"
+      ],
+      "rollback": "仅回退 data-migration.ts 的 Mapping 段、MappingsPage 和 Mapping 专属样式，不覆盖同文件其他业务增量",
+      "stop_conditions": [
+        "必须修改公共 UI、store 或全局主题才能满足验收",
+        "现有附件 API 无法提供受认证的单附件下载",
+        "前端实现需要未经批准的后端字段或路由"
+      ],
+      "escalation_conditions": [
+        "浏览器上传接口无法区分逐文件结果",
+        "移动布局必须改变已批准的业务字段或操作层级",
+        "T2 API 契约在实现中发生破坏性变化"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T00:30:51+00:00",
+          "text": "T2 verified; begin frontend pre-sample against design-h5, delivery-showcase patterns, Mapping API and current page"
+        },
+        {
+          "recorded_at": "2026-09-06T00:43:07+00:00",
+          "text": "execution report recorded; independent S4/S7 observation required"
+        },
+        {
+          "recorded_at": "2026-09-06T00:44:48+00:00",
+          "text": "S4/S7 observed R1-R6/R8/R9 with no deviations; runtime and viewport coverage assigned to T4"
+        }
+      ],
+      "updated_at": "2026-09-06T00:44:48+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "以独立工程、运行和浏览器传感器验证组合实现并形成收敛证据",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "T1 至 T3 提供数据库、后端和前端局部证据",
+        "当前工作树包含同一 REQ 的其他既有修改，全局结果需要人工归因",
+        "本地 Java、Maven、Node、Docker 和 Chromium 可用性已探测但运行服务仍需复核"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T1.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T2.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T3.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-execution-T4.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-observation.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-verification.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-convergence.json",
+        ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/data-migration-mapping-state.json"
+      ],
+      "invariants": [
+        "未执行或受环境阻塞的检查不得描述为通过",
+        "全量检查中的既有失败与本增量失败分开归因",
+        "不使用生产身份、数据、凭据、附件或环境",
+        "不提交、推送、合并或发布"
+      ],
+      "interface_contracts": [
+        "消费 T1 至 T3 的实现和局部证据",
+        "产出可重复的 Maven、前端、治理、范围、HTTP 和四视口浏览器证据",
+        "所有 must 需求必须映射到至少一个有效传感器且 P0/P1 反馈为零才能收敛"
+      ],
+      "non_goals": [
+        "不修改生产或共享环境",
+        "不为通过全局检查而修复无关需求",
+        "不自行批准或集成分支"
+      ],
+      "action_bounds": [
+        "运行 diff、聚焦、模块、全量 Maven、前端、治理和范围检查",
+        "本地基础设施可用时启动隔离服务并执行管理员和普通人员 HTTP 生命周期",
+        "用 Chromium 在 1280x800、375x812、390x844 和 430x932 采集 DOM、控制台、网络和溢出信号",
+        "记录执行、观察、纠偏和最终收敛证据"
+      ],
+      "acceptance": [
+        "聚焦与模块测试通过且全量失败均完成归因",
+        "前端构建、治理和范围检查有真实退出码",
+        "本地运行验证覆盖组合筛选、多附件部分失败重试、编辑、单附件和 ZIP 下载、删除、恢复与彻底清理",
+        "普通人员越权请求被拒绝且成功操作有审计",
+        "四个视口无页面级横向溢出、遮挡或不可达操作",
+        "所有 R1-R10 有证据且没有未裁决 P0/P1 反馈"
+      ],
+      "evidence_required": [
+        "全部命令、退出码、测试数和失败归因",
+        "本地服务版本、路由、角色和 HTTP 结果",
+        "四视口尺寸、DOM、console、network 和 scrollWidth 结果",
+        "最终观察与收敛 JSON",
+        "残余风险、上线验证和回退说明"
+      ],
+      "rollback": "应用变更按 T3、T2、T1 逆序回退；已执行迁移不反向修改，只能通过另行批准的前向补偿处理",
+      "stop_conditions": [
+        "数据库迁移失败或发现数据损坏风险",
+        "越权请求成功、附件跨项目可访问或对象信息泄露",
+        "构建失败或任一目标视口出现页面级横向溢出",
+        "出现无法归因的 P0/P1 反馈"
+      ],
+      "escalation_conditions": [
+        "只有生产身份、数据或拓扑才能完成必需验证",
+        "全局治理失败需要修改本任务禁止路径",
+        "本地运行基础设施连续不可用且没有等价独立传感器"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-06T00:44:48+00:00",
+          "text": "begin integration, governance, runtime and four-viewport verification"
+        },
+        {
+          "recorded_at": "2026-09-06T01:47:20+00:00",
+          "text": "T4 produced repeatable runtime output and one permission deviation for independent observation"
+        },
+        {
+          "recorded_at": "2026-09-06T01:48:13+00:00",
+          "text": "P1 feedback recorded for R8 read-only Mapping write boundary"
+        },
+        {
+          "recorded_at": "2026-09-06T01:48:46+00:00",
+          "text": "execute bounded F-0001 correction in Mapping controller, page and direct security test"
+        }
+      ],
+      "updated_at": "2026-09-06T01:48:46+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T4",
+      "source": "T4 role/API/browser observation",
+      "requirement": "R8",
+      "expected": "read-only role without mappings action permissions cannot see or invoke Mapping create update delete",
+      "observed": "Mapping controller and page accept data-migration:manage read authority as a write fallback",
+      "evidence": "auth/me and permission table show DATA_MIGRATION_DEVELOPER has manage(read) but no mappings:create/update/delete; source guards include manage",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "isolated local role fixture",
+      "causal_hypothesis": "legacy menu read permission copied into Mapping write fallbacks",
+      "correction_check": "focused security test plus runtime POST PUT DELETE 403 and mobile button visibility",
+      "decision": "accept",
+      "decision_reason": "manage is a read action assigned to the read-only data migration developer role; Mapping writes must use granular action permissions",
+      "created_at": "2026-09-06T01:48:13+00:00",
+      "resolved_at": null,
+      "resolution_evidence": null,
+      "decided_at": "2026-09-06T01:48:46+00:00"
+    }
+  ],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 complete sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "mysql:8.4 mapping migration test exit 0; independent source scan exit 0; no deviations",
+      "recorded_at": "2026-09-06T00:19:11+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 complete sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Mapping focused backend 35/35 pass; static authorization and unique recycle ownership scan pass",
+      "recorded_at": "2026-09-06T00:30:14+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T3 complete sample",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "web build exit 0; upload/download/responsive/project reset/error-state contract probe all true",
+      "recorded_at": "2026-09-06T00:44:48+00:00"
+    },
+    {
+      "id": "S-0004",
+      "label": "T4 integrated sample before RBAC correction",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "R1-R7/R9/R10 pass; R8 fails because read-only DATA_MIGRATION_DEVELOPER manage(read) permission is accepted by Mapping write guards",
+      "recorded_at": "2026-09-06T01:48:13+00:00"
+    }
+  ]
+}

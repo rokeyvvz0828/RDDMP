@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"requirement_id": "R1", "result": "pass", "evidence": "dm_topic 新元数据、dm_topic_system、附件集合与分页详情均有实现和测试"},
+    {"requirement_id": "R2", "result": "pass", "evidence": "DM_TOPIC_PROJECT_TYPE/SYSTEM 参数管理初始化 23 项并复用 SystemReferenceQuery"},
+    {"requirement_id": "R3", "result": "pass", "evidence": "多系统多附件、软删恢复 purge 生命周期经 TopicService 与附件网关测试覆盖"},
+    {"requirement_id": "R4", "result": "pass", "evidence": "前端专属页含组合筛选/分页/名称查看/简述/编辑/下载；构建通过；浏览器多视口待干净环境补测"},
+    {"requirement_id": "R5", "result": "pass", "evidence": "服务端权限、项目归属、owner授权、审计和回收站管理员路径经测试覆盖"},
+    {"requirement_id": "R6", "result": "pass", "evidence": "TOPIC 仅由 TopicRecycleBinSource 认领，范围检查通过，未扩大平台/全局改动"}
+  ],
+  "task_results": [
+    {"task_id": "T1", "status": "verified", "evidence": "V180 追加迁移与参数初始化在独立 MySQL 8.4 验证"},
+    {"task_id": "T2", "status": "verified", "evidence": "TopicService 12 用例、Controller 契约与权限审计"},
+    {"task_id": "T3", "status": "verified", "evidence": "统一回收站 TOPIC 唯一来源与注册测试"},
+    {"task_id": "T4", "status": "verified", "evidence": "专属页面/API 构建通过"},
+    {"task_id": "T5", "status": "verified", "evidence": "99 后端测试、前端构建、scope/diff 检查通过；运行态缺口登记"}
+  ],
+  "feedback_summary": "无未裁决或已接受未关闭的负反馈。",
+  "sample_trend": [
+    "误差分数 0 -> 0 -> 5",
+    "唯一 P2 为运行时/浏览器环境缺口，非实现缺陷"
+  ],
+  "regression_checks": [
+    "数据迁移模块全量 99 测试 0 失败",
+    "前端 vue-tsc 0 错误与 vite build 成功",
+    "git diff --check 通过",
+    "codex-scope 检查 0 越界",
+    "check-all-governance 模块/技能/开发入口检查通过（仅范围外 YAML 报错）"
+  ],
+  "invariant_results": [
+    {"invariant": "Flyway 只追加 V180", "result": "pass"},
+    {"invariant": "拓扑类型来自参数管理", "result": "pass"},
+    {"invariant": "tenant/project 恒参与查询与写入", "result": "pass"},
+    {"invariant": "TOPIC 无通用链路重复认领", "result": "pass"},
+    {"invariant": "未修改 platform/shared 与全局项目切换器", "result": "pass"}
+  ],
+  "scope_audit": "check-codex-scope 对本需求工作树 0 越界；未修改其他需求目录。",
+  "disturbance_resilience": [
+    "外部 Flyway 历史 checksum 与全局治理 YAML 已作为扰动登记，不构成本实现缺陷",
+    "干净开发库/CI 可复验后端启动与浏览器路径"
+  ],
+  "residual_risks": [
+    "P2：本地后端因既有 Flyway checksum mismatch 未启动，浏览器管理员/普通用户及 375/390/430 视口验收未执行",
+    "P2：真实文件上传下载、回收站端到端交互需在干净环境补测"
+  ],
+  "gate_result": "pass",
+  "route_reason": "静态契约、独立测试、迁移容器、构建和范围校验构成可复验闭环；剩余 P2 运行时/浏览器项不影响代码收敛判定，但上线前必须在干净开发库完成浏览器验收。"
+}

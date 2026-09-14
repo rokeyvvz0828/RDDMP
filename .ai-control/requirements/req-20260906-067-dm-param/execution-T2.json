@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260906-067-dm-param",
+  "phase": "executing",
+  "task": "T2",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/api/data-migration.ts",
+      "purpose": "新增 DM_CODE_CATEGORIES.parameterType/parameterScope 与 listParameters/getParameter/createParameter/updateParameter/deleteParameters/downloadParameterTemplate/importParameters/exportParameters 及类型定义"
+    },
+    {
+      "path_or_resource": "web/src/modules/data-migration/views/content/ParametersPage.vue",
+      "purpose": "重写为迁移参数专属页（约500行，对标 ValidationRulesPage）：筛选（参数类型/范围/关联组件/关键字）、分页、新增/编辑抽屉、Excel 批量导入、下载模板/导出、逻辑删除、详情弹窗"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R3",
+    "R5"
+  ],
+  "commands": [
+    "npm --prefix web run build -> vue-tsc + vite build 成功"
+  ],
+  "observations": [
+    "前端构建通过；无新增样式体系，复用 components/ui 组件与既有页面范式",
+    "批量导入沿用逐行校验，失败行在结果回显中逐行报错；已覆盖加载/空/提交中状态"
+  ],
+  "unresolved_issues": [
+    "真实浏览器路径（新增/编辑/导入/删除/回收站/移动端视口）尚未执行，需本地启动 MySQL/MinIO/后端/前端按需求验收"
+  ],
+  "risks": [],
+  "recorded_at": "2026-09-06T17:00:00+08:00"
+}

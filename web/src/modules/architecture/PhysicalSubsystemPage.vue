@@ -8,19 +8,21 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   getPhysicalSubsystem,
   listPhysicalSubsystems,
-  loadLogicalSubsystemOptions,
+  loadBusinessComponentOptions,
   loadOrganizationOptions,
   loadParameterOptions
 } from './api'
 import SubsystemDetailDrawer from './components/SubsystemDetailDrawer.vue'
+import SubsystemParticipants from './components/SubsystemParticipants.vue'
 import type {
-  DetailItem,
-  LogicalSubsystemOption,
+  DetailSection,
   OrganizationOption,
   ParameterOption,
   PhysicalSubsystem,
@@ -39,6 +41,7 @@ import {
 import './architecture.css'
 
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const router = useRouter()
 const rows = ref<PhysicalSubsystem[]>([])
 const total = ref(0)
@@ -48,11 +51,14 @@ const loading = ref(false)
 const loadError = ref('')
 const forbidden = ref(false)
 const advanced = ref(false)
+const participantOpen = ref(false)
+const participantSystem = ref<PhysicalSubsystem | null>(null)
+function showParticipants(system: PhysicalSubsystem) { participantSystem.value = system; participantOpen.value = true }
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref<PhysicalSubsystem | null>(null)
 const organizations = ref<OrganizationOption[]>([])
-const logicalSubsystems = ref<LogicalSubsystemOption[]>([])
+const businessComponents = ref<ParameterOption[]>([])
 const runtimes = ref<ParameterOption[]>([])
 const levels = ref<ParameterOption[]>([])
 const frameworks = ref<ParameterOption[]>([])
@@ -63,9 +69,10 @@ const filters = reactive({
   code: '',
   shortName: '',
   name: '',
+  logicalSubsystemName: '',
+  businessComponentCode: '',
   businessGroupName: '',
   responsibleTeamOrgId: null as number | null,
-  logicalSubsystemId: null as number | null,
   status: '' as PublishedSubsystemStatus | ''
 })
 let listRequest = 0
@@ -74,40 +81,52 @@ let detailRequest = 0
 const canView = computed(() => auth.hasPermission('architecture:physical:list')
   || ['architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const canApply = computed(() => auth.hasPermission('architecture:apply') || auth.hasPermission('architecture:manage'))
-function publishedStatusLabel(status: PublishedSubsystemStatus | null) {
-  return status ? publishedStatusLabels[status] : '—'
-}
-const detailItems = computed<DetailItem[]>(() => detail.value ? [
-  { label: '系统编号', value: detail.value.code },
-  { label: '编号槽位', value: detail.value.numberSlot || '—' },
-  { label: '发布状态', value: publishedStatusLabels[detail.value.status], tone: detail.value.status === 'VOIDED' ? 'danger' : detail.value.status === 'OFFLINE' ? 'warning' : undefined },
-  { label: '系统简称', value: detail.value.shortName },
-  { label: '英文名称', value: detail.value.englishName || '—' },
-  { label: '所属逻辑子系统', value: `${detail.value.logicalSubsystemName}（${detail.value.logicalSubsystemCode}）` },
-  { label: '逻辑子系统状态', value: detail.value.logicalSubsystemStatus ? publishedStatusLabels[detail.value.logicalSubsystemStatus] : '—' },
-  { label: '所属事业群', value: detail.value.businessGroupName || '—' },
-  { label: '农信业务连续性等级', value: detail.value.businessContinuityLevel || '—' },
-  { label: '项目组收集系统等级', value: detail.value.collectedSystemLevel || '—' },
-  { label: '部署平台', value: optionLabel(deploymentPlatforms.value, detail.value.deploymentPlatform) },
-  { label: '灾备模式', value: optionLabel(disasterRecoveryModes.value, detail.value.disasterRecoveryMode) },
-  { label: '负责团队', value: detail.value.responsibleTeamDisplayName, tone: detail.value.responsibleTeamValid ? undefined : 'warning' },
-  { label: '团队引用', value: detail.value.responsibleTeamValid ? '当前有效' : '已失效，变更时必须重选', tone: detail.value.responsibleTeamValid ? undefined : 'warning' },
-  { label: '系统运行时间', value: optionLabel(runtimes.value, detail.value.runtimeCode) },
-  { label: '系统级别', value: optionLabel(levels.value, detail.value.systemLevelCode) },
-  { label: '开发平台框架', value: optionLabel(frameworks.value, detail.value.developmentFrameworkCode) },
-  { label: '负责人', value: detail.value.ownerDisplayName || '—' },
-  { label: '创建人', value: detail.value.createdByDisplayName || `用户 #${detail.value.createdBy}` },
-  { label: '数据版本', value: String(detail.value.rowVersion) },
-  { label: '创建时间', value: formatDateTime(detail.value.createdAt) },
-  { label: '最后更新', value: formatDateTime(detail.value.updatedAt) },
-  { label: '系统描述', value: detail.value.description || '—', wide: true },
-  { label: '备注', value: detail.value.remark || '—', wide: true }
+const detailSections = computed<DetailSection[]>(() => detail.value ? [
+  {
+    title: '基本信息',
+    items: [
+      { label: '系统编号', value: detail.value.code },
+      { label: '系统简称', value: detail.value.shortName },
+      { label: '英文名称', value: detail.value.englishName || '—' },
+      { label: '发布状态', value: publishedStatusLabels[detail.value.status], tag: { value: detail.value.status, labels: publishedStatusLabels, tone: publishedStatusTone(detail.value.status) } }
+    ]
+  },
+  {
+    title: '归属信息',
+    items: [
+      { label: '负责人', userId: detail.value.ownerUserId, value: detail.value.ownerDisplayName || '—' },
+      { label: '负责团队', value: detail.value.responsibleTeamDisplayName, tone: detail.value.responsibleTeamValid ? undefined : 'warning' },
+      { label: '所属事业群', value: detail.value.businessGroupName || '—' }
+    ]
+  },
+  {
+    title: '技术信息',
+    items: [
+      { label: '部署平台', value: optionLabel(deploymentPlatforms.value, detail.value.deploymentPlatform) },
+      { label: '开发框架', value: optionLabel(frameworks.value, detail.value.developmentFrameworkCode) },
+      { label: '系统运行时间', value: optionLabel(runtimes.value, detail.value.runtimeCode) },
+      { label: '系统级别', value: optionLabel(levels.value, detail.value.systemLevelCode) },
+      { label: '安全节点号', value: detail.value.securityNodeNo || '—' },
+      { label: '文件传输节点号', value: detail.value.fileTransferNodeNo || '—' },
+      { label: '灾备模式', value: optionLabel(disasterRecoveryModes.value, detail.value.disasterRecoveryMode) }
+    ]
+  },
+  {
+    title: '描述',
+    items: [
+      { label: '所属逻辑子系统', value: detail.value.logicalSubsystemName || '—' },
+      { label: '业务组件编号', value: optionLabel(businessComponents.value, detail.value.businessComponentCode) },
+      { label: '系统描述', value: detail.value.description || '—', wide: true },
+      { label: '备注', value: detail.value.remark || '—', wide: true }
+    ]
+  }
 ] : [])
 
 async function loadReferences() {
+  if (!projectContext.currentRef) return
   const results = await Promise.allSettled([
     loadOrganizationOptions('physical-subsystem', '', 100),
-    loadLogicalSubsystemOptions('', 100),
+    loadBusinessComponentOptions(),
     loadParameterOptions('physical-subsystem', 'ARCH_RUNTIME'),
     loadParameterOptions('physical-subsystem', 'ARCH_SYSTEM_LEVEL'),
     loadParameterOptions('physical-subsystem', 'ARCH_DEVELOPMENT_FRAMEWORK'),
@@ -115,7 +134,7 @@ async function loadReferences() {
     loadParameterOptions('physical-subsystem', 'ARCH_DISASTER_RECOVERY_MODE')
   ])
   if (results[0].status === 'fulfilled') organizations.value = results[0].value
-  if (results[1].status === 'fulfilled') logicalSubsystems.value = results[1].value
+  if (results[1].status === 'fulfilled') businessComponents.value = results[1].value
   if (results[2].status === 'fulfilled') runtimes.value = results[2].value
   if (results[3].status === 'fulfilled') levels.value = results[3].value
   if (results[4].status === 'fulfilled') frameworks.value = results[4].value
@@ -124,7 +143,7 @@ async function loadReferences() {
 }
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   const request = ++listRequest
   loading.value = true
   loadError.value = ''
@@ -173,8 +192,8 @@ function beginChange(row: PhysicalSubsystem, command: string | number | object) 
 function search() { page.value = 1; void load() }
 function reset() {
   Object.assign(filters, {
-    code: '', shortName: '', name: '', businessGroupName: '', responsibleTeamOrgId: null,
-    logicalSubsystemId: null, status: ''
+    code: '', shortName: '', name: '', logicalSubsystemName: '', businessComponentCode: '',
+    businessGroupName: '', responsibleTeamOrgId: null, status: ''
   })
   page.value = 1
   void load()
@@ -186,8 +205,8 @@ async function refresh() {
 function changePage(value: number) { page.value = value; void load() }
 function changePageSize(value: number) { pageSize.value = value; page.value = 1; void load() }
 
-watch(canView, allowed => {
-  if (allowed) void Promise.all([load(), loadReferences()])
+watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
+  if (allowed && projectRef) void Promise.all([load(), loadReferences()])
 }, { immediate: true })
 </script>
 
@@ -210,27 +229,29 @@ watch(canView, allowed => {
         <el-button type="primary" @click="search">查询</el-button><el-button @click="reset">重置</el-button>
         <template #actions><el-tooltip content="刷新列表"><el-button circle :loading="loading" aria-label="刷新物理子系统列表" @click="refresh"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
       </UiToolbar>
-      <div v-if="advanced" class="architecture-advanced-filter"><el-form inline label-position="top"><el-form-item label="所属事业群"><el-input v-model="filters.businessGroupName" clearable placeholder="事业群名称" style="width:190px" /></el-form-item><el-form-item label="负责团队"><el-select v-model="filters.responsibleTeamOrgId" clearable filterable style="width:220px"><el-option v-for="item in organizations" :key="item.id" :label="item.pathLabel" :value="item.id" /></el-select></el-form-item><el-form-item label="所属逻辑子系统"><el-select v-model="filters.logicalSubsystemId" clearable filterable style="width:230px"><el-option v-for="item in logicalSubsystems" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" /></el-select></el-form-item><el-form-item><el-button type="primary" @click="search">应用筛选</el-button></el-form-item></el-form></div>
+      <div v-if="advanced" class="architecture-advanced-filter"><el-form inline label-position="top"><el-form-item label="所属事业群"><el-input v-model="filters.businessGroupName" clearable placeholder="事业群名称" style="width:190px" /></el-form-item><el-form-item label="负责团队"><el-select v-model="filters.responsibleTeamOrgId" clearable filterable style="width:220px"><el-option v-for="item in organizations" :key="item.id" :label="item.pathLabel" :value="item.id" /></el-select></el-form-item><el-form-item label="所属逻辑子系统"><el-input v-model="filters.logicalSubsystemName" clearable placeholder="逻辑子系统名称" style="width:210px" /></el-form-item><el-form-item label="业务组件编号"><el-select v-model="filters.businessComponentCode" clearable filterable style="width:220px"><el-option v-for="item in businessComponents" :key="item.code" :label="item.label" :value="item.code" /></el-select></el-form-item><el-form-item><el-button type="primary" @click="search">应用筛选</el-button></el-form-item></el-form></div>
 
       <UiDataTable v-if="rows.length || loading" class="architecture-desktop-table" :data="rows" :loading="loading" row-key="id" border>
         <el-table-column label="物理子系统" min-width="210"><template #default="scope"><button type="button" class="architecture-table-identity" @click="showDetail(scope.row)"><strong>{{ scope.row.name }}</strong><small>{{ scope.row.code }} · {{ scope.row.shortName }}</small></button></template></el-table-column>
-        <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(scope.row.status)" /></template></el-table-column>
-        <el-table-column label="所属逻辑子系统" min-width="170"><template #default="scope">{{ scope.row.logicalSubsystemName }}<small class="architecture-inline-code">{{ scope.row.logicalSubsystemCode }} · {{ publishedStatusLabel(scope.row.logicalSubsystemStatus) }}</small></template></el-table-column>
+        <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(scope.row.status)" indicator /></template></el-table-column>
+        <el-table-column label="所属逻辑子系统" min-width="150"><template #default="scope">{{ scope.row.logicalSubsystemName || '—' }}</template></el-table-column>
+        <el-table-column label="业务组件编号" min-width="150"><template #default="scope">{{ optionLabel(businessComponents, scope.row.businessComponentCode) }}</template></el-table-column>
         <el-table-column prop="businessGroupName" label="所属事业群" min-width="115"><template #default="scope">{{ scope.row.businessGroupName || '—' }}</template></el-table-column>
         <el-table-column label="负责团队" min-width="140"><template #default="scope"><div class="architecture-team-cell"><span>{{ scope.row.responsibleTeamDisplayName }}</span><UiStatusTag v-if="!scope.row.responsibleTeamValid" :value="false" :labels="{ false: '已失效' }" tone="warning" /></div></template></el-table-column>
-        <el-table-column label="负责人" width="100"><template #default="scope">{{ scope.row.ownerDisplayName || '—' }}</template></el-table-column>
+        <el-table-column label="负责人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.ownerUserId" :fallback-name="scope.row.ownerDisplayName" variant="compact" /></template></el-table-column>
         <el-table-column label="最后更新" width="145"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
-        <el-table-column label="操作" width="160" fixed="right"><template #default="scope"><div class="architecture-table-actions"><el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', scope.row.status).length" @command="beginChange(scope.row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', scope.row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div></template></el-table-column>
+        <el-table-column label="操作" width="260" fixed="right"><template #default="scope"><div class="architecture-table-actions"><el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button><el-button link type="primary" @click="showParticipants(scope.row)">参与人员</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', scope.row.status).length" @command="beginChange(scope.row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', scope.row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div></template></el-table-column>
         <template #footer><div class="architecture-table-footer"><span>共 {{ total }} 条记录</span><el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @current-change="changePage" @size-change="changePageSize" /></div></template>
       </UiDataTable>
 
       <div v-if="rows.length || loading" v-loading="loading" class="architecture-mobile-list" :class="{ 'is-loading': loading }">
-        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.shortName }}</small></div><UiStatusTag :value="row.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(row.status)" /></header><dl><div><dt>所属逻辑子系统</dt><dd>{{ row.logicalSubsystemName }}（{{ row.logicalSubsystemCode }}）</dd></div><div><dt>所属事业群</dt><dd>{{ row.businessGroupName || '—' }}</dd></div><div><dt>负责团队</dt><dd>{{ row.responsibleTeamDisplayName }}<span v-if="!row.responsibleTeamValid" class="architecture-warning-text">（已失效）</span></dd></div><div><dt>负责人</dt><dd>{{ row.ownerDisplayName || '—' }}</dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', row.status).length" @command="beginChange(row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
+        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.shortName }}</small></div><UiStatusTag :value="row.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(row.status)" indicator /></header><dl><div><dt>所属逻辑子系统</dt><dd>{{ row.logicalSubsystemName || '—' }}</dd></div><div><dt>业务组件编号</dt><dd>{{ optionLabel(businessComponents, row.businessComponentCode) }}</dd></div><div><dt>所属事业群</dt><dd>{{ row.businessGroupName || '—' }}</dd></div><div><dt>负责团队</dt><dd>{{ row.responsibleTeamDisplayName }}<span v-if="!row.responsibleTeamValid" class="architecture-warning-text">（已失效）</span></dd></div><div><dt>负责人</dt><dd><UiUserIdentity :user-id="row.ownerUserId" :fallback-name="row.ownerDisplayName" variant="full" /></dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button link type="primary" @click="showParticipants(row)">参与人员</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', row.status).length" @command="beginChange(row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
         <div class="architecture-table-footer"><el-pagination :current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="changePage" /></div>
       </div>
       <UiEmptyState v-if="!loading && !rows.length" title="暂无物理子系统" description="调整筛选条件，或发起第一张物理子系统申请。"><template #action><el-button v-if="canApply" type="primary" @click="createApplication">发起申请</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
     </template>
 
-    <SubsystemDetailDrawer v-model="detailOpen" :loading="detailLoading" :title="detail?.name || '物理子系统详情'" :code="detail?.code" :items="detailItems" />
+    <SubsystemParticipants v-model="participantOpen" :subsystem="participantSystem" @saved="load" />
+    <SubsystemDetailDrawer v-model="detailOpen" :loading="detailLoading" :title="detail?.name || '物理子系统详情'" :code="detail?.code" :sections="detailSections" />
   </main>
 </template>

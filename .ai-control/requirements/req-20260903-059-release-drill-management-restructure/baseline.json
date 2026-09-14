@@ -1,0 +1,19 @@
+{
+  "objective": "将投产演练重构为多方案、多环境、多轮次且问题可追溯的项目级管理能力",
+  "requirements": [
+    {"id":"R1","statement":"旧投产时序菜单移除，投产方案可维护正向和回退步骤","acceptance":["菜单和路由不再暴露旧时序入口；方案可分别保存两类步骤"],"priority":"must","source":"用户确认","counterexample":["页面仍显示投产时序菜单"]},
+    {"id":"R2","statement":"当前项目可维护多个投产演练环境及全部环境检查字段","acceptance":["同一项目可新增两个环境并刷新后读取字段"],"priority":"must","source":"用户确认","counterexample":["环境只能配置一条或字段缺失"]},
+    {"id":"R3","statement":"每轮演练必须关联同项目方案和环境，并可维护演练步骤","acceptance":["缺少或跨项目引用被拒绝；合法轮次可增删改步骤"],"priority":"must","source":"用户确认","counterexample":["轮次可以无方案无环境保存"]},
+    {"id":"R4","statement":"投产问题可关联当前项目演练轮次","acceptance":["问题编辑可选择当前项目轮次，列表展示轮次"],"priority":"must","source":"用户确认","counterexample":["问题不能关联轮次或展示其他项目轮次"]},
+    {"id":"R5","statement":"旧投产数据回填且项目切换后数据隔离","acceptance":["旧数据可读；A/B 项目不会互相显示方案、环境、轮次和问题"],"priority":"must","source":"兼容性约束","counterexample":["迁移后旧时序数据丢失"]},
+    {"id":"R6","statement":"后端权限、迁移、构建和响应式路径可验证","acceptance":["后端测试、前端构建、迁移/治理/范围检查及四视口通过"],"priority":"must","source":"仓库规约","counterexample":["未授权写入成功或手机页面溢出"]}
+  ],
+  "invariants":["只追加 V127","租户和项目归属由服务端校验","写操作有审计和乐观锁","旧接口保留","不访问生产数据"],
+  "constraints":["只修改本任务 writable_paths","复用现有投产模块和 delivery-showcase 页面能力","不依赖 biz_form_*"],
+  "non_goals":["不删除历史表和接口","不改投产窗口/版本申请/附件/投产组织职责","不修改已发布迁移"],
+  "assumptions":[{"text":"V126 是当前最高迁移版本","basis":"migration 目录只读检查","falsifier":"发现更高版本"},{"text":"旧表字段与现有 store 契约一致","basis":"V123 和现有测试","falsifier":"Maven 或迁移报列错误"}],
+  "unknowns":[{"question":"本地数据库是否可执行 V127","impact":"只能退化为静态迁移检查","owner":"运行环境","blocking":false}],
+  "decisions":[{"id":"D1","decision":"新增规范化表并保留旧接口","reason":"支持多对多业务关系且不破坏历史调用","source":"用户批准的实现方向"}],
+  "measurement_intents":[{"requirement_id":"R1","observable":"菜单/路由和方案步骤","candidate_sensor":"源码检查+浏览器"},{"requirement_id":"R2","observable":"环境 CRUD 字段","candidate_sensor":"API/浏览器"},{"requirement_id":"R3","observable":"引用校验和步骤 CRUD","candidate_sensor":"Maven+API/浏览器"},{"requirement_id":"R4","observable":"问题轮次选择和列表","candidate_sensor":"API/浏览器"},{"requirement_id":"R5","observable":"回填计数和 A/B 切换","candidate_sensor":"数据库+浏览器"},{"requirement_id":"R6","observable":"构建、权限、治理、四视口","candidate_sensor":"命令+浏览器"}],
+  "baseline_status":"ready"
+}

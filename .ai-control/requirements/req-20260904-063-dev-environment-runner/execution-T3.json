@@ -1,0 +1,100 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "AGENTS.md",
+      "purpose": "记录 Windows、macOS/Linux 本地研发启动命令、固定账号、热重载、Flyway、退出和安全边界。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260904-063-dev-environment-runner、docs/engineering-control 与当前 .ai-control 前缀",
+      "purpose": "维护本需求范围、设计、实施计划和可审计控制证据。"
+    }
+  ],
+  "requirements_addressed": ["R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-boot -am test",
+      "exit_code": 0,
+      "salient_output": "15 个 reactor 模块全部 SUCCESS，总耗时 15:33；ccb-architecture 269 个测试、ccb-test-management 20 个测试、ccb-boot 8 个测试均为 0 failures、0 errors。"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "前端类型检查和 Vite 生产构建通过。"
+    },
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "salient_output": "研发入口和 control-engineering 插件检查通过。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260904-063-dev-environment-runner/codex-task-scope.yaml --base HEAD~1 --head HEAD --working-tree",
+      "exit_code": 0,
+      "salient_output": "REQ-20260904-063 范围检查通过，检查时共 15 个变更文件。"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "模块治理、仓库 Skill 和研发入口通过；AI control layout 因多个其他历史需求 topic mismatch、无效 JSON/账本和缺失验收证据失败，本任务前缀未出现在错误列表。"
+    },
+    {
+      "command": "git diff --check HEAD~1",
+      "exit_code": 0,
+      "salient_output": "未发现空白错误，仅有 Git 的 LF/CRLF 提示。"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "AGENTS 研发提示准确性",
+      "result": "pass",
+      "evidence": "提示包含两个平台入口、admin/admin123、local-only、Vite HMR、后端自动重启、Flyway、Ctrl+C 和 --down 不删卷。",
+      "limitations": ["macOS/Linux 真实运行仍明确列为人工复核项。"]
+    },
+    {
+      "check": "后端和前端回归",
+      "result": "pass",
+      "evidence": "Maven 15 模块 reactor BUILD SUCCESS；前端构建退出码 0。",
+      "limitations": []
+    },
+    {
+      "check": "治理与范围",
+      "result": "pass-with-disturbance",
+      "evidence": "本任务范围检查通过，本任务账本 JSON 可解析且 topic mismatch 已消失；全量治理只剩任务范围外历史账本问题。",
+      "limitations": ["仓库既有历史问题使 check-all-governance 总退出码仍为 1。"]
+    }
+  ],
+  "diff_summary": [
+    "根 AGENTS 增加一键开发环境的推荐用法和本地凭据边界。",
+    "需求、设计、计划和控制账本与最终 Node 自动重启实现保持一致。",
+    "完成范围、后端 reactor、前端构建、JSON 和 diff 验证。"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "文档不声称未实测平台已通过。",
+      "result": "pass",
+      "evidence": "验收证据明确区分 Windows 真实运行和 macOS/Linux 静态检查。"
+    },
+    {
+      "invariant": "修改保持在 codex-task-scope.yaml 授权范围。",
+      "result": "pass",
+      "evidence": "check-codex-scope working-tree 模式通过。"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "check-all-governance 检测到多个其他历史需求账本问题。",
+      "impact": "全量治理包装命令无法绿色结束；本任务未出现在错误列表，且模块治理、Skill、研发入口和范围检查独立通过。"
+    },
+    {
+      "event": "架构模块的 Testcontainers/Flyway 集成测试为多个隔离库重复执行迁移。",
+      "impact": "全 reactor 测试耗时 15 分 33 秒，但最终全部成功。"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "任务范围外历史 AI control 账本问题继续阻塞 check-all-governance 总退出码。",
+    "macOS/Linux 真实进程组、fs.watch 和 Docker host-gateway 行为仍需人工复核。"
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,59 @@
+{
+  "sample_label": "dm_component 自然键 + enabled 最终观测",
+  "task_ids": [
+    "component-natural-key"
+  ],
+  "baseline_revision": "T43 验收后的当前态：dm_component 仍以 id 为主键并含 deleted 逻辑删除；用户确认按 A-E 决策推进结构优化，且仅改数据迁移模块。",
+  "observed_at": "2026-09-05T15:10:00+08:00",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 迁移 V182",
+      "result": "pass",
+      "raw_evidence": "V182 在 ccb_platform_v182test 与开发库 ccb_platform 均 Flyway success=1；dm_component 主键为 (tenant_id, project_id, system_code)，含 enabled，无 id/deleted；下游 dm_plan/8 张内容表与 dm_dashboard_snapshot 已改为 system_code。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S2 删除保护 C",
+      "result": "pass",
+      "raw_evidence": "ProjectComponentService.deleteComponent 在物理删除前统计全部内容表活动业务数据，存在任一活动行即抛 CONFLICT 拒绝删除；单测与接口冒烟覆盖。",
+      "limitation": [
+        "未在浏览器手工验证删除按钮提示（接口层已验证拒绝）。"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S3 启停过滤 D",
+      "result": "pass",
+      "raw_evidence": "业务下拉/新增/编辑/校验只取 enabled=1；组件维护页与历史详情保留 enabled=0 组件的只读名称展示。",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S4 回归",
+      "result": "pass",
+      "raw_evidence": "mvn -pl :ccb-data-migration -am test 通过（99 tests，0 errors）；npm --prefix web run build 通过；check-codex-scope 通过。",
+      "limitation": [
+        "未执行浏览器端手工验收（本次为结构迁移 + 契约改造，前端构建与接口冒烟已覆盖）。"
+      ]
+    }
+  ],
+  "samples": [
+    {"id": "component-natural-key-S1", "kind": "database migration", "result": "pass", "evidence": "V182 success=1，dm_component 自然键/启停生效。"},
+    {"id": "component-natural-key-S2", "kind": "automated backend", "result": "pass", "evidence": "全量模块 99 tests 通过。"},
+    {"id": "component-natural-key-S3", "kind": "frontend build", "result": "pass", "evidence": "vue-tsc + vite build 通过。"}
+  ],
+  "feedback": [],
+  "resolved_feedback": [],
+  "disturbances": [
+    "开发库为 ccb_platform；用户已明确开发库可直接应用 V182，不使用 V181，不触碰生产库。"
+  ],
+  "coverage_gaps": [
+    "未做浏览器手工验收与生产/测试环境部署验证；测试环境部署前需按项目发布流程先做迁移演练。"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "verdict": "converged_for_component_natural_key",
+  "phase_recommendation": "保留 V182 增量证据并纳入 REQ-20260820-031 收敛账本；部署测试环境前按标准流程执行迁移演练与接口验收。"
+}

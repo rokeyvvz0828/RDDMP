@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "topic": "validation-rule-import-dialog",
+  "requirement_id": "REQ-20260820-031",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-07-data-migration-validation-rule-import-dialog-design.md",
+  "objective": "将迁移检核规则页面的批量导入与新增操作提升到页面头部，并在当前页面对话框内完成模板下载、Excel 选择、确认导入、结果查看和失败重试。",
+  "user_confirmation": {
+    "solution_confirmed_at": "2026-09-07",
+    "solution": "页面内打开；批量导入、新增两个按钮仿照迁移方案页面中新增迁移方案按钮的位置设计。",
+    "document_review": "approved",
+    "document_approved_at": "2026-09-07",
+    "document_approval_evidence": "用户回复：批准"
+  },
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "页面使用 UiPageHeader，头部右侧按顺序展示次要操作批量导入和主操作新增迁移检核规则。",
+      "priority": "must",
+      "source": "用户确认的页面头部双按钮设计及 PlansPage.vue 参照。",
+      "acceptance": [
+        "UiPageHeader 标题为迁移检核规则",
+        "批量导入位于新增迁移检核规则左侧",
+        "新增迁移检核规则使用 primary 样式",
+        "无新增权限时两个入口均不展示"
+      ],
+      "counterexample": [
+        "两个入口仍位于筛选工具栏",
+        "批量导入成为唯一主操作",
+        "无新增权限仍显示入口"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "批量导入必须在当前列表页对话框内完成，模板下载、文件选择、确认导入和结果展示不得散落在工具栏。",
+      "priority": "must",
+      "source": "用户确认页面内打开。",
+      "acceptance": [
+        "打开和关闭导入对话框不改变路由、筛选或分页",
+        "模板下载、Excel 选择、确认导入和结果均在对话框内",
+        "关闭后再次打开为干净初始状态"
+      ],
+      "counterexample": [
+        "新增批量导入路由或独立页面",
+        "工具栏仍保留导入相关按钮或结果",
+        "关闭后保留上次文件或结果"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "导入对话框覆盖初始、已选文件、提交中、全部成功、部分失败、请求失败和关闭重置状态。",
+      "priority": "must",
+      "source": "项目全状态设计要求与已确认导入交互。",
+      "acceptance": [
+        "无文件、项目不可用或提交中时确认按钮禁用",
+        "提交中禁止关闭和重复提交",
+        "成功或部分成功后刷新列表并保持对话框打开",
+        "结果展示总数、成功数、失败数和最多20条错误",
+        "请求失败保留文件供重试",
+        "重新选择文件和关闭对话框会清理不再适用的状态"
+      ],
+      "counterexample": [
+        "无文件仍发送导入请求",
+        "提交中可以关闭或重复提交",
+        "部分成功后结果立即消失",
+        "请求失败强制重新选择文件"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "UiToolbar 只保留列表筛选、查询、重置、导出和批量删除。",
+      "priority": "must",
+      "source": "已确认页面操作层级。",
+      "acceptance": [
+        "工具栏无下载模板、选择Excel、提交导入和导入结果",
+        "现有筛选、导出、选择行和批量删除行为保持"
+      ],
+      "counterexample": [
+        "工具栏继续承担导入流程",
+        "迁移导入入口时误删导出或批量删除"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "桌面和规定手机视口中，导入对话框复用 dm-upload-dropzone 且无横向溢出，滚动边界和底部操作可达。",
+      "priority": "must",
+      "source": "AGENTS.md、design-h5.md 和数据迁移上传样式治理设计。",
+      "acceptance": [
+        "1280x800、375x812、390x844、430x932 无页面级或对话框级横向溢出",
+        "拖拽上传区占满正文可用宽度",
+        "长文件名和长错误信息不撑破容器",
+        "正文可纵向滚动且底部操作可达",
+        "深浅主题下内容可辨识"
+      ],
+      "counterexample": [
+        "页面复制独立上传颜色或间距",
+        "移动端对话框宽于视口",
+        "错误列表导致底部操作不可达"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "导入 API、模板、RBAC、projectId、Excel 行级字段解析、后端和数据库契约保持不变。",
+      "priority": "must",
+      "source": "已确认设计边界与 REQ-031 范围。",
+      "acceptance": [
+        "继续调用 downloadRuleTemplate 和 importMigrationCheckRules({ projectId }, file)",
+        "projectId 继续来自 useProjectScope",
+        "对话框不新增目标类型、规则大类或关联系统输入",
+        "不修改公共 UI、后端或数据库"
+      ],
+      "counterexample": [
+        "新增预校验 API 或批量导入路由",
+        "允许对话框覆盖项目范围",
+        "将 Excel 行级字段改为对话框级选择",
+        "修改 web/src/components/ui 或服务端"
+      ]
+    }
+  ],
+  "selected_approach": {
+    "name": "当前列表页内批量导入对话框",
+    "reason": "导入是迁移检核规则列表的批量新增动作，使用对话框可保持当前筛选和分页上下文，并将模板、文件、提交和结果集中在一个受控流程中。",
+    "alternatives": [
+      {
+        "name": "独立批量导入页面",
+        "rejected_because": "增加路由和返回成本，且用户已明确要求页面内打开。"
+      },
+      {
+        "name": "继续在列表工具栏分散导入步骤",
+        "rejected_because": "操作层级混乱，模板、文件、提交与结果缺少完整状态边界。"
+      }
+    ]
+  },
+  "layout": {
+    "page_header": {
+      "title": "迁移检核规则",
+      "actions": [
+        {
+          "label": "批量导入",
+          "hierarchy": "secondary"
+        },
+        {
+          "label": "新增迁移检核规则",
+          "hierarchy": "primary"
+        }
+      ]
+    },
+    "toolbar": [
+      "筛选",
+      "查询",
+      "重置",
+      "导出",
+      "批量删除"
+    ],
+    "dialog_sections": [
+      "导入说明与下载模板",
+      "dm-upload-dropzone Excel选择",
+      "已选择文件状态",
+      "导入汇总与最多20条错误",
+      "取消与确认导入"
+    ],
+    "responsive": {
+      "desktop": "对话框宽度受控，正文内容和底部操作分层。",
+      "mobile": "对话框不超过视口可用宽度，正文有最大高度和纵向滚动边界，按钮文字不被压缩。",
+      "viewports": [
+        "1280x800",
+        "375x812",
+        "390x844",
+        "430x932"
+      ]
+    }
+  },
+  "state_model": [
+    {
+      "state": "initial",
+      "file": false,
+      "result": false,
+      "confirm_enabled": false,
+      "closable": true
+    },
+    {
+      "state": "file-selected",
+      "file": true,
+      "result": false,
+      "confirm_enabled": true,
+      "closable": true
+    },
+    {
+      "state": "submitting",
+      "file": true,
+      "result": false,
+      "confirm_enabled": false,
+      "closable": false
+    },
+    {
+      "state": "success",
+      "file": true,
+      "result": true,
+      "confirm_enabled": true,
+      "closable": true,
+      "side_effect": "refresh-list-and-keep-dialog-open"
+    },
+    {
+      "state": "partial-failure",
+      "file": true,
+      "result": true,
+      "confirm_enabled": true,
+      "closable": true,
+      "side_effect": "refresh-list-and-keep-dialog-open"
+    },
+    {
+      "state": "request-failure",
+      "file": true,
+      "result": false,
+      "confirm_enabled": true,
+      "closable": true,
+      "side_effect": "keep-file-for-retry"
+    },
+    {
+      "state": "closed-reset",
+      "file": false,
+      "result": false,
+      "confirm_enabled": false,
+      "closable": true
+    }
+  ],
+  "invariants": [
+    "projectId 继续来自顶部全局项目上下文并参与请求",
+    "现有导入与模板 API 契约不变",
+    "现有新增权限判断继续控制批量导入和新增入口",
+    "导入 Excel 的目标类型、规则大类和系统字段仍按行解析",
+    "成功或部分成功后列表刷新但对话框保持打开",
+    "关闭或项目切换会清理待导入文件和结果"
+  ],
+  "constraints": [
+    "仅修改 REQ-031 writable_paths 覆盖的文件",
+    "复用 UiPageHeader、UiToolbar、Element Plus dialog/upload 和 dm-upload-dropzone",
+    "不得修改 web/src/components/ui",
+    "不得修改后端、数据库、路由、权限或审计",
+    "不得覆盖当前工作区已有未关联改动"
+  ],
+  "non_goals": [
+    "不新增独立批量导入页或路由",
+    "不增加导入预览、预校验、字段映射或导入历史",
+    "不修改 Excel 模板和后端解析",
+    "不治理数据迁移以外模块",
+    "不处理范围外 REQ-061"
+  ],
+  "assumptions": [
+    "ValidationRulesPage.vue 已能通过现有 API 完成直接导入",
+    "data-migration.css 已提供可复用的 dm-upload-dropzone 样式",
+    "UiPageHeader 已在数据迁移页面中稳定使用"
+  ],
+  "unknowns": [],
+  "validation": [
+    "静态检查页面头部操作顺序、工具栏职责和状态清理",
+    "npm --prefix web run build",
+    "git diff --check",
+    "REQ-031 定向范围检查",
+    "1280x800、375x812、390x844、430x932 真实浏览器验收"
+  ],
+  "external_disturbances": [
+    {
+      "id": "REQ-061-governance-yaml",
+      "scope": "outside",
+      "handling": "不得修改；全仓治理若仍因其非 JSON-compatible YAML 失败，只记录为范围外扰动，不宣称全仓治理通过。"
+    }
+  ],
+  "approval_gate": {
+    "required": true,
+    "next_step_after_approval": "将 design_status 更新为 approved，完整读取 writing-plans Skill 并编写可执行实施计划。"
+  }
+}

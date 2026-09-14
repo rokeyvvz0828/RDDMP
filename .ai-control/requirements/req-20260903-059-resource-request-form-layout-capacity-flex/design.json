@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260903-059-resource-request-form-layout-capacity-flex",
+  "design_revision": 3,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-03-resource-request-form-layout-design.md",
+  "objective": "在不改变资源申请业务行为和紧凑滚动布局的前提下，将容量与部署字段区改为 Flex 自适应换行，使桌面端每行尽量展示 3 至 4 个字段并保持手机端单列可用。",
+  "users": [
+    "资源申请人在桌面端填写当前部署单元的容量与部署规格",
+    "资源申请人在手机端以单列方式填写相同字段"
+  ],
+  "requirements": [
+    {
+      "id": "R13",
+      "statement": "容量与部署字段区必须使用 Flex 自适应换行。",
+      "acceptance": [
+        "1920x1080 桌面端按可用宽度排列且每行尽量展示 3 至 4 个字段",
+        "选择类字段宽于数值字段且中等宽度自然换行",
+        "计算摘要独占整行",
+        "三个手机验收视口下字段单列满宽且页面根无横向溢出"
+      ],
+      "priority": "must",
+      "source": "用户于 2026-09-03 确认采用字段项 Flex 自适应换行方案",
+      "counterexample": [
+        "容量区继续固定为每行两列并产生大面积空白",
+        "通过固定行拆分导致条件字段出现空洞",
+        "手机端保留桌面短宽并产生横向溢出"
+      ]
+    }
+  ],
+  "invariants": [
+    "修订 1 的 R1-R7 和修订 2 的 R8-R12 保持成立",
+    "字段顺序、显示条件、计算、校验、状态和提交映射不变",
+    "ResourceRequestPayload、items[] 顺序、重复 deploymentUnitId 和 DB/非 DB 分流不变",
+    "修订 2 的短数值输入、独立滚动和 footer 可见性不变",
+    "已收敛的旧控制账本保持只读"
+  ],
+  "constraints": [
+    "产品修改仅限 ResourceRequestPage.vue 和 architecture.css",
+    "使用现有 Vue 3、Element Plus 和架构模块语义主题变量",
+    "只为容量与部署区域增加局部 Flex 规则",
+    "不得缩小正文字号或引入页面级横向滚动"
+  ],
+  "non_goals": [
+    "修改字段、计算、校验或请求契约",
+    "修改部署单元区或其他表单网格",
+    "新增公共布局组件或断点体系",
+    "固定拆分每一行字段"
+  ],
+  "selected_approach": {
+    "name": "字段项 Flex 自适应换行",
+    "reason": "直接满足用户指定的 Flex 布局，并根据字段类型设置不同首选宽度，以更充分利用当前编辑器的可用空间。",
+    "alternatives": [
+      {
+        "name": "所有字段统一 Flex 宽度",
+        "rejected_because": "选择器和数值框的信息密度不同，统一宽度仍会浪费空间"
+      },
+      {
+        "name": "模板拆成固定 Flex 行",
+        "rejected_because": "条件字段和不同视口容易形成空洞，响应式维护成本更高"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "ResourceRequestPage.vue 容量与部署容器专用类",
+        "architecture.css 容量字段 Flex 和响应式规则",
+        "修订 3 设计、计划和控制证据"
+      ],
+      "outside": [
+        "资源申请状态与请求逻辑",
+        "部署单元区和其他表单网格",
+        "公共 UI、后端、数据库、权限和工作流"
+      ]
+    },
+    "components": [
+      {
+        "name": "容量字段 Flex 容器",
+        "responsibility": "根据可用宽度排列并换行容量字段",
+        "depends_on": ["现有容量与部署 DOM"]
+      },
+      {
+        "name": "字段宽度分类",
+        "responsibility": "为选择、数值、布尔和摘要字段设置不同的 flex basis",
+        "depends_on": ["Element Plus el-form-item", "修订 2 短数值输入"]
+      },
+      {
+        "name": "移动端覆盖",
+        "responsibility": "在手机视口把容量字段恢复为单列满宽",
+        "depends_on": ["现有手机断点"]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "容量字段布局契约",
+        "producer": "architecture.css",
+        "consumers": ["ResourceRequestPage.vue 容量与部署区域"],
+        "contract": "选择字段约 280 至 320px，数值字段项约 180 至 220px，布尔项按内容占位，摘要占满整行，空间不足自动换行"
+      },
+      {
+        "name": "资源申请提交载荷",
+        "producer": "ResourceRequestPage.vue",
+        "consumers": ["现有 create/update API"],
+        "contract": "修订 3 不改变任何请求字段、顺序或数值"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "编辑器可用宽度或条件字段变化",
+        "transitions": ["Flex 计算字段首选宽度", "空间不足时自动换行"],
+        "output": "桌面 3 至 4 项优先排列或窄屏单列排列"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "可用宽度不足以容纳当前行字段",
+      "behavior": "字段自动换到下一行且不裁剪内容",
+      "recovery": "用户继续在内部滚动区域填写"
+    },
+    {
+      "condition": "长标签或长选择值占用额外宽度",
+      "behavior": "字段保持最小可读宽度并允许容器换行",
+      "recovery": "不缩小字号或产生页面级横向滚动"
+    },
+    {
+      "condition": "手机视口触发响应式断点",
+      "behavior": "字段项和输入控件恢复满宽单列",
+      "recovery": "沿用修订 2 的内部滚动边界"
+    }
+  ],
+  "quality_attributes": {
+    "security": ["认证、RBAC、租户和实体授权不变"],
+    "performance": ["不增加数据请求、监听器或渲染字段数量"],
+    "compatibility": ["请求、字段、计算和校验不变", "沿用现有桌面与手机断点"],
+    "operations": ["无迁移和配置变化", "回退修订 3 的两个局部前端改动即可"]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": ["R13"],
+      "signal": "桌面容量字段按类型紧凑排列并自然换行",
+      "method": "1920x1080、1280x800 明暗主题检查计算样式、每行数量、摘要整行、内部滚动和 footer"
+    },
+    {
+      "requirement_ids": ["R13"],
+      "signal": "手机容量字段单列满宽且无页面级溢出",
+      "method": "375x812、390x844、430x932 检查根宽、字段宽度、数字输入和内容可达性"
+    },
+    {
+      "requirement_ids": ["R13"],
+      "signal": "前两轮业务和布局行为无回归",
+      "method": "执行构建、scope、diff、治理和真实浏览器 DB/非 DB、有边车、计算、校验、新建/编辑请求回归"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "当前编辑器在宽桌面下可容纳 3 至 4 个按类型设置首选宽度的字段。",
+      "basis": "用户 UAT 截图显示容量区宽度充足且固定两列存在明显空白",
+      "falsifier": "真实浏览器计算宽度只能稳定容纳两项"
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "D9",
+      "decision": "容量与部署区域采用字段项 Flex 自适应换行，桌面每行尽量展示 3 至 4 项。",
+      "reason": "减少固定两列空白并适应不同编辑器宽度",
+      "source": "用户于 2026-09-03 回复‘是的’"
+    },
+    {
+      "id": "D10",
+      "decision": "选择、数值、布尔和摘要字段使用不同的首选宽度。",
+      "reason": "字段内容密度不同，需要在可读性和单屏信息量之间平衡",
+      "source": "用户确认推荐方案"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Element Plus 表单项默认宽度覆盖 flex basis",
+      "impact": "字段仍表现为固定两列或异常换行",
+      "mitigation": "使用容量区专用选择器并在真实浏览器中检查计算宽度"
+    },
+    {
+      "risk": "条件字段或长标签使每行数量波动",
+      "impact": "局部出现空白或标签拥挤",
+      "mitigation": "允许自然换行并设置按字段类型区分的最小宽度"
+    },
+    {
+      "risk": "移动端继承桌面 basis",
+      "impact": "出现横向溢出或输入过窄",
+      "mitigation": "在既有手机断点显式覆盖字段项和控件为满宽"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户于 2026-09-03 回复‘可以’，批准资源申请表单容量与部署 Flex 布局设计修订 3。",
+    "confirmed_at": "2026-09-03T14:54:55+08:00"
+  }
+}

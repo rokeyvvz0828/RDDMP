@@ -6,6 +6,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.datamigration.service.ProjectComponentService;
 import com.ccb.security.model.AuthUser;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/data-migration")
-@PreAuthorize("hasAnyAuthority('data-migration:access','data-migration:write','data-migration:manage','system:admin','data-migration:dashboard','data-migration:components')")
+@PreAuthorize("hasAnyAuthority('data-migration:access','data-migration:write','data-migration:manage','system:admin','data-migration:dashboard','data-migration:components',)")
 public class ProjectComponentController {
     private final ProjectComponentService service;
     public ProjectComponentController(ProjectComponentService service) { this.service = service; }
@@ -52,6 +53,7 @@ public class ProjectComponentController {
                 .body(bytes);
     }
     @PostMapping("/components") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> createComponent(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.createComponent(body, user), TraceId.getOrCreate()); }
-    @PutMapping("/components/{id}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> updateComponent(@PathVariable long id, @RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.updateComponent(id, body, user), TraceId.getOrCreate()); }
-    @DeleteMapping("/components/{id}") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Void> deleteComponent(@PathVariable long id, @AuthenticationPrincipal AuthUser user) { service.deleteComponent(id, user); return ApiResponse.success(null, TraceId.getOrCreate()); }
+    @PutMapping("/components") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> updateComponent(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.updateComponent(body, user), TraceId.getOrCreate()); }
+    @DeleteMapping("/components") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Void> deleteComponent(@RequestParam long projectId, @RequestParam String systemCode, @AuthenticationPrincipal AuthUser user) { service.deleteComponent(projectId, systemCode, user); return ApiResponse.success(null, TraceId.getOrCreate()); }
+    @PutMapping("/components/enabled") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> setEnabled(@RequestParam long projectId, @RequestParam String systemCode, @RequestParam boolean enabled, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.setEnabled(projectId, systemCode, enabled, user), TraceId.getOrCreate()); }
 }

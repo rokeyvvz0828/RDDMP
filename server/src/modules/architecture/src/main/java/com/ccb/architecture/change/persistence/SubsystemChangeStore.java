@@ -22,6 +22,7 @@ public class SubsystemChangeStore {
             new ChangeApplication(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     TargetKind.fromDatabase(rs.getString("target_kind")),
                     ActionType.fromDatabase(rs.getString("action_type")),
                     nullableLong(rs, "target_id"),
@@ -40,41 +41,20 @@ public class SubsystemChangeStore {
                     localDateTime(rs.getTimestamp("created_at")),
                     localDateTime(rs.getTimestamp("updated_at")));
 
-    private static final RowMapper<LogicalDraft> LOGICAL_DRAFT_MAPPER = (rs, rowNum) ->
-            new LogicalDraft(
-                    rs.getLong("application_id"),
-                    rs.getLong("tenant_id"),
-                    nullableLong(rs, "source_logical_subsystem_id"),
-                    rs.getString("short_name"),
-                    rs.getString("name"),
-                    rs.getLong("business_org_id"),
-                    rs.getString("deployment_platform_code"),
-                    rs.getString("system_type_code"),
-                    rs.getString("system_ownership_code"),
-                    rs.getLong("contact_user_id"),
-                    rs.getString("description"),
-                    rs.getString("remark"),
-                    rs.getInt("sort_no"),
-                    nullableInteger(rs.getObject("reserved_number_sequence")),
-                    nullableLong(rs, "source_row_version"),
-                    rs.getInt("draft_revision"),
-                    rs.getString("submitted_snapshot_json"),
-                    localDateTime(rs.getTimestamp("created_at")),
-                    localDateTime(rs.getTimestamp("updated_at")));
-
     private static final RowMapper<PhysicalDraft> PHYSICAL_DRAFT_MAPPER = (rs, rowNum) ->
             new PhysicalDraft(
                     rs.getLong("application_id"),
                     rs.getInt("line_no"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     nullableLong(rs, "source_physical_subsystem_id"),
-                    nullableLong(rs, "target_logical_subsystem_id"),
+                    rs.getString("code"),
                     rs.getString("short_name"),
                     rs.getString("name"),
+                    rs.getString("logical_subsystem_name"),
+                    rs.getString("business_component_code"),
                     rs.getString("english_name"),
                     rs.getString("business_group_name"),
-                    rs.getString("business_continuity_level"),
-                    rs.getString("collected_system_level"),
                     rs.getString("deployment_platform"),
                     rs.getString("disaster_recovery_mode"),
                     rs.getLong("responsible_team_org_id"),
@@ -85,17 +65,19 @@ public class SubsystemChangeStore {
                     nullableLong(rs, "owner_user_id"),
                     rs.getString("description"),
                     rs.getString("remark"),
-                    rs.getString("reserved_number_slot"),
                     nullableLong(rs, "source_row_version"),
                     rs.getInt("draft_revision"),
                     rs.getString("submitted_snapshot_json"),
                     localDateTime(rs.getTimestamp("created_at")),
-                    localDateTime(rs.getTimestamp("updated_at")));
+                    localDateTime(rs.getTimestamp("updated_at")),
+                    rs.getString("security_node_no"),
+                    rs.getString("file_transfer_node_no"));
 
     private static final RowMapper<ChangeHistoryEvent> HISTORY_MAPPER = (rs, rowNum) ->
             new ChangeHistoryEvent(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("application_id"),
                     rs.getString("event_type"),
                     nullableApplicationStatus(rs, "from_status"),
@@ -111,6 +93,7 @@ public class SubsystemChangeStore {
             new WorkflowRound(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("application_id"),
                     rs.getInt("round_no"),
                     nullableLong(rs, "workflow_definition_id"),
@@ -127,6 +110,7 @@ public class SubsystemChangeStore {
             new WorkflowReceipt(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("event_id"),
                     rs.getString("subscriber_key"),
                     nullableLong(rs, "application_id"),
@@ -141,6 +125,7 @@ public class SubsystemChangeStore {
     private static final RowMapper<TargetLock> TARGET_LOCK_MAPPER = (rs, rowNum) ->
             new TargetLock(
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     TargetKind.fromDatabase(rs.getString("target_kind")),
                     rs.getLong("target_id"),
                     rs.getLong("application_id"),
@@ -149,6 +134,7 @@ public class SubsystemChangeStore {
     private static final RowMapper<ValueReservation> VALUE_RESERVATION_MAPPER = (rs, rowNum) ->
             new ValueReservation(
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("reservation_scope"),
                     rs.getString("normalized_value"),
                     rs.getLong("application_id"),
@@ -159,67 +145,50 @@ public class SubsystemChangeStore {
             new PhysicalReplacement(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getLong("old_physical_subsystem_id"),
                     rs.getLong("new_physical_subsystem_id"),
                     rs.getLong("application_id"),
                     localDateTime(rs.getTimestamp("approved_at")));
 
-    private static final RowMapper<LogicalPublishedState> LOGICAL_MAPPER = (rs, rowNum) ->
-            new LogicalPublishedState(
-                    rs.getLong("id"),
-                    rs.getLong("tenant_id"),
-                    rs.getString("code"),
-                    nullableInteger(rs.getObject("number_sequence")),
-                    PublishedStatus.fromDatabase(rs.getString("status")),
-                    rs.getInt("sort_no"),
-                    rs.getLong("row_version"),
-                    rs.getBoolean("deleted"));
-
     private static final RowMapper<PhysicalPublishedState> PHYSICAL_MAPPER = (rs, rowNum) ->
             new PhysicalPublishedState(
                     rs.getLong("id"),
                     rs.getLong("tenant_id"),
+                    rs.getLong("project_id"),
                     rs.getString("code"),
-                    rs.getString("number_slot"),
-                    rs.getLong("logical_subsystem_id"),
+                    rs.getString("logical_subsystem_name"),
+                    rs.getString("business_component_code"),
                     rs.getString("english_name"),
                     PublishedStatus.fromDatabase(rs.getString("status")),
                     rs.getLong("row_version"),
                     rs.getBoolean("deleted"));
 
-    private static final String LOGICAL_COLUMNS = """
-            id, tenant_id, code, number_sequence, status, sort_no, row_version, deleted
-            """;
     private static final String PHYSICAL_COLUMNS = """
-            id, tenant_id, code, number_slot, logical_subsystem_id, english_name,
+            id, tenant_id, project_id, code, logical_subsystem_name, business_component_code, english_name,
             status, row_version, deleted
             """;
     private static final String APPLICATION_COLUMNS = """
-            id, tenant_id, target_kind, action_type, target_id, applicant_id, reason, status,
+            id, tenant_id, project_id, target_kind, action_type, target_id, applicant_id, reason, status,
             current_business_round, current_workflow_definition_id, current_workflow_version_id,
             current_workflow_instance_id, current_payload_digest, cancellation_requested, row_version,
             created_by, updated_by, created_at, updated_at
             """;
     private static final String WORKFLOW_ROUND_COLUMNS = """
-            id, tenant_id, application_id, round_no, workflow_definition_id, workflow_version_id,
+            id, tenant_id, project_id, application_id, round_no, workflow_definition_id, workflow_version_id,
             workflow_instance_id, payload_digest, status, started_at, ended_at, created_at, updated_at
             """;
     private static final String WORKFLOW_RECEIPT_COLUMNS = """
-            id, tenant_id, event_id, subscriber_key, application_id, round_no, workflow_instance_id,
+            id, tenant_id, project_id, event_id, subscriber_key, application_id, round_no, workflow_instance_id,
             event_type, processing_status, detail, received_at, processed_at
             """;
-    private static final String LOGICAL_DRAFT_COLUMNS = """
-            application_id, tenant_id, source_logical_subsystem_id, short_name, name, business_org_id,
-            deployment_platform_code, system_type_code, system_ownership_code, contact_user_id,
-            description, remark, sort_no, reserved_number_sequence, source_row_version, draft_revision,
-            submitted_snapshot_json, created_at, updated_at
-            """;
     private static final String PHYSICAL_DRAFT_COLUMNS = """
-            application_id, line_no, tenant_id, source_physical_subsystem_id, target_logical_subsystem_id,
-            short_name, name, english_name, business_group_name, responsible_team_org_id,
-            business_continuity_level, collected_system_level, deployment_platform, disaster_recovery_mode,
+            application_id, line_no, tenant_id, project_id, source_physical_subsystem_id, code,
+            short_name, name, logical_subsystem_name, business_component_code, english_name,
+            business_group_name, responsible_team_org_id,
+            deployment_platform, disaster_recovery_mode,
             responsible_team_name_snapshot, runtime_code, system_level_code, development_framework_code,
-            owner_user_id, description, remark, reserved_number_slot, source_row_version, draft_revision,
+            owner_user_id, description, remark, security_node_no, file_transfer_node_no, source_row_version, draft_revision,
             submitted_snapshot_json, created_at, updated_at
             """;
 
@@ -235,13 +204,14 @@ public class SubsystemChangeStore {
         Objects.requireNonNull(application, "application 不能为空");
         jdbc.update("""
                         INSERT INTO arch_subsystem_change_application
-                            (id, tenant_id, target_kind, action_type, target_id, applicant_id, reason, status,
+                            (id, tenant_id, project_id, target_kind, action_type, target_id, applicant_id, reason, status,
                              current_business_round, current_workflow_definition_id, current_workflow_version_id,
                              current_workflow_instance_id, current_payload_digest, cancellation_requested,
                              row_version, created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                application.id(), application.tenantId(), application.targetKind().name(), application.actionType().name(),
+                application.id(), application.tenantId(), application.projectId(), application.targetKind().name(),
+                application.actionType().name(),
                 application.targetId(), application.applicantId(), application.reason(), application.status().name(),
                 application.currentBusinessRound(), application.currentWorkflowDefinitionId(),
                 application.currentWorkflowVersionId(), application.currentWorkflowInstanceId(),
@@ -249,22 +219,23 @@ public class SubsystemChangeStore {
                 application.createdBy(), application.updatedBy());
     }
 
-    public Optional<ChangeApplication> findApplication(long tenantId, long applicationId) {
+    public Optional<ChangeApplication> findApplication(long tenantId, long projectId, long applicationId) {
         return jdbc.query("SELECT " + APPLICATION_COLUMNS + " FROM arch_subsystem_change_application "
-                        + "WHERE tenant_id = ? AND id = ?",
-                APPLICATION_MAPPER, tenantId, applicationId).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ?",
+                APPLICATION_MAPPER, tenantId, projectId, applicationId).stream().findFirst();
     }
 
     /** applicantId/status 为空时不附加对应筛选，仍始终由 tenantId 隔离。 */
-    public List<ChangeApplication> listApplications(long tenantId, Long applicantId,
+    public List<ChangeApplication> listApplications(long tenantId, long projectId, Long applicantId,
                                                     ApplicationStatus status, int limit, int offset) {
         if (limit <= 0 || offset < 0) {
             throw new IllegalArgumentException("分页参数无效");
         }
         StringBuilder sql = new StringBuilder("SELECT ").append(APPLICATION_COLUMNS)
-                .append(" FROM arch_subsystem_change_application WHERE tenant_id = ?");
+                .append(" FROM arch_subsystem_change_application WHERE tenant_id = ? AND project_id = ?");
         List<Object> arguments = new ArrayList<>();
         arguments.add(tenantId);
+        arguments.add(projectId);
         if (applicantId != null) {
             sql.append(" AND applicant_id = ?");
             arguments.add(applicantId);
@@ -279,15 +250,15 @@ public class SubsystemChangeStore {
         return jdbc.query(sql.toString(), APPLICATION_MAPPER, arguments.toArray());
     }
 
-    public Optional<ChangeApplication> lockApplication(long tenantId, long applicationId) {
+    public Optional<ChangeApplication> lockApplication(long tenantId, long projectId, long applicationId) {
         requireTransaction();
         return jdbc.query("SELECT " + APPLICATION_COLUMNS + " FROM arch_subsystem_change_application "
-                        + "WHERE tenant_id = ? AND id = ? FOR UPDATE",
-                APPLICATION_MAPPER, tenantId, applicationId).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ? FOR UPDATE",
+                APPLICATION_MAPPER, tenantId, projectId, applicationId).stream().findFirst();
     }
 
     /** 仅以状态和行版本作为 CAS 条件；允许的状态图由 service 决定。 */
-    public boolean compareAndSetApplicationStatus(long tenantId, long applicationId,
+    public boolean compareAndSetApplicationStatus(long tenantId, long projectId, long applicationId,
                                                   ApplicationStatus expectedStatus, long expectedRowVersion,
                                                   ApplicationStatus nextStatus, long updatedBy) {
         requireTransaction();
@@ -296,8 +267,8 @@ public class SubsystemChangeStore {
         return jdbc.update("""
                         UPDATE arch_subsystem_change_application
                         SET status = ?, row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                        """, nextStatus.name(), updatedBy, tenantId, applicationId,
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                        """, nextStatus.name(), updatedBy, tenantId, projectId, applicationId,
                 expectedStatus.name(), expectedRowVersion) == 1;
     }
 
@@ -305,7 +276,7 @@ public class SubsystemChangeStore {
      * 在状态不变的前提下更新申请级可编辑元数据；草稿业务明细仍由对应 draft 表维护。
      * 调用方只能在 DRAFT/RETURNED 等可编辑状态传入相同的 expectedStatus，并以行版本防止覆盖并发编辑。
      */
-    public boolean compareAndSetApplicationReason(long tenantId, long applicationId,
+    public boolean compareAndSetApplicationReason(long tenantId, long projectId, long applicationId,
                                                   ApplicationStatus expectedStatus, long expectedRowVersion,
                                                   String reason, long updatedBy) {
         requireTransaction();
@@ -313,8 +284,8 @@ public class SubsystemChangeStore {
         return jdbc.update("""
                         UPDATE arch_subsystem_change_application
                         SET reason = ?, row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND status = ? AND row_version = ?
-                """, reason, updatedBy, tenantId, applicationId,
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = ? AND row_version = ?
+                """, reason, updatedBy, tenantId, projectId, applicationId,
                 expectedStatus.name(), expectedRowVersion) == 1;
     }
 
@@ -322,7 +293,7 @@ public class SubsystemChangeStore {
      * 在提交流程启动成功后，原子写入当前轮次和工作流上下文。
      * 旧轮次、行版本与 IN_REVIEW 状态均不匹配时不得覆盖较新的提交。
      */
-    public boolean compareAndSetApplicationWorkflowContext(long tenantId, long applicationId,
+    public boolean compareAndSetApplicationWorkflowContext(long tenantId, long projectId, long applicationId,
                                                            int expectedCurrentBusinessRound,
                                                            long expectedRowVersion, int nextBusinessRound,
                                                            long workflowDefinitionId, long workflowVersionId,
@@ -347,15 +318,15 @@ public class SubsystemChangeStore {
                             current_workflow_version_id = ?, current_workflow_instance_id = ?,
                             current_payload_digest = ?, cancellation_requested = 0,
                             row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND status = 'IN_REVIEW'
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'IN_REVIEW'
                           AND current_business_round = ? AND row_version = ?
                         """, nextBusinessRound, workflowDefinitionId, workflowVersionId, workflowInstanceId,
-                payloadDigest, updatedBy, tenantId, applicationId, expectedCurrentBusinessRound,
+                payloadDigest, updatedBy, tenantId, projectId, applicationId, expectedCurrentBusinessRound,
                 expectedRowVersion) == 1;
     }
 
     /** 审批中取消只登记请求，需等待匹配实例的 TERMINATED 生命周期事件确认。 */
-    public boolean compareAndSetCancellationRequested(long tenantId, long applicationId,
+    public boolean compareAndSetCancellationRequested(long tenantId, long projectId, long applicationId,
                                                       long expectedRowVersion, long expectedInstanceId,
                                                       long actorId) {
         requireTransaction();
@@ -367,70 +338,34 @@ public class SubsystemChangeStore {
         return jdbc.update("""
                         UPDATE arch_subsystem_change_application
                         SET cancellation_requested = 1, row_version = row_version + 1, updated_by = ?
-                        WHERE tenant_id = ? AND id = ? AND status = 'IN_REVIEW'
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND status = 'IN_REVIEW'
                           AND current_workflow_instance_id = ? AND row_version = ?
                           AND cancellation_requested = 0
-                        """, actorId, tenantId, applicationId, expectedInstanceId, expectedRowVersion) == 1;
+                        """, actorId, tenantId, projectId, applicationId, expectedInstanceId, expectedRowVersion) == 1;
     }
 
-    /** 以整行替换逻辑草稿，提交快照和草稿版本由调用方维护。 */
-    public void replaceLogicalDraft(LogicalDraft draft) {
-        requireTransaction();
-        Objects.requireNonNull(draft, "draft 不能为空");
-        jdbc.update("""
-                        INSERT INTO arch_subsystem_logical_draft
-                            (application_id, tenant_id, source_logical_subsystem_id, short_name, name, business_org_id,
-                             deployment_platform_code, system_type_code, system_ownership_code, contact_user_id,
-                             description, remark, sort_no, reserved_number_sequence, source_row_version,
-                             draft_revision, submitted_snapshot_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                            source_logical_subsystem_id = VALUES(source_logical_subsystem_id),
-                            short_name = VALUES(short_name), name = VALUES(name),
-                            business_org_id = VALUES(business_org_id),
-                            deployment_platform_code = VALUES(deployment_platform_code),
-                            system_type_code = VALUES(system_type_code),
-                            system_ownership_code = VALUES(system_ownership_code),
-                            contact_user_id = VALUES(contact_user_id), description = VALUES(description),
-                            remark = VALUES(remark), sort_no = VALUES(sort_no),
-                            reserved_number_sequence = VALUES(reserved_number_sequence),
-                            source_row_version = VALUES(source_row_version),
-                            draft_revision = VALUES(draft_revision),
-                            submitted_snapshot_json = VALUES(submitted_snapshot_json)
-                        """,
-                draft.applicationId(), draft.tenantId(), draft.sourceLogicalSubsystemId(), draft.shortName(),
-                draft.name(), draft.businessOrgId(), draft.deploymentPlatformCode(), draft.systemTypeCode(),
-                draft.systemOwnershipCode(), draft.contactUserId(), draft.description(), draft.remark(),
-                draft.sortNo(), draft.reservedNumberSequence(), draft.sourceRowVersion(), draft.draftRevision(),
-                draft.submittedSnapshotJson());
-    }
-
-    public Optional<LogicalDraft> findLogicalDraft(long tenantId, long applicationId) {
-        return jdbc.query("SELECT " + LOGICAL_DRAFT_COLUMNS + " FROM arch_subsystem_logical_draft "
-                        + "WHERE tenant_id = ? AND application_id = ?",
-                LOGICAL_DRAFT_MAPPER, tenantId, applicationId).stream().findFirst();
-    }
-
-    /** 整批替换物理草稿；空集合表示该逻辑新增申请没有物理草稿。 */
-    public void replacePhysicalDrafts(long tenantId, long applicationId, List<PhysicalDraft> drafts) {
+    /** 整批替换物理草稿；子系统变更申请退役逻辑草稿后始终以物理草稿为业务明细。 */
+    public void replacePhysicalDrafts(long tenantId, long projectId, long applicationId, List<PhysicalDraft> drafts) {
         requireTransaction();
         Objects.requireNonNull(drafts, "drafts 不能为空");
         for (PhysicalDraft draft : drafts) {
-            if (draft == null || draft.tenantId() != tenantId || draft.applicationId() != applicationId) {
-                throw new IllegalArgumentException("物理草稿与目标租户或申请不一致");
+            if (draft == null || draft.tenantId() != tenantId || draft.projectId() != projectId
+                    || draft.applicationId() != applicationId) {
+                throw new IllegalArgumentException("物理草稿与目标租户、项目或申请不一致");
             }
         }
-        jdbc.update("DELETE FROM arch_subsystem_physical_draft WHERE tenant_id = ? AND application_id = ?",
-                tenantId, applicationId);
+        jdbc.update("DELETE FROM arch_subsystem_physical_draft "
+                        + "WHERE tenant_id = ? AND project_id = ? AND application_id = ?",
+                tenantId, projectId, applicationId);
         for (PhysicalDraft draft : drafts) {
             insertPhysicalDraft(draft);
         }
     }
 
-    public List<PhysicalDraft> findPhysicalDrafts(long tenantId, long applicationId) {
+    public List<PhysicalDraft> findPhysicalDrafts(long tenantId, long projectId, long applicationId) {
         return jdbc.query("SELECT " + PHYSICAL_DRAFT_COLUMNS + " FROM arch_subsystem_physical_draft "
-                        + "WHERE tenant_id = ? AND application_id = ? ORDER BY line_no ASC",
-                PHYSICAL_DRAFT_MAPPER, tenantId, applicationId);
+                        + "WHERE tenant_id = ? AND project_id = ? AND application_id = ? ORDER BY line_no ASC",
+                PHYSICAL_DRAFT_MAPPER, tenantId, projectId, applicationId);
     }
 
     public void insertHistory(ChangeHistoryEvent event) {
@@ -438,24 +373,24 @@ public class SubsystemChangeStore {
         Objects.requireNonNull(event, "event 不能为空");
         jdbc.update("""
                         INSERT INTO arch_subsystem_change_history
-                            (id, tenant_id, application_id, event_type, from_status, to_status, business_round,
+                            (id, tenant_id, project_id, application_id, event_type, from_status, to_status, business_round,
                              summary, snapshot_json, diff_json, operator_id, occurred_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, event.id(), event.tenantId(), event.applicationId(), event.eventType(),
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, event.id(), event.tenantId(), event.projectId(), event.applicationId(), event.eventType(),
                 event.fromStatus() == null ? null : event.fromStatus().name(),
                 event.toStatus() == null ? null : event.toStatus().name(), event.businessRound(), event.summary(),
                 event.snapshotJson(), event.diffJson(), event.operatorId(), timestamp(event.occurredAt()));
     }
 
     /** occurred_at 相同的事件按 id 升序返回，避免数据库时间精度造成非稳定顺序。 */
-    public List<ChangeHistoryEvent> listHistory(long tenantId, long applicationId) {
+    public List<ChangeHistoryEvent> listHistory(long tenantId, long projectId, long applicationId) {
         return jdbc.query("""
-                        SELECT id, tenant_id, application_id, event_type, from_status, to_status, business_round,
+                        SELECT id, tenant_id, project_id, application_id, event_type, from_status, to_status, business_round,
                                summary, snapshot_json, diff_json, operator_id, occurred_at
                         FROM arch_subsystem_change_history
-                        WHERE tenant_id = ? AND application_id = ?
+                        WHERE tenant_id = ? AND project_id = ? AND application_id = ?
                         ORDER BY occurred_at ASC, id ASC
-                        """, HISTORY_MAPPER, tenantId, applicationId);
+                        """, HISTORY_MAPPER, tenantId, projectId, applicationId);
     }
 
     /**
@@ -476,44 +411,44 @@ public class SubsystemChangeStore {
         }
         jdbc.update("""
                         INSERT INTO arch_subsystem_workflow_round
-                            (id, tenant_id, application_id, round_no, status)
-                        VALUES (?, ?, ?, ?, ?)
-                        """, round.id(), round.tenantId(), round.applicationId(), round.roundNo(),
+                            (id, tenant_id, project_id, application_id, round_no, status)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, round.id(), round.tenantId(), round.projectId(), round.applicationId(), round.roundNo(),
                 WorkflowRoundStatus.PENDING.name());
     }
 
-    public Optional<WorkflowRound> findWorkflowRound(long tenantId, long applicationId, int roundNo) {
+    public Optional<WorkflowRound> findWorkflowRound(long tenantId, long projectId, long applicationId, int roundNo) {
         requirePositive(tenantId, "租户编号");
         requirePositive(applicationId, "工单编号");
         requirePositive(roundNo, "工作流轮次");
         return jdbc.query("SELECT " + WORKFLOW_ROUND_COLUMNS + " FROM arch_subsystem_workflow_round "
-                        + "WHERE tenant_id = ? AND application_id = ? AND round_no = ?",
-                WORKFLOW_ROUND_MAPPER, tenantId, applicationId, roundNo).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND application_id = ? AND round_no = ?",
+                WORKFLOW_ROUND_MAPPER, tenantId, projectId, applicationId, roundNo).stream().findFirst();
     }
 
     /** 生命周期消费者按业务键和轮次加锁，避免同一轮次并发完成。 */
-    public Optional<WorkflowRound> lockWorkflowRound(long tenantId, long applicationId, int roundNo) {
+    public Optional<WorkflowRound> lockWorkflowRound(long tenantId, long projectId, long applicationId, int roundNo) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
         requirePositive(applicationId, "工单编号");
         requirePositive(roundNo, "工作流轮次");
         return jdbc.query("SELECT " + WORKFLOW_ROUND_COLUMNS + " FROM arch_subsystem_workflow_round "
-                        + "WHERE tenant_id = ? AND application_id = ? AND round_no = ? FOR UPDATE",
-                WORKFLOW_ROUND_MAPPER, tenantId, applicationId, roundNo).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND application_id = ? AND round_no = ? FOR UPDATE",
+                WORKFLOW_ROUND_MAPPER, tenantId, projectId, applicationId, roundNo).stream().findFirst();
     }
 
     /** 生命周期消费者按平台实例加锁，tenantId 始终是查询条件的一部分。 */
-    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long workflowInstanceId) {
+    public Optional<WorkflowRound> lockWorkflowRoundByInstance(long tenantId, long projectId, long workflowInstanceId) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
         requirePositive(workflowInstanceId, "工作流实例编号");
         return jdbc.query("SELECT " + WORKFLOW_ROUND_COLUMNS + " FROM arch_subsystem_workflow_round "
-                        + "WHERE tenant_id = ? AND workflow_instance_id = ? FOR UPDATE",
-                WORKFLOW_ROUND_MAPPER, tenantId, workflowInstanceId).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND workflow_instance_id = ? FOR UPDATE",
+                WORKFLOW_ROUND_MAPPER, tenantId, projectId, workflowInstanceId).stream().findFirst();
     }
 
     /** 轮次号存在且没有更高轮次时返回 true；该只读判断由调用方的 application/round 锁配合使用。 */
-    public boolean isLatestWorkflowRound(long tenantId, long applicationId, int roundNo) {
+    public boolean isLatestWorkflowRound(long tenantId, long projectId, long applicationId, int roundNo) {
         requirePositive(tenantId, "租户编号");
         requirePositive(applicationId, "工单编号");
         requirePositive(roundNo, "工作流轮次");
@@ -521,21 +456,23 @@ public class SubsystemChangeStore {
                         SELECT COUNT(*)
                         FROM arch_subsystem_workflow_round current_round
                         WHERE current_round.tenant_id = ?
+                          AND current_round.project_id = ?
                           AND current_round.application_id = ?
                           AND current_round.round_no = ?
                           AND NOT EXISTS (
                               SELECT 1
                               FROM arch_subsystem_workflow_round newer_round
                               WHERE newer_round.tenant_id = current_round.tenant_id
+                                AND newer_round.project_id = current_round.project_id
                                 AND newer_round.application_id = current_round.application_id
                                 AND newer_round.round_no > current_round.round_no
                           )
-                        """, Long.class, tenantId, applicationId, roundNo);
+                        """, Long.class, tenantId, projectId, applicationId, roundNo);
         return count != null && count == 1;
     }
 
     /** PENDING -> STARTED，绑定平台定义、版本、实例和本次提交摘要。 */
-    public boolean bindWorkflowRoundStarted(long tenantId, long applicationId, int roundNo,
+    public boolean bindWorkflowRoundStarted(long tenantId, long projectId, long applicationId, int roundNo,
                                             long workflowDefinitionId, long workflowVersionId,
                                             long workflowInstanceId, String payloadDigest,
                                             LocalDateTime startedAt) {
@@ -552,13 +489,13 @@ public class SubsystemChangeStore {
                         UPDATE arch_subsystem_workflow_round
                         SET workflow_definition_id = ?, workflow_version_id = ?, workflow_instance_id = ?,
                             payload_digest = ?, status = 'STARTED', started_at = ?, ended_at = NULL
-                        WHERE tenant_id = ? AND application_id = ? AND round_no = ? AND status = 'PENDING'
+                        WHERE tenant_id = ? AND project_id = ? AND application_id = ? AND round_no = ? AND status = 'PENDING'
                         """, workflowDefinitionId, workflowVersionId, workflowInstanceId, payloadDigest,
-                timestamp(startedAt), tenantId, applicationId, roundNo) == 1;
+                timestamp(startedAt), tenantId, projectId, applicationId, roundNo) == 1;
     }
 
     /** STARTED 轮次只允许进入业务约定的四种终态。 */
-    public boolean completeStartedWorkflowRound(long tenantId, long applicationId, int roundNo,
+    public boolean completeStartedWorkflowRound(long tenantId, long projectId, long applicationId, int roundNo,
                                                 WorkflowRoundStatus nextStatus, LocalDateTime endedAt) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
@@ -572,8 +509,8 @@ public class SubsystemChangeStore {
         return jdbc.update("""
                         UPDATE arch_subsystem_workflow_round
                         SET status = ?, ended_at = ?
-                        WHERE tenant_id = ? AND application_id = ? AND round_no = ? AND status = 'STARTED'
-                        """, nextStatus.name(), timestamp(endedAt), tenantId, applicationId, roundNo) == 1;
+                        WHERE tenant_id = ? AND project_id = ? AND application_id = ? AND round_no = ? AND status = 'STARTED'
+                        """, nextStatus.name(), timestamp(endedAt), tenantId, projectId, applicationId, roundNo) == 1;
     }
 
     /**
@@ -585,6 +522,7 @@ public class SubsystemChangeStore {
         Objects.requireNonNull(receipt, "工作流回执不能为空");
         requirePositive(receipt.id(), "工作流回执编号");
         requirePositive(receipt.tenantId(), "租户编号");
+        requirePositive(receipt.projectId(), "项目编号");
         requireNonBlank(receipt.eventId(), "事件编号");
         requireNonBlank(receipt.subscriberKey(), "订阅方标识");
         requireNonBlank(receipt.eventType(), "事件类型");
@@ -593,16 +531,16 @@ public class SubsystemChangeStore {
         requireOptionalPositive(receipt.workflowInstanceId(), "工作流实例编号");
         return jdbc.update("""
                         INSERT IGNORE INTO arch_subsystem_workflow_receipt
-                            (id, tenant_id, event_id, subscriber_key, application_id, round_no,
+                            (id, tenant_id, project_id, event_id, subscriber_key, application_id, round_no,
                              workflow_instance_id, event_type, processing_status, detail)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, receipt.id(), receipt.tenantId(), receipt.eventId(), receipt.subscriberKey(),
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, receipt.id(), receipt.tenantId(), receipt.projectId(), receipt.eventId(), receipt.subscriberKey(),
                 receipt.applicationId(), receipt.roundNo(), receipt.workflowInstanceId(), receipt.eventType(),
                 WorkflowReceiptStatus.FAILED.name(), "事务内事件尚未完成") == 1;
     }
 
     /** 仅当前事务创建的 FAILED 占位回执可以写入最终处理结论。 */
-    public boolean completeReceipt(long tenantId, String eventId, String subscriberKey,
+    public boolean completeReceipt(long tenantId, long projectId, String eventId, String subscriberKey,
                                    WorkflowReceiptStatus status, String detail) {
         requireTransaction();
         requirePositive(tenantId, "租户编号");
@@ -612,18 +550,18 @@ public class SubsystemChangeStore {
         return jdbc.update("""
                         UPDATE arch_subsystem_workflow_receipt
                         SET processing_status = ?, detail = ?, processed_at = CURRENT_TIMESTAMP
-                        WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?
+                        WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?
                           AND processing_status = 'FAILED'
-                        """, status.name(), detail, tenantId, eventId, subscriberKey) == 1;
+                        """, status.name(), detail, tenantId, projectId, eventId, subscriberKey) == 1;
     }
 
-    public Optional<WorkflowReceipt> findReceipt(long tenantId, String eventId, String subscriberKey) {
+    public Optional<WorkflowReceipt> findReceipt(long tenantId, long projectId, String eventId, String subscriberKey) {
         requirePositive(tenantId, "租户编号");
         requireNonBlank(eventId, "事件编号");
         requireNonBlank(subscriberKey, "订阅方标识");
         return jdbc.query("SELECT " + WORKFLOW_RECEIPT_COLUMNS + " FROM arch_subsystem_workflow_receipt "
-                        + "WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ?",
-                WORKFLOW_RECEIPT_MAPPER, tenantId, eventId, subscriberKey).stream().findFirst();
+                        + "WHERE tenant_id = ? AND project_id = ? AND event_id = ? AND subscriber_key = ?",
+                WORKFLOW_RECEIPT_MAPPER, tenantId, projectId, eventId, subscriberKey).stream().findFirst();
     }
 
     public void insertTargetLock(TargetLock lock) {
@@ -631,27 +569,27 @@ public class SubsystemChangeStore {
         Objects.requireNonNull(lock, "lock 不能为空");
         jdbc.update("""
                         INSERT INTO arch_subsystem_change_lock
-                            (tenant_id, target_kind, target_id, application_id)
-                        VALUES (?, ?, ?, ?)
-                        """, lock.tenantId(), lock.targetKind().name(), lock.targetId(), lock.applicationId());
+                            (tenant_id, project_id, target_kind, target_id, application_id)
+                        VALUES (?, ?, ?, ?, ?)
+                        """, lock.tenantId(), lock.projectId(), lock.targetKind().name(), lock.targetId(), lock.applicationId());
     }
 
-    public Optional<TargetLock> findTargetLock(long tenantId, TargetKind targetKind, long targetId) {
+    public Optional<TargetLock> findTargetLock(long tenantId, long projectId, TargetKind targetKind, long targetId) {
         Objects.requireNonNull(targetKind, "targetKind 不能为空");
         return jdbc.query("""
-                        SELECT tenant_id, target_kind, target_id, application_id, acquired_at
+                        SELECT tenant_id, project_id, target_kind, target_id, application_id, acquired_at
                         FROM arch_subsystem_change_lock
-                        WHERE tenant_id = ? AND target_kind = ? AND target_id = ?
-                        """, TARGET_LOCK_MAPPER, tenantId, targetKind.name(), targetId).stream().findFirst();
+                        WHERE tenant_id = ? AND project_id = ? AND target_kind = ? AND target_id = ?
+                        """, TARGET_LOCK_MAPPER, tenantId, projectId, targetKind.name(), targetId).stream().findFirst();
     }
 
-    public void deleteTargetLock(long tenantId, TargetKind targetKind, long targetId, long applicationId) {
+    public void deleteTargetLock(long tenantId, long projectId, TargetKind targetKind, long targetId, long applicationId) {
         requireTransaction();
         Objects.requireNonNull(targetKind, "targetKind 不能为空");
         jdbc.update("""
                         DELETE FROM arch_subsystem_change_lock
-                        WHERE tenant_id = ? AND target_kind = ? AND target_id = ? AND application_id = ?
-                        """, tenantId, targetKind.name(), targetId, applicationId);
+                        WHERE tenant_id = ? AND project_id = ? AND target_kind = ? AND target_id = ? AND application_id = ?
+                        """, tenantId, projectId, targetKind.name(), targetId, applicationId);
     }
 
     public void insertValueReservation(ValueReservation reservation) {
@@ -659,26 +597,28 @@ public class SubsystemChangeStore {
         Objects.requireNonNull(reservation, "reservation 不能为空");
         jdbc.update("""
                         INSERT INTO arch_subsystem_value_reservation
-                            (tenant_id, reservation_scope, normalized_value, application_id, line_no)
-                        VALUES (?, ?, ?, ?, ?)
-                        """, reservation.tenantId(), reservation.reservationScope(), reservation.normalizedValue(),
+                            (tenant_id, project_id, reservation_scope, normalized_value, application_id, line_no)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, reservation.tenantId(), reservation.projectId(), reservation.reservationScope(),
+                reservation.normalizedValue(),
                 reservation.applicationId(), reservation.lineNo());
     }
 
-    public Optional<ValueReservation> findValueReservation(long tenantId, String reservationScope,
+    public Optional<ValueReservation> findValueReservation(long tenantId, long projectId, String reservationScope,
                                                            String normalizedValue) {
         return jdbc.query("""
-                        SELECT tenant_id, reservation_scope, normalized_value, application_id, line_no, reserved_at
+                        SELECT tenant_id, project_id, reservation_scope, normalized_value, application_id, line_no, reserved_at
                         FROM arch_subsystem_value_reservation
-                        WHERE tenant_id = ? AND reservation_scope = ? AND normalized_value = ?
-                        """, VALUE_RESERVATION_MAPPER, tenantId, reservationScope, normalizedValue)
+                        WHERE tenant_id = ? AND project_id = ? AND reservation_scope = ? AND normalized_value = ?
+                        """, VALUE_RESERVATION_MAPPER, tenantId, projectId, reservationScope, normalizedValue)
                 .stream().findFirst();
     }
 
-    public void deleteValueReservations(long tenantId, long applicationId) {
+    public void deleteValueReservations(long tenantId, long projectId, long applicationId) {
         requireTransaction();
-        jdbc.update("DELETE FROM arch_subsystem_value_reservation WHERE tenant_id = ? AND application_id = ?",
-                tenantId, applicationId);
+        jdbc.update("DELETE FROM arch_subsystem_value_reservation "
+                        + "WHERE tenant_id = ? AND project_id = ? AND application_id = ?",
+                tenantId, projectId, applicationId);
     }
 
     public void insertPhysicalReplacement(PhysicalReplacement replacement) {
@@ -686,181 +626,159 @@ public class SubsystemChangeStore {
         Objects.requireNonNull(replacement, "replacement 不能为空");
         jdbc.update("""
                         INSERT INTO arch_subsystem_replacement
-                            (id, tenant_id, old_physical_subsystem_id, new_physical_subsystem_id, application_id)
-                        VALUES (?, ?, ?, ?, ?)
-                        """, replacement.id(), replacement.tenantId(), replacement.oldPhysicalSubsystemId(),
+                            (id, tenant_id, project_id, old_physical_subsystem_id, new_physical_subsystem_id, application_id)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, replacement.id(), replacement.tenantId(), replacement.projectId(),
+                replacement.oldPhysicalSubsystemId(),
                 replacement.newPhysicalSubsystemId(), replacement.applicationId());
     }
 
-    public Optional<PhysicalReplacement> findPhysicalReplacementByApplication(long tenantId, long applicationId) {
+    public Optional<PhysicalReplacement> findPhysicalReplacementByApplication(long tenantId, long projectId,
+                                                                               long applicationId) {
         return jdbc.query("""
-                        SELECT id, tenant_id, old_physical_subsystem_id, new_physical_subsystem_id, application_id,
+                        SELECT id, tenant_id, project_id, old_physical_subsystem_id, new_physical_subsystem_id,
+                               application_id,
                                approved_at
                         FROM arch_subsystem_replacement
-                        WHERE tenant_id = ? AND application_id = ?
-                        """, REPLACEMENT_MAPPER, tenantId, applicationId).stream().findFirst();
+                        WHERE tenant_id = ? AND project_id = ? AND application_id = ?
+                        """, REPLACEMENT_MAPPER, tenantId, projectId, applicationId).stream().findFirst();
     }
 
-    public Optional<LogicalPublishedState> findLogical(long tenantId, long id) {
-        return logical(tenantId, id, false);
+    public boolean physicalCodeExists(long tenantId, long projectId, String code, Long excludeId) {
+        return exists("arch_physical_subsystem", "code", tenantId, projectId, code, excludeId);
     }
 
-    public Optional<LogicalPublishedState> lockLogical(long tenantId, long id) {
+    public boolean physicalNameExists(long tenantId, long projectId, String name, Long excludeId) {
+        return exists("arch_physical_subsystem", "name", tenantId, projectId, name, excludeId);
+    }
+
+    public boolean physicalEnglishNameExists(long tenantId, long projectId, String englishName, Long excludeId) {
+        return exists("arch_physical_subsystem", "english_name", tenantId, projectId, englishName, excludeId);
+    }
+
+    public Optional<PhysicalPublishedState> findPhysical(long tenantId, long projectId, long id) {
+        return physical(tenantId, projectId, id, false);
+    }
+
+    public Optional<PhysicalPublishedState> lockPhysical(long tenantId, long projectId, long id) {
         requireTransaction();
-        return logical(tenantId, id, true);
+        return physical(tenantId, projectId, id, true);
     }
 
-    public Optional<PhysicalPublishedState> findPhysical(long tenantId, long id) {
-        return physical(tenantId, id, false);
-    }
-
-    public Optional<PhysicalPublishedState> lockPhysical(long tenantId, long id) {
-        requireTransaction();
-        return physical(tenantId, id, true);
-    }
-
-    /** 从逻辑草稿发布新主记录；编号与状态是否合法由调用方在同一事务中决定。 */
-    public void insertLogicalPublished(long id, long tenantId, String code, Integer numberSequence,
-                                       LogicalDraft draft, PublishedStatus status, long rowVersion, long actorId) {
-        requireTransaction();
-        Objects.requireNonNull(draft, "draft 不能为空");
-        Objects.requireNonNull(status, "status 不能为空");
-        jdbc.update("""
-                        INSERT INTO arch_logical_subsystem
-                            (id, tenant_id, code, number_sequence, short_name, name, business_org_id,
-                             deployment_platform_code, system_type_code, system_ownership_code, contact_user_id,
-                             description, remark, status, sort_no, row_version, created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, id, tenantId, code, numberSequence, draft.shortName(), draft.name(),
-                draft.businessOrgId(), draft.deploymentPlatformCode(), draft.systemTypeCode(),
-                draft.systemOwnershipCode(), draft.contactUserId(), draft.description(), draft.remark(),
-                status.name(), draft.sortNo(), rowVersion, actorId, actorId);
-    }
-
-    /** 不修改逻辑编号、发布状态或行版本以外的字段，CAS 只由 rowVersion 保护。 */
-    public boolean updateLogicalPublishedFields(long tenantId, long id, LogicalDraft draft,
-                                                long expectedRowVersion, long actorId) {
-        requireTransaction();
-        Objects.requireNonNull(draft, "draft 不能为空");
-        return jdbc.update("""
-                        UPDATE arch_logical_subsystem
-                        SET short_name = ?, name = ?, business_org_id = ?, deployment_platform_code = ?,
-                            system_type_code = ?, system_ownership_code = ?, contact_user_id = ?,
-                            description = ?, remark = ?, sort_no = ?, updated_by = ?,
-                            row_version = row_version + 1
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, draft.shortName(), draft.name(), draft.businessOrgId(), draft.deploymentPlatformCode(),
-                draft.systemTypeCode(), draft.systemOwnershipCode(), draft.contactUserId(), draft.description(),
-                draft.remark(), draft.sortNo(), actorId, tenantId, id, expectedRowVersion) == 1;
-    }
-
-    public boolean updateLogicalPublishedStatus(long tenantId, long id, PublishedStatus status,
-                                                long expectedRowVersion, long actorId) {
-        requireTransaction();
-        Objects.requireNonNull(status, "status 不能为空");
-        return jdbc.update("""
-                        UPDATE arch_logical_subsystem
-                        SET status = ?, updated_by = ?, row_version = row_version + 1
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, status.name(), actorId, tenantId, id, expectedRowVersion) == 1;
-    }
-
-    /** 从物理草稿发布新主记录；所属逻辑与槽位由调用方显式给出。 */
-    public void insertPhysicalPublished(long id, long tenantId, String code, String numberSlot,
-                                        long logicalSubsystemId, PhysicalDraft draft, PublishedStatus status,
+    /** 从物理草稿发布新主记录；编号由申请人填写并写入草稿。 */
+    public void insertPhysicalPublished(long id, long tenantId, long projectId, PhysicalDraft draft,
+                                        PublishedStatus status,
                                         long rowVersion, long actorId) {
         requireTransaction();
         Objects.requireNonNull(draft, "draft 不能为空");
         Objects.requireNonNull(status, "status 不能为空");
         jdbc.update("""
                         INSERT INTO arch_physical_subsystem
-                            (id, tenant_id, code, number_slot, short_name, name, logical_subsystem_id,
-                             english_name, business_group_name, business_continuity_level, collected_system_level,
-                             deployment_platform, disaster_recovery_mode, responsible_team_org_id,
+                            (id, tenant_id, project_id, code, short_name, name, logical_subsystem_name, business_component_code,
+                             english_name, business_group_name, deployment_platform, disaster_recovery_mode,
+                             responsible_team_org_id,
                              responsible_team_name_snapshot, runtime_code, system_level_code,
-                             development_framework_code, owner_user_id, description, remark, status, row_version,
+                             development_framework_code, owner_user_id, description, remark,
+                             security_node_no, file_transfer_node_no, status, row_version,
                              created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, id, tenantId, code, numberSlot, draft.shortName(), draft.name(), logicalSubsystemId,
-                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
-                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, id, tenantId, projectId, draft.code(), draft.shortName(), draft.name(),
+                draft.logicalSubsystemName(),
+                draft.businessComponentCode(),
+                draft.englishName(), draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
+                draft.securityNodeNo(), draft.fileTransferNodeNo(),
                 status.name(), rowVersion, actorId, actorId);
     }
 
-    /** 普通字段更新不触及物理记录所属逻辑、编号、状态和行版本。 */
-    public boolean updatePhysicalPublishedFields(long tenantId, long id, PhysicalDraft draft,
+    /** 普通字段更新不触及物理记录编号、状态和行版本。 */
+    public boolean updatePhysicalPublishedFields(long tenantId, long projectId, long id, PhysicalDraft draft,
                                                  long expectedRowVersion, long actorId) {
         requireTransaction();
         Objects.requireNonNull(draft, "draft 不能为空");
         return jdbc.update("""
                         UPDATE arch_physical_subsystem
-                        SET short_name = ?, name = ?, english_name = ?, business_group_name = ?,
-                            business_continuity_level = ?, collected_system_level = ?, deployment_platform = ?,
-                            disaster_recovery_mode = ?, responsible_team_org_id = ?,
+                        SET short_name = ?, name = ?, logical_subsystem_name = ?, business_component_code = ?,
+                            english_name = ?, business_group_name = ?,
+                            deployment_platform = ?, disaster_recovery_mode = ?, responsible_team_org_id = ?,
                             responsible_team_name_snapshot = ?, runtime_code = ?, system_level_code = ?,
                             development_framework_code = ?, owner_user_id = ?, description = ?, remark = ?,
+                            security_node_no = ?, file_transfer_node_no = ?,
                             updated_by = ?, row_version = row_version + 1
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, draft.shortName(), draft.name(), draft.englishName(), draft.businessGroupName(),
-                draft.businessContinuityLevel(), draft.collectedSystemLevel(), draft.deploymentPlatform(),
-                draft.disasterRecoveryMode(), draft.responsibleTeamOrgId(), draft.responsibleTeamNameSnapshot(),
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ?
+                        """, draft.shortName(), draft.name(), draft.logicalSubsystemName(),
+                draft.businessComponentCode(), draft.englishName(), draft.businessGroupName(),
+                draft.deploymentPlatform(), draft.disasterRecoveryMode(), draft.responsibleTeamOrgId(),
+                draft.responsibleTeamNameSnapshot(),
                 draft.runtimeCode(), draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
-                draft.description(), draft.remark(), actorId, tenantId, id, expectedRowVersion) == 1;
+                draft.description(), draft.remark(), draft.securityNodeNo(), draft.fileTransferNodeNo(),
+                actorId, tenantId, projectId, id, expectedRowVersion) == 1;
     }
 
-    public boolean updatePhysicalPublishedStatus(long tenantId, long id, PublishedStatus status,
+    public boolean updatePhysicalPublishedStatus(long tenantId, long projectId, long id, PublishedStatus status,
                                                  long expectedRowVersion, long actorId) {
         requireTransaction();
         Objects.requireNonNull(status, "status 不能为空");
         return jdbc.update("""
                         UPDATE arch_physical_subsystem
                         SET status = ?, updated_by = ?, row_version = row_version + 1
-                        WHERE tenant_id = ? AND id = ? AND row_version = ?
-                        """, status.name(), actorId, tenantId, id, expectedRowVersion) == 1;
+                        WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ?
+                        """, status.name(), actorId, tenantId, projectId, id, expectedRowVersion) == 1;
     }
 
-    private Optional<LogicalPublishedState> logical(long tenantId, long id, boolean forUpdate) {
-        List<LogicalPublishedState> rows = jdbc.query(
-                "SELECT " + LOGICAL_COLUMNS + " FROM arch_logical_subsystem WHERE tenant_id = ? AND id = ?"
-                        + (forUpdate ? " FOR UPDATE" : ""),
-                LOGICAL_MAPPER, tenantId, id);
-        return rows.stream().findFirst();
-    }
-
-    private Optional<PhysicalPublishedState> physical(long tenantId, long id, boolean forUpdate) {
+    private Optional<PhysicalPublishedState> physical(long tenantId, long projectId, long id, boolean forUpdate) {
         List<PhysicalPublishedState> rows = jdbc.query(
-                "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem WHERE tenant_id = ? AND id = ?"
+                "SELECT " + PHYSICAL_COLUMNS + " FROM arch_physical_subsystem "
+                        + "WHERE tenant_id = ? AND project_id = ? AND id = ?"
                         + (forUpdate ? " FOR UPDATE" : ""),
-                PHYSICAL_MAPPER, tenantId, id);
+                PHYSICAL_MAPPER, tenantId, projectId, id);
         return rows.stream().findFirst();
     }
 
     private void insertPhysicalDraft(PhysicalDraft draft) {
         jdbc.update("""
                         INSERT INTO arch_subsystem_physical_draft
-                            (application_id, line_no, tenant_id, source_physical_subsystem_id,
-                             target_logical_subsystem_id, short_name, name, english_name, business_group_name,
-                             business_continuity_level, collected_system_level, deployment_platform,
-                             disaster_recovery_mode, responsible_team_org_id, responsible_team_name_snapshot,
+                            (application_id, line_no, tenant_id, project_id, source_physical_subsystem_id,
+                             code, short_name, name, logical_subsystem_name, business_component_code,
+                             english_name, business_group_name, deployment_platform, disaster_recovery_mode,
+                             responsible_team_org_id, responsible_team_name_snapshot,
                              runtime_code, system_level_code, development_framework_code, owner_user_id, description, remark,
-                             reserved_number_slot, source_row_version, draft_revision, submitted_snapshot_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, draft.applicationId(), draft.lineNo(), draft.tenantId(),
-                draft.sourcePhysicalSubsystemId(), draft.targetLogicalSubsystemId(), draft.shortName(), draft.name(),
-                draft.englishName(), draft.businessGroupName(), draft.businessContinuityLevel(),
-                draft.collectedSystemLevel(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
+                             security_node_no, file_transfer_node_no,
+                             source_row_version, draft_revision, submitted_snapshot_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, draft.applicationId(), draft.lineNo(), draft.tenantId(), draft.projectId(),
+                draft.sourcePhysicalSubsystemId(), draft.code(), draft.shortName(), draft.name(),
+                draft.logicalSubsystemName(), draft.businessComponentCode(), draft.englishName(),
+                draft.businessGroupName(), draft.deploymentPlatform(), draft.disasterRecoveryMode(),
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
-                draft.reservedNumberSlot(), draft.sourceRowVersion(), draft.draftRevision(),
+                draft.securityNodeNo(), draft.fileTransferNodeNo(),
+                draft.sourceRowVersion(), draft.draftRevision(),
                 draft.submittedSnapshotJson());
     }
 
     private static Integer nullableInteger(Object value) {
         return value == null ? null : ((Number) value).intValue();
+    }
+
+    private boolean exists(String table, String column, long tenantId, long projectId, String value, Long excludeId) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String exclude = excludeId == null ? "" : " AND id <> ?";
+        List<Object> arguments = new ArrayList<>(List.of(tenantId, projectId, value));
+        if (excludeId != null) {
+            arguments.add(excludeId);
+        }
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM " + table + " WHERE tenant_id = ? AND project_id = ? AND "
+                        + column + " = ?" + exclude,
+                Long.class,
+                arguments.toArray());
+        return count != null && count > 0;
     }
 
     private static Long nullableLong(ResultSet resultSet, String column) throws SQLException {

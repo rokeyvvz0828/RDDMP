@@ -1,0 +1,19 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "trigger": "继续 REQ-20260831-050 执行：V99 建表脚本在前一会话已写出，本会话补齐受控验证",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V99__data_migration_content_tables.sql", "purpose": "纯 DDL 建 9 张内容表（dm_plan/dm_mapping_doc/dm_dependency/dm_script/dm_topic/dm_release_drill/dm_report/dm_rule/dm_parameter）+ dm_intermediate_table + dm_content_attachment + dm_issue_relation + dm_meeting_system，含生成列活动唯一键、租户前缀索引、中文注释"}
+  ],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "Flyway migration check passed for 91 migration(s) and 1 approved callback(s)"},
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dtest=ContentAssetMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "Tests run: 3, Failures: 0, Errors: 0; V99 applied on disposable MySQL 8.4, dm_plan.active_doc_code and dm_content_attachment.active_attachment_key verified as STORED GENERATED"}
+  ],
+  "invariants_checked": [
+    {"invariant": "V99 纯 DDL 不搬数据", "result": "pass", "evidence": "迁移后断言 dm_plan 行数为 0"},
+    {"invariant": "生成列活动唯一键", "result": "pass", "evidence": "活动编号冲突 INSERT 被拒绝；软删后同编号可重建"},
+    {"invariant": "不修改历史迁移脚本", "result": "pass", "evidence": "git status 仅显示 V99/V100 为新增未跟踪文件"}
+  ],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

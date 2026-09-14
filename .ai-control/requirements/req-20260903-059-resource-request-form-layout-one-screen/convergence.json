@@ -1,0 +1,23 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [{"id": "R14", "result": "pass", "task_ids": ["T9"], "evidence": ["1920 容量字段 3/4/3 且边车三项等分", "计算摘要与容量标题同行", "技术栈三项同行", "1280 内部滚动和三个手机视口无根溢出", "构建、diff、scope 和 Console 检查通过"], "limitations": ["真实后端保存请求未在本轮重复提交"]}],
+  "task_results": [{"id": "T9", "status": "verified", "evidence": ["S-0001 和 S-0002 均为 P0-P3=0", "执行与观察产物完整"]}],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [{"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}, {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}],
+  "regression_checks": [
+    {"check": "前端生产构建", "result": "pass", "evidence": "vue-tsc 和 Vite 构建退出0"},
+    {"check": "边车联动与计算", "result": "pass", "evidence": "开关解除禁用，计算结果 5 CPU、9G、11.11%"},
+    {"check": "五视口布局", "result": "pass", "evidence": "1920、1280、375、390、430 DOM 几何和根宽通过"},
+    {"check": "治理", "result": "partial", "evidence": "模块、Skill、准入通过；全仓 AI control layout 仅存在历史账本基线错误"}
+  ],
+  "invariant_results": [
+    {"invariant": "字段绑定、联动、计算和提交逻辑不变", "result": "pass", "evidence": "产品 diff 仅调整 DOM 顺序和局部类，运行计算通过"},
+    {"invariant": "数据库布局不变", "result": "pass", "evidence": "数据库模板和样式未修改"},
+    {"invariant": "内部滚动、footer 和移动端无溢出", "result": "pass", "evidence": "五视口几何检查通过"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [{"disturbance": "视口宽度变化", "result": "pass", "evidence": "1280 自然换行，三个手机视口单列"}, {"disturbance": "历史治理噪声", "result": "pass", "evidence": "本前缀未出现在治理错误列表，scope 独立通过"}],
+  "residual_risks": ["真实后端保存请求未在本轮重复提交，但提交代码和字段绑定均未修改"],
+  "gate_result": "pass",
+  "route_reason": "R14 由已验证 T9 覆盖，两个连续样本无误差，构建、范围、运行布局和业务联动证据通过"
+}

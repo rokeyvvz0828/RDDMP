@@ -1,0 +1,103 @@
+{
+  "task_id": "T32-r1",
+  "parent_task": "T32",
+  "trigger": "用户对已收敛的 T32 提出负反馈：「pm_project_member 冗余设计了，调用平台侧成员口径」。要求撤销 T32 初版把平台成员判定 SQL 复制进数据迁移模块的有边界让步，改为调用 platform/system 已有的项目可达性公开契约。",
+  "status": "implemented_and_verified",
+  "scope_kind": "backend_authority_refactor",
+  "decision_recorded": "口径唯一化：项目可达性判定不再由 business/data-migration 自行判定，全部委托 com.ccb.system.capability.ProjectWorkflowDirectoryService（公开包，modules.yaml 中 ccb-system 的 public_packages 含 com.ccb.system.capability，data-migration 的 allowed_dependencies 含 platform/system，pom 已依赖 ccb-system，因此零平台改动、零范围扩张）。选接现有公开契约而不是扩 ProjectAccessService（后者只能按 project_code 字符串判定，且扩契约需把 platform/system 文件纳入可写范围并跑平台回归）。副作用（预期收紧，已回写 requirement.md 执行期细化 7）：项目数据范围的豁免角色由「ADMIN/SUPER_ADMIN/DATA_MIGRATION_ADMIN」收敛为平台侧判定的超级管理员；模块内 isAdmin 只继续服务功能权限（RBAC 动作码）与 owner 写权限。错误文案随平台统一：未知项目 400「项目不存在或已删除」（原 400「Project not found」）、非成员 403「无该项目数据访问权限」（原「没有该项目的访问权限」）。",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java",
+      "purpose": "构造器由 (JdbcTemplate) 改为 (JdbcTemplate, ProjectWorkflowDirectoryService)；requireAccessible 删除自身的 SELECT COUNT(*) FROM pm_project ... 判定，改为 projectAccess.requireAccessible(projectId, user) 后原样返回 projectId；新增 accessibleProjectIds(AuthUser) 直通平台契约；requireProject/requireStoredProject 的必填与「恒取库中归属」语义不变（必填判定仍先于任何远程调用与数据库访问）；isAdmin/requireCategoryPermission/requireWrite/requireAdmin 保持模块内 RBAC 口径并补注「不参与项目数据范围判定」。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+      "purpose": "accessibleProjectCount 由「SELECT COUNT(*) FROM pm_project WHERE tenant_id ...」改为 permissions.accessibleProjectIds(user).size()，看板「项目」卡片含义改为当前调用者可访问项目数（与 overall 的 Javadoc 同步）。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java",
+      "purpose": "getProjectOptions 先取平台可访问项目集合，空集直接返回 List.of()，非空时仅在该集合内保留 pm_project 的 id/project_name（项目表只用于取展示名称），不再向无权用户列举全租户项目。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/StubProjectAccess.java（新增）",
+      "purpose": "平台契约的测试替身：支持 ALLOW / PROJECT_NOT_FOUND / NOT_MEMBER 三种裁决、记录被判定过的 projectId、可注入 accessibleProjectIds；其余工作流目录方法（requireAccessible(String)、requireManageable、members、roles、requireMembers、membersForRoles）一律抛 UnsupportedOperationException，作为「业务模块偷偷借用无关能力」的传感器。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationPermissionServiceTest.java",
+      "purpose": "由 6 用例扩到 8 用例并改写断言方向：不再断言「模块查了 pm_project_member」，改为断言委托发生（checkedProjectIds）、未知项目 400、非成员 403、模块 ADMIN 角色不能绕过项目范围、accessibleProjectIds 直通，并新增反向断言「守卫 SQL 中不得出现 pm_project / pm_project_member」；requireWrite 的 owner/管理员语义补测。"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/{ReportServiceTest,IssueServiceTest,IssueMigrationMySqlTest}.java",
+      "purpose": "三处 new DataMigrationPermissionService(jdbc) 同步为 (jdbc, StubProjectAccess.allow())；IssueMigrationMySqlTest 的两个回滚用例本就只测事务与冲突语义，使用放行替身以保持原判定结果。"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260820-031-data-migration-asset-library-v3/requirement.md",
+      "purpose": "D1 决策改写为「必须调用平台侧成员口径、不复制任何 pm_project/pm_project_member SQL，原让步撤销」；执行期细化 7 由「有边界让步登记（需 Owner 复核）」改为「口径来源改为平台契约（T32-r1 撤销让步）」并写明豁免角色收敛与文案变化；契约矩阵 project-options 行与 AC2 括注同步（AC2 明确未做 403 运行时/浏览器取证的原因）。"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "exit": 0,
+      "observed": "BUILD SUCCESS；ccb-data-migration surefire 合计 Tests=61 Failures=0 Errors=0 Skipped=0（DataMigrationPermissionServiceTest 8、RegistrationTest 13、IssueServiceTest 8、ReportServiceTest 5、IssueMigrationMySqlTest 3、ContentAssetMigrationMySqlTest 5、PlanDomainMigrationMySqlTest 1、ContentRecycleBinRegistryTest 7、MeetingRecycleBinSourceTest 5、IssueExcelServiceTest 3、DataMigrationExceptionAdviceTest 3）；同批上游 ccb-system Tests=62 Failures=0（平台代码零改动，作为口径来源的对照回归）。"
+    },
+    {
+      "command": "./backend-dev.sh restart（内部 mvn install -DskipTests 后 spring-boot:run --spring.profiles.active=local）",
+      "exit": 0,
+      "observed": "Started CcbApplication in 4.521s，Tomcat on 8080；ccb-data-migration 与 ccb-system 等 15 个模块 install 成功。守卫新增构造参数能被 Spring 注入，说明平台契约 Bean 在本模块可用（无 NoSuchBeanDefinitionException）。"
+    },
+    {
+      "command": "直连 API 复验（admin 登录取 data.accessToken 后带 Bearer 调用）",
+      "exit": 0,
+      "observed": "GET /api/data-migration/reports?projectId=3001 → 200 code=0；GET ...?projectId=999999 → 400/40000「项目不存在或已删除」（平台文案，证明判定已发生在契约侧）；GET ...?projectId=abc → 400/40000「参数 projectId 非法，必须为数字」（模块 advice 未被破坏）；GET /api/data-migration/dashboard/overall?projectId=3001 → 200 projects=3（超管经平台 accessibleProjectIds 得 3 个项目）；GET /api/data-migration/reports/project-options → 200 返回 3001/3002/3003。注：上一轮把该端点误记为 /reports/projects，真实路由是 /reports/project-options，误打的 URL 由 GlobalExceptionHandler 报 50000 NoResourceFoundException，属探测脚本 URL 错误，不是本模块回归。"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260820-031-.../codex-task-scope.yaml --base origin/main --head HEAD --working-tree",
+      "exit": 0,
+      "observed": "Codex scope check passed for REQ-20260820-031; 141 changed file(s)（140 + 本轮新增测试替身 1，均在 writable_paths 内）。"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit": 1,
+      "observed": "失败项全部来自其他需求账本（req-20260819-034/035 topic mismatch、req-20260827-049 非法账本文件、req-20260901-059 与 req-20260813-030、req-20260822-048 缺验收证据）；grep -E 'data-migration|datamigration' 在本需求输出中 0 命中，模块边界检查未报新增越界依赖（com.ccb.system.capability 属公开包）。"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit": null,
+      "observed": "本轮未执行：T32-r1 零前端改动（仅 Java 与需求/账本文档），上一收敛轮已在当前工作树复验 EXIT=0。不得据本轮声称前端构建通过。"
+    },
+    {
+      "command": "mvn test（全仓）",
+      "exit": null,
+      "observed": "本轮未复跑。上一次收敛轮为 EXIT=1（ccb-architecture 4 项，已归因为基线/环境：NetworkAccessMigrationMySqlTest 于平台既有 V80 排序规则混合 1267；LegacyWorkflowInboxMenuMigrationMySqlTest sys_menu id=202），本轮改动面不触及 architecture，故不重复声明其结果。"
+    }
+  ],
+  "invariants_checked": [
+    "server/src/platform/**、server/src/shared/** 零改动（git 工作区本轮仅 data-migration 与两份需求/账本文档变化）。",
+    "未新增/修改 Flyway 迁移，未改权限模型与菜单/角色种子。",
+    "保持 com.ccb.* 包名、Maven artifact、/api 前缀、ApiResponse 信封、软删与审计语义。",
+    "前端 web/src/components/ui/**、web/src/stores/**、AppLayout.vue 仍零改动。",
+    ".ai-control 只写当前前缀文件；无前缀全局账本与其他任务账本未修改。"
+  ],
+  "disturbances": [
+    "本地库事实：admin(id=1) 角色含 SUPER_ADMIN，pm_project_member 仅 2 行且均 deleted=1（无活动成员）。因此委托平台口径后，超管路径行为不变，但除超管外的任何账号都会被 403——这是本次收紧的真实影响面。",
+    "演示用户（retail1_pm/coordinator 等，V71 种子）口令与 admin 不同（hash 前缀不同、等值比较 0 命中），实测 retail1_pm + admin123 返回 Invalid username or password，且未继续猜测口令；因此 403 分支仍无运行时取证。"
+  ],
+  "assumptions_falsified": [
+    "T32 初版假设「平台没有可用的项目可达性公开契约，只能只读 pm_project_member 复制口径」被证伪：com.ccb.system.capability.ProjectWorkflowDirectoryService 已公开 requireAccessible(long, AuthUser) 与 accessibleProjectIds(AuthUser)，且已是 release 等模块所依赖的 ccb-system 公开包的一部分。",
+    "上一轮收敛时假设「先删掉成员 SQL、把平台接入留作后续单独设计」即可满足用户指令：被用户重复同一指令否证——指令要求的是接平台口径，而不是放弃项目级成员授权。本轮据此改为委托。"
+  ],
+  "unresolved_items": [
+    "AC2 的 403 分支仍无运行时/浏览器取证（本地无可登录的非超管账号，且不能为用户造成员数据或猜口令）；证据链为：守卫委托单元测试（含 NOT_MEMBER → 403）+ 平台契约自身测试（JdbcProjectAccessServiceTest 断言 403 文案）通过 + 运行时 400 反例实测。",
+    "requireCategoryPermission/isAdmin 仍直读 sys_user_role/sys_role/sys_menu_permission 三张平台表（RBAC 动作码口径）。本次只处理成员/项目可达性口径，RBAC 是否也应接平台公开契约需单独决策，未顺手改。",
+    "ReportService.getProjectOptions 仍读 pm_project 取项目名称（平台无「按可访问 id 批量取项目摘要」的公开方法）。已限定在平台返回的可访问集合内，但表读取本身仍属跨模块只读，与模块内其他 pm_project 读取同源。",
+    "若部署环境存在仅 DATA_MIGRATION_ADMIN/ADMIN（非 SUPER_ADMIN）且需跨项目维护数迁数据的账号，本轮收紧后会被 403 拦截，上线前需按真实角色分布确认。"
+  ],
+  "rollback": "单点回退：把 DataMigrationPermissionService 的 projectAccess 协同与三处委托改回上一轮实现即可（DashboardService.accessibleProjectCount、ReportService.getProjectOptions 各自独立），或 git checkout -- server/src/modules/data-migration web 无需变更；无数据库/迁移/前端契约影响，回退不需清数据。",
+  "evidence_level": {
+    "implemented": "是：3 个 main Java 文件（守卫/看板/汇报材料）+ 4 个 test Java 文件（含新增 StubProjectAccess）+ 需求文档口径回写。",
+    "checks_passed": "mvn -pl :ccb-data-migration -am test EXIT=0（61/0，含上游 ccb-system 62/0）；范围检查 EXIT=0（141 文件）；治理检查 EXIT=1（他需求既有违规，本需求 0 命中）。",
+    "runtime_reachable": "是：应用重启成功且守卫注入平台契约后各端点 200/400 行为符合预期（未知项目返回平台文案）。",
+    "browser_verified": "否：本轮无前端改动，未做浏览器验收；403 分支本轮亦未做运行时取证。"
+  }
+}

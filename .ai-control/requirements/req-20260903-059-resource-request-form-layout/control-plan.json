@@ -1,0 +1,157 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "modeling-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立稳定申请项身份、当前项选择、统一校验定位、物理子系统切换和脏表单保护",
+      "requirement_ids": ["R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": [],
+      "input_facts": [
+        "ResourceRequestPage.vue 当前以数组索引渲染和删除全部申请项",
+        "form.items.map(requestItemPayload) 是 items[] 顺序和字段分流的唯一前端生产路径",
+        "loadDeploymentUnits 已用 optionSequence 隔离候选响应但物理子系统 watch 会静默清空全部项",
+        "现有弹窗没有 before-close 未保存保护"
+      ],
+      "write_scope": ["web/src/modules/architecture/ResourceRequestPage.vue", ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T1.json"],
+      "invariants": [
+        "ResourceRequestPayload 和 ResourceRequestItemPayload 字段不变",
+        "允许重复 deploymentUnitId 且 form.items 顺序即提交顺序",
+        "DB 与 APPLICATION/WEB 字段分流、计算和服务端最终校验不变",
+        "至少保留一个申请项，保存失败保留全部输入"
+      ],
+      "interface_contracts": [
+        "clientId 仅作为前端身份且不得进入 requestItemPayload",
+        "selectedItemId 始终指向现有申请项或在重建后指向唯一空项",
+        "itemCompletionState 与 validateForm 复用同一 itemValidationError",
+        "物理子系统确认后才清空并加载新候选，取消后恢复旧值和全部申请项"
+      ],
+      "non_goals": ["不重组弹窗布局", "不修改 CSS", "不修改 api.ts、types.ts、后端或公共 UI"],
+      "action_bounds": [
+        "仅在 ResourceRequestPage.vue script 中增加局部类型、ref/computed 和函数，并为后续模板连接保留接口",
+        "不添加部署单元去重、排序、复制或自动保存",
+        "发现需要范围外契约时停止"
+      ],
+      "acceptance_checks": [
+        "npm --prefix web run build 通过",
+        "新建和编辑均生成稳定 clientId 并默认选中第一项",
+        "新增后选中新项，删除当前项后选中下一项或上一项且最后一项不可删",
+        "首个单项错误返回申请项序号并更新 selectedItemId",
+        "保存载荷仍由 form.items.map(requestItemPayload) 生成且 clientId 被剥离",
+        "确认/取消物理子系统切换与脏关闭路径可由浏览器验证"
+      ],
+      "evidence_required": ["实际 diff", "构建命令和退出码", "源码扫描行号", "范围内文件清单", "发现的扰动和未决项"],
+      "rollback": "回退 T1 产品提交；无数据、接口或迁移补偿",
+      "stop_conditions": ["需要修改 api.ts/types.ts 或后端", "无法在前端临时类型中剥离 clientId", "现有 API 明确禁止重复 deploymentUnitId"],
+      "escalation_conditions": ["用户要求自动保存、排序、复制或删除最后一项", "必须改公共表单组件", "取消切换无法恢复原状态"]
+    },
+    {
+      "id": "T2",
+      "goal": "实现基础信息与登记表外层两栏、申请项列表与当前项表单内层主从以及三档响应式布局",
+      "requirement_ids": ["R1", "R2", "R4", "R7"],
+      "prerequisites": ["T1"],
+      "input_facts": [
+        "T1 提供 clientId、currentItem、申请项状态和有界操作",
+        "现有登记表模板完整包含部署单元、DB、非 DB、技术栈和附加需求字段",
+        "交付示范中心 ProjectStageDetailDialog 已验证列表/详情主从及 760px 下局部横向滚动模式"
+      ],
+      "write_scope": ["web/src/modules/architecture/ResourceRequestPage.vue", "web/src/modules/architecture/architecture.css", ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T2.json"],
+      "invariants": [
+        "所有现有申请级和申请项字段仍可编辑",
+        "右侧只渲染 currentItem 但其它申请项状态不丢失",
+        "使用语义主题变量且圆角不超过现有 8px 规则",
+        "手机页面根无横向滚动，底部取消和保存可达"
+      ],
+      "interface_contracts": [
+        "申请项列表以 clientId 为 key 并用文字表达未选择、待完善、已填写",
+        "新增、删除、切换和基础选择在 formSubmitting 时禁用",
+        "附加需求 collapse 使用 clientId 作为稳定名称",
+        "移动端只有申请项列表容器允许有边界的局部横向滚动"
+      ],
+      "non_goals": ["不改列表、详情、审批和下发弹窗", "不新增公共组件", "不改变 API 和业务规则"],
+      "action_bounds": [
+        "只重组资源申请 form dialog DOM 并添加 architecture-resource-request-* 专用类",
+        "只在 architecture.css 的资源申请区增加局部样式和断点",
+        "不通过固定大最小宽度、负字距或硬编码颜色解决布局"
+      ],
+      "acceptance_checks": [
+        "npm --prefix web run build 和 git diff --check 通过",
+        "桌面外层两栏且内层申请项列表/当前项两列清晰",
+        "中等宽度登记区上下排列，760px 以下外层单列和申请项列表局部横向滚动",
+        "当前项字段无遗漏，删除图标有 Tooltip 和 aria-label，状态不只依赖颜色",
+        "颜色、负字距和阻塞手机固定最小宽度扫描无本需求新增问题"
+      ],
+      "evidence_required": ["Vue DOM diff", "CSS diff", "构建和静态扫描退出码", "四视口待验收清单", "范围内文件清单"],
+      "rollback": "回退 T2 产品提交；完全回退时再逆序回退 T1",
+      "stop_conditions": ["必须修改公共 Dialog 或应用壳", "字段遗漏或布局改变提交顺序", "手机页面级横向溢出无法在局部样式解决"],
+      "escalation_conditions": ["用户要求移动端保留双栏", "要求把申请项列表升级为公共组件", "需要新增视觉规范例外"]
+    },
+    {
+      "id": "T3",
+      "goal": "完成请求兼容、权限、失败恢复、四视口明暗主题和范围收敛验收",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": [
+        "产品修改严格限制在两个前端文件",
+        "真实行为需要现有本地 architecture API、虚构账号和数据",
+        "全仓治理可能包含与本需求无关的历史账本噪声"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/execution-T3.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T1.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T2.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/observation-T3.json",
+        ".ai-control/requirements/req-20260903-059-resource-request-form-layout/convergence.json"
+      ],
+      "invariants": ["不连接生产环境", "只使用虚构或本地测试数据", "观察发现偏差时不得直接修改范围外文件", "未执行验证不得描述为通过"],
+      "interface_contracts": [
+        "Network 中 create/update 请求继续使用现有 ResourceRequestPayload",
+        "apply/manage 和无权限状态不新增或放松前端权限",
+        "浏览器 Console 无本需求新增错误，documentElement.scrollWidth 不超过视口宽度"
+      ],
+      "non_goals": ["不自行合并、推送或发布", "不修复全仓历史治理问题", "不修改本需求之外页面"],
+      "action_bounds": [
+        "执行 build、governance、scope、diff 和真实浏览器传感器",
+        "仅在独立观察确认偏差后回到 correcting/executing 修改两个授权产品文件",
+        "证据中不记录真实个人信息、口令、Token 或完整敏感日志"
+      ],
+      "acceptance_checks": [
+        "新建、编辑、多申请项、重复部署单元、删除切换、错误定位和物理切换旅程通过",
+        "候选失败、保存失败、重复点击、脏关闭和无权限状态可恢复",
+        "1280x800、375x812、390x844、430x932 浅色和深色主题无页面级横向溢出",
+        "build、scope、diff 通过且治理结果区分本需求与历史噪声",
+        "R1-R7 均有可重复证据且无开放 P0/P1"
+      ],
+      "evidence_required": ["命令和退出码", "脱敏 Network 摘要", "Console 摘要", "视口主题和 scrollWidth", "截图或像素检查", "scope 文件清单", "残余风险"],
+      "rollback": "回退证据提交；产品按 T2、T1 逆序回退，无数据库补偿",
+      "stop_conditions": ["重复 deploymentUnitId 被服务端拒绝", "权限边界放松", "页面白屏或提交不可达", "需要 scope 外修改", "没有可用本地测试环境导致关键传感器不可采样"],
+      "escalation_conditions": ["需要后端新状态或接口", "需要公共 UI 改造", "历史治理错误成为不可绕过门禁", "无法获得虚构测试账号或数据"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "模板依赖 T1 的 currentItem、clientId、状态和操作函数"},
+    {"from": "T1", "to": "T3", "reason": "请求兼容和切换保护需要状态逻辑完成后验证"},
+    {"from": "T2", "to": "T3", "reason": "四视口和可访问性验收依赖完整布局"}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["npm --prefix web run build", "扫描 clientId 不进入 requestItemPayload"]},
+    {"after_tasks": ["T1", "T2"], "checks": ["npm --prefix web run build", "git diff --check", "静态颜色和固定宽度扫描"]},
+    {"after_tasks": ["T1", "T2", "T3"], "checks": ["scope 和 governance", "Network 请求兼容", "四视口明暗主题浏览器验收"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 完成采样", "trigger": "T1 构建通过并提交执行报告", "observer": "独立观察上下文", "sensors": ["S1", "S6"], "requirement_ids": ["R2", "R3", "R4", "R5", "R6", "R7"]},
+    {"label": "T2 集成采样", "trigger": "T2 模板与样式构建通过", "observer": "独立观察上下文", "sensors": ["S1", "S2", "S4", "S6"], "requirement_ids": ["R1", "R2", "R4", "R7"]},
+    {"label": "最终运行采样", "trigger": "本地栈可达并完成全部用户旅程", "observer": "独立观察上下文", "sensors": ["S2", "S3", "S4", "S5", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T2", "T3"], "sensor_ids": ["S1", "S4"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T3"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R4", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S2"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T3"], "sensor_ids": ["S2", "S5"]},
+    {"requirement_id": "R6", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S3", "S6"]},
+    {"requirement_id": "R7", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S2", "S4", "S5", "S6"]}
+  ],
+  "plan_status": "ready"
+}

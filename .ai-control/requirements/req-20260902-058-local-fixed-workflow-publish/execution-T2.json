@@ -1,0 +1,37 @@
+{
+  "task_id":"T2",
+  "status":"verified",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/ArchitectureStandardsDecisionsMySqlTest.java","purpose":"将架构规范与决策迁移测试从旧 V88 同步到当前 V99"},
+    {"path_or_resource":"server/src/modules/architecture/src/test/java/com/ccb/architecture/network/integration/NetworkWorkflowIntegrationMySqlTest.java","purpose":"将网络工单建表/种子测试从旧 V89/V90 同步到当前 V100/V101"},
+    {"path_or_resource":"server/src/modules/architecture/src/test/java/com/ccb/architecture/network/persistence/NetworkAccessMigrationMySqlTest.java","purpose":"将网络准入历史基线/目标从旧 V103/V105 同步到当前 V114/V116，并统一测试数据库排序规则"}
+  ],
+  "requirements_addressed":["R4"],
+  "commands":[
+    {"command":"git show --name-status 4ed4d50","exit_code":0,"salient_output":"确认 V87/V88 -> V98/V99、V89/V90 -> V100/V101、V103/V105 -> V114/V116 的纯重命名映射"},
+    {"command":"mvn -pl :ccb-architecture -am -Dtest=ArchitectureStandardsDecisionsMySqlTest,NetworkWorkflowIntegrationMySqlTest,NetworkAccessMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"11 tests，0 failures，0 errors，BUILD SUCCESS"},
+    {"command":"mvn -pl :ccb-boot -am -Dtest=LocalSeededWorkflowPublisherTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"3 tests，0 failures，BUILD SUCCESS"},
+    {"command":"mvn -pl :ccb-architecture -am -Dtest=ArchitectureSubsystemSubmissionServiceTest,EnvironmentResourceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test","exit_code":0,"salient_output":"24 tests，0 failures，BUILD SUCCESS"},
+    {"command":"mvn -pl :ccb-boot -am test","exit_code":0,"salient_output":"15 个反应堆模块全部 SUCCESS；ccb-architecture 267 tests、ccb-boot 6 tests 均无失败；总耗时 12:15 min"},
+    {"command":"git diff --check","exit_code":0,"salient_output":"无空白错误，仅 LF/CRLF 提示"}
+  ],
+  "local_checks":[
+    {"check":"三个测试类 testCompile","result":"passed","evidence":"ccb-architecture 编译 41 个测试源文件后进入 Surefire","limitations":[]},
+    {"check":"旧版本引用静态扫描","result":"passed","evidence":"三个授权测试类未发现旧 V88/V89/V90/V103/V105 目标引用","limitations":[]},
+    {"check":"真实 MySQL 8.4 迁移复验","result":"passed","evidence":"三个迁移测试共 11 tests，0 failures，0 errors；完整反应堆中的 ccb-architecture 267 tests 全部通过","limitations":[]}
+  ],
+  "diff_summary":["只更新测试迁移版本、测试名称/注释和测试数据库排序规则初始化","未修改任何历史 Flyway 或业务实现"],
+  "invariants_checked":[
+    {"invariant":"不修改历史迁移","result":"passed","evidence":"diff 不包含 server/src/platform/infrastructure/src/main/resources/db/migration"},
+    {"invariant":"保留原测试断言语义","result":"passed","evidence":"业务 SQL 与断言未变，仅版本、名称和排序规则初始化变化"},
+    {"invariant":"保护用户改动","result":"passed","evidence":"未触碰 req-20260812-021 两个未跟踪文件"}
+  ],
+  "disturbances":[
+    {"event":"首次复验时 Docker Desktop Linux engine 不可用","impact":"用户启动 Docker Desktop 后阻塞解除，迁移聚焦测试和完整反应堆均已通过"},
+    {"event":"范围检查扫描到禁止目录中的既有未跟踪文件","impact":"scope 检查退出 1，但本次新增文件均位于更新后的 writable_paths"},
+    {"event":"全仓历史账本存在既有结构错误","impact":"治理检查的模块、Skill、开发入口通过，AI control layout 总门禁退出 1"}
+  ],
+  "assumptions_falsified":[],
+  "unresolved_items":["使用本地安全环境变量启动后确认两个定义 status=PUBLISHED 且 deployment_id 非空，并执行双工单 HTTP 提交上线验证"],
+  "recommended_next":"verify"
+}

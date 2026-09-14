@@ -1,0 +1,37 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {"inside": ["ReleaseDrillPlanView.vue template and scoped styles"], "environment": ["Release API", "Parent project context", "Global theme and Element Plus", "Local browser"]},
+  "state_variables": [{"name": "selectedId", "owner": "ReleaseDrillPlanView", "valid_values": ["Existing plan ID", "undefined"]}, {"name": "timelineType", "owner": "ReleaseDrillPlanView", "valid_values": ["NORMAL", "ROLLBACK"]}, {"name": "canManage", "owner": "auth store", "valid_values": [true, false]}],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "plans and selectedId", "transitions": ["Render directory and selected detail using local grid"], "outputs": ["Narrow directory and wide detail"]},
+    {"requirement_id": "R2", "input": "Selected plan timelines", "transitions": ["Filter by itemType", "Click original openTimeline handler"], "outputs": ["Correct group name and counts in drawer"]},
+    {"requirement_id": "R3", "input": "timelineSequences sorted by seqNo", "transitions": ["Render P columns and each items array", "Open original forms"], "outputs": ["Multiple commands and all maintenance controls"]},
+    {"requirement_id": "R4", "input": "Viewport, theme and text length", "transitions": ["Media queries reflow layout", "Local horizontal scroll"], "outputs": ["Readable page without global overflow"]},
+    {"requirement_id": "R5", "input": "Project context, permissions and async results", "transitions": ["Original handlers and template state branches"], "outputs": ["Existing isolation, cancellation and form semantics"]}
+  ],
+  "interfaces": [{"name": "Existing release API", "producers": ["api/release.ts"], "consumers": ["ReleaseDrillPlanView"], "invariant": "Parameters and response types unchanged"}],
+  "sensors": [
+    {"id": "S1", "target": "R1-R5 rendering and interaction", "method": "Existing Edge test tab screenshot, DOM and UI actions", "blind_spots": ["Unavailable alternative roles and fault injection", "Independent reviewer not available"], "independence": "Runtime observation by same implementing context; not independent review"},
+    {"id": "S2", "target": "Template and TypeScript compatibility", "method": "npm --prefix web run build", "blind_spots": ["Runtime layout and API failures"], "independence": "Compiler-based structural measurement"},
+    {"id": "S3", "target": "Scope and unchanged business handlers", "method": "Git diff and structural source comparison", "blind_spots": ["Runtime authorization"], "independence": "Static comparison, not independent review"}
+  ],
+  "actuators": [{"id": "A1", "target": "Component presentation", "action": "Replace template layout and add scoped styles", "authority": "Confirmed requirement scope", "impact_radius": "Release plan page only", "rollback": "Reverse task hunks, preserve prior menu rename"}],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2"], "observable": "partial"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S3"], "observable": "partial"}
+  ],
+  "disturbances": [{"source": "Global release styles", "effect": "Old layout can override local presentation", "detectable": true, "controllable": true}, {"source": "Browser capability and available roles", "effect": "Some tests may be unavailable", "detectable": true, "controllable": false}],
+  "delays": [{"source": "Vite and API", "consequence": "Snapshot may precede new rendering", "sampling_rule": "Wait for new DOM heading or loading completion"}],
+  "assumptions": [{"text": "Existing API functionality is retained by preserving handlers", "evidence": "Component source contains existing CRUD handlers and live page shows synthetic project B data", "falsifier": "Changed payload or regression during browser test"}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Implement local grid"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Keep original group bindings"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Reorganize drawer only"},
+    {"requirement_id": "R4", "observable": "partial", "controllable": "yes", "action": "Use supported viewport capability; report unavailable measurements"},
+    {"requirement_id": "R5", "observable": "partial", "controllable": "yes", "action": "Preserve handlers and static permission branches; report untested roles and write scenarios"}
+  ],
+  "model_status": "ready"
+}
