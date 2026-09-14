@@ -1,0 +1,80 @@
+{
+  "sample_label": "T1第一切片观测",
+  "task_ids": [
+    "T1"
+  ],
+  "baseline_revision": "设计修订2",
+  "observer": "本代理调用的自动化测试与独立治理脚本；不代表非作者人工复核",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "服务与HTTP方法安全测试、真实MySQL关系约束",
+      "result": "pass",
+      "raw_evidence": "15项聚焦测试0失败0错误0跳过，V159复合外键拒绝跨项目关系",
+      "limitation": [
+        "未覆盖全部业务入口"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "服务移交保护测试与MySQL父锁并发测试",
+      "result": "partial",
+      "raw_evidence": "退出责任服务拒绝测试、撤销锁读并发测试通过",
+      "limitation": [
+        "项目成员退出与系统负责人变更链路未接入",
+        "T2-T4尚未使用资格服务"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "sensor": "前端构建与治理脚本",
+      "result": "fail",
+      "raw_evidence": "前端构建退出0；scope与Flyway检查各退出1",
+      "limitation": [
+        "未做四视口、明暗主题真实浏览器测量",
+        "未跑完整回归"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R8",
+      "expected": "平台迁移具备专项Issue及Owner审批并通过范围门禁",
+      "observed": "V159命中平台变更检查，缺少Issue和Owner审批",
+      "reproduction": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260906-066-subsystem-participation/codex-task-scope.yaml --base HEAD --head HEAD --working-tree",
+      "evidence": "public capability change requires issue, owner approval, compatibility and regression tests",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "不替代非作者权限/数据库人工复核",
+      "causal_hypothesis": "此前将Owner审批延期至上线前与实际门禁要求不一致",
+      "correction_check": "合法补齐审批和Issue后重新执行范围门禁",
+      "classification": "deviation"
+    },
+    {
+      "requirement_id": "R8",
+      "expected": "Flyway检查可验证本次追加迁移",
+      "observed": "存量V84_1命名导致全量格式检查失败，真实MySQL迁移成功",
+      "reproduction": "node scripts/check-flyway-migrations.mjs",
+      "evidence": "V84_1__seed_requirement_system_catalog.sql: expected V<number>__description.sql；git ls-tree HEAD确认历史已存在",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": "格式传感器与既有迁移不兼容",
+      "causal_hypothesis": "既有小版本迁移未获格式脚本覆盖",
+      "correction_check": "经单独授权解决既有治理偏差后重跑，不改已发布SQL",
+      "classification": "sensor-fault"
+    }
+  ],
+  "disturbances": [],
+  "coverage_gaps": [
+    "T1尚未完成：负责人变更及项目退出保护、完整回归与真实浏览器未完成",
+    "T2-T6未实施",
+    "专项Issue和非作者Owner审批缺失"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 1,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260911-070",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260911-070-data-migration-asset-chain-retirement/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260820-031-data-migration",
+    "worktree": "/home/song/workspace/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentDocCodeGenerator.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentRecycleBinService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetRecycleBinSource.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ContentAssetController.java",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/StructuredAssetController.java",
+      "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/**",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/components/AssetListView.vue",
+      "web/src/modules/data-migration/components/StructuredListView.vue",
+      "docs/requirements/REQ-20260911-070-data-migration-asset-chain-retirement/**",
+      "docs/engineering-control/designs/2026-09-11-data-migration-asset-chain-retirement-design.md",
+      "docs/engineering-control/plans/2026-09-11-data-migration-asset-chain-retirement-implementation-plan.md",
+      ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/*.json"
+    ],
+    "read_only_paths": [
+      "CODEX-DEVELOPMENT-GUIDE.md",
+      "README.md",
+      "AGENTS.md",
+      "design-h5.md",
+      "governance/modules.yaml",
+      "docs/governance/**",
+      "docs/architecture/**",
+      ".ai-control/original/state.json",
+      "server/src/AGENTS.md",
+      "server/src/modules/AGENTS.md",
+      "server/src/shared/**",
+      "server/src/platform/security/**",
+      "server/src/platform/attachment/**",
+      "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java",
+      "web/src/AGENTS.md",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**"
+    ],
+    "forbidden_paths": [
+      ".env",
+      "**/*.pem",
+      "**/*.key",
+      "**/target/**",
+      "**/node_modules/**",
+      "**/*confidential*"
+    ]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "REQ-20260911-070 删除数据迁移模块内已无调用方的通用文件/结构化资产链路（服务、控制器、Excel 辅助与前端组件），属于模块内公开 API 下线；平台附件能力与看板计数能力保留。",
+    "owner_approved": true,
+    "approval_evidence": "2026-09-11 用户在 REQ-068 收尾报告中明确指示『彻底下线文件资产通用链路』。",
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "mvn -pl :ccb-data-migration -am test",
+      "npm --prefix web run build",
+      "git diff --check"
+    ]
+  },
+  "database": {
+    "changed": false,
+    "migration_files": []
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {
+      "name": "api",
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "expected": "数据迁移模块 REST 契约测试通过（通用资产端点下线后各专属 Controller 承接业务端点）"
+    },
+    {
+      "name": "permission",
+      "command": "mvn -pl :ccb-data-migration -am test -Dtest=DataMigrationModuleRegistrationTest",
+      "expected": "模块注册、RBAC 与审计断言通过"
+    },
+    {
+      "name": "backend-module",
+      "command": "mvn -pl :ccb-data-migration -am test",
+      "expected": "数据迁移模块及依赖模块测试全量通过（含看板计数/组件计数/附件访问策略回归）"
+    },
+    {
+      "name": "frontend-build",
+      "command": "npm --prefix web run build",
+      "expected": "TypeScript 与 Vite 生产构建通过"
+    },
+    {
+      "name": "governance",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260911-070-data-migration-asset-chain-retirement/codex-task-scope.yaml",
+      "expected": "任务范围检查通过"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "items": [
+      "工作区含 REQ-067/069 未提交改动，ParameterService/ParametersPage.vue 等共享文件需保护既有差异",
+      "专属来源 javadoc 仍链接已删类 #TYPES/#MANAGED_TYPES（只读面不可改），属 P2 文档残留",
+      "历史 target/surefire 报告残留需按 mtime 过滤，避免误判测试结果"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260911-070-dm-asset-chain-retirement",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/state.json",
+      ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/execution-T1.json",
+      ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/execution-T2.json",
+      ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/execution-T3.json",
+      ".ai-control/requirements/req-20260911-070-dm-asset-chain-retirement/execution-T4.json"
+    ],
+    "verification_steps": [
+      "全仓对 4 个已删后端类与 2 个前端组件零代码引用，测试以 Files.notExists 锁定",
+      "ContentFileAssetService 仅保留 BUSINESS_TYPE/resolveAttachment/replaceMainFile 且编译通过",
+      "ContentDocCodeGenerator 仅 6 前缀且 DEPENDENCY/PARAMETER 抛异常",
+      "mvn -pl :ccb-data-migration -am test 与 npm --prefix web run build 通过",
+      "git diff --check 干净，ContentAssetTables.java 内容不变"
+    ],
+    "rollback": "git checkout 恢复已删文件与源码改动；无数据库变更，无迁移回退。"
+  }
+}

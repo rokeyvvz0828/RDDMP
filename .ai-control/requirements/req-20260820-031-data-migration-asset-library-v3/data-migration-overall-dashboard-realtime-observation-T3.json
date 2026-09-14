@@ -1,0 +1,56 @@
+{
+  "sample_label": "T3实时看板与滚动下钻完成采样",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "浏览器受控API与页面DOM",
+      "result": "pass",
+      "raw_evidence": "13项分别显示6/18/9/27/14/22/31/12/38/64/43/16/25，总量325",
+      "limitation": ["数值由受控API提供，后端真实口径由T1 MySQL覆盖"]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "静态搜索与浏览器Network",
+      "result": "pass",
+      "raw_evidence": "页面无计时器；进入后仅一次13项队列，无后续自动请求",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "浏览器并发计数与500恢复夹具",
+      "result": "pass",
+      "raw_evidence": "maxInFlight=4；RULE失败时12项成功且总量为—；单项重试后恢复325",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "浏览器Network与抽屉DOM",
+      "result": "pass",
+      "raw_evidence": "点击前drilldown=0，点击后第1页，滚动后第2页且记录21出现",
+      "limitation": []
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "项目切换受控延迟夹具",
+      "result": "pass",
+      "raw_evidence": "项目101首批4请求在途时重载项目202；最终13项均为2且总量26，无旧值1回写",
+      "limitation": ["HTTP服务端授权由T1/T2覆盖"]
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "Playwright截图、DOM溢出与canvas像素代理",
+      "result": "pass",
+      "raw_evidence": "浅色1280/375/390/430及深色1280/390无横向溢出；canvas尺寸稳定且dataURL长度>14000；控制台无错误",
+      "limitation": []
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "修复ECharts GraphicComponent注册与资产色条CSS优先级后复验通过"}
+  ],
+  "coverage_gaps": ["目标部署环境P95由T4/上线验证覆盖"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

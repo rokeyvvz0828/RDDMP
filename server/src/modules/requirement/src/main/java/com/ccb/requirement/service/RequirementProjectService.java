@@ -76,19 +76,31 @@ public class RequirementProjectService {
         if (duplicate != null && duplicate > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "项目编码已存在：" + code);
         }
-        RequirementValues.requireOption("projectTypes", RequirementValues.text(body, "project_type"));
+        String projectType = resolvePmProjectType(code, user);
         RequirementValues.requireOption("projectStatuses", RequirementValues.text(body, "status"));
         long id = RequirementIds.next();
         Map<String, Object> values = normalized(body);
         values.put("id", id);
         values.put("tenant_id", user.tenantId());
-        values.putIfAbsent("project_type", "0~1 新建");
+        values.put("project_type", projectType);
         values.putIfAbsent("status", "进行中");
         values.put("created_by", user.id());
         values.put("deleted", 0);
         RequirementSql.insert(jdbc, "req_project", values);
         changeLog.recordCreate("PROJECT", id, values, user, "ONLINE");
         return get(id, user);
+    }
+
+    /** req_project.project_type 读取 pm_project.creation_type（NEW=新建/CONTINUATION=存量/续建）。 */
+    private String resolvePmProjectType(String projectCode, AuthUser user) {
+        List<String> types = jdbc.queryForList("""
+                SELECT creation_type FROM pm_project
+                WHERE tenant_id = ? AND project_code = ? AND deleted = 0
+                """, String.class, user.tenantId(), projectCode);
+        if (types.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "项目编码不存在于项目管理：" + projectCode);
+        }
+        return types.get(0);
     }
 
     @Transactional

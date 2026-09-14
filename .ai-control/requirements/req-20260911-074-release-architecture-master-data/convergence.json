@@ -1,0 +1,21 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"requirement_id": "R1", "result": "pass", "evidence": "既有架构主数据接入提交 677606b 已验证"},
+    {"requirement_id": "R2", "result": "pass", "evidence": "既有架构查询契约和适配器专项测试通过"},
+    {"requirement_id": "R3", "result": "pass", "evidence": "需求选项 API 经过 release 权限、项目访问和项目化 requirement 查询"},
+    {"requirement_id": "R4", "result": "pass", "evidence": "申请写入前按当前租户和项目解析有效需求，非法引用失败关闭"},
+    {"requirement_id": "R5", "result": "pass", "evidence": "需求自由录入已替换为项目化多选；前端生产构建通过"},
+    {"requirement_id": "R6", "result": "pass", "evidence": "权威编号快照与历史失效选项反显均有实现和测试"},
+    {"requirement_id": "R7", "result": "pass_with_baseline_exception", "evidence": "31 个聚焦测试、104 个 release 测试、Java 17 编译、前端构建、208 条 Flyway 检查通过", "limitations": ["全 reactor 的 data-migration 模块存在合并前/合并引入的独立测试基线失败"]}
+  ],
+  "task_results": [
+    {"task_id": "T1-T4", "result": "verified", "evidence": "提交 677606b 及既有验收记录"},
+    {"task_id": "T5", "result": "verified", "evidence": "后端边界测试、release 回归、前端构建和真实数据库只读核验通过"}
+  ],
+  "residual_risks": [
+    {"severity": "P2", "risk": "data-migration 模块测试基线与时间戳 Flyway 文件名及架构新列不同步", "mitigation": "单独治理，不在需求接入提交中混改"}
+  ],
+  "gate_result": "pass",
+  "route_reason": "需求接入正面作用面全部通过，剩余失败已隔离为 data-migration 合并基线问题"
+}

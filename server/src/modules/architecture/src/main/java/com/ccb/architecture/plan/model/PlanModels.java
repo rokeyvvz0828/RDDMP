@@ -61,7 +61,7 @@ public final class PlanModels {
     }
 
     /** 计划当前值。 */
-    public record Plan(long id, String planNo, String name, long environmentId,
+    public record Plan(long id, long projectId, String planNo, String name, long environmentId,
                        PlanStatus status, long templateId, int templateVersionNo,
                        long planOwnerUserId, LocalDateTime plannedStart, LocalDateTime plannedEnd,
                        LocalDateTime actualStart, LocalDateTime actualEnd, boolean cancelled,
@@ -102,10 +102,20 @@ public final class PlanModels {
                                 long workOrderId, WorkOrderSource source, boolean removed) {
     }
 
+    public record TaskAssignment(String key, Long ownerUserId, List<Long> participantUserIds) {}
+
+    public record AssignmentCommand(Long ownerUserId, List<Long> participantUserIds, Long rowVersion, String reason) {}
+
     public record CreatePlanCommand(long environmentId, long templateId, String name, long planOwnerUserId,
                                     List<Long> physicalSubsystemIds, List<Long> deploymentUnitIds,
                                     List<Long> participantUserIds, LocalDateTime plannedStart,
-                                    LocalDateTime plannedEnd) {
+                                    LocalDateTime plannedEnd, List<TaskAssignment> taskAssignments) {
+        public CreatePlanCommand(long environmentId, long templateId, String name, long planOwnerUserId,
+                List<Long> physicalSubsystemIds, List<Long> deploymentUnitIds, List<Long> participantUserIds,
+                LocalDateTime plannedStart, LocalDateTime plannedEnd) {
+            this(environmentId, templateId, name, planOwnerUserId, physicalSubsystemIds, deploymentUnitIds,
+                    participantUserIds, plannedStart, plannedEnd, null);
+        }
     }
 
     public record AddTargetCommand(List<Long> physicalSubsystemIds, List<Long> deploymentUnitIds,

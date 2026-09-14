@@ -188,7 +188,13 @@ const isAdmin = computed(() => {
 })
 
 function messageOf(error: unknown) {
-  return error instanceof Error ? error.message : '操作失败，请稍后重试'
+  return apiErrorMessage(error, '操作失败，请稍后重试')
+}
+
+function rejectEmptyFile(file: File) {
+  if (file.size > 0) return false
+  ElMessage.warning(`文件“${file.name}”为空，请选择有内容的文件`)
+  return true
 }
 
 // 判断是否为用户主动取消操作（兼容不同 Element Plus 版本的取消错误格式）
@@ -338,6 +344,7 @@ async function saveSingleUpload() {
     ElMessage.warning('请选择要上传的文件')
     return
   }
+  if (rejectEmptyFile(uploadFile.value)) return
 
   uploadSaving.value = true
   try {
@@ -383,6 +390,8 @@ async function saveBatchUpload() {
     ElMessage.warning('请选择要上传的文件')
     return
   }
+  const emptyFile = uploadFiles.value.find(file => file.size === 0)
+  if (emptyFile && rejectEmptyFile(emptyFile)) return
 
   uploadSaving.value = true
   try {
@@ -596,6 +605,7 @@ async function saveEdit() {
     if (editReportPeriod.value) params.reportPeriod = editReportPeriod.value
 
     if (editFile.value) {
+      if (rejectEmptyFile(editFile.value)) return
       // 上传附件获取attachmentId
       const attachmentResponse = await uploadAttachment(editFile.value)
       const attachmentId = attachmentResponse.data?.data?.id

@@ -1,0 +1,38 @@
+{
+ "schema_version": 1,
+ "task_id": "T3",
+ "status": "implemented_verified",
+ "changed_surfaces": [
+  {
+   "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+   "purpose": "十一列模板（参数 6 列 + 字段 5 列）、参数整组重复归组、字段列留空兼容原六列、失败行跳过逐行报错"
+  }
+ ],
+ "requirements_addressed": [
+  "R3"
+ ],
+ "commands": [
+  {
+   "command": "ParameterServiceTest import 相关用例",
+   "exit_code": 0,
+   "salient_output": "十一列导入、纯参数行兼容、组内唯一、逐行错误通过"
+  },
+  {
+   "command": "浏览器真实上传 11 列 xlsx（3 数据行 2 参数组）",
+   "exit_code": 0,
+   "salient_output": "共 3 行，成功 2 组，失败 0；导入参数组 A field_count=2、参数组 B field_count=1"
+  }
+ ],
+ "local_checks": [
+  {
+   "check": "同一文件同时导入参数+字段",
+   "result": "pass",
+   "evidence": "导入后 API 校验两组成立且字段数正确"
+  },
+  {
+   "check": "字段列留空只导入参数",
+   "result": "pass",
+   "evidence": "ParameterServiceTest 兼容用例"
+  }
+ ]
+}

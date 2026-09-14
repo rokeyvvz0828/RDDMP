@@ -268,13 +268,13 @@ public class ArchitectureStandardController {
             long id, String title, String categoryCode, String summary, String content,
             String status, int currentVersion, LocalDateTime publishedAt, Long publishedBy,
             String publishedByName, long rowVersion, String createdByName, LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt, long createdBy) {
         static DocumentDetailResponse from(StandardDocument document) {
             return new DocumentDetailResponse(document.id(), document.title(), document.categoryCode(),
                     document.summary(), document.content(), document.status().name(),
                     document.currentVersion(), document.publishedAt(), document.publishedBy(),
                     document.publishedByName(), document.rowVersion(), document.createdByName(),
-                    document.createdAt(), document.updatedAt());
+                    document.createdAt(), document.updatedAt(), document.createdBy());
         }
     }
 

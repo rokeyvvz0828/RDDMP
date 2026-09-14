@@ -1,0 +1,26 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ArchitectureProjectDeletionGuard.java", "purpose": "覆盖 13 类架构业务表的项目删除引用检查"},
+    {"path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisher.java", "purpose": "租户级发布五个架构流程定义"},
+    {"path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/workflow/LocalSeededWorkflowPublisherTest.java", "purpose": "验证草稿发布、已发布跳过和配置覆盖"}
+  ],
+  "requirements_addressed": ["R5", "R8", "R10", "R11"],
+  "commands": [
+    {"command": "mvn -pl :ccb-boot -am test -Dtest=LocalSeededWorkflowPublisherTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "salient_output": "3 项测试通过"},
+    {"command": "mvn -pl :ccb-architecture -am test", "exit_code": 0, "salient_output": "ArchitectureProjectDeletionGuardTest 随架构模块 291 项测试通过"}
+  ],
+  "local_checks": [
+    {"check": "默认流程定义发布", "result": "pass", "evidence": "五个定义代码均被测试覆盖，定义仍为租户级且不按项目复制", "limitations": []},
+    {"check": "项目删除保护", "result": "pass", "evidence": "13 类目标表引用检查测试通过", "limitations": []}
+  ],
+  "diff_summary": ["publisher 增加网络工单、网络访问和架构决策流程代码", "guard 扩展到剩余架构主表"],
+  "invariants_checked": [
+    {"invariant": "工作流定义租户共享、业务实例项目私有", "result": "pass", "evidence": "publisher 不接收项目参数；业务提交测试验证实例项目"}
+  ],
+  "disturbances": ["LocalSeededWorkflowPublisher 同时包含 REQ-20260905-064 的既有未提交差异"],
+  "assumptions_falsified": [],
+  "unresolved_items": ["提交时需保留 064 与 065 的文件归属说明"],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,67 @@
+{
+  "objective": "研发人员在 Windows、macOS 和 Linux 上通过一个平台对应命令获得配置确定、可登录、自动迁移且支持前后端热重载的本地 RDDMP 开发环境。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Windows 与 macOS/Linux 必须具有行为一致的启动入口。",
+      "acceptance": ["PowerShell 和 Bash 入口均调用同一编排实现", "入口透传参数和退出码", "编排实现不依赖第三方 npm 包"],
+      "priority": "must",
+      "source": "用户确认全部平台均需支持并批准 Node 编排方案",
+      "counterexample": ["两套入口分别维护 Docker、Maven、npm 和进程逻辑"]
+    },
+    {
+      "id": "R2",
+      "statement": "启动环境必须使用固定本地配置，并保证 admin/admin123 在空库和已有本地库均可登录。",
+      "acceptance": ["显式激活 local profile", "不创建或覆盖 .env", "管理员恢复只命中 tenant_id=1、id=1、username=admin", "启动器不接受远程地址和生产 profile"],
+      "priority": "must",
+      "source": "用户指定 admin/admin123 并要求确定环境配置",
+      "counterexample": ["需要手工编辑 .env", "已有数据库仍保留未知 admin 密码"]
+    },
+    {
+      "id": "R3",
+      "statement": "启动器必须在基础设施就绪后启动后端，并由 Spring Boot 自动执行 Flyway。",
+      "acceptance": ["MySQL、MinIO、kkFileView 启动", "MySQL 就绪后才启动后端", "Flyway 无失败且健康接口为 UP", "不修改历史迁移或执行 clean/repair"],
+      "priority": "must",
+      "source": "用户要求支持 Flyway和通用开发环境",
+      "counterexample": ["MySQL 未就绪即启动后端", "脚本直接修改 flyway_schema_history"]
+    },
+    {
+      "id": "R4",
+      "statement": "前端源码变化必须由 Vite HMR 更新，后端源码或资源变化必须自动编译并重启。",
+      "acceptance": ["前端通过现有 Vite dev server 启动", "后端编译防抖且串行", "DevTools 在产物变化后重启并恢复健康", "编译失败不终止当前后端且后续可重试"],
+      "priority": "must",
+      "source": "用户要求前后端热重载",
+      "counterexample": ["修改 Java 后需要手工停止并重启 Maven"]
+    },
+    {
+      "id": "R5",
+      "statement": "启动器必须提供可判别日志和可预测的退出、容器停止及研发提示。",
+      "acceptance": ["前后端日志可区分", "Ctrl+C 清理应用子进程并保留基础设施", "--down 停止容器但不删除卷", "AGENTS.md 记录命令、账号和仅限本地边界"],
+      "priority": "must",
+      "source": "用户要求在 AGENTS.md 提示并批准生命周期设计",
+      "counterexample": ["退出后遗留 8080 或 5173 进程", "--down 删除数据库卷"]
+    }
+  ],
+  "invariants": ["不连接生产或共享环境", "不修改历史 Flyway 文件和数据库结构", "不删除 Docker 数据卷", "不覆盖用户 .env", "不纳入其他任务改动"],
+  "constraints": ["JDK 17+", "Maven 3.9+", "Node.js 20+ 标准库", "Docker Compose V2", "Spring local profile", "只写任务范围授权路径"],
+  "non_goals": ["应用容器化", "自动安装开发工具", "Flyway clean/repair", "业务 API、权限或页面变更", "生产启动入口"],
+  "assumptions": [
+    {"text": "目标环境提供 Docker Compose V2", "basis": "项目 README 和本机版本探测", "falsifier": "docker compose version 失败"},
+    {"text": "固定端口可作为确定环境的一部分", "basis": "现有 README 和 Vite 配置", "falsifier": "端口被不可释放的其他服务占用"}
+  ],
+  "unknowns": [
+    {"question": "macOS/Linux 真实进程组和文件监听行为是否与静态设计一致", "impact": "限制对应平台的运行验收等级", "owner": "跨平台复核人", "blocking": false}
+  ],
+  "decisions": [
+    {"question": "固定管理员账号密码", "options": ["admin/admin123", "外部配置"], "selected": "admin/admin123", "blocking": false, "source": "用户明确指定"},
+    {"question": "跨平台编排实现", "options": ["Node 公共编排器", "两套完整脚本", "Compose Watch"], "selected": "Node 公共编排器", "blocking": false, "source": "用户批准"}
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "wrapper 结构、语法、参数和退出码", "candidate_sensor": "脚本静态检查和 CLI 失败路径"},
+    {"requirement_id": "R2", "observable": "local profile、环境值、admin 登录和 SQL 命中范围", "candidate_sensor": "进程环境检查、数据库断言和登录 HTTP"},
+    {"requirement_id": "R3", "observable": "容器状态、MySQL ping、Flyway 日志和健康接口", "candidate_sensor": "Docker、SQL 和 HTTP 探针"},
+    {"requirement_id": "R4", "observable": "Vite HMR、Maven compile、DevTools restart 和健康恢复", "candidate_sensor": "日志、进程和 HTTP 探针"},
+    {"requirement_id": "R5", "observable": "日志前缀、端口释放、容器/卷状态和 AGENTS 文本", "candidate_sensor": "进程、Docker、静态治理检查"}
+  ],
+  "baseline_status": "ready"
+}

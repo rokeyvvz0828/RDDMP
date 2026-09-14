@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProjectMenuRegressionMigrationTest {
-    private static final String MIGRATION = "db/migration/V202__repair_dynamic_menu_regressions.sql";
+    private static final String MIGRATION = "db/migration/V20260911165002__repair_dynamic_menu_regressions.sql";
 
     @Test
     void repairsPermissionMenuWithCharsetIndependentUtf8Bytes() throws IOException {

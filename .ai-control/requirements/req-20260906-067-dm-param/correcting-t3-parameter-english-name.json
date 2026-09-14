@@ -1,0 +1,23 @@
+{
+  "feedback_id": "F-0001",
+  "decision": "accept",
+  "decision_reason": "源码与浏览器均确认 ParametersPage 操作列没有触发 openDetail 的按钮，参数英文名详情字段不可达，违反 R3 可观察验收。",
+  "dynamic_pattern": "local",
+  "causal_assessment": {
+    "hypothesis": "实现详情对话框时遗漏操作列入口",
+    "supporting_evidence": "openDetail 已定义且详情对话框已渲染，操作列仅包含编辑/删除",
+    "falsifier": "若新增查看按钮后浏览器仍无法打开详情则假设不成立"
+  },
+  "control_action": {
+    "gain": "high",
+    "target": "ParametersPage.vue 操作列新增查看按钮并调用 openDetail",
+    "write_scope": ["web/src/modules/data-migration/views/content/ParametersPage.vue"],
+    "invariants": ["不改变 API、权限、审计与数据库方案", "不新增页面结构或公共组件"],
+    "impact_limit": "仅参数页操作列",
+    "rollback": "回退操作列查看按钮与列宽调整",
+    "correction_check": ["npm --prefix web run build", "浏览器 1280 点击查看打开详情显示参数英文名"],
+    "route": "executing"
+  },
+  "resolution": "open",
+  "residual_risk": ["浏览器使用请求拦截隔离旧后端；移动视口 CDP innerWidth 偶发异常已记录"]
+}

@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -41,13 +42,15 @@ import static org.mockito.Mockito.when;
 class SystemNotificationServiceTest {
     @Mock
     private JdbcTemplate jdbc;
+    @Mock
+    private NotificationSseService notificationStreams;
 
     private SystemNotificationService service;
     private final AuthUser user = new AuthUser(7L, 1L, "tester", "", "测试用户", 1L, true);
 
     @BeforeEach
     void setUp() {
-        service = new SystemNotificationService(jdbc);
+        service = new SystemNotificationService(jdbc, notificationStreams);
     }
 
     @Test
@@ -169,6 +172,24 @@ class SystemNotificationServiceTest {
 
         verify(jdbc).update(contains("notification_id = ?"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L));
         verify(jdbc).update(contains("user_id = ? AND is_read = 0 AND archived_at IS NULL"), any(LocalDateTime.class), eq(1L), eq(7L));
+    }
+
+    @Test
+    void changedReadStateNotifiesAuthenticatedUser() {
+        when(jdbc.update(contains("SET is_read = 1"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L))).thenReturn(1);
+
+        service.markRead(88L, user);
+
+        verify(notificationStreams).notifyUsersAfterCommit(1L, List.of(7L));
+    }
+
+    @Test
+    void unchangedReadStateDoesNotNotify() {
+        when(jdbc.update(contains("SET is_read = 1"), any(LocalDateTime.class), eq(1L), eq(7L), eq(88L))).thenReturn(0);
+
+        service.markRead(88L, user);
+
+        verify(notificationStreams, never()).notifyUsersAfterCommit(anyLong(), any());
     }
 
     @Test

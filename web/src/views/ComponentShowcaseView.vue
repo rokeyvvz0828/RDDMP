@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Box, Delete, Document, Edit, Plus, Refresh, Upload, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { deleteFilePreview, getFilePreviewCapabilities, uploadFilePreview, type FilePreviewCapabilities, type FilePreviewResult } from '../api/file-preview'
@@ -19,6 +19,20 @@ import type { OrgTreeNode, UserProfile } from '../types/system'
 
 const drawerOpen = ref(false)
 const selectedOrg = ref<number | null>(1)
+// 人员卡片三档与开关示例的演示状态
+const demoPersonVariant = ref<'compact' | 'standard' | 'full'>('full')
+const demoShowAvatar = ref(true)
+const demoShowPhone = ref(true)
+const demoShowTeam = ref(true)
+/** 本地 Mock 数据中带手机号与组织归属的演示人员；缺失时卡片会自然降级为只显示姓名。 */
+const demoPersonId = 1001
+const demoPersonFallbackName = '演示人员'
+// 切换档位时把开关重置为该档位的默认值；否则开关会一直覆盖档位，示例看起来“档位无效”。
+watch(demoPersonVariant, (variant) => {
+  demoShowAvatar.value = true
+  demoShowPhone.value = variant !== 'compact'
+  demoShowTeam.value = variant === 'full'
+})
 const avatarFile = ref<File | null>(null)
 const avatarPreview = ref<string | null>(null)
 const previewCapabilities = ref<FilePreviewCapabilities | null>(null)
@@ -118,6 +132,30 @@ function formatFileSize(bytes: number) {
     <UiToolbar><el-input placeholder="示例查询条件" style="width:240px" /><template #actions><el-button><el-icon><Refresh /></el-icon>刷新</el-button><el-button type="primary">查询</el-button><el-button type="primary" @click="drawerOpen = true"><el-icon><Plus /></el-icon>打开表单抽屉</el-button></template></UiToolbar>
     <div class="showcase-grid">
       <el-card shadow="never" class="surface-card showcase-card"><template #header><div class="card-heading"><div><span class="panel-kicker">身份标识</span><h3>用户身份</h3></div></div></template><UiUserIdentity :user="demoUser" /><p class="showcase-note">头像和姓名横向排列，悬浮查看用户详情。</p><UiAvatarUpload v-model="avatarFile" v-model:preview-url="avatarPreview" /></el-card>
+      <el-card shadow="never" class="surface-card showcase-card"><template #header><div class="card-heading"><div><span class="panel-kicker">身份标识</span><h3>人员卡片三档与开关</h3></div></div></template>
+        <div class="showcase-person-tiers">
+          <div class="showcase-person-tier"><span class="showcase-person-tier__label">小檔 compact：姓名</span><UiUserIdentity :user-id="demoPersonId" :fallback-name="demoPersonFallbackName" variant="compact" /></div>
+          <div class="showcase-person-tier"><span class="showcase-person-tier__label">中档 standard：姓名 + 电话</span><UiUserIdentity :user-id="demoPersonId" :fallback-name="demoPersonFallbackName" variant="standard" /></div>
+          <div class="showcase-person-tier"><span class="showcase-person-tier__label">大档 full：姓名 + 电话 + 团队</span><UiUserIdentity :user-id="demoPersonId" :fallback-name="demoPersonFallbackName" variant="full" /></div>
+        </div>
+        <div class="showcase-person-switches">
+          <el-form label-position="top">
+            <el-form-item label="档位"><el-radio-group v-model="demoPersonVariant"><el-radio-button value="compact">小</el-radio-button><el-radio-button value="standard">中</el-radio-button><el-radio-button value="full">大</el-radio-button></el-radio-group></el-form-item>
+            <el-form-item label="头像 / 电话 / 团队开关">
+              <div class="showcase-person-switch-row">
+                <el-switch v-model="demoShowAvatar" active-text="头像" />
+                <el-switch v-model="demoShowPhone" active-text="电话" />
+                <el-switch v-model="demoShowTeam" active-text="团队" />
+              </div>
+            </el-form-item>
+          </el-form>
+          <div class="showcase-person-preview">
+            <span class="showcase-person-tier__label">开关覆盖结果</span>
+            <UiUserIdentity :user-id="demoPersonId" :fallback-name="demoPersonFallbackName" :variant="demoPersonVariant" :show-avatar="demoShowAvatar" :show-phone="demoShowPhone" :show-team="demoShowTeam" />
+          </div>
+        </div>
+        <p class="showcase-note">档位只决定默认显示哪些字段；三个开关可独立覆盖档位默认值。悬停（触屏点击）查看完整信息，包括账号、电话、团队与全部角色。</p>
+      </el-card>
       <el-card shadow="never" class="surface-card showcase-card"><template #header><div class="card-heading"><div><span class="panel-kicker">状态与图标</span><h3>状态和图标</h3></div></div></template><div class="showcase-inline"><UiStatusTag :value="1" :labels="{ '1': '启用' }" /><UiStatusTag :value="0" :labels="{ '0': '停用' }" /><UiMenuIcon name="setting" /><UiMenuIcon name="user" /><el-icon><Box /></el-icon><el-icon><Edit /></el-icon></div><UiEmptyState title="空状态示例" description="没有数据时使用统一的空状态组件。" /></el-card>
       <el-card shadow="never" class="surface-card showcase-card showcase-card--wide"><template #header><div class="card-heading"><div><span class="panel-kicker">组织能力</span><h3>组织树和组织选择器</h3></div></div></template><div class="showcase-org-layout"><UiOrgTree :nodes="demoOrgs" :selected-id="selectedOrg" @select="selectedOrg = $event.id" /><div><el-form label-position="top"><el-form-item label="所属组织"><UiOrgTreeSelect v-model="selectedOrg" :nodes="demoOrgs" /></el-form-item></el-form><p class="showcase-note">组织树可接入节点级新增用户、新增下级组织和编辑操作。</p></div></div></el-card>
       <el-card shadow="never" class="surface-card showcase-card showcase-card--wide"><template #header><div class="card-heading"><div><span class="panel-kicker">数据表格</span><h3>数据表格</h3></div></div></template><UiDataTable :data="demoRows" row-key="id" border><el-table-column prop="name" label="组件名称" /><el-table-column label="状态"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="{ '1': '已启用' }" /></template></el-table-column><el-table-column label="操作"><template #default><el-button link type="primary"><el-icon><Edit /></el-icon>编辑</el-button></template></el-table-column></UiDataTable></el-card>
@@ -156,3 +194,13 @@ function formatFileSize(bytes: number) {
     <UiFilePreview v-model="previewDialogOpen" :url="previewResult?.previewUrl || null" :file-name="previewResult?.fileName || '文件预览'" />
   </section>
 </template>
+
+<style scoped>
+/* 示范页局部样式：只服务本页的档位与开关示例，不进入公共样式表。 */
+.showcase-person-tiers { display: grid; gap: 12px; margin-bottom: 16px; }
+.showcase-person-tier { display: grid; gap: 6px; min-width: 0; }
+.showcase-person-tier__label { color: var(--muted); font-size: 12px; }
+.showcase-person-switches { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+.showcase-person-switch-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.showcase-person-preview { display: grid; gap: 6px; min-width: 0; }
+</style>

@@ -151,9 +151,11 @@ public class RequirementLegacyEnhanceService {
     public List<Map<String, Object>> coordinationItems(long requirementId, AuthUser user) {
         requireAccess(requirementId, user);
         return jdbc.queryForList("""
-                SELECT id, system_item_id, item_type, system_code, system_name, owner_user_id,
+                SELECT id, system_role AS item_type, system_code, system_name, owner_user_id,
                        owner_user_name, start_date, end_date, status, description, created_at
-                FROM req_coordination_item WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
+                FROM req_legacy_system_item
+                WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
+                  AND system_role IN ('改造', '测试')
                 ORDER BY id
                 """, user.tenantId(), requirementId);
     }
@@ -165,9 +167,7 @@ public class RequirementLegacyEnhanceService {
         RequirementValues.requireOption("coordTypes", itemType);
         RequirementValues.requireOption("coordStatuses", RequirementValues.text(body, "status"));
         Map<String, Object> values = new LinkedHashMap<>();
-        values.put("system_item_id", body.get("system_item_id") == null || String.valueOf(body.get("system_item_id")).isBlank()
-                ? null : Long.parseLong(String.valueOf(body.get("system_item_id"))));
-        values.put("item_type", itemType);
+        values.put("system_role", itemType);
         values.put("system_code", RequirementValues.text(body, "system_code"));
         values.put("system_name", RequirementValues.text(body, "system_name"));
         Object ownerIdRaw = body.get("owner_user_id");
@@ -183,7 +183,7 @@ public class RequirementLegacyEnhanceService {
             long id = Long.parseLong(String.valueOf(idRaw));
             Map<String, Object> before = coordinationRow(id, user.tenantId());
             values.put("updated_by", user.id());
-            RequirementSql.update(jdbc, "req_coordination_item", id, user.tenantId(), values);
+            RequirementSql.update(jdbc, "req_legacy_system_item", id, user.tenantId(), values);
             Map<String, Object> after = coordinationRow(id, user.tenantId());
             changeLog.recordFields("LEGACY_COORDINATION", id, "UPDATE", before, after, user, "ONLINE");
             return after;
@@ -194,7 +194,7 @@ public class RequirementLegacyEnhanceService {
         values.put("requirement_id", requirementId);
         values.put("created_by", user.id());
         values.put("deleted", 0);
-        RequirementSql.insert(jdbc, "req_coordination_item", values);
+        RequirementSql.insert(jdbc, "req_legacy_system_item", values);
         changeLog.recordCreate("LEGACY_COORDINATION", id, values, user, "ONLINE");
         return coordinationRow(id, user.tenantId());
     }
@@ -203,7 +203,7 @@ public class RequirementLegacyEnhanceService {
     public void deleteCoordination(long id, AuthUser user) {
         Map<String, Object> row = coordinationRow(id, user.tenantId());
         requireEditable(((Number) row.get("requirement_id")).longValue(), user);
-        jdbc.update("UPDATE req_coordination_item SET deleted = 1 WHERE tenant_id = ? AND id = ?",
+        jdbc.update("UPDATE req_legacy_system_item SET deleted = 1 WHERE tenant_id = ? AND id = ?",
                 user.tenantId(), id);
         changeLog.record("LEGACY_COORDINATION", id, "DELETE", "deleted", "0", "1", user, "ONLINE");
     }
@@ -332,9 +332,9 @@ public class RequirementLegacyEnhanceService {
 
     private Map<String, Object> coordinationRow(long id, long tenantId) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT id, requirement_id, system_item_id, item_type, system_code, system_name,
+                SELECT id, requirement_id, system_role AS item_type, system_code, system_name,
                        owner_user_id, owner_user_name, start_date, end_date, status, description, created_at
-                FROM req_coordination_item WHERE tenant_id = ? AND id = ? AND deleted = 0
+                FROM req_legacy_system_item WHERE tenant_id = ? AND id = ? AND deleted = 0
                 """, tenantId, id);
         if (rows.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "协同事项不存在");

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "boundary": {
+    "controlled_system": "迁移参数字段子表领域（dm_parameter_field + 参数导入导出 + 前端维护入口）",
+    "inputs": ["新增/编辑参数表单", "字段抽屉操作", "Excel 导入文件", "回收站参数操作"],
+    "outputs": ["参数列表/详情（含字段）", "字段清单", "导入结果（行级错误）", "审计记录"],
+    "sensors": ["V200 幂等与唯一键 observable", "ParameterServiceTest 断言", "npm build 结果", "范围/治理检查"]
+  },
+  "states": {
+    "parameter": ["active", "deleted(recycle)"],
+    "field": ["active", "deleted(随参数级联或单独软删)"]
+  },
+  "actuators": [
+    "ParameterService.create/update/delete/restore/purge",
+    "字段 listFields/batchAddFields/updateField/deleteFields",
+    "importParameters 参数组解析与字段写入"
+  ],
+  "disturbances": [
+    "工作区既有 REQ-067/068 未提交改动",
+    "同参数中英文名并发重复写入",
+    "字段类型码值被停用"
+  ],
+  "controllability": {
+    "conclusion": "可观测且可控：每个 must 需求均有可重复传感器与明确执行器；导入与字段写操作收口在 ParameterService 单一事务边界内。"
+  }
+}

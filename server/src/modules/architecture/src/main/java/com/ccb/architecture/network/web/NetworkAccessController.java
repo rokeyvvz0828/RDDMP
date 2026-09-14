@@ -27,6 +27,8 @@ import com.ccb.common.api.ApiResponse;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import org.slf4j.Logger;
@@ -57,22 +59,26 @@ public class NetworkAccessController {
     private final NetworkAccessService service;
     private final NetworkAccessApplicationSubmissionService submissionService;
     private final SystemOperationAudit operationAudit;
+    private final ProjectAccessService projectAccessService;
 
     public NetworkAccessController(NetworkAccessService service,
                                    NetworkAccessApplicationSubmissionService submissionService,
-                                   SystemOperationAudit operationAudit) {
+                                   SystemOperationAudit operationAudit,
+                                   ProjectAccessService projectAccessService) {
         this.service = service;
         this.submissionService = submissionService;
         this.operationAudit = operationAudit;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping("/network-zones")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:view','architecture:network-zone:manage',"
             + "'architecture:view','architecture:manage')")
-    public ApiResponse<List<NetworkZone>> listZones(@RequestParam(required = false) RecordStatus status,
+    public ApiResponse<List<NetworkZone>> listZones(@RequestParam String projectRef,
+                                                    @RequestParam(required = false) RecordStatus status,
                                                     @RequestParam(required = false) String keyword,
                                                     @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listZones(actor, status, keyword));
+        return success(service.listZones(actor, project(projectRef, actor), status, keyword));
     }
 
     @GetMapping("/network-zones/options")
@@ -81,304 +87,340 @@ public class NetworkAccessController {
             + "'architecture:resource-request:manage','architecture:deployment-unit:view',"
             + "'architecture:deployment-unit:manage','architecture:view','architecture:manage')")
     public ApiResponse<List<NetworkZoneOption>> zoneOptions(
+            @RequestParam String projectRef,
             @RequestParam(defaultValue = "false") boolean leafOnly,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listZoneOptions(actor, leafOnly));
+        return success(service.listZoneOptions(actor, project(projectRef, actor), leafOnly));
     }
 
     @PostMapping("/network-zones")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZone> createZone(@RequestBody NetworkZoneCommand command,
+    public ApiResponse<NetworkZone> createZone(@RequestParam String projectRef,
+                                               @RequestBody NetworkZoneCommand command,
                                                @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone.create", "POST", "/api/architecture/network-zones",
-                () -> success(service.createZone(actor, command)));
+                () -> success(service.createZone(actor, project(projectRef, actor), command)));
     }
 
     @PutMapping("/network-zones/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZone> updateZone(@PathVariable long id,
+    public ApiResponse<NetworkZone> updateZone(@RequestParam String projectRef,
+                                               @PathVariable long id,
                                                @RequestBody NetworkZoneCommand command,
                                                @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone.update", "PUT", "/api/architecture/network-zones/" + id,
-                () -> success(service.updateZone(actor, id, command)));
+                () -> success(service.updateZone(actor, project(projectRef, actor), id, command)));
     }
 
     @PostMapping("/network-zones/{id}/deactivate")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZone> deactivateZone(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
+    public ApiResponse<NetworkZone> deactivateZone(@RequestParam String projectRef,
+                                                   @PathVariable long id,
+                                                   @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone.deactivate", "POST",
                 "/api/architecture/network-zones/" + id + "/deactivate",
-                () -> success(service.deactivateZone(actor, id)));
+                () -> success(service.deactivateZone(actor, project(projectRef, actor), id)));
     }
 
     @PostMapping("/network-zones/{id}/reactivate")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZone> reactivateZone(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
+    public ApiResponse<NetworkZone> reactivateZone(@RequestParam String projectRef,
+                                                   @PathVariable long id,
+                                                   @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone.reactivate", "POST",
                 "/api/architecture/network-zones/" + id + "/reactivate",
-                () -> success(service.reactivateZone(actor, id)));
+                () -> success(service.reactivateZone(actor, project(projectRef, actor), id)));
     }
 
     @GetMapping("/network-zones/{zoneId}/subnets")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:view','architecture:network-zone:manage',"
             + "'architecture:view','architecture:manage')")
-    public ApiResponse<List<NetworkZoneSubnet>> listSubnets(@PathVariable long zoneId,
+    public ApiResponse<List<NetworkZoneSubnet>> listSubnets(@RequestParam String projectRef,
+                                                            @PathVariable long zoneId,
                                                             @RequestParam(required = false) RecordStatus status,
                                                             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listSubnets(actor, zoneId, status));
+        return success(service.listSubnets(actor, project(projectRef, actor), zoneId, status));
     }
 
     @PostMapping("/network-zones/{zoneId}/subnets")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZoneSubnet> createSubnet(@PathVariable long zoneId,
+    public ApiResponse<NetworkZoneSubnet> createSubnet(@RequestParam String projectRef,
+                                                       @PathVariable long zoneId,
                                                        @RequestBody NetworkZoneSubnetCommand command,
                                                        @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone-subnet.create", "POST",
                 "/api/architecture/network-zones/" + zoneId + "/subnets",
-                () -> success(service.createSubnet(actor, zoneId, command)));
+                () -> success(service.createSubnet(actor, project(projectRef, actor), zoneId, command)));
     }
 
     @PutMapping("/network-zones/{zoneId}/subnets/{subnetId}")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZoneSubnet> updateSubnet(@PathVariable long zoneId,
+    public ApiResponse<NetworkZoneSubnet> updateSubnet(@RequestParam String projectRef,
+                                                       @PathVariable long zoneId,
                                                        @PathVariable long subnetId,
                                                        @RequestBody NetworkZoneSubnetCommand command,
                                                        @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone-subnet.update", "PUT",
                 "/api/architecture/network-zones/" + zoneId + "/subnets/" + subnetId,
-                () -> success(service.updateSubnet(actor, zoneId, subnetId, command)));
+                () -> success(service.updateSubnet(actor, project(projectRef, actor), zoneId, subnetId, command)));
     }
 
     @PostMapping("/network-zones/{zoneId}/subnets/{subnetId}/deactivate")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZoneSubnet> deactivateSubnet(@PathVariable long zoneId,
+    public ApiResponse<NetworkZoneSubnet> deactivateSubnet(@RequestParam String projectRef,
+                                                           @PathVariable long zoneId,
                                                            @PathVariable long subnetId,
                                                            @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone-subnet.deactivate", "POST",
                 "/api/architecture/network-zones/" + zoneId + "/subnets/" + subnetId + "/deactivate",
-                () -> success(service.deactivateSubnet(actor, zoneId, subnetId)));
+                () -> success(service.deactivateSubnet(actor, project(projectRef, actor), zoneId, subnetId)));
     }
 
     @PostMapping("/network-zones/{zoneId}/subnets/{subnetId}/reactivate")
     @PreAuthorize("hasAnyAuthority('architecture:network-zone:manage','architecture:manage')")
-    public ApiResponse<NetworkZoneSubnet> reactivateSubnet(@PathVariable long zoneId,
+    public ApiResponse<NetworkZoneSubnet> reactivateSubnet(@RequestParam String projectRef,
+                                                           @PathVariable long zoneId,
                                                            @PathVariable long subnetId,
                                                            @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-zone-subnet.reactivate", "POST",
                 "/api/architecture/network-zones/" + zoneId + "/subnets/" + subnetId + "/reactivate",
-                () -> success(service.reactivateSubnet(actor, zoneId, subnetId)));
+                () -> success(service.reactivateSubnet(actor, project(projectRef, actor), zoneId, subnetId)));
     }
 
     @GetMapping("/external-network-addresses")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:apply',"
             + "'architecture:network-access:manage','architecture:view','architecture:manage')")
     public ApiResponse<List<ExternalNetworkAddress>> listAddresses(
+            @RequestParam String projectRef,
             @RequestParam(required = false) RecordStatus status,
             @RequestParam(required = false) String keyword,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listAddresses(actor, status, keyword));
+        return success(service.listAddresses(actor, project(projectRef, actor), status, keyword));
     }
 
     @PostMapping("/external-network-addresses")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<ExternalNetworkAddress> createAddress(@RequestBody ExternalAddressCommand command,
+    public ApiResponse<ExternalNetworkAddress> createAddress(@RequestParam String projectRef,
+                                                             @RequestBody ExternalAddressCommand command,
                                                              @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.external-network-address.create", "POST",
                 "/api/architecture/external-network-addresses",
-                () -> success(service.createAddress(actor, command)));
+                () -> success(service.createAddress(actor, project(projectRef, actor), command)));
     }
 
     @PutMapping("/external-network-addresses/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<ExternalNetworkAddress> updateAddress(@PathVariable long id,
+    public ApiResponse<ExternalNetworkAddress> updateAddress(@RequestParam String projectRef,
+                                                             @PathVariable long id,
                                                              @RequestBody ExternalAddressCommand command,
                                                              @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.external-network-address.update", "PUT",
                 "/api/architecture/external-network-addresses/" + id,
-                () -> success(service.updateAddress(actor, id, command)));
+                () -> success(service.updateAddress(actor, project(projectRef, actor), id, command)));
     }
 
     @PostMapping("/external-network-addresses/{id}/deactivate")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<ExternalNetworkAddress> deactivateAddress(@PathVariable long id,
+    public ApiResponse<ExternalNetworkAddress> deactivateAddress(@RequestParam String projectRef,
+                                                                 @PathVariable long id,
                                                                  @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.external-network-address.deactivate", "POST",
                 "/api/architecture/external-network-addresses/" + id + "/deactivate",
-                () -> success(service.deactivateAddress(actor, id)));
+                () -> success(service.deactivateAddress(actor, project(projectRef, actor), id)));
     }
 
     @PostMapping("/external-network-addresses/{id}/reactivate")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<ExternalNetworkAddress> reactivateAddress(@PathVariable long id,
+    public ApiResponse<ExternalNetworkAddress> reactivateAddress(@RequestParam String projectRef,
+                                                                 @PathVariable long id,
                                                                  @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.external-network-address.reactivate", "POST",
                 "/api/architecture/external-network-addresses/" + id + "/reactivate",
-                () -> success(service.reactivateAddress(actor, id)));
+                () -> success(service.reactivateAddress(actor, project(projectRef, actor), id)));
     }
 
     @GetMapping("/network-access/options/instances")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:apply',"
             + "'architecture:network-access:manage','architecture:view','architecture:manage')")
     public ApiResponse<List<ManagedEndpointInstance>> listEndpointInstances(
+            @RequestParam String projectRef,
             @RequestParam(required = false) Long physicalSubsystemId,
             @RequestParam(required = false) Long environmentId,
             @RequestParam(required = false) Long deploymentUnitId,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listEndpointInstances(actor, physicalSubsystemId, environmentId, deploymentUnitId));
+        return success(service.listEndpointInstances(
+                actor, project(projectRef, actor), physicalSubsystemId, environmentId, deploymentUnitId));
     }
 
     @PostMapping("/network-access/decision")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:apply',"
             + "'architecture:network-access:manage','architecture:view','architecture:manage')")
     public ApiResponse<NetworkAccessDecisionResult> decideNetworkAccess(
+            @RequestParam String projectRef,
             @RequestBody NetworkAccessDecisionCommand command,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-access.decision.evaluate", "POST",
                 "/api/architecture/network-access/decision",
-                () -> success(service.decideAccess(actor, command)));
+                () -> success(service.decideAccess(actor, project(projectRef, actor), command)));
     }
 
     @GetMapping("/network-access-exemption-rules")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:manage',"
             + "'architecture:view','architecture:manage')")
     public ApiResponse<List<NetworkAccessExemptionRule>> listExemptionRules(
+            @RequestParam String projectRef,
             @RequestParam(required = false) ExemptionRuleStatus status,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listExemptionRules(actor, status));
+        return success(service.listExemptionRules(actor, project(projectRef, actor), status));
     }
 
     @PostMapping("/network-access-exemption-rules")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
     public ApiResponse<NetworkAccessExemptionRule> createExemptionRule(
+            @RequestParam String projectRef,
             @RequestBody ExemptionRuleCommand command,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-access-exemption-rule.create", "POST",
                 "/api/architecture/network-access-exemption-rules",
-                () -> success(service.createExemptionRule(actor, command)));
+                () -> success(service.createExemptionRule(actor, project(projectRef, actor), command)));
     }
 
     @PutMapping("/network-access-exemption-rules/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
     public ApiResponse<NetworkAccessExemptionRule> updateExemptionRule(
+            @RequestParam String projectRef,
             @PathVariable long id,
             @RequestBody ExemptionRuleCommand command,
             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-access-exemption-rule.update", "PUT",
                 "/api/architecture/network-access-exemption-rules/" + id,
-                () -> success(service.updateExemptionRule(actor, id, command)));
+                () -> success(service.updateExemptionRule(actor, project(projectRef, actor), id, command)));
     }
 
     @PostMapping("/network-access-exemption-rules/{id}/enable")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
     public ApiResponse<NetworkAccessExemptionRule> enableExemptionRule(
+            @RequestParam String projectRef,
             @PathVariable long id,
             @RequestBody RowVersionRequest request,
             @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-exemption-rule.enable", "POST",
                 "/api/architecture/network-access-exemption-rules/" + id + "/enable",
-                () -> success(service.updateExemptionRuleStatus(actor, id, rowVersion, ExemptionRuleStatus.ACTIVE)));
+                () -> success(service.updateExemptionRuleStatus(
+                        actor, project(projectRef, actor), id, rowVersion, ExemptionRuleStatus.ACTIVE)));
     }
 
     @PostMapping("/network-access-exemption-rules/{id}/disable")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
     public ApiResponse<NetworkAccessExemptionRule> disableExemptionRule(
+            @RequestParam String projectRef,
             @PathVariable long id,
             @RequestBody RowVersionRequest request,
             @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-exemption-rule.disable", "POST",
                 "/api/architecture/network-access-exemption-rules/" + id + "/disable",
-                () -> success(service.updateExemptionRuleStatus(actor, id, rowVersion, ExemptionRuleStatus.DISABLED)));
+                () -> success(service.updateExemptionRuleStatus(
+                        actor, project(projectRef, actor), id, rowVersion, ExemptionRuleStatus.DISABLED)));
     }
 
     @GetMapping("/network-access-applications")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:apply',"
             + "'architecture:network-access:manage','architecture:view','architecture:manage')")
     public ApiResponse<List<NetworkAccessApplication>> listApplications(
+            @RequestParam String projectRef,
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
             @AuthenticationPrincipal AuthUser actor,
             Authentication authentication) {
-        return success(service.listApplications(actor, accessScope(authentication), status, limit, offset));
+        return success(service.listApplications(
+                actor, project(projectRef, actor), accessScope(authentication), status, limit, offset));
     }
 
     @PostMapping("/network-access-applications")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:apply','architecture:network-access:manage',"
             + "'architecture:apply','architecture:manage')")
-    public ApiResponse<NetworkAccessApplication> createApplication(@RequestBody NetworkAccessCommand command,
+    public ApiResponse<NetworkAccessApplication> createApplication(@RequestParam String projectRef,
+                                                                   @RequestBody NetworkAccessCommand command,
                                                                    @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-access-application.create", "POST",
                 "/api/architecture/network-access-applications",
-                () -> success(service.createApplication(actor, command)));
+                () -> success(service.createApplication(actor, project(projectRef, actor), command)));
     }
 
     @PostMapping("/network-access-applications/{id}/submit")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:apply','architecture:network-access:manage',"
             + "'architecture:apply','architecture:manage')")
-    public ApiResponse<NetworkAccessApplication> submitApplication(@PathVariable long id,
+    public ApiResponse<NetworkAccessApplication> submitApplication(@RequestParam String projectRef,
+                                                                   @PathVariable long id,
                                                                    @RequestBody RowVersionRequest request,
                                                                    @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-application.submit", "POST",
                 "/api/architecture/network-access-applications/" + id + "/submit",
-                () -> success(submissionService.submit(actor, id, rowVersion)));
+                () -> success(submissionService.submit(actor, project(projectRef, actor), id, rowVersion)));
     }
 
     @PostMapping("/network-access-applications/{id}/approve")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<NetworkAccessApplication> approveApplication(@PathVariable long id,
+    public ApiResponse<NetworkAccessApplication> approveApplication(@RequestParam String projectRef,
+                                                                    @PathVariable long id,
                                                                     @RequestBody RowVersionRequest request,
                                                                     @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-application.approve", "POST",
                 "/api/architecture/network-access-applications/" + id + "/approve",
-                () -> success(service.approveApplication(actor, id, rowVersion)));
+                () -> success(service.approveApplication(actor, project(projectRef, actor), id, rowVersion)));
     }
 
     @PostMapping("/network-access-applications/{id}/reject")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<NetworkAccessApplication> rejectApplication(@PathVariable long id,
+    public ApiResponse<NetworkAccessApplication> rejectApplication(@RequestParam String projectRef,
+                                                                   @PathVariable long id,
                                                                    @RequestBody RowVersionRequest request,
                                                                    @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-application.reject", "POST",
                 "/api/architecture/network-access-applications/" + id + "/reject",
-                () -> success(service.rejectApplication(actor, id, rowVersion)));
+                () -> success(service.rejectApplication(actor, project(projectRef, actor), id, rowVersion)));
     }
 
     @PostMapping("/network-access-applications/{id}/cancel")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:apply','architecture:network-access:manage',"
             + "'architecture:apply','architecture:manage')")
-    public ApiResponse<NetworkAccessApplication> cancelApplication(@PathVariable long id,
+    public ApiResponse<NetworkAccessApplication> cancelApplication(@RequestParam String projectRef,
+                                                                   @PathVariable long id,
                                                                    @RequestBody RowVersionRequest request,
                                                                    @AuthenticationPrincipal AuthUser actor) {
         long rowVersion = request == null || request.rowVersion() == null ? -1 : request.rowVersion();
         return audited(actor, "architecture.network-access-application.cancel", "POST",
                 "/api/architecture/network-access-applications/" + id + "/cancel",
-                () -> success(submissionService.cancel(actor, id, rowVersion)));
+                () -> success(submissionService.cancel(actor, project(projectRef, actor), id, rowVersion)));
     }
 
     @GetMapping("/network-access-relations")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:view','architecture:network-access:manage',"
             + "'architecture:view','architecture:manage')")
     public ApiResponse<List<NetworkAccessRelation>> listRelations(
+            @RequestParam String projectRef,
             @RequestParam(required = false) RelationStatus status,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset,
             @AuthenticationPrincipal AuthUser actor) {
-        return success(service.listRelations(actor, status, limit, offset));
+        return success(service.listRelations(actor, project(projectRef, actor), status, limit, offset));
     }
 
     @PostMapping("/network-access-relations/{id}/close")
     @PreAuthorize("hasAnyAuthority('architecture:network-access:manage','architecture:manage')")
-    public ApiResponse<NetworkAccessRelation> closeRelation(@PathVariable long id,
+    public ApiResponse<NetworkAccessRelation> closeRelation(@RequestParam String projectRef,
+                                                            @PathVariable long id,
                                                             @RequestBody CloseRelationCommand command,
                                                             @AuthenticationPrincipal AuthUser actor) {
         return audited(actor, "architecture.network-access-relation.close", "POST",
                 "/api/architecture/network-access-relations/" + id + "/close",
-                () -> success(service.closeRelation(actor, id, command)));
+                () -> success(service.closeRelation(actor, project(projectRef, actor), id, command)));
     }
 
     private <T> T audited(AuthUser actor, String operationCode, String method, String path,
@@ -419,6 +461,10 @@ public class NetworkAccessController {
             return AccessScope.MANAGE;
         }
         return AccessScope.OWN;
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 
     private <T> ApiResponse<T> success(T data) {

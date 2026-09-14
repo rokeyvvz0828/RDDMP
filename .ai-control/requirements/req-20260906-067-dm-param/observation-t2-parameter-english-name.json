@@ -1,0 +1,19 @@
+{
+  "sample_label": "T2 前端契约完成采样",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id":"R1","sensor":"S3 TypeScript + 源码契约探针","result":"pass","raw_evidence":"ParameterFormData 参数英文名必填类型、maxlength=255、required 检查和 [A-Za-z0-9_]+ 预检均存在；构建退出码 0","limitation":["交互提示由 T3 浏览器采样"]},
+    {"requirement_id":"R3","sensor":"S3 TypeScript + 源码契约探针","result":"pass","raw_evidence":"parameterNameEn 请求、parameter_name_en 响应、编辑反显、列表和详情绑定均通过探针且 vue-tsc 通过","limitation":["真实后端响应由 T3 采样"]},
+    {"requirement_id":"R4","sensor":"S3 页面源码 + Vite","result":"pass","raw_evidence":"页面说明为六列模板并显式包含参数英文名；Vite 构建成功","limitation":["真实文件下载由 T3 采样"]},
+    {"requirement_id":"R5","sensor":"S3 页面源码探针","result":"pass","raw_evidence":"关键字占位符为 参数名称 / 参数英文名 / 参数说明，原 keyword 请求链路未改变","limitation":["真实查询结果由 T3 采样"]},
+    {"requirement_id":"R7","sensor":"S3 构建 + S5 diff","result":"pass","raw_evidence":"仅 API 类型和专属页面有前端 diff，权限/全状态/公共 UI 未改，构建退出码 0","limitation":["四视口溢出和未授权角色由 T3 采样"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event":"Vite 报告既有大 chunk 和第三方 PURE 注释警告","impact":"不影响退出码或本功能类型/构建结果"}
+  ],
+  "coverage_gaps": ["真实 API、页面交互与四视口布局待 T3 集成采样"],
+  "error_counts": {"P0":0,"P1":0,"P2":0,"P3":0},
+  "observation_status": "complete"
+}

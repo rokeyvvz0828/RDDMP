@@ -96,6 +96,43 @@ public class ParameterController {
         return ApiResponse.success(service.importParameters(projectId, file, user), TraceId.getOrCreate());
     }
 
+    @GetMapping("/{id:\\d+}/fields")
+    public ApiResponse<List<Map<String, Object>>> listFields(
+            @PathVariable long id, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.listFields(id, user), TraceId.getOrCreate());
+    }
+
+    @PostMapping("/{id:\\d+}/fields")
+    @PreAuthorize("hasAnyAuthority('data-migration:content:parameters:update','data-migration:write','data-migration:manage','system:admin')")
+    public ApiResponse<List<Map<String, Object>>> batchAddFields(
+            @PathVariable long id, @RequestBody List<Map<String, Object>> body, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.batchAddFields(id, body, user), TraceId.getOrCreate());
+    }
+
+    @PutMapping("/{id:\\d+}/fields/{fieldId:\\d+}")
+    @PreAuthorize("hasAnyAuthority('data-migration:content:parameters:update','data-migration:write','data-migration:manage','system:admin')")
+    public ApiResponse<Map<String, Object>> updateField(
+            @PathVariable long id, @PathVariable long fieldId,
+            @RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.updateField(id, fieldId, body, user), TraceId.getOrCreate());
+    }
+
+    @DeleteMapping("/{id:\\d+}/fields/{fieldId:\\d+}")
+    @PreAuthorize("hasAnyAuthority('data-migration:content:parameters:delete','data-migration:write','data-migration:manage','system:admin')")
+    public ApiResponse<Void> deleteField(
+            @PathVariable long id, @PathVariable long fieldId, @AuthenticationPrincipal AuthUser user) {
+        service.deleteField(id, fieldId, user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
+    @PostMapping("/{id:\\d+}/fields/batch-delete")
+    @PreAuthorize("hasAnyAuthority('data-migration:content:parameters:delete','data-migration:write','data-migration:manage','system:admin')")
+    public ApiResponse<Void> batchDeleteFields(
+            @PathVariable long id, @RequestBody List<Long> body, @AuthenticationPrincipal AuthUser user) {
+        service.deleteFields(id, body, user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
+
     @PutMapping("/{id:\\d+}")
     @PreAuthorize("hasAnyAuthority('data-migration:content:parameters:update','data-migration:write','data-migration:manage','system:admin')")
     public ApiResponse<Map<String, Object>> update(@PathVariable long id, @RequestBody Map<String, Object> body,

@@ -11,6 +11,8 @@ import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,9 +39,11 @@ public class DeploymentUnitController {
     private static final String MANAGE_PERMISSION = "hasAuthority('architecture:deployment-unit:manage')";
 
     private final DeploymentUnitService service;
+    private final ProjectAccessService projectAccessService;
 
-    public DeploymentUnitController(DeploymentUnitService service) {
+    public DeploymentUnitController(DeploymentUnitService service, ProjectAccessService projectAccessService) {
         this.service = service;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping
@@ -52,9 +56,11 @@ public class DeploymentUnitController {
             @RequestParam(required = false) Long physicalSubsystemId,
             @RequestParam(required = false) String kind,
             @RequestParam(required = false) String status,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         DeploymentUnitQuery query = new DeploymentUnitQuery(code, name, physicalSubsystemId, kind, status);
-        return ApiResponse.success(service.list(actor, new PageQuery(page, size), query), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(actor, project(projectRef, actor), new PageQuery(page, size), query),
+                TraceId.getOrCreate());
     }
 
     @GetMapping("/options")
@@ -64,59 +70,76 @@ public class DeploymentUnitController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) Long excludeId,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return ApiResponse.success(service.options(actor, keyword, excludeId, new PageQuery(page, size)),
+        return ApiResponse.success(service.options(actor, project(projectRef, actor), keyword, excludeId,
+                        new PageQuery(page, size)),
                 TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}")
     @PreAuthorize(VIEW_PERMISSION)
-    public ApiResponse<DeploymentUnitView> detail(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
-        return ApiResponse.success(service.detail(actor, id), TraceId.getOrCreate());
+    public ApiResponse<DeploymentUnitView> detail(@PathVariable long id,
+                                                   @RequestParam String projectRef,
+                                                   @AuthenticationPrincipal AuthUser actor) {
+        return ApiResponse.success(service.detail(actor, project(projectRef, actor), id), TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}/versions")
     @PreAuthorize(VIEW_PERMISSION)
     public ApiResponse<List<DeploymentUnitVersionView>> versions(@PathVariable long id,
+                                                                 @RequestParam String projectRef,
                                                                  @AuthenticationPrincipal AuthUser actor) {
-        return ApiResponse.success(service.versions(actor, id), TraceId.getOrCreate());
+        return ApiResponse.success(service.versions(actor, project(projectRef, actor), id), TraceId.getOrCreate());
     }
 
     @PostMapping
     @PreAuthorize(MANAGE_PERMISSION)
     public ApiResponse<DeploymentUnitView> create(@RequestBody DeploymentUnitCommand command,
+                                                  @RequestParam String projectRef,
                                                   @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.create(actor, command, traceId), traceId);
+        return ApiResponse.success(service.create(actor, project(projectRef, actor), command, traceId), traceId);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize(MANAGE_PERMISSION)
     public ApiResponse<DeploymentUnitView> update(@PathVariable long id,
                                                   @RequestBody DeploymentUnitCommand command,
+                                                  @RequestParam String projectRef,
                                                   @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.update(actor, id, command, traceId), traceId);
+        return ApiResponse.success(service.update(actor, project(projectRef, actor), id, command, traceId), traceId);
     }
 
     @PostMapping("/{id}/deactivate")
     @PreAuthorize(MANAGE_PERMISSION)
-    public ApiResponse<DeploymentUnitView> deactivate(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
+    public ApiResponse<DeploymentUnitView> deactivate(@PathVariable long id,
+                                                      @RequestParam String projectRef,
+                                                      @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.deactivate(actor, id, traceId), traceId);
+        return ApiResponse.success(service.deactivate(actor, project(projectRef, actor), id, traceId), traceId);
     }
 
     @PostMapping("/{id}/reactivate")
     @PreAuthorize(MANAGE_PERMISSION)
-    public ApiResponse<DeploymentUnitView> reactivate(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
+    public ApiResponse<DeploymentUnitView> reactivate(@PathVariable long id,
+                                                      @RequestParam String projectRef,
+                                                      @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.reactivate(actor, id, traceId), traceId);
+        return ApiResponse.success(service.reactivate(actor, project(projectRef, actor), id, traceId), traceId);
     }
 
     @PostMapping("/{id}/void")
     @PreAuthorize(MANAGE_PERMISSION)
-    public ApiResponse<DeploymentUnitView> voidUnit(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
+    public ApiResponse<DeploymentUnitView> voidUnit(@PathVariable long id,
+                                                    @RequestParam String projectRef,
+                                                    @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.voidUnit(actor, id, traceId), traceId);
+        return ApiResponse.success(service.voidUnit(actor, project(projectRef, actor), id, traceId), traceId);
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 }

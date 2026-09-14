@@ -1,0 +1,23 @@
+{
+  "sample_label": "T1-T4 集成观测（S-0001~S-0003）",
+  "task_ids": ["T1", "T2", "T3", "T4"],
+  "baseline_revision": 2,
+  "measurements": [
+    {"requirement_id": "R1", "signal": "删除类零代码引用 + 4 文件 Files.notExists 断言", "sensor": "rg + DataMigrationModuleRegistrationTest", "result": "pass"},
+    {"requirement_id": "R2", "signal": "ContentFileAssetService 保留面可用且无通用成员", "sensor": "mvn 编译/全量测试 + ContentFileAssetDocCodeGovernanceTest", "result": "pass"},
+    {"requirement_id": "R3", "signal": "6 前缀且 DEPENDENCY/PARAMETER 抛异常", "sensor": "ContentDocCodeGeneratorTest", "result": "pass"},
+    {"requirement_id": "R4", "signal": "前端组件/API 不存在且构建通过", "sensor": "rg + npm --prefix web run build", "result": "pass"},
+    {"requirement_id": "R5", "signal": "测试不再读取已删文件且 207 全量通过", "sensor": "mvn -pl :ccb-data-migration -am test", "result": "pass"},
+    {"requirement_id": "R6", "signal": "ContentAssetTables 无差异，看板/组件/附件策略测试通过", "sensor": "git diff + DashboardMetricMySqlTest/ContentAssetMigrationMySqlTest", "result": "pass"}
+  ],
+  "feedback": [],
+  "disturbances": [
+    "check-codex-scope 指认其他 REQ 未提交/已提交文件（P2 治理基线噪声，已自审计确认本次改动合规）",
+    "1 个旧 surefire txt 报告残留（已按 mtime 过滤）",
+    "冒烟无认证凭据，已删端点仅验证到 401 门禁",
+    "专属来源 javadoc 文本链接已删类成员（P2 文档残留）"
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 3, "P3": 0},
+  "observation_status": "complete"
+}

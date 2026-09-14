@@ -15,6 +15,8 @@ import com.ccb.architecture.change.service.SubsystemPublicationService.ApprovalC
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
@@ -40,23 +42,27 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
     private final SubsystemChangeStore store;
     private final SubsystemChangeService changes;
     private final SubsystemPublicationService publication;
+    private final ProjectAccessService projectAccessService;
     private final LongSupplier idSupplier;
 
     @Autowired
     public ArchitectureWorkflowLifecycleConsumer(SubsystemChangeStore store,
                                                  SubsystemChangeService changes,
-                                                 SubsystemPublicationService publication) {
-        this(store, changes, publication,
+                                                 SubsystemPublicationService publication,
+                                                 ProjectAccessService projectAccessService) {
+        this(store, changes, publication, projectAccessService,
                 () -> System.currentTimeMillis() * 1_000 + ThreadLocalRandom.current().nextInt(1_000));
     }
 
     ArchitectureWorkflowLifecycleConsumer(SubsystemChangeStore store,
                                           SubsystemChangeService changes,
                                           SubsystemPublicationService publication,
+                                          ProjectAccessService projectAccessService,
                                           LongSupplier idSupplier) {
         this.store = Objects.requireNonNull(store, "工单存储不能为空");
         this.changes = Objects.requireNonNull(changes, "工单服务不能为空");
         this.publication = Objects.requireNonNull(publication, "发布服务不能为空");
+        this.projectAccessService = Objects.requireNonNull(projectAccessService, "项目访问服务不能为空");
         this.idSupplier = Objects.requireNonNull(idSupplier, "标识生成器不能为空");
     }
 
@@ -74,18 +80,24 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
     @Transactional
     public void consume(WorkflowLifecycleEvent event) {
         long applicationId = validateAndApplicationId(event);
-        ChangeApplication application = store.lockApplication(event.tenantId(), applicationId)
+        AuthUser workflowOperator = workflowOperator(event);
+        ProjectAccess project = projectAccessService.requireAccessible(event.context().projectRef(), workflowOperator);
+        if (!Objects.equals(project.projectRef(), event.context().projectRef())
+                || !Objects.equals(project.projectName(), event.context().projectName())) {
+            throw conflict("工作流事件项目上下文与可信项目不一致");
+        }
+        ChangeApplication application = store.lockApplication(event.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> conflict("工作流事件关联的架构子系统工单不存在"));
-        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), event.eventId(),
+        if (!store.beginReceipt(new WorkflowReceiptStart(nextId(), event.tenantId(), project.id(), event.eventId(),
                 SUBSCRIBER_KEY, applicationId, event.context().businessRound(), event.instanceId(),
                 event.eventType().name()))) {
             return;
         }
 
-        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), event.instanceId())
+        WorkflowRound round = store.lockWorkflowRoundByInstance(event.tenantId(), project.id(), event.instanceId())
                 .orElseThrow(() -> conflict("工作流事件关联的审批轮次不存在"));
         if (!matches(application, round, event)
-                || !store.isLatestWorkflowRound(event.tenantId(), application.id(), round.roundNo())) {
+                || !store.isLatestWorkflowRound(event.tenantId(), project.id(), application.id(), round.roundNo())) {
             ignored(event, "事件不匹配当前实例、轮次或摘要");
             return;
         }
@@ -114,8 +126,8 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
             ignored(event, "APPROVED 事件对应的工单已变化或正在取消");
             return;
         }
-        publication.approve(new ApprovalCommand(application.id(), round.roundNo(), application.rowVersion(),
-                event.instanceId(), event.context().dataDigest()), workflowOperator(event));
+        publication.approve(new ApprovalCommand(application.id(), application.projectId(), round.roundNo(),
+                application.rowVersion(), event.instanceId(), event.context().dataDigest()), workflowOperator(event));
         completeRound(event, application, round, WorkflowRoundStatus.APPROVED);
         processed(event, "已批准并原子发布架构子系统变更");
     }
@@ -127,7 +139,7 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
             ignored(event, event.eventType() + " 事件对应的工单已变化或正在取消");
             return;
         }
-        changes.applyReviewOutcomeInCurrentTransaction(event.tenantId(), application.id(),
+        changes.applyReviewOutcomeInCurrentTransaction(event.tenantId(), application.projectId(), application.id(),
                 application.rowVersion(), event.operatorId(), outcome);
         completeRound(event, application, round, roundStatus);
         processed(event, outcome == ReviewOutcome.RETURNED
@@ -140,7 +152,7 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
             ignored(event, "TERMINATED 事件没有匹配的取消请求");
             return;
         }
-        changes.applyCancellationConfirmationInCurrentTransaction(event.tenantId(), application.id(),
+        changes.applyCancellationConfirmationInCurrentTransaction(event.tenantId(), application.projectId(), application.id(),
                 application.rowVersion(), event.instanceId(), event.operatorId());
         completeRound(event, application, round, WorkflowRoundStatus.TERMINATED);
         processed(event, "已确认工作流终止并取消工单");
@@ -153,7 +165,7 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
 
     private void completeRound(WorkflowLifecycleEvent event, ChangeApplication application,
                                WorkflowRound round, WorkflowRoundStatus nextStatus) {
-        if (!store.completeStartedWorkflowRound(event.tenantId(), application.id(), round.roundNo(),
+        if (!store.completeStartedWorkflowRound(event.tenantId(), application.projectId(), application.id(), round.roundNo(),
                 nextStatus, event.occurredAt())) {
             throw conflict("审批轮次状态已变化");
         }
@@ -163,6 +175,7 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
         WorkflowBusinessContext context = event.context();
         return application.id() == round.applicationId()
                 && application.tenantId() == event.tenantId()
+                && application.projectId() == round.projectId()
                 && application.currentBusinessRound() == context.businessRound()
                 && Objects.equals(application.currentWorkflowDefinitionId(), round.workflowDefinitionId())
                 && Objects.equals(application.currentWorkflowVersionId(), round.workflowVersionId())
@@ -171,6 +184,8 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
                 && round.roundNo() == context.businessRound()
                 && equalsDigest(application.currentPayloadDigest(), context.dataDigest())
                 && equalsDigest(round.payloadDigest(), context.dataDigest())
+                && context.projectRef() != null && !context.projectRef().isBlank()
+                && context.projectName() != null && !context.projectName().isBlank()
                 && String.valueOf(application.id()).equals(context.businessKey());
     }
 
@@ -181,6 +196,8 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
                 || !supports(event.context().businessType())
                 || !ArchitectureSubsystemSubmissionService.MODULE_CODE.equals(event.context().moduleCode())
                 || event.context().businessRound() <= 0
+                || event.context().projectRef() == null || event.context().projectRef().isBlank()
+                || event.context().projectName() == null || event.context().projectName().isBlank()
                 || event.context().dataDigest() == null
                 || event.context().dataDigest().length() != 64) {
             throw conflict("工作流生命周期事件无效");
@@ -201,14 +218,16 @@ public class ArchitectureWorkflowLifecycleConsumer implements WorkflowLifecycleC
     }
 
     private void processed(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+        ProjectAccess project = projectAccessService.requireAccessible(event.context().projectRef(), workflowOperator(event));
+        if (!store.completeReceipt(event.tenantId(), project.id(), event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.PROCESSED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }
     }
 
     private void ignored(WorkflowLifecycleEvent event, String detail) {
-        if (!store.completeReceipt(event.tenantId(), event.eventId(), SUBSCRIBER_KEY,
+        ProjectAccess project = projectAccessService.requireAccessible(event.context().projectRef(), workflowOperator(event));
+        if (!store.completeReceipt(event.tenantId(), project.id(), event.eventId(), SUBSCRIBER_KEY,
                 WorkflowReceiptStatus.IGNORED, detail)) {
             throw conflict("工作流事件回执状态已变化");
         }

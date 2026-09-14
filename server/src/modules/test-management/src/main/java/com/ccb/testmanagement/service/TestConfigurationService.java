@@ -71,11 +71,11 @@ public class TestConfigurationService {
                 + "WHERE tenant_id=? AND deleted=0 ORDER BY project_name, id", user.tenantId());
     }
 
-    /** 临时规则：当前项目候选为当前租户所有未删除物理子系统。 */
+    /** 当前项目候选只包含该项目下未删除的物理子系统。 */
     public PageResult<Map<String, Object>> systems(String domain, long projectId, PageQuery page, String keyword, AuthUser user) {
         domain(domain); requireProject(projectId, user.tenantId());
-        List<Object> args = new ArrayList<>(List.of(domain, projectId, user.tenantId()));
-        StringBuilder where = new StringBuilder(" WHERE p.tenant_id=? AND p.deleted=0");
+        List<Object> args = new ArrayList<>(List.of(domain, projectId, user.tenantId(), projectId));
+        StringBuilder where = new StringBuilder(" WHERE p.tenant_id=? AND p.project_id=? AND p.deleted=0");
         if (hasText(keyword)) {
             where.append(" AND (p.code LIKE ? OR p.short_name LIKE ? OR p.name LIKE ?)");
             String like = "%" + keyword.trim() + "%";
@@ -95,7 +95,7 @@ public class TestConfigurationService {
 
     @Transactional
     public Map<String, Object> setSystem(String domain, long projectId, long physicalId, Map<String, Object> body, AuthUser user) {
-        domain(domain); requireProject(projectId, user.tenantId()); requirePhysical(physicalId, user.tenantId());
+        domain(domain); requireProject(projectId, user.tenantId()); requirePhysical(physicalId, projectId, user.tenantId());
         boolean enabled = bool(body.get("enabled"), false);
         if (!enabled && !bool(body.get("confirmed"), false)) {
             return Map.of("confirmation_required", true, "impact", systemImpact(domain, projectId, physicalId, user.tenantId()));
@@ -117,7 +117,7 @@ public class TestConfigurationService {
     }
 
     public Map<String, Object> systemImpact(String domain, long projectId, long physicalId, long tenantId) {
-        domain(domain); requireProject(projectId, tenantId); requirePhysical(physicalId, tenantId);
+        domain(domain); requireProject(projectId, tenantId); requirePhysical(physicalId, projectId, tenantId);
         return Map.of("unfinished_defects", 0, "latest_executions", 0, "message", "后续缺陷和执行模块尚未启用，当前无受影响业务数据");
     }
 
@@ -165,9 +165,9 @@ public class TestConfigurationService {
         Map<String,Map<String,Object>> prepared = new LinkedHashMap<>(); List<Map<String,Object>> errors = new ArrayList<>();
         for (Map<String,Object> row : rows) {
             String code = text(row.get("physical_code"), 32, "物理子系统编号");
-            Long physicalId = findPhysicalByCode(code, user.tenantId());
+            Long physicalId = findPhysicalByCode(code, projectId, user.tenantId());
             if (code == null) errors.add(importError(row, "物理子系统编号不能为空"));
-            else if (physicalId == null) errors.add(importError(row, "物理子系统不存在或不属于当前租户：" + code));
+            else if (physicalId == null) errors.add(importError(row, "物理子系统不存在或不属于当前项目：" + code));
             else {
                 try { Map<String,Object> item = new LinkedHashMap<>(); item.put("physical_id", physicalId); item.put("enabled", importBoolean(row.get("enabled"), "是否参测")); item.put("remark", row.get("remark")); prepared.put(code, item); }
                 catch (BusinessException exception) { errors.add(importError(row, exception.getMessage())); }
@@ -184,9 +184,9 @@ public class TestConfigurationService {
         domain(domain); requireProject(projectId, user.tenantId());
         Map<String,Map<String,Object>> prepared = new LinkedHashMap<>(); List<Map<String,Object>> errors = new ArrayList<>();
         for (Map<String,Object> row : rows) {
-            String physicalCode = text(row.get("physical_code"), 32, "物理子系统编号"); Long physicalId = findPhysicalByCode(physicalCode, user.tenantId());
+            String physicalCode = text(row.get("physical_code"), 32, "物理子系统编号"); Long physicalId = findPhysicalByCode(physicalCode, projectId, user.tenantId());
             Long userId = importPositive(row.get("user_id")); String code = String.valueOf(row.getOrDefault("role_code", "")).trim().toUpperCase(Locale.ROOT);
-            String error = physicalCode == null ? "物理子系统编号不能为空" : physicalId == null ? "物理子系统不存在或不属于当前租户：" + physicalCode
+            String error = physicalCode == null ? "物理子系统编号不能为空" : physicalId == null ? "物理子系统不存在或不属于当前项目：" + physicalCode
                     : userId == null ? "用户ID无效" : !ROLE_CODES.contains(code) ? "角色编码无效" : null;
             if (error == null && users.findActive(user.tenantId(), userId).isEmpty()) error = "用户不存在、未启用或不属于当前租户";
             if (error == null) { try { requireParticipatingSystem(domain, projectId, physicalId, user.tenantId()); } catch (BusinessException exception) { error = "物理子系统尚未设为参测系统"; } }
@@ -302,7 +302,7 @@ public class TestConfigurationService {
 
     private PageResult<Map<String,Object>> page(String table,String condition,List<Object> bound,PageQuery page,String order,String fields){List<Object> args=new ArrayList<>(bound);String where=" WHERE tenant_id=? AND deleted=0 AND "+condition;Long total=jdbc.queryForObject("SELECT COUNT(*) FROM "+table+where,Long.class,args.toArray());args.add((page.page()-1)*page.size());args.add(page.size());return new PageResult<>(jdbc.queryForList("SELECT "+fields+" FROM "+table+where+" ORDER BY "+order+" LIMIT ?,?",args.toArray()),total==null?0:total,page.page(),page.size());}
     private void requireProject(long id,long tenant){if(jdbc.queryForObject("SELECT COUNT(*) FROM pm_project WHERE id=? AND tenant_id=? AND deleted=0",Long.class,id,tenant)==0)throw bad("项目不存在或不属于当前租户");}
-    private void requirePhysical(long id,long tenant){if(jdbc.queryForObject("SELECT COUNT(*) FROM arch_physical_subsystem WHERE id=? AND tenant_id=? AND deleted=0",Long.class,id,tenant)==0)throw bad("物理子系统不存在或不属于当前租户");}
+    private void requirePhysical(long id,long project,long tenant){if(jdbc.queryForObject("SELECT COUNT(*) FROM arch_physical_subsystem WHERE id=? AND tenant_id=? AND project_id=? AND deleted=0",Long.class,id,tenant,project)==0)throw bad("物理子系统不存在或不属于当前项目");}
     private void requireParticipatingSystem(String d,long p,long s,long t){Long n=jdbc.queryForObject("SELECT COUNT(*) FROM tm_test_participating_system WHERE tenant_id=? AND test_domain=? AND project_id=? AND physical_subsystem_id=? AND enabled=1 AND deleted=0",Long.class,t,d,p,s);if(n==null||n==0)throw bad("请先启用该参测系统");}
     private void requireRound(long id,String d,long p,long t){Long n=jdbc.queryForObject("SELECT COUNT(*) FROM tm_test_round WHERE id=? AND tenant_id=? AND test_domain=? AND project_id=? AND deleted=0",Long.class,id,t,d,p);if(n==null||n==0)throw bad("测试轮次不存在");}
     private void requireCycle(long id,long r,long t){Long n=jdbc.queryForObject("SELECT COUNT(*) FROM tm_test_cycle WHERE id=? AND round_id=? AND tenant_id=? AND deleted=0",Long.class,id,r,t);if(n==null||n==0)throw bad("测试周期不存在");}
@@ -361,7 +361,7 @@ public class TestConfigurationService {
     private DateRange dates(Map<String,Object> b){Date start=date(b.get("planned_start_date"),"计划开始日期"),end=date(b.get("planned_end_date"),"计划结束日期");if(start!=null&&end!=null&&start.after(end))throw bad("计划结束日期不能早于开始日期");return new DateRange(start,end);}
     private Date date(Object v,String label){if(v==null||String.valueOf(v).isBlank())return null;try{return Date.valueOf(LocalDate.parse(String.valueOf(v)));}catch(RuntimeException e){throw bad(label+"格式应为 YYYY-MM-DD");}}
     private long nextId(){long floor=System.currentTimeMillis()*1000+ThreadLocalRandom.current().nextInt(1000);return IDS.updateAndGet(previous->Math.max(previous+1,floor));}
-    private Long findPhysicalByCode(String code,long tenant){if(code==null)return null;List<Map<String,Object>> rows=jdbc.queryForList("SELECT id FROM arch_physical_subsystem WHERE tenant_id=? AND code=? AND deleted=0",tenant,code);return rows.isEmpty()?null:number(rows.get(0).get("id"));}
+    private Long findPhysicalByCode(String code,long project,long tenant){if(code==null)return null;List<Map<String,Object>> rows=jdbc.queryForList("SELECT id FROM arch_physical_subsystem WHERE tenant_id=? AND project_id=? AND code=? AND deleted=0",tenant,project,code);return rows.isEmpty()?null:number(rows.get(0).get("id"));}
     private Map<String,Object> importError(Map<String,Object> row,String message){return Map.of("row_number",row.getOrDefault("row_number",0),"message",message);}
     private Map<String,Object> importResult(int total,int valid,int written,List<Map<String,Object>> errors){return Map.of("total",total,"valid",valid,"written",written,"errors",errors,"success",errors.isEmpty());}
     private boolean importBoolean(Object value,String label){String text=String.valueOf(value==null?"":value).trim().toLowerCase(Locale.ROOT);if(Set.of("是","true","1","yes").contains(text))return true;if(Set.of("否","false","0","no").contains(text))return false;throw bad(label+"仅支持 是/否");}

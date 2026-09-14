@@ -1,0 +1,123 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "顶部当前项目与架构模块 projectHttp",
+      "NetworkWorkOrderController/Service/Store 与附件策略",
+      "NetworkAccessController/Service/Store 与关联资产查询",
+      "ArchitectureDecisionController/Service/Store 与附件策略",
+      "三类 WorkflowBusinessContext、启动结果和生命周期消费者",
+      "ArchitectureProjectDeletionGuard",
+      "LocalSeededWorkflowPublisher",
+      "V158 迁移、Mock 数据和本地 UAT 页面"
+    ],
+    "environment": [
+      "platform/system 提供的 ProjectAccessService 与 ProjectDeletionGuard",
+      "platform/workflow 提供的 WorkflowBusinessGateway 和项目实例隔离",
+      "platform/attachment 提供的 AttachmentGateway 与 AttachmentAccessPolicy",
+      "MySQL 8.4、Flyway、Maven、Vite 和本地浏览器",
+      "REQ-20260905-064 已完成但未提交的同工作区修改"
+    ]
+  },
+  "state_variables": [
+    {"name": "current_project_ref", "owner": "web project-context store", "valid_values": ["空", "用户可访问的项目编码"]},
+    {"name": "trusted_project", "owner": "ProjectAccessService", "valid_values": ["拒绝", "ProjectAccess(id, projectRef, projectName)"]},
+    {"name": "network_work_order_scope", "owner": "arch_network_work_order 及子表", "valid_values": ["tenant_id + project_id"]},
+    {"name": "network_access_scope", "owner": "网络分区、申请、关系和豁免表", "valid_values": ["tenant_id + project_id"]},
+    {"name": "decision_scope", "owner": "决策事项、结论和子表", "valid_values": ["tenant_id + project_id"]},
+    {"name": "workflow_project_scope", "owner": "业务记录与 wf_instance", "valid_values": ["与业务项目一致", "拒绝不一致"]},
+    {"name": "attachment_access_state", "owner": "NetworkAttachmentAccessPolicy 与 DecisionAttachmentAccessPolicy", "valid_values": ["允许当前项目", "拒绝无项目访问"]},
+    {"name": "project_delete_guard_state", "owner": "ArchitectureProjectDeletionGuard", "valid_values": ["无引用可删除", "存在目标数据冲突"]},
+    {"name": "seeded_definition_state", "owner": "LocalSeededWorkflowPublisher", "valid_values": ["租户草稿待发布", "租户已发布", "不存在"]},
+    {"name": "frontend_project_state", "owner": "网络和决策页面", "valid_values": ["无项目", "加载中", "当前项目数据", "空", "失败", "无权限", "提交中"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "目标业务创建、查询或回调", "transitions": ["解析可信项目", "模型携带 projectId", "Store 以 tenant_id + project_id 读写", "子表继承项目"], "outputs": ["目标行具有非空项目归属", "直接 ID 不跨项目"]},
+    {"requirement_id": "R2", "input": "携带或缺失 projectRef 的受保护请求", "transitions": ["Controller 参数校验", "ProjectAccessService 项目访问校验", "原有 RBAC", "实体归属查询"], "outputs": ["成功、400、403 或 404 的明确结果"]},
+    {"requirement_id": "R3", "input": "创建相同编号、编码、名称或地址", "transitions": ["Service 项目内重复检查", "MySQL 项目维度唯一索引"], "outputs": ["跨项目成功", "同项目冲突"]},
+    {"requirement_id": "R4", "input": "关联分区、端点、工单、决策或结论 ID", "transitions": ["候选按项目过滤", "Service 同项目校验", "数据库组合键兜底"], "outputs": ["同项目关系写入", "跨项目请求拒绝"]},
+    {"requirement_id": "R5", "input": "提交网络工单、访问申请或决策发布", "transitions": ["构造包含项目的 WorkflowBusinessContext", "平台固化实例项目", "启动结果校验", "消费者重新解析项目和业务归属"], "outputs": ["业务与流程实例项目一致", "不一致事件无状态变化"]},
+    {"requirement_id": "R6", "input": "通知跳转或附件预览、下载、删除", "transitions": ["恢复业务实体项目", "校验项目访问与实体状态", "执行业务操作"], "outputs": ["当前项目允许", "其他项目拒绝"]},
+    {"requirement_id": "R7", "input": "带历史目标数据的 V158 迁移", "transitions": ["查找唯一活动 RDDMP-PLATFORM", "根表回填", "子表父链回填", "完整性 guard", "改为非空"], "outputs": ["全部数据归入默认项目", "异常前置导致迁移失败"]},
+    {"requirement_id": "R8", "input": "删除包含目标业务数据的项目", "transitions": ["ProjectService 调用 guards", "architecture 按 tenant_id + project_id 查询目标主表"], "outputs": ["有引用返回 409", "无引用继续删除"]},
+    {"requirement_id": "R9", "input": "选择或切换顶部项目", "transitions": ["页面读取 currentRef", "目标请求使用 projectHttp", "切换确认后整页刷新", "页面重新加载"], "outputs": ["只显示当前项目", "旧状态不残留"]},
+    {"requirement_id": "R10", "input": "读取架构规范、计划模板、环境类型或平台字典", "transitions": ["共享 API 继续普通 http", "共享 Store 继续 tenant_id 范围"], "outputs": ["不同项目看到相同共享配置"]},
+    {"requirement_id": "R11", "input": "本地启动时存在三条草稿定义", "transitions": ["publisher 按租户和定义代码查询", "只发布草稿", "已发布定义跳过"], "outputs": ["每租户定义发布一次", "不按项目复制"]},
+    {"requirement_id": "R12", "input": "数据库、后端和前端发布批次", "transitions": ["迁移预检查和备份", "V158", "后端与前端同批上线", "健康和 UAT 采样"], "outputs": ["契约一致发布", "失败时整批回退或恢复备份"]}
+  ],
+  "interfaces": [
+    {"name": "ProjectAccessService.requireAccessible", "producers": ["platform/system"], "consumers": ["目标 Controller", "三类生命周期消费者"], "invariant": "只返回当前租户且用户可访问的可信项目"},
+    {"name": "WorkflowBusinessContext", "producers": ["三类业务提交服务"], "consumers": ["WorkflowBusinessGateway", "生命周期消费者"], "invariant": "projectRef/projectName 与业务 project_id 对应"},
+    {"name": "AttachmentAccessPolicy", "producers": ["architecture 网络和决策策略"], "consumers": ["platform/attachment"], "invariant": "业务键对应实体必须属于用户可访问项目"},
+    {"name": "ProjectDeletionGuard.requireNoReferences", "producers": ["business/architecture"], "consumers": ["platform/system ProjectService"], "invariant": "任一目标主数据存在即失败关闭"},
+    {"name": "architecture REST projectRef", "producers": ["架构前端"], "consumers": ["目标 Controller"], "invariant": "目标业务请求必填，共享请求不携带也不要求"},
+    {"name": "V158 项目数据契约", "producers": ["Flyway"], "consumers": ["NetworkWorkOrderStore", "NetworkAccessStore", "DecisionStore", "关联资产 Store"], "invariant": "项目列非空，唯一性和关系按 tenant_id + project_id"}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "V158 项目列、回填、唯一性和组合关系", "method": "真实 MySQL/Flyway 集成测试与 information_schema 断言", "blind_spots": ["生产级数据量锁等待"], "independence": "直接观察数据库结构和数据"},
+    {"id": "S2", "target": "Controller、Service、Store 的项目访问和直接 ID 隔离", "method": "JUnit/MockMvc 双项目正负测试及 SQL 集成测试", "blind_spots": ["未覆盖的手工 SQL 分支"], "independence": "从 API 和持久化行为观察，不依赖前端"},
+    {"id": "S3", "target": "三类工作流项目上下文、实例和生命周期回调", "method": "工作流单元与 MySQL 集成测试", "blind_spots": ["无法关联的真实历史流程"], "independence": "通过工作流事件和业务状态观察"},
+    {"id": "S4", "target": "网络和决策附件实体授权", "method": "AttachmentAccessPolicy 正负单元测试和浏览器附件操作", "blind_spots": ["对象存储基础设施故障"], "independence": "独立于业务 Controller 的平台回调路径"},
+    {"id": "S5", "target": "项目删除保护和租户级流程定义发布", "method": "ArchitectureProjectDeletionGuardTest 与 LocalSeededWorkflowPublisherTest", "blind_spots": ["生产启动顺序差异"], "independence": "直接调用公开扩展点和启动 runner"},
+    {"id": "S6", "target": "前端当前项目请求、共享边界和切换状态", "method": "TypeScript 生产构建、浏览器网络请求、控制台和 scrollWidth 断言", "blind_spots": ["未访问的低频页面状态"], "independence": "真实浏览器从用户入口观察"},
+    {"id": "S7", "target": "范围、治理、Flyway 命名和空白错误", "method": "check-all-governance、check-flyway-migrations、git diff --check 和 scope 审计", "blind_spots": ["规则未编码的业务语义"], "independence": "静态治理传感器"},
+    {"id": "S8", "target": "同批发布和回退可执行性", "method": "发布清单、健康接口和本地 UAT 人工复核", "blind_spots": ["真实生产流量和锁等待"], "independence": "运行与人工检查组合"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "目标表和模型项目契约", "action": "追加 V158、模型 projectId 和迁移测试", "authority": "scope 授权 migration 与 architecture/**", "impact_radius": "架构数据库和三类业务模型", "rollback": "未执行迁移回退文件；已执行使用备份或补偿迁移"},
+    {"id": "A2", "target": "网络工单、计划工单、附件和流程", "action": "增加 ProjectAccess、Store 项目条件和消费者校验", "authority": "scope 授权 architecture/**", "impact_radius": "网络工单及计划工单集成", "rollback": "回退 T2 Java 和测试"},
+    {"id": "A3", "target": "网络分区与访问链", "action": "增加项目条件、关联校验和访问流程项目", "authority": "scope 授权 architecture/**", "impact_radius": "网络访问及关联资产查询", "rollback": "回退 T3 Java 和测试"},
+    {"id": "A4", "target": "架构决策、附件和发布流程", "action": "项目化决策调用链和生命周期", "authority": "scope 授权 architecture/**", "impact_radius": "决策事项、结论和附件", "rollback": "回退 T4 Java 和测试"},
+    {"id": "A5", "target": "项目删除和种子定义", "action": "扩展 guard 查询和 publisher 默认定义代码", "authority": "scope 授权 architecture 与 boot 两个文件", "impact_radius": "项目删除和本地流程发布", "rollback": "回退新增查询和代码列表"},
+    {"id": "A6", "target": "前端项目请求和页面状态", "action": "目标 API 使用 projectHttp 并补全页面状态和移动布局", "authority": "scope 授权 web/src/modules/architecture/**", "impact_radius": "网络和决策页面", "rollback": "回退目标前端差异"},
+    {"id": "A7", "target": "本地验收数据与控制证据", "action": "更新虚构 Mock 并记录 execution/observation/convergence", "authority": "scope 授权 mock 和当前前缀账本", "impact_radius": "本地 UAT 与交付证据", "rollback": "回退本任务 Mock 增量并保留账本历史"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S6"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S2"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S3", "S6"], "observable": "yes"},
+    {"requirement_id": "R6", "sensor_ids": ["S4", "S6"], "observable": "yes"},
+    {"requirement_id": "R7", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R8", "sensor_ids": ["S5"], "observable": "yes"},
+    {"requirement_id": "R9", "sensor_ids": ["S6"], "observable": "yes"},
+    {"requirement_id": "R10", "sensor_ids": ["S1", "S6"], "observable": "yes"},
+    {"requirement_id": "R11", "sensor_ids": ["S5"], "observable": "yes"},
+    {"requirement_id": "R12", "sensor_ids": ["S7", "S8"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "REQ-20260905-064 未提交修改", "effect": "同文件差异可能被覆盖或无法独立提交", "detectable": true, "controllable": true},
+    {"source": "Flyway 版本并行竞争", "effect": "V158 被占用导致迁移冲突", "detectable": true, "controllable": false},
+    {"source": "历史孤立或跨项目关系", "effect": "V158 无法安全回填", "detectable": true, "controllable": false},
+    {"source": "本地服务和数据库已有状态", "effect": "测试结果受旧数据或缓存影响", "detectable": true, "controllable": true},
+    {"source": "Git 行尾自动转换", "effect": "diff 扩大和空白噪声", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Flyway 多表 ALTER 和回填", "consequence": "短采样无法代表完成状态", "sampling_rule": "等待迁移退出和 information_schema 断言后采样"},
+    {"source": "工作流异步生命周期", "consequence": "立即查询可能仍为旧状态", "sampling_rule": "等待事件消费回执或测试同步点后采样"},
+    {"source": "完整 Maven 回归", "consequence": "反馈延迟较长", "sampling_rule": "先聚焦测试，任务集成点再运行完整回归"},
+    {"source": "浏览器构建和页面加载", "consequence": "热更新或旧资源产生噪声", "sampling_rule": "生产构建完成并确认资源版本后验收"}
+  ],
+  "assumptions": [
+    {"text": "目标历史子表均可从父链确定项目", "evidence": "Store 和迁移表关系均具有父业务 ID", "falsifier": "V158 测试发现孤立记录"},
+    {"text": "附件策略可从业务键恢复项目并校验用户访问", "evidence": "现有策略已按业务键加载工单或事项", "falsifier": "AttachmentAccessPolicy 调用无法获得项目成员判断所需上下文"},
+    {"text": "三条流程定义已经由历史迁移创建", "evidence": "代码常量和 V116 等种子迁移存在", "falsifier": "本地定义查询缺少任一代码"},
+    {"text": "064 的项目访问和页面切换实现保持可复用", "evidence": "当前工作区已有 ProjectAccess 调用、projectHttp 和整页刷新", "falsifier": "聚焦测试或浏览器验证显示其行为已失效"}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "A1-A4，S1/S2 验证"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "A2-A4/A6，S2/S6 验证"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "A1-A4，S1/S2 验证"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "A1-A4，S1/S2 验证"},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "A2-A5，S3/S5 验证"},
+    {"requirement_id": "R6", "observable": "yes", "controllable": "yes", "action": "A2/A4/A6，S4/S6 验证"},
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "A1，S1 验证"},
+    {"requirement_id": "R8", "observable": "yes", "controllable": "yes", "action": "A5，S5 验证"},
+    {"requirement_id": "R9", "observable": "yes", "controllable": "yes", "action": "A6，S6 验证"},
+    {"requirement_id": "R10", "observable": "yes", "controllable": "yes", "action": "A1/A5/A6，S1/S5/S6 验证"},
+    {"requirement_id": "R11", "observable": "yes", "controllable": "yes", "action": "A5，S5 验证"},
+    {"requirement_id": "R12", "observable": "yes", "controllable": "yes", "action": "A1-A7，S7/S8 验证"}
+  ],
+  "model_status": "ready"
+}

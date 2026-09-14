@@ -30,26 +30,33 @@ class LocalSeededWorkflowPublisherTest {
         stubOperator(jdbc);
         when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT"),
-                definition(51L, "architecture.resource-request", "PUBLISHED")));
+                definition(51L, "architecture.resource-request", "PUBLISHED"),
+                definition(61L, "architecture.network.work-order", "PUBLISHED"),
+                definition(71L, "architecture.network-access-application", "PUBLISHED"),
+                definition(81L, "architecture.decision.review", "PUBLISHED")));
 
         publisher(jdbc, workflows).run(new DefaultApplicationArguments(new String[0]));
 
         verify(workflows).publish(org.mockito.ArgumentMatchers.eq(31L), any(AuthUser.class));
         verify(workflows, never()).publish(org.mockito.ArgumentMatchers.eq(51L), any(AuthUser.class));
+        verify(jdbc).queryForList(contains("scope_type = 'PLATFORM'"), any(Object[].class));
     }
 
     @Test
-    void publishesBothDraftDefinitions() throws Exception {
+    void publishesAllDraftDefinitions() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
         when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT"),
-                definition(51L, "architecture.resource-request", "DRAFT")));
+                definition(51L, "architecture.resource-request", "DRAFT"),
+                definition(61L, "architecture.network.work-order", "DRAFT"),
+                definition(71L, "architecture.network-access-application", "DRAFT"),
+                definition(81L, "architecture.decision.review", "DRAFT")));
 
         publisher(jdbc, workflows).run(new DefaultApplicationArguments(new String[0]));
 
-        verify(workflows, times(2)).publish(anyLong(), any(AuthUser.class));
+        verify(workflows, times(5)).publish(anyLong(), any(AuthUser.class));
     }
 
     @Test
@@ -70,7 +77,8 @@ class LocalSeededWorkflowPublisherTest {
 
     private LocalSeededWorkflowPublisher publisher(JdbcTemplate jdbc, WorkflowDefinitionPublisher workflows) {
         return new LocalSeededWorkflowPublisher(jdbc, workflows, 1L, 1L,
-                "architecture.subsystem.change,architecture.resource-request");
+                "architecture.subsystem.change,architecture.resource-request,architecture.network.work-order,"
+                        + "architecture.network-access-application,architecture.decision.review");
     }
 
     private Map<String, Object> definition(long id, String code, String status) {

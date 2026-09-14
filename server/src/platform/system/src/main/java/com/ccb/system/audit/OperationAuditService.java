@@ -150,8 +150,8 @@ public class OperationAuditService {
         String keyword = keyword(query.keyword());
         if (keyword != null) {
             where.append(" AND (l.operator_name LIKE ? OR l.operation_code LIKE ? OR l.request_path LIKE ?")
-                    .append(" OR l.target_id LIKE ? OR l.project_name LIKE ?)");
-            for (int index = 0; index < 5; index++) arguments.add(keyword);
+                    .append(" OR l.target_id LIKE ? OR l.project_name LIKE ? OR l.client_ip LIKE ?)");
+            for (int index = 0; index < 6; index++) arguments.add(keyword);
         }
         return new SqlParts(where.toString(), arguments);
     }

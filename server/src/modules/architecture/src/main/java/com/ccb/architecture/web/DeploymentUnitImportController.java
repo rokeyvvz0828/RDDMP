@@ -8,6 +8,8 @@ import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,17 +38,21 @@ public class DeploymentUnitImportController {
     private static final String MANAGE_PERMISSION = "hasAuthority('architecture:deployment-unit:manage')";
 
     private final DeploymentUnitImportService service;
+    private final ProjectAccessService projectAccessService;
 
-    public DeploymentUnitImportController(DeploymentUnitImportService service) {
+    public DeploymentUnitImportController(DeploymentUnitImportService service,
+                                          ProjectAccessService projectAccessService) {
         this.service = service;
+        this.projectAccessService = projectAccessService;
     }
 
     @PostMapping
     @PreAuthorize(MANAGE_PERMISSION)
     public ApiResponse<ImportBatchView> upload(@RequestParam("file") MultipartFile file,
+                                               @RequestParam String projectRef,
                                                @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.upload(actor, file, traceId), traceId);
+        return ApiResponse.success(service.upload(actor, project(projectRef, actor), file, traceId), traceId);
     }
 
     @GetMapping
@@ -54,27 +60,35 @@ public class DeploymentUnitImportController {
     public ApiResponse<PageResult<ImportBatchSummary>> list(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
-        return ApiResponse.success(service.listBatches(actor, new PageQuery(page, size)), TraceId.getOrCreate());
+        return ApiResponse.success(service.listBatches(actor, project(projectRef, actor),
+                new PageQuery(page, size)), TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}")
     @PreAuthorize(VIEW_PERMISSION)
-    public ApiResponse<ImportBatchView> detail(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
-        return ApiResponse.success(service.batchDetail(actor, id), TraceId.getOrCreate());
+    public ApiResponse<ImportBatchView> detail(@PathVariable long id,
+                                               @RequestParam String projectRef,
+                                               @AuthenticationPrincipal AuthUser actor) {
+        return ApiResponse.success(service.batchDetail(actor, project(projectRef, actor), id), TraceId.getOrCreate());
     }
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize(MANAGE_PERMISSION)
-    public ApiResponse<ImportBatchView> confirm(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
+    public ApiResponse<ImportBatchView> confirm(@PathVariable long id,
+                                                @RequestParam String projectRef,
+                                                @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.confirm(actor, id, traceId), traceId);
+        return ApiResponse.success(service.confirm(actor, project(projectRef, actor), id, traceId), traceId);
     }
 
     @GetMapping("/{id}/error-report")
     @PreAuthorize(MANAGE_PERMISSION)
-    public ResponseEntity<byte[]> errorReport(@PathVariable long id, @AuthenticationPrincipal AuthUser actor) {
-        byte[] csv = service.errorReport(actor, id);
+    public ResponseEntity<byte[]> errorReport(@PathVariable long id,
+                                              @RequestParam String projectRef,
+                                              @AuthenticationPrincipal AuthUser actor) {
+        byte[] csv = service.errorReport(actor, project(projectRef, actor), id);
         String fileName = "deployment-unit-import-" + id + "-errors.csv";
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(fileName, StandardCharsets.UTF_8)
@@ -97,5 +111,9 @@ public class DeploymentUnitImportController {
                 .contentType(MediaType.parseMediaType(
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(xlsx);
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 }

@@ -8,6 +8,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import {
   decideWorkflowTask,
@@ -17,6 +18,7 @@ import {
   type WorkflowTaskContext
 } from '../../api/workflow'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   cancelResourceRequest,
   createResourceRequest,
@@ -25,6 +27,7 @@ import {
   listEnvironments,
   listResourceRequests,
   loadParameterOptions,
+  loadParticipatingPhysicalOptions,
   loadPhysicalSubsystemOptions,
   loadNetworkZoneOptions,
   loadResourceDeploymentUnitOptions,
@@ -88,10 +91,12 @@ const RESOURCE_REQUEST_BUSINESS_TYPE = 'architecture_resource_request'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const rows = ref<ResourceRequestSummary[]>([])
 const environments = ref<Environment[]>([])
 const users = ref<UserOption[]>([])
 const physicalOptions = ref<PhysicalSubsystemOption[]>([])
+const filterPhysicalOptions = ref<PhysicalSubsystemOption[]>([])
 const deploymentUnitOptions = ref<DeploymentUnitOption[]>([])
 const networkZoneOptions = ref<NetworkZoneOption[]>([])
 const serverTypes = ref<ParameterOption[]>([])
@@ -234,14 +239,6 @@ function displayAmount(value: number | null | undefined, unit = '') {
 
 function boolLabel(value: boolean) {
   return value ? '是' : '否'
-}
-
-function userLabel(id: number | null | undefined) {
-  if (!id) return '—'
-  const user = users.value.find(item => item.id === id)
-  if (user) return `${user.displayName}（${user.username}）`
-  if (auth.user?.id === id) return auth.user.displayName || auth.user.username || `用户 #${id}`
-  return `用户 #${id}`
 }
 
 function requestTypeLabel(value: ResourceRequestType | string | null | undefined) {
@@ -395,6 +392,7 @@ function itemHasDemand(item: ResourceFormItem) {
 }
 
 async function loadOptions() {
+  if (!projectContext.currentRef) return
   optionLoading.value = true
   try {
     const [
@@ -411,7 +409,7 @@ async function loadOptions() {
       operatingSystemRows
     ] = await Promise.all([
       listEnvironments({ limit: 200, offset: 0 }),
-      loadPhysicalSubsystemOptions('', 100),
+      loadParticipatingPhysicalOptions(),
       loadUserOptions('physical-subsystem', '', 100),
       loadParameterOptions('physical-subsystem', 'ARCH_SERVER_TYPE'),
       loadParameterOptions('physical-subsystem', 'ARCH_DEPLOYMENT_PLATFORM'),
@@ -424,6 +422,7 @@ async function loadOptions() {
     ])
     environments.value = environmentRows
     physicalOptions.value = physicalRows
+    filterPhysicalOptions.value = await loadPhysicalSubsystemOptions('', 100)
     users.value = userRows
     serverTypes.value = serverTypeRows
     deploymentPlatforms.value = platformRows
@@ -434,14 +433,14 @@ async function loadOptions() {
     middlewares.value = middlewareRows
     operatingSystems.value = operatingSystemRows
   } catch (error) {
-    if (httpStatus(error) !== 403) ElMessage.warning(apiErrorMessage(error, '选项加载失败'))
+    ElMessage.warning(apiErrorMessage(error, '资源申请选项加载失败，请刷新重试或检查权限'))
   } finally {
     optionLoading.value = false
   }
 }
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   const request = ++listSequence
   loading.value = true
   loadError.value = ''
@@ -798,7 +797,7 @@ function itemCompletionLabel(item: ResourceFormItem) {
 
 function validateForm() {
   if (!form.physicalSubsystemId || !form.environmentId || !form.contactUserId || !form.requestType) {
-    return '请选择物理子系统、具体环境、资源申请联系人和申请类型'
+    return '请选择物理子系统、环境、资源申请联系人和申请类型'
   }
   if (!form.items.length) return '请至少添加一个申请项'
   for (const [index, item] of form.items.entries()) {
@@ -1214,11 +1213,13 @@ function next() {
   void load()
 }
 
-watch(canView, allowed => {
-  if (allowed) void Promise.all([load(), loadOptions()])
+watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
+  if (allowed && projectRef) void Promise.all([load(), loadOptions()])
 }, { immediate: true })
 
-watch(() => [route.params.id, route.query.taskId, canView.value], () => { openRouteDetail() }, { immediate: true })
+watch(() => [route.params.id, route.query.taskId, canView.value, projectContext.currentRef], () => {
+  if (projectContext.currentRef) openRouteDetail()
+}, { immediate: true })
 
 watch(deploymentUnitOptions, options => {
   if (!formOpen.value || !options.length) return
@@ -1230,7 +1231,7 @@ watch(deploymentUnitOptions, options => {
 
 <template>
   <main class="architecture-page architecture-change-page architecture-resource-page">
-    <UiPageHeader title="资源申请" description="按物理子系统和具体环境提交部署单元资源需求，审批通过后进入申请态。">
+    <UiPageHeader title="资源申请" description="按物理子系统和环境提交部署单元资源需求，审批通过后进入申请态。">
       <template #actions><el-button v-if="canApply" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建资源申请</el-button></template>
     </UiPageHeader>
 
@@ -1244,8 +1245,8 @@ watch(deploymentUnitOptions, options => {
     <template v-else>
       <UiToolbar>
         <el-select v-model="filters.status" clearable placeholder="申请状态" class="architecture-filter-select"><el-option v-for="status in statusOptions" :key="status" :label="resourceRequestStatusLabels[status]" :value="status" /></el-select>
-        <el-select v-model="filters.environmentId" clearable filterable placeholder="具体环境" class="architecture-filter-select"><el-option v-for="item in environments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" /></el-select>
-        <el-select v-model="filters.physicalSubsystemId" clearable filterable placeholder="物理子系统" class="architecture-filter-select"><el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select>
+        <el-select v-model="filters.environmentId" clearable filterable placeholder="环境" class="architecture-filter-select"><el-option v-for="item in environments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" /></el-select>
+        <el-select v-model="filters.physicalSubsystemId" clearable filterable placeholder="物理子系统" class="architecture-filter-select"><el-option v-for="item in filterPhysicalOptions" :key="item.id" :label="`${item.name}（${item.shortName || item.code}）`" :value="item.id" /></el-select>
         <el-button type="primary" @click="search"><el-icon><Search /></el-icon>查询</el-button><el-button @click="reset">重置</el-button>
         <template #actions><span class="architecture-muted">{{ scopeLabel }}</span><el-tooltip content="刷新列表"><el-button circle :loading="loading" aria-label="刷新资源申请列表" @click="refresh"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
       </UiToolbar>
@@ -1257,8 +1258,8 @@ watch(deploymentUnitOptions, options => {
         <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(scope.row.status)" /></template></el-table-column>
         <el-table-column label="物理子系统" min-width="180"><template #default="scope">{{ scope.row.physicalSubsystemName }}<small class="architecture-inline-code">{{ scope.row.physicalSubsystemShortName || scope.row.physicalSubsystemCode }}</small></template></el-table-column>
         <el-table-column prop="reason" label="申请原因" min-width="210" show-overflow-tooltip />
-        <el-table-column label="申请人" width="120"><template #default="scope">{{ userLabel(scope.row.applicantId) }}</template></el-table-column>
-        <el-table-column label="联系人" width="120"><template #default="scope">{{ userLabel(scope.row.contactUserId) }}</template></el-table-column>
+        <el-table-column label="申请人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.applicantId" variant="compact" /></template></el-table-column>
+        <el-table-column label="联系人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.contactUserId" variant="compact" /></template></el-table-column>
         <el-table-column label="最后更新" width="150"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="scope">
@@ -1277,7 +1278,7 @@ watch(deploymentUnitOptions, options => {
         <article v-for="row in rows" :key="row.id">
           <header><div><strong>{{ row.requestNo }}</strong><small>{{ requestTypeLabel(row.requestType) }} · {{ row.environmentName }}</small></div><UiStatusTag :value="row.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(row.status)" /></header>
           <p class="architecture-mobile-card__reason">{{ row.reason || '未填写申请原因' }}</p>
-          <dl><div><dt>物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemShortName || row.physicalSubsystemCode }}）</dd></div><div><dt>联系人</dt><dd>{{ userLabel(row.contactUserId) }}</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl>
+          <dl><div><dt>物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemShortName || row.physicalSubsystemCode }}）</dd></div><div><dt>联系人</dt><dd><UiUserIdentity :user-id="row.contactUserId" variant="full" /></dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl>
           <footer>
             <el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button>
             <el-button v-if="canManage && row.status === 'APPROVED'" link type="success" @click="openFulfillDialog(row)">办理下发</el-button>
@@ -1302,9 +1303,9 @@ watch(deploymentUnitOptions, options => {
           <div class="architecture-detail-heading"><strong>{{ detail.request.requestNo }}</strong><span>{{ requestTypeLabel(detail.request.requestType) }} · {{ detail.request.environmentName }}</span></div>
           <dl class="architecture-detail-list">
             <div><dt>状态</dt><dd><UiStatusTag :value="detail.request.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(detail.request.status)" /></dd></div>
-            <div><dt>申请人</dt><dd>{{ userLabel(detail.request.applicantId) }}</dd></div>
-            <div><dt>资源申请联系人</dt><dd>{{ userLabel(detail.request.contactUserId) }}</dd></div>
-            <div><dt>具体环境</dt><dd>{{ detail.request.environmentName }}（{{ detail.request.environmentCode }}）</dd></div>
+            <div><dt>申请人</dt><dd><UiUserIdentity :user-id="detail.request.applicantId" variant="standard" /></dd></div>
+            <div><dt>资源申请联系人</dt><dd><UiUserIdentity :user-id="detail.request.contactUserId" variant="standard" /></dd></div>
+            <div><dt>环境</dt><dd>{{ detail.request.environmentName }}（{{ detail.request.environmentCode }}）</dd></div>
             <div><dt>物理子系统</dt><dd>{{ detail.request.physicalSubsystemName }}（{{ detail.request.physicalSubsystemShortName || detail.request.physicalSubsystemCode }}）</dd></div>
             <div><dt>所属事业群</dt><dd>{{ displayText(detail.request.physicalSubsystemBusinessGroupName) }}</dd></div>
             <div><dt>系统等级</dt><dd>{{ systemLevelLabel(detail.request.physicalSubsystemSystemLevelCode) }}</dd></div>
@@ -1385,7 +1386,7 @@ watch(deploymentUnitOptions, options => {
             </div>
           </section>
           <section v-if="canManage && detail.request.status === 'APPROVED'" class="architecture-drawer-section architecture-change-approval">
-            <header><strong>资源下发办理</strong><span class="architecture-muted">将工单审批资源规格落地为具体环境部署实例</span></header>
+            <header><strong>资源下发办理</strong><span class="architecture-muted">将工单审批资源规格落地为环境部署实例</span></header>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
               <div>
                 <p style="margin: 0 0 4px; font-weight: 500;">工单审批已通过，可执行自动部署或手动逐台登记下发。</p>
@@ -1433,7 +1434,7 @@ watch(deploymentUnitOptions, options => {
                   <el-option v-for="item in users" :key="item.id" :label="`${item.displayName}（${item.username}）`" :value="item.id" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="具体环境" required>
+              <el-form-item label="环境" required>
                 <el-select v-model="form.environmentId" filterable>
                   <el-option v-for="item in activeEnvironments" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.id" />
                 </el-select>

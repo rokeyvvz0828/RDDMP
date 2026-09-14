@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProjectRolePermissionMigrationTest {
-    private static final String MIGRATION = "db/migration/V201__project_scoped_role_permissions.sql";
+    private static final String MIGRATION = "db/migration/V20260911165001__project_scoped_role_permissions.sql";
 
     @Test
     void definesProjectScopedRelationAndSafeInitialPermissions() throws IOException {

@@ -1,0 +1,94 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {
+      "id": "R1",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": [
+        "Vue TypeScript 生产构建退出 0",
+        "源码扫描确认旧 1000ms 轮询实现不存在，失败兜底为 60000ms",
+        "真实浏览器工作台空闲超过 60 秒无错误，Vite 到后端持续只有 1 条长连接"
+      ],
+      "limitations": ["浏览器控制接口未直接导出网络瀑布，结合源码定时器扫描与套接字观测判定"]
+    },
+    {
+      "id": "R2",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": [
+        "票据单次使用、过期和租户用户绑定 JUnit 测试通过",
+        "无效票据控制器 401 MockMvc 测试通过",
+        "真实流连接成功后复用票据和 invalid 票据均返回 HTTP 401"
+      ],
+      "limitations": []
+    },
+    {
+      "id": "R3",
+      "result": "pass",
+      "task_ids": ["T1", "T3"],
+      "evidence": [
+        "事务 afterCommit、rollback、跨租户隔离和零行更新测试通过",
+        "真实 SSE 返回 connected，并连续收到约 25 秒间隔 heartbeat",
+        "通知发布及全部六类状态变更均按受影响用户广播"
+      ],
+      "limitations": ["当前为单实例内存广播，多副本扩展明确不在本次范围"]
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "task_ids": ["T2", "T3"],
+      "evidence": [
+        "前端实现 1/2/5/15/30 秒重连、60 秒降级和页面可见性生命周期",
+        "两层 Nginx 精确流路径均关闭 buffering/cache，HTTP/1.1 且读取超时 1h",
+        "真实本地代理流保持连接并接收心跳"
+      ],
+      "limitations": ["远程代理需在后续部署时应用本配置"]
+    }
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["27 条通知聚焦测试全部通过"]},
+    {"id": "T2", "status": "verified", "evidence": ["前端构建、源码扫描和浏览器空闲观测通过"]},
+    {"id": "T3", "status": "verified", "evidence": ["健康、真实 SSE、401、心跳、套接字和代理配置检查通过"]}
+  ],
+  "feedback_summary": {
+    "total": 0,
+    "accepted_open": 0,
+    "escalated": 0,
+    "deferred_by_severity": {"P2": 0, "P3": 0}
+  },
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "ccb-system focused notification tests", "result": "pass", "evidence": "27 tests, 0 failures, 0 errors"},
+    {"check": "backend package", "result": "pass", "evidence": "ccb-system and required reactor modules BUILD SUCCESS"},
+    {"check": "frontend production build", "result": "pass", "evidence": "vue-tsc and vite build exit 0"},
+    {"check": "full Maven regression", "result": "disturbance", "evidence": "ccb-system/workflow/release passed; pre-existing ccb-data-migration tests fail on missing arch_physical_subsystem.project_id"},
+    {"check": "diff and requirement scope", "result": "pass", "evidence": "git diff --check and check-codex-scope exit 0"}
+  ],
+  "invariant_results": [
+    {"invariant": "JWT 不进入 URL", "result": "pass", "evidence": "EventSource URL 仅包含一次性随机票据"},
+    {"invariant": "租户和用户隔离", "result": "pass", "evidence": "ConnectionKey 和隔离测试"},
+    {"invariant": "回滚与零行更新不广播", "result": "pass", "evidence": "事务和服务测试"},
+    {"invariant": "不恢复高频轮询", "result": "pass", "evidence": "旧轮询符号不存在，唯一兜底间隔为 60000ms"}
+  ],
+  "scope_audit": {
+    "within_scope": true,
+    "unexpected_changes": []
+  },
+  "disturbance_resilience": [
+    {"disturbance": "SSE 超时或网络中断", "result": "pass", "evidence": "有界重连并在持续失败后低频降级"},
+    {"disturbance": "页面隐藏", "result": "pass", "evidence": "visibilitychange 关闭流和定时器，恢复后申请新票据"},
+    {"disturbance": "既有本地演示工作流启动冲突", "result": "pass", "evidence": "采用 rokey 已有关闭演示发布器配置完成运行验证，隔离分支未携带该无关改动"}
+  ],
+  "residual_risks": [
+    "多后端副本部署前需要跨实例消息总线",
+    "远程 Nginx 仅在后续部署本提交后获得 SSE 专用配置",
+    "全仓数据迁移测试存在本次范围外的架构表字段基线问题"
+  ],
+  "gate_result": "pass",
+  "route_reason": "四条必须需求均由受控任务、自动化测试、真实 HTTP/SSE、浏览器和代理配置证据覆盖，三个样本 P0-P3 均为零且范围审计通过"
+}

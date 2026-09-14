@@ -1,0 +1,41 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/NotificationSseService.java", "purpose": "一次性票据、SSE 连接、心跳和事务提交后广播"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationStreamController.java", "purpose": "公开 SSE 流端点及无效票据 401"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java", "purpose": "认证票据签发端点"},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java", "purpose": "通知数据实际变化并提交后广播"},
+    {"path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java", "purpose": "仅允许精确 SSE GET 路径使用票据认证"}
+  ],
+  "requirements_addressed": ["R2", "R3"],
+  "commands": [
+    "mvn -pl :ccb-system -am -DskipTests package",
+    "mvn -pl :ccb-system -am -Dtest=NotificationSseServiceTest,NotificationStreamControllerTest,SystemNotificationServiceTest -Dsurefire.failIfNoSpecifiedTests=false -DargLine=-javaagent:... test"
+  ],
+  "local_checks": [
+    "后端 reactor 编译成功",
+    "NotificationSseServiceTest 5 条通过",
+    "NotificationStreamControllerTest 1 条通过",
+    "SystemNotificationServiceTest 21 条通过"
+  ],
+  "diff_summary": [
+    "新增 30 秒、单次、绑定租户和用户的随机票据",
+    "新增 10 分钟 SSE emitter、25 秒心跳和失效连接清理",
+    "发布及六类状态变更仅在影响行数大于零且事务提交后广播"
+  ],
+  "invariants_checked": [
+    "JWT 不进入流 URL",
+    "无效、过期和复用票据返回 401",
+    "跨租户和跨用户不广播",
+    "回滚及零行更新不广播"
+  ],
+  "disturbances": [
+    "全仓回归在既有 ccb-data-migration 测试失败，SQL 引用当前基线不存在的 arch_physical_subsystem.project_id；ccb-system 及其前置 reactor 均已通过"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "多后端副本需要 Redis Pub/Sub 等跨实例广播，本次单实例部署范围不包含"
+  ],
+  "recommended_next": "独立观测票据、事务时序和用户隔离"
+}

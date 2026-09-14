@@ -1,0 +1,417 @@
+{
+  "schema_version": 1,
+  "topic": "data-migration-overall-dashboard-realtime",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-08-data-migration-overall-dashboard-realtime-design.md",
+  "objective": "在当前可访问项目内以13个独立实时请求展示数据迁移资产指标，并在点击后通过滚动分页抽屉加载同口径明细，全链路不使用前后台定时任务或快照数据。",
+  "users": [
+    "数据迁移管理员在整体看板检查项目资料覆盖并下钻明细",
+    "具有看板访问权限的普通数据迁移人员在项目数据范围内查看统计与明细"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "整体看板必须按认证租户、当前可访问项目和deleted=0展示13个已确认资产指标，并按PROJECT/SYSTEM区分方案与专题。",
+      "acceptance": [
+        "13个指标码均能返回当前项目实时数量",
+        "方案与专题的项目级和组件级数量分别按PROJECT与SYSTEM统计",
+        "卡片数量与对应完整下钻分页结果一致"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08请求与完整设计批准",
+      "counterexample": [
+        "仍只展示项目、组件、资产总量三项",
+        "方案或专题不区分颗粒度",
+        "统计包含已删除或其他项目数据"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "整体看板不得使用前端轮询、后端定时任务或dm_dashboard_snapshot运行时读写；快照表本次保留但停用。",
+      "acceptance": [
+        "前端页面不存在看板轮询计时器",
+        "DashboardSnapshotScheduler不再注册执行",
+        "指标与下钻查询不读写dm_dashboard_snapshot"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08明确确认",
+      "counterexample": [
+        "定时刷新快照后再由页面读取",
+        "页面自动轮询指标"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "13个指标必须分别实时请求并独立显示loading、成功、失败和单项重试，前端同时在途请求最多4个。",
+      "acceptance": [
+        "单项失败不阻塞或清空其他指标",
+        "在途指标请求数不超过4",
+        "13项全部成功前不显示误导性的部分总量"
+      ],
+      "priority": "must",
+      "source": "用户批准的通用白名单端点与限流并发方案",
+      "counterexample": [
+        "使用一个批量汇总请求",
+        "13路无界并发",
+        "一个指标失败导致整页失败"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "点击指标后才加载下钻抽屉第一页，并以每页20条的串行滚动分页继续加载，不预取其他明细。",
+      "acceptance": [
+        "未点击指标时无下钻请求",
+        "滚动临界点每次只触发一个下一页请求",
+        "后续页失败保留已有记录并可重试",
+        "空、失败、无权限和全部加载完成状态明确"
+      ],
+      "priority": "must",
+      "source": "用户2026-09-08明确确认",
+      "counterexample": [
+        "看板加载时预取明细",
+        "一次返回全部明细",
+        "滚动触发重复页请求"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "指标和下钻必须共享固定白名单指标定义，并逐请求执行认证、RBAC、租户和项目可达性校验。",
+      "acceptance": [
+        "未知指标码返回400",
+        "缺少或不可访问项目失败关闭",
+        "外部指标字符串不能拼接任意SQL标识符",
+        "项目切换后旧响应不能覆盖新状态"
+      ],
+      "priority": "must",
+      "source": "REQ-031统一安全规则与用户批准设计",
+      "counterexample": [
+        "前端权限显隐替代服务端校验",
+        "计数与明细分别维护不一致条件"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "整体看板采用已确认的高保真响应式排版，并覆盖独立加载、部分失败、空、无权限和明暗主题。",
+      "acceptance": [
+        "桌面显示总量、四项方案专题、九项内容资产和构成排行",
+        "平板和手机按确认规则重排",
+        "375x812、390x844、430x932与1280x800无页面级横向溢出",
+        "移动抽屉接近全宽且关闭和滚动区域可达"
+      ],
+      "priority": "must",
+      "source": "用户批准的dashboard-polished-layout-v3视觉方向",
+      "counterexample": [
+        "13张同权重大卡片平铺",
+        "手机端裁切、整页横向滚动或辅助文字拥挤"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "指标和下钻必须满足已批准的响应时间门槛并通过项目范围查询计划验证。",
+      "acceptance": [
+        "单指标P95不高于500ms",
+        "13项全部完成不高于2s",
+        "下钻分页P95不高于800ms",
+        "EXPLAIN ANALYZE证明查询受租户项目索引约束"
+      ],
+      "priority": "must",
+      "source": "用户批准的性能与验收设计",
+      "counterexample": [
+        "以单次开发数据测试代替P95",
+        "无项目条件全表统计",
+        "超标后擅自恢复快照或轮询"
+      ]
+    }
+  ],
+  "invariants": [
+    "顶部全局项目切换器是唯一项目来源，页面不新增所属项目字段",
+    "认证租户、RBAC和项目可达性由服务端执行",
+    "指标计数与下钻明细共享同一指标定义",
+    "整体看板无前后台定时刷新和快照运行依赖",
+    "组件级看板、内容CRUD、附件、审计和其他业务模块行为不变",
+    "只修改REQ-031任务范围授权路径"
+  ],
+  "constraints": [
+    "遵循design-h5.md和web/src/AGENTS.md",
+    "不修改web/src/components/ui公共组件",
+    "不修改历史Flyway脚本或删除dm_dashboard_snapshot表",
+    "使用现有Vue 3、TypeScript、Element Plus、ECharts和API封装",
+    "前端请求并发上限为4，下钻页大小固定20"
+  ],
+  "non_goals": [
+    "前端轮询、WebSocket、SSE、缓存预热或后台快照刷新",
+    "删除dm_dashboard_snapshot表",
+    "预取下钻明细或在浏览器内存中全量分页",
+    "改变资产内容页CRUD、字段和标准分页",
+    "改造组件级看板或平台公共能力"
+  ],
+  "selected_approach": {
+    "name": "通用白名单指标端点、最多4路并发和按需滚动下钻",
+    "reason": "满足每项独立实时请求与独立loading，同时集中维护统计口径并限制数据库突发压力。",
+    "alternatives": [
+      {
+        "name": "13个专用接口",
+        "rejected_because": "Controller、权限声明和测试重复，新增指标维护成本高。"
+      },
+      {
+        "name": "13路无界并发",
+        "rejected_because": "多用户同时进入时会放大连接池和数据库瞬时压力。"
+      },
+      {
+        "name": "单次批量汇总",
+        "rejected_because": "不满足用户确认的每个指标独立请求和独立loading。"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "数据迁移Dashboard指标定义、服务和Controller",
+        "DashboardSnapshotScheduler退役",
+        "data-migration.ts指标与下钻类型接口",
+        "OverallDashboardPage高保真响应式页面、请求队列和滚动抽屉",
+        "数据迁移模块聚焦测试与当前任务证据"
+      ],
+      "outside": [
+        "dm_dashboard_snapshot物理删表",
+        "平台公共组件、全局项目store和应用壳",
+        "内容资产CRUD、附件和审计",
+        "组件级看板业务行为",
+        "其他业务模块"
+      ]
+    },
+    "components": [
+      {
+        "name": "DashboardMetricDefinition",
+        "responsibility": "固定登记13个指标码、计数条件和下钻投影，作为唯一口径源",
+        "depends_on": []
+      },
+      {
+        "name": "DashboardService",
+        "responsibility": "项目校验、单指标实时计数和单指标稳定分页下钻",
+        "depends_on": [
+          "DashboardMetricDefinition",
+          "DataMigrationPermissionService",
+          "JdbcTemplate"
+        ]
+      },
+      {
+        "name": "DashboardController",
+        "responsibility": "看板兼容路由、新单指标/下钻端点和服务端RBAC",
+        "depends_on": [
+          "DashboardService"
+        ]
+      },
+      {
+        "name": "OverallDashboardPage",
+        "responsibility": "13项独立状态、最多4路请求队列、派生总量/图表和滚动下钻抽屉",
+        "depends_on": [
+          "data-migration.ts",
+          "useProjectScope",
+          "UiPageHeader",
+          "ProjectScopeState",
+          "ECharts"
+        ]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "GET /api/data-migration/dashboard/overall/metrics/{metricCode}",
+        "producer": "DashboardController",
+        "consumers": [
+          "OverallDashboardPage"
+        ],
+        "contract": "projectId必填；返回metricCode、count、calculatedAt；指标码固定白名单。"
+      },
+      {
+        "name": "GET /api/data-migration/dashboard/overall/drilldowns/{metricCode}",
+        "producer": "DashboardController",
+        "consumers": [
+          "OverallDashboardPage下钻抽屉"
+        ],
+        "contract": "projectId/page/size；size固定为20；返回统一字段分页信封并按updatedAt和稳定主键倒序。"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "ready的当前项目",
+        "transitions": [
+          "建立13项请求任务",
+          "最多4路并发实时计数",
+          "逐卡更新独立状态",
+          "全部成功后计算总量和完整图表"
+        ],
+        "output": "13项指标、总量、构成和排行"
+      },
+      {
+        "input": "用户点击指标并滚动抽屉",
+        "transitions": [
+          "按同一指标定义加载第一页20条",
+          "接近底部串行加载下一页",
+          "失败保留已有页并等待重试"
+        ],
+        "output": "同口径滚动分页明细"
+      },
+      {
+        "input": "项目切换或重复刷新",
+        "transitions": [
+          "取消请求或提升请求代次",
+          "清空旧项目页面并关闭抽屉",
+          "新项目重新排队"
+        ],
+        "output": "仅显示最新项目结果"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "单指标请求失败",
+      "behavior": "只将该卡片置为错误并标记总量/图表不完整",
+      "recovery": "单项重试或刷新全部"
+    },
+    {
+      "condition": "下钻第一页失败",
+      "behavior": "抽屉显示错误而非空状态",
+      "recovery": "原位重试第一页"
+    },
+    {
+      "condition": "下钻后续页失败",
+      "behavior": "保留已加载记录并停止自动继续",
+      "recovery": "底部重试失败页"
+    },
+    {
+      "condition": "缺少项目、不可访问项目、未知指标或无权限",
+      "behavior": "服务端以400或403失败关闭且不泄露其他项目数据",
+      "recovery": "切换可访问项目或申请权限"
+    },
+    {
+      "condition": "旧请求晚于新项目响应",
+      "behavior": "取消结果或按请求代次丢弃，不写入页面",
+      "recovery": "无需用户操作"
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "指标与下钻逐请求执行认证、RBAC、租户和项目校验",
+      "固定指标定义阻断任意SQL标识符拼接"
+    ],
+    "performance": [
+      "前端最多4路指标并发",
+      "单指标P95<=500ms且13项总完成<=2s",
+      "下钻每页20条且P95<=800ms",
+      "EXPLAIN ANALYZE证明项目范围索引生效"
+    ],
+    "compatibility": [
+      "保留/dashboard/overall和/dashboard/component(s)兼容路由",
+      "组件看板和内容业务行为不变",
+      "保留但停用dm_dashboard_snapshot"
+    ],
+    "operations": [
+      "不运行前后台定时任务",
+      "通过接口耗时和数据库慢查询观测性能",
+      "快照表删除另立迁移需求"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": [
+        "R1",
+        "R4",
+        "R5"
+      ],
+      "signal": "13项数量与同条件完整下钻分页一致且跨项目请求失败关闭",
+      "method": "服务单元测试、Controller安全测试和MySQL集成测试"
+    },
+    {
+      "requirement_ids": [
+        "R2"
+      ],
+      "signal": "无前端轮询、无后端调度Bean、无快照表读写",
+      "method": "静态搜索、Spring上下文测试和SQL路径检查"
+    },
+    {
+      "requirement_ids": [
+        "R3",
+        "R6"
+      ],
+      "signal": "独立loading/失败/重试、并发上限、项目切换和响应式布局符合设计",
+      "method": "前端逻辑测试、生产构建和真实浏览器验收"
+    },
+    {
+      "requirement_ids": [
+        "R7"
+      ],
+      "signal": "P95门槛和索引约束满足",
+      "method": "代表性数据量下的重复计时与EXPLAIN ANALYZE"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "13张业务表均保留以tenant_id和project_id为前缀的可用索引",
+      "basis": "当前数据迁移Flyway索引定义",
+      "falsifier": "目标MySQL EXPLAIN ANALYZE出现无项目范围约束的全表扫描或延迟超标"
+    },
+    {
+      "text": "统一下钻投影足以支持看板快速核查",
+      "basis": "已批准视觉抽屉仅展示名称、类型和更新时间等摘要",
+      "falsifier": "用户要求在下钻内编辑或展示领域专属全部字段"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "目标环境单项目各资产表的最大真实数量级",
+      "impact": "影响查询计划样本规模和是否需要后续索引纠正",
+      "owner": "数据迁移模块Owner",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "取消前端轮询、后端定时任务和快照运行依赖",
+      "reason": "用户要求所有指标实时独立获取",
+      "source": "2026-09-08用户确认"
+    },
+    {
+      "id": "D2",
+      "decision": "采用通用白名单指标端点和最多4路前端并发",
+      "reason": "兼顾独立状态、集中口径和数据库突发控制",
+      "source": "2026-09-08用户批准采纳"
+    },
+    {
+      "id": "D3",
+      "decision": "下钻采用页面内右侧抽屉、每页20条滚动分页且点击后才加载",
+      "reason": "保留看板上下文并避免明细预取",
+      "source": "2026-09-08用户确认"
+    },
+    {
+      "id": "D4",
+      "decision": "保留但停用dm_dashboard_snapshot表",
+      "reason": "避免本次引入无必要的破坏性迁移并降低回退成本",
+      "source": "2026-09-08用户批准采纳"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "多用户同时进入导致数据库请求突发",
+      "impact": "指标响应变慢或连接池等待",
+      "mitigation": "最多4路并发、项目范围索引、P95门槛和慢查询观测"
+    },
+    {
+      "risk": "异构表字段造成计数和下钻条件漂移",
+      "impact": "卡片数字无法由明细复现",
+      "mitigation": "单一指标定义同时拥有计数条件和下钻投影，并做全分页交叉测试"
+    },
+    {
+      "risk": "项目切换或重复刷新产生请求乱序",
+      "impact": "新项目页面混入旧项目统计或明细",
+      "mitigation": "取消信号和请求代次双重保护"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "2026-09-08 用户在完整设计修订1落盘后明确回复“实施”，批准该设计进入实施计划阶段。",
+    "confirmed_at": "2026-09-08T22:53:00+08:00"
+  }
+}

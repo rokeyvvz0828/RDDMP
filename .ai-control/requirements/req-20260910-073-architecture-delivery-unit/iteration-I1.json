@@ -1,0 +1,107 @@
+{
+  "iteration_id": "I1",
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V202__create_architecture_delivery_units.sql",
+      "purpose": "交付单元三张表、部署单元唯一键、菜单 816 与权限 8161/8162 种子"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/model/DeliveryUnitModels.java",
+      "purpose": "领域值与 DTO"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+      "purpose": "主记录、编号分配与关联读写"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitNumberCapacityExceededException.java",
+      "purpose": "编号容量耗尽异常"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java",
+      "purpose": "searchActiveOptions 增加 physicalSubsystemId 重载"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 1,
+      "salient_output": "编译失败：找不到 DeliveryUnitStore/DeliveryUnit 等符号（预期的失败信号）"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "Tests run: 9, Failures: 0, Errors: 0；Flyway 迁移到 v202 成功"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest,DeploymentUnitLifecycleMySqlTest,DeploymentUnitImportMySqlTest -Dsurefire.failIfNoSpecifiedTests=false",
+      "exit_code": 0,
+      "salient_output": "Tests run: 9 + 8 + 13 = 30, Failures: 0, Errors: 0"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 1,
+      "salient_output": "基线故障：V84_1__seed_requirement_system_catalog.sql 命名不符合 V<number>__description.sql；该文件本任务未改动"
+    },
+    {
+      "command": "git commit -m \"feat(architecture): 新增交付单元数据模型与迁移\"",
+      "exit_code": 0,
+      "salient_output": "a02298e"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "allocateNumber 返回 DUW0001A001/002；同物理子系统同名抛 DuplicateKeyException，跨子系统可同名",
+      "limitations": [
+        "并发仅 6 线程验证"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "pageUnits 分页与按名称/物理子系统/状态筛选正确，跨项目返回 0 条",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "updateUnitContent 过期 rowVersion 返回 0；updateUnitStatus 状态守卫返回 0",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "softDelete 后 findUnit 为空、关联被清理、部署单元主记录仍在",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "直接插入跨物理子系统关联行被 DataIntegrityViolationException 拒绝",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": "V202 迁移种子守卫通过，菜单 816 与权限 8161/8162 落地",
+      "limitations": [
+        "菜单仅验证迁移层，界面可见性待 T4"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "V202 在真实 MySQL 8.4 上从空库执行成功",
+      "limitations": [
+        "check-flyway-migrations.mjs 全量扫描存在基线故障 V84_1，非本任务引入"
+      ]
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

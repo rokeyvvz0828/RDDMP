@@ -6,6 +6,8 @@ import com.ccb.architecture.service.DeploymentUnitService.RelatedDeploymentUnitV
 import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,18 +40,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class DeploymentUnitControllerTest {
     private static final AuthUser ACTOR = new AuthUser(9, 7, "architect", "hash", "架构管理员", 11, true);
+    private static final ProjectAccess PROJECT = new ProjectAccess(70L, "PROJECT-A", "项目 A");
     private static final String VIEW_PERMISSION =
             "hasAnyAuthority('architecture:deployment-unit:view', 'architecture:deployment-unit:manage', "
                     + "'architecture:view', 'architecture:apply', 'architecture:manage')";
     private static final String MANAGE_PERMISSION = "hasAuthority('architecture:deployment-unit:manage')";
 
     private DeploymentUnitService service;
+    private ProjectAccessService projectAccessService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         service = mock(DeploymentUnitService.class);
-        mockMvc = MockMvcBuilders.standaloneSetup(new DeploymentUnitController(service))
+        projectAccessService = mock(ProjectAccessService.class);
+        when(projectAccessService.requireAccessible("PROJECT-A", ACTOR)).thenReturn(PROJECT);
+        mockMvc = MockMvcBuilders.standaloneSetup(new DeploymentUnitController(service, projectAccessService))
                 .setControllerAdvice(new ArchitectureExceptionAdvice())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalResolver(ACTOR))
                 .build();
@@ -64,11 +70,12 @@ class DeploymentUnitControllerTest {
     void 关联选项转发搜索分页和排除自身参数() throws Exception {
         RelatedDeploymentUnitView option = new RelatedDeploymentUnitView(
                 202L, "DU00002", "YGQL1_DB", "DATABASE", 302L, "营销数据库子系统", "ACTIVE");
-        when(service.options(eq(ACTOR), eq("YGQL"), eq(201L), any(PageQuery.class)))
+        when(service.options(eq(ACTOR), eq(PROJECT), eq("YGQL"), eq(201L), any(PageQuery.class)))
                 .thenReturn(new PageResult<>(List.of(option), 1L, 2L, 30L));
 
         mockMvc.perform(get("/api/architecture/deployment-units/options")
                         .param("keyword", "YGQL").param("excludeId", "201")
+                        .param("projectRef", "PROJECT-A")
                         .param("page", "2").param("size", "30"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records[0].name").value("YGQL1_DB"))
@@ -78,17 +85,18 @@ class DeploymentUnitControllerTest {
                 .andExpect(jsonPath("$.data.size").value(30));
 
         ArgumentCaptor<PageQuery> pageQuery = ArgumentCaptor.forClass(PageQuery.class);
-        verify(service).options(eq(ACTOR), eq("YGQL"), eq(201L), pageQuery.capture());
+        verify(service).options(eq(ACTOR), eq(PROJECT), eq("YGQL"), eq(201L), pageQuery.capture());
         assertThat(pageQuery.getValue().page()).isEqualTo(2L);
         assertThat(pageQuery.getValue().size()).isEqualTo(30L);
     }
 
     @Test
     void 创建命令只接收完整名称类型和结构化关联() throws Exception {
-        when(service.create(eq(ACTOR), any(DeploymentUnitCommand.class), any()))
+        when(service.create(eq(ACTOR), eq(PROJECT), any(DeploymentUnitCommand.class), any()))
                 .thenReturn(mock(DeploymentUnitService.DeploymentUnitView.class));
 
         mockMvc.perform(post("/api/architecture/deployment-units")
+                        .param("projectRef", "PROJECT-A")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -104,7 +112,7 @@ class DeploymentUnitControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<DeploymentUnitCommand> command = ArgumentCaptor.forClass(DeploymentUnitCommand.class);
-        verify(service).create(eq(ACTOR), command.capture(), any());
+        verify(service).create(eq(ACTOR), eq(PROJECT), command.capture(), any());
         assertThat(command.getValue().physicalSubsystemId()).isEqualTo(301L);
         assertThat(command.getValue().name()).isEqualTo("SMSLJ_AP");
         assertThat(command.getValue().kind()).isEqualTo("APPLICATION");
@@ -120,15 +128,17 @@ class DeploymentUnitControllerTest {
     @Test
     void 查询和写入端点保持部署单元权限契约() throws Exception {
         assertPermission("list", VIEW_PERMISSION, long.class, long.class, String.class, String.class,
-                Long.class, String.class, String.class, AuthUser.class);
-        assertPermission("options", VIEW_PERMISSION, String.class, long.class, long.class, Long.class, AuthUser.class);
-        assertPermission("detail", VIEW_PERMISSION, long.class, AuthUser.class);
-        assertPermission("versions", VIEW_PERMISSION, long.class, AuthUser.class);
-        assertPermission("create", MANAGE_PERMISSION, DeploymentUnitCommand.class, AuthUser.class);
-        assertPermission("update", MANAGE_PERMISSION, long.class, DeploymentUnitCommand.class, AuthUser.class);
-        assertPermission("deactivate", MANAGE_PERMISSION, long.class, AuthUser.class);
-        assertPermission("reactivate", MANAGE_PERMISSION, long.class, AuthUser.class);
-        assertPermission("voidUnit", MANAGE_PERMISSION, long.class, AuthUser.class);
+                Long.class, String.class, String.class, String.class, AuthUser.class);
+        assertPermission("options", VIEW_PERMISSION, String.class, long.class, long.class, Long.class,
+                String.class, AuthUser.class);
+        assertPermission("detail", VIEW_PERMISSION, long.class, String.class, AuthUser.class);
+        assertPermission("versions", VIEW_PERMISSION, long.class, String.class, AuthUser.class);
+        assertPermission("create", MANAGE_PERMISSION, DeploymentUnitCommand.class, String.class, AuthUser.class);
+        assertPermission("update", MANAGE_PERMISSION, long.class, DeploymentUnitCommand.class, String.class,
+                AuthUser.class);
+        assertPermission("deactivate", MANAGE_PERMISSION, long.class, String.class, AuthUser.class);
+        assertPermission("reactivate", MANAGE_PERMISSION, long.class, String.class, AuthUser.class);
+        assertPermission("voidUnit", MANAGE_PERMISSION, long.class, String.class, AuthUser.class);
     }
 
     private void assertPermission(String methodName, String expectedExpression, Class<?>... parameterTypes)

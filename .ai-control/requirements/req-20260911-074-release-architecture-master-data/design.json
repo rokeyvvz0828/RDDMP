@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260911-074-release-architecture-master-data",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-11-release-architecture-master-data-design.md",
+  "objective": "配置管理版本申请使用当前项目的架构物理子系统和交付单元真实主数据，并由服务端保存可信快照。",
+  "users": ["版本申请人", "配置管理人员", "技术架构师", "审批人员"],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "架构交付单元制品类型统一为 IMAGE/BINARY，存量容器、压缩包和脚本按确认规则迁移。",
+      "acceptance": ["新维护只出现镜像和二进制", "容器映射 IMAGE，压缩包和脚本映射 BINARY"],
+      "priority": "must",
+      "source": "2026-09-11 用户确认",
+      "counterexample": ["配置管理继续维护独立映射", "修改已发布 V212"]
+    },
+    {
+      "id": "R2",
+      "statement": "架构模块公开按租户和项目隔离的启用物理子系统及交付单元最小只读查询。",
+      "acceptance": ["只返回 ACTIVE 且未删除数据", "交付单元限定所选物理子系统", "查询分页且不泄漏跨项目数据"],
+      "priority": "must",
+      "source": "已确认推荐方案",
+      "counterexample": ["配置管理直接查询 arch 表", "返回其他项目数据"]
+    },
+    {
+      "id": "R3",
+      "statement": "配置管理以自身权限提供主数据选择 API，并验证当前项目访问权限。",
+      "acceptance": ["有配置申请权限和项目权限可查询", "未认证、无权限和跨项目请求被拒绝"],
+      "priority": "must",
+      "source": "已确认权限设计",
+      "counterexample": ["配置用户还必须获得架构维护权限"]
+    },
+    {
+      "id": "R4",
+      "statement": "创建、保存草稿和更新申请时重新校验主数据并使用服务端可信快照。",
+      "acceptance": ["伪造名称编码和类型不进入数据库", "停用、缺失、错父子和跨项目数据失败关闭", "失败无部分写入"],
+      "priority": "must",
+      "source": "已确认服务端校验设计",
+      "counterexample": ["仅由前端过滤", "保存客户端伪造快照"]
+    },
+    {
+      "id": "R5",
+      "statement": "版本申请抽屉移除静态 Mock，按项目异步加载并联动物理子系统和交付单元。",
+      "acceptance": ["项目和物理选择变化清除过期值", "加载、空、失败和无权限状态可见", "慢请求不覆盖新上下文"],
+      "priority": "must",
+      "source": "用户原始需求",
+      "counterexample": ["仍引用 release-master-data.mock.ts", "项目切换保留旧项目选项"]
+    },
+    {
+      "id": "R6",
+      "statement": "历史申请保持快照，旧 Mock 或已停用草稿反显但必须重新选择才能保存。",
+      "acceptance": ["只读历史不受主数据变化影响", "失效草稿有持续提示且保存被拒绝"],
+      "priority": "must",
+      "source": "2026-09-11 用户确认",
+      "counterexample": ["架构改名重写已审批申请", "失效草稿可继续提交"]
+    },
+    {
+      "id": "R7",
+      "statement": "后端、迁移、治理、前端和移动端验证形成可重复证据。",
+      "acceptance": ["目标测试和构建通过", "375/390/430 及桌面视口无整页横向溢出", "安全反例有自动化断言"],
+      "priority": "must",
+      "source": "RDDMP 交付规范",
+      "counterexample": ["只凭页面手测宣布完成"]
+    }
+  ],
+  "invariants": [
+    "架构管理是物理子系统、交付单元和制品类型的唯一数据 Owner",
+    "配置管理不依赖架构私有实现或数据库表",
+    "所有新写入引用必须同时满足租户、项目、状态和父子关系",
+    "已提交申请的历史快照不可被主数据变化回写"
+  ],
+  "constraints": [
+    "Java 17、Spring Boot、MySQL 8 和 Vue 3 既有技术栈",
+    "仅追加 V213，不修改历史迁移",
+    "保持既有申请请求和响应结构兼容",
+    "遵循 design-h5.md 和公共 UI 契约"
+  ],
+  "non_goals": [
+    "调整审批流程、投产窗口、需求选择和文件介质",
+    "授予配置用户架构维护权限",
+    "迁移或重写已提交申请快照"
+  ],
+  "selected_approach": {
+    "name": "配置管理消费端口 + 架构公共查询 + Boot 适配器",
+    "reason": "复用现有跨业务模块适配模式，保持权限与模块边界，并支持服务端防伪校验。",
+    "alternatives": [
+      "前端直接调用架构 API：存在权限断层和服务端防伪缺口",
+      "配置模块直接依赖架构实现：形成业务模块硬依赖"
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["架构字典迁移与只读查询", "Boot 适配器", "配置主数据 API 与申请规范化", "版本申请抽屉"],
+      "outside": ["审批工作流", "投产窗口", "文件介质", "投产基线和生产版本"]
+    },
+    "components": [
+      "Architecture ReleaseMasterDataQuery",
+      "Release ReleaseArchitectureDirectory",
+      "Boot ReleaseArchitectureDirectoryAdapter",
+      "ReleaseMasterDataService/Controller",
+      "ReleaseApplicationService snapshot normalizer",
+      "ReleaseApplicationDrawer"
+    ],
+    "interfaces": [
+      "GET /api/release/master-data/physical-subsystems",
+      "GET /api/release/master-data/physical-subsystems/{id}/delivery-units",
+      "ReleaseMasterDataQuery",
+      "ReleaseArchitectureDirectory"
+    ],
+    "data_flows": [
+      "当前项目 -> 配置权限/项目校验 -> Boot 适配 -> 架构 ACTIVE 查询 -> 选择 DTO",
+      "申请请求 IDs -> 项目校验 -> 精确架构查询 -> 可信快照 -> 既有事务写入"
+    ]
+  },
+  "error_handling": [
+    "未认证返回 401，无权限返回 403，格式错误返回 400，失效引用和关系冲突返回 409",
+    "前端字段附近保留加载失败并允许重试",
+    "全部引用验证完成前不进入写事务"
+  ],
+  "quality_attributes": {
+    "security": ["服务端认证、RBAC、项目访问、租户隔离和实体关系校验"],
+    "performance": ["分页按需查询，不缓存跨用户结果，批量校验交付单元"],
+    "compatibility": ["保留申请 DTO 字段和历史快照，只让失效草稿重新选择"],
+    "operations": ["追加迁移、发布前备份、Flyway 与运行健康验证"]
+  },
+  "verification_strategy": [
+    "JUnit 验证查询、适配、权限和写入防伪",
+    "Flyway 与治理脚本验证迁移和模块边界",
+    "TypeScript/Vite 构建验证前端契约",
+    "真实浏览器验证桌面和移动端完整状态"
+  ],
+  "assumptions": ["当前项目平台 ID 是架构表 project_id 的权威值", "配置管理申请使用的交付单元均可归类为镜像或二进制"],
+  "unknowns": [],
+  "decisions": [
+    "新建只选择 ACTIVE 数据",
+    "旧草稿失效后必须重新选择",
+    "历史申请保留快照",
+    "架构制品类型统一为 IMAGE/BINARY"
+  ],
+  "risks": ["共享字典和存量值迁移", "旧 Mock 草稿兼容变化", "跨模块公共契约和权限边界"],
+  "approval": {
+    "status": "approved",
+    "evidence": "2026-09-11 用户依次确认启用/历史规则、推荐适配方案和架构制品类型统一方向。",
+    "confirmed_at": "2026-09-11T15:17:06+08:00"
+  }
+}
