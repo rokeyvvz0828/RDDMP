@@ -92,9 +92,14 @@ const config = reactive({
   charts: ["TABLE", "BAR"],
 });
 const fieldLabels: Record<string, string> = {
-  dimension: "统计维度",
-  row_dimension: "行维度",
-  column_dimension: "列维度",
+  system_name: "参测系统",
+  responsible_team_name: "责任团队组织",
+  tester_name: "测试人员",
+  statistic_date: "统计日期",
+  statistic_week: "统计周",
+  statistic_month: "统计月",
+  accounting_category: "核算关联",
+  defect_status: "缺陷状态",
   value: "统计值",
   scope_total: "测试范围数",
   covered_total: "已覆盖范围数",
@@ -170,6 +175,13 @@ const columnLabel = (key: string) => fieldLabels[key] || key;
 const displayValue = (value: unknown) =>
   value === null || value === undefined || value === "" ? "-" : typeof value === "number" ? String(value) : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
+const chartDimension = (row: any) => String(
+  row.dimension || row.row_dimension || row.system_name || row.round_name || row.tester_name || row.case_type || row.severity || row.defect_status || row.execution_status || row.statistic_date || row.defect_code || "-",
+);
+const stackedDimension = (row: any) => String(
+  row.row_dimension || [row.system_name, row.cycle_name].filter(Boolean).join(" / ") || row.round_name || row.severity || row.system_name || "未分类",
+);
+const stackedSeries = (row: any) => String(row.column_dimension || row.execution_status || row.defect_status || "数量");
 /** 汇总卡展示当前表的总计；不能把第一条分组记录误当作项目总计。 */
 const summaryCards = computed(() => {
   const rows = model.value.rows || [];
@@ -213,8 +225,7 @@ const presentationHint = computed(() => ({
 const chartOption = computed<EChartsOption>(() => {
   const rows = model.value.rows || [],
     chartType = active.view === "TABLE" ? chartView(model.value.chart_type) : active.view,
-    dimension = (row: any) =>
-      String(row.dimension || row.row_dimension || row.defect_code || "-"),
+    dimension = chartDimension,
     value = (row: any) =>
       Number(
         row.value ??
@@ -234,24 +245,24 @@ const chartOption = computed<EChartsOption>(() => {
     };
   }
   if (chartType === "HEATMAP") {
-    const dates = [...new Set(rows.map((row: any) => String(row.column_dimension || row.dimension || "未执行")))];
-    const systems = [...new Set(rows.map((row: any) => String(row.row_dimension || "未设置系统")))];
+    const dates = [...new Set(rows.map((row: any) => String(row.column_dimension || row.statistic_date || row.dimension || "未执行")))];
+    const systems = [...new Set(rows.map((row: any) => String(row.row_dimension || row.system_name || "未设置系统")))];
     return {
       tooltip: { position: "top" },
       grid: { left: 82, right: 24, top: 20, bottom: 72 },
       xAxis: { type: "category", data: dates, axisLabel: { rotate: dates.length > 6 ? 30 : 0 } },
       yAxis: { type: "category", data: systems },
       visualMap: { min: 0, max: Math.max(1, ...rows.map(value)), calculable: true, orient: "horizontal", left: "center", bottom: 0 },
-      series: [{ type: "heatmap", data: rows.map((row: any) => [dates.indexOf(String(row.column_dimension || row.dimension || "未执行")), systems.indexOf(String(row.row_dimension || "未设置系统")), value(row)]), label: { show: true } }],
+      series: [{ type: "heatmap", data: rows.map((row: any) => [dates.indexOf(String(row.column_dimension || row.statistic_date || row.dimension || "未执行")), systems.indexOf(String(row.row_dimension || row.system_name || "未设置系统")), value(row)]), label: { show: true } }],
     };
   }
   if (chartType === "STACKED_BAR") {
-    const dimensions = [...new Set(rows.map((row: any) => String(row.row_dimension || row.dimension || "未分类")))];
-    const seriesKeys = [...new Set(rows.map((row: any) => String(row.column_dimension || "数量")))];
+    const dimensions = [...new Set(rows.map(stackedDimension))];
+    const seriesKeys = [...new Set(rows.map(stackedSeries))];
     return {
       tooltip: { trigger: "axis" }, legend: { top: 0 }, grid: { left: 52, right: 20, top: 42, bottom: 62 },
       xAxis: { type: "category", data: dimensions, axisLabel: { rotate: dimensions.length > 6 ? 30 : 0 } }, yAxis: { type: "value", minInterval: 1 },
-      series: seriesKeys.map((name) => ({ name, type: "bar", stack: "总量", data: dimensions.map((item) => value(rows.find((row: any) => String(row.row_dimension || row.dimension || "未分类") === item && String(row.column_dimension || "数量") === name) || {})) })),
+      series: seriesKeys.map((name) => ({ name, type: "bar", stack: "总量", data: dimensions.map((item) => value(rows.find((row: any) => stackedDimension(row) === item && stackedSeries(row) === name) || {})) })),
     };
   }
   if (chartType === "LINE") {
@@ -267,7 +278,7 @@ const chartOption = computed<EChartsOption>(() => {
       grid: { left: 52, right: 20, top: 38, bottom: 32 },
       xAxis: {
         type: "category",
-        data: trend.map((row: any) => String(row.dimension || "")),
+        data: trend.map((row: any) => String(row.statistic_date || row.dimension || "")),
       },
       yAxis: { type: "value", minInterval: 1 },
       series: fields.filter(([key]) => trend.some((row: any) => row[key] !== undefined)).map(([key, name]) => ({ name, type: "line", smooth: true, data: trend.map((row: any) => Number(row[key] ?? 0)) })),
@@ -443,7 +454,7 @@ function exportImage() {
     svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="${height}"><rect width="100%" height="100%" fill="white"/><text x="10" y="20" font-size="16">${active.name}</text>${rows
       .map((r: any, i: number) => {
         const v = Number(r.value ?? r.execution_total ?? r.scope_total ?? 0);
-        return `<text x="10" y="${46 + i * 28}" font-size="12">${String(r.dimension || r.row_dimension || "-")}</text><rect x="180" y="${34 + i * 28}" width="${Math.min(440, v * 8)}" height="14" fill="#409eff" rx="3"/><text x="${190 + Math.min(440, v * 8)}" y="${46 + i * 28}" font-size="12">${v}</text>`;
+        return `<text x="10" y="${46 + i * 28}" font-size="12">${chartDimension(r)}</text><rect x="180" y="${34 + i * 28}" width="${Math.min(440, v * 8)}" height="14" fill="#409eff" rx="3"/><text x="${190 + Math.min(440, v * 8)}" y="${46 + i * 28}" font-size="12">${v}</text>`;
       })
       .join("")}</svg>`;
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })),
@@ -673,7 +684,6 @@ watch([() => context.currentRef, domain], setup);
           :aria-label="active.name + '图表'"
         /><UiDataTable
           :data="model.rows || []"
-          row-key="dimension"
           border
           :class="['table', `table--${presentation}`]"
           ><el-table-column
