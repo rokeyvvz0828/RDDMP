@@ -128,6 +128,8 @@ public class MockDataInitializer implements ApplicationRunner {
         requireOptionalParameter(row, tenantId, "development_framework_code", "ARCH_DEVELOPMENT_FRAMEWORK");
         requireOptionalParameter(row, tenantId, "deployment_platform", "ARCH_DEPLOYMENT_PLATFORM");
         requireOptionalParameter(row, tenantId, "disaster_recovery_mode", "ARCH_DISASTER_RECOVERY_MODE");
+        requireOptionalText(row, "security_node_no");
+        requireOptionalText(row, "file_transfer_node_no");
     }
 
     private void requireTenantRoot(long tenantId) {
@@ -328,7 +330,7 @@ public class MockDataInitializer implements ApplicationRunner {
         result.put("req_import_batch", set("id", "tenant_id", "biz_type", "project_id", "file_name", "template_type", "total_rows", "success_rows", "error_rows", "errors_json", "status", "operator_id", "operator_name", "deleted"));
         result.put("req_attachment", set("id", "tenant_id", "biz_type", "biz_id", "file_name", "file_size", "content_type", "preview_id", "preview_url", "operator_id", "deleted"));
         result.put("req_business_group_member", set("id", "tenant_id", "business_group", "user_id", "created_by", "deleted"));
-        result.put("arch_physical_subsystem", set("id", "tenant_id", "project_id", "code", "short_name", "name", "logical_subsystem_name", "business_component_code", "business_group_name", "deployment_platform", "disaster_recovery_mode", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "status", "row_version", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
+        result.put("arch_physical_subsystem", set("id", "tenant_id", "project_id", "code", "short_name", "name", "logical_subsystem_name", "business_component_code", "business_group_name", "deployment_platform", "disaster_recovery_mode", "security_node_no", "file_transfer_node_no", "responsible_team_org_id", "responsible_team_name_snapshot", "runtime_code", "system_level_code", "development_framework_code", "owner_user_id", "description", "remark", "status", "row_version", "deleted", "created_by", "updated_by", "created_at", "updated_at"));
         result.put("dev_task_number_sequence", set("tenant_id", "sequence_key", "next_value"));
         result.put("dev_task", set("id", "tenant_id", "project_id", "project_ref", "task_no", "source_mode", "source_type", "source_requirement_id", "source_number", "source_revision", "source_roles", "source_system_codes", "system_id", "owner_id", "title", "description", "status", "row_version", "development_plan_start", "development_plan_end", "test_plan_start", "test_plan_end", "request_id", "request_hash", "created_by", "updated_by", "created_at", "updated_at", "status_before_cancel"));
         result.put("dev_task_source_binding", set("tenant_id", "source_type", "source_requirement_id", "source_system_code", "task_id", "system_id"));

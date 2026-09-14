@@ -168,7 +168,7 @@ class SubsystemChangeServiceTest {
                 "Mall Platform", "渠道",
                 "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",
                 12L, "平台研发团队", "RUNTIME", "A", "Spring",
-                ownerUserId, "描述", null, sourceVersion);
+                ownerUserId, "描述", null, null, null, sourceVersion);
     }
 
     private ChangeApplication application(long id, ActionType action, Long targetId,
@@ -186,6 +186,6 @@ class SubsystemChangeServiceTest {
                 "architecture.deployment-platform.p2", "architecture.disaster-recovery.active-active",
                 12L, "平台研发团队",
                 "RUNTIME", "A", "Spring", 30L, "描述", null, sourceVersion,
-                0, submittedSnapshotJson, TIME, TIME);
+                0, submittedSnapshotJson, TIME, TIME, null, null);
     }
 }

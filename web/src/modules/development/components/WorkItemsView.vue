@@ -7,6 +7,7 @@ import UiDataTable from '../../../components/ui/UiDataTable.vue'
 import UiToolbar from '../../../components/ui/UiToolbar.vue'
 import UiPagination from '../../../components/ui/UiPagination.vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
 import { apiErrorMessage } from '../../../api/error'
 import { useAuthStore } from '../../../stores/auth'
@@ -102,7 +103,7 @@ onBeforeUnmount(() => { disposed = true; ticket++; systemTicket++; taskTicket++;
     <template v-if="mode === 'list'">
     <UiDataTable class="dev-desktop-table" :data="rows" :loading="loading" row-key="id">
       <el-table-column label="工作项" min-width="220"><template #default="{ row }"><button class="dev-record-link" type="button" @click="open(row)"><strong>{{ row.title }}</strong><small v-if="!task">{{ row.taskNumber }}</small></button><small v-if="row.blocked" class="dev-block dev-danger">阻塞：{{ row.blockReason }}</small><small v-for="warning in row.warnings" :key="warning" class="dev-block dev-warning">{{ warning }}</small></template></el-table-column>
-      <el-table-column label="指定人员" width="110"><template #default="{ row }">{{ row.assignee.name }}</template></el-table-column>
+      <el-table-column label="指定人员" min-width="130"><template #default="{ row }"><UiUserIdentity :user-id="row.assignee.id" :fallback-name="row.assignee.name" variant="compact" /></template></el-table-column>
       <el-table-column label="状态" width="100"><template #default="{ row }"><UiStatusTag :value="row.status" :labels="WORK_ITEM_STATUS_LABELS" :tone="statusTone(row.status)" /></template></el-table-column>
       <el-table-column label="计划 / 实际" min-width="210"><template #default="{ row }"><small class="dev-block">{{ dateRange(row.plannedStart, row.plannedEnd) }}</small><small class="dev-muted">{{ dateRange(row.actualStart, row.actualEnd) }}</small></template></el-table-column>
       <el-table-column label="耗时偏差" width="116"><template #default="{ row }"><span :class="{ 'dev-danger': row.duration.variancePercent > 0 }">{{ row.duration.status === 'available' ? `${row.duration.variancePercent}%` : '暂不可计算' }}</span></template></el-table-column>
@@ -115,7 +116,7 @@ onBeforeUnmount(() => { disposed = true; ticket++; systemTicket++; taskTicket++;
     <div v-loading="loading" class="dev-mobile-cards">
       <article v-for="item in rows" :key="item.id" class="dev-record-card">
         <header><button class="dev-record-link" type="button" @click="open(item)"><strong>{{ item.title }}</strong><small>{{ item.taskNumber }}</small></button><UiStatusTag :value="item.status" :labels="WORK_ITEM_STATUS_LABELS" :tone="statusTone(item.status)" /></header>
-        <dl><div><dt>指定人员</dt><dd>{{ item.assignee.name }}</dd></div><div><dt>计划日期</dt><dd>{{ dateRange(item.plannedStart, item.plannedEnd) }}</dd></div><div><dt>实际日期</dt><dd>{{ dateRange(item.actualStart, item.actualEnd) }}</dd></div><div><dt>耗时偏差</dt><dd>{{ item.duration.status === 'available' ? `${item.duration.variancePercent}%` : '暂不可计算' }}</dd></div></dl>
+        <dl><div><dt>指定人员</dt><dd><UiUserIdentity :user-id="item.assignee.id" :fallback-name="item.assignee.name" variant="full" /></dd></div><div><dt>计划日期</dt><dd>{{ dateRange(item.plannedStart, item.plannedEnd) }}</dd></div><div><dt>实际日期</dt><dd>{{ dateRange(item.actualStart, item.actualEnd) }}</dd></div><div><dt>耗时偏差</dt><dd>{{ item.duration.status === 'available' ? `${item.duration.variancePercent}%` : '暂不可计算' }}</dd></div></dl>
         <p v-if="item.blocked" class="dev-danger">阻塞：{{ item.blockReason }}</p>
         <p v-for="warning in item.warnings" :key="warning" class="dev-warning">{{ warning }}</p>
         <footer><el-button link @click="open(item)">详情</el-button><el-button v-if="primaryAction(item)" type="primary" link :loading="busy.has(item.id)" @click="perform(item, primaryAction(item)!)">{{ ACTION_LABELS[primaryAction(item)!] }}</el-button><el-dropdown v-if="moreActions(item).length" @command="(action: string) => perform(item, action)"><el-button :icon="MoreFilled" text circle aria-label="更多工作项操作" /><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in moreActions(item)" :key="action" :command="action">{{ ACTION_LABELS[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer>

@@ -22,7 +22,7 @@ public class ArchitectureSubsystemRepository {
             responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
             development_framework_code, owner_user_id, description, remark,
             created_by, updated_by, created_at, updated_at,
-            english_name, status, row_version
+            english_name, status, row_version, security_node_no, file_transfer_node_no
             """;
 
     private static final RowMapper<PhysicalSubsystem> PHYSICAL_MAPPER = (rs, rowNum) -> new PhysicalSubsystem(
@@ -37,7 +37,8 @@ public class ArchitectureSubsystemRepository {
             rs.getLong("created_by"), rs.getLong("updated_by"),
             localDateTime(rs.getTimestamp("created_at")), localDateTime(rs.getTimestamp("updated_at")),
             rs.getString("english_name"), rs.getString("status"),
-            rs.getLong("row_version"));
+            rs.getLong("row_version"),
+            rs.getString("security_node_no"), rs.getString("file_transfer_node_no"));
 
     private final JdbcTemplate jdbc;
 
@@ -103,14 +104,16 @@ public class ArchitectureSubsystemRepository {
                     (id, tenant_id, project_id, code, short_name, name, logical_subsystem_name, business_component_code, business_group_name,
                      deployment_platform, disaster_recovery_mode,
                      responsible_team_org_id, responsible_team_name_snapshot, runtime_code, system_level_code,
-                     development_framework_code, owner_user_id, description, remark, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     development_framework_code, owner_user_id, description, remark,
+                     security_node_no, file_transfer_node_no, created_by, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, tenantId, projectId, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
                 command.businessComponentCode(),
                 command.businessGroupName(), command.deploymentPlatform(), command.disasterRecoveryMode(),
                 command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
-                command.ownerUserId(), command.description(), command.remark(), actorId, actorId);
+                command.ownerUserId(), command.description(), command.remark(),
+                command.securityNodeNo(), command.fileTransferNodeNo(), actorId, actorId);
     }
 
     public int updatePhysical(long tenantId, long projectId, long id, PhysicalSubsystemCommand command,
@@ -121,7 +124,7 @@ public class ArchitectureSubsystemRepository {
                     business_group_name = ?, deployment_platform = ?, disaster_recovery_mode = ?,
                     responsible_team_org_id = ?, responsible_team_name_snapshot = ?,
                     runtime_code = ?, system_level_code = ?, development_framework_code = ?, owner_user_id = ?,
-                    description = ?, remark = ?, updated_by = ?
+                    description = ?, remark = ?, security_node_no = ?, file_transfer_node_no = ?, updated_by = ?
                 WHERE tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0
                 """, command.code(), command.shortName(), command.name(), command.logicalSubsystemName(),
                 command.businessComponentCode(),
@@ -129,6 +132,7 @@ public class ArchitectureSubsystemRepository {
                 command.responsibleTeamOrgId(), responsibleTeamNameSnapshot,
                 command.runtimeCode(), command.systemLevelCode(), command.developmentFrameworkCode(),
                 command.ownerUserId(), command.description(), command.remark(),
+                command.securityNodeNo(), command.fileTransferNodeNo(),
                 actorId, tenantId, projectId, id);
     }
 

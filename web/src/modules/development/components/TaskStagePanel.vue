@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { Close, Download, Refresh, Upload, View } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import UiFilePreview from '../../../components/ui/UiFilePreview.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import { uploadAttachment, getAttachmentDownload, getAttachmentPreview } from '../../../api/attachments'
 import { getFilePreviewCapabilities } from '../../../api/file-preview'
 import { apiErrorMessage } from '../../../api/error'
@@ -111,7 +112,7 @@ onBeforeUnmount(() => { disposed = true; ticket++; emit('dirty', false) })
     <el-alert v-if="error" :title="error" type="error" show-icon :closable="false"><el-button link :disabled="submitting" @click="reload">读取最新资料</el-button></el-alert>
     <el-alert v-if="fileError" :title="fileError" type="error" show-icon :closable="false" />
     <el-form v-if="stage" ref="formRef" :model="form" :rules="rules" label-position="top" class="dev-form">
-      <section class="dev-form-section"><h4>需求承接</h4><dl class="dev-facts"><div><dt>来源</dt><dd>{{ task.source?.number || '自主创建' }}</dd></div><div><dt>登记时间</dt><dd>{{ task.createdAt.replace('T', ' ').slice(0, 19) }}</dd></div><div><dt>系统</dt><dd>{{ task.system.name }}</dd></div><div><dt>负责人</dt><dd>{{ task.owner.name }}</dd></div></dl></section>
+      <section class="dev-form-section"><h4>需求承接</h4><dl class="dev-facts"><div><dt>来源</dt><dd>{{ task.source?.number || '自主创建' }}</dd></div><div><dt>登记时间</dt><dd>{{ task.createdAt.replace('T', ' ').slice(0, 19) }}</dd></div><div><dt>系统</dt><dd>{{ task.system.name }}</dd></div><div><dt>负责人</dt><dd><UiUserIdentity :user-id="task.owner.id" :fallback-name="task.owner.name" variant="compact" /></dd></div></dl></section>
       <section class="dev-form-section"><div class="dev-section-heading"><h4>开发设计</h4><el-checkbox v-if="stage.pureTest" v-model="form.notApplicableDesign" :disabled="readOnly">不适用</el-checkbox></div>
         <div v-if="!form.notApplicableDesign" class="dev-form-grid"><el-form-item label="计划开始" prop="designPlanStart"><el-date-picker v-model="form.designPlanStart" type="date" value-format="YYYY-MM-DD" :disabled="readOnly" /></el-form-item><el-form-item label="计划结束" prop="designPlanEnd"><el-date-picker v-model="form.designPlanEnd" type="date" value-format="YYYY-MM-DD" :disabled="readOnly" /></el-form-item><el-form-item label="设计文档路径" class="dev-wide"><el-input v-model="form.designDocumentPath" maxlength="2000" :disabled="readOnly" /></el-form-item></div>
         <small v-if="stage.designRegisteredAt" class="dev-muted">资料登记：{{ stage.designRegisteredAt.replace('T', ' ').slice(0, 19) }}</small>

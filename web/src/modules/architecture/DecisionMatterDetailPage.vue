@@ -12,6 +12,7 @@ import type { WorkflowTaskAction, WorkflowTaskContext } from '../../api/workflow
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import {
   addDecisionMaterial,
   bindDecisionAttachment,
@@ -551,7 +552,7 @@ onMounted(load)
               <el-button v-if="canReview && matter.status !== 'PUBLISHED'" link type="primary" @click="openTypeDialog">确定类型</el-button>
             </div>
           </el-descriptions-item>
-          <el-descriptions-item label="提出人">{{ matter.proposerName }}</el-descriptions-item>
+          <el-descriptions-item label="提出人"><UiUserIdentity :user-id="matter.proposerId" :fallback-name="matter.proposerName" variant="standard" /></el-descriptions-item>
           <el-descriptions-item label="受理时间">{{ formatDateTime(matter.receivedAt) }}</el-descriptions-item>
           <el-descriptions-item label="首次处理期限">
             <span :class="{ 'standard-overdue': matter.firstHandlingOverdue }">{{ matter.firstHandlingDeadline }}</span>
@@ -618,7 +619,11 @@ onMounted(load)
 
         <el-divider content-position="left">协作补齐材料</el-divider>
         <el-timeline v-if="materials.length">
-          <el-timeline-item v-for="item in materials" :key="item.id" :timestamp="`${formatDateTime(item.createdAt)} · ${item.createdByName || '—'}`" placement="top">
+          <el-timeline-item v-for="item in materials" :key="item.id" placement="top">
+            <template #timestamp>
+              <span class="standard-muted">{{ formatDateTime(item.createdAt) }}</span>
+              <UiUserIdentity :user-id="item.createdBy" :fallback-name="item.createdByName" variant="compact" />
+            </template>
             <el-tag size="small" style="margin-right:8px">{{ kindLabels[item.kind] }}</el-tag>
             <pre class="standard-detail-text standard-detail-pre">{{ item.content }}</pre>
           </el-timeline-item>
@@ -638,7 +643,9 @@ onMounted(load)
             <el-descriptions-item label="过程材料">{{ review.processMaterialSummary || '—' }}</el-descriptions-item>
             <el-descriptions-item label="关键意见">{{ review.keyOpinion || '—' }}</el-descriptions-item>
             <el-descriptions-item label="参与人" :span="2">
-              <el-tag v-for="participant in participants[review.id] || []" :key="participant.userId" size="small" style="margin-right:6px">{{ participant.displayName }}</el-tag>
+              <span class="decision-participants">
+                <UiUserIdentity v-for="participant in participants[review.id] || []" :key="participant.userId" :user-id="participant.userId" :fallback-name="participant.displayName" variant="compact" />
+              </span>
               <span v-if="!(participants[review.id] || []).length">—</span>
             </el-descriptions-item>
             <el-descriptions-item label="正式结论">{{ review.conclusionContent || '—' }}</el-descriptions-item>
@@ -650,7 +657,7 @@ onMounted(load)
               <el-tag size="small" :type="item.status === 'DONE' ? 'success' : 'warning'" style="margin:0 8px">
                 {{ item.status === 'DONE' ? '已完成' : '待跟踪' }}
               </el-tag>
-              <span v-if="item.ownerName" class="standard-muted">{{ item.ownerName }}</span>
+              <UiUserIdentity v-if="item.ownerName || item.ownerUserId" :user-id="item.ownerUserId" :fallback-name="item.ownerName" variant="compact" />
               <el-button v-if="canReview && item.status === 'OPEN'" link type="primary" size="small"
                          :loading="actionBusy === `action-${item.id}`" @click="completeActionItem(review.id, item)">完成</el-button>
             </div>
@@ -665,7 +672,7 @@ onMounted(load)
           <el-descriptions :column="1" border style="margin-top:12px">
             <el-descriptions-item label="正式结论">{{ chain.content }}</el-descriptions-item>
             <el-descriptions-item label="理由">{{ chain.rationale || '—' }}</el-descriptions-item>
-            <el-descriptions-item label="发布信息">{{ formatDateTime(chain.publishedAt) }} · {{ chain.publishedByName || '—' }}</el-descriptions-item>
+            <el-descriptions-item label="发布信息">{{ formatDateTime(chain.publishedAt) }} · <UiUserIdentity :user-id="chain.publishedBy" :fallback-name="chain.publishedByName" variant="compact" /></el-descriptions-item>
           </el-descriptions>
           <div v-if="chain.supersedes.length" style="margin-top:10px">
             <strong>本结论替代/部分修订：</strong>

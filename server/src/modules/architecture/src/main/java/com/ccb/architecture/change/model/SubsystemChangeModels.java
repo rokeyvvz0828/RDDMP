@@ -134,7 +134,9 @@ public final class SubsystemChangeModels {
             int draftRevision,
             String submittedSnapshotJson,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+            String securityNodeNo,
+            String fileTransferNodeNo) {
 
         /** 兼容 V82-V94 期间不含登记表来源字段的测试与内部构造。 */
         public PhysicalDraft(long applicationId, int lineNo, long tenantId, long projectId,
@@ -151,7 +153,7 @@ public final class SubsystemChangeModels {
                     null, null,
                     responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
                     developmentFrameworkCode, ownerUserId, description, remark, sourceRowVersion, draftRevision,
-                    submittedSnapshotJson, createdAt, updatedAt);
+                    submittedSnapshotJson, createdAt, updatedAt, null, null);
         }
     }
 

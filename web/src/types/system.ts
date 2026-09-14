@@ -109,3 +109,18 @@ export interface AuditProjectOption {
 export interface AuditCapabilities {
   loginAudit: boolean
 }
+
+export interface PersonRole { id: number; code: string; name: string }
+
+export interface PersonProfile {
+  id: number
+  username: string
+  displayName: string
+  mobilePhone: string | null
+  orgName: string | null
+  avatarUrl: string | null
+  roles: PersonRole[]
+  status: number
+}
+
+export interface PersonProfileQueryResult { profiles: PersonProfile[]; missingIds: number[] }

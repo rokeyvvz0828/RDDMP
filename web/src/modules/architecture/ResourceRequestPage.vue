@@ -8,6 +8,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import {
   decideWorkflowTask,
@@ -238,14 +239,6 @@ function displayAmount(value: number | null | undefined, unit = '') {
 
 function boolLabel(value: boolean) {
   return value ? '是' : '否'
-}
-
-function userLabel(id: number | null | undefined) {
-  if (!id) return '—'
-  const user = users.value.find(item => item.id === id)
-  if (user) return `${user.displayName}（${user.username}）`
-  if (auth.user?.id === id) return auth.user.displayName || auth.user.username || `用户 #${id}`
-  return `用户 #${id}`
 }
 
 function requestTypeLabel(value: ResourceRequestType | string | null | undefined) {
@@ -1265,8 +1258,8 @@ watch(deploymentUnitOptions, options => {
         <el-table-column label="状态" width="100"><template #default="scope"><UiStatusTag :value="scope.row.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(scope.row.status)" /></template></el-table-column>
         <el-table-column label="物理子系统" min-width="180"><template #default="scope">{{ scope.row.physicalSubsystemName }}<small class="architecture-inline-code">{{ scope.row.physicalSubsystemShortName || scope.row.physicalSubsystemCode }}</small></template></el-table-column>
         <el-table-column prop="reason" label="申请原因" min-width="210" show-overflow-tooltip />
-        <el-table-column label="申请人" width="120"><template #default="scope">{{ userLabel(scope.row.applicantId) }}</template></el-table-column>
-        <el-table-column label="联系人" width="120"><template #default="scope">{{ userLabel(scope.row.contactUserId) }}</template></el-table-column>
+        <el-table-column label="申请人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.applicantId" variant="compact" /></template></el-table-column>
+        <el-table-column label="联系人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.contactUserId" variant="compact" /></template></el-table-column>
         <el-table-column label="最后更新" width="150"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="scope">
@@ -1285,7 +1278,7 @@ watch(deploymentUnitOptions, options => {
         <article v-for="row in rows" :key="row.id">
           <header><div><strong>{{ row.requestNo }}</strong><small>{{ requestTypeLabel(row.requestType) }} · {{ row.environmentName }}</small></div><UiStatusTag :value="row.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(row.status)" /></header>
           <p class="architecture-mobile-card__reason">{{ row.reason || '未填写申请原因' }}</p>
-          <dl><div><dt>物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemShortName || row.physicalSubsystemCode }}）</dd></div><div><dt>联系人</dt><dd>{{ userLabel(row.contactUserId) }}</dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl>
+          <dl><div><dt>物理子系统</dt><dd>{{ row.physicalSubsystemName }}（{{ row.physicalSubsystemShortName || row.physicalSubsystemCode }}）</dd></div><div><dt>联系人</dt><dd><UiUserIdentity :user-id="row.contactUserId" variant="full" /></dd></div><div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div></dl>
           <footer>
             <el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button>
             <el-button v-if="canManage && row.status === 'APPROVED'" link type="success" @click="openFulfillDialog(row)">办理下发</el-button>
@@ -1310,8 +1303,8 @@ watch(deploymentUnitOptions, options => {
           <div class="architecture-detail-heading"><strong>{{ detail.request.requestNo }}</strong><span>{{ requestTypeLabel(detail.request.requestType) }} · {{ detail.request.environmentName }}</span></div>
           <dl class="architecture-detail-list">
             <div><dt>状态</dt><dd><UiStatusTag :value="detail.request.status" :labels="resourceRequestStatusLabels" :tone="resourceRequestStatusTone(detail.request.status)" /></dd></div>
-            <div><dt>申请人</dt><dd>{{ userLabel(detail.request.applicantId) }}</dd></div>
-            <div><dt>资源申请联系人</dt><dd>{{ userLabel(detail.request.contactUserId) }}</dd></div>
+            <div><dt>申请人</dt><dd><UiUserIdentity :user-id="detail.request.applicantId" variant="standard" /></dd></div>
+            <div><dt>资源申请联系人</dt><dd><UiUserIdentity :user-id="detail.request.contactUserId" variant="standard" /></dd></div>
             <div><dt>环境</dt><dd>{{ detail.request.environmentName }}（{{ detail.request.environmentCode }}）</dd></div>
             <div><dt>物理子系统</dt><dd>{{ detail.request.physicalSubsystemName }}（{{ detail.request.physicalSubsystemShortName || detail.request.physicalSubsystemCode }}）</dd></div>
             <div><dt>所属事业群</dt><dd>{{ displayText(detail.request.physicalSubsystemBusinessGroupName) }}</dd></div>

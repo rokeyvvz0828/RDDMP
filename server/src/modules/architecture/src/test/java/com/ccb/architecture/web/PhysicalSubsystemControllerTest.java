@@ -170,7 +170,7 @@ class PhysicalSubsystemControllerTest {
                 "architecture.runtime.7x24", "A", "Spring", 30L, "系统负责人",
                 "描述", null, 9L, "架构管理员", 9L,
                 LocalDateTime.of(2026, 8, 15, 10, 0), LocalDateTime.of(2026, 8, 15, 10, 0),
-                "Mall Platform", "ACTIVE", 4L);
+                "Mall Platform", "ACTIVE", 4L, null, null);
     }
 
     private record AuthenticationPrincipalResolver(AuthUser actor) implements HandlerMethodArgumentResolver {

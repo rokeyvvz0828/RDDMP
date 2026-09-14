@@ -8,6 +8,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import { listSubsystemChangeApplications } from './api'
@@ -169,10 +170,10 @@ watch(canView, allowed => {
         <el-table-column prop="reason" label="申请原因" min-width="240" show-overflow-tooltip />
         <el-table-column label="状态" width="110">
           <template #default="scope">
-            <UiStatusTag :value="scope.row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(scope.row.status)" />
+            <UiStatusTag :value="scope.row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(scope.row.status)" indicator />
           </template>
         </el-table-column>
-        <el-table-column label="申请人" width="100"><template #default="scope">#{{ scope.row.applicantId }}</template></el-table-column>
+        <el-table-column label="申请人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.applicantId" variant="compact" /></template></el-table-column>
         <el-table-column label="最后更新" width="150"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
@@ -188,11 +189,11 @@ watch(canView, allowed => {
         <article v-for="row in rows" :key="row.id">
           <header>
             <div><strong>#{{ row.id }} · {{ targetKindLabel(row.targetKind) }}</strong><small>{{ actionTypeLabel(row.actionType) }} · 第 {{ row.currentBusinessRound }} 轮</small></div>
-            <UiStatusTag :value="row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(row.status)" />
+            <UiStatusTag :value="row.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(row.status)" indicator />
           </header>
           <p class="architecture-mobile-card__reason">{{ row.reason }}</p>
           <dl>
-            <div><dt>申请人</dt><dd>#{{ row.applicantId }}</dd></div>
+            <div><dt>申请人</dt><dd><UiUserIdentity :user-id="row.applicantId" variant="full" /></dd></div>
             <div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div>
           </dl>
           <footer>

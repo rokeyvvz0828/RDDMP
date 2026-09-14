@@ -69,7 +69,9 @@ public class SubsystemChangeStore {
                     rs.getInt("draft_revision"),
                     rs.getString("submitted_snapshot_json"),
                     localDateTime(rs.getTimestamp("created_at")),
-                    localDateTime(rs.getTimestamp("updated_at")));
+                    localDateTime(rs.getTimestamp("updated_at")),
+                    rs.getString("security_node_no"),
+                    rs.getString("file_transfer_node_no"));
 
     private static final RowMapper<ChangeHistoryEvent> HISTORY_MAPPER = (rs, rowNum) ->
             new ChangeHistoryEvent(
@@ -186,7 +188,7 @@ public class SubsystemChangeStore {
             business_group_name, responsible_team_org_id,
             deployment_platform, disaster_recovery_mode,
             responsible_team_name_snapshot, runtime_code, system_level_code, development_framework_code,
-            owner_user_id, description, remark, source_row_version, draft_revision,
+            owner_user_id, description, remark, security_node_no, file_transfer_node_no, source_row_version, draft_revision,
             submitted_snapshot_json, created_at, updated_at
             """;
 
@@ -676,9 +678,10 @@ public class SubsystemChangeStore {
                              english_name, business_group_name, deployment_platform, disaster_recovery_mode,
                              responsible_team_org_id,
                              responsible_team_name_snapshot, runtime_code, system_level_code,
-                             development_framework_code, owner_user_id, description, remark, status, row_version,
+                             development_framework_code, owner_user_id, description, remark,
+                             security_node_no, file_transfer_node_no, status, row_version,
                              created_by, updated_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, id, tenantId, projectId, draft.code(), draft.shortName(), draft.name(),
                 draft.logicalSubsystemName(),
                 draft.businessComponentCode(),
@@ -686,6 +689,7 @@ public class SubsystemChangeStore {
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
+                draft.securityNodeNo(), draft.fileTransferNodeNo(),
                 status.name(), rowVersion, actorId, actorId);
     }
 
@@ -701,6 +705,7 @@ public class SubsystemChangeStore {
                             deployment_platform = ?, disaster_recovery_mode = ?, responsible_team_org_id = ?,
                             responsible_team_name_snapshot = ?, runtime_code = ?, system_level_code = ?,
                             development_framework_code = ?, owner_user_id = ?, description = ?, remark = ?,
+                            security_node_no = ?, file_transfer_node_no = ?,
                             updated_by = ?, row_version = row_version + 1
                         WHERE tenant_id = ? AND project_id = ? AND id = ? AND row_version = ?
                         """, draft.shortName(), draft.name(), draft.logicalSubsystemName(),
@@ -708,7 +713,8 @@ public class SubsystemChangeStore {
                 draft.deploymentPlatform(), draft.disasterRecoveryMode(), draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(),
                 draft.runtimeCode(), draft.systemLevelCode(), draft.developmentFrameworkCode(), draft.ownerUserId(),
-                draft.description(), draft.remark(), actorId, tenantId, projectId, id, expectedRowVersion) == 1;
+                draft.description(), draft.remark(), draft.securityNodeNo(), draft.fileTransferNodeNo(),
+                actorId, tenantId, projectId, id, expectedRowVersion) == 1;
     }
 
     public boolean updatePhysicalPublishedStatus(long tenantId, long projectId, long id, PublishedStatus status,
@@ -739,8 +745,9 @@ public class SubsystemChangeStore {
                              english_name, business_group_name, deployment_platform, disaster_recovery_mode,
                              responsible_team_org_id, responsible_team_name_snapshot,
                              runtime_code, system_level_code, development_framework_code, owner_user_id, description, remark,
+                             security_node_no, file_transfer_node_no,
                              source_row_version, draft_revision, submitted_snapshot_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, draft.applicationId(), draft.lineNo(), draft.tenantId(), draft.projectId(),
                 draft.sourcePhysicalSubsystemId(), draft.code(), draft.shortName(), draft.name(),
                 draft.logicalSubsystemName(), draft.businessComponentCode(), draft.englishName(),
@@ -748,6 +755,7 @@ public class SubsystemChangeStore {
                 draft.responsibleTeamOrgId(),
                 draft.responsibleTeamNameSnapshot(), draft.runtimeCode(), draft.systemLevelCode(),
                 draft.developmentFrameworkCode(), draft.ownerUserId(), draft.description(), draft.remark(),
+                draft.securityNodeNo(), draft.fileTransferNodeNo(),
                 draft.sourceRowVersion(), draft.draftRevision(),
                 draft.submittedSnapshotJson());
     }

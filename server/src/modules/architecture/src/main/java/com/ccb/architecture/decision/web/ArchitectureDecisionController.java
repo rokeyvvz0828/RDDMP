@@ -539,14 +539,14 @@ public class ArchitectureDecisionController {
             long id, String matterNo, String title, String typeCode, String status,
             LocalDateTime receivedAt, LocalDate firstHandlingDeadline, Boolean firstHandlingOverdue,
             String firstHandlingOutcome, String reviewMode, String proposerName,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt, long proposerId) {
         static MatterSummaryResponse from(DecisionMatter matter) {
             return new MatterSummaryResponse(matter.id(), matter.matterNo(), matter.title(),
                     matter.typeCode(), matter.status().name(), matter.receivedAt(),
                     matter.firstHandlingDeadline(), firstHandlingOverdue(matter),
                     matter.firstHandlingOutcome() == null ? null : matter.firstHandlingOutcome().name(),
                     matter.reviewMode() == null ? null : matter.reviewMode().name(),
-                    matter.proposerName(), matter.updatedAt());
+                    matter.proposerName(), matter.updatedAt(), matter.proposerId());
         }
 
         private static Boolean firstHandlingOverdue(DecisionMatter matter) {
@@ -596,10 +596,10 @@ public class ArchitectureDecisionController {
     }
 
     public record MaterialResponse(long id, long matterId, String kind, String content,
-                                   String createdByName, LocalDateTime createdAt) {
+                                   String createdByName, LocalDateTime createdAt, long createdBy) {
         static MaterialResponse from(MaterialRecord record) {
             return new MaterialResponse(record.id(), record.matterId(), record.kind().name(),
-                    record.content(), record.createdByName(), record.createdAt());
+                    record.content(), record.createdByName(), record.createdAt(), record.createdBy());
         }
     }
 

@@ -4,6 +4,7 @@ import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../../api/error'
 import { useProjectContextStore } from '../../../stores/project-context'
 import { getSubsystemParticipation, getSubsystemParticipantCandidates, replaceSubsystemParticipation } from '../api'
@@ -131,8 +132,7 @@ onBeforeUnmount(() => { ++request; window.removeEventListener('beforeunload', be
         <div class="subsystem-people__owner">
           <span class="subsystem-people__label">系统负责人</span>
           <div class="subsystem-people__identity">
-            <el-avatar :size="36" aria-hidden="true">{{ owner?.displayName?.slice(0, 1) || '—' }}</el-avatar>
-            <strong>{{ owner?.displayName || '未配置负责人' }}</strong>
+            <UiUserIdentity :user-id="data.ownerUserId" :fallback-name="owner?.displayName || '未配置负责人'" variant="full" />
             <el-tag v-if="data.ownerUserId" size="small" effect="plain">默认参与</el-tag>
           </div>
           <p class="subsystem-people__hint">负责人自动参与，不在下方重复添加；调整负责人请发起系统变更工单。</p>
@@ -156,9 +156,10 @@ onBeforeUnmount(() => { ++request; window.removeEventListener('beforeunload', be
             <p class="subsystem-people__hint">当前为只读。系统负责人或具有维护权限的授权管理者可以调整名单。</p>
             <el-form-item :label="`其他参与人员（${otherSelected.length}人）`">
               <div v-if="otherSelected.length" class="subsystem-people__readonly">
-                <el-tag v-for="person in options.filter(item => otherSelected.includes(item.userId))" :key="person.userId" effect="plain">
-                  {{ person.displayName }}{{ invalidIds.includes(person.userId) ? '（已失效）' : '' }}
-                </el-tag>
+                <span v-for="person in options.filter(item => otherSelected.includes(item.userId))" :key="person.userId" class="subsystem-people__member">
+                  <UiUserIdentity :user-id="person.userId" :fallback-name="person.displayName" variant="compact" />
+                  <span v-if="invalidIds.includes(person.userId)" class="architecture-warning-text">（已失效）</span>
+                </span>
               </div>
               <UiEmptyState v-else title="暂无其他参与人员" description="系统负责人默认参与。" />
             </el-form-item>
@@ -183,5 +184,6 @@ onBeforeUnmount(() => { ++request; window.removeEventListener('beforeunload', be
 .subsystem-people__select :deep(.el-tag__content), .subsystem-people__select :deep(.el-select__tags-text) { white-space: normal; overflow-wrap: anywhere; }
 .subsystem-people__select + .subsystem-people__hint { margin-top: 8px; }
 .subsystem-people__readonly { display: flex; flex-wrap: wrap; gap: 8px; max-height: 200px; overflow-y: auto; }
+.subsystem-people__member { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; }
 .subsystem-people__readonly .el-tag { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; }
 </style>
