@@ -170,6 +170,21 @@ const columnLabel = (key: string) => fieldLabels[key] || key;
 const displayValue = (value: unknown) =>
   value === null || value === undefined || value === "" ? "-" : typeof value === "number" ? String(value) : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
+/** 汇总卡展示当前表的总计；不能把第一条分组记录误当作项目总计。 */
+const summaryCards = computed(() => {
+  const rows = model.value.rows || [];
+  if (active.key.startsWith("CHT-") || !rows.length || !("effective_case_total" in rows[0])) return [];
+  const sum = (key: string) => rows.reduce((total: number, row: any) => total + Number(row[key] || 0), 0);
+  const effective = sum("effective_case_total"), execution = sum("execution_total"), success = sum("success_count");
+  const rate = (part: number, total: number) => total ? Math.round(part * 10000 / total) / 100 : 0;
+  return [
+    ["effective_case_total", effective], ["execution_total", execution], ["success_count", success],
+    ["failed_count", sum("failed_count")], ["blocked_count", sum("blocked_count")],
+    ["in_progress_count", sum("in_progress_count")], ["unexecuted_count", sum("unexecuted_count")],
+    ["execution_rate", rate(execution, effective)], ["case_success_rate", rate(success, effective)],
+    ["executed_case_success_rate", rate(success, execution)],
+  ] as Array<[string, number]>;
+});
 const chartView = (type: unknown) => {
   const value = String(type || "BAR");
   return ["BAR", "LINE", "PIE", "STACKED_BAR", "RADAR", "HEATMAP"].includes(value) ? value : "BAR";
@@ -642,14 +657,13 @@ watch([() => context.currentRef, domain], setup);
           <strong>{{ active.name }}</strong>
           <span>{{ presentationHint }}</span>
         </section>
-        <div v-if="presentation !== 'detail'" class="cards">
+        <div v-if="summaryCards.length" class="cards">
           <article
-            v-for="(v, k) in model.rows?.[0] || {}"
-            v-show="typeof v === 'number'"
-            :key="String(k)"
+            v-for="[key, value] in summaryCards"
+            :key="key"
           >
-            <small>{{ columnLabel(String(k)) }}</small
-            ><b>{{ displayValue(v) }}</b>
+            <small>{{ columnLabel(key) }}</small
+            ><b>{{ displayValue(value) }}</b>
           </article>
         </div>
         <TestAnalyticsChart
