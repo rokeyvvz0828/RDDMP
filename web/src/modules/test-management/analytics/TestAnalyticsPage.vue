@@ -18,11 +18,11 @@ import {
   Search,
 } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import UiDataTable from "../../../components/ui/UiDataTable.vue";
 import UiEmptyState from "../../../components/ui/UiEmptyState.vue";
 import UiPageHeader from "../../../components/ui/UiPageHeader.vue";
-import DeliveryChart from "../../delivery-showcase/components/DeliveryChart.vue";
+import TestAnalyticsChart from "./TestAnalyticsChart.vue";
 import TestManagementFormDialog from "../components/TestManagementFormDialog.vue";
 import { useProjectContextStore } from "../../../stores/project-context";
 import {
@@ -42,9 +42,7 @@ import {
   type TestAnalyticsTree,
   type TestDomain,
 } from "../api";
-const route = useRoute(),
-  router = useRouter(),
-  context = useProjectContextStore();
+const route = useRoute(), context = useProjectContextStore();
 const domain = computed(() => String(route.params.domain) as TestDomain);
 const projects = ref<
     Array<{ id: number; project_code: string; project_name: string }>
@@ -67,7 +65,7 @@ const tree = ref<TestAnalyticsTree>(),
   meta = ref<any>({ systems: [], rounds: [], cycles: [] }),
   active = reactive({
     key: "RPT-001",
-    name: "项目测试概览",
+    name: "测试执行进度汇总表",
     view: "TABLE",
     perspective: "EXECUTOR",
   }),
@@ -165,17 +163,41 @@ const valueLabels: Record<string, string> = {
   HIGH: "高", MEDIUM: "中", LOW: "低", true: "是", false: "否", 1: "是", 0: "否",
 };
 const chartLabels: Record<string, string> = {
-  TABLE: "表格", BAR: "柱状图", LINE: "折线图", PIE: "饼图",
+  TABLE: "数据表", BAR: "柱状图", LINE: "趋势图", PIE: "分布图",
+  STACKED_BAR: "堆叠对比图", RADAR: "质量雷达图", HEATMAP: "执行热力图",
 };
 const columnLabel = (key: string) => fieldLabels[key] || key;
 const displayValue = (value: unknown) =>
   value === null || value === undefined || value === "" ? "-" : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
+const chartView = (type: unknown) => {
+  const value = String(type || "BAR");
+  return ["BAR", "LINE", "PIE", "STACKED_BAR", "RADAR", "HEATMAP"].includes(value) ? value : "BAR";
+};
 const viewOptions = computed(() =>
-  active.key.startsWith("CHT-") ? ["TABLE", "BAR", "LINE", "PIE"] : ["TABLE", "BAR", "LINE"],
+  active.key.startsWith("CHT-") ? ["TABLE", chartView(model.value.chart_type)] : ["TABLE"],
 );
+const presentation = computed(() => {
+  if (["RPT-006", "RPT-007"].includes(active.key)) return "detail";
+  if (["RPT-008", "RPT-009", "RPT-013", "RPT-017", "RPT-026"].includes(active.key)) return "distribution";
+  if (["RPT-011"].includes(active.key)) return "coverage";
+  if (["RPT-012"].includes(active.key)) return "workload";
+  if (["RPT-010", "RPT-019", "RPT-024"].includes(active.key)) return "quality";
+  if (["RPT-020", "RPT-021", "RPT-022", "RPT-023", "RPT-025"].includes(active.key)) return "timeline";
+  return "execution";
+});
+const presentationHint = computed(() => ({
+  detail: "逐条展示业务事实，可按数值进入下钻明细。",
+  distribution: "按状态、严重程度或处理效率聚合，适合比较各分类数量与占比。",
+  coverage: "展示测试范围是否已纳入有效案例，覆盖率按范围计算。",
+  workload: "展示测试人员的执行工作量与执行结果分布。",
+  quality: "对比各系统或责任团队的执行率、成功率和缺陷密度。",
+  timeline: "按日、周或月连续呈现执行进展，便于跟踪变化。",
+  execution: "按当前统计维度汇总有效案例及执行状态，不将执行中计入已执行。",
+} as Record<string, string>)[presentation.value]);
 const chartOption = computed<EChartsOption>(() => {
   const rows = model.value.rows || [],
+    chartType = active.view === "TABLE" ? chartView(model.value.chart_type) : active.view,
     dimension = (row: any) =>
       String(row.dimension || row.row_dimension || row.defect_code || "-"),
     value = (row: any) =>
@@ -187,8 +209,43 @@ const chartOption = computed<EChartsOption>(() => {
           row.handled_defects ??
           0,
       );
-  if (active.view === "LINE") {
+  if (chartType === "RADAR") {
+    const indicators = ["执行率", "案例成功率", "已执行案例成功率", "缺陷密度"];
+    return {
+      tooltip: {},
+      legend: { bottom: 0 },
+      radar: { indicator: indicators.map((name) => ({ name, max: 100 })) },
+      series: [{ type: "radar", data: rows.slice(0, 8).map((row: any) => ({ name: dimension(row), value: [Number(row.execution_rate || 0), Number(row.case_success_rate || 0), Number(row.executed_case_success_rate || 0), Math.max(0, 100 - Number(row.defect_density || 0))] })) }],
+    };
+  }
+  if (chartType === "HEATMAP") {
+    const dates = [...new Set(rows.map((row: any) => String(row.column_dimension || row.dimension || "未执行")))];
+    const systems = [...new Set(rows.map((row: any) => String(row.row_dimension || "未设置系统")))];
+    return {
+      tooltip: { position: "top" },
+      grid: { left: 82, right: 24, top: 20, bottom: 72 },
+      xAxis: { type: "category", data: dates, axisLabel: { rotate: dates.length > 6 ? 30 : 0 } },
+      yAxis: { type: "category", data: systems },
+      visualMap: { min: 0, max: Math.max(1, ...rows.map(value)), calculable: true, orient: "horizontal", left: "center", bottom: 0 },
+      series: [{ type: "heatmap", data: rows.map((row: any) => [dates.indexOf(String(row.column_dimension || row.dimension || "未执行")), systems.indexOf(String(row.row_dimension || "未设置系统")), value(row)]), label: { show: true } }],
+    };
+  }
+  if (chartType === "STACKED_BAR") {
+    const dimensions = [...new Set(rows.map((row: any) => String(row.row_dimension || row.dimension || "未分类")))];
+    const seriesKeys = [...new Set(rows.map((row: any) => String(row.column_dimension || "数量")))];
+    return {
+      tooltip: { trigger: "axis" }, legend: { top: 0 }, grid: { left: 52, right: 20, top: 42, bottom: 62 },
+      xAxis: { type: "category", data: dimensions, axisLabel: { rotate: dimensions.length > 6 ? 30 : 0 } }, yAxis: { type: "value", minInterval: 1 },
+      series: seriesKeys.map((name) => ({ name, type: "bar", stack: "总量", data: dimensions.map((item) => value(rows.find((row: any) => String(row.row_dimension || row.dimension || "未分类") === item && String(row.column_dimension || "数量") === name) || {})) })),
+    };
+  }
+  if (chartType === "LINE") {
     const trend = model.value.trend || [];
+    const fields = active.key === "CHT-004"
+      ? [["execution_rate", "执行率"], ["case_success_rate", "案例成功率"], ["executed_case_success_rate", "已执行案例成功率"]]
+      : active.key === "CHT-013"
+        ? [["execution_total", "日执行量"], ["execution_rate", "累计执行率"]]
+        : [["completed_count", "完成数"], ["raised_count", "新增缺陷数"], ["resolved_count", "已解决缺陷数"]];
     return {
       tooltip: { trigger: "axis" },
       legend: { top: 0 },
@@ -198,25 +255,10 @@ const chartOption = computed<EChartsOption>(() => {
         data: trend.map((row: any) => String(row.dimension || "")),
       },
       yAxis: { type: "value", minInterval: 1 },
-      series: [
-        {
-          name: "完成数",
-          type: "line",
-          smooth: true,
-          data: trend.map((row: any) =>
-            Number(row.completed_count ?? row.raised_count ?? 0),
-          ),
-        },
-        {
-          name: "解决数",
-          type: "line",
-          smooth: true,
-          data: trend.map((row: any) => Number(row.resolved_count ?? 0)),
-        },
-      ],
+      series: fields.filter(([key]) => trend.some((row: any) => row[key] !== undefined)).map(([key, name]) => ({ name, type: "line", smooth: true, data: trend.map((row: any) => Number(row[key] ?? 0)) })),
     };
   }
-  if (active.view === "PIE")
+  if (chartType === "PIE")
     return {
       tooltip: { trigger: "item" },
       legend: { bottom: 0 },
@@ -279,6 +321,7 @@ async function load() {
           }))
     ).data.data as any;
     model.value = { ...response, rows: response.rows || response.table || [] };
+    if (active.key.startsWith("CHT-") && active.view === "TABLE") active.view = chartView(response.chart_type);
   } catch (e) {
     err(e, "统计数据加载失败");
   } finally {
@@ -456,17 +499,6 @@ async function save() {
     err(e, "保存失败");
   }
 }
-function report() {
-  router.push({
-    path: `/test-management/${domain.value}/reports`,
-    query: {
-      physicalSubsystemId: filters.systemId,
-      roundId: filters.roundId,
-      cycleId: filters.cycleId,
-      source: "analytics",
-    },
-  });
-}
 onMounted(async () => {
   await context.initialize();
   projects.value = (await listTestProjects(domain.value)).data.data || [];
@@ -594,8 +626,9 @@ watch([() => context.currentRef, domain], setup);
           ><el-button size="small" :icon="Search" @click="load">查询</el-button>
         </div>
         <div class="toolbar">
-          <el-radio-group v-model="active.view" size="small" @change="load"
-          ><el-radio-button v-for="v in viewOptions" :key="v" :value="v">{{ chartLabels[v] }}</el-radio-button></el-radio-group
+          <el-radio-group v-model="active.view" size="small">
+            <el-radio-button v-for="v in viewOptions" :key="v" :value="v">{{ chartLabels[v] }}</el-radio-button>
+          </el-radio-group>
           ><span /><el-button size="small" :icon="Edit" @click="openDesigner()"
             >编辑/另存为</el-button
           ><el-button size="small" :icon="Download" @click="exportXlsx"
@@ -603,12 +636,13 @@ watch([() => context.currentRef, domain], setup);
           ><el-button size="small" @click="exportImage">导出图片</el-button
           ><el-button size="small" @click="compareOpen = true"
             >跨轮次对比</el-button
-          ><el-button size="small" @click="archive">归档快照</el-button
-          ><el-button size="small" type="primary" @click="report"
-            >生成测试报告</el-button
-          >
+          ><el-button size="small" @click="archive">归档快照</el-button>
         </div>
-        <div class="cards">
+        <section class="analysis-intro" :class="`analysis-intro--${presentation}`">
+          <strong>{{ active.name }}</strong>
+          <span>{{ presentationHint }}</span>
+        </section>
+        <div v-if="presentation !== 'detail'" class="cards">
           <article
             v-for="(v, k) in model.rows?.[0] || {}"
             v-show="typeof v === 'number'"
@@ -618,8 +652,8 @@ watch([() => context.currentRef, domain], setup);
             ><b>{{ displayValue(v) }}</b>
           </article>
         </div>
-        <DeliveryChart
-          v-if="active.view !== 'TABLE' && model.rows?.length"
+        <TestAnalyticsChart
+          v-if="active.key.startsWith('CHT-') && active.view !== 'TABLE' && model.rows?.length"
           class="chart"
           :option="chartOption"
           :aria-label="active.name + '图表'"
@@ -627,7 +661,7 @@ watch([() => context.currentRef, domain], setup);
           :data="model.rows || []"
           row-key="dimension"
           border
-          class="table"
+          :class="['table', `table--${presentation}`]"
           ><el-table-column
             v-for="key in columns"
             :key="key"
@@ -812,6 +846,22 @@ watch([() => context.currentRef, domain], setup);
 .toolbar span {
   flex: 1;
 }
+.analysis-intro {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  margin-bottom: 9px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: 5px;
+  background: var(--panel-muted);
+}
+.analysis-intro strong { font-size: 14px; }
+.analysis-intro span { font-size: 12px; color: var(--text-muted); }
+.analysis-intro--detail { border-left-color: var(--accent, var(--brand)); }
+.analysis-intro--quality { border-left-color: var(--success); }
+.analysis-intro--timeline { border-left-color: var(--warning); }
+.analysis-intro--distribution { border-left-color: var(--danger); }
 .cards {
   display: flex;
   gap: 7px;
@@ -865,6 +915,10 @@ watch([() => context.currentRef, domain], setup);
   font-size: 12px;
   white-space: nowrap;
 }
+.table--detail :deep(.el-table__cell) { vertical-align: top; }
+.table--detail :deep(.el-table__cell:nth-child(2) .cell) { white-space: normal; line-height: 1.5; }
+.table--quality :deep(.el-table__body tr:first-child) { background: color-mix(in srgb, var(--success) 9%, var(--panel-bg)); }
+.table--coverage :deep(.el-table__body tr) { background: color-mix(in srgb, var(--brand) 5%, var(--panel-bg)); }
 .compare-button {
   margin: 10px 0;
 }
@@ -892,5 +946,7 @@ watch([() => context.currentRef, domain], setup);
   .bar {
     grid-template-columns: 100px minmax(50px, 1fr) 40px;
   }
+  .analysis-intro { padding: 9px; }
+  .cards { padding-bottom: 2px; }
 }
 </style>
