@@ -4,13 +4,14 @@
 
 **目标：** 以统一中文指标引擎完成八章节测试报告、26 张固定报表、16 张固定图表、自定义分析与质量阈值，并兼容 V1 历史数据。
 
-**架构：** 在测试管理模块内引入唯一的指标目录与计算引擎；报告、固定统计和自定义分析均消费该引擎。通过 V147 追加 V2 语义与阈值数据，V1 数据经兼容适配读取，不修改已发布迁移。
+**架构：** 在测试管理模块内引入唯一的指标目录与计算引擎；报告、固定统计和自定义分析均消费该引擎。通过 `V20260914233001` 追加 V2 语义与阈值数据，V1 数据经兼容适配读取，不修改已发布迁移。
 
 **技术栈：** Java 17、Spring Boot 3.4.4、JdbcTemplate、MyBatis 既有设施、MySQL 8.4、Flyway、Apache POI、Vue 3、TypeScript、Element Plus、ECharts。
 
 ## 状态与来源
 
 - 计划修订：3
+- 手工上传报告增补：用户于 2026-09-14 确认，按测试方案的附件、版本确认和权限模式实现。
 - 设计修订：1
 - 设计文档：`docs/engineering-control/designs/2026-09-03-test-management-report-analytics-refactor-design.md`
 - 状态：可移交
@@ -62,14 +63,58 @@
 - 保持 `com.ccb.*`、现有路由和模块边界；不改动项目、组织、物理子系统、案例、执行或缺陷的主数据所有权。
 - 机构维度读取物理子系统责任团队组织；测试大类由路由 `domain` 固定，不提供跨大类筛选。
 - 有效案例排除无效案例；执行中独立展示且不计入已执行；所有用户可见文本和导出使用中文。
-- V147 只追加，不修改 V142~V146；写操作必须经服务端权限、租户、项目和实体范围校验并记录审计。
+- `V20260914233001` 只追加，不修改 V142~V146；写操作必须经服务端权限、租户、项目和实体范围校验并记录审计。
 - 不新增依赖。中文 PDF 能力先以现有能力做实际文件验证；若无法输出中文，则停止该任务并请求最小依赖或字体资源的范围审批。
+- 手工报告仅接受 `.docx`、`.xlsx` 且最大 50MB；必须复用附件平台，上传的附件必须属于当前操作人。手工报告不生成统计快照、图表或质量结论。
+
+### U1：手工上传报告与版本管理
+
+**需求映射：** R10, R7, R8
+
+**前置任务：** C2
+
+**文件：**
+
+- 修改：`server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportService.java`
+- 修改：`server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestReportController.java`
+- 修改：`web/src/modules/test-management/api.ts`
+- 修改：`web/src/modules/test-management/report/TestReportPage.vue`
+- 测试：`server/src/modules/test-management/src/test/java/com/ccb/testmanagement/report/TestReportServiceTest.java`
+
+**接口：**
+
+- 消费：附件平台的 `AttachmentGateway`、当前报告权限、项目/测试大类/报告范围、测试方案的 `.docx/.xlsx`、50MB、同名版本确认约定。
+- 产出：`POST /api/test-management/reports/{domain}/upload` 和 `POST /{id}/versions/upload`；请求包含 `projectId`、`attachment_id`、`report_name`（新建时）、`version_note` 和当前范围，响应包含 `version_confirmation_required`、`next_version` 或新版本元数据。
+
+- [ ] **步骤 1：确认兼容存储边界**
+
+不新增或改写 Flyway 迁移。手工报告使用既有 `tm_test_report.source_type` 标记来源，并将附件、文件元数据和版本说明写入既有报告版本的 `snapshot_json`；这不会伪造统计快照。
+
+- [ ] **步骤 2：实现服务端上传契约与校验**
+
+在报告服务复用附件平台检查上传人、`.docx/.xlsx` 与 50MB；对项目、测试大类、项目/机构/系统范围和 RBAC 做服务端验证。同一范围的同名手工报告先返回版本确认，再追加不可变版本并写 `UPLOAD`/`UPLOAD_VERSION` 审计；手工版本不写虚构快照。
+
+- [ ] **步骤 3：实现单页上传交互**
+
+在报告页新增“上传报告”主操作、上传弹框和版本操作；字段、选择文件、提交中、失败恢复、同名确认、中文消息与测试方案一致。列表展示“系统生成/手工上传”来源；手工报告详情切换为文件版本列表和下载，不展示数据解读或图表。
+
+- [ ] **步骤 4：运行局部与浏览器验证**
+
+运行：`mvn -pl :ccb-test-management -DskipTests compile`、`vue-tsc -p web/tsconfig.json --noEmit`、`node scripts/check-flyway-migrations.mjs`。
+
+预期：手工 `.docx/.xlsx` 上传、同名确认新增版本、非本人附件/超限/错误后缀拒绝、生成报告仍可用；本地浏览器可完成打开上传弹框、选择文件、提交、查看版本和下载路径。
+
+**回滚：** 回退应用代码；已上传附件绑定记录和版本元数据保留，既有报告继续可读。
+
+**停止条件：** 附件平台无法按当前用户读取已上传文件，或需要修改共享附件模块。
+
+**升级条件：** 上传文件类型或大小规则与测试方案的既有规则冲突。
 
 ## 文件职责地图
 
 | 路径 | 状态 | 职责 |
 | --- | --- | --- |
-| `server/src/platform/infrastructure/src/main/resources/db/migration/V147__test_management_report_analytics_refactor.sql` | candidate-new | V2 兼容列、阈值表与菜单权限追加。 |
+| `server/src/platform/infrastructure/src/main/resources/db/migration/V20260914233001__test_management_report_analytics_refactor.sql` | candidate-new | V2 兼容列、阈值表与菜单权限追加。 |
 | `server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsMetricCatalog.java` | candidate-new | 中文指标、维度、固定报表/图表目录和组合校验。 |
 | `server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsService.java` | existing | 统一统计、钻取、配置、快照与审计编排。 |
 | `server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsAdvancedService.java` | existing | 固定报表、图表与时间/组织聚合。 |
@@ -114,7 +159,7 @@
 
 **文件：**
 
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V147__test_management_report_analytics_refactor.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V20260914233001__test_management_report_analytics_refactor.sql`
 - 修改：`server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java`
 - 修改：`server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestConfigurationController.java`
 - 测试：`server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java`
@@ -134,7 +179,7 @@
 
 - [ ] **步骤 2：追加最小迁移**
 
-新增 V147：创建质量阈值表，固定指标代码、比较方向、达标/风险阈值、生效标记、审计字段和项目/大类索引；对报告/统计 V2 只增加兼容性字段，不改写历史行或 V142~V146。
+新增 `V20260914233001`：创建质量阈值表，固定指标代码、比较方向、达标/风险阈值、生效标记、审计字段和项目/大类索引；对报告/统计 V2 只增加兼容性字段，不改写历史行或 V142~V146。
 
 - [ ] **步骤 3：实现服务端配置和审计**
 
@@ -146,7 +191,7 @@
 
 预期：阈值创建、更新、停用、越权/越项目拒绝和审计断言通过。
 
-**回滚：** 回退本任务 Java 代码；保留 V147 和阈值数据。
+**回滚：** 回退本任务 Java 代码；保留本需求追加迁移和阈值数据。
 
 **停止条件：** 需要修改已发布迁移或平台主数据表。
 
@@ -193,7 +238,7 @@
 
 预期：指标、快照、历史兼容、权限与报告范围测试通过。
 
-**回滚：** 回退报告和目录代码；V147 保留且历史报告仍由兼容逻辑读取。
+**回滚：** 回退报告和目录代码；本需求追加迁移保留且历史报告仍由兼容逻辑读取。
 
 **停止条件：** 指标需要修改案例、执行或缺陷的主数据语义。
 
@@ -302,25 +347,29 @@ XLSX 表头、PDF 内容和 PNG 元数据带中文标题、生成时间和筛选
 **接口：**
 
 - 消费：T2 的六种报告组合、八章节、质量快照和历史兼容接口。
-- 产出：中文报告树、生成向导、版本详情、补充、导出和状态可视化。
+- 产出：中文报告树、生成向导、正式报告阅读器、版本详情、章节专属补充弹框、导出和状态可视化。
 
 - [ ] **步骤 1：替换报告范围和时间选择**
 
 生成向导只提供项目/机构/系统加全周期/轮次；历史对象显示“历史报告”且保持查看/导出，不提供旧类型的新建。
 
-- [ ] **步骤 2：实现八章节展示**
+- [ ] **步骤 2：实现八章节阅读器和冻结图表**
 
-执行章节显示有效、无效、已执行、执行中、成功、失败、阻塞、未执行及三项比率；质量章节仅显示生效指标及总体中文判定。
+在封面区显示范围、版本、快照时间和总体质量结论；执行章节显示有效、无效、已执行、执行中、成功、失败、阻塞、未执行及三项比率，并按当前版本冻结状态渲染图表。范围、缺陷、质量和风险章节只消费快照中的对应冻结分布，质量章节仅显示生效指标及总体中文判定；缺失的历史分布明确降级，不使用实时数据补全。
 
-- [ ] **步骤 3：实现全状态和响应式路径**
+- [ ] **步骤 3：实现章节专属补充弹框**
+
+每一章的“编辑补充”打开带当前章节和版本上下文的独立富文本弹框；提交调用既有版本补充接口，防止重复提交，成功后直接刷新该章节的补充内容。阅读器内不保留全局底部编辑器。
+
+- [ ] **步骤 4：实现全状态和响应式路径**
 
 未选项目、空树、版本加载失败、无权限、生成中和导出失败均有中文可恢复反馈；手机端树置顶、内容纵向排列，明细表局部滚动。
 
-- [ ] **步骤 4：执行前端构建**
+- [ ] **步骤 5：执行前端构建与浏览器采样**
 
 运行：`npm --prefix web run build`
 
-预期：报告页面通过 TypeScript 与 Vite 构建。
+预期：报告页面通过 TypeScript 与 Vite 构建；桌面及 375px、390px、430px 视口中阅读器、版本切换、图表和章节编辑无页面级横向溢出。
 
 **回滚：** 回退报告页面和模块 API；服务端兼容层仍允许历史读取。
 
@@ -444,7 +493,7 @@ XLSX 表头、PDF 内容和 PNG 元数据带中文标题、生成时间和筛选
 
 仅把实际命令、退出码、截图/浏览器路径、偏差和风险写入本需求前缀账本；若发现偏差，返回对应任务而不标记收敛。
 
-**回滚：** 回退应用代码；保留 V147 和业务数据，使用兼容版本读取。
+**回滚：** 回退应用代码；保留本需求追加迁移和业务数据，使用兼容版本读取。
 
 **停止条件：** 迁移、权限、历史兼容或中文导出任一关键验收失败。
 
@@ -458,7 +507,7 @@ T7 完成后执行 Maven 模块测试、Flyway、治理、任务范围、前端�
 
 - 状态变量候选：V2 迁移状态、阈值生效状态、指标快照版本、报告版本、自定义配置共享状态、导出结果、模拟数据覆盖度。
 - 传感器候选：模块测试、迁移检查、范围检查、前端构建、权限 API 探测、实际导出文件、浏览器视口检查、模拟数据分布查询。
-- 执行器候选：V147、指标目录、服务端适配、前端领域页面、模拟数据脚本、回归测试。
+- 执行器候选：本需求追加迁移、指标目录、服务端适配、前端领域页面、模拟数据脚本、回归测试。
 - 扰动候选：历史 V1 脏字段、组织引用缺失、中文字体能力、本地主数据不足、现有数据量、用户并行修改。
 - 以上均为 `hypotheses-only`，需由系统建模阶段验证。
 

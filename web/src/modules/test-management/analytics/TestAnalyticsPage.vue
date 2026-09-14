@@ -258,13 +258,13 @@ const chartOption = computed<EChartsOption>(() => {
     };
   }
   if (chartType === "STACKED_BAR") {
-    const dimensions = [...new Set(rows.map(stackedDimension))];
-    const seriesKeys = [...new Set(rows.map(stackedSeries))];
+    const dimensions = [...new Set(rows.map((row: unknown) => String(stackedDimension(row))))];
+    const seriesKeys = [...new Set(rows.map((row: unknown) => String(stackedSeries(row))))];
     return {
       tooltip: { trigger: "axis" }, legend: { top: 0 }, grid: { left: 52, right: 20, top: 42, bottom: 62 },
       xAxis: { type: "category", data: dimensions, axisLabel: { rotate: dimensions.length > 6 ? 30 : 0 } }, yAxis: { type: "value", minInterval: 1 },
-      series: seriesKeys.map((name) => ({ name, type: "bar", stack: "总量", data: dimensions.map((item) => value(rows.find((row: any) => stackedDimension(row) === item && stackedSeries(row) === name) || {})) })),
-    };
+      series: seriesKeys.map((name) => ({ name: String(name), type: "bar", stack: "总量", data: dimensions.map((item) => value(rows.find((row: any) => stackedDimension(row) === item && stackedSeries(row) === name) || {})) })),
+    } as EChartsOption;
   }
   if (chartType === "LINE") {
     const trend = model.value.trend || [];
@@ -586,7 +586,7 @@ watch([() => context.currentRef, domain], () => void setup(true));
           size="small"
           :icon="Refresh"
           aria-label="刷新"
-          @click="load" /></template></UiPageHeader
+          @click="() => load()" /></template></UiPageHeader
     ><UiEmptyState
       v-if="!projectId"
       title="请先选择项目"
@@ -629,7 +629,7 @@ watch([() => context.currentRef, domain], () => void setup(true));
                   projectId!,
                   p.id,
                   !p.shared,
-                ).then(setup)
+                ).then(() => setup())
               "
               >{{ p.shared ? "取消共享" : "共享" }}</el-button
             ><el-button
@@ -645,7 +645,7 @@ watch([() => context.currentRef, domain], () => void setup(true));
                   .then(() =>
                     deleteTestAnalyticsReport(domain, projectId!, p.id),
                   )
-                  .then(setup)
+                  .then(() => setup())
                   .catch(() => undefined)
               "
               >删除</el-button
@@ -687,7 +687,7 @@ watch([() => context.currentRef, domain], () => void setup(true));
               :key="x.id"
               :label="x.cycle_name"
               :value="x.id" /></el-select
-          ><el-button size="small" :icon="Search" @click="load">查询</el-button>
+          ><el-button size="small" :icon="Search" @click="() => load()">查询</el-button>
         </div>
         <div class="toolbar">
           <el-radio-group v-model="active.view" size="small">

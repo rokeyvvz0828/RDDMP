@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "topic": "test-management-report-analytics-refactor",
-  "design_revision": 1,
+  "topic": "req-20260903-063-test-management-report-analytics-refactor",
+  "design_revision": 3,
   "design_status": "approved",
   "human_document": "docs/engineering-control/designs/2026-09-03-test-management-report-analytics-refactor-design.md",
   "objective": "交付中文化、统一口径、可版本化的测试报告与分析统计能力，并兼容历史 V1 数据。",
@@ -15,8 +15,9 @@
     {"id": "R6", "statement": "提供可启停的项目加测试大类质量阈值。", "acceptance": ["停用指标不显示且不参与判定，配置有审计"], "priority": "must", "source": "用户确认", "counterexample": ["停用指标仍影响质量结论"]},
     {"id": "R7", "statement": "保留 V1 历史可读可导出且使用追加迁移。", "acceptance": ["不修改 V142~V146，历史记录仍可读取"], "priority": "must", "source": "项目治理", "counterexample": ["删除历史报告或修改已发布迁移"]},
     {"id": "R9", "statement": "提供本地专用、幂等且足量的虚构统计测试数据。", "acceptance": ["至少覆盖 3 个系统、2 个责任团队组织、3 个轮次、6 个周期和 60 个案例；主数据不足时零写入失败"], "priority": "must", "source": "用户确认", "counterexample": ["Flyway 写入模拟数据或脚本写入架构主数据"]}
+    ,{"id": "R10", "statement": "支持与测试方案一致的手工上传报告和版本追加。", "acceptance": ["可上传 .docx/.xlsx 且不超过 50MB", "同名报告经确认追加版本", "手工报告与系统生成报告共用列表、版本、下载和删除"], "priority": "must", "source": "用户于 2026-09-14 确认", "counterexample": ["手工报告伪造统计快照或绕过附件、权限、审计校验"]}
   ],
-  "invariants": ["机构按责任团队组织归集", "测试大类由入口固定", "服务端授权不可由前端替代", "报告版本快照不可变", "全部用户可见文本为中文"],
+  "invariants": ["机构按责任团队组织归集", "测试大类由入口固定", "服务端授权不可由前端替代", "报告版本快照不可变", "手工报告不伪造统计快照或质量结论", "全部用户可见文本为中文"],
   "constraints": ["Java 17", "Spring Boot 3.4.4", "Vue 3", "MySQL 8.4", "Flyway 仅追加", "仅修改任务范围路径"],
   "non_goals": ["变更主数据所有权", "跨测试大类聚合", "删除历史 V1 数据"],
   "selected_approach": {"name": "追加 V2 语义与统一指标目录的兼容重构", "reason": "在保留 V1 历史数据的同时统一口径并覆盖完整目录", "alternatives": [{"name": "替换 V1 表与接口", "rejected_because": "破坏历史和回退"}, {"name": "继续修补 V1 页面", "rejected_because": "无法消除分散口径"}]},
@@ -28,5 +29,13 @@
   "unknowns": [{"question": "现有依赖是否可稳定生成中文 PDF", "impact": "若不可用需在计划中验证最小兼容实现", "owner": "模块 Owner", "blocking": false}],
   "decisions": [{"id": "D1", "decision": "机构维度使用责任团队组织", "reason": "用户选择", "source": "用户确认"}, {"id": "D2", "decision": "执行中不计入已执行", "reason": "V1.1 统计口径", "source": "用户确认"}, {"id": "D3", "decision": "固定图表交付 16 项", "reason": "以清单为准", "source": "用户确认"}, {"id": "D4", "decision": "测试大类由路由固定", "reason": "各菜单天然隔离", "source": "用户确认"}],
   "risks": [{"risk": "历史数据兼容", "impact": "旧报告或快照不可读", "mitigation": "追加兼容语义和测试"}, {"risk": "指标分散", "impact": "报告与统计数值不一致", "mitigation": "唯一指标计算引擎"}, {"risk": "中文 PDF", "impact": "导出乱码", "mitigation": "实际文件内容验收"}, {"risk": "本地主数据不足", "impact": "无法形成机构和系统对比样本", "mitigation": "脚本前置校验并零写入失败"}],
-  "approval": {"status": "approved", "evidence": "用户逐项确认设计并于 2026-09-03 指示开始实施。", "confirmed_at": "2026-09-03T11:18:45+08:00"}
+  "approval": {"status": "approved", "evidence": "用户逐项确认设计，并于 2026-09-14 确认手工上传报告按测试方案模式实施。", "confirmed_at": "2026-09-14T18:36:00+08:00"}
+  ,"ui_redesign": {
+    "status": "approved",
+    "selected_approach": "正式报告阅读器",
+    "selection_evidence": "用户于 2026-09-14 选择方案 A。",
+    "approval_evidence": "用户于 2026-09-14 确认并要求开始开发。",
+    "scope": ["专业报告封面与八章节阅读结构", "基于冻结快照的范围、执行、缺陷、质量和风险图表", "按版本和章节保存且即时刷新的独立补充弹框", "桌面与移动端响应式和可访问性"],
+    "non_goals": ["以实时数据回填历史版本", "引入公共 UI 或图表平台变更", "使用臆造趋势或无数据图表"]
+  }
 }

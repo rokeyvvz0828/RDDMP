@@ -24,16 +24,19 @@ import {
   Refresh,
   Search,
   Tickets,
+  Upload,
 } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Editor as WangEditor, Toolbar } from "@wangeditor/editor-for-vue";
 import type { IDomEditor } from "@wangeditor/editor";
+import type { EChartsOption } from "echarts";
 import "@wangeditor/editor/dist/css/style.css";
 import { useRoute } from "vue-router";
 import UiDataTable from "../../../components/ui/UiDataTable.vue";
 import UiEmptyState from "../../../components/ui/UiEmptyState.vue";
 import UiPageHeader from "../../../components/ui/UiPageHeader.vue";
 import TestManagementFormDialog from "../components/TestManagementFormDialog.vue";
+import TestAnalyticsChart from "../analytics/TestAnalyticsChart.vue";
 import { useAuthStore } from "../../../stores/auth";
 import { useProjectContextStore } from "../../../stores/project-context";
 import {
@@ -46,11 +49,14 @@ import {
   listTestProjects,
   listTestReports,
   saveTestReportSupplement,
+  uploadTestReport,
+  uploadTestReportVersion,
   type TestDomain,
   type TestReport,
   type TestReportDetail,
   type TestReportTree,
 } from "../api";
+import { getAttachmentDownload, uploadAttachment } from "../../../api/attachments";
 
 type TreeNode = {
   key: string;
@@ -84,7 +90,10 @@ const page = ref(1);
 const keyword = ref("");
 const loading = ref(false);
 const generator = ref(false);
-const generatorStep = ref(0);
+const uploadOpen = ref(false);
+const uploadSaving = ref(false);
+const uploadingVersionOf = ref<TestReport>();
+const uploadForm = reactive({ report_name: "", version_note: "", file: undefined as File | undefined });
 const detailOpen = ref(false);
 const detail = ref<TestReportDetail>({
   report: {} as TestReport,
@@ -101,6 +110,21 @@ const options = ref<{
 const editing = ref<TestReport>();
 const editor = ref<IDomEditor>();
 const supplement = reactive({ chapter_code: "OVERVIEW", content_html: "" });
+const supplementOpen = ref(false);
+const supplementSaving = ref(false);
+const readerMain = ref<HTMLElement>();
+const chapters = [
+  "OVERVIEW",
+  "ENVIRONMENT_CONFIG",
+  "SCOPE_STRATEGY",
+  "EXECUTION_PROGRESS",
+  "DEFECT_ANALYSIS",
+  "QUALITY_ASSESSMENT",
+  "RISKS_ISSUES",
+  "CONCLUSION_RECOMMENDATION",
+];
+// 新格式将整段章节正文存入既有补充字段；标记使历史“追加补充”仍能兼容展示。
+const chapterContentMarker = "<!-- tm-report-chapter-content-v2 -->";
 const form = reactive({
   report_name: "",
   report_type: "LIFECYCLE" as "LIFECYCLE" | "ROUND",
@@ -167,10 +191,10 @@ const treeData = computed<TreeNode[]>(() => [
         })),
       },
       {
-        key: "specials",
-        label: "历史专项报告（只读）",
+        key: "plan-directories",
+        label: "专项报告",
         type: "GROUP",
-        children: (tree.value?.specials || []).map((x) => ({
+        children: (tree.value?.planDirectories || []).map((x) => ({
           key: "special:" + x.id,
           label: x.node_name,
           type: "SPECIAL",
@@ -248,11 +272,10 @@ async function select(node: TreeNode) {
 async function openGenerate(item?: TestReport) {
   if (!projectId.value) return;
   if (selectedNode.value.type === "SPECIAL") {
-    ElMessage.warning("专项报告仅保留历史阅读和导出，V2 请在项目、责任团队组织或系统范围生成报告");
+    ElMessage.warning("专项报告目录仅展示已有归档报告；新报告请在项目、责任团队组织或系统范围生成");
     return;
   }
   editing.value = item;
-  generatorStep.value = 0;
   const prefillRound = Number(route.query.roundId) || undefined;
   const prefillCycle = Number(route.query.cycleId) || undefined;
   Object.assign(form, {
@@ -285,13 +308,64 @@ async function openGenerate(item?: TestReport) {
     fail(e, "报告生成选项加载失败");
   }
 }
+function openUpload(item?: TestReport) {
+  if (!projectId.value) return;
+  if (!item && selectedNode.value.type === "SPECIAL") {
+    ElMessage.warning("专项报告目录仅展示与导出已有报告，不能上传新报告");
+    return;
+  }
+  uploadingVersionOf.value = item;
+  Object.assign(uploadForm, { report_name: item?.report_name || "", version_note: "", file: undefined });
+  uploadOpen.value = true;
+}
+function chooseManualFile(file: { raw?: File }) {
+  const selected = file.raw;
+  if (!selected) return;
+  const extension = selected.name.split(".").pop()?.toLowerCase();
+  if (!extension || !["docx", "xlsx"].includes(extension)) {
+    ElMessage.warning("仅支持 .docx 或 .xlsx 格式的报告文件");
+    return;
+  }
+  if (selected.size > 50 * 1024 * 1024) {
+    ElMessage.warning("单个报告文件不能超过 50MB");
+    return;
+  }
+  uploadForm.file = selected;
+}
+async function submitUpload(confirmVersion = false, existingAttachmentId?: number) {
+  if (!projectId.value || !uploadForm.file || !uploadForm.version_note || (!uploadingVersionOf.value && !uploadForm.report_name)) {
+    ElMessage.warning("请填写报告名称、版本说明并选择报告文件");
+    return;
+  }
+  uploadSaving.value = true;
+  try {
+    const attachmentId = existingAttachmentId || (await uploadAttachment(uploadForm.file)).data.data.id;
+    const payload = { attachment_id: attachmentId, version_note: uploadForm.version_note, report_name: uploadForm.report_name, confirm_version: confirmVersion };
+    const result = uploadingVersionOf.value
+      ? await uploadTestReportVersion(domain.value, projectId.value, uploadingVersionOf.value.id, payload)
+      : await uploadTestReport(domain.value, projectId.value, { scopeType: selectedScope.value, physicalSubsystemId: selectedSystem.value, responsibleTeamOrgId: selectedTeam.value, specialNodeId: selectedSpecial.value }, payload);
+    if (result.data.data.version_confirmation_required) {
+      await ElMessageBox.confirm(`“${result.data.data.report_name}”已有手工报告，将作为 V${result.data.data.next_version} 保存，确认继续？`, "上传新版本", { type: "warning" });
+      await submitUpload(true, attachmentId);
+      return;
+    }
+    uploadOpen.value = false;
+    ElMessage.success(uploadingVersionOf.value ? "报告新版本已上传" : "报告已上传");
+    await load();
+  } catch (e: any) {
+    if (e !== "cancel" && e !== "close") fail(e, "报告上传失败");
+  } finally {
+    uploadSaving.value = false;
+  }
+}
 async function generate() {
   if (
     !projectId.value ||
     !form.report_name ||
-    (form.report_type === "ROUND" && !form.round_id)
+    (form.report_type === "ROUND" && !form.round_id) ||
+    !form.sections.length
   ) {
-    ElMessage.warning("请填写报告名称，并为轮次报告选择关联轮次");
+    ElMessage.warning("请填写报告名称，选择轮次报告的关联轮次，并至少保留一个报告章节");
     return;
   }
   try {
@@ -320,28 +394,6 @@ async function generate() {
     if (e !== "cancel" && e !== "close") fail(e, "报告生成失败");
   }
 }
-async function advanceGenerate() {
-  if (generatorStep.value === 0) {
-    if (
-      !form.report_name ||
-      (form.report_type === "ROUND" && !form.round_id)
-    ) {
-      ElMessage.warning("请填写报告名称，并为轮次报告选择关联轮次");
-      return;
-    }
-    generatorStep.value = 1;
-    return;
-  }
-  if (generatorStep.value === 1) {
-    if (!form.sections.length) {
-      ElMessage.warning("请至少选择一个报告章节");
-      return;
-    }
-    generatorStep.value = 2;
-    return;
-  }
-  await generate();
-}
 async function openDetail(item: TestReport, versionId?: number) {
   if (!projectId.value) return;
   try {
@@ -362,24 +414,51 @@ async function switchVersion(versionId: number) {
 }
 async function saveSupplement() {
   if (!projectId.value || !detail.value.report.id) return;
+  supplementSaving.value = true;
   try {
+    const contentHtml = `${chapterContentMarker}${supplement.content_html.trim()}`;
     await saveTestReportSupplement(
       domain.value,
       projectId.value,
       detail.value.report.id,
       detail.value.version.id,
-      { ...supplement },
+      { chapter_code: supplement.chapter_code, content_html: contentHtml },
     );
-    ElMessage.success("章节补充已保存");
     detail.value.supplements = detail.value.supplements
       .filter((x) => x.chapter_code !== supplement.chapter_code)
       .concat({
         chapter_code: supplement.chapter_code,
-        content_html: supplement.content_html,
+        content_html: contentHtml,
       });
+    supplementOpen.value = false;
+    ElMessage.success("章节正文已保存并在当前版本生效");
   } catch (e) {
-    fail(e, "补充说明保存失败");
+    fail(e, "章节正文保存失败");
+  } finally {
+    supplementSaving.value = false;
   }
+}
+function openSupplement(chapter: string) {
+  supplement.chapter_code = chapter;
+  const stored = String(supplementFor(chapter)?.content_html || "");
+  supplement.content_html = stored.startsWith(chapterContentMarker)
+    ? stored.slice(chapterContentMarker.length)
+    : `<p>${chapterSummary(chapter)}</p>${stored ? `<p><br></p>${stored}` : ""}`;
+  supplementOpen.value = true;
+}
+function supplementFor(chapter: string) {
+  return detail.value.supplements.find((x) => x.chapter_code === chapter);
+}
+function hasChapterContentOverride(chapter: string) {
+  return String(supplementFor(chapter)?.content_html || "").startsWith(
+    chapterContentMarker,
+  );
+}
+function chapterNarrative(chapter: string) {
+  const content = String(supplementFor(chapter)?.content_html || "");
+  return hasChapterContentOverride(chapter)
+    ? content.slice(chapterContentMarker.length)
+    : "";
 }
 async function remove(item: TestReport) {
   if (!projectId.value) return;
@@ -404,6 +483,21 @@ async function download(item: TestReport, format: "docx" | "pdf") {
     fail(e, "导出失败");
   }
 }
+async function downloadManual(item: TestReport) {
+  if (!projectId.value) return;
+  try {
+    const report = item.id === detail.value.report.id ? detail.value : (await getTestReport(domain.value, projectId.value, item.id)).data.data;
+    const file = report.manual_file;
+    if (!file?.attachment_id || !file.file_name) throw new Error("未找到当前版本的报告文件");
+    const response = await getAttachmentDownload(file.attachment_id);
+    const link = document.createElement("a");
+    link.href = response.data.data.downloadUrl;
+    link.download = file.file_name;
+    link.click();
+  } catch (e) {
+    fail(e, "报告下载失败");
+  }
+}
 function chapterName(key: string) {
   return (
     (
@@ -423,31 +517,76 @@ function chapterName(key: string) {
 function fact(name: string) {
   return detail.value.snapshot?.[name] ?? 0;
 }
-function reportValue(value: unknown) {
-  return ({ UNEXECUTED: "未执行", IN_PROGRESS: "执行中", RUNNING: "执行中", SUCCESS: "成功", FAILED: "失败", BLOCKED: "阻塞", RAISED: "已提出", ANALYZING: "分析中", RESOLVED: "已解决", CLOSED: "已关闭", FATAL: "致命", SERIOUS: "严重", NORMAL: "一般", MINOR: "轻微" } as Record<string, string>)[String(value)] || value || "-";
+function numberFact(name: string) {
+  const value = Number(fact(name));
+  return Number.isFinite(value) ? value : 0;
+}
+function percent(value: unknown) {
+  const numeric = Number(value);
+  return `${Number.isFinite(numeric) ? numeric : 0}%`;
+}
+function integerPercent(numerator: number, denominator: number) {
+  return denominator > 0 ? Math.round((numerator / denominator) * 100) : 0;
+}
+function executionOutlook() {
+  const remaining =
+    numberFact("execution_unexecuted") + numberFact("execution_in_progress");
+  const rate = numberFact("execution_rate");
+  if (remaining === 0) return "执行已完成，可聚焦复测结论和质量收尾。";
+  if (rate >= 80) return `执行已进入收尾阶段，仍有 ${remaining} 条案例待完成或确认结果。`;
+  return `执行尚未完成，仍有 ${remaining} 条案例待完成或确认结果，应优先清除阻塞项。`;
+}
+function qualityOutlook() {
+  const items = qualityItems();
+  if (!items.length) return "尚未启用质量阈值，当前不能形成量化质量结论。";
+  const qualified = items.filter((item) => item.result === "达标").length;
+  const risk = items.filter((item) => item.result === "风险").length;
+  const failed = items.length - qualified - risk;
+  return `已启用 ${items.length} 项质量指标，其中 ${qualified} 项达标、${risk} 项风险、${failed} 项不达标。`;
+}
+function scopeName() {
+  const report = detail.value.report;
+  if (report.scope_type === "SYSTEM") return report.physical_system_name || "系统级";
+  if (report.scope_type === "INSTITUTION") return report.responsible_team_name || "责任团队组织级";
+  if (report.scope_type === "SPECIAL") return report.special_name || "专项级";
+  return "项目级";
+}
+function formatTime(value: unknown) {
+  return value ? String(value).replace("T", " ").slice(0, 16) : "-";
+}
+function reportValue(value: unknown): string {
+  return String(({ UNEXECUTED: "未执行", IN_PROGRESS: "执行中", RUNNING: "执行中", SUCCESS: "成功", FAILED: "失败", BLOCKED: "阻塞", RAISED: "已提出", ANALYZING: "分析中", RESOLVED: "已解决", CLOSED: "已关闭", FATAL: "致命", SERIOUS: "严重", NORMAL: "一般", MINOR: "轻微", S1: "严重", S2: "高", S3: "一般", S4: "轻微" } as Record<string, string>)[String(value)] || value || "-");
 }
 function chapterSummary(chapter: string) {
-  const report = detail.value.report;
+  const effective = numberFact("effective_case_total");
+  const caseTotal = numberFact("case_total");
+  const executionTotal = numberFact("execution_total");
+  const executionRate = numberFact("execution_rate");
+  const failedAndBlocked =
+    numberFact("execution_failed") + numberFact("execution_blocked");
+  const defectTotal = numberFact("defect_total");
+  const defectOpen = numberFact("defect_open");
+  const severeDefect = numberFact("severe_defect_count");
   switch (chapter) {
     case "OVERVIEW":
-      return `本报告统计范围为${selectedScopeLabel.value}，生成时间：${fact("snapshot_at") || "-"}。共纳入测试范围 ${fact("scope_total")} 项、案例 ${fact("case_total")} 条。`;
+      return `当前${scopeName()}已覆盖 ${fact("scope_total")} 个测试范围和 ${caseTotal} 条案例，其中有效案例 ${effective} 条。已执行 ${executionTotal} 条，执行率 ${percent(executionRate)}；${executionOutlook()}`;
     case "ENVIRONMENT_CONFIG":
-      return `测试大类为${domainLabel.value}；报告类型为${report.report_type === "ROUND" ? "轮次报告" : "全周期报告"}${report.round_name ? `，关联轮次：${report.round_name}` : ""}。`;
+      return `当前范围已形成 ${executionTotal} 条可用于质量判断的执行结果，占有效案例的 ${percent(executionRate)}。${numberFact("execution_in_progress") > 0 ? `仍有 ${numberFact("execution_in_progress")} 条案例处于执行中，环境和依赖条件需持续保持稳定。` : "执行过程未遗留进行中案例，当前环境条件能够支撑后续复测与收尾。"}`;
     case "SCOPE_STRATEGY":
-      return `有效案例 ${fact("effective_case_total")} 条，无效案例 ${fact("invalid_case_total")} 条；范围覆盖统计以当前报告范围内的有效测试范围和案例为准。`;
+      return `纳入范围的 ${caseTotal} 条案例中，有效案例占 ${percent(integerPercent(effective, caseTotal))}，无效案例 ${numberFact("invalid_case_total")} 条。有效案例覆盖 ${fact("scope_total")} 个测试范围，当前范围具备开展执行与质量评估的基础。`;
     case "EXECUTION_PROGRESS":
-      return `已执行 ${fact("execution_total")} 条，其中成功 ${fact("execution_success")} 条、失败 ${fact("execution_failed")} 条、阻塞 ${fact("execution_blocked")} 条；执行中 ${fact("execution_in_progress")} 条独立展示，不计入已执行。`;
+      return `已执行案例中成功 ${numberFact("execution_success")} 条，已执行案例成功率 ${percent(fact("executed_case_success_rate"))}。失败和阻塞合计 ${failedAndBlocked} 条，${failedAndBlocked > 0 ? "这些事项是拉低当前执行质量的直接因素，应优先定位原因并推进复测。" : "当前未出现失败或阻塞案例，执行结果整体稳定。"} ${executionOutlook()}`;
     case "DEFECT_ANALYSIS":
-      return `共发现缺陷 ${fact("defect_total")} 个，未关闭 ${fact("defect_open")} 个，严重缺陷 ${fact("severe_defect_count")} 个，缺陷密度 ${fact("defect_density")}%。`;
+      return `当前发现缺陷 ${defectTotal} 个，其中 ${defectOpen} 个尚未关闭，占比 ${percent(integerPercent(defectOpen, defectTotal))}；缺陷密度为 ${percent(fact("defect_density"))}。${severeDefect > 0 ? `存在 ${severeDefect} 个严重缺陷，应纳入最高优先级处置并验证修复效果。` : "当前无严重缺陷，处置重点应放在未关闭问题的按期收敛。"}`;
     case "QUALITY_ASSESSMENT": {
       const quality = detail.value.snapshot?.quality_assessment as Record<string, unknown> | undefined;
-      return quality?.overall === "未配置" ? "当前项目尚未启用质量阈值指标，报告不作总体质量判定。" : `已按当前版本冻结的启用阈值完成评估，总体结论：${quality?.overall || "未配置"}。`;
+      return quality?.overall === "未配置" ? qualityOutlook() : `${qualityOutlook()} 综合判定为“${quality?.overall || "未配置"}”，质量改进应优先围绕风险和不达标指标展开。`;
     }
     case "RISKS_ISSUES":
-      return `需重点关注失败案例 ${fact("execution_failed")} 条、阻塞案例 ${fact("execution_blocked")} 条、未关闭缺陷 ${fact("defect_open")} 个及严重缺陷 ${fact("severe_defect_count")} 个。`;
+      return `当前主要风险集中在 ${numberFact("execution_failed")} 条失败案例、${numberFact("execution_blocked")} 条阻塞案例和 ${defectOpen} 个未关闭缺陷。${severeDefect > 0 ? "严重缺陷可能影响上线判断，应由责任团队明确处置时限。" : "建议按失败、阻塞、未关闭缺陷的优先级建立闭环跟踪，并在复测后更新结论。"}`;
     case "CONCLUSION_RECOMMENDATION": {
       const quality = detail.value.snapshot?.quality_assessment as Record<string, unknown> | undefined;
-      return quality?.overall === "达标" ? "当前启用质量指标均已达标，建议继续跟踪执行中事项并按计划收尾。" : "建议优先处理阻塞和未关闭缺陷，完成复测后重新生成报告版本确认质量结论。";
+      return quality?.overall === "达标" ? `当前执行率 ${percent(executionRate)}，质量指标均达标；建议完成剩余 ${numberFact("execution_unexecuted") + numberFact("execution_in_progress")} 条案例的执行确认后按计划收尾。` : `当前质量结论为“${quality?.overall || "未配置"}”，失败或阻塞案例 ${failedAndBlocked} 条、未关闭缺陷 ${defectOpen} 个；建议优先完成问题处置和复测，再据结果更新质量结论。`;
     }
     default:
       return "";
@@ -456,6 +595,75 @@ function chapterSummary(chapter: string) {
 function qualityItems() {
   const assessment = detail.value.snapshot?.quality_assessment as Record<string, unknown> | undefined;
   return Array.isArray(assessment?.items) ? assessment.items as Array<Record<string, unknown>> : [];
+}
+const qualityAssessment = computed(() =>
+  (detail.value.snapshot?.quality_assessment || {}) as Record<string, unknown>,
+);
+const qualityOverall = computed(() => String(qualityAssessment.value.overall || "未配置"));
+const qualityTagType = computed(() =>
+  qualityOverall.value === "达标"
+    ? "success"
+    : qualityOverall.value === "风险"
+      ? "warning"
+      : qualityOverall.value === "不达标"
+        ? "danger"
+        : "info",
+);
+const executionStatusItems = computed(() => [
+  { name: "未执行", value: numberFact("execution_unexecuted") },
+  { name: "执行中", value: numberFact("execution_in_progress") },
+  { name: "成功", value: numberFact("execution_success") },
+  { name: "失败", value: numberFact("execution_failed") },
+  { name: "阻塞", value: numberFact("execution_blocked") },
+]);
+function distributionItems(name: string) {
+  const raw = detail.value.snapshot?.[name];
+  return Array.isArray(raw)
+    ? raw.map((item) => ({
+        name: reportValue((item as Record<string, unknown>).code),
+        value: Number((item as Record<string, unknown>).value) || 0,
+      }))
+    : [];
+}
+const defectStatusItems = computed(() => distributionItems("defect_status_distribution"));
+const defectSeverityItems = computed(() => distributionItems("defect_severity_distribution"));
+const qualityResultItems = computed(() => distributionItems("quality_result_distribution"));
+const executionOption = computed<EChartsOption>(() => ({
+  tooltip: { trigger: "item", formatter: "{b}<br/>{c} 条（{d}%）" },
+  legend: { bottom: 0, type: "scroll" },
+  series: [{ type: "pie", radius: ["45%", "70%"], center: ["50%", "43%"], label: { formatter: "{b}\n{c} 条" }, data: executionStatusItems.value }],
+}));
+const scopeOption = computed<EChartsOption>(() => ({
+  tooltip: { trigger: "axis" },
+  grid: { left: 42, right: 20, top: 28, bottom: 34 },
+  xAxis: { type: "category", data: ["有效案例", "无效案例"] },
+  yAxis: { type: "value", minInterval: 1 },
+  series: [{ name: "案例数", type: "bar", barMaxWidth: 48, data: [numberFact("effective_case_total"), numberFact("invalid_case_total")], itemStyle: { borderRadius: [5, 5, 0, 0] } }],
+}));
+function distributionOption(items: Array<{ name: string; value: number }>): EChartsOption {
+  return {
+    tooltip: { trigger: "item", formatter: "{b}<br/>{c} 项（{d}%）" },
+    legend: { bottom: 0, type: "scroll" },
+    series: [{ type: "pie", radius: ["42%", "68%"], center: ["50%", "43%"], label: { formatter: "{b}\n{c}" }, data: items }],
+  };
+}
+const defectStatusOption = computed(() => distributionOption(defectStatusItems.value));
+const defectSeverityOption = computed(() => distributionOption(defectSeverityItems.value));
+const qualityResultOption = computed(() => distributionOption(qualityResultItems.value));
+const riskItems = computed(() => [
+  { label: "失败案例", value: numberFact("execution_failed"), text: "需安排复测并确认失败原因。" },
+  { label: "阻塞案例", value: numberFact("execution_blocked"), text: "需明确依赖方和解除计划。" },
+  { label: "未关闭缺陷", value: numberFact("defect_open"), text: "需持续跟踪处置与验证结论。" },
+  { label: "严重缺陷", value: numberFact("severe_defect_count"), text: "需优先处理并评估发布影响。" },
+].filter((item) => item.value > 0));
+function scrollToChapter(chapter: string) {
+  const target = document.getElementById(`report-chapter-${chapter}`);
+  const container = readerMain.value;
+  if (!target || !container) return;
+  container.scrollTo({
+    top: target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 12,
+    behavior: "smooth",
+  });
 }
 onMounted(async () => {
   await context.initialize();
@@ -504,6 +712,12 @@ onBeforeUnmount(() => editor.value?.destroy());
           :icon="Plus"
           @click="openGenerate()"
           >生成报告</el-button
+        ><el-button
+          v-if="can('create')"
+          size="small"
+          :icon="Upload"
+          @click="openUpload()"
+          >上传报告</el-button
         ><el-tooltip content="刷新"
           ><el-button
             text
@@ -569,7 +783,7 @@ onBeforeUnmount(() => editor.value?.destroy());
             width="92"
             align="center"
             ><template #default="{ row }">{{
-              row.report_type === "LIFECYCLE" || row.report_type === "PROJECT"
+              row.report_type === "MANUAL" ? "手工上传" : row.report_type === "LIFECYCLE" || row.report_type === "PROJECT"
                 ? "全周期报告"
                 : row.report_type === "CYCLE" ? "历史周期报告" : "轮次报告"
             }}</template></el-table-column
@@ -578,7 +792,7 @@ onBeforeUnmount(() => editor.value?.destroy());
             min-width="150"
             show-overflow-tooltip
             ><template #default="{ row }"
-              >{{ row.report_type === "LIFECYCLE" || row.report_type === "PROJECT" ? "-" : row.round_name || "-"
+              >{{ row.report_type === "MANUAL" || row.report_type === "LIFECYCLE" || row.report_type === "PROJECT" ? "-" : row.round_name || "-"
               }}{{ row.cycle_name ? " / " + row.cycle_name : "" }}</template
             ></el-table-column
           ><el-table-column label="统计范围" width="100" align="center"
@@ -597,7 +811,7 @@ onBeforeUnmount(() => editor.value?.destroy());
             width="86"
             align="center" /><el-table-column
             prop="generator_name"
-            label="生成人"
+            :label="'上传人/生成人'"
             width="90"
             align="center" /><el-table-column
             prop="generated_at"
@@ -621,12 +835,12 @@ onBeforeUnmount(() => editor.value?.destroy());
                     :icon="Document"
                     aria-label="查看报告"
                     @click="openDetail(row)" /></el-tooltip
-                ><el-tooltip content="Word 下载"
+                ><el-tooltip :content="row.source_type === 'MANUAL' ? '下载报告' : 'Word 下载'"
                   ><el-button
                     text
                     :icon="Download"
-                    aria-label="下载 Word"
-                    @click="download(row, 'docx')" /></el-tooltip
+                    :aria-label="row.source_type === 'MANUAL' ? '下载报告' : '下载 Word'"
+                    @click="row.source_type === 'MANUAL' ? downloadManual(row) : download(row, 'docx')" /></el-tooltip
                 ><el-tooltip v-if="can('delete')" content="删除报告"
                   ><el-button
                     text
@@ -641,12 +855,14 @@ onBeforeUnmount(() => editor.value?.destroy());
                     aria-label="更多报告操作"
                   /><template #dropdown
                     ><el-dropdown-menu
-                      ><el-dropdown-item @click="download(row, 'pdf')"
+                      ><el-dropdown-item v-if="row.source_type !== 'MANUAL'" @click="download(row, 'pdf')"
                         >下载 PDF</el-dropdown-item
                       ><el-dropdown-item @click="openDetail(row)"
                         >历史版本</el-dropdown-item
+                      ><el-dropdown-item v-if="row.source_type === 'MANUAL' && can('update')" @click="openUpload(row)"
+                        >上传新版本</el-dropdown-item
                       ><el-dropdown-item
-                        v-if="can('create')"
+                        v-if="row.source_type !== 'MANUAL' && can('create')"
                         @click="openGenerate(row)"
                         >重新生成</el-dropdown-item
                       ></el-dropdown-menu
@@ -669,13 +885,8 @@ onBeforeUnmount(() => editor.value?.destroy());
       v-model="generator"
       :title="editing ? '重新生成测试报告' : '生成测试报告'"
       width="min(700px,calc(100vw - 24px))"
-      :confirm-text="
-        generatorStep === 2 ? (editing ? '确认重新生成' : '确认生成') : '下一步'
-      "
-      @submit="advanceGenerate"
-      ><el-steps :active="generatorStep" simple class="report-steps"
-        ><el-step title="基本信息" /><el-step title="数据来源" /><el-step
-          title="确认生成" /></el-steps
+      :confirm-text="editing ? '重新生成报告' : '生成报告'"
+      @submit="generate"
       ><el-form label-width="106px"
         ><el-form-item label="统计范围"
           ><el-input :model-value="selectedScopeLabel" disabled /></el-form-item
@@ -713,145 +924,91 @@ onBeforeUnmount(() => editor.value?.destroy());
           ></el-form-item
         ></el-form
       ></TestManagementFormDialog
+    ><TestManagementFormDialog
+      v-model="uploadOpen"
+      :title="uploadingVersionOf ? '上传测试报告新版本' : '上传测试报告'"
+      width="min(620px,calc(100vw - 24px))"
+      :confirm-text="uploadingVersionOf ? '上传新版本' : '上传报告'"
+      :loading="uploadSaving"
+      @submit="() => submitUpload()"
+      ><el-form label-width="96px"
+        ><el-form-item label="统计范围"
+          ><el-input :model-value="uploadingVersionOf ? scopeName() : selectedScopeLabel" disabled /></el-form-item
+        ><el-form-item v-if="!uploadingVersionOf" label="报告名称" required
+          ><el-input v-model="uploadForm.report_name" maxlength="100" placeholder="请输入报告名称" /></el-form-item
+        ><el-form-item v-else label="报告名称"><el-input :model-value="uploadingVersionOf.report_name" disabled /></el-form-item
+        ><el-form-item label="版本说明" required
+          ><el-input v-model="uploadForm.version_note" maxlength="200" show-word-limit type="textarea" :rows="3" placeholder="说明本次报告的内容或版本变更" /></el-form-item
+        ><el-form-item label="报告文件" required
+          ><div class="manual-upload"><el-upload :auto-upload="false" :show-file-list="false" accept=".docx,.xlsx" :on-change="chooseManualFile"><el-button :icon="Upload">选择文件</el-button></el-upload><span>{{ uploadForm.file?.name || '仅支持 .docx、.xlsx，单个文件不超过 50MB' }}</span></div></el-form-item
+        ></el-form
+      ></TestManagementFormDialog
     ><el-dialog
       v-model="detailOpen"
-      width="min(1060px,calc(100vw - 24px))"
-      top="4vh"
+      class="report-reader-dialog"
+      width="min(1280px,calc(100vw - 24px))"
+      top="2vh"
       destroy-on-close
-      ><template #header
-        ><div class="detail-title">
-          <strong>{{ detail?.report.report_name }}</strong
-          ><span>{{ detail?.report.current_version }}</span>
-        </div></template
-      >
-      <div v-if="detail" class="report-detail">
-        <aside>
-          <strong>历史版本</strong
-          ><el-menu :default-active="String(detail.version.id)"
-            ><el-menu-item
-              v-for="item in detail.versions"
-              :key="item.id"
-              :index="String(item.id)"
-              @click="switchVersion(item.id)"
-              >{{ "V" + item.version_no }} ·
-              {{
-                item.generated_at ? String(item.generated_at).slice(5, 16) : ""
-              }}</el-menu-item
-            ></el-menu
-          >
+      ><template #header><div class="detail-title"><span>测试报告</span><strong>{{ detail?.report.report_name }}</strong></div></template>
+      <div v-if="detail?.report.source_type === 'MANUAL'" class="report-reader report-reader--manual">
+        <aside class="reader-aside">
+          <div class="reader-aside__group"><span>报告版本</span><el-menu :default-active="String(detail.version.id)">
+            <el-menu-item v-for="item in detail.versions" :key="item.id" :index="String(item.id)" @click="switchVersion(item.id)">
+              <b>V{{ item.version_no }}</b><small>{{ formatTime(item.generated_at) }}</small>
+            </el-menu-item>
+          </el-menu></div>
         </aside>
-        <main>
-          <section class="facts">
-            <el-descriptions :column="4" border size="small"
-              ><el-descriptions-item label="范围数量">{{
-                detail.snapshot.scope_total || 0
-              }}</el-descriptions-item
-              ><el-descriptions-item label="案例数量">{{
-                detail.snapshot.case_total || 0
-              }}</el-descriptions-item
-              ><el-descriptions-item label="执行成功率"
-                >{{ detail.snapshot.success_rate || 0 }}%</el-descriptions-item
-              ><el-descriptions-item label="未关闭缺陷">{{
-                detail.snapshot.defect_open || 0
-              }}</el-descriptions-item></el-descriptions
-            >
-          </section>
-          <section
-            v-for="chapter in [
-              'OVERVIEW',
-              'ENVIRONMENT_CONFIG',
-              'SCOPE_STRATEGY',
-              'EXECUTION_PROGRESS',
-              'DEFECT_ANALYSIS',
-              'QUALITY_ASSESSMENT',
-              'RISKS_ISSUES',
-              'CONCLUSION_RECOMMENDATION',
-            ]"
-            :key="chapter"
-            class="chapter"
-          >
-            <header>
-              <strong>{{ chapterName(chapter) }}</strong
-              ><el-button
-                text
-                size="small"
-                :icon="Edit"
-                @click="
-                  supplement.chapter_code = chapter;
-                  supplement.content_html =
-                    detail.supplements.find((x) => x.chapter_code === chapter)
-                      ?.content_html || '';
-                "
-                >编辑补充</el-button
-              >
-            </header>
-            <p>{{ chapterSummary(chapter) }}</p>
-            <el-descriptions v-if="chapter === 'EXECUTION_PROGRESS'" :column="4" border size="small" class="chapter-facts">
-              <el-descriptions-item label="执行率">{{ fact('execution_rate') }}%</el-descriptions-item>
-              <el-descriptions-item label="案例成功率">{{ fact('case_success_rate') }}%</el-descriptions-item>
-              <el-descriptions-item label="已执行案例成功率">{{ fact('executed_case_success_rate') }}%</el-descriptions-item>
-              <el-descriptions-item label="未执行">{{ fact('execution_unexecuted') }}</el-descriptions-item>
-              <el-descriptions-item label="执行中">{{ fact('execution_in_progress') }}</el-descriptions-item>
-              <el-descriptions-item label="成功">{{ fact('execution_success') }}</el-descriptions-item>
-              <el-descriptions-item label="失败">{{ fact('execution_failed') }}</el-descriptions-item>
-              <el-descriptions-item label="阻塞">{{ fact('execution_blocked') }}</el-descriptions-item>
+        <main class="reader-main manual-reader-main">
+          <section class="manual-report-card">
+            <el-tag type="info" effect="plain">手工上传报告</el-tag>
+            <h2>{{ detail.report.report_name }}</h2>
+            <p>该报告由用户手工上传，系统保留文件与版本记录，不补充生成统计快照、图表或质量判定。</p>
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="统计范围">{{ scopeName() }}</el-descriptions-item>
+              <el-descriptions-item label="当前版本">V{{ detail.version.version_no }}</el-descriptions-item>
+              <el-descriptions-item label="上传时间">{{ formatTime(detail.version.generated_at) }}</el-descriptions-item>
+              <el-descriptions-item label="版本说明">{{ detail.manual_file?.version_note || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="报告文件">{{ detail.manual_file?.file_name || '-' }}</el-descriptions-item>
             </el-descriptions>
-            <el-table v-if="chapter === 'DEFECT_ANALYSIS' && Array.isArray(detail.snapshot?.defect_details)" :data="detail.snapshot.defect_details" size="small" border max-height="260" class="chapter-table">
-              <el-table-column prop="defect_code" label="缺陷编号" min-width="130" />
-              <el-table-column prop="summary" label="缺陷摘要" min-width="220" show-overflow-tooltip />
-              <el-table-column label="状态" min-width="100"><template #default="{ row }">{{ reportValue(row.status) }}</template></el-table-column>
-              <el-table-column label="严重程度" min-width="100"><template #default="{ row }">{{ reportValue(row.severity) }}</template></el-table-column>
-            </el-table>
-            <el-table v-if="chapter === 'SCOPE_STRATEGY' && Array.isArray(detail.snapshot?.scope_details)" :data="detail.snapshot.scope_details" size="small" border max-height="220" class="chapter-table">
-              <el-table-column prop="scope_code" label="范围编号" min-width="140" />
-              <el-table-column prop="scope_name" label="范围名称" min-width="240" />
-            </el-table>
-            <el-table v-if="chapter === 'QUALITY_ASSESSMENT' && qualityItems().length" :data="qualityItems()" size="small" border>
-              <el-table-column prop="metric_name" label="质量指标" min-width="130" />
-              <el-table-column prop="actual" label="实际值" min-width="80" />
-              <el-table-column prop="qualified_threshold" label="达标阈值" min-width="90" />
-              <el-table-column prop="risk_threshold" label="风险阈值" min-width="90" />
-              <el-table-column prop="result" label="判定结果" min-width="90" />
-            </el-table>
-            <div
-              v-if="
-                detail.supplements.find((x) => x.chapter_code === chapter)
-                  ?.content_html
-              "
-              class="supplement-view"
-              v-html="
-                detail.supplements.find((x) => x.chapter_code === chapter)
-                  ?.content_html
-              "
-            />
-          </section>
-          <section class="supplement-edit">
-            <header>
-              编辑 {{ chapterName(supplement.chapter_code) }} 补充说明
-            </header>
-            <Toolbar :editor="editor" mode="default" /><WangEditor
-              v-model="supplement.content_html"
-              class="supplement-editor"
-              mode="default"
-              @on-created="(value: IDomEditor) => (editor = value)"
-            />
-            <div class="supplement-save">
-              <el-button type="primary" size="small" @click="saveSupplement"
-                >保存补充说明</el-button
-              >
-            </div>
+            <div class="manual-report-card__actions"><el-button type="primary" :icon="Download" @click="downloadManual(detail.report)">下载报告</el-button><el-button v-if="can('update')" :icon="Upload" @click="openUpload(detail.report)">上传新版本</el-button></div>
           </section>
         </main>
       </div>
-      <template #footer
-        ><el-button @click="detailOpen = false">关闭</el-button
-        ><el-button type="primary" @click="download(detail.report, 'docx')"
-          >下载 Word</el-button
-        ><el-button @click="download(detail.report, 'pdf')"
-          >下载 PDF</el-button
-        ></template
-      ></el-dialog
-    >
+      <div v-else-if="detail" class="report-reader">
+        <aside class="reader-aside">
+          <div class="reader-aside__group"><span>报告版本</span><el-menu :default-active="String(detail.version.id)">
+            <el-menu-item v-for="item in detail.versions" :key="item.id" :index="String(item.id)" @click="switchVersion(item.id)">
+              <b>V{{ item.version_no }}</b><small>{{ formatTime(item.generated_at) }}</small>
+            </el-menu-item>
+          </el-menu></div>
+          <nav class="reader-aside__group" aria-label="报告章节"><span>报告目录</span><el-button v-for="chapter in chapters" :key="chapter" text @click="scrollToChapter(chapter)">{{ chapterName(chapter) }}</el-button></nav>
+        </aside>
+        <main ref="readerMain" class="reader-main">
+          <section class="report-cover">
+            <div><p class="report-cover__eyebrow">{{ domainLabel }} · {{ scopeName() }}</p><h2>{{ detail.report.report_name }}</h2></div>
+            <div class="report-cover__quality"><span>总体质量结论</span><el-tag :type="qualityTagType" effect="dark" size="large">{{ qualityOverall }}</el-tag></div>
+          </section>
+          <section class="report-meta"><span>当前版本：V{{ detail.version.version_no }}</span><span>报告类型：{{ detail.report.report_type === 'ROUND' ? '轮次报告' : '全周期报告' }}</span><span>关联轮次：{{ detail.report.round_name || '-' }}</span><span>生成时间：{{ formatTime(detail.version.generated_at) }}</span></section>
+          <section v-for="chapter in chapters" :id="`report-chapter-${chapter}`" :key="chapter" class="chapter">
+            <header class="chapter__header"><div><span class="chapter__index">{{ String(chapters.indexOf(chapter) + 1).padStart(2, '0') }}</span><h3>{{ chapterName(chapter) }}</h3></div><el-button v-if="can('update')" text size="small" :icon="Edit" @click="openSupplement(chapter)">编辑本章正文</el-button></header>
+            <div v-if="hasChapterContentOverride(chapter)" class="chapter__summary chapter__summary--edited" v-html="chapterNarrative(chapter)" />
+            <p v-else class="chapter__summary">{{ chapterSummary(chapter) }}</p>
+
+            <template v-if="chapter === 'OVERVIEW'"><div class="metric-grid"><article><span>有效案例</span><strong>{{ numberFact('effective_case_total') }}</strong><small>条</small></article><article><span>已执行案例</span><strong>{{ numberFact('execution_total') }}</strong><small>条</small></article><article><span>成功案例</span><strong>{{ numberFact('execution_success') }}</strong><small>条</small></article><article><span>未关闭缺陷</span><strong>{{ numberFact('defect_open') }}</strong><small>个</small></article></div><div class="chart-panel chart-panel--wide"><div><span>案例执行状态</span></div><TestAnalyticsChart :option="executionOption" height="300px" aria-label="案例执行状态分布图" /></div></template>
+            <el-descriptions v-else-if="chapter === 'ENVIRONMENT_CONFIG'" :column="2" border class="chapter-descriptions"><el-descriptions-item label="测试大类">{{ domainLabel }}</el-descriptions-item><el-descriptions-item label="统计范围">{{ scopeName() }}</el-descriptions-item><el-descriptions-item label="关联轮次">{{ detail.report.round_name || '-' }}</el-descriptions-item><el-descriptions-item label="有效案例">{{ numberFact('effective_case_total') }} 条</el-descriptions-item><el-descriptions-item label="已执行案例">{{ numberFact('execution_total') }} 条</el-descriptions-item><el-descriptions-item label="执行率">{{ percent(fact('execution_rate')) }}</el-descriptions-item></el-descriptions>
+            <template v-else-if="chapter === 'SCOPE_STRATEGY'"><div class="chart-panel"><div><span>案例有效性对比</span></div><TestAnalyticsChart :option="scopeOption" height="260px" aria-label="有效和无效案例对比图" /></div><div class="table-panel"><h4>测试范围明细</h4><el-table :data="Array.isArray(detail.snapshot.scope_details) ? detail.snapshot.scope_details : []" size="small" border max-height="260"><el-table-column prop="scope_code" label="范围编号" min-width="150" /><el-table-column prop="scope_name" label="范围名称" min-width="260" /></el-table></div></template>
+            <template v-else-if="chapter === 'EXECUTION_PROGRESS'"><div class="metric-grid metric-grid--five"><article v-for="item in executionStatusItems" :key="item.name"><span>{{ item.name }}</span><strong>{{ item.value }}</strong><small>条</small></article></div><div class="chapter-split"><div class="chart-panel"><div><span>执行状态分布</span></div><TestAnalyticsChart :option="executionOption" height="280px" aria-label="测试执行状态分布图" /></div><div class="progress-panel"><h4>执行质量指标</h4><div v-for="item in [{ name: '执行率', value: fact('execution_rate') }, { name: '案例成功率', value: fact('case_success_rate') }, { name: '已执行案例成功率', value: fact('executed_case_success_rate') }]" :key="item.name"><span>{{ item.name }} <b>{{ percent(item.value) }}</b></span><el-progress :percentage="Math.min(100, Number(item.value) || 0)" :show-text="false" /></div></div></div></template>
+            <template v-else-if="chapter === 'DEFECT_ANALYSIS'"><div class="metric-grid"><article><span>缺陷总数</span><strong>{{ numberFact('defect_total') }}</strong><small>个</small></article><article><span>未关闭缺陷</span><strong>{{ numberFact('defect_open') }}</strong><small>个</small></article><article><span>严重缺陷</span><strong>{{ numberFact('severe_defect_count') }}</strong><small>个</small></article><article><span>缺陷修复率</span><strong>{{ percent(fact('defect_repair_rate')) }}</strong></article></div><div v-if="defectStatusItems.length || defectSeverityItems.length" class="chapter-split"><div class="chart-panel"><div><span>缺陷处理状态</span></div><TestAnalyticsChart :option="defectStatusOption" height="280px" aria-label="缺陷处理状态分布图" /></div><div class="chart-panel"><div><span>缺陷严重程度</span></div><TestAnalyticsChart :option="defectSeverityOption" height="280px" aria-label="缺陷严重程度分布图" /></div></div><div class="table-panel"><h4>缺陷明细</h4><el-table :data="Array.isArray(detail.snapshot.defect_details) ? detail.snapshot.defect_details : []" size="small" border max-height="260"><el-table-column prop="defect_code" label="缺陷编号" min-width="140" /><el-table-column prop="summary" label="缺陷摘要" min-width="220" show-overflow-tooltip /><el-table-column label="状态" min-width="95"><template #default="{ row }">{{ reportValue(row.status) }}</template></el-table-column><el-table-column label="严重程度" min-width="95"><template #default="{ row }">{{ reportValue(row.severity) }}</template></el-table-column></el-table></div></template>
+            <template v-else-if="chapter === 'QUALITY_ASSESSMENT'"><el-alert v-if="!qualityItems().length" title="尚未配置可用于质量判断的指标。" type="info" :closable="false" /><div v-else class="chapter-split"><div class="chart-panel"><div><span>质量指标判定</span></div><TestAnalyticsChart v-if="qualityResultItems.length" :option="qualityResultOption" height="280px" aria-label="质量指标判定分布图" /><el-empty v-else description="暂无质量指标判定数据" :image-size="72" /></div><div class="quality-summary"><span>总体质量结论</span><el-tag :type="qualityTagType" effect="dark" size="large">{{ qualityOverall }}</el-tag></div></div><div v-if="qualityItems().length" class="table-panel"><h4>启用质量指标</h4><el-table :data="qualityItems()" size="small" border><el-table-column prop="metric_name" label="质量指标" min-width="140" /><el-table-column prop="actual" label="实际值" min-width="80" /><el-table-column prop="qualified_threshold" label="达标阈值" min-width="90" /><el-table-column prop="risk_threshold" label="风险阈值" min-width="90" /><el-table-column prop="result" label="判定结果" min-width="90"><template #default="{ row }"><el-tag size="small" :type="row.result === '达标' ? 'success' : row.result === '风险' ? 'warning' : 'danger'">{{ row.result }}</el-tag></template></el-table-column></el-table></div></template>
+            <template v-else-if="chapter === 'RISKS_ISSUES'"><div v-if="riskItems.length" class="risk-list"><article v-for="item in riskItems" :key="item.label"><strong>{{ item.value }}</strong><div><b>{{ item.label }}</b><span>{{ item.text }}</span></div></article></div><el-empty v-else description="当前版本未识别需要重点关注的风险事项" :image-size="82" /></template>
+            <template v-else-if="chapter === 'CONCLUSION_RECOMMENDATION'"><div class="conclusion-card"><el-tag :type="qualityTagType" effect="light">质量结论：{{ qualityOverall }}</el-tag></div></template>
+            <div v-if="supplementFor(chapter)?.content_html && !hasChapterContentOverride(chapter)" class="supplement-view"><span>人工补充</span><div v-html="supplementFor(chapter)?.content_html" /></div>
+          </section>
+        </main>
+      </div>
+      <template #footer><el-button @click="detailOpen = false">关闭</el-button><el-button v-if="detail.report.source_type === 'MANUAL'" type="primary" @click="downloadManual(detail.report)">下载报告</el-button><template v-else><el-button type="primary" @click="download(detail.report, 'docx')">下载 Word</el-button><el-button @click="download(detail.report, 'pdf')">下载 PDF</el-button></template></template>
+    ></el-dialog>
+    <el-dialog v-model="supplementOpen" :title="`编辑章节正文：${chapterName(supplement.chapter_code)}`" width="min(820px,calc(100vw - 24px))" destroy-on-close><p class="supplement-dialog-hint">已返显本章节的既有说明；可直接修改并扩充文字。数据指标、图表及质量阈值仍保持当前报告版本的冻结值。</p><Toolbar :editor="editor" mode="default" /><WangEditor v-model="supplement.content_html" class="supplement-editor" mode="default" @on-created="(value: IDomEditor) => (editor = value)" /><template #footer><el-button :disabled="supplementSaving" @click="supplementOpen = false">取消</el-button><el-button type="primary" :loading="supplementSaving" @click="saveSupplement">保存并生效</el-button></template></el-dialog>
   </section>
 </template>
 <style scoped>
@@ -927,75 +1084,131 @@ onBeforeUnmount(() => editor.value?.destroy());
   margin: 0;
   padding: 0 3px;
 }
-.report-steps {
-  margin-bottom: 16px;
-}
 .form-hint {
   margin: 6px 0 0;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
+.manual-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.manual-upload > span { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .detail-title {
   display: flex;
-  align-items: center;
-  gap: 9px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
-.detail-title span {
-  color: var(--text-muted);
+.detail-title > span {
+  color: var(--brand-strong);
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
 }
-.report-detail {
+.detail-title strong {
+  font-size: 18px;
+}
+.report-reader {
   display: grid;
-  grid-template-columns: 174px minmax(0, 1fr);
-  max-height: 70vh;
+  grid-template-columns: 196px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: min(760px, calc(96vh - 94px));
+  min-height: 0;
+  max-height: calc(96vh - 94px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-bg);
 }
-.report-detail > aside {
-  padding: 4px 10px;
+.reader-aside {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 10px;
   border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel-muted) 58%, var(--panel-bg));
+}
+.reader-aside__group + .reader-aside__group { margin-top: 20px; }
+.reader-aside__group > span {
+  display: block;
+  padding: 0 8px 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.reader-aside :deep(.el-menu) { border-right: 0; background: transparent; }
+.reader-aside :deep(.el-menu-item) { display: grid; min-width: 0; height: auto; min-height: 46px; padding: 7px 8px !important; line-height: 1.25; border-radius: 5px; }
+.reader-aside :deep(.el-menu-item small) { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.reader-aside__group[aria-label] { display: grid; }
+.reader-aside__group > .el-button { justify-content: flex-start; margin: 0; padding: 7px 8px; color: var(--text); font-size: 12px; text-align: left; }
+.reader-main {
+  min-width: 0;
+  min-height: 0;
   overflow: auto;
-  font-size: 12px;
+  padding: 20px clamp(16px, 3vw, 38px) 44px;
+  scroll-behavior: smooth;
 }
-.report-detail > main {
-  overflow: auto;
-  padding: 0 16px;
-}
-.facts {
-  margin: 0 0 12px;
-}
-.chapter {
-  padding: 9px 0;
-  border-bottom: 1px solid var(--line);
-}
-.chapter header {
+.manual-reader-main { display: grid; place-items: start center; }
+.manual-report-card { width: min(680px, 100%); padding: clamp(20px, 4vw, 40px); border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--panel-muted) 26%, var(--panel-bg)); }
+.manual-report-card h2 { margin: 14px 0 8px; font-size: 24px; }
+.manual-report-card > p { margin: 0 0 22px; color: var(--text-muted); font-size: 13px; line-height: 1.7; }
+.manual-report-card__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.report-cover {
   display: flex;
   justify-content: space-between;
+  gap: 24px;
+  padding: 24px clamp(18px, 3vw, 36px);
+  border-radius: 10px;
+  color: #f3fbfc;
+  background: linear-gradient(122deg, #0f576a, #147d92 65%, #2b9274);
 }
-.chapter p {
-  margin: 7px 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.supplement-view {
-  font-size: 13px;
-}
-.supplement-edit {
-  margin-top: 14px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-}
-.supplement-edit > header {
-  padding: 8px 10px;
-  font-size: 13px;
-  font-weight: 650;
-}
-.supplement-editor {
-  min-height: 260px;
-}
-.supplement-save {
-  padding: 8px;
-  text-align: right;
-}
+.report-cover__eyebrow { margin: 0 0 8px; color: #bfeaf0; font-size: 12px; font-weight: 650; letter-spacing: .06em; }
+.report-cover h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; }
+.report-cover p:not(.report-cover__eyebrow) { margin: 12px 0 0; color: #d8f0f3; font-size: 12px; }
+.report-cover__quality { display: grid; flex: 0 0 auto; align-content: center; gap: 9px; min-width: 120px; text-align: right; }
+.report-cover__quality > span { color: #c9edf1; font-size: 12px; }
+.report-cover__quality :deep(.el-tag) { justify-content: center; font-weight: 700; }
+.report-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 14px 2px 20px; color: var(--text-muted); font-size: 12px; }
+.chapter { scroll-margin-top: 12px; padding: 26px 0; border-top: 1px solid var(--line); }
+.chapter__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.chapter__header > div { display: flex; align-items: center; gap: 10px; }
+.chapter__header h3 { margin: 0; color: var(--text); font-size: 18px; }
+.chapter__index { color: var(--brand-strong); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 700; }
+.chapter__summary { margin: 10px 0 18px; color: var(--text-muted); font-size: 13px; line-height: 1.7; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.metric-grid--five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.metric-grid article { display: grid; align-items: baseline; grid-template-columns: minmax(0, 1fr) auto; gap: 3px; min-height: 88px; padding: 15px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel-muted) 30%, var(--panel-bg)); }
+.metric-grid article > span { grid-column: 1 / -1; color: var(--text-muted); font-size: 12px; }
+.metric-grid article strong { color: var(--text); font-size: 25px; line-height: 1; }
+.metric-grid article small { color: var(--text-muted); font-size: 12px; }
+.chart-panel, .progress-panel, .quality-summary, .table-panel, .conclusion-card { border: 1px solid var(--line); border-radius: 8px; background: var(--panel-bg); }
+.chart-panel { min-width: 0; padding: 14px 14px 6px; }
+.chart-panel--wide { margin-top: 12px; }
+.chart-panel > div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; padding: 0 3px; }
+.chart-panel > div:first-child > span, .table-panel h4, .progress-panel h4 { margin: 0; color: var(--text); font-size: 13px; font-weight: 700; }
+.chart-panel > div:first-child > small { color: var(--text-muted); font-size: 12px; }
+.chapter-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.progress-panel, .quality-summary { display: grid; align-content: start; gap: 18px; padding: 18px; }
+.progress-panel > div { display: grid; gap: 7px; }
+.progress-panel span { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 12px; }
+.progress-panel b { color: var(--text); }
+.quality-summary { justify-items: start; }
+.quality-summary > span { color: var(--text-muted); font-size: 12px; }
+.quality-summary p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.table-panel { margin-top: 12px; padding: 14px; }
+.table-panel h4 { margin-bottom: 12px; }
+.chapter-descriptions { overflow: hidden; border-radius: 8px; }
+.risk-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.risk-list article { display: flex; gap: 13px; align-items: center; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning, #c47a2c) 34%, var(--line)); border-radius: 8px; background: color-mix(in srgb, #f5bd63 8%, var(--panel-bg)); }
+.risk-list article > strong { color: #b4621e; font-size: 27px; }
+.risk-list article > div { display: grid; gap: 3px; }
+.risk-list b { font-size: 13px; }
+.risk-list span { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.conclusion-card { padding: 18px; }
+.conclusion-card p { margin: 12px 0 0; color: var(--text-muted); font-size: 13px; line-height: 1.7; }
+.supplement-view { margin-top: 14px; padding: 14px; border-left: 3px solid var(--brand); border-radius: 0 7px 7px 0; background: color-mix(in srgb, var(--brand) 6%, var(--panel-bg)); font-size: 13px; line-height: 1.7; }
+.supplement-view > span { display: block; margin-bottom: 7px; color: var(--brand-strong); font-size: 12px; font-weight: 700; }
+.supplement-dialog-hint { margin: 0 0 12px; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.supplement-editor { min-height: 260px; border: 1px solid var(--line); }
 @media (max-width: 760px) {
   .report-workspace {
     display: block;
@@ -1014,20 +1227,23 @@ onBeforeUnmount(() => editor.value?.destroy());
     border: 1px solid var(--line);
     border-radius: 6px;
   }
-  .report-detail {
-    display: block;
-  }
-  .report-detail > aside {
-    max-height: 120px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .report-detail > main {
-    padding: 10px;
-  }
   .report-toolbar .el-input {
     flex: 1;
     width: auto;
   }
+  .report-reader { display: block; max-height: none; overflow: visible; border: 0; }
+  .reader-aside { display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 180px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+  .reader-aside__group + .reader-aside__group { margin-top: 0; }
+  .reader-aside__group[aria-label] { display: flex; overflow: auto; }
+  .reader-aside__group > .el-button { flex: 0 0 auto; }
+  .reader-main { overflow: visible; padding: 14px 0 30px; }
+  .report-cover { display: grid; gap: 16px; padding: 20px; }
+  .report-cover__quality { justify-items: start; text-align: left; }
+  .report-meta { display: grid; gap: 7px; }
+  .metric-grid, .metric-grid--five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chapter-split, .risk-list { grid-template-columns: 1fr; }
+  .chapter { padding: 20px 0; }
+  .chapter__header h3 { font-size: 16px; }
+  .chapter-descriptions :deep(.el-descriptions__body) { overflow-x: auto; }
 }
 </style>
