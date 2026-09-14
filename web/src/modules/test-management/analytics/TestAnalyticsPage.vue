@@ -168,7 +168,7 @@ const chartLabels: Record<string, string> = {
 };
 const columnLabel = (key: string) => fieldLabels[key] || key;
 const displayValue = (value: unknown) =>
-  value === null || value === undefined || value === "" ? "-" : valueLabels[String(value)] || String(value);
+  value === null || value === undefined || value === "" ? "-" : typeof value === "number" ? String(value) : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
 const chartView = (type: unknown) => {
   const value = String(type || "BAR");
