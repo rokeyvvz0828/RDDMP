@@ -31,12 +31,12 @@
     "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**"]
   },
   "public_capability_change": {
-    "required": false,
+    "required": true,
     "issue": "REQ-20260915-077",
-    "owner_approved": false,
-    "owner_approval_evidence": "未修改 components/ui 或跨模块公共契约；仅新增 architecture 模块内组件、调整 architecture 路由并追加一条隐藏菜单的 Flyway 迁移。菜单可见性影响所有架构角色，需模块 Owner 复核，但机制为 visible=0 且不动权限与授权。",
+    "owner_approved": true,
+    "owner_approval_evidence": "2026-09-15 用户确认模块 Owner rokeyvvz0828 已批准 V20260915120000 这条位于 platform/infrastructure 的 sys_menu 可见性迁移（仅 visible=0，不动权限与授权）。",
     "old_behavior_preserved": true,
-    "regression_tests": ["npm --prefix web run build", "浏览器回归物理子系统、部署单元、交付单元页面与既有变更工单详情/表单路由"]
+    "regression_tests": ["npm --prefix web run build", "node scripts/check-flyway-migrations.mjs", "node scripts/check-module-boundaries.mjs", "浏览器回归物理子系统、部署单元、交付单元页面与既有变更工单列表路由"]
   },
   "database": {
     "changed": true,

@@ -68,6 +68,7 @@ module: business/architecture
 
 - 实施分支：`feat/REQ-20260915-077-architecture-menu-consolidation`（从 `dev-ivanh` 新建）。
 - 用户决策：2026-09-15 确认「变更工单菜单隐藏 + 物理子系统页抽屉入口」（方案 A）与「初始化导入整合为部署单元页按钮 + 抽屉」。
+- Owner 审批：2026-09-15 用户确认模块 Owner `rokeyvvz0828` 已批准位于 `platform/infrastructure` 的 `V20260915120000` 菜单可见性迁移。
 
 ## 已知问题
 
