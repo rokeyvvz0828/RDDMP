@@ -17,6 +17,8 @@ const props = defineProps<{
   versions: DeploymentUnitVersion[]
   versionsLoading?: boolean
   canManageRelations?: boolean
+  /** 只读嵌入（如物理子系统详情页签）时不渲染停用/作废/修改等维护动作。 */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -274,7 +276,7 @@ watch(() => props.unit?.id, () => { void loadRelatedDeliveryUnits(); cancelRelat
         </section>
       </template>
     </div>
-    <template #footer>
+    <template v-if="!readonly" #footer>
       <div class="architecture-drawer-actions">
         <el-button v-if="canDeactivate()" type="warning" plain @click="emit('deactivate')">停用</el-button>
         <el-button v-if="canReactivate()" type="success" plain @click="emit('reactivate')">重新启用</el-button>

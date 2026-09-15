@@ -1,0 +1,94 @@
+{
+  "definition_revision": "definition-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "详情抽屉形成「信息 / 参与人员 / 部署单元 / 交付单元」四页签，信息页签保留原四栏字段；参与人员内嵌为页签面板并保留保存/脏检查/关闭确认；列表移除参与人员入口与独立抽屉。",
+      "requirement_ids": ["R1", "R2"],
+      "prerequisites": [],
+      "write_scope": [
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+        "web/src/modules/architecture/components/SubsystemDetailDrawer.vue",
+        "web/src/modules/architecture/components/SubsystemParticipants.vue"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "grep 确认列表中不再引用 SubsystemParticipants 与参 与人员按钮",
+        "浏览器：四页签标题正确；参与人员保存成功；未保存关闭弹确认"
+      ],
+      "evidence_required": ["execution-T1", "observation-T1"],
+      "rollback": "git revert T1 提交",
+      "stop_conditions": ["el-drawer before-close 无法在遮罩/关闭按钮/Esc 前拦截时停止并升级"],
+      "escalation_conditions": ["需要修改参与人员后端接口或权限代码时升级并回到设计"]
+    },
+    {
+      "id": "T2",
+      "goal": "部署单元页签列出该子系统全部部署单元，radio group 在「全部」与全部启用环境间切换，在各部署单元下展示所选环境的环境部署实例（含在用/已下线与空态），并可打开只读部署单元详情。",
+      "requirement_ids": ["R3"],
+      "prerequisites": ["T1"],
+      "write_scope": [
+        "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue",
+        "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "浏览器：部署单元数量与子系统一致；切换环境实例集合变化且列表不丢失；无实例显示空态",
+        "浏览器回归 /architecture/deployment-units 详情抽屉维护动作仍可用"
+      ],
+      "evidence_required": ["execution-T2", "observation-T2"],
+      "rollback": "删除新增面板并回退 readonly prop",
+      "stop_conditions": ["实例分页循环无法收敛或接口 403 无法区分空数据时停止并升级"],
+      "escalation_conditions": ["需要新增后端过滤参数才能满足环境切换时升级并回到设计"]
+    },
+    {
+      "id": "T3",
+      "goal": "交付单元页签只读列出该子系统全部交付单元，并可打开只读交付单元详情。",
+      "requirement_ids": ["R4"],
+      "prerequisites": ["T1"],
+      "write_scope": [
+        "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "浏览器：交付单元数量与子系统一致；只读详情无维护动作"
+      ],
+      "evidence_required": ["execution-T3", "observation-T3"],
+      "rollback": "删除新增面板",
+      "stop_conditions": ["制品类型字典缺失导致字段无法展示且需要新增接口时停止并升级"],
+      "escalation_conditions": ["需要交付单元直写入口时升级并回到设计"]
+    },
+    {
+      "id": "T4",
+      "goal": "四个页签的加载/空/失败/无权限状态与桌面移动布局样式完成，构建、范围检查、静态检查与真实浏览器验收通过。",
+      "requirement_ids": ["R5"],
+      "prerequisites": ["T1", "T2", "T3"],
+      "write_scope": [
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/*.json"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260915-076-physical-subsystem-detail-tabs/codex-task-scope.yaml --working-tree 通过",
+        "git diff --check 无空白错误",
+        "375/390/430/1440 视口无页面级横向溢出，明暗主题可读"
+      ],
+      "evidence_required": ["execution-T4", "observation-T4", "convergence"],
+      "rollback": "git revert T4 提交",
+      "stop_conditions": ["任一 must 需求未通过时停止，不得宣布收敛"],
+      "escalation_conditions": ["出现需要改公共契约、迁移或超出 writable_paths 的修复时升级"]
+    }
+  ],
+  "dependencies": [
+    {"from": "T1", "to": "T2", "reason": "部署单元页签挂载在 T1 建立的页签容器内"},
+    {"from": "T1", "to": "T3", "reason": "交付单元页签挂载在 T1 建立的页签容器内"},
+    {"from": "T1", "to": "T4", "reason": "样式与验收对象是 T1-T3 产出的页签内容"},
+    {"from": "T2", "to": "T4", "reason": "验收需覆盖部署单元页签运行行为"},
+    {"from": "T3", "to": "T4", "reason": "验收需覆盖交付单元页签运行行为"}
+  ],
+  "integration_checks": [
+    {"after_tasks": ["T1"], "check": "物理子系统列表与详情抽屉在桌面/移动下正常渲染，信息页签无回归"},
+    {"after_tasks": ["T2", "T3"], "check": "四个页签在同一抽屉内连续切换无状态丢失、无请求乱序"},
+    {"after_tasks": ["T4"], "check": "npm --prefix web run build + check-codex-scope + git diff --check + 浏览器四视口验收"}
+  ],
+  "status": "ready"
+}

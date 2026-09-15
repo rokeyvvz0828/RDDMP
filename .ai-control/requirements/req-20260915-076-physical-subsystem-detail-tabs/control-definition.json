@@ -1,0 +1,95 @@
+{
+  "definition_revision": "definition-1",
+  "objective": "把物理子系统详情抽屉改为「信息 / 参与人员 / 部署单元 / 交付单元」四页签，在抽屉内集中展示子系统事实、参与人员、全部部署单元及其环境部署实例、全部交付单元。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "物理子系统详情抽屉提供顺序固定的四个页签，信息页签完整保留现有四栏字段与发布状态标签。",
+      "acceptance": ["抽屉内可见「信息 / 参与人员 / 部署单元 / 交付单元」四个页签", "信息页签字段分组、值与状态标签与改造前逐项一致", "默认打开信息页签"],
+      "priority": "must",
+      "source": "用户确认方案 B",
+      "counterexample": ["页签缺失或顺序不同", "信息页签字段被删改", "打开抽屉默认落在其它页签"]
+    },
+    {
+      "id": "R2",
+      "statement": "参与人员改在详情抽屉页签内查看与保存，列表中的参与人员入口被移除，加载/权限/保存/脏检查/关闭确认语义与现有实现一致。",
+      "acceptance": ["列表桌面表格与移动卡片不再出现参与人员按钮", "页面上不再渲染独立参与人员抽屉", "参与人员页签可保存并给出成功反馈", "未保存时关闭抽屉弹出放弃确认", "保存中不能关闭", "无编辑权限时为只读"],
+      "priority": "must",
+      "source": "用户确认移除原有入口",
+      "counterexample": ["列表仍可打开独立参与人员抽屉", "未保存修改被静默丢弃", "只读用户看到可提交的编辑控件"]
+    },
+    {
+      "id": "R3",
+      "statement": "部署单元页签展示该物理子系统全部部署单元，并用 radio group 在「全部」与全部启用环境间切换，在每个部署单元下展示所选环境的环境部署实例。",
+      "acceptance": ["列出该子系统全部部署单元", "radio group 含「全部」与全部启用环境且默认「全部」", "切换环境只更新实例集合而不丢失部署单元列表", "实例同时展示在用与已下线状态并带状态标签", "该环境无实例时显示空态", "部署单元可打开只读详情且无维护动作"],
+      "priority": "must",
+      "source": "用户需求与确认的环境切换默认值",
+      "counterexample": ["只展示部分部署单元", "环境切换触发部署单元列表重载或清空", "无实例时空白无提示", "只读详情出现停用/作废/修改按钮"]
+    },
+    {
+      "id": "R4",
+      "statement": "交付单元页签只读展示该物理子系统全部交付单元，并可打开只读交付单元详情。",
+      "acceptance": ["列出该子系统全部交付单元", "字段含编号、名称、制品类型、状态、关联部署单元数量、更新时间", "可打开只读详情且无维护动作"],
+      "priority": "must",
+      "source": "用户需求",
+      "counterexample": ["只展示部分交付单元", "详情抽屉出现修改/删除按钮"]
+    },
+    {
+      "id": "R5",
+      "statement": "四个页签在桌面与手机视口可用，覆盖加载/空/失败/无权限状态，无页面级横向溢出，明暗主题可读。",
+      "acceptance": ["npm --prefix web run build 通过", "375x812、390x844、430x932 与 1440 桌面下详情抽屉无页面级横向溢出", "每个页签具备加载、空、失败、无权限状态", "明暗主题文字与标签可读"],
+      "priority": "must",
+      "source": "design-h5.md 与前端规则",
+      "counterexample": ["手机视口页面级横向滚动", "接口失败显示永久骨架或空白", "403 被当作空数据"]
+    }
+  ],
+  "boundary": {
+    "inside": [
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "web/src/modules/architecture/components/SubsystemDetailDrawer.vue",
+      "web/src/modules/architecture/components/SubsystemParticipants.vue",
+      "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue",
+      "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue",
+      "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue（仅新增 readonly prop）",
+      "web/src/modules/architecture/architecture.css"
+    ],
+    "environment": [
+      "既有 architecture 接口（只读消费）",
+      "Element Plus el-drawer/el-tabs/el-radio-group 行为",
+      "当前项目上下文与参与者数据范围",
+      "MockDataInitializer 生成的架构数据"
+    ]
+  },
+  "invariants": [
+    "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变",
+    "不新增或修改后端接口、DTO、Flyway 迁移与数据表",
+    "物理子系统仍只经审批发布写入，未新增直写入口",
+    "参与人员的权限判断与服务端校验不被前端绕过",
+    "DeploymentUnitDetailDrawer 默认行为向后兼容，既有 DeploymentUnitPage 不受影响"
+  ],
+  "constraints": [
+    "只改 codex-task-scope.yaml 覆盖的 writable_paths",
+    "不读取或修改 forbidden_paths",
+    "不访问生产系统",
+    "遵循 web/src/AGENTS.md 与 design-h5.md"
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "浏览器 DOM 抽取四个页签标题与信息页签字段标签", "expected": "四页签存在且信息字段与改造前一致", "blind_spots": ["无法证明字段在后端未被改动的场景"]},
+    {"requirement_id": "R2", "sensor": "浏览器操作：列表无参与人员按钮；页签内保存、脏关闭确认、只读展示；grep 组件引用", "expected": "入口移除且保存/确认/只读行为正确", "blind_spots": ["未覆盖并发修改与版本冲突的真实触发"]},
+    {"requirement_id": "R3", "sensor": "浏览器 DOM 抽取 radio group 选项、部署单元卡片数量与各卡片实例集合，切换环境前后对比", "expected": "全部部署单元在列，实例随环境变化且空态可见", "blind_spots": ["超过 2000 条实例的极端上限未实测"]},
+    {"requirement_id": "R4", "sensor": "浏览器 DOM 抽取交付单元卡片数量与字段，打开只读详情后检查无维护按钮", "expected": "全部交付单元在列且详情只读", "blind_spots": ["制品类型字典缺失时显示原始编码"]},
+    {"requirement_id": "R5", "sensor": "npm --prefix web run build 退出码 + 375/390/430/1440 下 documentElement.scrollWidth 与视口宽度比较 + 明暗主题截图", "expected": "构建通过且无页面级横向溢出", "blind_spots": ["构建只证明类型与打包，不证明运行行为"]}
+  ],
+  "action_bounds": [
+    {"requirement_ids": ["R1", "R2"], "target": "详情抽屉与参与人员面板表面", "authority": "重构 SubsystemDetailDrawer 与 SubsystemParticipants 为页签容器与内嵌面板；移除列表参与人员入口", "impact_limit": "仅影响物理子系统列表页与其详情抽屉", "rollback": "git revert 对应提交"},
+    {"requirement_ids": ["R3", "R4"], "target": "部署单元/交付单元页签表面与只读详情", "authority": "新增两个页签面板组件，并为 DeploymentUnitDetailDrawer 增加默认关闭的 readonly prop", "impact_limit": "新增组件只被详情抽屉引用；readonly 默认 false 不改变既有 DeploymentUnitPage 行为", "rollback": "删除新增组件并回退 readonly prop"},
+    {"requirement_ids": ["R5"], "target": "architecture.css 详情抽屉页签样式", "authority": "只追加 architecture-* 前缀的抽屉页签与实例列表样式", "impact_limit": "只作用于新增页签内容，不改既有页面类", "rollback": "git revert 样式提交"}
+  ],
+  "assumptions": [
+    {"text": "部署单元、交付单元、实例接口与物理子系统列表的权限集合一致，正常架构查看角色不会 403", "basis": "三个 Controller 的 PreAuthorize 均包含 architecture:view/apply/manage", "falsifier": "普通架构查看角色在页签收到 403"},
+    {"text": "Element Plus el-drawer 的 before-close 能在遮罩/关闭按钮/Esc 前拦截并阻止关闭", "basis": "Element Plus 官方 API 提供 before-close(done)", "falsifier": "关闭时未弹出确认或无法阻止关闭"},
+    {"text": "el-tabs 默认惰性行为下切换页签不会卸载已渲染面板，参与人员未保存状态在页签切换间保留", "basis": "Element Plus el-tab-pane 默认 lazy=false，内容常驻", "falsifier": "切换页签后未保存的参与人员选择丢失"}
+  ],
+  "unknowns": [],
+  "status": "ready"
+}

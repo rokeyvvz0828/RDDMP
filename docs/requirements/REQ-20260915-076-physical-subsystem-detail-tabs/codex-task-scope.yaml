@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260915-076", "status": "ready", "document": "docs/requirements/REQ-20260915-076-physical-subsystem-detail-tabs/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "ivanh", "module": "business/architecture", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260915-076-physical-subsystem-detail-tabs", "worktree": "/home/ivanh/source/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "web/src/modules/architecture/components/SubsystemDetailDrawer.vue",
+      "web/src/modules/architecture/components/SubsystemParticipants.vue",
+      "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue",
+      "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue",
+      "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+      "web/src/modules/architecture/architecture.css",
+      "docs/requirements/REQ-20260915-076-physical-subsystem-detail-tabs/**",
+      ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/modules/architecture/api.ts",
+      "web/src/modules/architecture/types.ts",
+      "web/src/modules/architecture/utils.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "governance/modules.yaml",
+      "server/**",
+      "**/target/**"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**"]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": "REQ-20260915-076",
+    "owner_approved": false,
+    "owner_approval_evidence": "本需求未修改 components/ui 或跨模块公共契约；DeploymentUnitDetailDrawer 为 architecture 模块内部组件，仅新增向后兼容的 readonly prop（默认 false），既有 DeploymentUnitPage 调用行为不变。",
+    "old_behavior_preserved": true,
+    "regression_tests": ["npm --prefix web run build", "浏览器回归 /architecture/deployment-units 详情抽屉维护动作"]
+  },
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "无数据库变更；回退前端提交即可。"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "git diff --name-only HEAD~1...HEAD -- server/ 为空；浏览器 Network 面板确认详情抽屉仅调用既有 GET /architecture/physical-subsystems、/participants、/deployment-units、/delivery-units、/environments、/instances", "expected": "无后端接口与 DTO 变更，页签只消费既有接口"},
+    {"name": "permission", "command": "浏览器以仅具备 architecture:physical:list 的角色打开详情抽屉并切换到部署单元/交付单元/参与人员页签", "expected": "受限资源给出无权限提示而非空白；参与人员无编辑权限时为只读"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "pass，0 个类型错误"},
+    {"name": "scope-check", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260915-076-physical-subsystem-detail-tabs/codex-task-scope.yaml --working-tree", "expected": "pass"},
+    {"name": "static-check", "command": "git diff --check", "expected": "pass"},
+    {"name": "browser", "command": "browser acceptance on /architecture/physical-subsystems detail drawer, desktop 1440 and mobile 375/390/430", "expected": "four tabs render; participants save and discard-confirm work; environment radio switches instance groups; read-only unit drawers open; no page-level horizontal overflow"}
+  ],
+  "risk": {
+    "level": "normal",
+    "items": [
+      "抽屉内嵌参与人员与两张数据视图，关闭时需保留未保存确认语义，避免编辑丢失。",
+      "仅有 architecture:physical:list 权限的用户对部署单元/交付单元/实例可能返回 403，必须以无权限提示呈现而非空白。",
+      "实例接口单次上限 200，需分页循环拉取并披露极端上限。"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260915-076-physical-subsystem-detail-tabs",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/control-definition.json",
+      ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/control-plan.json",
+      ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/iteration-I1.json",
+      ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "回退本需求前端提交；无数据库变更、无数据补偿。"
+  }
+}

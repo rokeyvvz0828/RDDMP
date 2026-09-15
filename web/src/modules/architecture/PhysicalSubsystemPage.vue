@@ -20,7 +20,6 @@ import {
   loadParameterOptions
 } from './api'
 import SubsystemDetailDrawer from './components/SubsystemDetailDrawer.vue'
-import SubsystemParticipants from './components/SubsystemParticipants.vue'
 import type {
   DetailSection,
   OrganizationOption,
@@ -51,9 +50,6 @@ const loading = ref(false)
 const loadError = ref('')
 const forbidden = ref(false)
 const advanced = ref(false)
-const participantOpen = ref(false)
-const participantSystem = ref<PhysicalSubsystem | null>(null)
-function showParticipants(system: PhysicalSubsystem) { participantSystem.value = system; participantOpen.value = true }
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref<PhysicalSubsystem | null>(null)
@@ -208,6 +204,9 @@ function changePageSize(value: number) { pageSize.value = value; page.value = 1;
 watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
   if (allowed && projectRef) void Promise.all([load(), loadReferences()])
 }, { immediate: true })
+
+// 项目切换后原系统的详情上下文失效，关闭抽屉避免跨项目展示过期数据。
+watch(() => projectContext.currentRef, () => { detailOpen.value = false })
 </script>
 
 <template>
@@ -240,18 +239,17 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
         <el-table-column label="负责团队" min-width="140"><template #default="scope"><div class="architecture-team-cell"><span>{{ scope.row.responsibleTeamDisplayName }}</span><UiStatusTag v-if="!scope.row.responsibleTeamValid" :value="false" :labels="{ false: '已失效' }" tone="warning" /></div></template></el-table-column>
         <el-table-column label="负责人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.ownerUserId" :fallback-name="scope.row.ownerDisplayName" variant="compact" /></template></el-table-column>
         <el-table-column label="最后更新" width="145"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
-        <el-table-column label="操作" width="260" fixed="right"><template #default="scope"><div class="architecture-table-actions"><el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button><el-button link type="primary" @click="showParticipants(scope.row)">参与人员</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', scope.row.status).length" @command="beginChange(scope.row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', scope.row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div></template></el-table-column>
+        <el-table-column label="操作" width="260" fixed="right"><template #default="scope"><div class="architecture-table-actions"><el-button link type="primary" @click="showDetail(scope.row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', scope.row.status).length" @command="beginChange(scope.row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', scope.row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div></template></el-table-column>
         <template #footer><div class="architecture-table-footer"><span>共 {{ total }} 条记录</span><el-pagination :current-page="page" :page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @current-change="changePage" @size-change="changePageSize" /></div></template>
       </UiDataTable>
 
       <div v-if="rows.length || loading" v-loading="loading" class="architecture-mobile-list" :class="{ 'is-loading': loading }">
-        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.shortName }}</small></div><UiStatusTag :value="row.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(row.status)" indicator /></header><dl><div><dt>所属逻辑子系统</dt><dd>{{ row.logicalSubsystemName || '—' }}</dd></div><div><dt>业务组件编号</dt><dd>{{ optionLabel(businessComponents, row.businessComponentCode) }}</dd></div><div><dt>所属事业群</dt><dd>{{ row.businessGroupName || '—' }}</dd></div><div><dt>负责团队</dt><dd>{{ row.responsibleTeamDisplayName }}<span v-if="!row.responsibleTeamValid" class="architecture-warning-text">（已失效）</span></dd></div><div><dt>负责人</dt><dd><UiUserIdentity :user-id="row.ownerUserId" :fallback-name="row.ownerDisplayName" variant="full" /></dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-button link type="primary" @click="showParticipants(row)">参与人员</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', row.status).length" @command="beginChange(row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
+        <article v-for="row in rows" :key="row.id"><header><div><strong>{{ row.name }}</strong><small>{{ row.code }} · {{ row.shortName }}</small></div><UiStatusTag :value="row.status" :labels="publishedStatusLabels" :tone="publishedStatusTone(row.status)" indicator /></header><dl><div><dt>所属逻辑子系统</dt><dd>{{ row.logicalSubsystemName || '—' }}</dd></div><div><dt>业务组件编号</dt><dd>{{ optionLabel(businessComponents, row.businessComponentCode) }}</dd></div><div><dt>所属事业群</dt><dd>{{ row.businessGroupName || '—' }}</dd></div><div><dt>负责团队</dt><dd>{{ row.responsibleTeamDisplayName }}<span v-if="!row.responsibleTeamValid" class="architecture-warning-text">（已失效）</span></dd></div><div><dt>负责人</dt><dd><UiUserIdentity :user-id="row.ownerUserId" :fallback-name="row.ownerDisplayName" variant="full" /></dd></div></dl><footer><el-button link type="primary" @click="showDetail(row)"><el-icon><View /></el-icon>详情</el-button><el-dropdown v-if="canApply && allowedPublishedActions('PHYSICAL', row.status).length" @command="beginChange(row, $event)"><el-button link type="primary"><el-icon><MoreFilled /></el-icon>发起变更</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in allowedPublishedActions('PHYSICAL', row.status)" :key="action" :command="action">{{ actionTypeLabels[action] }}</el-dropdown-item></el-dropdown-menu></template></el-dropdown></footer></article>
         <div class="architecture-table-footer"><el-pagination :current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="changePage" /></div>
       </div>
       <UiEmptyState v-if="!loading && !rows.length" title="暂无物理子系统" description="调整筛选条件，或发起第一张物理子系统申请。"><template #action><el-button v-if="canApply" type="primary" @click="createApplication">发起申请</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
     </template>
 
-    <SubsystemParticipants v-model="participantOpen" :subsystem="participantSystem" @saved="load" />
-    <SubsystemDetailDrawer v-model="detailOpen" :loading="detailLoading" :title="detail?.name || '物理子系统详情'" :code="detail?.code" :sections="detailSections" />
+    <SubsystemDetailDrawer v-model="detailOpen" :loading="detailLoading" :title="detail?.name || '物理子系统详情'" :code="detail?.code" :sections="detailSections" :subsystem="detail" @saved="load" />
   </main>
 </template>

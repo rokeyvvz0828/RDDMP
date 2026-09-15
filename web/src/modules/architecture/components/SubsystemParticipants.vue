@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import UiFormDrawer from '../../../components/ui/UiFormDrawer.vue'
 import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
 import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../../api/error'
@@ -10,8 +8,8 @@ import { useProjectContextStore } from '../../../stores/project-context'
 import { getSubsystemParticipation, getSubsystemParticipantCandidates, replaceSubsystemParticipation } from '../api'
 import type { PhysicalSubsystem, SubsystemParticipation, SubsystemParticipantCandidate } from '../types'
 
-const props = defineProps<{ modelValue: boolean; subsystem: PhysicalSubsystem | null }>()
-const emit = defineEmits<{ 'update:modelValue': [value: boolean]; saved: [] }>()
+const props = defineProps<{ subsystem: PhysicalSubsystem | null }>()
+const emit = defineEmits<{ saved: [] }>()
 const project = useProjectContextStore()
 const data = ref<SubsystemParticipation | null>(null)
 const candidates = ref<SubsystemParticipantCandidate[]>([])
@@ -53,7 +51,12 @@ async function load() {
     if (ticket === request) error.value = apiErrorMessage(cause, '参与人员加载失败，请重试或联系项目管理者确认权限。')
   } finally { if (ticket === request) loading.value = false }
 }
-async function discardAllowed() {
+
+/**
+ * 供外层详情抽屉在关闭（遮罩/右上角/Esc）前调用：
+ * 有未保存修改时先确认放弃，保存进行中时不允许关闭。
+ */
+async function confirmLeave(): Promise<boolean> {
   if (saving.value) return false
   if (!dirty.value) return true
   if (!discardConfirmation) {
@@ -64,18 +67,10 @@ async function discardAllowed() {
   }
   return discardConfirmation
 }
-async function close(value: boolean) {
-  const ticket = request
-  if (!value && await discardAllowed() && ticket === request) emit('update:modelValue', false)
-}
-// 遮罩、右上角和 Esc 必须在内部关闭之前确认；确认后只更新受控值，
-// 不调用内部 done，避免它再次触发 update:modelValue 并重复确认。
-function beforeDrawerClose() {
-  void close(false)
-}
+
 async function submit() {
   if (loading.value || saving.value) return
-  if (!data.value?.canManage) { await close(false); return }
+  if (!data.value?.canManage) return
   if (!props.subsystem || !project.currentRef) return
   const id = props.subsystem.id
   const projectRef = project.currentRef
@@ -91,83 +86,73 @@ async function submit() {
     selected.value = [...result.explicitParticipantUserIds]
     reason.value = ''
     ElMessage.success('参与人员已保存')
-    emit('update:modelValue', false)
     emit('saved')
   } catch (cause) {
     if (ticket === request) error.value = apiErrorMessage(cause, '保存失败，已保留修改。版本冲突请重新加载；存在未完成责任请先移交。')
   } finally { saving.value = false }
 }
-watch(() => [props.modelValue, props.subsystem?.id, project.currentRef] as const, () => {
+
+watch(() => [props.subsystem?.id, project.currentRef] as const, () => {
   ++request
   data.value = null
   candidates.value = []
   selected.value = []
   reason.value = ''
   error.value = ''
-  if (props.modelValue) void load()
+  if (props.subsystem?.id && project.currentRef) void load()
 }, { immediate: true })
-watch(() => project.currentRef, () => {
-  if (props.modelValue) {
-    emit('update:modelValue', false)
-    ElMessage.info('项目已切换，请在当前项目重新选择系统。')
-  }
-})
-onBeforeRouteLeave(() => props.modelValue ? discardAllowed() : true)
-function beforeUnload(event: BeforeUnloadEvent) {
-  if (dirty.value || saving.value) { event.preventDefault(); event.returnValue = '' }
-}
-window.addEventListener('beforeunload', beforeUnload)
-onBeforeUnmount(() => { ++request; window.removeEventListener('beforeunload', beforeUnload) })
+
+defineExpose({ confirmLeave })
 </script>
 
 <template>
-  <UiFormDrawer :model-value="modelValue" :title="`${subsystem?.name || '系统'} · 参与人员`"
-    width="min(640px, calc(100vw - 24px))" :loading="saving" :before-close="beforeDrawerClose"
-    :confirm-text="data?.canManage ? '保存参与人员' : '关闭'" @update:model-value="close" @submit="submit">
-    <section v-loading="loading" class="subsystem-people" aria-label="系统参与人员">
-      <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
-      <el-button v-if="error" :disabled="saving" @click="async () => { if (await discardAllowed()) await load() }">重新加载</el-button>
-      <template v-if="data">
-        <p class="subsystem-people__hint">维护该系统的参与资格；具体任务的负责人和参与人在搭建计划中调整。</p>
-        <div class="subsystem-people__owner">
-          <span class="subsystem-people__label">系统负责人</span>
-          <div class="subsystem-people__identity">
-            <UiUserIdentity :user-id="data.ownerUserId" :fallback-name="owner?.displayName || '未配置负责人'" variant="full" />
-            <el-tag v-if="data.ownerUserId" size="small" effect="plain">默认参与</el-tag>
-          </div>
-          <p class="subsystem-people__hint">负责人自动参与，不在下方重复添加；调整负责人请发起系统变更工单。</p>
+  <section v-loading="loading" class="subsystem-people" aria-label="系统参与人员">
+    <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+    <el-button v-if="error" :disabled="saving" @click="load">重新加载</el-button>
+    <template v-if="data">
+      <p class="subsystem-people__hint">维护该系统的参与资格；具体任务的负责人和参与人在搭建计划中调整。</p>
+      <div class="subsystem-people__owner">
+        <span class="subsystem-people__label">系统负责人</span>
+        <div class="subsystem-people__identity">
+          <UiUserIdentity :user-id="data.ownerUserId" :fallback-name="owner?.displayName || '未配置负责人'" variant="full" />
+          <el-tag v-if="data.ownerUserId" size="small" effect="plain">默认参与</el-tag>
         </div>
-        <el-alert v-if="invalidIds.length" title="存在失效成员，请移交未完成责任后调整名单。" type="warning" show-icon :closable="false" />
-        <el-form label-position="top" :disabled="saving">
-          <template v-if="data.canManage">
-            <el-form-item :label="`其他参与人员（${otherSelected.length}人）`">
-              <el-select v-model="selected" class="subsystem-people__select" multiple filterable placeholder="搜索并选择项目成员" aria-label="其他参与人员">
-                <el-option v-for="person in options" :key="person.userId" :value="person.userId"
-                  :label="`${person.displayName}${invalidIds.includes(person.userId) ? '（已失效）' : ''}`"
-                  :disabled="!candidates.some(candidate => candidate.userId === person.userId)" />
-              </el-select>
-              <p class="subsystem-people__hint">新增人员不会自动加入历史任务；退出前须先移交未完成责任。</p>
-            </el-form-item>
-            <el-form-item label="变更原因（选填）">
-              <el-input v-model="reason" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="可补充本次人员调整的说明" aria-label="变更原因（选填）" />
-            </el-form-item>
-          </template>
-          <template v-else>
-            <p class="subsystem-people__hint">当前为只读。系统负责人或具有维护权限的授权管理者可以调整名单。</p>
-            <el-form-item :label="`其他参与人员（${otherSelected.length}人）`">
-              <div v-if="otherSelected.length" class="subsystem-people__readonly">
-                <span v-for="person in options.filter(item => otherSelected.includes(item.userId))" :key="person.userId" class="subsystem-people__member">
-                  <UiUserIdentity :user-id="person.userId" :fallback-name="person.displayName" variant="compact" />
-                  <span v-if="invalidIds.includes(person.userId)" class="architecture-warning-text">（已失效）</span>
-                </span>
-              </div>
-              <UiEmptyState v-else title="暂无其他参与人员" description="系统负责人默认参与。" />
-            </el-form-item>
-          </template>
-        </el-form>
-      </template>
-    </section>
-  </UiFormDrawer>
+        <p class="subsystem-people__hint">负责人自动参与，不在下方重复添加；调整负责人请发起系统变更工单。</p>
+      </div>
+      <el-alert v-if="invalidIds.length" title="存在失效成员，请移交未完成责任后调整名单。" type="warning" show-icon :closable="false" />
+      <el-form label-position="top" :disabled="saving">
+        <template v-if="data.canManage">
+          <el-form-item :label="`其他参与人员（${otherSelected.length}人）`">
+            <el-select v-model="selected" class="subsystem-people__select" multiple filterable placeholder="搜索并选择项目成员" aria-label="其他参与人员">
+              <el-option v-for="person in options" :key="person.userId" :value="person.userId"
+                :label="`${person.displayName}${invalidIds.includes(person.userId) ? '（已失效）' : ''}`"
+                :disabled="!candidates.some(candidate => candidate.userId === person.userId)" />
+            </el-select>
+            <p class="subsystem-people__hint">新增人员不会自动加入历史任务；退出前须先移交未完成责任。</p>
+          </el-form-item>
+          <el-form-item label="变更原因（选填）">
+            <el-input v-model="reason" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="可补充本次人员调整的说明" aria-label="变更原因（选填）" />
+          </el-form-item>
+        </template>
+        <template v-else>
+          <p class="subsystem-people__hint">当前为只读。系统负责人或具有维护权限的授权管理者可以调整名单。</p>
+          <el-form-item :label="`其他参与人员（${otherSelected.length}人）`">
+            <div v-if="otherSelected.length" class="subsystem-people__readonly">
+              <span v-for="person in options.filter(item => otherSelected.includes(item.userId))" :key="person.userId" class="subsystem-people__member">
+                <UiUserIdentity :user-id="person.userId" :fallback-name="person.displayName" variant="compact" />
+                <span v-if="invalidIds.includes(person.userId)" class="architecture-warning-text">（已失效）</span>
+              </span>
+            </div>
+            <UiEmptyState v-else title="暂无其他参与人员" description="系统负责人默认参与。" />
+          </el-form-item>
+        </template>
+      </el-form>
+      <div v-if="data.canManage" class="architecture-drawer-actions subsystem-people__actions">
+        <el-button type="primary" :loading="saving" :disabled="loading" @click="submit">保存参与人员</el-button>
+      </div>
+    </template>
+    <UiEmptyState v-else-if="!loading && !error" title="暂无参与人员数据" description="请确认当前项目与系统后重试。" />
+  </section>
 </template>
 
 <style scoped>
@@ -186,4 +171,5 @@ onBeforeUnmount(() => { ++request; window.removeEventListener('beforeunload', be
 .subsystem-people__readonly { display: flex; flex-wrap: wrap; gap: 8px; max-height: 200px; overflow-y: auto; }
 .subsystem-people__member { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; }
 .subsystem-people__readonly .el-tag { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; }
+.subsystem-people__actions { padding-top: 4px; border-top: 1px solid var(--line); }
 </style>
