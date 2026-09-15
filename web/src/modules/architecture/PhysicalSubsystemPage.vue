@@ -19,6 +19,7 @@ import {
   loadOrganizationOptions,
   loadParameterOptions
 } from './api'
+import SubsystemChangeApplicationDrawer from './components/SubsystemChangeApplicationDrawer.vue'
 import SubsystemDetailDrawer from './components/SubsystemDetailDrawer.vue'
 import SubsystemParticipants from './components/SubsystemParticipants.vue'
 import type {
@@ -51,6 +52,7 @@ const loading = ref(false)
 const loadError = ref('')
 const forbidden = ref(false)
 const advanced = ref(false)
+const changeApplicationsOpen = ref(false)
 const participantOpen = ref(false)
 const participantSystem = ref<PhysicalSubsystem | null>(null)
 function showParticipants(system: PhysicalSubsystem) { participantSystem.value = system; participantOpen.value = true }
@@ -81,6 +83,8 @@ let detailRequest = 0
 const canView = computed(() => auth.hasPermission('architecture:physical:list')
   || ['architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const canApply = computed(() => auth.hasPermission('architecture:apply') || auth.hasPermission('architecture:manage'))
+// 菜单 803 已隐藏，变更工单列表改由本页抽屉承载；查看权限沿用列表页定义。
+const canViewChangeApplications = computed(() => ['architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const detailSections = computed<DetailSection[]>(() => detail.value ? [
   {
     title: '基本信息',
@@ -213,7 +217,10 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
 <template>
   <main class="architecture-page">
     <UiPageHeader title="物理子系统" description="查看已发布的物理子系统事实；新增、变更、替换和生命周期操作均通过审批工单完成。">
-      <template #actions><el-button v-if="canApply" type="primary" @click="createApplication"><el-icon><Plus /></el-icon>申请物理子系统</el-button></template>
+      <template #actions>
+        <el-button v-if="canViewChangeApplications" @click="changeApplicationsOpen = true">变更工单</el-button>
+        <el-button v-if="canApply" type="primary" @click="createApplication"><el-icon><Plus /></el-icon>申请物理子系统</el-button>
+      </template>
     </UiPageHeader>
 
     <section v-if="auth.token && !auth.user" v-loading="true" class="architecture-state-panel" aria-label="正在确认访问权限" />
@@ -252,6 +259,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
     </template>
 
     <SubsystemParticipants v-model="participantOpen" :subsystem="participantSystem" @saved="load" />
+    <SubsystemChangeApplicationDrawer v-model="changeApplicationsOpen" />
     <SubsystemDetailDrawer v-model="detailOpen" :loading="detailLoading" :title="detail?.name || '物理子系统详情'" :code="detail?.code" :sections="detailSections" />
   </main>
 </template>

@@ -2,15 +2,14 @@
 import { computed, ref, watch } from 'vue'
 import { Download, Refresh, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { UploadFile, UploadFiles } from 'element-plus'
-import UiDataTable from '../../components/ui/UiDataTable.vue'
-import UiEmptyState from '../../components/ui/UiEmptyState.vue'
-import UiPageHeader from '../../components/ui/UiPageHeader.vue'
-import UiStatusTag from '../../components/ui/UiStatusTag.vue'
-import UiToolbar from '../../components/ui/UiToolbar.vue'
-import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
-import { apiErrorMessage } from '../../api/error'
-import { useAuthStore } from '../../stores/auth'
+import type { UploadFile } from 'element-plus'
+import UiDataTable from '../../../components/ui/UiDataTable.vue'
+import UiEmptyState from '../../../components/ui/UiEmptyState.vue'
+import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
+import UiToolbar from '../../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
+import { apiErrorMessage } from '../../../api/error'
+import { useAuthStore } from '../../../stores/auth'
 import {
   confirmDeploymentUnitImport,
   downloadDeploymentUnitImportErrorReport,
@@ -18,8 +17,8 @@ import {
   getDeploymentUnitImport,
   listDeploymentUnitImports,
   uploadDeploymentUnitImport
-} from './api'
-import type { DeploymentUnitImportBatch, DeploymentUnitImportBatchDetail, DeploymentUnitImportItem } from './types'
+} from '../api'
+import type { DeploymentUnitImportBatch, DeploymentUnitImportBatchDetail, DeploymentUnitImportItem } from '../types'
 import {
   formatDateTime,
   httpStatus,
@@ -27,9 +26,9 @@ import {
   importBatchStatusTone,
   importItemStatusLabels,
   importItemStatusTone
-} from './utils'
-import './architecture.css'
+} from '../utils'
 
+const emit = defineEmits<{ imported: [] }>()
 const auth = useAuthStore()
 const batches = ref<DeploymentUnitImportBatch[]>([])
 const total = ref(0)
@@ -121,6 +120,7 @@ async function confirmWrite() {
     const result = await confirmDeploymentUnitImport(batch.id)
     preview.value = result
     ElMessage.success(result.batch.status === 'SUCCESS' ? '导入完成：全部行已写入' : `导入完成：成功 ${result.batch.successRows} 行，失败 ${result.batch.failedRows} 行`)
+    emit('imported')
     void load()
   } catch (error) {
     ElMessage.error(apiErrorMessage(error, '确认写入失败'))
@@ -173,13 +173,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
 </script>
 
 <template>
-  <main class="architecture-page">
-    <UiPageHeader title="部署单元初始化导入" description="上传 Excel 模板文件，先预览与关系校验，确认后写入；每个批次保留来源、结果明细与错误报告。">
-      <template #actions>
-        <el-button v-if="canManage" @click="downloadTemplate"><el-icon><Download /></el-icon>下载模板</el-button>
-      </template>
-    </UiPageHeader>
-
+  <section class="architecture-import-panel" aria-label="部署单元初始化导入">
     <section v-if="auth.token && !auth.user" v-loading="true" class="architecture-state-panel" aria-label="正在确认访问权限" />
     <section v-else-if="!canView || forbidden" class="architecture-state-panel"><el-result icon="warning" title="暂无导入批次查看权限" sub-title="请申请 architecture:deployment-unit:view 权限。" /></section>
     <section v-else-if="loadError" class="architecture-state-panel"><el-result icon="error" title="导入批次加载失败" :sub-title="loadError"><template #extra><el-button type="primary" @click="load">重新加载</el-button></template></el-result></section>
@@ -192,6 +186,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
           accept=".xlsx"
           :before-upload="() => false"
           :on-change="handleFile"
+          :disabled="uploading"
         >
           <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
           <div class="el-upload__text">将 .xlsx 文件拖到此处，或<em>点击选择文件</em></div>
@@ -203,6 +198,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
 
       <UiToolbar>
         <span class="architecture-toolbar-title">导入批次台账</span>
+        <el-button v-if="canManage" @click="downloadTemplate"><el-icon><Download /></el-icon>下载模板</el-button>
         <el-button type="primary" @click="search">刷新</el-button>
         <template #actions><el-tooltip content="刷新批次"><el-button circle :loading="loading" aria-label="刷新导入批次" @click="load"><el-icon><Refresh /></el-icon></el-button></el-tooltip></template>
       </UiToolbar>
@@ -228,7 +224,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
     </template>
 
     <!-- 预览与确认写入 -->
-    <el-drawer v-model="previewOpen" title="导入预览" size="min(760px, 96vw)" destroy-on-close>
+    <el-drawer v-model="previewOpen" title="导入预览" size="min(760px, 96vw)" destroy-on-close append-to-body>
       <div v-loading="previewLoading" class="architecture-drawer-body">
         <template v-if="preview">
           <div class="architecture-import-summary">
@@ -257,7 +253,7 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
     </el-drawer>
 
     <!-- 批次历史明细 -->
-    <el-drawer v-model="historyOpen" title="批次明细" size="min(760px, 96vw)" destroy-on-close>
+    <el-drawer v-model="historyOpen" title="批次明细" size="min(760px, 96vw)" destroy-on-close append-to-body>
       <div v-loading="historyLoading" class="architecture-drawer-body">
         <template v-if="history">
           <div class="architecture-import-summary">
@@ -277,10 +273,10 @@ watch(canView, allowed => { if (allowed) void load() }, { immediate: true })
             <el-table-column label="说明" min-width="200"><template #default="scope">{{ itemMessage(scope.row) }}</template></el-table-column>
           </el-table>
           <div v-if="history.batch.failedRows > 0" class="architecture-import-error-actions">
-            <el-button type="danger" plain @click="downloadDeploymentUnitImportErrorReport(history!.batch.id)"><el-icon><Download /></el-icon>导出错误报告</el-button>
+            <el-button type="danger" plain @click="downloadErrorReport(history!.batch)"><el-icon><Download /></el-icon>导出错误报告</el-button>
           </div>
         </template>
       </div>
     </el-drawer>
-  </main>
+  </section>
 </template>
