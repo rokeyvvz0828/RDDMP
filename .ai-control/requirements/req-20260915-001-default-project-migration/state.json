@@ -1,0 +1,925 @@
+{
+  "schema_version": 5,
+  "revision": 15,
+  "created_at": "2026-09-15T06:07:25+00:00",
+  "updated_at": "2026-09-15T06:44:21+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化 full 工作流",
+      "recorded_at": "2026-09-15T06:07:25+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Reviewed bounded migration plan",
+      "recorded_at": "2026-09-15T06:07:26+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Reviewed bounded migration plan",
+      "recorded_at": "2026-09-15T06:07:27+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Reviewed bounded migration plan",
+      "recorded_at": "2026-09-15T06:07:28+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "Implementation ready for independent/runtime observation",
+      "recorded_at": "2026-09-15T06:25:23+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "User-approved plan and inspected source",
+        "recorded_at": "2026-09-15T06:07:26+00:00",
+        "data": {
+          "objective": "Reliable default project prerequisites for clean initialization and legacy upgrades",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Empty MySQL database migrates to latest without manual project seeding",
+              "acceptance": [
+                "Full replay and repeat migrate succeed"
+              ],
+              "priority": "must",
+              "source": "User approval",
+              "counterexample": [
+                "V209 guard fails on migration-seeded networks"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Initialize missing prerequisites per tenant before V207/V209",
+              "acceptance": [
+                "Own-tenant admin, PM membership and seven stages exist"
+              ],
+              "priority": "must",
+              "source": "Approved proposal",
+              "counterexample": [
+                "Tenant 2 assigned tenant 1 admin"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Preserve existing projects and refuse ambiguous/deleted defaults without partial writes",
+              "acceptance": [
+                "Preservation, failure and no-op tests pass"
+              ],
+              "priority": "must",
+              "source": "Approved proposal",
+              "counterexample": [
+                "Deleted default silently restored"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Support V208 and failed V209 recovery without modifying published migrations",
+              "acceptance": [
+                "Recovery test and append-only check pass"
+              ],
+              "priority": "must",
+              "source": "User approval",
+              "counterexample": [
+                "Old checksum altered"
+              ]
+            }
+          ],
+          "invariants": [
+            "Published SQL unchanged",
+            "No operational database access",
+            "No cross-tenant ownership"
+          ],
+          "constraints": [
+            "Java 17",
+            "MySQL 8.4",
+            "Scoped worktree"
+          ],
+          "non_goals": [
+            "Frontend changes",
+            "Production deployment"
+          ],
+          "assumptions": [],
+          "unknowns": [],
+          "decisions": [],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Full replay and repeat migrate succeed",
+              "candidate_sensor": "Testcontainers integration tests and SQL review"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Own-tenant admin, PM membership and seven stages exist",
+              "candidate_sensor": "Testcontainers integration tests and SQL review"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Preservation, failure and no-op tests pass",
+              "candidate_sensor": "Testcontainers integration tests and SQL review"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Recovery test and append-only check pass",
+              "candidate_sensor": "Testcontainers integration tests and SQL review"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "User-approved plan and inspected source",
+        "recorded_at": "2026-09-15T06:07:27+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "Flyway V206 -> V207 -> V209",
+              "pm_project and memberships",
+              "migration name checker"
+            ],
+            "environment": [
+              "Docker MySQL 8.4",
+              "Java 17",
+              "GitHub protected main"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "schema_history",
+              "owner": "Flyway",
+              "valid_values": [
+                "before206",
+                "208",
+                "failed209",
+                "latest"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "database state before migration",
+              "transitions": [
+                "preflight",
+                "initialize missing prerequisite",
+                "original migration"
+              ],
+              "outputs": [
+                "Full replay and repeat migrate succeed"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "database state before migration",
+              "transitions": [
+                "preflight",
+                "initialize missing prerequisite",
+                "original migration"
+              ],
+              "outputs": [
+                "Own-tenant admin, PM membership and seven stages exist"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "database state before migration",
+              "transitions": [
+                "preflight",
+                "initialize missing prerequisite",
+                "original migration"
+              ],
+              "outputs": [
+                "Preservation, failure and no-op tests pass"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "database state before migration",
+              "transitions": [
+                "preflight",
+                "initialize missing prerequisite",
+                "original migration"
+              ],
+              "outputs": [
+                "Recovery test and append-only check pass"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "default project",
+              "producers": [
+                "initialization SQL"
+              ],
+              "consumers": [
+                "V207",
+                "V209"
+              ],
+              "invariant": "one active same-tenant default"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "SQL effects",
+              "method": "MySQL Testcontainers assertions",
+              "blind_spots": [
+                "Different production schema"
+              ],
+              "independence": "Runtime database assertions"
+            },
+            {
+              "id": "S2",
+              "target": "Compatibility and scope",
+              "method": "independent diff review and governance",
+              "blind_spots": [
+                "Unexecuted environments"
+              ],
+              "independence": "Separate review agent"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "migration prerequisite",
+              "action": "Append scoped SQL and tests",
+              "authority": "User-approved plan",
+              "impact_radius": "Missing default prerequisites",
+              "rollback": "Revert unapplied patch; backup/forward fix after migration"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Legacy collation defaults",
+              "effect": "V80 fails before target",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [],
+          "assumptions": [],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "implement scoped patch"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "implement scoped patch"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "implement scoped patch"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "implement scoped patch"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "User-approved plan and inspected source",
+        "recorded_at": "2026-09-15T06:07:28+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Default project initialization compatibility patch",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V114 seeds network zones",
+                "V207/V209 require a default",
+                "application-local enables out-of-order"
+              ],
+              "write_scope": [
+                "new V206_20260915143000 SQL",
+                "DefaultProjectInitializationMigrationMySqlTest",
+                "exact filename checker exception",
+                "task docs and evidence"
+              ],
+              "invariants": [
+                "Published SQL unchanged",
+                "No operational database access",
+                "No cross-tenant ownership"
+              ],
+              "interface_contracts": [
+                "pm_project per-tenant identity"
+              ],
+              "non_goals": [
+                "Runtime API changes"
+              ],
+              "action_bounds": [
+                "Append SQL, focused tests and documentation only"
+              ],
+              "acceptance_checks": [
+                "Full replay",
+                "Upgrade and recovery",
+                "Preservation and tenant isolation"
+              ],
+              "evidence_required": [
+                "Test results",
+                "Diff review",
+                "Governance"
+              ],
+              "rollback": "Preserve migrated references; restore only isolated test backups",
+              "stop_conditions": [
+                "Destructive business data change required"
+              ],
+              "escalation_conditions": [
+                "Protected main disallows merge"
+              ]
+            }
+          ],
+          "dependency_edges": [],
+          "parallel_groups": [
+            [
+              "T1"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "regressions and independent review"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "baseline",
+              "trigger": "before patch",
+              "observer": "primary",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1"
+              ]
+            },
+            {
+              "label": "integration",
+              "trigger": "after patch",
+              "observer": "primary",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "independent-review",
+              "trigger": "before PR",
+              "observer": "separate agent",
+              "sensors": [
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Scoped implementation and actual validation commands",
+        "recorded_at": "2026-09-15T06:25:23+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V206_20260915143000__ensure_default_project.sql",
+              "purpose": "Transactional prerequisite before V207/V209; preserve existing defaults"
+            },
+            {
+              "path_or_resource": "scripts/check-flyway-migrations.mjs",
+              "purpose": "Exact filename exception for ordered prerequisite"
+            },
+            {
+              "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/DefaultProjectInitializationMigrationMySqlTest.java",
+              "purpose": "Nine MySQL integration scenarios"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260915-001-default-project-migration",
+              "purpose": "Approved scope and constrained recovery procedure"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "211 migrations; one callback; two approved legacy versions"
+            },
+            {
+              "command": "node scripts/check-module-boundaries.mjs",
+              "exit_code": 0,
+              "salient_output": "passed"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "production build passed"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "pre-existing historical ledger topic, filename and acceptance-evidence violations"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Published migration preservation",
+              "result": "pass",
+              "evidence": "Only new prerequisite SQL is added; V207/V209 remain unchanged",
+              "limitations": [
+                "Full regression results are recorded separately"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Initialize missing projects with same-tenant admin and PM membership",
+            "Preserve existing defaults and no-op after successful V209",
+            "Fail before writes for deleted defaults or missing admins; rollback insert failures",
+            "Document repair prerequisites and disable incompatible mock synchronization"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "No operational database access",
+              "result": "pass",
+              "evidence": "Testcontainers databases only"
+            },
+            {
+              "invariant": "Java 17",
+              "result": "pass",
+              "evidence": "JAVA_HOME explicitly set to openjdk-17.0.18 for Maven"
+            }
+          ],
+          "disturbances": [
+            "Legacy V80 requires utf8mb4_unicode_ci for replay",
+            "Local mock initializer uses fixed IDs; operational startup verification requires MOCK_DATA_ENABLED=false",
+            "Global governance has existing main-branch violations"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Focused and full test runs are in progress",
+            "GitHub browser is signed out and gh is unavailable",
+            "Main merge remains gated by checks and review"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Final 9/9 MySQL tests pass; two pre-existing main integration gates remain failed",
+        "recorded_at": "2026-09-15T06:44:20+00:00",
+        "data": {
+          "sample_label": "Final scoped validation and integration gates",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 MySQL integration tests",
+              "result": "pass",
+              "raw_evidence": "emptyDatabaseMigratesToLatestWithoutManualSeeding passed; latest 20260912111716; repeat migrate executes zero",
+              "limitation": [
+                "Mock synchronization disabled/not executed"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 MySQL integration tests",
+              "result": "pass",
+              "raw_evidence": "Same-tenant admin and PM membership, seven stages, multiple tenants and occupied IDs passed",
+              "limitation": [
+                "Stopped application writers assumed"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 MySQL integration tests",
+              "result": "pass",
+              "raw_evidence": "Existing membership preserved; deleted/missing-admin guards; completed V209 with deleted project is no-op; CHECK failure rolls back all five tables and retry succeeds",
+              "limitation": [
+                "Not a crash-durability or concurrent-writer test"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S1 MySQL integration tests",
+              "result": "pass",
+              "raw_evidence": "Original V209 guard reproduced, old-location repair, exact target backfill and subsequent latest migrate passed",
+              "limitation": [
+                "Recovery applies only to guard-before-DDL failure"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S2 Independent SQL review and append-only inspection",
+              "result": "pass",
+              "raw_evidence": "Reviewer 01a0a3b0-1b02-7861-b956-5f78aa526800 found no concrete SQL/checker defect; all published SQL unchanged",
+              "limitation": [
+                "Reviewer did not run tests; final runtime suite covers subsequent fixture improvements"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S3 Repository integration gates",
+              "result": "fail",
+              "raw_evidence": "Existing main ledger violations and 4 failures/4 errors in unchanged DataMigrationModuleRegistrationTest",
+              "limitation": [
+                "Full suite interrupted after failures; later modules not evaluated"
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R4",
+              "expected": "Main integration checks pass",
+              "observed": "Global governance fails on existing historical ledgers",
+              "reproduction": "node scripts/check-all-governance.mjs",
+              "evidence": "Exit 1; historical topic/filename/missing-evidence violations",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "Repository-level integration gate, outside migration behavior",
+              "causal_hypothesis": "Pre-existing main governance drift",
+              "correction_check": "Owner repairs historical ledger issues, rerun governance",
+              "classification": "disturbance"
+            },
+            {
+              "requirement_id": "R4",
+              "expected": "Full regression passes before main integration",
+              "observed": "Existing data-migration registration tests reference missing old filenames",
+              "reproduction": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "evidence": "Exit 1, tests 20/failures 4/errors 4; test file identical to origin/main f7c6ff7",
+              "severity": "P1",
+              "confidence": "high",
+              "sensor_limit": "Full run halted after observed failure; standalone failure reproduced",
+              "causal_hypothesis": "Migration renumbering did not update test references",
+              "correction_check": "Module owner fixes references and reruns full suite",
+              "classification": "disturbance"
+            }
+          ],
+          "disturbances": [
+            "Initial rollback sensor could not create trigger; replaced with CHECK constraint; final nine tests pass"
+          ],
+          "coverage_gaps": [
+            "Live application startup and mock import not tested; recovery guide requires disabling mock",
+            "Main cannot yet be merged; no PR was created because GitHub is signed out and gh is unavailable"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 2,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Reliable default project prerequisites for clean initialization and legacy upgrades",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Empty MySQL database migrates to latest without manual project seeding",
+      "acceptance": [
+        "Full replay and repeat migrate succeed"
+      ],
+      "priority": "must",
+      "source": "User approval",
+      "counterexample": [
+        "V209 guard fails on migration-seeded networks"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Initialize missing prerequisites per tenant before V207/V209",
+      "acceptance": [
+        "Own-tenant admin, PM membership and seven stages exist"
+      ],
+      "priority": "must",
+      "source": "Approved proposal",
+      "counterexample": [
+        "Tenant 2 assigned tenant 1 admin"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Preserve existing projects and refuse ambiguous/deleted defaults without partial writes",
+      "acceptance": [
+        "Preservation, failure and no-op tests pass"
+      ],
+      "priority": "must",
+      "source": "Approved proposal",
+      "counterexample": [
+        "Deleted default silently restored"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Support V208 and failed V209 recovery without modifying published migrations",
+      "acceptance": [
+        "Recovery test and append-only check pass"
+      ],
+      "priority": "must",
+      "source": "User approval",
+      "counterexample": [
+        "Old checksum altered"
+      ]
+    }
+  ],
+  "invariants": [
+    "Published SQL unchanged",
+    "No operational database access",
+    "No cross-tenant ownership"
+  ],
+  "constraints": [
+    "Java 17",
+    "MySQL 8.4",
+    "Scoped worktree"
+  ],
+  "non_goals": [
+    "Frontend changes",
+    "Production deployment"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"Docker MySQL 8.4\", \"Java 17\", \"GitHub protected main\"], \"inside\": [\"Flyway V206 -> V207 -> V209\", \"pm_project and memberships\", \"migration name checker\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Different production schema\"], \"id\": \"S1\", \"independence\": \"Runtime database assertions\", \"method\": \"MySQL Testcontainers assertions\", \"target\": \"SQL effects\"}",
+      "{\"blind_spots\": [\"Unexecuted environments\"], \"id\": \"S2\", \"independence\": \"Separate review agent\", \"method\": \"independent diff review and governance\", \"target\": \"Compatibility and scope\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Append scoped SQL and tests\", \"authority\": \"User-approved plan\", \"id\": \"A1\", \"impact_radius\": \"Missing default prerequisites\", \"rollback\": \"Revert unapplied patch; backup/forward fix after migration\", \"target\": \"migration prerequisite\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"V80 fails before target\", \"source\": \"Legacy collation defaults\"}"
+    ],
+    "assumptions": [],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Default project initialization compatibility patch",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V114 seeds network zones",
+        "V207/V209 require a default",
+        "application-local enables out-of-order"
+      ],
+      "write_scope": [
+        "new V206_20260915143000 SQL",
+        "DefaultProjectInitializationMigrationMySqlTest",
+        "exact filename checker exception",
+        "task docs and evidence"
+      ],
+      "invariants": [
+        "Published SQL unchanged",
+        "No operational database access",
+        "No cross-tenant ownership"
+      ],
+      "interface_contracts": [
+        "pm_project per-tenant identity"
+      ],
+      "non_goals": [
+        "Runtime API changes"
+      ],
+      "action_bounds": [
+        "Append SQL, focused tests and documentation only"
+      ],
+      "acceptance": [
+        "Full replay",
+        "Upgrade and recovery",
+        "Preservation and tenant isolation"
+      ],
+      "evidence_required": [
+        "Test results",
+        "Diff review",
+        "Governance"
+      ],
+      "rollback": "Preserve migrated references; restore only isolated test backups",
+      "stop_conditions": [
+        "Destructive business data change required"
+      ],
+      "escalation_conditions": [
+        "Protected main disallows merge"
+      ],
+      "status": "observing",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T06:16:36+00:00",
+          "text": "Empty replay reproduced V209 guard failure; patch suite running"
+        },
+        {
+          "recorded_at": "2026-09-15T06:44:20+00:00",
+          "text": "Scoped migration verified; main integration blocked by existing checks"
+        }
+      ],
+      "updated_at": "2026-09-15T06:44:20+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "original-empty-replay",
+      "errors": {
+        "P0": 0,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 20,
+      "evidence": "Java17 MySQL8.4 full replay fails at V209 chk_tmp_arch_v158_default_project_guard; /private/tmp/rddmp-default-project-red.log",
+      "recorded_at": "2026-09-15T06:16:36+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "independent-sql-review",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Independent reviewer found no concrete SQL/checker defect; does not cover global CI",
+      "recorded_at": "2026-09-15T06:44:20+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "final-runtime-and-integration",
+      "errors": {
+        "P0": 0,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 40,
+      "evidence": "Final 9/9 migration tests pass; existing main governance and registration-test gates fail; see validation.md",
+      "recorded_at": "2026-09-15T06:44:21+00:00"
+    }
+  ]
+}

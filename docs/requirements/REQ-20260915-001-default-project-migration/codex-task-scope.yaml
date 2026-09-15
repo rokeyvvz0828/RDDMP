@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260915-001", "status": "ready", "document": "docs/requirements/REQ-20260915-001-default-project-migration/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "Codex", "module": "platform/infrastructure", "module_owner": "rokeyvvz0828", "branch": "fix/REQ-20260915-001-default-project-migration", "worktree": "/Users/zhangwei/Documents/技术相关/RDDMP-default-project-migration"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": ["server/src/platform/infrastructure/src/main/resources/db/migration/V206_20260915143000__ensure_default_project.sql", "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/DefaultProjectInitializationMigrationMySqlTest.java", "scripts/check-flyway-migrations.mjs", "docs/requirements/REQ-20260915-001-default-project-migration/**", ".ai-control/requirements/req-20260915-001-default-project-migration/*.json"],
+    "read_only_paths": ["governance/**", "AGENTS.md", "pom.xml"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key"]
+  },
+  "public_capability_change": {"required": true, "issue": "User-approved default project initialization repair", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["DefaultProjectInitializationMigrationMySqlTest"]},
+  "database": {"changed": true, "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V206_20260915143000__ensure_default_project.sql"], "compatibility_and_rollback": "Append-only prerequisite before V207; existing defaults retained; completed V209 is a no-op; restore pre-upgrade backup only for isolated tests or apply forward correction."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [{"name": "migration", "command": "mvn -pl :ccb-architecture -am -Dtest=DefaultProjectInitializationMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test"}, {"name": "api", "command": "No API changes; verify migration with the integration suite"}, {"name": "permission", "command": "DefaultProjectInitializationMigrationMySqlTest verifies tenant owner and PM assignments"}, {"name": "governance", "command": "node scripts/check-all-governance.mjs"}, {"name": "regression", "command": "mvn test"}],
+  "risk": {"level": "high", "items": ["Out-of-order migration", "Default project ownership", "Failed MySQL migration partial execution"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260915-001-default-project-migration", "acceptance_evidence": [".ai-control/requirements/req-20260915-001-default-project-migration/execution-T1.json", ".ai-control/requirements/req-20260915-001-default-project-migration/observation-T1.json", ".ai-control/requirements/req-20260915-001-default-project-migration/convergence.json"], "release_verification": ["No failed Flyway histories; V207 and V209 succeed; default project and membership verified"], "rollback": "See requirement.md and recovery.md; preserve projects referenced by business rows."}
+}

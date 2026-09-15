@@ -1,0 +1,105 @@
+{
+  "sample_label": "Final scoped validation and integration gates",
+  "task_ids": [
+    "T1"
+  ],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "S1 MySQL integration tests",
+      "result": "pass",
+      "raw_evidence": "emptyDatabaseMigratesToLatestWithoutManualSeeding passed; latest 20260912111716; repeat migrate executes zero",
+      "limitation": [
+        "Mock synchronization disabled/not executed"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "S1 MySQL integration tests",
+      "result": "pass",
+      "raw_evidence": "Same-tenant admin and PM membership, seven stages, multiple tenants and occupied IDs passed",
+      "limitation": [
+        "Stopped application writers assumed"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "S1 MySQL integration tests",
+      "result": "pass",
+      "raw_evidence": "Existing membership preserved; deleted/missing-admin guards; completed V209 with deleted project is no-op; CHECK failure rolls back all five tables and retry succeeds",
+      "limitation": [
+        "Not a crash-durability or concurrent-writer test"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S1 MySQL integration tests",
+      "result": "pass",
+      "raw_evidence": "Original V209 guard reproduced, old-location repair, exact target backfill and subsequent latest migrate passed",
+      "limitation": [
+        "Recovery applies only to guard-before-DDL failure"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S2 Independent SQL review and append-only inspection",
+      "result": "pass",
+      "raw_evidence": "Reviewer 01a0a3b0-1b02-7861-b956-5f78aa526800 found no concrete SQL/checker defect; all published SQL unchanged",
+      "limitation": [
+        "Reviewer did not run tests; final runtime suite covers subsequent fixture improvements"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "S3 Repository integration gates",
+      "result": "fail",
+      "raw_evidence": "Existing main ledger violations and 4 failures/4 errors in unchanged DataMigrationModuleRegistrationTest",
+      "limitation": [
+        "Full suite interrupted after failures; later modules not evaluated"
+      ]
+    }
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R4",
+      "expected": "Main integration checks pass",
+      "observed": "Global governance fails on existing historical ledgers",
+      "reproduction": "node scripts/check-all-governance.mjs",
+      "evidence": "Exit 1; historical topic/filename/missing-evidence violations",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Repository-level integration gate, outside migration behavior",
+      "causal_hypothesis": "Pre-existing main governance drift",
+      "correction_check": "Owner repairs historical ledger issues, rerun governance",
+      "classification": "disturbance"
+    },
+    {
+      "requirement_id": "R4",
+      "expected": "Full regression passes before main integration",
+      "observed": "Existing data-migration registration tests reference missing old filenames",
+      "reproduction": "mvn -pl :ccb-data-migration -am -Dtest=DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "evidence": "Exit 1, tests 20/failures 4/errors 4; test file identical to origin/main f7c6ff7",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "Full run halted after observed failure; standalone failure reproduced",
+      "causal_hypothesis": "Migration renumbering did not update test references",
+      "correction_check": "Module owner fixes references and reruns full suite",
+      "classification": "disturbance"
+    }
+  ],
+  "disturbances": [
+    "Initial rollback sensor could not create trigger; replaced with CHECK constraint; final nine tests pass"
+  ],
+  "coverage_gaps": [
+    "Live application startup and mock import not tested; recovery guide requires disabling mock",
+    "Main cannot yet be merged; no PR was created because GitHub is signed out and gh is unavailable"
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 2,
+    "P2": 0,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

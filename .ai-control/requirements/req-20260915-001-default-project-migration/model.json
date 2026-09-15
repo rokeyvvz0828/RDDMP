@@ -1,0 +1,191 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": [
+      "Flyway V206 -> V207 -> V209",
+      "pm_project and memberships",
+      "migration name checker"
+    ],
+    "environment": [
+      "Docker MySQL 8.4",
+      "Java 17",
+      "GitHub protected main"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "schema_history",
+      "owner": "Flyway",
+      "valid_values": [
+        "before206",
+        "208",
+        "failed209",
+        "latest"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "database state before migration",
+      "transitions": [
+        "preflight",
+        "initialize missing prerequisite",
+        "original migration"
+      ],
+      "outputs": [
+        "Full replay and repeat migrate succeed"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "database state before migration",
+      "transitions": [
+        "preflight",
+        "initialize missing prerequisite",
+        "original migration"
+      ],
+      "outputs": [
+        "Own-tenant admin, PM membership and seven stages exist"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "database state before migration",
+      "transitions": [
+        "preflight",
+        "initialize missing prerequisite",
+        "original migration"
+      ],
+      "outputs": [
+        "Preservation, failure and no-op tests pass"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "database state before migration",
+      "transitions": [
+        "preflight",
+        "initialize missing prerequisite",
+        "original migration"
+      ],
+      "outputs": [
+        "Recovery test and append-only check pass"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "default project",
+      "producers": [
+        "initialization SQL"
+      ],
+      "consumers": [
+        "V207",
+        "V209"
+      ],
+      "invariant": "one active same-tenant default"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "SQL effects",
+      "method": "MySQL Testcontainers assertions",
+      "blind_spots": [
+        "Different production schema"
+      ],
+      "independence": "Runtime database assertions"
+    },
+    {
+      "id": "S2",
+      "target": "Compatibility and scope",
+      "method": "independent diff review and governance",
+      "blind_spots": [
+        "Unexecuted environments"
+      ],
+      "independence": "Separate review agent"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "migration prerequisite",
+      "action": "Append scoped SQL and tests",
+      "authority": "User-approved plan",
+      "impact_radius": "Missing default prerequisites",
+      "rollback": "Revert unapplied patch; backup/forward fix after migration"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2"
+      ],
+      "observable": "yes"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "Legacy collation defaults",
+      "effect": "V80 fails before target",
+      "detectable": true,
+      "controllable": true
+    }
+  ],
+  "delays": [],
+  "assumptions": [],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "implement scoped patch"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "implement scoped patch"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "implement scoped patch"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "implement scoped patch"
+    }
+  ],
+  "model_status": "ready"
+}

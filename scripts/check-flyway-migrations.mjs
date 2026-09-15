@@ -12,6 +12,8 @@ const allowedSqlCallbacks = new Set([
 ]);
 const allowedLegacyMigrations = new Map([
   ['V84_1__seed_requirement_system_catalog.sql', 84.1],
+  // Backfill must run before the published V207/V209 project guards.
+  ['V206_20260915143000__ensure_default_project.sql', '206.20260915143000'],
 ]);
 const callbacks = [];
 const legacyMigrations = [];

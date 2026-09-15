@@ -1,0 +1,93 @@
+{
+  "objective": "Reliable default project prerequisites for clean initialization and legacy upgrades",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Empty MySQL database migrates to latest without manual project seeding",
+      "acceptance": [
+        "Full replay and repeat migrate succeed"
+      ],
+      "priority": "must",
+      "source": "User approval",
+      "counterexample": [
+        "V209 guard fails on migration-seeded networks"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Initialize missing prerequisites per tenant before V207/V209",
+      "acceptance": [
+        "Own-tenant admin, PM membership and seven stages exist"
+      ],
+      "priority": "must",
+      "source": "Approved proposal",
+      "counterexample": [
+        "Tenant 2 assigned tenant 1 admin"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Preserve existing projects and refuse ambiguous/deleted defaults without partial writes",
+      "acceptance": [
+        "Preservation, failure and no-op tests pass"
+      ],
+      "priority": "must",
+      "source": "Approved proposal",
+      "counterexample": [
+        "Deleted default silently restored"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Support V208 and failed V209 recovery without modifying published migrations",
+      "acceptance": [
+        "Recovery test and append-only check pass"
+      ],
+      "priority": "must",
+      "source": "User approval",
+      "counterexample": [
+        "Old checksum altered"
+      ]
+    }
+  ],
+  "invariants": [
+    "Published SQL unchanged",
+    "No operational database access",
+    "No cross-tenant ownership"
+  ],
+  "constraints": [
+    "Java 17",
+    "MySQL 8.4",
+    "Scoped worktree"
+  ],
+  "non_goals": [
+    "Frontend changes",
+    "Production deployment"
+  ],
+  "assumptions": [],
+  "unknowns": [],
+  "decisions": [],
+  "measurement_intents": [
+    {
+      "requirement_id": "R1",
+      "observable": "Full replay and repeat migrate succeed",
+      "candidate_sensor": "Testcontainers integration tests and SQL review"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "Own-tenant admin, PM membership and seven stages exist",
+      "candidate_sensor": "Testcontainers integration tests and SQL review"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "Preservation, failure and no-op tests pass",
+      "candidate_sensor": "Testcontainers integration tests and SQL review"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "Recovery test and append-only check pass",
+      "candidate_sensor": "Testcontainers integration tests and SQL review"
+    }
+  ],
+  "baseline_status": "ready"
+}

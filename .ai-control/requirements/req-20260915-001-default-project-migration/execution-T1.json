@@ -1,0 +1,90 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V206_20260915143000__ensure_default_project.sql",
+      "purpose": "Transactional prerequisite before V207/V209; preserve existing defaults"
+    },
+    {
+      "path_or_resource": "scripts/check-flyway-migrations.mjs",
+      "purpose": "Exact filename exception for ordered prerequisite"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/repository/DefaultProjectInitializationMigrationMySqlTest.java",
+      "purpose": "Nine MySQL integration scenarios"
+    },
+    {
+      "path_or_resource": "docs/requirements/REQ-20260915-001-default-project-migration",
+      "purpose": "Approved scope and constrained recovery procedure"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R2",
+    "R3",
+    "R4"
+  ],
+  "commands": [
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "salient_output": "211 migrations; one callback; two approved legacy versions"
+    },
+    {
+      "command": "node scripts/check-module-boundaries.mjs",
+      "exit_code": 0,
+      "salient_output": "passed"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "production build passed"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "salient_output": "pre-existing historical ledger topic, filename and acceptance-evidence violations"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Published migration preservation",
+      "result": "pass",
+      "evidence": "Only new prerequisite SQL is added; V207/V209 remain unchanged",
+      "limitations": [
+        "Full regression results are recorded separately"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "Initialize missing projects with same-tenant admin and PM membership",
+    "Preserve existing defaults and no-op after successful V209",
+    "Fail before writes for deleted defaults or missing admins; rollback insert failures",
+    "Document repair prerequisites and disable incompatible mock synchronization"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "No operational database access",
+      "result": "pass",
+      "evidence": "Testcontainers databases only"
+    },
+    {
+      "invariant": "Java 17",
+      "result": "pass",
+      "evidence": "JAVA_HOME explicitly set to openjdk-17.0.18 for Maven"
+    }
+  ],
+  "disturbances": [
+    "Legacy V80 requires utf8mb4_unicode_ci for replay",
+    "Local mock initializer uses fixed IDs; operational startup verification requires MOCK_DATA_ENABLED=false",
+    "Global governance has existing main-branch violations"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Focused and full test runs are in progress",
+    "GitHub browser is signed out and gh is unavailable",
+    "Main merge remains gated by checks and review"
+  ],
+  "recommended_next": "observe"
+}
