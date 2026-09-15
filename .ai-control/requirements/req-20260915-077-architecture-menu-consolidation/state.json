@@ -1,0 +1,1073 @@
+{
+  "schema_version": 5,
+  "revision": 12,
+  "created_at": "2026-09-15T08:36:18+00:00",
+  "updated_at": "2026-09-15T08:41:13+00:00",
+  "mode": "standard",
+  "workflow": "compact",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "defining",
+      "evidence": "初始化 compact 工作流",
+      "recorded_at": "2026-09-15T08:36:18+00:00"
+    },
+    {
+      "from": "defining",
+      "to": "planning",
+      "evidence": "定义门禁通过",
+      "recorded_at": "2026-09-15T08:36:22+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "controlling",
+      "evidence": "计划门禁通过，开始受控执行",
+      "recorded_at": "2026-09-15T08:36:32+00:00"
+    },
+    {
+      "from": "controlling",
+      "to": "verifying",
+      "evidence": "T1-T4 verified 且无未关闭反馈",
+      "recorded_at": "2026-09-15T08:41:13+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁通过",
+      "recorded_at": "2026-09-15T08:41:13+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "defining": [
+      {
+        "revision": 1,
+        "evidence": "用户确认方案A与整合方案；R1-R4 均有传感器与受权动作",
+        "recorded_at": "2026-09-15T08:36:22+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "objective": "隐藏「架构子系统变更工单」与「部署单元初始化导入」两个菜单，把前者收敛为物理子系统页的抽屉列表入口、后者整合为部署单元页的按钮 + 抽屉，且不丢失能力与权限。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "隐藏菜单「架构子系统变更工单」，物理子系统页提供「变更工单」按钮打开抽屉，抽屉内嵌现有变更工单列表能力，路由与权限不变。",
+              "acceptance": [
+                "侧边栏架构资产管理下不再出现架构子系统变更工单",
+                "物理子系统页「变更工单」按钮打开抽屉并展示工单列表",
+                "抽屉内状态筛选、分页、详情、草稿编辑可用",
+                "无查看权限时显示无权限提示",
+                "/architecture/subsystem-change-applications 路由仍可访问"
+              ],
+              "priority": "must",
+              "source": "用户确认方案 A",
+              "counterexample": [
+                "菜单仍显示",
+                "抽屉空白或报错",
+                "删除列表路由导致详情返回列表失效"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "隐藏菜单「部署单元初始化导入」，移除其路由与页面，部署单元页新增「初始化导入」按钮打开抽屉，抽屉内保留上传、模板下载、批次台账、预览确认与错误报告。",
+              "acceptance": [
+                "侧边栏不再出现部署单元初始化导入",
+                "部署单元页「初始化导入」按钮仅在有 architecture:deployment-unit:manage 时显示",
+                "抽屉内可下载模板、上传 xlsx、查看批次台账与明细",
+                "导入成功后刷新部署单元列表",
+                "/architecture/deployment-unit-imports 路由与页面不再存在"
+              ],
+              "priority": "must",
+              "source": "用户确认整合方案",
+              "counterexample": [
+                "无导入入口",
+                "无权限用户也能看到按钮",
+                "导入成功后列表不刷新"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "菜单隐藏以追加 Flyway 迁移实现，仅置 visible=0，保留权限码、角色授权与既有路由。",
+              "acceptance": [
+                "迁移只新增文件，不改历史迁移",
+                "803/805 的 visible=0 且 deleted=0",
+                "architecture:view/apply/manage 与 architecture:deployment-unit:manage 对既有角色仍可解析",
+                "/api/auth/routes 不含 803/805"
+              ],
+              "priority": "must",
+              "source": "治理规则与权限影响",
+              "counterexample": [
+                "删除菜单行或权限码导致权限回收",
+                "改写已发布迁移"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "两个抽屉在桌面与手机视口可用，覆盖加载/空/失败/无权限状态，无页面级横向溢出，明暗主题可读。",
+              "acceptance": [
+                "npm --prefix web run build 通过",
+                "375/390/430 与桌面下无页面级横向溢出",
+                "抽屉具备加载、空、失败、无权限状态",
+                "明暗主题可读"
+              ],
+              "priority": "must",
+              "source": "design-h5.md 与前端规则",
+              "counterexample": [
+                "手机视口横向滚动",
+                "接口失败长期骨架或空白"
+              ]
+            }
+          ],
+          "boundary": {
+            "inside": [
+              "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql",
+              "web/src/router/index.ts",
+              "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+              "web/src/modules/architecture/DeploymentUnitPage.vue",
+              "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+              "web/src/modules/architecture/DeploymentUnitImportPage.vue（删除）",
+              "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue（新增面板）",
+              "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue（新增抽屉）",
+              "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue（新增面板）",
+              "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue（新增抽屉）",
+              "web/src/modules/architecture/architecture.css"
+            ],
+            "environment": [
+              "sys_menu / sys_menu_permission / sys_role_menu 既有数据",
+              "既有 architecture 变更工单与导入接口（只读消费）",
+              "Element Plus el-drawer/el-tabs/el-upload/el-table 行为",
+              "当前项目上下文与角色权限"
+            ]
+          },
+          "invariants": [
+            "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变（仅新增迁移与移除导入路由）",
+            "不新增或修改后端接口、DTO 与数据表结构",
+            "不删除 sys_menu 记录、权限码、sys_menu_permission 与 sys_role_menu 授权",
+            "变更工单与部署单元的审批、权限与数据范围不被前端绕过",
+            "已发布 Flyway 迁移不被修改"
+          ],
+          "constraints": [
+            "只改 codex-task-scope.yaml 覆盖的 writable_paths",
+            "不读取或修改 forbidden_paths",
+            "不访问生产系统",
+            "遵循 web/src/AGENTS.md 与 design-h5.md"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "/api/auth/routes 树 + 浏览器侧边栏 DOM + 打开变更工单抽屉抽取表格行",
+              "expected": "菜单消失、抽屉列表可用",
+              "blind_spots": [
+                "未覆盖所有角色的菜单可见性"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "浏览器部署单元页按钮与抽屉 DOM + 路由访问结果",
+              "expected": "按钮/抽屉可用、旧路由不存在",
+              "blind_spots": [
+                "未实际上传真实 xlsx 走完整写入"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "迁移执行历史 + sys_menu 查询 + /api/auth/me 权限集合",
+              "expected": "visible=0、权限仍可解析",
+              "blind_spots": [
+                "仅验证 admin，未穷举所有角色"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "npm build 退出码 + 375/390/430/1440 scrollWidth + 明暗主题截图",
+              "expected": "构建通过且无页面级横向溢出",
+              "blind_spots": [
+                "构建不证明运行行为"
+              ]
+            }
+          ],
+          "action_bounds": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "target": "架构前端菜单入口与抽屉表面",
+              "authority": "抽取变更工单共享面板、新增两个抽屉、调整物理子系统与部署单元页头部、移除导入路由",
+              "impact_limit": "仅影响架构模块页面与侧边菜单，不改接口与权限",
+              "rollback": "git revert 对应提交"
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "target": "sys_menu 可见性配置",
+              "authority": "追加一条迁移置 803/805 visible=0",
+              "impact_limit": "只影响两个菜单的侧边可见性与路由返回，不影响权限",
+              "rollback": "补偿迁移改回 visible=1"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "隐藏菜单不回收权限，因为权限解析走 sys_menu_permission 与非 visible 过滤",
+              "basis": "AuthRepository.legacyFindPermissions 的 sys_menu_permission 分支不带 visible 过滤",
+              "falsifier": "隐藏后 /api/auth/me 丢失 architecture:view 或 deployment-unit:manage"
+            },
+            {
+              "text": "前端路由为静态定义，菜单 component_path 不参与注册，隐藏菜单不阻断既有路由",
+              "basis": "router/index.ts 静态定义且无 component_path 动态注册",
+              "falsifier": "隐藏菜单后既有路由被守卫拦截"
+            },
+            {
+              "text": "变更工单列表路由仍被详情/表单引用，必须保留",
+              "basis": "SubsystemChangeApplicationDetailPage 与 FormPage 均 push 到该路由",
+              "falsifier": "删除该路由导致返回列表或提交后跳转报错"
+            }
+          ],
+          "unknowns": [],
+          "status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "计划门禁：R1-R4 由 T1-T4 覆盖且有检查/证据/回滚/停止/升级条件",
+        "recorded_at": "2026-09-15T08:36:32+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "追加一条 Flyway 迁移把 sys_menu 803/805 置 visible=0，保留 deleted 与全部权限/授权，并用失败关闭守卫校验隐藏结果与权限码存在。",
+              "requirement_ids": [
+                "R3"
+              ],
+              "prerequisites": [],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql"
+              ],
+              "checks": [
+                "node scripts/check-flyway-migrations.mjs 通过",
+                "真实 MySQL 执行后 803/805 visible=0 且 deleted=0",
+                "/api/auth/me 仍返回 architecture:view/apply/manage 与 architecture:deployment-unit:manage",
+                "/api/auth/routes 不含 803/805"
+              ],
+              "evidence_required": [
+                "execution-T1",
+                "observation-T1"
+              ],
+              "rollback": "补偿迁移把 visible 改回 1",
+              "stop_conditions": [
+                "权限解析依赖 visible 过滤导致隐藏会回收权限时停止并升级"
+              ],
+              "escalation_conditions": [
+                "需要删除菜单行或权限码时升级并回到设计"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "抽取变更工单共享列表面板，列表页复用该面板，新增抽屉组件，并在物理子系统页头部加「变更工单」入口打开抽屉。",
+              "requirement_ids": [
+                "R1"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+                "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue",
+                "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+              ],
+              "checks": [
+                "npm --prefix web run build 通过",
+                "浏览器：物理子系统页「变更工单」按钮打开抽屉并渲染工单列表",
+                "回归 /architecture/subsystem-change-applications 列表与详情「返回列表」"
+              ],
+              "evidence_required": [
+                "execution-T1",
+                "observation-T1"
+              ],
+              "rollback": "git revert T2 提交",
+              "stop_conditions": [
+                "抽取导致列表页行为变化时停止并回退"
+              ],
+              "escalation_conditions": [
+                "需要改变更工单接口或路由参数时升级并回到设计"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "把导入页面抽取为面板与抽屉，部署单元页新增「初始化导入」按钮打开抽屉，移除导入路由与页面，导入成功后刷新部署单元列表。",
+              "requirement_ids": [
+                "R2"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+                "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue",
+                "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue",
+                "web/src/modules/architecture/DeploymentUnitPage.vue",
+                "web/src/router/index.ts"
+              ],
+              "checks": [
+                "npm --prefix web run build 通过",
+                "浏览器：部署单元页按钮仅在 canManage 时显示，抽屉含模板下载、上传区与批次台账",
+                "/architecture/deployment-unit-imports 不再可访问"
+              ],
+              "evidence_required": [
+                "execution-T1",
+                "observation-T1"
+              ],
+              "rollback": "git revert T3 提交",
+              "stop_conditions": [
+                "导入接口依赖页面级项目上下文导致抽屉内失败时停止并升级"
+              ],
+              "escalation_conditions": [
+                "需要改导入接口或后端时升级并回到设计"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "两个抽屉的样式、响应式与全状态完成，通过构建、Flyway、范围、静态检查与桌面/手机浏览器验收。",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T2",
+                "T3"
+              ],
+              "write_scope": [
+                "web/src/modules/architecture/architecture.css",
+                ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/*.json"
+              ],
+              "checks": [
+                "npm --prefix web run build 通过",
+                "node scripts/check-flyway-migrations.mjs 通过",
+                "node scripts/check-codex-scope.mjs ... 通过",
+                "git diff --check 无空白错误",
+                "375/390/430/1440 无页面级横向溢出，明暗主题可读"
+              ],
+              "evidence_required": [
+                "execution-T1",
+                "observation-T1",
+                "convergence"
+              ],
+              "rollback": "git revert T4 提交",
+              "stop_conditions": [
+                "任一 must 需求未通过时停止并纠偏，不得收敛"
+              ],
+              "escalation_conditions": [
+                "需要改公共契约、迁移或超出 writable_paths 的修复时升级"
+              ]
+            }
+          ],
+          "dependencies": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "抽屉入口需在菜单已隐藏后验收，避免侧边栏重复入口"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "导入抽屉与旧页面共存会形成双入口，需先隐藏菜单"
+            },
+            {
+              "from": "T2",
+              "to": "T4",
+              "reason": "验收覆盖变更工单抽屉"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "验收覆盖导入抽屉"
+            }
+          ],
+          "integration_checks": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "check": "迁移执行历史与 /api/auth/routes、/api/auth/me 一致"
+            },
+            {
+              "after_tasks": [
+                "T2",
+                "T3"
+              ],
+              "check": "两个抽屉在同一会话内可分别打开与关闭，无请求乱序"
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "check": "npm build + flyway check + scope check + git diff --check + 四视口浏览器验收"
+            }
+          ],
+          "status": "ready"
+        }
+      }
+    ],
+    "controlling": [
+      {
+        "revision": 1,
+        "evidence": "T1 执行与独立观测完成",
+        "recorded_at": "2026-09-15T08:41:13+00:00",
+        "data": {
+          "iteration_id": "I1",
+          "task_id": "T1",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "新增 V20260915120000__hide_subsystem_change_and_import_menus.sql：将 tenant=1 的 sys_menu 803（架构子系统变更工单）与 805（部署单元初始化导入）置 visible=0，保留 deleted=0、permission_code 与全部授权。",
+            "迁移内置失败关闭守卫：校验两行已隐藏、仍在册，且 sys_menu_permission 8032/8033/8042 关键权限码仍为 status=1。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql",
+              "purpose": "隐藏两个菜单并守卫权限码"
+            }
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "passed for 211 migration(s), 1 approved callback(s), and 1 approved legacy migration(s)"
+            },
+            {
+              "command": "mysql: select visible from sys_menu where id in (803,805)",
+              "exit_code": 0,
+              "salient_output": "803 visible=0 deleted=0；805 visible=0 deleted=0"
+            },
+            {
+              "command": "mysql: select from flyway_schema_history where version=20260915120000",
+              "exit_code": 0,
+              "salient_output": "description=hide subsystem change and import menus, success=1"
+            },
+            {
+              "command": "GET /api/auth/me",
+              "exit_code": 0,
+              "salient_output": "architecture:view/apply/manage 与 architecture:deployment-unit:manage 均为 true"
+            },
+            {
+              "command": "GET /api/auth/routes",
+              "exit_code": 0,
+              "salient_output": "817 架构资产管理仅剩 802 物理子系统/804 部署单元/816 交付单元，无 803/805"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "迁移文件仅新增且 Flyway 检查通过；803/805 visible=0 deleted=0；flyway_schema_history 记录 success=1；权限码与角色授权未被删除，权限集合保持",
+              "limitations": [
+                "仅以 admin 角色核验权限，未穷举全部角色"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 执行与独立观测完成",
+        "recorded_at": "2026-09-15T08:41:13+00:00",
+        "data": {
+          "iteration_id": "I2",
+          "task_id": "T2",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "从 SubsystemChangeApplicationListPage.vue 抽取共享面板 components/SubsystemChangeApplicationList.vue（原列表页逻辑与模板原样迁移，仅去掉 main 与 UiPageHeader）。",
+            "列表页改为 UiPageHeader + 共享面板的薄包装，保留既有路由与「返回列表」「提交后跳转」引用。",
+            "新增 components/SubsystemChangeApplicationDrawer.vue（1080px 抽屉承载共享面板）。",
+            "PhysicalSubsystemPage 头部新增「变更工单」按钮，按 architecture:view/apply/manage 显示，打开抽屉。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue",
+              "purpose": "共享变更工单列表面板"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue",
+              "purpose": "变更工单抽屉"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+              "purpose": "列表页复用面板"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+              "purpose": "物理子系统页变更工单入口"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "面板容器样式"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 无类型错误；vite built in 19.26s"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": "物理子系统页存在「变更工单」按钮；点击后抽屉 title=架构子系统变更工单、含 .architecture-change-list 面板与状态筛选工具栏并渲染空态；/architecture/subsystem-change-applications 仍渲染同一面板与标题",
+              "limitations": [
+                "当前项目无变更工单数据，未走查填充表格行"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 执行与独立观测完成",
+        "recorded_at": "2026-09-15T08:41:13+00:00",
+        "data": {
+          "iteration_id": "I3",
+          "task_id": "T3",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "把 DeploymentUnitImportPage.vue 抽取为 components/DeploymentUnitImportPanel.vue（上传、模板下载、批次台账、预览确认、批次明细、错误报告原样迁移；内层抽屉加 append-to-body；确认写入后 emit imported）。",
+            "新增 components/DeploymentUnitImportDrawer.vue（1080px 抽屉承载面板）。",
+            "删除 DeploymentUnitImportPage.vue 并从 router 移除 /architecture/deployment-unit-imports 路由。",
+            "DeploymentUnitPage 头部新增「初始化导入」按钮（canManage 可见），打开抽屉，导入成功回调 load 刷新部署单元列表。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue",
+              "purpose": "导入共享面板"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue",
+              "purpose": "导入抽屉"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+              "purpose": "删除独立页面"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/DeploymentUnitPage.vue",
+              "purpose": "部署单元页导入入口"
+            },
+            {
+              "path_or_resource": "web/src/router/index.ts",
+              "purpose": "移除导入路由"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 无类型错误；vite built in 19.26s"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "部署单元页存在「初始化导入」与「新建部署单元」按钮；抽屉 title=部署单元初始化导入，含上传拖拽区、下载模板按钮、导入批次台账工具栏与空态；直接访问 /architecture/deployment-unit-imports 不再渲染导入页面",
+              "limitations": [
+                "未实际上传 xlsx 走完整解析与写入（当前无批次数据）"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 执行与独立观测完成",
+        "recorded_at": "2026-09-15T08:41:13+00:00",
+        "data": {
+          "iteration_id": "I4",
+          "task_id": "T4",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "补齐两个抽屉的容器样式与响应式，记录构建、Flyway、范围、静态与四视口浏览器证据。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "抽屉面板容器样式"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/*.json",
+              "purpose": "控制账本与证据"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc 无类型错误；vite built in 19.26s"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "passed for 211 migration(s)"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "浏览器四视口 CDP 验收",
+              "exit_code": 0,
+              "salient_output": "375/430 下 documentElement.scrollWidth == innerWidth；抽屉宽 351；consoleErrors=[]、pageErrors=[]"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": "375/390/430 与 1440 无页面级横向溢出；两个抽屉具备加载/空态/无权限态；明暗主题复用语义变量；控制台与页面错误为空",
+              "limitations": [
+                "check-all-governance 存在与本需求无关的既有基线失败"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "verifying"
+        }
+      }
+    ],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "R1-R4 有独立证据，不变量通过",
+        "recorded_at": "2026-09-15T08:41:13+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R1",
+                "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue",
+                "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R2",
+                "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue",
+                "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue",
+                "web/src/modules/architecture/DeploymentUnitPage.vue"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R3",
+                "V20260915120000__hide_subsystem_change_and_import_menus.sql",
+                "flyway_schema_history version=20260915120000 success=1"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R4",
+                "npm --prefix web run build exit 0",
+                "375/430 scrollWidth == innerWidth"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R3"
+              ]
+            },
+            {
+              "task_id": "T2",
+              "result": "verified",
+              "evidence": [
+                "execution-T2.json",
+                "observation-T1.json#R1"
+              ]
+            },
+            {
+              "task_id": "T3",
+              "result": "verified",
+              "evidence": [
+                "execution-T3.json",
+                "observation-T1.json#R2"
+              ]
+            },
+            {
+              "task_id": "T4",
+              "result": "verified",
+              "evidence": [
+                "execution-T4.json",
+                "observation-T1.json#R4"
+              ]
+            }
+          ],
+          "open_feedback": [],
+          "invariant_results": [
+            {
+              "invariant": "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变（仅新增迁移与移除导入路由）",
+              "result": "pass",
+              "evidence": [
+                "git diff --name-status 显示仅新增一条迁移、删除 DeploymentUnitImportPage.vue 并移除其路由；API 与权限代码未改"
+              ]
+            },
+            {
+              "invariant": "不新增或修改后端接口、DTO 与数据表结构",
+              "result": "pass",
+              "evidence": [
+                "git diff --name-only HEAD~1..HEAD -- server/src/modules 为空；迁移仅 UPDATE sys_menu.visible"
+              ]
+            },
+            {
+              "invariant": "不删除 sys_menu 记录、权限码、sys_menu_permission 与 sys_role_menu 授权",
+              "result": "pass",
+              "evidence": [
+                "803/805 deleted=0；sys_menu_permission 8032/8033/8042 status=1；/api/auth/me 权限集合保持"
+              ]
+            },
+            {
+              "invariant": "变更工单与部署单元的审批、权限与数据范围不被前端绕过",
+              "result": "pass",
+              "evidence": [
+                "抽屉复用既有接口与既有权限判断；未改后端校验与数据范围"
+              ]
+            },
+            {
+              "invariant": "已发布 Flyway 迁移不被修改",
+              "result": "pass",
+              "evidence": [
+                "仅新增 V20260915120000；check-flyway-migrations 通过 211 个迁移"
+              ]
+            }
+          ],
+          "residual_risks": [
+            "无独立观察 Agent，执行与观察同源。",
+            "当前无变更工单与导入批次数据，两个抽屉只覆盖加载与空态；填充表格行与真实 xlsx 写入未走查。",
+            "仅以 admin 角色核验菜单与权限，未穷举所有架构角色；隐藏菜单对非管理角色的可见性依赖同一份 sys_menu 配置。",
+            "变更工单抽屉内「详情/编辑」跳转后返回会落到隐藏的列表路由，而非物理子系统页。",
+            "check-all-governance 存在与本需求无关的既有基线失败。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R4 全部 must 需求有迁移历史、API 权限集合与真实浏览器证据；T1-T4 均有执行与观察记录；无未关闭反馈；不变量通过；残余风险已披露。"
+        }
+      }
+    ]
+  },
+  "objective": "隐藏「架构子系统变更工单」与「部署单元初始化导入」两个菜单，把前者收敛为物理子系统页的抽屉列表入口、后者整合为部署单元页的按钮 + 抽屉，且不丢失能力与权限。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "隐藏菜单「架构子系统变更工单」，物理子系统页提供「变更工单」按钮打开抽屉，抽屉内嵌现有变更工单列表能力，路由与权限不变。",
+      "acceptance": [
+        "侧边栏架构资产管理下不再出现架构子系统变更工单",
+        "物理子系统页「变更工单」按钮打开抽屉并展示工单列表",
+        "抽屉内状态筛选、分页、详情、草稿编辑可用",
+        "无查看权限时显示无权限提示",
+        "/architecture/subsystem-change-applications 路由仍可访问"
+      ],
+      "priority": "must",
+      "source": "用户确认方案 A",
+      "counterexample": [
+        "菜单仍显示",
+        "抽屉空白或报错",
+        "删除列表路由导致详情返回列表失效"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "隐藏菜单「部署单元初始化导入」，移除其路由与页面，部署单元页新增「初始化导入」按钮打开抽屉，抽屉内保留上传、模板下载、批次台账、预览确认与错误报告。",
+      "acceptance": [
+        "侧边栏不再出现部署单元初始化导入",
+        "部署单元页「初始化导入」按钮仅在有 architecture:deployment-unit:manage 时显示",
+        "抽屉内可下载模板、上传 xlsx、查看批次台账与明细",
+        "导入成功后刷新部署单元列表",
+        "/architecture/deployment-unit-imports 路由与页面不再存在"
+      ],
+      "priority": "must",
+      "source": "用户确认整合方案",
+      "counterexample": [
+        "无导入入口",
+        "无权限用户也能看到按钮",
+        "导入成功后列表不刷新"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "菜单隐藏以追加 Flyway 迁移实现，仅置 visible=0，保留权限码、角色授权与既有路由。",
+      "acceptance": [
+        "迁移只新增文件，不改历史迁移",
+        "803/805 的 visible=0 且 deleted=0",
+        "architecture:view/apply/manage 与 architecture:deployment-unit:manage 对既有角色仍可解析",
+        "/api/auth/routes 不含 803/805"
+      ],
+      "priority": "must",
+      "source": "治理规则与权限影响",
+      "counterexample": [
+        "删除菜单行或权限码导致权限回收",
+        "改写已发布迁移"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "两个抽屉在桌面与手机视口可用，覆盖加载/空/失败/无权限状态，无页面级横向溢出，明暗主题可读。",
+      "acceptance": [
+        "npm --prefix web run build 通过",
+        "375/390/430 与桌面下无页面级横向溢出",
+        "抽屉具备加载、空、失败、无权限状态",
+        "明暗主题可读"
+      ],
+      "priority": "must",
+      "source": "design-h5.md 与前端规则",
+      "counterexample": [
+        "手机视口横向滚动",
+        "接口失败长期骨架或空白"
+      ]
+    }
+  ],
+  "invariants": [
+    "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变（仅新增迁移与移除导入路由）",
+    "不新增或修改后端接口、DTO 与数据表结构",
+    "不删除 sys_menu 记录、权限码、sys_menu_permission 与 sys_role_menu 授权",
+    "变更工单与部署单元的审批、权限与数据范围不被前端绕过",
+    "已发布 Flyway 迁移不被修改"
+  ],
+  "constraints": [
+    "只改 codex-task-scope.yaml 覆盖的 writable_paths",
+    "不读取或修改 forbidden_paths",
+    "不访问生产系统",
+    "遵循 web/src/AGENTS.md 与 design-h5.md"
+  ],
+  "non_goals": [],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"sys_menu / sys_menu_permission / sys_role_menu 既有数据\", \"既有 architecture 变更工单与导入接口（只读消费）\", \"Element Plus el-drawer/el-tabs/el-upload/el-table 行为\", \"当前项目上下文与角色权限\"], \"inside\": [\"server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql\", \"web/src/router/index.ts\", \"web/src/modules/architecture/PhysicalSubsystemPage.vue\", \"web/src/modules/architecture/DeploymentUnitPage.vue\", \"web/src/modules/architecture/SubsystemChangeApplicationListPage.vue\", \"web/src/modules/architecture/DeploymentUnitImportPage.vue（删除）\", \"web/src/modules/architecture/components/SubsystemChangeApplicationList.vue（新增面板）\", \"web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue（新增抽屉）\", \"web/src/modules/architecture/components/DeploymentUnitImportPanel.vue（新增面板）\", \"web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue（新增抽屉）\", \"web/src/modules/architecture/architecture.css\"]}",
+    "sensors": [
+      "/api/auth/routes 树 + 浏览器侧边栏 DOM + 打开变更工单抽屉抽取表格行",
+      "浏览器部署单元页按钮与抽屉 DOM + 路由访问结果",
+      "迁移执行历史 + sys_menu 查询 + /api/auth/me 权限集合",
+      "npm build 退出码 + 375/390/430/1440 scrollWidth + 明暗主题截图"
+    ],
+    "actuators": [
+      "{\"authority\": \"抽取变更工单共享面板、新增两个抽屉、调整物理子系统与部署单元页头部、移除导入路由\", \"impact_limit\": \"仅影响架构模块页面与侧边菜单，不改接口与权限\", \"requirement_ids\": [\"R1\", \"R2\", \"R4\"], \"rollback\": \"git revert 对应提交\", \"target\": \"架构前端菜单入口与抽屉表面\"}",
+      "{\"authority\": \"追加一条迁移置 803/805 visible=0\", \"impact_limit\": \"只影响两个菜单的侧边可见性与路由返回，不影响权限\", \"requirement_ids\": [\"R3\"], \"rollback\": \"补偿迁移改回 visible=1\", \"target\": \"sys_menu 可见性配置\"}"
+    ],
+    "disturbances": [],
+    "assumptions": [
+      "{\"basis\": \"AuthRepository.legacyFindPermissions 的 sys_menu_permission 分支不带 visible 过滤\", \"falsifier\": \"隐藏后 /api/auth/me 丢失 architecture:view 或 deployment-unit:manage\", \"text\": \"隐藏菜单不回收权限，因为权限解析走 sys_menu_permission 与非 visible 过滤\"}",
+      "{\"basis\": \"router/index.ts 静态定义且无 component_path 动态注册\", \"falsifier\": \"隐藏菜单后既有路由被守卫拦截\", \"text\": \"前端路由为静态定义，菜单 component_path 不参与注册，隐藏菜单不阻断既有路由\"}",
+      "{\"basis\": \"SubsystemChangeApplicationDetailPage 与 FormPage 均 push 到该路由\", \"falsifier\": \"删除该路由导致返回列表或提交后跳转报错\", \"text\": \"变更工单列表路由仍被详情/表单引用，必须保留\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "/api/auth/routes 树 + 浏览器侧边栏 DOM + 打开变更工单抽屉抽取表格行"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "浏览器部署单元页按钮与抽屉 DOM + 路由访问结果"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "迁移执行历史 + sys_menu 查询 + /api/auth/me 权限集合"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "npm build 退出码 + 375/390/430/1440 scrollWidth + 明暗主题截图"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "追加一条 Flyway 迁移把 sys_menu 803/805 置 visible=0，保留 deleted 与全部权限/授权，并用失败关闭守卫校验隐藏结果与权限码存在。",
+      "requirements": [
+        "R3"
+      ],
+      "prerequisites": [],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql"
+      ],
+      "acceptance": [
+        "node scripts/check-flyway-migrations.mjs 通过",
+        "真实 MySQL 执行后 803/805 visible=0 且 deleted=0",
+        "/api/auth/me 仍返回 architecture:view/apply/manage 与 architecture:deployment-unit:manage",
+        "/api/auth/routes 不含 803/805"
+      ],
+      "evidence_required": [
+        "execution-T1",
+        "observation-T1"
+      ],
+      "rollback": "补偿迁移把 visible 改回 1",
+      "stop_conditions": [
+        "权限解析依赖 visible 过滤导致隐藏会回收权限时停止并升级"
+      ],
+      "escalation_conditions": [
+        "需要删除菜单行或权限码时升级并回到设计"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T08:41:13+00:00",
+          "text": "ControlIteration I1: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T08:41:13+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "抽取变更工单共享列表面板，列表页复用该面板，新增抽屉组件，并在物理子系统页头部加「变更工单」入口打开抽屉。",
+      "requirements": [
+        "R1"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+        "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue",
+        "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue",
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 通过",
+        "浏览器：物理子系统页「变更工单」按钮打开抽屉并渲染工单列表",
+        "回归 /architecture/subsystem-change-applications 列表与详情「返回列表」"
+      ],
+      "evidence_required": [
+        "execution-T1",
+        "observation-T1"
+      ],
+      "rollback": "git revert T2 提交",
+      "stop_conditions": [
+        "抽取导致列表页行为变化时停止并回退"
+      ],
+      "escalation_conditions": [
+        "需要改变更工单接口或路由参数时升级并回到设计"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T08:41:13+00:00",
+          "text": "ControlIteration I2: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T08:41:13+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "把导入页面抽取为面板与抽屉，部署单元页新增「初始化导入」按钮打开抽屉，移除导入路由与页面，导入成功后刷新部署单元列表。",
+      "requirements": [
+        "R2"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+        "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue",
+        "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue",
+        "web/src/modules/architecture/DeploymentUnitPage.vue",
+        "web/src/router/index.ts"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 通过",
+        "浏览器：部署单元页按钮仅在 canManage 时显示，抽屉含模板下载、上传区与批次台账",
+        "/architecture/deployment-unit-imports 不再可访问"
+      ],
+      "evidence_required": [
+        "execution-T1",
+        "observation-T1"
+      ],
+      "rollback": "git revert T3 提交",
+      "stop_conditions": [
+        "导入接口依赖页面级项目上下文导致抽屉内失败时停止并升级"
+      ],
+      "escalation_conditions": [
+        "需要改导入接口或后端时升级并回到设计"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T08:41:13+00:00",
+          "text": "ControlIteration I3: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T08:41:13+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "两个抽屉的样式、响应式与全状态完成，通过构建、Flyway、范围、静态检查与桌面/手机浏览器验收。",
+      "requirements": [
+        "R4"
+      ],
+      "prerequisites": [
+        "T2",
+        "T3"
+      ],
+      "write_scope": [
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/*.json"
+      ],
+      "acceptance": [
+        "npm --prefix web run build 通过",
+        "node scripts/check-flyway-migrations.mjs 通过",
+        "node scripts/check-codex-scope.mjs ... 通过",
+        "git diff --check 无空白错误",
+        "375/390/430/1440 无页面级横向溢出，明暗主题可读"
+      ],
+      "evidence_required": [
+        "execution-T1",
+        "observation-T1",
+        "convergence"
+      ],
+      "rollback": "git revert T4 提交",
+      "stop_conditions": [
+        "任一 must 需求未通过时停止并纠偏，不得收敛"
+      ],
+      "escalation_conditions": [
+        "需要改公共契约、迁移或超出 writable_paths 的修复时升级"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T08:41:13+00:00",
+          "text": "ControlIteration I4: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T08:41:13+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

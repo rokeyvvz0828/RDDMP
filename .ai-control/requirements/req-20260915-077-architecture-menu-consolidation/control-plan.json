@@ -1,0 +1,100 @@
+{
+  "definition_revision": "definition-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "追加一条 Flyway 迁移把 sys_menu 803/805 置 visible=0，保留 deleted 与全部权限/授权，并用失败关闭守卫校验隐藏结果与权限码存在。",
+      "requirement_ids": ["R3"],
+      "prerequisites": [],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql"
+      ],
+      "checks": [
+        "node scripts/check-flyway-migrations.mjs 通过",
+        "真实 MySQL 执行后 803/805 visible=0 且 deleted=0",
+        "/api/auth/me 仍返回 architecture:view/apply/manage 与 architecture:deployment-unit:manage",
+        "/api/auth/routes 不含 803/805"
+      ],
+      "evidence_required": ["execution-T1", "observation-T1"],
+      "rollback": "补偿迁移把 visible 改回 1",
+      "stop_conditions": ["权限解析依赖 visible 过滤导致隐藏会回收权限时停止并升级"],
+      "escalation_conditions": ["需要删除菜单行或权限码时升级并回到设计"]
+    },
+    {
+      "id": "T2",
+      "goal": "抽取变更工单共享列表面板，列表页复用该面板，新增抽屉组件，并在物理子系统页头部加「变更工单」入口打开抽屉。",
+      "requirement_ids": ["R1"],
+      "prerequisites": ["T1"],
+      "write_scope": [
+        "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+        "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue",
+        "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue",
+        "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "浏览器：物理子系统页「变更工单」按钮打开抽屉并渲染工单列表",
+        "回归 /architecture/subsystem-change-applications 列表与详情「返回列表」"
+      ],
+      "evidence_required": ["execution-T1", "observation-T1"],
+      "rollback": "git revert T2 提交",
+      "stop_conditions": ["抽取导致列表页行为变化时停止并回退"],
+      "escalation_conditions": ["需要改变更工单接口或路由参数时升级并回到设计"]
+    },
+    {
+      "id": "T3",
+      "goal": "把导入页面抽取为面板与抽屉，部署单元页新增「初始化导入」按钮打开抽屉，移除导入路由与页面，导入成功后刷新部署单元列表。",
+      "requirement_ids": ["R2"],
+      "prerequisites": ["T1"],
+      "write_scope": [
+        "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+        "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue",
+        "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue",
+        "web/src/modules/architecture/DeploymentUnitPage.vue",
+        "web/src/router/index.ts"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "浏览器：部署单元页按钮仅在 canManage 时显示，抽屉含模板下载、上传区与批次台账",
+        "/architecture/deployment-unit-imports 不再可访问"
+      ],
+      "evidence_required": ["execution-T1", "observation-T1"],
+      "rollback": "git revert T3 提交",
+      "stop_conditions": ["导入接口依赖页面级项目上下文导致抽屉内失败时停止并升级"],
+      "escalation_conditions": ["需要改导入接口或后端时升级并回到设计"]
+    },
+    {
+      "id": "T4",
+      "goal": "两个抽屉的样式、响应式与全状态完成，通过构建、Flyway、范围、静态检查与桌面/手机浏览器验收。",
+      "requirement_ids": ["R4"],
+      "prerequisites": ["T2", "T3"],
+      "write_scope": [
+        "web/src/modules/architecture/architecture.css",
+        ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/*.json"
+      ],
+      "checks": [
+        "npm --prefix web run build 通过",
+        "node scripts/check-flyway-migrations.mjs 通过",
+        "node scripts/check-codex-scope.mjs ... 通过",
+        "git diff --check 无空白错误",
+        "375/390/430/1440 无页面级横向溢出，明暗主题可读"
+      ],
+      "evidence_required": ["execution-T1", "observation-T1", "convergence"],
+      "rollback": "git revert T4 提交",
+      "stop_conditions": ["任一 must 需求未通过时停止并纠偏，不得收敛"],
+      "escalation_conditions": ["需要改公共契约、迁移或超出 writable_paths 的修复时升级"]
+    }
+  ],
+  "dependencies": [
+    {"from": "T1", "to": "T2", "reason": "抽屉入口需在菜单已隐藏后验收，避免侧边栏重复入口"},
+    {"from": "T1", "to": "T3", "reason": "导入抽屉与旧页面共存会形成双入口，需先隐藏菜单"},
+    {"from": "T2", "to": "T4", "reason": "验收覆盖变更工单抽屉"},
+    {"from": "T3", "to": "T4", "reason": "验收覆盖导入抽屉"}
+  ],
+  "integration_checks": [
+    {"after_tasks": ["T1"], "check": "迁移执行历史与 /api/auth/routes、/api/auth/me 一致"},
+    {"after_tasks": ["T2", "T3"], "check": "两个抽屉在同一会话内可分别打开与关闭，无请求乱序"},
+    {"after_tasks": ["T4"], "check": "npm build + flyway check + scope check + git diff --check + 四视口浏览器验收"}
+  ],
+  "status": "ready"
+}

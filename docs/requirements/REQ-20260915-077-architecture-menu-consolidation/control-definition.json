@@ -1,0 +1,84 @@
+{
+  "definition_revision": "definition-1",
+  "objective": "隐藏「架构子系统变更工单」与「部署单元初始化导入」两个菜单，把前者收敛为物理子系统页的抽屉列表入口、后者整合为部署单元页的按钮 + 抽屉，且不丢失能力与权限。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "隐藏菜单「架构子系统变更工单」，物理子系统页提供「变更工单」按钮打开抽屉，抽屉内嵌现有变更工单列表能力，路由与权限不变。",
+      "acceptance": ["侧边栏架构资产管理下不再出现架构子系统变更工单", "物理子系统页「变更工单」按钮打开抽屉并展示工单列表", "抽屉内状态筛选、分页、详情、草稿编辑可用", "无查看权限时显示无权限提示", "/architecture/subsystem-change-applications 路由仍可访问"],
+      "priority": "must",
+      "source": "用户确认方案 A",
+      "counterexample": ["菜单仍显示", "抽屉空白或报错", "删除列表路由导致详情返回列表失效"]
+    },
+    {
+      "id": "R2",
+      "statement": "隐藏菜单「部署单元初始化导入」，移除其路由与页面，部署单元页新增「初始化导入」按钮打开抽屉，抽屉内保留上传、模板下载、批次台账、预览确认与错误报告。",
+      "acceptance": ["侧边栏不再出现部署单元初始化导入", "部署单元页「初始化导入」按钮仅在有 architecture:deployment-unit:manage 时显示", "抽屉内可下载模板、上传 xlsx、查看批次台账与明细", "导入成功后刷新部署单元列表", "/architecture/deployment-unit-imports 路由与页面不再存在"],
+      "priority": "must",
+      "source": "用户确认整合方案",
+      "counterexample": ["无导入入口", "无权限用户也能看到按钮", "导入成功后列表不刷新"]
+    },
+    {
+      "id": "R3",
+      "statement": "菜单隐藏以追加 Flyway 迁移实现，仅置 visible=0，保留权限码、角色授权与既有路由。",
+      "acceptance": ["迁移只新增文件，不改历史迁移", "803/805 的 visible=0 且 deleted=0", "architecture:view/apply/manage 与 architecture:deployment-unit:manage 对既有角色仍可解析", "/api/auth/routes 不含 803/805"],
+      "priority": "must",
+      "source": "治理规则与权限影响",
+      "counterexample": ["删除菜单行或权限码导致权限回收", "改写已发布迁移"]
+    },
+    {
+      "id": "R4",
+      "statement": "两个抽屉在桌面与手机视口可用，覆盖加载/空/失败/无权限状态，无页面级横向溢出，明暗主题可读。",
+      "acceptance": ["npm --prefix web run build 通过", "375/390/430 与桌面下无页面级横向溢出", "抽屉具备加载、空、失败、无权限状态", "明暗主题可读"],
+      "priority": "must",
+      "source": "design-h5.md 与前端规则",
+      "counterexample": ["手机视口横向滚动", "接口失败长期骨架或空白"]
+    }
+  ],
+  "boundary": {
+    "inside": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql",
+      "web/src/router/index.ts",
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "web/src/modules/architecture/DeploymentUnitPage.vue",
+      "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+      "web/src/modules/architecture/DeploymentUnitImportPage.vue（删除）",
+      "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue（新增面板）",
+      "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue（新增抽屉）",
+      "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue（新增面板）",
+      "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue（新增抽屉）",
+      "web/src/modules/architecture/architecture.css"
+    ],
+    "environment": [
+      "sys_menu / sys_menu_permission / sys_role_menu 既有数据",
+      "既有 architecture 变更工单与导入接口（只读消费）",
+      "Element Plus el-drawer/el-tabs/el-upload/el-table 行为",
+      "当前项目上下文与角色权限"
+    ]
+  },
+  "invariants": [
+    "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变（仅新增迁移与移除导入路由）",
+    "不新增或修改后端接口、DTO 与数据表结构",
+    "不删除 sys_menu 记录、权限码、sys_menu_permission 与 sys_role_menu 授权",
+    "变更工单与部署单元的审批、权限与数据范围不被前端绕过",
+    "已发布 Flyway 迁移不被修改"
+  ],
+  "constraints": ["只改 codex-task-scope.yaml 覆盖的 writable_paths", "不读取或修改 forbidden_paths", "不访问生产系统", "遵循 web/src/AGENTS.md 与 design-h5.md"],
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "/api/auth/routes 树 + 浏览器侧边栏 DOM + 打开变更工单抽屉抽取表格行", "expected": "菜单消失、抽屉列表可用", "blind_spots": ["未覆盖所有角色的菜单可见性"]},
+    {"requirement_id": "R2", "sensor": "浏览器部署单元页按钮与抽屉 DOM + 路由访问结果", "expected": "按钮/抽屉可用、旧路由不存在", "blind_spots": ["未实际上传真实 xlsx 走完整写入"]},
+    {"requirement_id": "R3", "sensor": "迁移执行历史 + sys_menu 查询 + /api/auth/me 权限集合", "expected": "visible=0、权限仍可解析", "blind_spots": ["仅验证 admin，未穷举所有角色"]},
+    {"requirement_id": "R4", "sensor": "npm build 退出码 + 375/390/430/1440 scrollWidth + 明暗主题截图", "expected": "构建通过且无页面级横向溢出", "blind_spots": ["构建不证明运行行为"]}
+  ],
+  "action_bounds": [
+    {"requirement_ids": ["R1", "R2", "R4"], "target": "架构前端菜单入口与抽屉表面", "authority": "抽取变更工单共享面板、新增两个抽屉、调整物理子系统与部署单元页头部、移除导入路由", "impact_limit": "仅影响架构模块页面与侧边菜单，不改接口与权限", "rollback": "git revert 对应提交"},
+    {"requirement_ids": ["R3"], "target": "sys_menu 可见性配置", "authority": "追加一条迁移置 803/805 visible=0", "impact_limit": "只影响两个菜单的侧边可见性与路由返回，不影响权限", "rollback": "补偿迁移改回 visible=1"}
+  ],
+  "assumptions": [
+    {"text": "隐藏菜单不回收权限，因为权限解析走 sys_menu_permission 与非 visible 过滤", "basis": "AuthRepository.legacyFindPermissions 的 sys_menu_permission 分支不带 visible 过滤", "falsifier": "隐藏后 /api/auth/me 丢失 architecture:view 或 deployment-unit:manage"},
+    {"text": "前端路由为静态定义，菜单 component_path 不参与注册，隐藏菜单不阻断既有路由", "basis": "router/index.ts 静态定义且无 component_path 动态注册", "falsifier": "隐藏菜单后既有路由被守卫拦截"},
+    {"text": "变更工单列表路由仍被详情/表单引用，必须保留", "basis": "SubsystemChangeApplicationDetailPage 与 FormPage 均 push 到该路由", "falsifier": "删除该路由导致返回列表或提交后跳转报错"}
+  ],
+  "unknowns": [],
+  "status": "ready"
+}

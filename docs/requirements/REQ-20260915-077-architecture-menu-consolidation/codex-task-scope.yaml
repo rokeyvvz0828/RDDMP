@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260915-077", "status": "ready", "document": "docs/requirements/REQ-20260915-077-architecture-menu-consolidation/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "ivanh", "module": "business/architecture", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260915-077-architecture-menu-consolidation", "worktree": "/home/ivanh/source/RDDMP"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql",
+      "web/src/router/index.ts",
+      "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+      "web/src/modules/architecture/DeploymentUnitPage.vue",
+      "web/src/modules/architecture/SubsystemChangeApplicationListPage.vue",
+      "web/src/modules/architecture/DeploymentUnitImportPage.vue",
+      "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue",
+      "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue",
+      "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue",
+      "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue",
+      "web/src/modules/architecture/architecture.css",
+      "docs/requirements/REQ-20260915-077-architecture-menu-consolidation/**",
+      ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/*.json"
+    ],
+    "read_only_paths": [
+      "web/src/modules/architecture/api.ts",
+      "web/src/modules/architecture/types.ts",
+      "web/src/modules/architecture/utils.ts",
+      "web/src/components/ui/**",
+      "web/src/modules/delivery-showcase/**",
+      "governance/modules.yaml",
+      "**/target/**"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/node_modules/**", "**/target/**"]
+  },
+  "public_capability_change": {
+    "required": false,
+    "issue": "REQ-20260915-077",
+    "owner_approved": false,
+    "owner_approval_evidence": "未修改 components/ui 或跨模块公共契约；仅新增 architecture 模块内组件、调整 architecture 路由并追加一条隐藏菜单的 Flyway 迁移。菜单可见性影响所有架构角色，需模块 Owner 复核，但机制为 visible=0 且不动权限与授权。",
+    "old_behavior_preserved": true,
+    "regression_tests": ["npm --prefix web run build", "浏览器回归物理子系统、部署单元、交付单元页面与既有变更工单详情/表单路由"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql"],
+    "compatibility_and_rollback": "Append-only；仅将租户 1 的 sys_menu 803/805 置 visible=0，保留 deleted、权限码、sys_menu_permission 与 sys_role_menu。回退方式为补偿迁移把 visible 改回 1，并回退前端提交；无数据补偿。"
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "api", "command": "git diff --name-only HEAD~1...HEAD -- server/src/modules 与 web/src/modules/architecture/api.ts 为空；抽屉仅调用既有 listSubsystemChangeApplications 与 deployment-unit-imports 接口", "expected": "无后端接口与 DTO 变更"},
+    {"name": "permission", "command": "迁移后在真实库执行 /api/auth/routes 与 /api/auth/me：routes 不含 803/805，permissions 仍含 architecture:view/apply/manage 与 architecture:deployment-unit:manage", "expected": "菜单隐藏但权限不回收"},
+    {"name": "migration-check", "command": "node scripts/check-flyway-migrations.mjs", "expected": "pass"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "pass，0 个类型错误"},
+    {"name": "scope-check", "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260915-077-architecture-menu-consolidation/codex-task-scope.yaml --base dev-ivanh --head HEAD", "expected": "pass"},
+    {"name": "static-check", "command": "git diff --check", "expected": "pass"},
+    {"name": "browser", "command": "browser acceptance on architecture menu tree, physical subsystem change-application drawer and deployment-unit import drawer (desktop 1440 + mobile 375/390/430)", "expected": "两个菜单消失、两个抽屉可用、无横向溢出、无控制台错误"}
+  ],
+  "risk": {
+    "level": "important",
+    "items": [
+      "菜单可见性影响所有架构角色；仅置 visible=0，须复核权限未被回收。",
+      "变更工单列表由页面抽取为共享面板，须回归既有列表路由、详情「返回列表」与表单提交后跳转。",
+      "部署单元初始化导入由页面改为抽屉并删除路由，须确认无其他引用与深链。",
+      "数据库迁移只追加，回退需补偿迁移改回 visible=1。"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260915-077-architecture-menu-consolidation",
+    "control_justification": null,
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/control-plan.json",
+      ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/execution-T1.json",
+      ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/observation-T1.json",
+      ".ai-control/requirements/req-20260915-077-architecture-menu-consolidation/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "补偿迁移将 sys_menu 803/805 的 visible 改回 1；回退本需求前端提交。无数据补偿。"
+  }
+}
