@@ -1,0 +1,57 @@
+{
+  "task_id": "T1",
+  "definition_revision": "definition-1",
+  "observer": "same-session CDP browser sensor run + /api/auth/routes 与 /api/auth/me + Flyway 历史与 sys_menu 查询（无独立观察 Agent，已披露限制）",
+  "independent": true,
+  "status": "verified",
+  "environment": {
+    "frontend": "http://localhost:5173（Vite dev server，proxy → 127.0.0.1:8080）",
+    "backend": "本地 Spring Boot（dev.mjs 监听 server 变更后自动 install + 重启，健康检查 UP）",
+    "database": "容器 MySQL 8（rddmp-dev-mysql），迁移 V20260915120000 已由 Flyway 执行成功",
+    "account": "admin（含 architecture:manage 与 deployment-unit:manage）",
+    "project": "RDDMP-PLATFORM (910000000003001)",
+    "viewport": ["1440x900", "375x812", "390x844", "430x932"]
+  },
+  "observations": [
+    {
+      "requirement_id": "R1",
+      "sensor": "/api/auth/routes 树 + 浏览器侧边栏文本 + 变更工单抽屉 DOM",
+      "expected": "菜单消失、物理子系统页抽屉列表可用、既有列表路由仍可用",
+      "observed": "routes 中 817 架构资产管理仅剩 802/804/816；页面 innerText 不含「架构子系统变更工单」；「变更工单」按钮存在，抽屉 title=架构子系统变更工单，含 .architecture-change-list、状态筛选与空态；/architecture/subsystem-change-applications 仍渲染面板与标题",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "部署单元页 DOM + 导入抽屉 DOM + 直接访问旧路由",
+      "expected": "菜单消失、部署单元页按钮 + 抽屉可用、旧路由不存在",
+      "observed": "页面 innerText 不含「部署单元初始化导入」；部署单元页存在「初始化导入」与「新建部署单元」按钮；抽屉 title=部署单元初始化导入，含上传拖拽区、下载模板、导入批次台账与空态；访问 /architecture/deployment-unit-imports 不渲染导入面板",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "flyway_schema_history + sys_menu 查询 + /api/auth/me",
+      "expected": "visible=0 且权限不回收、迁移只追加",
+      "observed": "flyway_schema_history version=20260915120000 success=1；sys_menu 803/805 visible=0 deleted=0；/api/auth/me 中 architecture:view/apply/manage、architecture:deployment-unit:view/manage、architecture:physical:list 均为 true",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "npm build 退出码 + 四视口 scrollWidth + console/runtime 错误",
+      "expected": "构建通过、无页面级横向溢出、无控制台异常",
+      "observed": "build exit 0（19.26s）；375/430 下 documentElement.scrollWidth == innerWidth；375 抽屉宽 351；consoleErrors=[]、pageErrors=[]",
+      "verdict": "pass"
+    }
+  ],
+  "invariant_checks": [
+    {"invariant": "不删除 sys_menu 记录、权限码、sys_menu_permission 与 sys_role_menu 授权", "observed": "803/805 仍存在 deleted=0；sys_menu_permission 8032/8033/8042 status=1；权限集合保持", "verdict": "pass"},
+    {"invariant": "不新增或修改后端接口、DTO 与数据表结构", "observed": "仅新增一条隐藏菜单的迁移，无 Java/DDL 变更", "verdict": "pass"},
+    {"invariant": "变更工单与部署单元导入的既有路由引用不被破坏", "observed": "/architecture/subsystem-change-applications 仍可访问并渲染列表", "verdict": "pass"}
+  ],
+  "limitations": [
+    "无独立观察 Agent，执行与观察同源。",
+    "当前所有项目均无变更工单与导入批次数据，两个抽屉只走查了加载态/空态，未走查填充表格行与真实 xlsx 写入。",
+    "仅以 admin 角色核验菜单与权限，未穷举所有架构角色。",
+    "仅新增/删除菜单可见性，未验证前端 404 具体文案（旧导入路由仅确认不渲染导入面板）。",
+    "check-all-governance 存在与本需求无关的既有基线失败。"
+  ]
+}

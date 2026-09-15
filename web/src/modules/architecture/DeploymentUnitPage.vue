@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { Filter, MoreFilled, Plus, Refresh, Search, View } from '@element-plus/icons-vue'
+import { Filter, MoreFilled, Plus, Refresh, Search, Upload, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UiDataTable from '../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../components/ui/UiEmptyState.vue'
@@ -24,6 +24,7 @@ import {
   voidDeploymentUnit
 } from './api'
 import DeploymentUnitDetailDrawer from './components/DeploymentUnitDetailDrawer.vue'
+import DeploymentUnitImportDrawer from './components/DeploymentUnitImportDrawer.vue'
 import type { DeploymentUnit, DeploymentUnitKind, DeploymentUnitPayload, DeploymentUnitVersion, NetworkZoneOption, PhysicalSubsystemOption, RelatedDeploymentUnit } from './types'
 import {
   deploymentUnitKindLabels,
@@ -57,6 +58,7 @@ const statusOptions: DeploymentUnit['status'][] = ['ACTIVE', 'INACTIVE', 'VOIDED
 const physicalOptions = ref<PhysicalSubsystemOption[]>([])
 const networkZoneOptions = ref<NetworkZoneOption[]>([])
 
+const importOpen = ref(false)
 const drawerOpen = ref(false)
 const detail = ref<DeploymentUnit | null>(null)
 const detailLoading = ref(false)
@@ -420,7 +422,10 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
 <template>
   <main class="architecture-page">
     <UiPageHeader title="部署单元" description="维护可独立部署、升级、启停和运行的架构定义；显示内容变更自动形成新版本，编号发布后永久唯一。">
-      <template #actions><el-button v-if="canManage" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建部署单元</el-button></template>
+      <template #actions>
+        <el-button v-if="canManage" @click="importOpen = true"><el-icon><Upload /></el-icon>初始化导入</el-button>
+        <el-button v-if="canManage" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建部署单元</el-button>
+      </template>
     </UiPageHeader>
 
     <section v-if="auth.token && !auth.user" v-loading="true" class="architecture-state-panel" aria-label="正在确认访问权限" />
@@ -456,6 +461,7 @@ watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, proj
       <UiEmptyState v-if="!loading && !rows.length" title="暂无部署单元" description="在已发布的物理子系统下创建，或通过初始化导入批量接入存量部署单元。"><template #action><el-button v-if="canManage" type="primary" @click="openCreate">新建部署单元</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
     </template>
 
+    <DeploymentUnitImportDrawer v-model="importOpen" @imported="load" />
     <DeploymentUnitDetailDrawer
       v-model="drawerOpen"
       :loading="detailLoading"

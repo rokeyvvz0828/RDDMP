@@ -1,0 +1,26 @@
+{
+  "iteration_id": "I1",
+  "task_id": "T1",
+  "definition_revision": "definition-1",
+  "status": "verified",
+  "actions": [
+    "新增 V20260915120000__hide_subsystem_change_and_import_menus.sql：将 tenant=1 的 sys_menu 803（架构子系统变更工单）与 805（部署单元初始化导入）置 visible=0，保留 deleted=0、permission_code 与全部授权。",
+    "迁移内置失败关闭守卫：校验两行已隐藏、仍在册，且 sys_menu_permission 8032/8033/8042 关键权限码仍为 status=1。"
+  ],
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260915120000__hide_subsystem_change_and_import_menus.sql", "purpose": "隐藏两个菜单并守卫权限码"}
+  ],
+  "commands": [
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "passed for 211 migration(s), 1 approved callback(s), and 1 approved legacy migration(s)"},
+    {"command": "mysql: select visible from sys_menu where id in (803,805)", "exit_code": 0, "salient_output": "803 visible=0 deleted=0；805 visible=0 deleted=0"},
+    {"command": "mysql: select from flyway_schema_history where version=20260915120000", "exit_code": 0, "salient_output": "description=hide subsystem change and import menus, success=1"},
+    {"command": "GET /api/auth/me", "exit_code": 0, "salient_output": "architecture:view/apply/manage 与 architecture:deployment-unit:manage 均为 true"},
+    {"command": "GET /api/auth/routes", "exit_code": 0, "salient_output": "817 架构资产管理仅剩 802 物理子系统/804 部署单元/816 交付单元，无 803/805"}
+  ],
+  "checks": [
+    {"requirement_id": "R3", "result": "pass", "evidence": "迁移文件仅新增且 Flyway 检查通过；803/805 visible=0 deleted=0；flyway_schema_history 记录 success=1；权限码与角色授权未被删除，权限集合保持", "limitations": ["仅以 admin 角色核验权限，未穷举全部角色"]}
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

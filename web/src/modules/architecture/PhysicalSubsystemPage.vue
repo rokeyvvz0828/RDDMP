@@ -19,6 +19,7 @@ import {
   loadOrganizationOptions,
   loadParameterOptions
 } from './api'
+import SubsystemChangeApplicationDrawer from './components/SubsystemChangeApplicationDrawer.vue'
 import SubsystemDetailDrawer from './components/SubsystemDetailDrawer.vue'
 import type {
   DetailSection,
@@ -50,6 +51,7 @@ const loading = ref(false)
 const loadError = ref('')
 const forbidden = ref(false)
 const advanced = ref(false)
+const changeApplicationsOpen = ref(false)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref<PhysicalSubsystem | null>(null)
@@ -77,6 +79,8 @@ let detailRequest = 0
 const canView = computed(() => auth.hasPermission('architecture:physical:list')
   || ['architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const canApply = computed(() => auth.hasPermission('architecture:apply') || auth.hasPermission('architecture:manage'))
+// 菜单 803 已隐藏，变更工单列表改由本页抽屉承载；查看权限沿用列表页定义。
+const canViewChangeApplications = computed(() => ['architecture:view', 'architecture:apply', 'architecture:manage'].some(permission => auth.hasPermission(permission)))
 const detailSections = computed<DetailSection[]>(() => detail.value ? [
   {
     title: '基本信息',
@@ -212,7 +216,10 @@ watch(() => projectContext.currentRef, () => { detailOpen.value = false })
 <template>
   <main class="architecture-page">
     <UiPageHeader title="物理子系统" description="查看已发布的物理子系统事实；新增、变更、替换和生命周期操作均通过审批工单完成。">
-      <template #actions><el-button v-if="canApply" type="primary" @click="createApplication"><el-icon><Plus /></el-icon>申请物理子系统</el-button></template>
+      <template #actions>
+        <el-button v-if="canViewChangeApplications" @click="changeApplicationsOpen = true">变更工单</el-button>
+        <el-button v-if="canApply" type="primary" @click="createApplication"><el-icon><Plus /></el-icon>申请物理子系统</el-button>
+      </template>
     </UiPageHeader>
 
     <section v-if="auth.token && !auth.user" v-loading="true" class="architecture-state-panel" aria-label="正在确认访问权限" />
@@ -250,6 +257,7 @@ watch(() => projectContext.currentRef, () => { detailOpen.value = false })
       <UiEmptyState v-if="!loading && !rows.length" title="暂无物理子系统" description="调整筛选条件，或发起第一张物理子系统申请。"><template #action><el-button v-if="canApply" type="primary" @click="createApplication">发起申请</el-button><el-button v-else @click="reset">清空筛选</el-button></template></UiEmptyState>
     </template>
 
+    <SubsystemChangeApplicationDrawer v-model="changeApplicationsOpen" />
     <SubsystemDetailDrawer v-model="detailOpen" :loading="detailLoading" :title="detail?.name || '物理子系统详情'" :code="detail?.code" :sections="detailSections" :subsystem="detail" @saved="load" />
   </main>
 </template>

@@ -1,0 +1,32 @@
+{
+  "definition_revision": "definition-1",
+  "requirement_results": [
+    {"requirement_id": "R1", "result": "pass", "evidence": ["observation-T1.json#R1", "web/src/modules/architecture/components/SubsystemChangeApplicationList.vue", "web/src/modules/architecture/components/SubsystemChangeApplicationDrawer.vue", "web/src/modules/architecture/PhysicalSubsystemPage.vue"]},
+    {"requirement_id": "R2", "result": "pass", "evidence": ["observation-T1.json#R2", "web/src/modules/architecture/components/DeploymentUnitImportPanel.vue", "web/src/modules/architecture/components/DeploymentUnitImportDrawer.vue", "web/src/modules/architecture/DeploymentUnitPage.vue"]},
+    {"requirement_id": "R3", "result": "pass", "evidence": ["observation-T1.json#R3", "V20260915120000__hide_subsystem_change_and_import_menus.sql", "flyway_schema_history version=20260915120000 success=1"]},
+    {"requirement_id": "R4", "result": "pass", "evidence": ["observation-T1.json#R4", "npm --prefix web run build exit 0", "375/430 scrollWidth == innerWidth"]}
+  ],
+  "task_results": [
+    {"task_id": "T1", "result": "verified", "evidence": ["execution-T1.json", "observation-T1.json#R3"]},
+    {"task_id": "T2", "result": "verified", "evidence": ["execution-T2.json", "observation-T1.json#R1"]},
+    {"task_id": "T3", "result": "verified", "evidence": ["execution-T3.json", "observation-T1.json#R2"]},
+    {"task_id": "T4", "result": "verified", "evidence": ["execution-T4.json", "observation-T1.json#R4"]}
+  ],
+  "open_feedback": [],
+  "invariant_results": [
+    {"invariant": "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变（仅新增迁移与移除导入路由）", "result": "pass", "evidence": ["git diff --name-status 显示仅新增一条迁移、删除 DeploymentUnitImportPage.vue 并移除其路由；API 与权限代码未改"]},
+    {"invariant": "不新增或修改后端接口、DTO 与数据表结构", "result": "pass", "evidence": ["git diff --name-only HEAD~1..HEAD -- server/src/modules 为空；迁移仅 UPDATE sys_menu.visible"]},
+    {"invariant": "不删除 sys_menu 记录、权限码、sys_menu_permission 与 sys_role_menu 授权", "result": "pass", "evidence": ["803/805 deleted=0；sys_menu_permission 8032/8033/8042 status=1；/api/auth/me 权限集合保持"]},
+    {"invariant": "变更工单与部署单元的审批、权限与数据范围不被前端绕过", "result": "pass", "evidence": ["抽屉复用既有接口与既有权限判断；未改后端校验与数据范围"]},
+    {"invariant": "已发布 Flyway 迁移不被修改", "result": "pass", "evidence": ["仅新增 V20260915120000；check-flyway-migrations 通过 211 个迁移"]}
+  ],
+  "residual_risks": [
+    "无独立观察 Agent，执行与观察同源。",
+    "当前无变更工单与导入批次数据，两个抽屉只覆盖加载与空态；填充表格行与真实 xlsx 写入未走查。",
+    "仅以 admin 角色核验菜单与权限，未穷举所有架构角色；隐藏菜单对非管理角色的可见性依赖同一份 sys_menu 配置。",
+    "变更工单抽屉内「详情/编辑」跳转后返回会落到隐藏的列表路由，而非物理子系统页。",
+    "check-all-governance 存在与本需求无关的既有基线失败。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R4 全部 must 需求有迁移历史、API 权限集合与真实浏览器证据；T1-T4 均有执行与观察记录；无未关闭反馈；不变量通过；残余风险已披露。"
+}
