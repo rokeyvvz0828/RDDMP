@@ -1,0 +1,33 @@
+{
+  "definition_revision": "definition-1",
+  "requirement_results": [
+    {"requirement_id": "R1", "result": "pass", "evidence": ["observation-T1.json#R1", "web/src/modules/architecture/components/SubsystemDetailDrawer.vue"]},
+    {"requirement_id": "R2", "result": "pass", "evidence": ["observation-T1.json#R2", "web/src/modules/architecture/components/SubsystemParticipants.vue", "web/src/modules/architecture/PhysicalSubsystemPage.vue"]},
+    {"requirement_id": "R3", "result": "pass", "evidence": ["observation-T1.json#R3", "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue", "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue"]},
+    {"requirement_id": "R4", "result": "pass", "evidence": ["observation-T1.json#R4", "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue"]},
+    {"requirement_id": "R5", "result": "pass", "evidence": ["observation-T1.json#R5", "npm --prefix web run build exit 0", "check-codex-scope passed"]}
+  ],
+  "task_results": [
+    {"task_id": "T1", "result": "verified", "evidence": ["execution-T1.json", "observation-T1.json#R1-R2"]},
+    {"task_id": "T2", "result": "verified", "evidence": ["execution-T1.json", "observation-T1.json#R3"]},
+    {"task_id": "T3", "result": "verified", "evidence": ["execution-T1.json", "observation-T1.json#R4"]},
+    {"task_id": "T4", "result": "verified", "evidence": ["execution-T1.json", "observation-T1.json#R5"]}
+  ],
+  "open_feedback": [],
+  "invariant_results": [
+    {"invariant": "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变", "result": "pass", "evidence": ["git diff --name-only c1b6ad2 -- server/ 为空；改动仅在 web/src/modules/architecture，未改 router/index.ts"]},
+    {"invariant": "不新增或修改后端接口、DTO、Flyway 迁移与数据表", "result": "pass", "evidence": ["无 server/ 改动", "页签仅调用既有 listDeploymentUnits/listDeliveryUnits/listEnvironmentInstances/listEnvironments/getSubsystemParticipation"]},
+    {"invariant": "物理子系统仍只经审批发布写入，未新增直写入口", "result": "pass", "evidence": ["详情页签无发布/编辑入口；参与人员保存沿用既有 replaceSubsystemParticipation"]},
+    {"invariant": "参与人员的权限判断与服务端校验不被前端绕过", "result": "pass", "evidence": ["未改动 api.ts 与后端 PreAuthorize；面板以 canManage 决定编辑态，服务端仍执行 architecture:physical:update 校验"]},
+    {"invariant": "DeploymentUnitDetailDrawer 默认行为向后兼容，既有 DeploymentUnitPage 不受影响", "result": "pass", "evidence": ["readonly 默认 false；DeploymentUnitPage 未传该 prop；npm build 通过；只读嵌入 footerButtons=[]，既有调用仍走原 footer 渲染路径"]}
+  ],
+  "residual_risks": [
+    "无独立观察 Agent，执行与观察同源；证据来自真实浏览器与命令输出，但仍建议 Owner 复核信息层级与权限提示。",
+    "「保存进行中不允许关闭」为代码路径，未用慢接口实测。",
+    "环境部署实例接口单次上限 200，超过 2000 条的极端数据只展示前 2000 条。",
+    "制品类型字典为空时交付单元制品类型显示占位符，不阻断展示。",
+    "check-all-governance 仍存在与本需求无关的既有基线失败（其他历史账本命名与缺失证据、REQ-20260904-061 scope YAML 等），本次未修复。"
+  ],
+  "gate_result": "pass",
+  "route_reason": "R1-R5 全部 must 需求由真实浏览器、构建、范围与静态检查提供独立证据；任务 T1-T4 均有执行与观察记录；无未关闭反馈；不变量通过；残余风险已披露。"
+}

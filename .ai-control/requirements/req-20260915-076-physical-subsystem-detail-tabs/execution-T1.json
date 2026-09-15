@@ -1,0 +1,28 @@
+{
+  "iteration_id": "I1",
+  "task_id": "T1",
+  "definition_revision": "definition-1",
+  "status": "verified",
+  "actions": [
+    "SubsystemDetailDrawer 改为 760px 抽屉内的四页签容器（信息/参与人员/部署单元/交付单元），信息页签原样保留四栏 el-descriptions 与状态标签，打开时回到信息页签并使用 destroy-on-close 避免跨系统残留。",
+    "SubsystemParticipants 由独立 UiFormDrawer 抽屉改为内嵌面板：保留加载、负责人默认参与、候选人搜索、失效成员提示、只读/可编辑判断、保存、版本冲突与未完成责任提示；新增 defineExpose(confirmLeave) 供外层抽屉在遮罩/右上角/Esc 关闭前确认未保存修改，保存中返回 false 阻止关闭。",
+    "PhysicalSubsystemPage 移除参与人员按钮入口（桌面表格与移动卡片）与独立参与人员抽屉实例，改为向详情抽屉传入 subsystem 并监听 saved 重新加载列表；项目切换时关闭详情抽屉。",
+    "architecture.css 追加 .architecture-detail-tabs 页签容器样式，未改动既有页面类。"
+  ],
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/modules/architecture/components/SubsystemDetailDrawer.vue", "purpose": "四页签容器与关闭前参与人员确认"},
+    {"path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue", "purpose": "参与人员改为内嵌面板并暴露 confirmLeave"},
+    {"path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue", "purpose": "移除参与人员入口与独立抽屉"},
+    {"path_or_resource": "web/src/modules/architecture/architecture.css", "purpose": "页签容器样式"}
+  ],
+  "commands": [
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit 无类型错误；vite built in 18.73s"}
+  ],
+  "checks": [
+    {"requirement_id": "R1", "result": "pass", "evidence": "浏览器 DOM tabLabels=[信息,参与人员,部署单元,交付单元]，activeTab=信息，section 标题=[基本信息,归属信息,技术信息,描述]，18 个标签与改造前一致", "limitations": ["未覆盖后端字段被并发修改的场景"]},
+    {"requirement_id": "R2", "result": "pass", "evidence": "列表桌面表格 hasParticipantsButtonInTable=false；无独立参与人员抽屉；面板保存按钮可用；变更原因置脏后点关闭：drawerOpen=true 且弹出「放弃修改？/参与人员调整尚未保存，离开将丢弃本次修改。」", "limitations": ["保存中阻止关闭为代码路径，未用慢接口实测"]}
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

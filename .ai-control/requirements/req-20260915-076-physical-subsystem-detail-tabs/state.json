@@ -1,11 +1,11 @@
 {
   "schema_version": 5,
-  "revision": 5,
+  "revision": 13,
   "created_at": "2026-09-15T07:08:37+00:00",
-  "updated_at": "2026-09-15T07:08:49+00:00",
+  "updated_at": "2026-09-15T07:24:49+00:00",
   "mode": "standard",
   "workflow": "compact",
-  "phase": "controlling",
+  "phase": "converged",
   "phase_history": [
     {
       "from": null,
@@ -24,6 +24,18 @@
       "to": "controlling",
       "evidence": "计划门禁通过，开始受控执行",
       "recorded_at": "2026-09-15T07:08:49+00:00"
+    },
+    {
+      "from": "controlling",
+      "to": "verifying",
+      "evidence": "T1-T4 均 verified 且无未关闭反馈，进入收敛验收",
+      "recorded_at": "2026-09-15T07:24:39+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁通过：R1-R5 通过、任务 verified、反馈关闭、不变量通过",
+      "recorded_at": "2026-09-15T07:24:49+00:00"
     }
   ],
   "stage_artifacts": {
@@ -432,8 +444,487 @@
         }
       }
     ],
-    "controlling": [],
-    "verifying": []
+    "controlling": [
+      {
+        "revision": 1,
+        "evidence": "T1 执行与独立观测完成",
+        "recorded_at": "2026-09-15T07:24:39+00:00",
+        "data": {
+          "iteration_id": "I1",
+          "task_id": "T1",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "SubsystemDetailDrawer 改为 760px 抽屉内的四页签容器（信息/参与人员/部署单元/交付单元），信息页签原样保留四栏 el-descriptions 与状态标签，打开时回到信息页签并使用 destroy-on-close 避免跨系统残留。",
+            "SubsystemParticipants 由独立 UiFormDrawer 抽屉改为内嵌面板：保留加载、负责人默认参与、候选人搜索、失效成员提示、只读/可编辑判断、保存、版本冲突与未完成责任提示；新增 defineExpose(confirmLeave) 供外层抽屉在遮罩/右上角/Esc 关闭前确认未保存修改，保存中返回 false 阻止关闭。",
+            "PhysicalSubsystemPage 移除参与人员按钮入口（桌面表格与移动卡片）与独立参与人员抽屉实例，改为向详情抽屉传入 subsystem 并监听 saved 重新加载列表；项目切换时关闭详情抽屉。",
+            "architecture.css 追加 .architecture-detail-tabs 页签容器样式，未改动既有页面类。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemDetailDrawer.vue",
+              "purpose": "四页签容器与关闭前参与人员确认"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemParticipants.vue",
+              "purpose": "参与人员改为内嵌面板并暴露 confirmLeave"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/PhysicalSubsystemPage.vue",
+              "purpose": "移除参与人员入口与独立抽屉"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "页签容器样式"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 无类型错误；vite built in 18.73s"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": "浏览器 DOM tabLabels=[信息,参与人员,部署单元,交付单元]，activeTab=信息，section 标题=[基本信息,归属信息,技术信息,描述]，18 个标签与改造前一致",
+              "limitations": [
+                "未覆盖后端字段被并发修改的场景"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "列表桌面表格 hasParticipantsButtonInTable=false；无独立参与人员抽屉；面板保存按钮可用；变更原因置脏后点关闭：drawerOpen=true 且弹出「放弃修改？/参与人员调整尚未保存，离开将丢弃本次修改。」",
+              "limitations": [
+                "保存中阻止关闭为代码路径，未用慢接口实测"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 执行与独立观测完成",
+        "recorded_at": "2026-09-15T07:24:39+00:00",
+        "data": {
+          "iteration_id": "I2",
+          "task_id": "T2",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "新增 SubsystemDeploymentUnitsPanel：分页循环拉取该物理子系统全部部署单元，radio group 提供「全部」与全部启用环境，按所选环境分组展示各部署单元的环境部署实例（在用/已下线、版本差异、网络分区），无实例显示空态，可打开只读部署单元详情。",
+            "DeploymentUnitDetailDrawer 新增默认 false 的 readonly prop，只读时不渲染停用/重新启用/作废/修改并发布新版本页脚；既有 DeploymentUnitPage 调用未传该 prop，行为不变。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue",
+              "purpose": "部署单元页签与环境实例分组"
+            },
+            {
+              "path_or_resource": "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue",
+              "purpose": "新增向后兼容的 readonly prop"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 无类型错误；vite built in 18.73s"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "radioOptions=[全部,PROD-076,UAT-076]、默认全部；unitCount=3；全部=4 实例，UAT=3 实例，PROD=1 实例且 2 个 .el-empty；pay-app-uat-01 渲染 v1（最新 v2）；pay-wb-uat-01 状态「已下线」；只读详情 footerButtons=[]",
+              "limitations": [
+                "实例超过 2000 条的极端上限未实测"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 执行与独立观测完成",
+        "recorded_at": "2026-09-15T07:24:39+00:00",
+        "data": {
+          "iteration_id": "I3",
+          "task_id": "T3",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "新增 SubsystemDeliveryUnitsPanel：分页循环拉取该物理子系统全部交付单元并只读展示，可打开只读交付单元详情（不传 canManage）。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue",
+              "purpose": "交付单元只读页签"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 无类型错误；vite built in 18.73s"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": "交付单元页签 count=2；PAY_APP_DELIVERY（启用、关联部署单元 2 个）、PAY_DB_DELIVERY（已停用、关联 0 个）；只读详情标题 PAY_APP_DELIVERY，footerButtons=[]",
+              "limitations": [
+                "制品类型字典为空时显示占位符"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 执行与独立观测完成",
+        "recorded_at": "2026-09-15T07:24:39+00:00",
+        "data": {
+          "iteration_id": "I4",
+          "task_id": "T4",
+          "definition_revision": "definition-1",
+          "status": "verified",
+          "actions": [
+            "补齐四个页签的加载、空、失败与无权限状态并在桌面与手机视口验收；记录构建、范围检查、静态检查与浏览器证据。"
+          ],
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/modules/architecture/architecture.css",
+              "purpose": "页签容器样式与响应式"
+            },
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260915-076-physical-subsystem-detail-tabs/*.json",
+              "purpose": "控制账本与证据"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit 无类型错误；vite built in 18.73s"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260915-076-physical-subsystem-detail-tabs/codex-task-scope.yaml --base dev-ivanh --head c1b6ad2",
+              "exit_code": 0,
+              "salient_output": "Codex scope check passed for REQ-20260915-076; 12 changed file(s)."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            },
+            {
+              "command": "timeout 400 node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "存在与本需求无关的既有基线失败（历史账本命名/缺失证据、REQ-20260904-061 scope YAML 等）；本需求自身文件命名已按布局检查更正，未修复他人在途基线"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": "375/390/430 下 documentElement.scrollWidth == innerWidth；375 抽屉宽 351 右边界 375；明暗主题截图可读；consoleErrors=[]、pageErrors=[]；build 与范围检查通过",
+              "limitations": [
+                "check-all-governance 的既有基线失败未在本次修复"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "verifying"
+        }
+      }
+    ],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "R1-R5 全部有独立证据，任务 T1-T4 verified，无未关闭反馈",
+        "recorded_at": "2026-09-15T07:24:41+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R1",
+                "web/src/modules/architecture/components/SubsystemDetailDrawer.vue"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R2",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R3",
+                "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R4",
+                "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R5",
+                "npm --prefix web run build exit 0",
+                "check-codex-scope passed"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R1-R2"
+              ]
+            },
+            {
+              "task_id": "T2",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R3"
+              ]
+            },
+            {
+              "task_id": "T3",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R4"
+              ]
+            },
+            {
+              "task_id": "T4",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R5"
+              ]
+            }
+          ],
+          "open_feedback": [],
+          "invariant_results": [
+            {
+              "invariant": "既有路由、组件路径、API、权限、Java 包与数据表命名不变",
+              "result": "pass",
+              "evidence": [
+                "git diff --name-only c1b6ad2 -- server/ 为空；改动仅在 web/src/modules/architecture"
+              ]
+            },
+            {
+              "invariant": "不新增或修改后端接口、DTO、Flyway 迁移与数据表",
+              "result": "pass",
+              "evidence": [
+                "无 server/ 改动",
+                "页签仅调用既有 listDeploymentUnits/listDeliveryUnits/listEnvironmentInstances/listEnvironments/getSubsystemParticipation"
+              ]
+            },
+            {
+              "invariant": "物理子系统仍只经审批发布写入，未新增直写入口",
+              "result": "pass",
+              "evidence": [
+                "详情页签无发布/编辑入口；参与人员保存沿用既有 replaceSubsystemParticipation"
+              ]
+            },
+            {
+              "invariant": "参与人员权限判断与服务端校验不被绕过",
+              "result": "pass",
+              "evidence": [
+                "未改动 api.ts 与后端 PreAuthorize；面板以 canManage 决定编辑态"
+              ]
+            },
+            {
+              "invariant": "DeploymentUnitDetailDrawer 默认行为向后兼容",
+              "result": "pass",
+              "evidence": [
+                "readonly 默认 false；DeploymentUnitPage 未传该 prop；npm build 通过"
+              ]
+            }
+          ],
+          "residual_risks": [
+            "无独立观察 Agent，执行与观察同源；证据来自真实浏览器与命令输出，但仍建议 Owner 复核信息层级与权限提示。",
+            "「保存进行中不允许关闭」为代码路径，未用慢接口实测。",
+            "环境部署实例接口单次上限 200，超过 2000 条的极端数据只展示前 2000 条。",
+            "制品类型字典为空时交付单元制品类型显示占位符，不阻断展示。",
+            "check-all-governance 仍存在与本需求无关的既有基线失败（其他历史账本命名与缺失证据、REQ-20260904-061 scope YAML 等），本次未修复。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R5 全部 must 需求由真实浏览器、构建、范围与静态检查提供独立证据；任务 T1-T4 均有执行与观察记录；无未关闭反馈；不变量通过；残余风险已披露。"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "不变量证据按定义逐条对齐后重记",
+        "recorded_at": "2026-09-15T07:24:49+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R1",
+                "web/src/modules/architecture/components/SubsystemDetailDrawer.vue"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R2",
+                "web/src/modules/architecture/components/SubsystemParticipants.vue",
+                "web/src/modules/architecture/PhysicalSubsystemPage.vue"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R3",
+                "web/src/modules/architecture/components/SubsystemDeploymentUnitsPanel.vue",
+                "web/src/modules/architecture/components/DeploymentUnitDetailDrawer.vue"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R4",
+                "web/src/modules/architecture/components/SubsystemDeliveryUnitsPanel.vue"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": [
+                "observation-T1.json#R5",
+                "npm --prefix web run build exit 0",
+                "check-codex-scope passed"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R1-R2"
+              ]
+            },
+            {
+              "task_id": "T2",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R3"
+              ]
+            },
+            {
+              "task_id": "T3",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R4"
+              ]
+            },
+            {
+              "task_id": "T4",
+              "result": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json#R5"
+              ]
+            }
+          ],
+          "open_feedback": [],
+          "invariant_results": [
+            {
+              "invariant": "既有路由路径、组件路径、API 路径、权限代码、Java 包与数据表命名不变",
+              "result": "pass",
+              "evidence": [
+                "git diff --name-only c1b6ad2 -- server/ 为空；改动仅在 web/src/modules/architecture，未改 router/index.ts"
+              ]
+            },
+            {
+              "invariant": "不新增或修改后端接口、DTO、Flyway 迁移与数据表",
+              "result": "pass",
+              "evidence": [
+                "无 server/ 改动",
+                "页签仅调用既有 listDeploymentUnits/listDeliveryUnits/listEnvironmentInstances/listEnvironments/getSubsystemParticipation"
+              ]
+            },
+            {
+              "invariant": "物理子系统仍只经审批发布写入，未新增直写入口",
+              "result": "pass",
+              "evidence": [
+                "详情页签无发布/编辑入口；参与人员保存沿用既有 replaceSubsystemParticipation"
+              ]
+            },
+            {
+              "invariant": "参与人员的权限判断与服务端校验不被前端绕过",
+              "result": "pass",
+              "evidence": [
+                "未改动 api.ts 与后端 PreAuthorize；面板以 canManage 决定编辑态，服务端仍执行 architecture:physical:update 校验"
+              ]
+            },
+            {
+              "invariant": "DeploymentUnitDetailDrawer 默认行为向后兼容，既有 DeploymentUnitPage 不受影响",
+              "result": "pass",
+              "evidence": [
+                "readonly 默认 false；DeploymentUnitPage 未传该 prop；npm build 通过；只读嵌入 footerButtons=[]，既有调用仍走原 footer 渲染路径"
+              ]
+            }
+          ],
+          "residual_risks": [
+            "无独立观察 Agent，执行与观察同源；证据来自真实浏览器与命令输出，但仍建议 Owner 复核信息层级与权限提示。",
+            "「保存进行中不允许关闭」为代码路径，未用慢接口实测。",
+            "环境部署实例接口单次上限 200，超过 2000 条的极端数据只展示前 2000 条。",
+            "制品类型字典为空时交付单元制品类型显示占位符，不阻断展示。",
+            "check-all-governance 仍存在与本需求无关的既有基线失败（其他历史账本命名与缺失证据、REQ-20260904-061 scope YAML 等），本次未修复。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "R1-R5 全部 must 需求由真实浏览器、构建、范围与静态检查提供独立证据；任务 T1-T4 均有执行与观察记录；无未关闭反馈；不变量通过；残余风险已披露。"
+        }
+      }
+    ]
   },
   "objective": "把物理子系统详情抽屉改为「信息 / 参与人员 / 部署单元 / 交付单元」四页签，在抽屉内集中展示子系统事实、参与人员、全部部署单元及其环境部署实例、全部交付单元。",
   "requirements": [
@@ -613,9 +1104,14 @@
       "escalation_conditions": [
         "需要修改参与人员后端接口或权限代码时升级并回到设计"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-15T07:08:49+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T07:24:39+00:00",
+          "text": "ControlIteration I1: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T07:24:39+00:00"
     },
     {
       "id": "T2",
@@ -646,9 +1142,14 @@
       "escalation_conditions": [
         "需要新增后端过滤参数才能满足环境切换时升级并回到设计"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-15T07:08:49+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T07:24:39+00:00",
+          "text": "ControlIteration I2: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T07:24:39+00:00"
     },
     {
       "id": "T3",
@@ -677,9 +1178,14 @@
       "escalation_conditions": [
         "需要交付单元直写入口时升级并回到设计"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-15T07:08:49+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T07:24:39+00:00",
+          "text": "ControlIteration I3: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T07:24:39+00:00"
     },
     {
       "id": "T4",
@@ -714,9 +1220,14 @@
       "escalation_conditions": [
         "出现需要改公共契约、迁移或超出 writable_paths 的修复时升级"
       ],
-      "status": "planned",
-      "evidence": [],
-      "updated_at": "2026-09-15T07:08:49+00:00"
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-15T07:24:39+00:00",
+          "text": "ControlIteration I4: verified"
+        }
+      ],
+      "updated_at": "2026-09-15T07:24:39+00:00"
     }
   ],
   "feedback": [],

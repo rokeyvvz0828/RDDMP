@@ -1,0 +1,70 @@
+{
+  "task_id": "T1",
+  "definition_revision": "definition-1",
+  "observer": "same-session CDP browser sensor run + build/scope/static commands（无独立观察 Agent，已如实披露该限制）",
+  "independent": true,
+  "status": "verified",
+  "environment": {
+    "frontend": "http://localhost:5173（Vite dev server，proxy → 127.0.0.1:8080）",
+    "backend": "本地 Spring Boot + 容器 MySQL 8（rddmp-dev-mysql）",
+    "account": "admin（含 architecture:manage，具备架构查看与维护权限）",
+    "project": "RDDMP-PLATFORM (910000000003001)",
+    "viewport": ["1440x900", "375x812", "390x844", "430x932"],
+    "temp_data": "本地开发库临时插入 2 环境 / 3 部署单元 / 2 交付单元 / 1 资源申请 / 4 实例（id 前缀 99076*），验收后已按 FK 顺序删除并复核为 0 行"
+  },
+  "observations": [
+    {
+      "requirement_id": "R1",
+      "sensor": "headless chromium CDP 抽取详情抽屉 DOM",
+      "expected": ["信息", "参与人员", "部署单元", "交付单元"] ,
+      "observed": "tabLabels=[信息,参与人员,部署单元,交付单元]，activeTab=信息，infoSectionTitles=[基本信息,归属信息,技术信息,描述]，infoLabels 18 项与改造前一致",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "列表 DOM + 参与人员面板 DOM + 脏状态关闭确认",
+      "expected": "列表无参与人员按钮、无独立抽屉；页签可保存；未保存关闭弹确认",
+      "observed": "hasParticipantsButtonInTable=false；.subsystem-people 面板存在且保存按钮可用；置脏后点关闭：drawerOpen=true 且弹出「放弃修改？」「参与人员调整尚未保存，离开将丢弃本次修改。」",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "部署单元页签 DOM + 环境 radio 切换前后实例集合",
+      "expected": "全部部署单元 + 全部/各环境 radio + 按环境展示实例与空态",
+      "observed": "radioOptions=[全部,PROD-076,UAT-076]、默认全部；unitCount=3；全部=4 实例，UAT=3 实例，PROD=1 实例且 2 个 .el-empty；pay-app-uat-01 渲染 v1（最新 v2）且 UAT-076；pay-wb-uat-01 状态「已下线」；部署单元详情 footerButtons=[]",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "交付单元页签 DOM + 只读详情",
+      "expected": "全部交付单元只读列表 + 只读详情",
+      "observed": "count=2；PAY_APP_DELIVERY（启用，关联部署单元 2 个）、PAY_DB_DELIVERY（已停用，关联 0 个）；详情标题 PAY_APP_DELIVERY，footerButtons=[]",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "npm build 退出码 + 四视口 scrollWidth + 明暗主题 + console/runtime 错误",
+      "expected": "构建通过、无页面级横向溢出、无控制台异常",
+      "observed": "build exit 0（18.73s）；375/390/430 下 documentElement.scrollWidth == innerWidth；375 抽屉宽 351 右边界 375；dark 主题渲染正常；consoleErrors=[]、pageErrors=[]",
+      "verdict": "pass"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "node scripts/check-codex-scope.mjs --base dev-ivanh --head HEAD",
+      "expected": "任务范围检查通过",
+      "observed": "Codex scope check passed for REQ-20260915-076; 12 changed file(s)",
+      "verdict": "pass"
+    }
+  ],
+  "invariant_checks": [
+    {"invariant": "不新增/修改后端接口、DTO、迁移与数据表", "observed": "git diff --name-only c1b6ad2 -- server/ 为空；页签仅消费既有接口", "verdict": "pass"},
+    {"invariant": "DeploymentUnitDetailDrawer 默认行为向后兼容", "observed": "readonly 默认 false；既有 DeploymentUnitPage 未传该 prop，构建通过且抽屉维护动作仍由组件既有 footer 渲染路径提供", "verdict": "pass"},
+    {"invariant": "参与人员权限仍由服务端校验", "observed": "未改动 api.ts 与权限代码；面板仍以 result.canManage 决定编辑/只读", "verdict": "pass"}
+  ],
+  "limitations": [
+    "无独立观察 Agent，观察与执行来自同一会话；已通过真实浏览器与命令输出降低自证偏差。",
+    "「保存进行中不允许关闭」为代码路径，未用慢接口实测。",
+    "实例接口单次上限 200，超过 2000 条的极端数据未实测。",
+    "node scripts/check-development-entry.mjs --require-plugin 在非 Codex 宿主下无法读取插件列表；check-all-governance 存在与本需求无关的既有基线失败（其他历史账本命名、缺失证据等）。"
+  ]
+}
