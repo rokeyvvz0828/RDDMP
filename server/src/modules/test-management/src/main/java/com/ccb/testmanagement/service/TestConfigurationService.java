@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -38,6 +39,14 @@ public class TestConfigurationService {
     private static final Set<String> DOMAINS = Set.of("application-assembly", "user-testing", "non-functional", "security");
     private static final Set<String> ROLE_CODES = Set.of("TEST_MANAGER", "TESTER", "DEVELOPER");
     private static final Set<String> ROUND_STATUSES = Set.of("DRAFT", "ACTIVE", "CLOSED");
+    private static final Map<String, QualityMetric> QUALITY_METRICS = Map.of(
+            "execution_rate", new QualityMetric("执行率", "AT_LEAST"),
+            "case_success_rate", new QualityMetric("案例成功率", "AT_LEAST"),
+            "executed_case_success_rate", new QualityMetric("已执行案例成功率", "AT_LEAST"),
+            "defect_density", new QualityMetric("缺陷密度", "AT_MOST"),
+            "defect_repair_rate", new QualityMetric("缺陷修复率", "AT_LEAST"),
+            "severe_defect_count", new QualityMetric("严重缺陷数", "AT_MOST"),
+            "blocked_case_count", new QualityMetric("阻塞案例数", "AT_MOST"));
     private static final AtomicLong IDS = new AtomicLong(System.currentTimeMillis() * 1000);
     private static final List<DictionarySeed> DEFAULT_DICTIONARIES = List.of(
             dictionary("case_type", "案例类型", "LOCAL", "建设案例|BUILD,投产案例|RELEASE,优化案例|OPTIMIZE"),
@@ -157,6 +166,51 @@ public class TestConfigurationService {
     }
 
     public List<UserDirectoryItem> users(String keyword, AuthUser user) { return users.listActive(user.tenantId(), keyword, 50); }
+
+    /** 质量阈值只按项目与当前测试大类读取；未保存的固定指标也返回，便于配置页完整展示。 */
+    public List<Map<String, Object>> qualityThresholds(String domain, long projectId, AuthUser user) {
+        domain(domain); requireProject(projectId, user.tenantId());
+        Map<String, Map<String, Object>> saved = new LinkedHashMap<>();
+        for (Map<String, Object> row : jdbc.queryForList("SELECT id,metric_code,comparison_direction,qualified_threshold,risk_threshold,enabled,updated_at FROM tm_test_quality_threshold WHERE tenant_id=? AND test_domain=? AND project_id=? ORDER BY metric_code", user.tenantId(), domain, projectId)) {
+            saved.put(String.valueOf(row.get("metric_code")), row);
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        QUALITY_METRICS.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("metric_code", entry.getKey()); item.put("metric_name", entry.getValue().name()); item.put("comparison_direction", entry.getValue().direction());
+            Map<String, Object> row = saved.get(entry.getKey());
+            item.put("id", row == null ? null : row.get("id")); item.put("qualified_threshold", row == null ? null : row.get("qualified_threshold"));
+            item.put("risk_threshold", row == null ? null : row.get("risk_threshold")); item.put("enabled", row != null && bool(row.get("enabled"), false)); item.put("updated_at", row == null ? null : row.get("updated_at"));
+            result.add(item);
+        });
+        return result;
+    }
+
+    /** 保存固定质量指标；启用项必须配置两个阈值，且阈值关系由指标方向决定。 */
+    @Transactional
+    public List<Map<String, Object>> saveQualityThresholds(String domain, long projectId, Map<String, Object> body, AuthUser user) {
+        domain(domain); requireProject(projectId, user.tenantId());
+        Object value = body.get("items");
+        if (!(value instanceof List<?> items) || items.isEmpty()) throw bad("请至少提交一项质量阈值");
+        Set<String> submitted = new java.util.HashSet<>();
+        for (Object candidate : items) {
+            if (!(candidate instanceof Map<?, ?> raw)) throw bad("质量阈值格式无效");
+            Map<String, Object> item = new LinkedHashMap<>(); raw.forEach((key, itemValue) -> item.put(String.valueOf(key), itemValue));
+            String metricCode = String.valueOf(item.getOrDefault("metric_code", "")).trim();
+            QualityMetric metric = QUALITY_METRICS.get(metricCode);
+            if (metric == null || !submitted.add(metricCode)) throw bad("质量指标无效或重复：" + metricCode);
+            boolean enabled = bool(item.get("enabled"), false);
+            BigDecimal qualified = decimal(item.get("qualified_threshold"), "达标阈值", enabled);
+            BigDecimal risk = decimal(item.get("risk_threshold"), "风险阈值", enabled);
+            if (enabled && "AT_LEAST".equals(metric.direction()) && qualified.compareTo(risk) < 0) throw bad(metric.name() + "的达标阈值不能小于风险阈值");
+            if (enabled && "AT_MOST".equals(metric.direction()) && qualified.compareTo(risk) > 0) throw bad(metric.name() + "的达标阈值不能大于风险阈值");
+            long id = nextId();
+            jdbc.update("INSERT INTO tm_test_quality_threshold (id,tenant_id,test_domain,project_id,metric_code,comparison_direction,qualified_threshold,risk_threshold,enabled,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE comparison_direction=VALUES(comparison_direction),qualified_threshold=VALUES(qualified_threshold),risk_threshold=VALUES(risk_threshold),enabled=VALUES(enabled),updated_by=VALUES(updated_by)", id, user.tenantId(), domain, projectId, metricCode, metric.direction(), qualified, risk, enabled ? 1 : 0, user.id(), user.id());
+            Map<String, Object> detail = new LinkedHashMap<>(); detail.put("metric_code", metricCode); detail.put("enabled", enabled); detail.put("qualified_threshold", qualified); detail.put("risk_threshold", risk);
+            audit(domain, projectId, "QUALITY_THRESHOLD", id, "UPSERT", detail, user);
+        }
+        return qualityThresholds(domain, projectId, user);
+    }
 
     /** 两段式导入：本方法先完成全部主数据与业务规则校验；仅零错误时才进入写入循环。 */
     @Transactional
@@ -314,6 +368,7 @@ public class TestConfigurationService {
     private void audit(String d,long project,String type,long id,String action,Map<String,Object> detail,AuthUser user){try{jdbc.update("INSERT INTO tm_test_configuration_audit (id,tenant_id,test_domain,project_id,entity_type,entity_id,action_code,operator_id,detail_json) VALUES (?,?,?,?,?,?,?,?,?)",nextId(),user.tenantId(),d,project,type,id,action,user.id(),objectMapper.writeValueAsString(detail));}catch(JsonProcessingException e){throw new BusinessException(ErrorCode.INTERNAL_ERROR,"配置审计序列化失败");}}
     private String domain(String value){if(!DOMAINS.contains(value))throw bad("测试大类无效");return value;}
     private String roleCode(Object value){String code=String.valueOf(value==null?"":value).trim().toUpperCase(Locale.ROOT);if(!ROLE_CODES.contains(code))throw bad("系统角色无效");return code;}
+    private BigDecimal decimal(Object value,String label,boolean required){if(value==null||String.valueOf(value).isBlank()){if(required)throw bad("请填写"+label);return null;}try{BigDecimal result=new BigDecimal(String.valueOf(value));if(result.signum()<0)throw bad(label+"不能小于 0");return result;}catch(NumberFormatException exception){throw bad(label+"必须是非负数");}}
     private String roleName(String c){return Map.of("TEST_MANAGER","测试经理","TESTER","测试人员","DEVELOPER","开发人员").get(c);}
     private static DictionarySeed dictionary(String code,String name,String source,String items){return new DictionarySeed(code,name,source,items);}
     @Transactional
@@ -370,5 +425,6 @@ public class TestConfigurationService {
     private BusinessException bad(String s){return new BusinessException(ErrorCode.BAD_REQUEST,s);}
     private BusinessException conflict(String s){return new BusinessException(ErrorCode.CONFLICT,s);}
     private record DictionarySeed(String code,String name,String source,String items){}
+    private record QualityMetric(String name,String direction){}
     private record DateRange(Date start,Date end){}
 }

@@ -236,12 +236,37 @@ export interface ImportResult {
   success: boolean;
   errors: Array<{ row_number: number; message: string }>;
 }
+export interface QualityThreshold {
+  id?: number | null;
+  metric_code: string;
+  metric_name: string;
+  comparison_direction: "AT_LEAST" | "AT_MOST";
+  qualified_threshold?: number | null;
+  risk_threshold?: number | null;
+  enabled: boolean | number;
+  updated_at?: string | null;
+}
 
 const configurationBase = (domain: TestDomain) =>
   `/test-management/configuration/${domain}`;
 export const listTestProjects = (domain: TestDomain) =>
   http.get<ApiResponse<TestProjectOption[]>>(
     `${configurationBase(domain)}/projects`,
+  );
+export const listQualityThresholds = (domain: TestDomain, projectId: number) =>
+  http.get<ApiResponse<QualityThreshold[]>>(
+    `${configurationBase(domain)}/quality-thresholds`,
+    { params: { projectId } },
+  );
+export const saveQualityThresholds = (
+  domain: TestDomain,
+  projectId: number,
+  items: QualityThreshold[],
+) =>
+  http.put<ApiResponse<QualityThreshold[]>>(
+    `${configurationBase(domain)}/quality-thresholds`,
+    { items },
+    { params: { projectId } },
   );
 export const listParticipatingSystems = (
   domain: TestDomain,
@@ -1062,21 +1087,25 @@ export const deleteTestPlan = (
 export interface TestReportTree {
   project: { id: number; project_name: string };
   systems: TestPlanSystem[];
-  specials: Array<{ id: number; node_name: string }>;
+  institutions: Array<{ id: number; name: string; system_total: number }>;
+  planDirectories: Array<{ id: number; node_name: string }>;
 }
 export interface TestReport {
   id: number;
   report_name: string;
-  report_type: "PROJECT" | "ROUND" | "CYCLE";
-  scope_type: "PROJECT" | "SYSTEM" | "SPECIAL";
+  report_type: "LIFECYCLE" | "ROUND" | "PROJECT" | "CYCLE" | "MANUAL";
+  scope_type: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
   round_id?: number;
   cycle_id?: number;
   physical_subsystem_id?: number;
+  responsible_team_org_id?: number;
+  responsible_team_name?: string;
   special_node_id?: number;
   special_name?: string;
   physical_system_name?: string;
   current_version_no: number;
   current_version?: string;
+  source_type?: "LIVE" | "SNAPSHOT" | "MANUAL";
   generator_name?: string;
   generated_at?: string;
   round_name?: string;
@@ -1087,6 +1116,11 @@ export interface TestReportVersion {
   version_no: number;
   generated_at?: string;
   generator_name?: string;
+  attachment_id?: number;
+  file_name?: string;
+  file_extension?: string;
+  file_size?: number;
+  version_note?: string;
 }
 export interface TestReportDetail {
   report: TestReport;
@@ -1099,6 +1133,10 @@ export interface TestReportDetail {
     updated_at?: string;
     updater_name?: string;
   }>;
+  manual_file?: Pick<
+    TestReportVersion,
+    "attachment_id" | "file_name" | "file_extension" | "file_size" | "version_note"
+  >;
 }
 const reportBase = (domain: TestDomain) => `/test-management/reports/${domain}`;
 export const getTestReportTree = (domain: TestDomain, projectId: number) =>
@@ -1124,8 +1162,9 @@ export const listTestReports = (
   params: PageParams & {
     projectId: number;
     physicalSubsystemId?: number;
+    responsibleTeamOrgId?: number;
     specialNodeId?: number;
-    scopeType?: "PROJECT" | "SYSTEM" | "SPECIAL";
+    scopeType?: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
     keyword?: string;
   },
 ) =>
@@ -1137,8 +1176,9 @@ export const generateTestReport = (
   projectId: number,
   scope: {
     physicalSubsystemId?: number;
+    responsibleTeamOrgId?: number;
     specialNodeId?: number;
-    scopeType: "PROJECT" | "SYSTEM" | "SPECIAL";
+    scopeType: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
   },
   body: Record<string, unknown>,
   id?: number,
@@ -1147,6 +1187,43 @@ export const generateTestReport = (
     `${reportBase(domain)}${id ? `/${id}/regenerate` : ""}`,
     body,
     { params: { projectId, ...scope } },
+  );
+export interface TestReportUploadPayload {
+  report_name?: string;
+  attachment_id: number;
+  version_note: string;
+  confirm_version?: boolean;
+}
+export interface TestReportUploadResult extends Partial<TestReportDetail> {
+  version_confirmation_required?: boolean;
+  report_id?: number;
+  next_version?: number;
+  report_name?: string;
+}
+export const uploadTestReport = (
+  domain: TestDomain,
+  projectId: number,
+  scope: {
+    physicalSubsystemId?: number;
+    responsibleTeamOrgId?: number;
+    specialNodeId?: number;
+    scopeType: "PROJECT" | "INSTITUTION" | "SYSTEM" | "SPECIAL";
+  },
+  payload: TestReportUploadPayload,
+) =>
+  http.post<ApiResponse<TestReportUploadResult>>(`${reportBase(domain)}/upload`, payload, {
+    params: { projectId, ...scope },
+  });
+export const uploadTestReportVersion = (
+  domain: TestDomain,
+  projectId: number,
+  reportId: number,
+  payload: Pick<TestReportUploadPayload, "attachment_id" | "version_note">,
+) =>
+  http.post<ApiResponse<TestReportUploadResult>>(
+    `${reportBase(domain)}/${reportId}/versions/upload`,
+    payload,
+    { params: { projectId } },
   );
 export const getTestReport = (
   domain: TestDomain,
@@ -1298,6 +1375,15 @@ export const getTestAnalytics = (
     `${analyticsBase(domain)}/view/${key}`,
     { params: { projectId, ...params } },
   );
+export const runSavedTestAnalytics = (
+  domain: TestDomain,
+  projectId: number,
+  id: number,
+  params: { physicalSubsystemId?: number; roundId?: number; cycleId?: number } = {},
+) => http.get<ApiResponse<Record<string, unknown>>>(
+  `${analyticsBase(domain)}/reports/${id}/run`,
+  { params: { projectId, ...params } },
+);
 export const getTestAnalyticsDrilldown = (
   domain: TestDomain,
   projectId: number,

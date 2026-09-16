@@ -18,11 +18,11 @@ import {
   Search,
 } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import UiDataTable from "../../../components/ui/UiDataTable.vue";
 import UiEmptyState from "../../../components/ui/UiEmptyState.vue";
 import UiPageHeader from "../../../components/ui/UiPageHeader.vue";
-import DeliveryChart from "../../delivery-showcase/components/DeliveryChart.vue";
+import TestAnalyticsChart from "./TestAnalyticsChart.vue";
 import TestManagementFormDialog from "../components/TestManagementFormDialog.vue";
 import { useProjectContextStore } from "../../../stores/project-context";
 import {
@@ -33,16 +33,16 @@ import {
   getTestAnalyticsDrilldown,
   getTestAnalyticsFilters,
   getTestAnalyticsPreset,
+  getTestAnalytics,
   getTestAnalyticsTree,
   listTestProjects,
   publishTestAnalyticsReport,
+  runSavedTestAnalytics,
   saveTestAnalyticsReport,
   type TestAnalyticsTree,
   type TestDomain,
 } from "../api";
-const route = useRoute(),
-  router = useRouter(),
-  context = useProjectContextStore();
+const route = useRoute(), context = useProjectContextStore();
 const domain = computed(() => String(route.params.domain) as TestDomain);
 const projects = ref<
     Array<{ id: number; project_code: string; project_name: string }>
@@ -64,8 +64,8 @@ const label = computed(
 const tree = ref<TestAnalyticsTree>(),
   meta = ref<any>({ systems: [], rounds: [], cycles: [] }),
   active = reactive({
-    key: "SCOPE_COVERAGE",
-    name: "范围覆盖度",
+    key: "RPT-001",
+    name: "测试执行进度汇总表",
     view: "TABLE",
     perspective: "EXECUTOR",
   }),
@@ -82,36 +82,151 @@ const tree = ref<TestAnalyticsTree>(),
   compareOpen = ref(false),
   compareRows = ref<any[]>([]),
   compareRounds = ref<number[]>([]),
-  activeCustomId = ref<number>();
+  activeCustomId = ref<number>(),
+  activeSavedId = ref<number>();
 const config = reactive({
   report_name: "",
-  report_key: "SCOPE_COVERAGE",
-  row_dimensions: ["系统"],
-  column_dimensions: [] as string[],
-  metrics: ["范围总数", "覆盖率"],
+  report_key: "CUSTOM",
+  dimensions: ["physical_subsystem_id"],
+  metrics: ["execution_rate", "case_success_rate"],
   charts: ["TABLE", "BAR"],
-  filters: ["系统", "轮次", "周期"],
 });
-const presetNames: Record<string, string> = {
-  SCOPE_COVERAGE: "范围覆盖度",
-  EXECUTION_PROGRESS: "执行进度与成功率",
-  DEFECT_DISTRIBUTION: "缺陷多维统计",
-  PERSONNEL_WORKLOAD: "人员工作量",
+let projectContextVersion = 0;
+const fieldLabels: Record<string, string> = {
+  system_name: "参测系统",
+  responsible_team_name: "责任团队组织",
+  tester_name: "测试人员",
+  statistic_date: "统计日期",
+  statistic_week: "统计周",
+  statistic_month: "统计月",
+  accounting_category: "核算关联",
+  defect_status: "缺陷状态",
+  value: "统计值",
+  scope_total: "测试范围数",
+  covered_total: "已覆盖范围数",
+  uncovered_total: "未覆盖范围数",
+  coverage_rate: "范围覆盖率",
+  case_total: "案例总数",
+  effective_case_total: "有效案例数",
+  invalid_case_total: "无效案例数",
+  execution_total: "已执行案例数",
+  execution_unexecuted: "未执行案例数",
+  unexecuted_count: "未执行案例数",
+  execution_in_progress: "执行中案例数",
+  in_progress_count: "执行中案例数",
+  execution_success: "成功案例数",
+  success_count: "成功案例数",
+  execution_failed: "失败案例数",
+  failed_count: "失败案例数",
+  execution_blocked: "阻塞案例数",
+  blocked_count: "阻塞案例数",
+  execution_rate: "执行率",
+  success_rate: "案例成功率",
+  case_success_rate: "案例成功率",
+  executed_case_success_rate: "已执行案例成功率",
+  defect_total: "缺陷总数",
+  defect_open: "未关闭缺陷数",
+  severe_defect_count: "严重缺陷数",
+  defect_density: "缺陷密度",
+  defect_repair_rate: "缺陷修复率",
+  handled_defects: "已处理缺陷数",
+  pending_defects: "待处理缺陷数",
+  completed_count: "已完成数",
+  raised_count: "新增缺陷数",
+  resolved_count: "已解决缺陷数",
+  closed_total: "已关闭缺陷数",
+  average_days: "平均生命周期（天）",
+  average_close_days: "平均关闭耗时（天）",
+  cycle_name: "测试周期",
+  defect_category: "缺陷分类",
+  execution_record_total: "执行记录数",
+  defect_code: "缺陷编号",
+  summary: "缺陷摘要",
+  status: "状态",
+  severity: "严重程度",
+  urgency: "紧急程度",
+  handler_name: "处理人",
+  overdue_days: "逾期天数",
+  case_code: "案例编号",
+  case_name: "案例名称",
+  case_type: "案例类型",
+  priority: "优先级",
+  invalidated: "是否无效",
+  execution_status: "执行状态",
+  executed_at: "执行时间",
+  proposed_at: "提出时间",
+  round_name: "测试轮次",
+  archived_at: "归档时间",
+  snapshot_at: "统计时间",
 };
+const valueLabels: Record<string, string> = {
+  UNEXECUTED: "未执行", IN_PROGRESS: "执行中", RUNNING: "执行中",
+  SUCCESS: "成功", FAILED: "失败", BLOCKED: "阻塞",
+  RAISED: "已提出", ANALYZING: "分析中", CAUSE_IDENTIFIED: "已定位原因",
+  FIX_PLAN_CONFIRMED: "修复方案已确认", PENDING_VERIFICATION: "待验证",
+  RESOLVED: "已解决", CLOSED: "已关闭",
+  FATAL: "致命", SERIOUS: "严重", NORMAL: "一般", MINOR: "轻微",
+  HIGH: "高", MEDIUM: "中", LOW: "低", true: "是", false: "否", 1: "是", 0: "否",
+};
+const chartLabels: Record<string, string> = {
+  TABLE: "数据表", BAR: "柱状图", LINE: "趋势图", PIE: "分布图",
+  STACKED_BAR: "堆叠对比图", RADAR: "质量雷达图", HEATMAP: "执行热力图",
+};
+const columnLabel = (key: string) => fieldLabels[key] || key;
+const displayValue = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "-" : typeof value === "number" ? String(value) : valueLabels[String(value)] || String(value);
 const columns = computed(() => Object.keys(model.value.rows?.[0] || {}));
-const viewOptions = computed(() =>
-  active.key === "SCOPE_COVERAGE"
-    ? ["TABLE", "BAR"]
-    : active.key === "EXECUTION_PROGRESS"
-      ? ["TABLE", "BAR", "LINE"]
-      : active.key === "DEFECT_DISTRIBUTION"
-        ? ["STATUS", "CATEGORY", "SYSTEM", "MATRIX", "OVERDUE"]
-        : ["EXECUTOR", "HANDLER"],
+const chartDimension = (row: any) => String(
+  row.dimension || row.row_dimension || row.system_name || row.round_name || row.tester_name || row.case_type || row.severity || row.defect_status || row.execution_status || row.statistic_date || row.defect_code || "-",
 );
+const stackedDimension = (row: any) => String(
+  row.row_dimension || [row.system_name, row.cycle_name].filter(Boolean).join(" / ") || row.round_name || row.severity || row.system_name || "未分类",
+);
+const stackedSeries = (row: any) => String(row.column_dimension || row.execution_status || row.defect_status || "数量");
+/** 汇总卡展示当前表的总计；不能把第一条分组记录误当作项目总计。 */
+const summaryCards = computed(() => {
+  const rows = model.value.rows || [];
+  if (active.key.startsWith("CHT-") || !rows.length || !("effective_case_total" in rows[0])) return [];
+  const sum = (key: string) => rows.reduce((total: number, row: any) => total + Number(row[key] || 0), 0);
+  const effective = sum("effective_case_total"), execution = sum("execution_total"), success = sum("success_count");
+  const rate = (part: number, total: number) => total ? Math.round(part * 10000 / total) / 100 : 0;
+  return [
+    ["effective_case_total", effective], ["execution_total", execution], ["success_count", success],
+    ["failed_count", sum("failed_count")], ["blocked_count", sum("blocked_count")],
+    ["in_progress_count", sum("in_progress_count")], ["unexecuted_count", sum("unexecuted_count")],
+    ["execution_rate", rate(execution, effective)], ["case_success_rate", rate(success, effective)],
+    ["executed_case_success_rate", rate(success, execution)],
+  ] as Array<[string, number]>;
+});
+const chartView = (type: unknown) => {
+  const value = String(type || "BAR");
+  return ["BAR", "LINE", "PIE", "STACKED_BAR", "RADAR", "HEATMAP"].includes(value) ? value : "BAR";
+};
+const viewOptions = computed(() =>
+  active.key.startsWith("CHT-") ? ["TABLE", chartView(model.value.chart_type)] : ["TABLE"],
+);
+const presentation = computed(() => {
+  if (["RPT-006", "RPT-007"].includes(active.key)) return "detail";
+  if (["RPT-008", "RPT-009", "RPT-013", "RPT-017", "RPT-026"].includes(active.key)) return "distribution";
+  if (["RPT-011"].includes(active.key)) return "coverage";
+  if (["RPT-012"].includes(active.key)) return "workload";
+  if (["RPT-010", "RPT-019", "RPT-024"].includes(active.key)) return "quality";
+  if (["RPT-020", "RPT-021", "RPT-022", "RPT-023", "RPT-025"].includes(active.key)) return "timeline";
+  return "execution";
+});
+const presentationHint = computed(() => ({
+  detail: "逐条展示业务事实，可按数值进入下钻明细。",
+  distribution: "按状态、严重程度或处理效率聚合，适合比较各分类数量与占比。",
+  coverage: "展示测试范围是否已纳入有效案例，覆盖率按范围计算。",
+  workload: "展示测试人员的执行工作量与执行结果分布。",
+  quality: "对比各系统或责任团队的执行率、成功率和缺陷密度。",
+  timeline: "按日、周或月连续呈现执行进展，便于跟踪变化。",
+  execution: "按当前统计维度汇总有效案例及执行状态，不将执行中计入已执行。",
+} as Record<string, string>)[presentation.value]);
 const chartOption = computed<EChartsOption>(() => {
   const rows = model.value.rows || [],
-    dimension = (row: any) =>
-      String(row.dimension || row.row_dimension || row.defect_code || "-"),
+    chartType = active.view === "TABLE" ? chartView(model.value.chart_type) : active.view,
+    dimension = chartDimension,
     value = (row: any) =>
       Number(
         row.value ??
@@ -121,36 +236,56 @@ const chartOption = computed<EChartsOption>(() => {
           row.handled_defects ??
           0,
       );
-  if (active.view === "LINE") {
+  if (chartType === "RADAR") {
+    const indicators = ["执行率", "案例成功率", "已执行案例成功率", "缺陷密度"];
+    return {
+      tooltip: {},
+      legend: { bottom: 0 },
+      radar: { indicator: indicators.map((name) => ({ name, max: 100 })) },
+      series: [{ type: "radar", data: rows.slice(0, 8).map((row: any) => ({ name: dimension(row), value: [Number(row.execution_rate || 0), Number(row.case_success_rate || 0), Number(row.executed_case_success_rate || 0), Math.max(0, 100 - Number(row.defect_density || 0))] })) }],
+    };
+  }
+  if (chartType === "HEATMAP") {
+    const dates = [...new Set(rows.map((row: any) => String(row.column_dimension || row.statistic_date || row.dimension || "未执行")))];
+    const systems = [...new Set(rows.map((row: any) => String(row.row_dimension || row.system_name || "未设置系统")))];
+    return {
+      tooltip: { position: "top" },
+      grid: { left: 82, right: 24, top: 20, bottom: 72 },
+      xAxis: { type: "category", data: dates, axisLabel: { rotate: dates.length > 6 ? 30 : 0 } },
+      yAxis: { type: "category", data: systems },
+      visualMap: { min: 0, max: Math.max(1, ...rows.map(value)), calculable: true, orient: "horizontal", left: "center", bottom: 0 },
+      series: [{ type: "heatmap", data: rows.map((row: any) => [dates.indexOf(String(row.column_dimension || row.statistic_date || row.dimension || "未执行")), systems.indexOf(String(row.row_dimension || row.system_name || "未设置系统")), value(row)]), label: { show: true } }],
+    };
+  }
+  if (chartType === "STACKED_BAR") {
+    const dimensions = [...new Set(rows.map((row: unknown) => String(stackedDimension(row))))];
+    const seriesKeys = [...new Set(rows.map((row: unknown) => String(stackedSeries(row))))];
+    return {
+      tooltip: { trigger: "axis" }, legend: { top: 0 }, grid: { left: 52, right: 20, top: 42, bottom: 62 },
+      xAxis: { type: "category", data: dimensions, axisLabel: { rotate: dimensions.length > 6 ? 30 : 0 } }, yAxis: { type: "value", minInterval: 1 },
+      series: seriesKeys.map((name) => ({ name: String(name), type: "bar", stack: "总量", data: dimensions.map((item) => value(rows.find((row: any) => stackedDimension(row) === item && stackedSeries(row) === name) || {})) })),
+    } as EChartsOption;
+  }
+  if (chartType === "LINE") {
     const trend = model.value.trend || [];
+    const fields = active.key === "CHT-004"
+      ? [["execution_rate", "执行率"], ["case_success_rate", "案例成功率"], ["executed_case_success_rate", "已执行案例成功率"]]
+      : active.key === "CHT-013"
+        ? [["execution_total", "日执行量"], ["execution_rate", "累计执行率"]]
+        : [["completed_count", "完成数"], ["raised_count", "新增缺陷数"], ["resolved_count", "已解决缺陷数"]];
     return {
       tooltip: { trigger: "axis" },
       legend: { top: 0 },
       grid: { left: 52, right: 20, top: 38, bottom: 32 },
       xAxis: {
         type: "category",
-        data: trend.map((row: any) => String(row.dimension || "")),
+        data: trend.map((row: any) => String(row.statistic_date || row.dimension || "")),
       },
       yAxis: { type: "value", minInterval: 1 },
-      series: [
-        {
-          name: "完成数",
-          type: "line",
-          smooth: true,
-          data: trend.map((row: any) =>
-            Number(row.completed_count ?? row.raised_count ?? 0),
-          ),
-        },
-        {
-          name: "解决数",
-          type: "line",
-          smooth: true,
-          data: trend.map((row: any) => Number(row.resolved_count ?? 0)),
-        },
-      ],
+      series: fields.filter(([key]) => trend.some((row: any) => row[key] !== undefined)).map(([key, name]) => ({ name, type: "line", smooth: true, data: trend.map((row: any) => Number(row[key] ?? 0)) })),
     };
   }
-  if (active.key === "DEFECT_DISTRIBUTION" && active.view === "STATUS")
+  if (chartType === "PIE")
     return {
       tooltip: { trigger: "item" },
       legend: { bottom: 0 },
@@ -187,45 +322,93 @@ const chartOption = computed<EChartsOption>(() => {
 function err(e: any, s: string) {
   ElMessage.error(e?.response?.data?.message || s);
 }
-async function load() {
-  if (!projectId.value) return;
+async function load(
+  requestedProjectId = projectId.value,
+  requestVersion = projectContextVersion,
+) {
+  if (!requestedProjectId) return;
   loading.value = true;
   try {
-    model.value = (
-      await getTestAnalyticsPreset(domain.value, projectId.value, active.key, {
-        physicalSubsystemId: filters.systemId,
-        roundId: filters.roundId,
-        cycleId: filters.cycleId,
-        view: active.view,
-        perspective: active.perspective,
-      })
-    ).data.data;
+    const response = (
+      await (activeSavedId.value
+        ? runSavedTestAnalytics(domain.value, requestedProjectId, activeSavedId.value, {
+            physicalSubsystemId: filters.systemId,
+            roundId: filters.roundId,
+            cycleId: filters.cycleId,
+          })
+        : active.key === "CUSTOM"
+          ? getTestAnalytics(domain.value, requestedProjectId, "CUSTOM", {
+              physicalSubsystemId: filters.systemId,
+              roundId: filters.roundId,
+              cycleId: filters.cycleId,
+            })
+        : getTestAnalyticsPreset(domain.value, requestedProjectId, active.key, {
+            physicalSubsystemId: filters.systemId,
+            roundId: filters.roundId,
+            cycleId: filters.cycleId,
+            view: active.view,
+            perspective: active.perspective,
+          }))
+    ).data.data as any;
+    if (requestVersion !== projectContextVersion || requestedProjectId !== projectId.value) return;
+    model.value = { ...response, rows: response.rows || response.table || [] };
+    if (active.key.startsWith("CHT-") && active.view === "TABLE") active.view = chartView(response.chart_type);
   } catch (e) {
-    err(e, "统计数据加载失败");
+    if (requestVersion === projectContextVersion) err(e, "统计数据加载失败");
   } finally {
-    loading.value = false;
+    if (requestVersion === projectContextVersion) loading.value = false;
   }
 }
-async function setup() {
-  if (!projectId.value) return;
-  const [a, b] = await Promise.all([
-    getTestAnalyticsTree(domain.value, projectId.value),
-    getTestAnalyticsFilters(domain.value, projectId.value),
-  ]);
-  tree.value = a.data.data;
-  meta.value = b.data.data;
-  await load();
+function resetProjectScopedState() {
+  filters.systemId = undefined;
+  filters.roundId = undefined;
+  filters.cycleId = undefined;
+  tree.value = undefined;
+  meta.value = { systems: [], rounds: [], cycles: [] };
+  model.value = { rows: [], trend: [] };
+  drillRows.value = [];
+  compareRows.value = [];
+  compareRounds.value = [];
+  activeCustomId.value = undefined;
+  activeSavedId.value = undefined;
+  if (active.key === "CUSTOM") {
+    active.key = "RPT-001";
+    active.name = "测试执行进度汇总表";
+    active.view = "TABLE";
+  }
+}
+async function setup(refreshProjects = false) {
+  const version = ++projectContextVersion;
+  if (refreshProjects) {
+    resetProjectScopedState();
+    try {
+      projects.value = (await listTestProjects(domain.value)).data.data || [];
+    } catch (e) {
+      if (version === projectContextVersion) err(e, "项目列表加载失败");
+      return;
+    }
+  }
+  const selectedProjectId = projectId.value;
+  if (!selectedProjectId) return;
+  try {
+    const [a, b] = await Promise.all([
+      getTestAnalyticsTree(domain.value, selectedProjectId),
+      getTestAnalyticsFilters(domain.value, selectedProjectId),
+    ]);
+    if (version !== projectContextVersion || selectedProjectId !== projectId.value) return;
+    tree.value = a.data.data;
+    meta.value = b.data.data;
+    await load(selectedProjectId, version);
+  } catch (e) {
+    if (version === projectContextVersion) err(e, "统计上下文加载失败");
+  }
 }
 function select(key: string, name?: string) {
   activeCustomId.value = undefined;
+  activeSavedId.value = undefined;
   active.key = key;
-  active.name = name || presetNames[key] || "自定义报表";
-  active.view =
-    key === "DEFECT_DISTRIBUTION"
-      ? "STATUS"
-      : key === "PERSONNEL_WORKLOAD"
-        ? "EXECUTOR"
-        : "TABLE";
+  active.name = name || "固定分析";
+  active.view = "TABLE";
   void load();
 }
 function selectCustom(
@@ -238,6 +421,7 @@ function selectCustom(
   editable = false,
 ) {
   activeCustomId.value = editable ? report.id : undefined;
+  activeSavedId.value = report.id;
   active.key = report.report_key;
   active.name = report.report_name;
   try {
@@ -260,12 +444,10 @@ function openDesigner(create = false) {
     activeCustomId.value = undefined;
     Object.assign(config, {
       report_name: "",
-      report_key: active.key,
-      row_dimensions: ["系统"],
-      column_dimensions: [],
-      metrics: ["范围总数", "覆盖率"],
+      report_key: "CUSTOM",
+      dimensions: ["physical_subsystem_id"],
+      metrics: ["execution_rate", "case_success_rate"],
       charts: ["TABLE", "BAR"],
-      filters: ["系统", "轮次", "周期"],
     });
   }
   designer.value = true;
@@ -273,9 +455,9 @@ function openDesigner(create = false) {
 async function drilldown() {
   if (!projectId.value) return;
   const entity =
-    active.key === "SCOPE_COVERAGE"
+    active.key === "RPT-004"
       ? "SCOPE"
-      : active.key === "EXECUTION_PROGRESS"
+      : ["RPT-005", "RPT-006", "RPT-007", "CHT-001"].includes(active.key)
         ? "EXECUTION"
         : "DEFECT";
   try {
@@ -311,7 +493,7 @@ function exportImage() {
     svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="${height}"><rect width="100%" height="100%" fill="white"/><text x="10" y="20" font-size="16">${active.name}</text>${rows
       .map((r: any, i: number) => {
         const v = Number(r.value ?? r.execution_total ?? r.scope_total ?? 0);
-        return `<text x="10" y="${46 + i * 28}" font-size="12">${String(r.dimension || r.row_dimension || "-")}</text><rect x="180" y="${34 + i * 28}" width="${Math.min(440, v * 8)}" height="14" fill="#409eff" rx="3"/><text x="${190 + Math.min(440, v * 8)}" y="${46 + i * 28}" font-size="12">${v}</text>`;
+        return `<text x="10" y="${46 + i * 28}" font-size="12">${chartDimension(r)}</text><rect x="180" y="${34 + i * 28}" width="${Math.min(440, v * 8)}" height="14" fill="#409eff" rx="3"/><text x="${190 + Math.min(440, v * 8)}" y="${46 + i * 28}" font-size="12">${v}</text>`;
       })
       .join("")}</svg>`;
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })),
@@ -366,13 +548,11 @@ async function save() {
       projectId.value,
       {
         report_name: config.report_name,
-        report_key: config.report_key,
+        report_key: "CUSTOM",
         config: {
-          row_dimensions: config.row_dimensions,
-          column_dimensions: config.column_dimensions,
+          dimensions: config.dimensions,
           metrics: config.metrics,
           charts: config.charts,
-          filters: config.filters,
         },
       },
       activeCustomId.value,
@@ -384,23 +564,11 @@ async function save() {
     err(e, "保存失败");
   }
 }
-function report() {
-  router.push({
-    path: `/test-management/${domain.value}/reports`,
-    query: {
-      physicalSubsystemId: filters.systemId,
-      roundId: filters.roundId,
-      cycleId: filters.cycleId,
-      source: "analytics",
-    },
-  });
-}
 onMounted(async () => {
   await context.initialize();
-  projects.value = (await listTestProjects(domain.value)).data.data || [];
-  await setup();
+  await setup(true);
 });
-watch([() => context.currentRef, domain], setup);
+watch([() => context.currentRef, domain], () => void setup(true));
 </script>
 <template>
   <section class="analytics">
@@ -418,7 +586,7 @@ watch([() => context.currentRef, domain], setup);
           size="small"
           :icon="Refresh"
           aria-label="刷新"
-          @click="load" /></template></UiPageHeader
+          @click="() => load()" /></template></UiPageHeader
     ><UiEmptyState
       v-if="!projectId"
       title="请先选择项目"
@@ -461,7 +629,7 @@ watch([() => context.currentRef, domain], setup);
                   projectId!,
                   p.id,
                   !p.shared,
-                ).then(setup)
+                ).then(() => setup())
               "
               >{{ p.shared ? "取消共享" : "共享" }}</el-button
             ><el-button
@@ -477,7 +645,7 @@ watch([() => context.currentRef, domain], setup);
                   .then(() =>
                     deleteTestAnalyticsReport(domain, projectId!, p.id),
                   )
-                  .then(setup)
+                  .then(() => setup())
                   .catch(() => undefined)
               "
               >删除</el-button
@@ -519,31 +687,12 @@ watch([() => context.currentRef, domain], setup);
               :key="x.id"
               :label="x.cycle_name"
               :value="x.id" /></el-select
-          ><el-button size="small" :icon="Search" @click="load">查询</el-button>
+          ><el-button size="small" :icon="Search" @click="() => load()">查询</el-button>
         </div>
         <div class="toolbar">
-          <el-radio-group v-model="active.view" size="small" @change="load"
-            ><el-radio-button v-for="v in viewOptions" :key="v" :value="v">{{
-              v === "TABLE"
-                ? "表格"
-                : v === "BAR"
-                  ? "柱状图"
-                  : v === "LINE"
-                    ? "折线图"
-                    : v === "STATUS"
-                      ? "状态分布"
-                      : v === "CATEGORY"
-                        ? "分类分布"
-                        : v === "SYSTEM"
-                          ? "系统分布"
-                          : v === "MATRIX"
-                            ? "严重×紧急"
-                            : v === "OVERDUE"
-                              ? "超期清单"
-                              : v === "HANDLER"
-                                ? "处理人视角"
-                                : "执行人视角"
-            }}</el-radio-button></el-radio-group
+          <el-radio-group v-model="active.view" size="small">
+            <el-radio-button v-for="v in viewOptions" :key="v" :value="v">{{ chartLabels[v] }}</el-radio-button>
+          </el-radio-group>
           ><span /><el-button size="small" :icon="Edit" @click="openDesigner()"
             >编辑/另存为</el-button
           ><el-button size="small" :icon="Download" @click="exportXlsx"
@@ -551,36 +700,35 @@ watch([() => context.currentRef, domain], setup);
           ><el-button size="small" @click="exportImage">导出图片</el-button
           ><el-button size="small" @click="compareOpen = true"
             >跨轮次对比</el-button
-          ><el-button size="small" @click="archive">归档快照</el-button
-          ><el-button size="small" type="primary" @click="report"
-            >生成测试报告</el-button
-          >
+          ><el-button size="small" @click="archive">归档快照</el-button>
         </div>
-        <div class="cards">
+        <section class="analysis-intro" :class="`analysis-intro--${presentation}`">
+          <strong>{{ active.name }}</strong>
+          <span>{{ presentationHint }}</span>
+        </section>
+        <div v-if="summaryCards.length" class="cards">
           <article
-            v-for="(v, k) in model.rows?.[0] || {}"
-            v-show="typeof v === 'number'"
-            :key="String(k)"
+            v-for="[key, value] in summaryCards"
+            :key="key"
           >
-            <small>{{ k }}</small
-            ><b>{{ v }}</b>
+            <small>{{ columnLabel(key) }}</small
+            ><b>{{ displayValue(value) }}</b>
           </article>
         </div>
-        <DeliveryChart
-          v-if="active.view !== 'TABLE' && model.rows?.length"
+        <TestAnalyticsChart
+          v-if="active.key.startsWith('CHT-') && active.view !== 'TABLE' && model.rows?.length"
           class="chart"
           :option="chartOption"
           :aria-label="active.name + '图表'"
         /><UiDataTable
           :data="model.rows || []"
-          row-key="dimension"
           border
-          class="table"
+          :class="['table', `table--${presentation}`]"
           ><el-table-column
             v-for="key in columns"
             :key="key"
             :prop="key"
-            :label="key"
+            :label="columnLabel(key)"
             min-width="120"
             show-overflow-tooltip
             resizable
@@ -591,7 +739,7 @@ watch([() => context.currentRef, domain], setup);
                 size="small"
                 @click="drilldown"
                 >{{ row[key] }}</el-button
-              ><span v-else>{{ row[key] }}</span></template
+              ><span v-else>{{ displayValue(row[key]) }}</span></template
             ></el-table-column
           ></UiDataTable
         >
@@ -607,55 +755,41 @@ watch([() => context.currentRef, domain], setup);
           ><el-input
             v-model="config.report_name"
             maxlength="50" /></el-form-item
-        ><el-form-item label="预置模型"
-          ><el-select v-model="config.report_key"
-            ><el-option
-              v-for="(name, key) in presetNames"
-              :key="key"
-              :label="name"
-              :value="key" /></el-select></el-form-item
-        ><el-form-item label="行维度"
-          ><el-checkbox-group v-model="config.row_dimensions"
+        ><el-form-item label="分析维度"
+          ><el-checkbox-group v-model="config.dimensions"
             ><el-checkbox
               v-for="x in [
-                '系统',
-                '目录',
-                '范围',
-                '案例类型',
-                '轮次',
-                '周期',
-                '状态',
-                '处理人',
+                ['physical_subsystem_id', '物理子系统'],
+                ['responsible_team_org_id', '责任团队组织'],
+                ['round_id', '测试轮次'],
+                ['cycle_id', '测试周期'],
+                ['severity', '缺陷严重程度'],
+                ['status', '状态'],
+                ['executor_id', '执行人员'],
+                ['handler_id', '处理人员'],
               ]"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
-            ></el-checkbox-group
-          ></el-form-item
-        ><el-form-item label="列维度"
-          ><el-checkbox-group v-model="config.column_dimensions"
-            ><el-checkbox
-              v-for="x in ['状态', '严重程度', '紧急程度']"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
+              :key="x[0]"
+              :value="x[0]"
+              >{{ x[1] }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
         ><el-form-item label="统计指标"
           ><el-checkbox-group v-model="config.metrics"
             ><el-checkbox
               v-for="x in [
-                '范围总数',
-                '案例总数',
-                '覆盖率',
-                '执行率',
-                '成功率',
-                '缺陷数',
-                '超期未解决数',
+                ['execution_rate', '执行率'],
+                ['case_success_rate', '案例成功率'],
+                ['executed_case_success_rate', '已执行案例成功率'],
+                ['defect_density', '缺陷密度'],
+                ['defect_repair_rate', '缺陷修复率'],
+                ['severe_defect_count', '严重缺陷数'],
+                ['blocked_case_count', '阻塞案例数'],
+                ['defect_total', '缺陷总数'],
+                ['effective_case_total', '有效案例数'],
               ]"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
+              :key="x[0]"
+              :value="x[0]"
+              >{{ x[1] }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
         ><el-form-item label="图表形式"
@@ -664,26 +798,10 @@ watch([() => context.currentRef, domain], setup);
               v-for="x in ['TABLE', 'BAR', 'PIE', 'LINE']"
               :key="x"
               :value="x"
-              >{{ x }}</el-checkbox
+              >{{ chartLabels[x] }}</el-checkbox
             ></el-checkbox-group
           ></el-form-item
-        ><el-form-item label="运行时筛选"
-          ><el-checkbox-group v-model="config.filters"
-            ><el-checkbox
-              v-for="x in [
-                '系统',
-                '轮次',
-                '周期',
-                '目录',
-                '时间范围',
-                '案例类型',
-                '缺陷分类',
-              ]"
-              :key="x"
-              :value="x"
-              >{{ x }}</el-checkbox
-            ></el-checkbox-group
-          ></el-form-item
+        ><el-alert type="info" :closable="false" show-icon title="运行时仅按当前入口固定的测试大类、项目、系统、轮次和周期过滤；不提供测试大类筛选。" />
         ></el-form
       ></TestManagementFormDialog
     ><el-dialog
@@ -695,7 +813,7 @@ watch([() => context.currentRef, domain], setup);
           v-for="k in Object.keys(drillRows[0] || {})"
           :key="k"
           :prop="k"
-          :label="k"
+          :label="columnLabel(k)"
           min-width="120"
           show-overflow-tooltip /></el-table
       ><template #footer
@@ -726,7 +844,7 @@ watch([() => context.currentRef, domain], setup);
           v-for="k in Object.keys(compareRows[0] || {})"
           :key="k"
           :prop="k"
-          :label="k"
+          :label="columnLabel(k)"
           min-width="120" /></el-table
     ></el-dialog>
   </section>
@@ -790,6 +908,22 @@ watch([() => context.currentRef, domain], setup);
 .toolbar span {
   flex: 1;
 }
+.analysis-intro {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  margin-bottom: 9px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: 5px;
+  background: var(--panel-muted);
+}
+.analysis-intro strong { font-size: 14px; }
+.analysis-intro span { font-size: 12px; color: var(--text-muted); }
+.analysis-intro--detail { border-left-color: var(--accent, var(--brand)); }
+.analysis-intro--quality { border-left-color: var(--success); }
+.analysis-intro--timeline { border-left-color: var(--warning); }
+.analysis-intro--distribution { border-left-color: var(--danger); }
 .cards {
   display: flex;
   gap: 7px;
@@ -843,6 +977,10 @@ watch([() => context.currentRef, domain], setup);
   font-size: 12px;
   white-space: nowrap;
 }
+.table--detail :deep(.el-table__cell) { vertical-align: top; }
+.table--detail :deep(.el-table__cell:nth-child(2) .cell) { white-space: normal; line-height: 1.5; }
+.table--quality :deep(.el-table__body tr:first-child) { background: color-mix(in srgb, var(--success) 9%, var(--panel-bg)); }
+.table--coverage :deep(.el-table__body tr) { background: color-mix(in srgb, var(--brand) 5%, var(--panel-bg)); }
 .compare-button {
   margin: 10px 0;
 }
@@ -870,5 +1008,7 @@ watch([() => context.currentRef, domain], setup);
   .bar {
     grid-template-columns: 100px minmax(50px, 1fr) 40px;
   }
+  .analysis-intro { padding: 9px; }
+  .cards { padding-bottom: 2px; }
 }
 </style>
