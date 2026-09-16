@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260911-074",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260911-074-release-architecture-master-data/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/release",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260911-074-release-architecture-master-data",
+    "worktree": "/Users/zhangwei/Documents/技术相关/RDDMP-release-architecture-master-data"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260911-074-release-architecture-master-data/**",
+      "docs/engineering-control/designs/2026-09-11-release-architecture-master-data-design.md",
+      "docs/engineering-control/plans/2026-09-11-release-architecture-master-data-implementation-plan.md",
+      ".ai-control/requirements/req-20260911-074-release-architecture-master-data/*.json",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V213__normalize_delivery_unit_artifact_types.sql",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java",
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcReleaseMasterDataQuery.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcReleaseMasterDataQueryTest.java",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/ReleaseRequirementQuery.java",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcReleaseRequirementQuery.java",
+      "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcReleaseRequirementQueryTest.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseRequirementDirectory.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseMasterDataService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+      "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseMasterDataController.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseMasterDataServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java",
+      "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseMasterDataControllerSecurityTest.java",
+      "server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java",
+      "server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseRequirementDirectoryAdapter.java",
+      "server/src/platform/boot/src/test/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapterTest.java",
+      "server/src/platform/boot/src/test/java/com/ccb/boot/release/ReleaseRequirementDirectoryAdapterTest.java",
+      "web/src/api/release.ts",
+      "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+      "web/src/modules/release/release-master-data.mock.ts",
+      "web/src/modules/release/release-prototype.css",
+      "server/src/test/java/com/ccb/ArchitectureTest.java",
+      "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/FlywayMigrationTest.java"
+    ],
+    "read_only_paths": [
+      "web/src/components/ui/**",
+      "web/src/modules/architecture/**",
+      "server/src/platform/system/**",
+      "server/src/platform/security/**",
+      "governance/modules.yaml",
+      "docs/governance/**",
+      "docs/architecture/**",
+      "docs/integration/**",
+      ".ai-control/original/state.json"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "配置管理接入架构与需求主数据并新增只读集成契约与配置管理选择 API",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": [
+      "mvn -pl :ccb-release,:ccb-architecture,:ccb-boot -am test",
+      "npm --prefix web run build"
+    ],
+    "compatibility": "既有架构和需求管理 CRUD 与配置管理申请响应保持兼容；仅新增查询契约和 API。配置管理写请求字段保留，但服务端改为使用主数据生成可信快照并拒绝无效需求编号。",
+    "owner_approved_by": "rokeyvvz0828",
+    "owner_approved_at": "2026-09-11T15:17:06+08:00",
+    "owner_approval_evidence": "用户确认配置管理接入规则，并确认直接把架构交付单元制品类型统一为镜像/二进制。"
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V213__normalize_delivery_unit_artifact_types.sql"],
+    "compatibility_and_rollback": "只追加 V213；存量容器映射 IMAGE，压缩包和脚本映射 BINARY，旧字典项停用。回退代码不影响历史申请；数据恢复使用发布前备份补偿。"
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal"},
+  "required_tests": [
+    {"name": "backend", "command": "mvn -pl :ccb-release,:ccb-architecture,:ccb-boot -am test"},
+    {"name": "api", "command": "ReleaseMasterDataControllerSecurityTest 与真实 HTTP 主数据选择验证"},
+    {"name": "permission", "command": "未认证、配置权限、项目权限、跨租户和跨项目失败路径验证"},
+    {"name": "migration", "command": "node scripts/check-flyway-migrations.mjs"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs && node scripts/check-codex-scope.mjs"},
+    {"name": "frontend", "command": "npm --prefix web run build"},
+    {"name": "browser", "command": "真实浏览器验证版本申请抽屉的桌面与移动端选择、空、失败和停用状态"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "追加迁移会修改共享字典项及存量交付单元制品类型。",
+      "跨模块公共查询契约和配置管理写入校验会改变旧 Mock 草稿的可编辑性。",
+      "需求项目编码映射缺失或歧义时，需求选择和申请保存将失败关闭并要求维护项目关联。",
+      "必须证明租户、项目、物理子系统与交付单元父子关系均失败关闭。"
+    ]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260911-074-release-architecture-master-data",
+    "control_justification": "涉及追加迁移、公共 API、跨业务模块适配、权限与服务端防伪校验，使用 high-assurance 完整闭环。",
+    "acceptance_evidence": [".ai-control/requirements/req-20260911-074-release-architecture-master-data/convergence.json"],
+    "release_verification": [
+      "mvn -pl :ccb-release,:ccb-architecture,:ccb-boot -am test",
+      "node scripts/check-all-governance.mjs",
+      "npm --prefix web run build",
+      "桌面与 375x812、390x844、430x932 真实浏览器验收"
+    ],
+    "rollback": "回退本需求代码提交；数据库字典和交付单元字段按发布前备份执行补偿恢复，不修改 V213 历史文件。"
+  }
+}

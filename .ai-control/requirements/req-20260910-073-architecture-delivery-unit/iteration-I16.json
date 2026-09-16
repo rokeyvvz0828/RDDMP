@@ -1,0 +1,107 @@
+{
+  "iteration_id": "I16",
+  "task_id": "T7",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": ".ai-control/requirements/req-20260910-073-architecture-delivery-unit/convergence.json",
+      "purpose": "更新 R6/R7 证据、F-5 与新增采样"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-architecture -am test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 458, Failures: 0, Errors: 0, BUILD SUCCESS"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "salient_output": "构建通过"
+    },
+    {
+      "command": "node /tmp/pwtest/verify-deployment-side-relation.mjs",
+      "exit_code": 0,
+      "salient_output": "7/7 PASS"
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --base <本轮起点> --head HEAD",
+      "exit_code": 0,
+      "salient_output": "本轮 16 个文件全部在 writable_paths 内；跨全量范围仍只剩公共能力授权一项"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs / check-module-boundaries.mjs / check-ai-control-layout.mjs",
+      "exit_code": 1,
+      "salient_output": "无新增违规；仍为三项与本任务无关的基线故障"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "创建流程与编号分配未受影响（accept.mjs、MySQL 12/12）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "列表筛选分页与详情未受影响",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "归属不可改与乐观锁未受影响（服务测试 24/24）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "软删除与关联清理未受影响",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "两侧候选都限定同物理子系统且仅启用对象（服务测试 + MySQL 12/12 + 两组浏览器候选断言）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "部署单元详情抽屉可编辑关联，与交付单元侧共享同一份数据并双向即时可见（verify-deployment-side-relation 7/7）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": "关联写入统一要求 architecture:delivery-unit:manage，三个端点权限表达式逐项断言",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "result": "pass",
+      "evidence": "458 项后端测试、npm build 与六组浏览器验收通过；TDZ 缺陷 F-5 已修复复验",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "verifying"
+}

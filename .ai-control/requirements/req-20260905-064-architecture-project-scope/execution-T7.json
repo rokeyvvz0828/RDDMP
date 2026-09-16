@@ -1,0 +1,32 @@
+{
+  "task_id": "T7",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/*.java", "purpose": "数据迁移组件、看板、问题和目标表按消费者项目匹配物理子系统"},
+    {"path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/**", "purpose": "测试管理候选、范围、案例、执行、缺陷、方案、报告和统计按业务记录项目匹配物理子系统"},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/IssueServiceProjectScopeTest.java", "purpose": "重复系统编号且无项目上下文时验证失败关闭"},
+    {"path_or_resource": "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java", "purpose": "验证跨项目物理子系统在写入前被项目条件拒绝"}
+  ],
+  "requirements_addressed": ["R10"],
+  "commands": [
+    {"command": "mvn -pl :ccb-data-migration,:ccb-test-management -am -DskipTests compile", "exit_code": 0, "salient_output": "数据迁移与测试管理目标模块编译通过。"},
+    {"command": "mvn -pl :ccb-data-migration,:ccb-test-management -am test", "exit_code": 0, "salient_output": "数据迁移 13/13、测试管理 21/21；反应堆全部模块通过。"},
+    {"command": "rg -n arch_physical_subsystem <T7 13个服务文件>", "exit_code": 0, "salient_output": "共审计 36 处引用；项目化 JOIN 和直接查询均包含消费者 project_id，旧无项目名称接口在重复编号时返回空。"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "无空白错误，仅有 LF/CRLF 提示。"}
+  ],
+  "local_checks": [
+    {"check": "数据迁移项目匹配", "result": "pass", "evidence": "dm_component 和 dm_target_table 的物理子系统 JOIN 增加 project_id 等值条件。", "limitations": []},
+    {"check": "测试管理项目匹配", "result": "pass", "evidence": "参测系统、范围、案例、执行、缺陷、方案、报告和统计查询均使用业务行 project_id。", "limitations": []},
+    {"check": "旧接口失败关闭", "result": "pass", "evidence": "IssueService.getSystemName 在同租户编号重复时返回 null，不选择任一项目。", "limitations": ["Controller 不在授权范围且没有项目参数；后续独立需求可将接口显式项目化。"]}
+  ],
+  "diff_summary": [
+    "数据迁移消费者按 tenant_id + project_id + code 关联物理子系统",
+    "测试管理消费者按业务记录的 tenant_id + project_id + physical_subsystem_id 关联",
+    "配置导入、候选和直接 ID 校验限定当前项目",
+    "新增重复编号和跨项目 ID 回归测试"
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["旧 system-name HTTP 接口缺少项目参数，本任务在服务层失败关闭；不影响已有显式项目消费者。"],
+  "recommended_next": "observe"
+}

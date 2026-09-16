@@ -217,7 +217,7 @@ onMounted(initialize)
         <el-option label="成功" :value="true" />
         <el-option label="失败" :value="false" />
       </el-select>
-      <el-input v-model="keyword" clearable :placeholder="activeTab === 'operations' ? '用户、路径或对象' : '账号或 IP'"
+      <el-input v-model="keyword" clearable :placeholder="activeTab === 'operations' ? '用户、IP、路径或对象' : '账号或 IP'"
         class="audit-keyword" @keyup.enter="query"><template #prefix><el-icon><Search /></el-icon></template></el-input>
       <template #actions>
         <el-button @click="reset"><el-icon><Refresh /></el-icon>重置</el-button>
@@ -228,6 +228,7 @@ onMounted(initialize)
     <UiDataTable v-if="activeTab === 'operations'" class="audit-table audit-table--desktop" :data="operations" :loading="loading" row-key="id" border empty-text="暂无操作日志">
       <el-table-column label="时间" width="166"><template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template></el-table-column>
       <el-table-column label="操作人" min-width="120"><template #default="{ row }">{{ row.operatorName || `用户 #${row.operatorId}` }}</template></el-table-column>
+      <el-table-column label="来源 IP" width="146"><template #default="{ row }">{{ row.clientIp || '-' }}</template></el-table-column>
       <el-table-column label="模块" min-width="100"><template #default="{ row }">{{ row.moduleName || row.moduleCode || '-' }}</template></el-table-column>
       <el-table-column label="类型" width="100"><template #default="{ row }">{{ operationLabel(row.operationType) }}</template></el-table-column>
       <el-table-column label="所属项目" min-width="150" show-overflow-tooltip><template #default="{ row }">{{ row.projectName || '平台级' }}</template></el-table-column>
@@ -252,7 +253,7 @@ onMounted(initialize)
       <article v-for="row in currentRows" :key="row.id" class="audit-mobile-card">
         <template v-if="activeTab === 'operations'">
           <header><div><span>{{ operationLabel((row as OperationAuditRecord).operationType) }}</span><strong>{{ (row as OperationAuditRecord).moduleName || (row as OperationAuditRecord).moduleCode || '平台能力' }}</strong></div><UiStatusTag :value="(row as OperationAuditRecord).success" :labels="{ true: '成功', false: '失败' }" :tone="(row as OperationAuditRecord).success ? 'success' : 'danger'" /></header>
-          <dl><div><dt>操作人</dt><dd>{{ (row as OperationAuditRecord).operatorName || `用户 #${(row as OperationAuditRecord).operatorId}` }}</dd></div><div><dt>所属项目</dt><dd>{{ (row as OperationAuditRecord).projectName || '平台级' }}</dd></div><div><dt>操作对象</dt><dd>{{ targetLabel(row as OperationAuditRecord) }}</dd></div><div><dt>耗时</dt><dd>{{ (row as OperationAuditRecord).durationMs }} ms</dd></div></dl>
+          <dl><div><dt>操作人</dt><dd>{{ (row as OperationAuditRecord).operatorName || `用户 #${(row as OperationAuditRecord).operatorId}` }}</dd></div><div><dt>来源 IP</dt><dd>{{ (row as OperationAuditRecord).clientIp || '-' }}</dd></div><div><dt>所属项目</dt><dd>{{ (row as OperationAuditRecord).projectName || '平台级' }}</dd></div><div><dt>操作对象</dt><dd>{{ targetLabel(row as OperationAuditRecord) }}</dd></div><div><dt>耗时</dt><dd>{{ (row as OperationAuditRecord).durationMs }} ms</dd></div></dl>
           <footer><time>{{ formatDateTime((row as OperationAuditRecord).createdAt) }}</time><el-button link type="primary" @click="openOperation(row as OperationAuditRecord)"><el-icon><View /></el-icon>详情</el-button></footer>
         </template>
         <template v-else>

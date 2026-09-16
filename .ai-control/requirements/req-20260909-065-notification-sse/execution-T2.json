@@ -1,0 +1,35 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/notifications.ts", "purpose": "申请通知流票据"},
+    {"path_or_resource": "web/src/components/ui/UiNotificationCenter.vue", "purpose": "EventSource 生命周期、重连和低频降级"}
+  ],
+  "requirements_addressed": ["R1", "R4"],
+  "commands": [
+    "npm --prefix /private/tmp/rddmp-sse-web-build-20260909 run build",
+    "rg source scan for polling and EventSource lifecycle"
+  ],
+  "local_checks": [
+    "Vue TypeScript 生产构建成功",
+    "旧 POLL_INTERVAL_MS、runPollingCycle 和 restartPolling 不存在",
+    "降级轮询固定为 60000ms"
+  ],
+  "diff_summary": [
+    "首次加载未读数后建立 EventSource",
+    "消息事件刷新角标，并在抽屉打开时刷新列表和业务板块",
+    "使用 1/2/5/15/30 秒有界重连，持续失败后启用 60 秒兜底",
+    "页面隐藏关闭流和定时器，恢复可见后重新申请票据"
+  ],
+  "invariants_checked": [
+    "通知抽屉现有业务操作与样式未改变",
+    "JWT 不传给 EventSource",
+    "不存在每秒兜底轮询"
+  ],
+  "disturbances": [
+    "隔离工作树初始无 node_modules，使用基于 package-lock 的临时依赖目录完成首次构建；标准启动器随后 npm ci 成功"
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "浏览器空闲周期和连接数量观测"
+}

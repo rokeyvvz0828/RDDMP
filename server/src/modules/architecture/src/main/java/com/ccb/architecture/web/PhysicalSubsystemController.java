@@ -9,6 +9,8 @@ import com.ccb.common.api.PageQuery;
 import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
+import com.ccb.system.capability.ProjectAccessService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,9 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/architecture/physical-subsystems")
 public class PhysicalSubsystemController {
     private final PhysicalSubsystemService service;
+    private final ProjectAccessService projectAccessService;
 
-    public PhysicalSubsystemController(PhysicalSubsystemService service) {
+    public PhysicalSubsystemController(PhysicalSubsystemService service, ProjectAccessService projectAccessService) {
         this.service = service;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping
@@ -43,42 +47,52 @@ public class PhysicalSubsystemController {
             @RequestParam(required = false) String businessGroupName,
             @RequestParam(required = false) Long responsibleTeamOrgId,
             @RequestParam(required = false) String status,
+            @RequestParam String projectRef,
             @AuthenticationPrincipal AuthUser actor) {
         PhysicalSubsystemQuery query = new PhysicalSubsystemQuery(code, shortName, name, logicalSubsystemName,
                 businessComponentCode, businessGroupName, responsibleTeamOrgId, status);
-        return ApiResponse.success(service.list(actor, new PageQuery(page, size), query), TraceId.getOrCreate());
+        return ApiResponse.success(service.list(actor, project(projectRef, actor), new PageQuery(page, size), query),
+                TraceId.getOrCreate());
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:physical:list', 'architecture:view', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PhysicalSubsystemView> detail(@PathVariable long id,
+                                                      @RequestParam String projectRef,
                                                       @AuthenticationPrincipal AuthUser actor) {
-        return ApiResponse.success(service.detail(actor, id), TraceId.getOrCreate());
+        return ApiResponse.success(service.detail(actor, project(projectRef, actor), id), TraceId.getOrCreate());
     }
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('architecture:physical:create', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PhysicalSubsystemView> create(@RequestBody PhysicalSubsystemCommand command,
+                                                      @RequestParam String projectRef,
                                                       @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.create(actor, command, traceId), traceId);
+        return ApiResponse.success(service.create(actor, project(projectRef, actor), command, traceId), traceId);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:physical:update', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<PhysicalSubsystemView> update(@PathVariable long id,
                                                       @RequestBody PhysicalSubsystemCommand command,
+                                                      @RequestParam String projectRef,
                                                       @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        return ApiResponse.success(service.update(actor, id, command, traceId), traceId);
+        return ApiResponse.success(service.update(actor, project(projectRef, actor), id, command, traceId), traceId);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('architecture:physical:delete', 'architecture:apply', 'architecture:manage')")
     public ApiResponse<Void> delete(@PathVariable long id,
+                                    @RequestParam String projectRef,
                                     @AuthenticationPrincipal AuthUser actor) {
         String traceId = TraceId.getOrCreate();
-        service.delete(actor, id, traceId);
+        service.delete(actor, project(projectRef, actor), id, traceId);
         return ApiResponse.success(null, traceId);
+    }
+
+    private ProjectAccess project(String projectRef, AuthUser actor) {
+        return projectAccessService.requireAccessible(projectRef, actor);
     }
 }

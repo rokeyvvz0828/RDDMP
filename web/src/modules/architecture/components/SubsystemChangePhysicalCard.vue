@@ -115,6 +115,12 @@ function teamChanged(value: number | null) {
             <el-option v-for="item in frameworks" :key="item.code" :label="item.label" :value="item.code" />
           </el-select>
         </el-form-item>
+        <el-form-item label="安全节点号">
+          <el-input v-model="model.securityNodeNo" :disabled="readonly" maxlength="64" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="文件传输节点号">
+          <el-input v-model="model.fileTransferNodeNo" :disabled="readonly" maxlength="64" placeholder="可选" />
+        </el-form-item>
         <el-form-item label="系统描述" class="is-wide">
           <el-input v-model="model.description" :disabled="readonly" type="textarea" :rows="3" maxlength="2000" show-word-limit />
         </el-form-item>

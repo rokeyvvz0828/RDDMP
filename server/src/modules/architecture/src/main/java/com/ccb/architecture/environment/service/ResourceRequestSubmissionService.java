@@ -12,6 +12,7 @@ import com.ccb.architecture.environment.service.EnvironmentResourceService.Submi
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowProgress;
@@ -65,24 +66,24 @@ public class ResourceRequestSubmissionService {
         this.clock = Objects.requireNonNull(clock, "时钟不能为空");
     }
 
-    public ResourceRequestDetail submit(AuthUser actor, long requestId, long expectedRowVersion) {
-        changes.coordinateSubmission(actor, requestId, expectedRowVersion,
-                preparation -> startWorkflow(actor, preparation));
-        return changes.detailRequest(actor, AccessScope.OWN, requestId);
+    public ResourceRequestDetail submit(AuthUser actor, ProjectAccess project, long requestId, long expectedRowVersion) {
+        changes.coordinateSubmission(actor, project, requestId, expectedRowVersion,
+                preparation -> startWorkflow(actor, project, preparation));
+        return changes.detailRequest(actor, project, AccessScope.OWN, requestId);
     }
 
-    public ResourceRequestDetail cancel(AuthUser actor, long requestId, long expectedRowVersion) {
-        ResourceRequestDetail current = changes.detailRequest(actor, AccessScope.OWN, requestId);
+    public ResourceRequestDetail cancel(AuthUser actor, ProjectAccess project, long requestId, long expectedRowVersion) {
+        ResourceRequestDetail current = changes.detailRequest(actor, project, AccessScope.OWN, requestId);
         if (current.request().status() != RequestStatus.IN_REVIEW) {
-            return changes.cancel(actor, AccessScope.OWN, requestId, expectedRowVersion);
+            return changes.cancel(actor, project, AccessScope.OWN, requestId, expectedRowVersion);
         }
-        changes.coordinateCancellation(actor, requestId, expectedRowVersion,
+        changes.coordinateCancellation(actor, project, requestId, expectedRowVersion,
                 preparation -> terminateWorkflow(actor, preparation));
-        return changes.detailRequest(actor, AccessScope.OWN, requestId);
+        return changes.detailRequest(actor, project, AccessScope.OWN, requestId);
     }
 
-    private void startWorkflow(AuthUser actor, SubmissionPreparation preparation) {
-        ResourceRequest prepared = store.lockRequest(actor.tenantId(), preparation.requestId())
+    private void startWorkflow(AuthUser actor, ProjectAccess project, SubmissionPreparation preparation) {
+        ResourceRequest prepared = store.lockRequest(actor.tenantId(), project.id(), preparation.requestId())
                 .orElseThrow(() -> conflict("提交准备后的资源申请不存在"));
         if (prepared.status() != RequestStatus.IN_REVIEW
                 || prepared.currentBusinessRound() != preparation.nextRound() - 1) {
@@ -90,21 +91,21 @@ public class ResourceRequestSubmissionService {
         }
 
         long roundId = nextId();
-        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.id(),
+        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.projectId(), prepared.id(),
                 preparation.nextRound(), null, null, null, null, WorkflowRoundStatus.PENDING,
                 null, null, null, null));
-        WorkflowBusinessContext context = context(prepared, preparation);
+        WorkflowBusinessContext context = context(prepared, project, preparation);
         WorkflowStartResult result = workflowGateway.startByCode(new WorkflowStartCommand(
                 WORKFLOW_DEFINITION_CODE, context, workflowVariables(prepared)), actor);
         validateWorkflowResult(result, context);
 
         LocalDateTime startedAt = LocalDateTime.now(clock);
-        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.id(), preparation.nextRound(),
+        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.projectId(), prepared.id(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), startedAt)) {
             throw conflict("资源申请审批轮次启动状态已变化");
         }
-        if (!store.compareAndSetWorkflowContext(prepared.tenantId(), prepared.id(),
+        if (!store.compareAndSetWorkflowContext(prepared.tenantId(), prepared.projectId(), prepared.id(),
                 prepared.currentBusinessRound(), prepared.rowVersion(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), actor.id())) {
@@ -123,7 +124,7 @@ public class ResourceRequestSubmissionService {
                 preparation.businessRound(), "申请人取消资源申请"), actor);
     }
 
-    private WorkflowBusinessContext context(ResourceRequest request, SubmissionPreparation preparation) {
+    private WorkflowBusinessContext context(ResourceRequest request, ProjectAccess project, SubmissionPreparation preparation) {
         return new WorkflowBusinessContext(
                 MODULE_CODE,
                 MODULE_NAME,
@@ -131,8 +132,8 @@ public class ResourceRequestSubmissionService {
                 String.valueOf(request.id()),
                 "资源申请 " + request.requestNo(),
                 preparation.nextRound(),
-                null,
-                null,
+                project.projectRef(),
+                project.projectName(),
                 DETAIL_PATH_PREFIX + request.id(),
                 preparation.digest());
     }
@@ -155,6 +156,8 @@ public class ResourceRequestSubmissionService {
                 || !Objects.equals(result.context().businessType(), expected.businessType())
                 || !Objects.equals(result.context().businessKey(), expected.businessKey())
                 || result.context().businessRound() != expected.businessRound()
+                || !Objects.equals(result.context().projectRef(), expected.projectRef())
+                || !Objects.equals(result.context().projectName(), expected.projectName())
                 || !Objects.equals(result.context().dataDigest(), expected.dataDigest())) {
             throw conflict("审批流程启动结果与资源申请上下文不一致");
         }

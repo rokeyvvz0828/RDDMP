@@ -1,0 +1,22 @@
+{
+  "objective": "以安全、可恢复的 SSE 通知失效事件替代通知中心每秒轮询。",
+  "requirements": [
+    {"id": "R1", "statement": "正常连接期间通知中心必须由服务端事件触发刷新，不得保持每秒未读数轮询。", "acceptance": ["初始化查询一次未读数", "收到事件刷新未读数和打开的抽屉", "空闲一分钟无 1000ms 未读数请求"], "priority": "must", "source": "用户确认", "counterexample": ["保留 1000ms 定时查询"]},
+    {"id": "R2", "statement": "SSE 必须使用绑定认证租户和用户的 30 秒单次票据建立。", "acceptance": ["无效、过期、复用票据返回 401", "JWT 不出现在流 URL", "合法票据只恢复签发用户身份"], "priority": "must", "source": "用户确认的认证方案", "counterexample": ["JWT 直接放查询参数"]},
+    {"id": "R3", "statement": "通知数据实际变化后必须仅在事务成功提交时通知受影响用户的全部在线页签。", "acceptance": ["发布、已读、全部已读、归档、恢复和批量归档有变化时广播", "零行更新与回滚不广播", "25 秒心跳且失效连接被清理"], "priority": "must", "source": "用户确认的事件方案", "counterexample": ["事务提交前广播", "跨用户广播"]},
+    {"id": "R4", "statement": "SSE 中断时客户端和代理必须支持有界重连与低频降级。", "acceptance": ["1/2/5/15/30 秒重连", "持续失败后 60 秒轮询", "页面隐藏断开、恢复可见重连", "Nginx 不缓冲 SSE"], "priority": "must", "source": "用户确认", "counterexample": ["隐藏页保持连接", "失败后恢复秒级轮询"]}
+  ],
+  "invariants": ["通知业务 API 和规则不变", "租户与接收人隔离不变", "事件不携带业务数据", "不修改数据库", "不覆盖 rokey 未提交改动"],
+  "constraints": ["Java 17", "Spring Boot 3.4.4", "Vue 3 原生 EventSource", "当前单后端实例"],
+  "non_goals": ["WebSocket", "Redis Pub/Sub", "水平扩容", "远程部署", "UI 改版"],
+  "assumptions": [{"text": "当前部署只有一个后端实例", "basis": "已确认部署架构", "falsifier": "运行副本数大于一"}],
+  "unknowns": [],
+  "decisions": [{"question": "通知推送技术", "options": ["SSE", "WebSocket"], "selected": "SSE", "blocking": false, "source": "用户批准"}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "浏览器请求频率与事件后刷新", "candidate_sensor": "浏览器网络面板"},
+    {"requirement_id": "R2", "observable": "票据状态和 HTTP 响应", "candidate_sensor": "NotificationSseServiceTest 与 API 探针"},
+    {"requirement_id": "R3", "observable": "事务回调和 emitter 收到事件", "candidate_sensor": "JUnit 与 SSE 客户端"},
+    {"requirement_id": "R4", "observable": "重连时序、可见性和代理响应", "candidate_sensor": "浏览器与 Nginx 配置检查"}
+  ],
+  "baseline_status": "ready"
+}

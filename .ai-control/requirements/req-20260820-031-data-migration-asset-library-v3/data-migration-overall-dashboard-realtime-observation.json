@@ -1,0 +1,57 @@
+{
+  "sample_label": "T4组合性能治理收敛采样",
+  "task_ids": ["T1", "T2", "T3", "T4"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor": "JUnit/MySQL/浏览器DOM",
+      "result": "pass",
+      "raw_evidence": "13项固定白名单、租户项目deleted=0与PROJECT/SYSTEM口径测试通过；浏览器13项独立响应并展示构成与排行"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor": "静态搜索/浏览器Network",
+      "result": "pass",
+      "raw_evidence": "后端主源码无Scheduled、EnableScheduling、dm_dashboard_snapshot命中；页面无setInterval/setTimeout；无自动轮询"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor": "Playwright受控API",
+      "result": "pass",
+      "raw_evidence": "13项独立请求最大并发4；单项500失败保留12项成功，完整总量保持—，仅失败项重试后恢复"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor": "Controller测试/浏览器Network与抽屉DOM",
+      "result": "pass",
+      "raw_evidence": "点击前下钻请求0；点击后第一页，滚动后第二页；页大小固定20且串行互斥；已有记录在后续错误时保留"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor": "安全测试/项目切换受控夹具",
+      "result": "pass",
+      "raw_evidence": "未知指标拒绝、类级RBAC声明与项目授权测试通过；切换项目后旧响应未覆盖新项目状态"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor": "Playwright四视口、明暗主题、canvas与scrollWidth",
+      "result": "pass",
+      "raw_evidence": "1280x800、375x812、390x844、430x932浅色及1280x800、390x844深色无横向溢出；canvas非空；控制台无错误"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "MySQL 8.4 EXPLAIN ANALYZE与20轮局部P95",
+      "result": "pass",
+      "raw_evidence": "EXPLAIN命中idx_dm_plan_dashboard；单指标P95=8ms，13项总量P95=93ms，下钻P95=15ms，均低于500/2000/800ms门槛",
+      "limitation": "本地最小夹具不代表目标环境最大数据量；上线前需用代表性数据复测"
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "全局治理脚本读取任务外REQ-20260904-061时失败", "impact": "不影响本任务范围证据", "disposition": "isolated"}
+  ],
+  "coverage_gaps": ["目标部署环境代表性数据量与真实网络P95尚未取得"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

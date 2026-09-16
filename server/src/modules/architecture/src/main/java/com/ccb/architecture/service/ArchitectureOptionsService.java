@@ -13,6 +13,7 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.SystemReferenceQuery;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.org.OrgTreeNode;
 import com.ccb.system.org.OrganizationService;
 import org.springframework.stereotype.Service;
@@ -20,11 +21,34 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
 public class ArchitectureOptionsService {
+    private SubsystemParticipationService participation;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setParticipation(SubsystemParticipationService participation) { this.participation = participation; }
+
+    public PageResult<PhysicalSubsystemOption> participatingPhysicals(AuthUser actor, ProjectAccess project,
+            PageQuery page, String code, String name) {
+        requireActor(actor);
+        var allowed = participation.participatingSystemIds(actor, project);
+        if (allowed.isEmpty()) return new PageResult<>(List.of(), 0, page.page(), page.size());
+        List<PhysicalSubsystemOption> visible = new ArrayList<>();
+        long current = 1;
+        PageResult<PhysicalSubsystemOption> batch;
+        do {
+            batch = physicalSubsystems(actor, project, new PageQuery(current++, 100), code, name);
+            for (var item : batch.records()) {
+                if (allowed.contains(item.id())) visible.add(item);
+            }
+        } while ((current - 1) * 100 < batch.total());
+        return new PageResult<>(visible.stream().skip((page.page()-1)*page.size()).limit(page.size()).toList(), visible.size(), page.page(), page.size());
+    }
+
     public static final String PHYSICAL_RESOURCE = "physical-subsystem";
+    public static final String DELIVERY_UNIT_RESOURCE = "delivery-unit";
     public static final String BUSINESS_COMPONENT_CATEGORY = "ARCH_BUSINESS_COMPONENT";
 
     private static final Set<String> PHYSICAL_PARAMETER_CATEGORIES = Set.of(
@@ -38,6 +62,9 @@ public class ArchitectureOptionsService {
             EnvironmentResourceService.JDK_VERSION_CATEGORY,
             EnvironmentResourceService.MIDDLEWARE_CATEGORY,
             EnvironmentResourceService.OPERATING_SYSTEM_CATEGORY);
+
+    private static final Set<String> DELIVERY_UNIT_PARAMETER_CATEGORIES = Set.of(
+            com.ccb.architecture.model.DeliveryUnitModels.ARTIFACT_TYPE_CATEGORY);
 
     private final OrganizationService organizationService;
     private final SystemReferenceQuery referenceQuery;
@@ -84,6 +111,7 @@ public class ArchitectureOptionsService {
         normalizedCategory = normalizedCategory.toUpperCase(Locale.ROOT);
         Set<String> allowed = switch (resource) {
             case PHYSICAL_RESOURCE -> PHYSICAL_PARAMETER_CATEGORIES;
+            case DELIVERY_UNIT_RESOURCE -> DELIVERY_UNIT_PARAMETER_CATEGORIES;
             default -> throw badRequest("选项资源上下文无效");
         };
         if (!allowed.contains(normalizedCategory)) {
@@ -101,12 +129,14 @@ public class ArchitectureOptionsService {
                 .toList();
     }
 
-    /** 部署单元级联选项：仅返回当前租户可用的 ACTIVE 物理子系统。 */
-    public PageResult<PhysicalSubsystemOption> physicalSubsystems(AuthUser actor, PageQuery page,
+    /** 部署单元级联选项：仅返回当前项目可用的 ACTIVE 物理子系统。 */
+    public PageResult<PhysicalSubsystemOption> physicalSubsystems(AuthUser actor, ProjectAccess project,
+                                                                  PageQuery page,
                                                                   String code, String name) {
         requireActor(actor);
+        Objects.requireNonNull(project, "项目访问上下文不能为空");
         PageResult<com.ccb.architecture.model.PhysicalSubsystem> result = repository.pagePhysical(
-                actor.tenantId(), page, new PhysicalSubsystemQuery(normalizeOptional(code), null,
+                actor.tenantId(), project.id(), page, new PhysicalSubsystemQuery(normalizeOptional(code), null,
                         normalizeOptional(name), null, null, null, null, "ACTIVE"));
         List<PhysicalSubsystemOption> records = result.records().stream()
                 .map(item -> new PhysicalSubsystemOption(item.id(), item.code(), item.shortName(),

@@ -51,6 +51,28 @@ export type ReleaseVersionTypeCode = 'REGULAR' | 'URGENT' | 'EMERGENCY'
 export type ReleaseCharacteristicCode = 'STANDARD' | 'ADDITIONAL'
 export type ReleaseApplicationStatusCode = 'DRAFT' | 'IN_REVIEW' | 'RETURNED' | 'WITHDRAWN' | 'CANCELLED' | 'RELEASED'
 
+export interface ReleasePhysicalSubsystemOption {
+  id: string
+  code: string
+  name: string
+}
+
+export interface ReleaseDeliveryUnitOption {
+  id: string
+  code: string
+  name: string
+  artifactType?: Exclude<ArtifactTypeCode, 'FILE'>
+  selectable: boolean
+  unavailableReason?: string
+}
+
+export interface ReleaseRequirementOption {
+  id: number
+  number: string
+  name: string
+  status: string
+}
+
 export interface ReleaseDeliveryDto {
   id: number
   deliveryUnitId: string
@@ -406,6 +428,18 @@ export interface ReleaseGroupDto {
 }
 export interface ReleaseGroupWrite { groupName: string; description?: string; rowVersion: number }
 export interface ReleaseMemberOptionDto { id: number; userId: number; displayName: string; username: string }
+
+export function listReleasePhysicalSubsystemOptions(params: { projectId: string; page?: number; size?: number; keyword?: string }) {
+  return http.get<ApiResponse<PageResult<ReleasePhysicalSubsystemOption>>>('/release/master-data/physical-subsystems', { params })
+}
+
+export function listReleaseDeliveryUnitOptions(physicalSubsystemId: string, params: { projectId: string; page?: number; size?: number; keyword?: string }) {
+  return http.get<ApiResponse<PageResult<ReleaseDeliveryUnitOption>>>(`/release/master-data/physical-subsystems/${encodeURIComponent(physicalSubsystemId)}/delivery-units`, { params })
+}
+
+export function listReleaseRequirementOptions(params: { projectId: string; page?: number; size?: number; keyword?: string }) {
+  return http.get<ApiResponse<PageResult<ReleaseRequirementOption>>>('/release/master-data/requirements', { params })
+}
 
 export function listReleaseWindows(params: { projectId: string; page?: number; size?: number; keyword?: string }) {
   return http.get<ApiResponse<PageResult<ReleaseWindowDto>>>('/release/windows', { params })

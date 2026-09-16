@@ -1,0 +1,37 @@
+{
+  "dynamic_pattern": "local",
+  "feedback_id": "F-0002",
+  "resolution": "open",
+  "residual_risk": [
+    "完整UI权限矩阵未闭合"
+  ],
+  "decision_reason": "参与人执行被旧管理RBAC拦截",
+  "causal_assessment": {
+    "falsifier": "真实方法安全代理允许view角色调用执行服务",
+    "hypothesis": "参与服务已限制资格，但Controller仍仅允许管理角色",
+    "supporting_evidence": [
+      "start/complete/reopen等注解MANAGE_AUTHORITY"
+    ]
+  },
+  "control_action": {
+    "target": "参与人执行Controller门禁",
+    "correction_check": [
+      "真实方法安全代理回归",
+      "普通用户UI启动完成重开阻塞",
+      "原服务授权测试"
+    ],
+    "impact_limit": "仅参与人可办理的执行、阻塞、任务时间和关联工单接口",
+    "invariants": [
+      "保留服务端实时参与校验、项目隔离和审计",
+      "管理操作仍要求MANAGE_AUTHORITY"
+    ],
+    "rollback": "回退本纠偏提交，不扩大账号权限",
+    "route": "executing",
+    "write_scope": [
+      "server/src/modules/architecture/src/main/java/com/ccb/architecture/plan/web/PlanController.java",
+      "server/src/modules/architecture/src/test/java/com/ccb/architecture/plan/web/PlanParticipationControllerTest.java"
+    ],
+    "gain": "medium"
+  },
+  "decision": "accept"
+}

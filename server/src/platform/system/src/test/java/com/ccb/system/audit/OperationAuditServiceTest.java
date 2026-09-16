@@ -81,6 +81,21 @@ class OperationAuditServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void operationKeywordCanMatchClientIp() {
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+
+        service.operations(new OperationAuditQuery(null, null, null, null,
+                null, null, "203.0.113.10", 1, 20), actor);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).query(sql.capture(), any(RowMapper.class), any(Object[].class));
+        assertTrue(sql.getValue().contains("l.client_ip LIKE ?"));
+    }
+
+    @Test
     void ordinaryMemberCannotReadOperationLogs() {
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(0, 0);
 

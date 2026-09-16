@@ -1,0 +1,556 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "DashboardMetricDefinition静态指标白名单",
+      "DashboardService单指标计数、分页下钻及兼容overall/component",
+      "DashboardController与StructuredAssetController看板路由所有权",
+      "DashboardSnapshotScheduler的Spring注册状态",
+      "web data-migration API类型与OverallDashboardPage请求/渲染状态",
+      "dm_plan、dm_topic、dm_report、dm_meeting、dm_issue、dm_release_drill、dm_mapping_doc、dm_rule、dm_parameter、dm_dependency、dm_script的读查询"
+    ],
+    "environment": [
+      "Spring Security认证主体与方法权限",
+      "DataMigrationPermissionService项目数据范围",
+      "全局项目store和useProjectScope",
+      "MySQL连接池、数据规模和缓存状态",
+      "Element Plus、ECharts、Axios和浏览器",
+      "组件级看板与其他资产CRUD消费者"
+    ]
+  },
+  "state_variables": [
+    {
+      "name": "metric_definition",
+      "owner": "DashboardMetricDefinition",
+      "valid_values": [
+        "13个已登记指标",
+        "未知码拒绝"
+      ]
+    },
+    {
+      "name": "request_scope",
+      "owner": "DashboardService",
+      "valid_values": [
+        "认证tenantId与可访问projectId",
+        "拒绝"
+      ]
+    },
+    {
+      "name": "metric_card_state",
+      "owner": "OverallDashboardPage",
+      "valid_values": [
+        "idle",
+        "loading",
+        "success",
+        "error"
+      ]
+    },
+    {
+      "name": "metric_generation",
+      "owner": "OverallDashboardPage",
+      "valid_values": [
+        "当前项目请求代次",
+        "已失效旧代次"
+      ]
+    },
+    {
+      "name": "metric_inflight",
+      "owner": "OverallDashboardPage",
+      "valid_values": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    },
+    {
+      "name": "aggregate_state",
+      "owner": "OverallDashboardPage",
+      "valid_values": [
+        "等待13项完成",
+        "完整总量",
+        "部分数据",
+        "全部失败"
+      ]
+    },
+    {
+      "name": "drilldown_state",
+      "owner": "OverallDashboardPage",
+      "valid_values": [
+        "closed",
+        "first-loading",
+        "ready",
+        "loading-more",
+        "page-error",
+        "empty",
+        "complete"
+      ]
+    },
+    {
+      "name": "chart_instance",
+      "owner": "OverallDashboardPage",
+      "valid_values": [
+        "uninitialized",
+        "active",
+        "disposed"
+      ]
+    }
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R1",
+      "input": "认证用户和ready项目进入整体看板",
+      "transitions": [
+        "页面建立13项任务",
+        "类型化API逐项请求",
+        "Controller校验权限和参数",
+        "Service校验项目并解析静态定义",
+        "MySQL按租户项目活动状态计数",
+        "卡片独立落地响应"
+      ],
+      "outputs": [
+        "13项实时数量",
+        "完整时的总量和可视化"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "input": "页面进入、停留或服务运行到历史调度时间",
+      "transitions": [
+        "页面仅在进入/项目切换/手动刷新/重试发请求",
+        "无轮询计时器",
+        "Spring运行图无DashboardSnapshotScheduler",
+        "指标SQL不引用快照表"
+      ],
+      "outputs": [
+        "无周期请求",
+        "无快照读写"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "input": "13项刷新或单项重试",
+      "transitions": [
+        "队列调度至最多4路",
+        "每卡进入loading",
+        "响应按卡成功或失败",
+        "仅13项全成功计算总量"
+      ],
+      "outputs": [
+        "独立loading/error/retry",
+        "最大4路在途",
+        "无误导部分总量"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "input": "用户点击指标并滚动下钻容器",
+      "transitions": [
+        "点击后请求第一页20条",
+        "滚动阈值检查hasMore/loading/pageError",
+        "串行请求下一页",
+        "失败保留既有记录"
+      ],
+      "outputs": [
+        "统一字段滚动明细",
+        "空/失败/完成状态"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "input": "有效或恶意metricCode/projectId请求，或项目快速切换",
+      "transitions": [
+        "Spring方法权限",
+        "静态白名单解析",
+        "requireProject项目校验",
+        "SQL参数化租户项目条件",
+        "AbortController和代次拒绝旧响应"
+      ],
+      "outputs": [
+        "合法作用域响应",
+        "未知/缺失/越权失败关闭",
+        "无旧项目污染"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "input": "不同视口、主题和异步状态",
+      "transitions": [
+        "批准的信息层级布局",
+        "CSS断点重排",
+        "固定图表/抽屉滚动边界",
+        "语义变量和文字状态"
+      ],
+      "outputs": [
+        "桌面/手机可扫描页面",
+        "无页面级横向溢出",
+        "明暗主题可读"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "input": "代表性项目数据上的指标和分页请求",
+      "transitions": [
+        "项目范围索引访问",
+        "最多4路排队",
+        "重复采样计算P95",
+        "EXPLAIN ANALYZE核对扫描与索引"
+      ],
+      "outputs": [
+        "单项/全量/下钻耗时",
+        "查询计划证据"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "dashboard metric GET",
+      "producers": [
+        "DashboardController",
+        "DashboardService"
+      ],
+      "consumers": [
+        "OverallDashboardPage"
+      ],
+      "invariant": "projectId必填、metricCode白名单、响应含metricCode/count/calculatedAt"
+    },
+    {
+      "name": "dashboard drilldown GET",
+      "producers": [
+        "DashboardController",
+        "DashboardService"
+      ],
+      "consumers": [
+        "OverallDashboardPage drawer"
+      ],
+      "invariant": "size固定20、PageResult记录统一投影、updatedAt和稳定主键倒序"
+    },
+    {
+      "name": "compatibility dashboard routes",
+      "producers": [
+        "DashboardController"
+      ],
+      "consumers": [
+        "OverallDashboardPage旧回退路径",
+        "ComponentDashboardPage"
+      ],
+      "invariant": "/overall和/component(s) URL及组件看板行为不变"
+    },
+    {
+      "name": "project access",
+      "producers": [
+        "DataMigrationPermissionService"
+      ],
+      "consumers": [
+        "DashboardService"
+      ],
+      "invariant": "每次查询都使用认证user并requireProject"
+    },
+    {
+      "name": "project scope UI",
+      "producers": [
+        "useProjectScope"
+      ],
+      "consumers": [
+        "OverallDashboardPage"
+      ],
+      "invariant": "顶部全局项目是页面唯一projectId来源"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "指标定义、SQL条件与服务分页",
+      "method": "JUnit捕获JdbcTemplate调用并对13项映射、参数、排序和错误断言",
+      "blind_spots": [
+        "真实MySQL优化器行为",
+        "浏览器并发"
+      ],
+      "independence": "直接观察服务输入输出和SQL参数"
+    },
+    {
+      "id": "S2",
+      "target": "真实表口径、索引与性能",
+      "method": "Testcontainers MySQL数据夹具、完整分页交叉、EXPLAIN ANALYZE和重复计时",
+      "blind_spots": [
+        "生产最大数据规模与连接池争用"
+      ],
+      "independence": "真实MySQL执行，与mock服务测试异质"
+    },
+    {
+      "id": "S3",
+      "target": "HTTP权限与路由",
+      "method": "Controller权限反射、MockMvc参数和响应测试",
+      "blind_spots": [
+        "部署级安全过滤器配置"
+      ],
+      "independence": "观察Controller契约，不依赖页面"
+    },
+    {
+      "id": "S4",
+      "target": "无调度、无快照和无轮询",
+      "method": "模块注册测试与rg静态搜索",
+      "blind_spots": [
+        "仓库外部署脚本"
+      ],
+      "independence": "Spring装配与源码静态传感器组合"
+    },
+    {
+      "id": "S5",
+      "target": "前端类型和构建",
+      "method": "vue-tsc和Vite生产构建",
+      "blind_spots": [
+        "运行交互和视觉效果"
+      ],
+      "independence": "编译器/打包器"
+    },
+    {
+      "id": "S6",
+      "target": "请求并发、乱序、下钻时序和全状态",
+      "method": "真实浏览器Network、Console与交互记录",
+      "blind_spots": [
+        "无法稳定模拟生产网络分布"
+      ],
+      "independence": "端到端运行观察"
+    },
+    {
+      "id": "S7",
+      "target": "响应式排版和主题",
+      "method": "四视口明暗截图、scrollWidth数值和抽屉滚动检查",
+      "blind_spots": [
+        "未抽样设备字体差异"
+      ],
+      "independence": "浏览器像素与DOM尺寸"
+    },
+    {
+      "id": "S8",
+      "target": "授权写入范围和回归",
+      "method": "scope检查、git diff --check、模块测试和全局治理",
+      "blind_spots": [
+        "未执行的外部CI"
+      ],
+      "independence": "仓库治理脚本和版本差异"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "指标口径和SQL",
+      "action": "新增模块内静态定义并扩展DashboardService",
+      "authority": "REQ-031允许server data-migration路径",
+      "impact_radius": "数据迁移只读看板查询",
+      "rollback": "删除定义并回退DashboardService新增方法"
+    },
+    {
+      "id": "A2",
+      "target": "HTTP所有权和调度",
+      "action": "新增专用DashboardController、移除旧Controller看板职责并删除调度类",
+      "authority": "REQ-031允许server data-migration路径",
+      "impact_radius": "看板路由与快照调度Bean",
+      "rollback": "恢复旧路由和调度类，表无需迁移"
+    },
+    {
+      "id": "A3",
+      "target": "前端API和页面状态",
+      "action": "修改data-migration.ts和OverallDashboardPage.vue",
+      "authority": "REQ-031允许两个前端路径",
+      "impact_radius": "数据迁移整体看板",
+      "rollback": "回退两个文件到旧三卡页面"
+    },
+    {
+      "id": "A4",
+      "target": "查询索引",
+      "action": "仅在现有索引足够时不动作；不足则停止并申请平台迁移写权限",
+      "authority": "当前无platform infrastructure写权限",
+      "impact_radius": "不可控，禁止执行",
+      "rollback": "不适用"
+    }
+  ],
+  "measurements": [
+    {
+      "requirement_id": "R1",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S6"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R2",
+      "sensor_ids": [
+        "S4",
+        "S6"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R3",
+      "sensor_ids": [
+        "S5",
+        "S6"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R4",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S6"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R5",
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3",
+        "S6"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R6",
+      "sensor_ids": [
+        "S5",
+        "S7"
+      ],
+      "observable": "yes"
+    },
+    {
+      "requirement_id": "R7",
+      "sensor_ids": [
+        "S2",
+        "S6"
+      ],
+      "observable": "partial"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "最终表模式跨多次Flyway域化",
+      "effect": "初始表DDL与当前列名不同",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "MySQL冷缓存、数据倾斜和本机负载",
+      "effect": "P95波动",
+      "detectable": true,
+      "controllable": false
+    },
+    {
+      "source": "快速项目切换与慢请求乱序",
+      "effect": "旧项目数据污染",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "ECharts/ResizeObserver和抽屉挂载时序",
+      "effect": "图表空白或泄漏",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "用户现有未提交设计计划修改",
+      "effect": "新worktree无法自然继承",
+      "detectable": true,
+      "controllable": true
+    },
+    {
+      "source": "REQ-061畸形scope文件",
+      "effect": "全局治理检查失败",
+      "detectable": true,
+      "controllable": false
+    }
+  ],
+  "delays": [
+    {
+      "source": "最多4路指标队列",
+      "consequence": "后续指标等待前批完成",
+      "sampling_rule": "从首请求开始至13项最终响应测量总完成耗时"
+    },
+    {
+      "source": "数据库连接池与查询",
+      "consequence": "单项响应受并发和缓存影响",
+      "sampling_rule": "预热后重复采样并报告P95与环境"
+    },
+    {
+      "source": "滚动临界点",
+      "consequence": "连续scroll事件可能重复触发",
+      "sampling_rule": "观察每一page只存在一个在途请求"
+    },
+    {
+      "source": "项目切换取消",
+      "consequence": "取消与旧响应回调竞争",
+      "sampling_rule": "慢请求期间切换并确认代次校验后再读取DOM"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "当前专用需求分支可作为隔离边界",
+      "evidence": "任务scope指定同名分支且当前分支匹配，批准文档为未提交工作区改动",
+      "falsifier": "发现该分支被其他并行任务写入相同文件"
+    },
+    {
+      "text": "现有tenant/project前缀索引足够",
+      "evidence": "V161/V162/V168/V180/V184/V185/V186/V194/V197包含相关索引",
+      "falsifier": "EXPLAIN ANALYZE无项目约束或P95超标"
+    },
+    {
+      "text": "统一摘要投影满足下钻核查",
+      "evidence": "批准设计明确统一id/code/name/granularity/systemCode/updatedAt",
+      "falsifier": "用户要求领域全字段或编辑"
+    }
+  ],
+  "control_assessment": [
+    {
+      "requirement_id": "R1",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "用A1/A2/A3实施并由S1/S2/S3/S6采样"
+    },
+    {
+      "requirement_id": "R2",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "用A2/A3移除调度和轮询并由S4/S6采样"
+    },
+    {
+      "requirement_id": "R3",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "用A3实现队列和状态并由S5/S6采样"
+    },
+    {
+      "requirement_id": "R4",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "用A1/A2/A3实现分页并由S1/S2/S3/S6采样"
+    },
+    {
+      "requirement_id": "R5",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "用A1/A2/A3实现失败关闭和代次隔离"
+    },
+    {
+      "requirement_id": "R6",
+      "observable": "yes",
+      "controllable": "yes",
+      "action": "用A3实现批准布局并由S5/S7采样"
+    },
+    {
+      "requirement_id": "R7",
+      "observable": "partial",
+      "controllable": "partial",
+      "action": "先用现有索引和A1/A3优化；若S2推翻索引假设则停止并申请迁移授权"
+    }
+  ],
+  "model_status": "ready"
+}

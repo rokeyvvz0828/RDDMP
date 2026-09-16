@@ -1,0 +1,573 @@
+{
+  "schema_version": 1,
+  "topic": "person-card",
+  "design_revision": 2,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-12-person-card-design.md",
+  "requirement_id": "REQ-20260912-075",
+  "control_prefix": "req-20260912-075-person-card",
+  "objective": "把架构管理与开发管理两个菜单下的 38 处人员展示统一替换为同一个可配置三档、悬停或点击展示完整信息的人员卡片，使人员身份、联系方式、团队归属与角色在任意列表、详情和时间线处就地可读。",
+  "users": [
+    "技术架构师与架构相关角色（architecture:view/apply/manage）：在物理子系统、决策事项、标准文档、搭建计划、交付与部署单元、网络工单、子系统变更、实例、资源申请、网络访问页面查看人员",
+    "开发管理角色（development:task:read、development:admin）：在开发任务列表与详情、阶段面板、工作项看板与列表、变更日志中查看负责人与指定人员",
+    "现有 UiUserIdentity 调用页面（ModuleView、AppLayout、ProjectView、ComponentShowcaseView）：作为兼容性回归对象"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "三档卡片：variant 取 compact/standard/full，分别默认显示「头像+姓名」「头像+姓名+电话」「头像+姓名+电话+团队」，且 show-avatar/show-phone/show-team 可独立覆盖档位默认值。",
+      "acceptance": [
+        "三档在约 130～180px 的表格列宽内渲染正确且不撑破列",
+        "关闭 show-phone 后中档不再渲染电话行，且不留下占位空隙",
+        "关闭 show-avatar 后不再渲染头像",
+        "三档与三个开关的组合可在组件示范页就地复现"
+      ],
+      "priority": "must",
+      "source": "用户确认「A，顺便留出可配置的空间，头像、团队、电话可以选择性展示」",
+      "counterexample": [
+        "三档差异只体现在字号大小",
+        "开关被档位默认值覆盖而无效",
+        "关掉开关后仍留有占位空隙"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "完整信息浮层：桌面 hover 触发（延迟约 120ms 防误触），@media (hover: none) 下改为点击触发；内容包含头像、姓名、账号、电话、归属团队、角色与启用状态。",
+      "acceptance": [
+        "桌面悬停后浮层出现且内容完整",
+        "手机视口点击卡片出现同一浮层",
+        "触屏下 hover 不会误触，点击浮层外部可关闭"
+      ],
+      "priority": "must",
+      "source": "用户确认触屏点击触发方案 A",
+      "counterexample": [
+        "触屏无法打开浮层",
+        "浮层缺少电话或账号",
+        "桌面悬停无延迟导致扫过即弹出"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "浮层布局为头部身份区加「联系方式」「组织归属」「角色」三个分区，分区之间细虚线分隔，角色渲染为可换行 chip；桌面宽 300px，窄屏使用 min(300px, calc(100vw - 24px))。",
+      "acceptance": [
+        "1440 与 375 视口下浮层不超出视口且不产生横向滚动",
+        "超长团队名与角色名换行显示而非省略号截断"
+      ],
+      "priority": "must",
+      "source": "用户确认浮层方案 B 及 5 条共同约定",
+      "counterexample": [
+        "浮层固定 300px 在窄屏溢出",
+        "角色拼接为一串文字",
+        "超长文本被省略号截断"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "新增平台人员档案批量查询接口：POST、登录即可访问、强制租户隔离、字段白名单、单次最多 50 个 id、返回 missingIds、包含停用用户状态。",
+      "acceptance": [
+        "跨租户 id 落入 missingIds 且接口不报错、不暴露存在性",
+        "userIds 超过 50 个返回 400，空数组返回空结果而非错误",
+        "响应体不含 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+        "停用用户被返回并带 status 标记"
+      ],
+      "priority": "must",
+      "source": "用户确认数据来源方案 1 并声明已获 Owner 批准",
+      "counterexample": [
+        "跨租户用户被返回",
+        "跨租户查询抛错并暴露存在性",
+        "响应体带非白名单字段",
+        "停用责任人被静默丢弃"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "前端目录 store 负责 ensure(ids) 入队、同一微任务内去重合并、按 50 分批、同一 id 飞行中不重复入队、TTL 10 分钟缓存、单批失败标记与重试（自动重试最多 1 次）、项目切换与登出时清空。",
+      "acceptance": [
+        "含 100 行且每行 1 个唯一负责人的列表页总请求数为 2 批",
+        "重复渲染同一用户不产生新请求",
+        "断网后浮层显示失败态与重试入口，恢复网络后可重试成功"
+      ],
+      "priority": "must",
+      "source": "用户确认工程方案乙",
+      "counterexample": [
+        "每行各发一次请求",
+        "同一用户被重复请求",
+        "失败后缓存被永久标记为错误且无法恢复"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "向后兼容：现有 12 处 UiUserIdentity 调用点零代码改动即可运行；组件在无可解析 userId 时不发起任何网络请求，行为与改造前一致。",
+      "acceptance": [
+        "ModuleView、AppLayout、ProjectView、ComponentShowcaseView 四个文件不做改动即可通过 vue-tsc 与生产构建",
+        "既无 userId 也无 user 时只渲染兜底文本，不弹浮层、不发请求"
+      ],
+      "priority": "must",
+      "source": "工程事实：现有 12 处调用点的外部行为不变是本次唯一强制兼容边界",
+      "counterexample": [
+        "现有调用点被迫传入新 prop 才能编译",
+        "无 id 时仍发请求或弹出空浮层"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "替换清单落地：两个菜单下 24 个文件、38 处人员展示全部替换为人员卡片；人员选择器（el-select）保持不动。",
+      "acceptance": [
+        "附录 A 的 38 处逐处走查通过",
+        "TaskFormDrawer、WorkItemFormDrawer、SubsystemChangePhysicalCard 及各页 el-select 选人控件未被改动",
+        "固定宽小于 130px 的人员列改为 min-width，姓名不被挤压"
+      ],
+      "priority": "must",
+      "source": "用户确认替换范围为只读展示并复核段 3 清单",
+      "counterexample": [
+        "漏替换任意一处造成纯文本与卡片混排",
+        "把选人控件改成卡片导致多选 tag 与远程搜索行为变化"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "补齐 3 处缺少 userId 的后端字段：DecisionMatterListItem.proposerId、DecisionMaterial.createdBy、StandardDocumentDetail.createdBy。",
+      "acceptance": [
+        "DecisionMatterListPage:152、DecisionMatterDetailPage:621、StandardDocumentListPage:353 三处可以悬浮出完整信息",
+        "mvn -pl :ccb-architecture -am test 通过"
+      ],
+      "priority": "must",
+      "source": "用户确认「补齐后端字段」",
+      "counterexample": [
+        "这 3 处只能显示纯文本且永远无法悬浮"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "原始 ID 展示改为人员卡片：申请人 #123、操作人 #123、下线操作人 ID 等共 7 处渲染为「头像 + 姓名」。",
+      "acceptance": [
+        "这 7 处不再出现 #加数字的原始 ID",
+        "用户不存在时显示「未找到该人员信息」而不是空白或报错"
+      ],
+      "priority": "must",
+      "source": "用户复核段 3 清单时未提出异议，属「所有人员展示」的组成部分",
+      "counterexample": [
+        "仍渲染原始数字 ID",
+        "用户不存在时整块空白或抛错"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "全状态与主题：浮层覆盖加载中、加载失败加重试、未找到、无角色、停用、超长文本六种状态；明暗主题可读；桌面 1440 与手机 375 视口无遮挡与溢出。",
+      "acceptance": [
+        "六种状态逐一可复现",
+        "切换 data-theme 后浮层与卡片文字保持可读对比度",
+        "表格固定列内的浮层不被 overflow:hidden 裁剪"
+      ],
+      "priority": "must",
+      "source": "docs/governance/PROJECT-RULES.md 前端交付规则与 design-h5.md 移动端验收要求",
+      "counterexample": [
+        "加载中清空已显示的姓名",
+        "失败态没有重试入口",
+        "暗色主题下浮层文字不可读",
+        "固定列内浮层被裁剪"
+      ]
+    },
+    {
+      "id": "R11",
+      "statement": "组件示范页新增人员卡片示例区：三档各一个实例加 show-avatar/show-phone/show-team 三个开关的即时切换演示。",
+      "acceptance": [
+        "ComponentShowcaseView 可见三档与开关组合结果",
+        "该示例作为 R1 的可复现验收载体供后续参考"
+      ],
+      "priority": "must",
+      "source": "设计修订 2：计划阶段自检发现 R1 的开关行为缺少可观测载体",
+      "counterexample": [
+        "只替换业务页面而不留下任何可复现的档位与开关示例"
+      ]
+    }
+  ],
+  "invariants": [
+    "现有 12 处 UiUserIdentity 调用点的外部行为不变",
+    "组件在无可解析 userId 时不发起任何网络请求",
+    "查询接口不返回 password_hash、tenant_id、deleted、last_login_at、avatar_object_key",
+    "跨租户用户 id 不得泄漏存在性，统一进入 missingIds",
+    "business/architecture 与 business/development 不新增对 sys_user 的直接 SQL，平台数据只通过 com.ccb.system.capability 公开契约访问",
+    "人员展示统一走 UiUserIdentity，不建立平行组件",
+    "人员列固定宽小于 130px 时改为 min-width（下限 130px），且不调整非人员列的宽度",
+    "本次无数据库迁移，Flyway 脚本零改动"
+  ],
+  "constraints": [
+    "platform/system 与 frontend/application 的 codex_default_access 均为 read_only，本次修改属公共能力变更，需要 public_capability_change 声明、关联已批准需求与 Owner 审批（用户声明已获批）",
+    "前端没有单元测试框架，package.json 只有 dev/build/preview；前端门禁由 vue-tsc 类型检查、vite 生产构建与真实浏览器验收承担",
+    "Flyway 迁移只追加，本次不新增迁移",
+    "根 AGENTS.md 要求所有前端任务按 design-h5.md 做手机视口验收",
+    "只读接口不写审计表，项目规约要求审计针对写操作"
+  ],
+  "non_goals": [
+    "不替换人员选择器（el-select 及其 el-option 下拉项）",
+    "不替换系统管理、角色维护、项目管理、测试管理、发布管理、数据迁移等其它菜单下的人员展示",
+    "不新增人员编辑、头像上传、角色分配、导入导出能力",
+    "不做虚拟滚动或表格分页策略优化",
+    "不引入前端单元测试框架",
+    "不给电话做脱敏或按权限分级"
+  ],
+  "selected_approach": {
+    "name": "方案乙：触发器 + 浮层卡片 + 共享目录 store 三层分离",
+    "reason": "触发器只渲染并在需要时把 id 交给 store，store 在同一微任务内去重合并成最多 50 个一批的请求；避免大列表每行一次请求的放大，取数逻辑集中后可用单测覆盖合并、去重、TTL 与失败降级，符合优先复用公共能力的规约。",
+    "alternatives": [
+      {
+        "name": "方案甲：组件自治，组件内 hover 时单点请求",
+        "rejected_because": "100 行列表最坏产生 100 次请求，是最容易被观测打回的误差；缓存与去重需在组件内手写，无法集中测试。"
+      },
+      {
+        "name": "方案丙：组件纯展示，各调用页面自行预取后传 prop",
+        "rejected_because": "把成本平摊到 22 个调用点并重复实现缓存与失败重试，改动面最大且与优先复用公共能力相反。"
+      }
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": [
+        "server/src/platform/system：人员档案批量查询接口与角色查询能力",
+        "web/src/api/user-profile.ts：接口封装",
+        "web/src/stores/person-directory.ts：批量合并、去重、缓存与失败降级",
+        "web/src/components/ui/UiUserIdentity.vue：触发器改造",
+        "web/src/components/ui/UiPersonProfileCard.vue：浮层内容新增",
+        "web/src/styles.css：三档尺寸语义与浮层样式",
+        "web/src/modules/architecture 与 web/src/modules/development：38 处模板替换与 3 处 DTO 字段补齐",
+        "web/src/views/ComponentShowcaseView.vue：新增三档与开关示例区"
+      ],
+      "outside": [
+        "人员选择器与其它菜单的人员展示",
+        "人员写操作（编辑、头像上传、角色分配）",
+        "数据库迁移",
+        "平台账号与权限模型"
+      ]
+    },
+    "components": [
+      {
+        "name": "UiUserIdentity.vue",
+        "responsibility": "渲染触发器（头像、姓名、按档位的电话与团队），在需要补全数据时把 id 交给 store，不直接调用接口",
+        "depends_on": [
+          "person-directory store",
+          "UiPersonProfileCard.vue"
+        ]
+      },
+      {
+        "name": "UiPersonProfileCard.vue",
+        "responsibility": "渲染浮层内容与六种状态，从 store 读数据",
+        "depends_on": [
+          "person-directory store"
+        ]
+      },
+      {
+        "name": "person-directory store",
+        "responsibility": "入队、同微任务去重合并、50 个一批、TTL 缓存、失败标记与重试、会话重置",
+        "depends_on": [
+          "api/user-profile.ts"
+        ]
+      },
+      {
+        "name": "api/user-profile.ts",
+        "responsibility": "批量查询接口的类型化封装",
+        "depends_on": [
+          "api/http.ts"
+        ]
+      },
+      {
+        "name": "人员档案查询接口",
+        "responsibility": "租户隔离的只读批量查询，只返回白名单字段",
+        "depends_on": [
+          "SystemUserDirectory",
+          "sys_org",
+          "sys_user_role",
+          "sys_role"
+        ]
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "POST /api/platform/user-profiles/query",
+        "producer": "server/src/platform/system",
+        "consumers": [
+          "web/src/api/user-profile.ts"
+        ],
+        "contract": "登录即可访问；请求体 { userIds: number[] } 去重、忽略 null、上限 50；响应 { code, message, data: { profiles: [{ id, username, displayName, mobilePhone, orgName, avatarUrl, roles: [{id, code, name}], status }], missingIds } }；强制 tenant_id = actor.tenantId()；超限返回 400；空数组返回空结果；停用用户也返回并由 status 标记"
+      },
+      {
+        "name": "UiUserIdentity props",
+        "producer": "web/src/components/ui/UiUserIdentity.vue",
+        "consumers": [
+          "web/src/modules/architecture 与 web/src/modules/development 的 38 处调用",
+          "web/src/views/ModuleView.vue、AppLayout.vue、ProjectView.vue、ComponentShowcaseView.vue 共 12 处现有调用"
+        ],
+        "contract": "user（既有，保持）、userId（新增）、variant（compact/standard/full，默认 standard）、showAvatar（默认 true）、showPhone 与 showTeam（默认按 variant 推导）、size 与 showName 与 showProfile（既有，保持）、fallbackName；无可解析 userId 时不发请求且 showProfile 自动降级"
+      }
+    ],
+    "data_flows": [
+      {
+        "input": "页面模板传入 userId 与 variant，或传入既有 user 对象",
+        "transitions": [
+          "组件判断是否缺电话/团队/角色",
+          "缺则调用 store.ensure(ids) 入队",
+          "store 在同一微任务内去重合并并按 50 分批",
+          "api/user-profile 发起 POST 查询",
+          "响应对应写回 Map<id, { status, profile }>（TTL 10 分钟）"
+        ],
+        "output": "响应式缓存更新，UiPersonProfileCard 渲染完整信息浮层"
+      }
+    ]
+  },
+  "error_handling": [
+    {
+      "condition": "电话或团队字段缺失",
+      "behavior": "该行不渲染，不留空行、不显示占位；浮层内显示破折号",
+      "recovery": "数据补齐后随缓存刷新自动出现"
+    },
+    {
+      "condition": "角色为空",
+      "behavior": "渲染虚线 chip「暂无角色」",
+      "recovery": "角色变更后随 TTL 刷新"
+    },
+    {
+      "condition": "用户不存在或跨租户",
+      "behavior": "浮层显示「未找到该人员信息」，卡片本体仍用已知姓名渲染",
+      "recovery": "无需恢复"
+    },
+    {
+      "condition": "接口 4xx 或 5xx",
+      "behavior": "浮层显示「人员信息加载失败」加「重试」链接，卡片本体不受影响",
+      "recovery": "点击重试或下次 ensure 重发，自动重试最多 1 次"
+    },
+    {
+      "condition": "数据加载中",
+      "behavior": "头部先用已知姓名渲染，下方显示 2 行骨架，不清空已显示内容",
+      "recovery": "数据到达后替换骨架"
+    },
+    {
+      "condition": "既无 userId 也无 user",
+      "behavior": "纯文本兜底，不发请求，showProfile 自动降级为 false",
+      "recovery": "无需恢复"
+    },
+    {
+      "condition": "项目切换、登出或租户变化",
+      "behavior": "store 清空缓存，避免跨项目脏数据",
+      "recovery": "重新 ensure"
+    }
+  ],
+  "quality_attributes": {
+    "security": [
+      "接口要求登录并强制租户隔离",
+      "响应只含白名单字段，不返回口令、租户、删除标记、登录时间与对象存储 key",
+      "跨租户 id 不暴露存在性，统一进入 missingIds",
+      "暴露面与现有系统管理用户列表、测试管理提出人一致，已含在 Owner 审批范围"
+    ],
+    "performance": [
+      "同微任务去重合并并按 50 分批，请求数由页面上不同人员数决定",
+      "同一 id 飞行中不重复入队",
+      "TTL 10 分钟缓存减少重复请求"
+    ],
+    "compatibility": [
+      "UiUserIdentity 现有 prop 全部保留且默认值保持现有观感",
+      "无可解析 id 时不发请求，行为与改造前一致",
+      "不新增平行组件，人员展示统一收敛到 UiUserIdentity"
+    ],
+    "operations": [
+      "无数据库迁移、无新配置项、无外部系统接入、无新增定时任务",
+      "接口为无状态只读查询",
+      "接口失败只影响浮层内容，不影响页面主流程"
+    ]
+  },
+  "verification_strategy": [
+    {
+      "requirement_ids": [
+        "R1"
+      ],
+      "signal": "三档渲染结果与三个独立开关的覆盖行为正确",
+      "method": "真实浏览器走查三档与开关组合；npm --prefix web run build 中的 vue-tsc 类型检查"
+    },
+    {
+      "requirement_ids": [
+        "R2",
+        "R3"
+      ],
+      "signal": "桌面 hover 与触屏点击都能打开浮层，1440 与 375 视口不溢出",
+      "method": "桌面鼠标悬停与移动视口点击对照；长团队名与长角色名数据验证换行"
+    },
+    {
+      "requirement_ids": [
+        "R4"
+      ],
+      "signal": "租户隔离、50 上限、字段白名单、missingIds、停用用户状态均正确",
+      "method": "mvn -pl :ccb-system -am test 接口单元测试"
+    },
+    {
+      "requirement_ids": [
+        "R5"
+      ],
+      "signal": "含 100 行唯一负责人的列表页请求数为 2 批；断网后显示失败态并可重试",
+      "method": "store 行为验收：实测请求数；断网模拟失败与重试"
+    },
+    {
+      "requirement_ids": [
+        "R6"
+      ],
+      "signal": "现有四个调用文件不改动即可编译运行且外观行为不变",
+      "method": "不改动现有调用点执行构建；浏览器回归四个页面"
+    },
+    {
+      "requirement_ids": [
+        "R7",
+        "R9"
+      ],
+      "signal": "38 处全部替换、7 处原始 ID 变为卡片、选人控件未被改动",
+      "method": "按附录 A 逐处走查；git diff 核对未触及 el-select；构造用户不存在场景"
+    },
+    {
+      "requirement_ids": [
+        "R8"
+      ],
+      "signal": "3 处补齐后可以悬浮出完整信息，架构模块回归通过",
+      "method": "mvn -pl :ccb-architecture -am test 加页面走查"
+    },
+    {
+      "requirement_ids": [
+        "R10"
+      ],
+      "signal": "六种状态逐一可复现，明暗主题可读，两个视口无遮挡溢出",
+      "method": "断网、构造空角色与停用用户与超长文本；切换 data-theme 与视口"
+    },
+    {
+      "requirement_ids": [
+        "R11"
+      ],
+      "signal": "组件示范页可见三档与三个开关的组合结果",
+      "method": "浏览器打开组件示范页走查三档与开关组合"
+    },
+    {
+      "requirement_ids": [
+        "R7"
+      ],
+      "signal": "仓库治理与任务范围检查通过",
+      "method": "node scripts/check-all-governance.mjs；node scripts/check-codex-scope.mjs --scope <本次 codex-task-scope.yaml>"
+    }
+  ],
+  "assumptions": [
+    {
+      "text": "用户已申报并取得 Owner 对 platform/system 与 frontend/application 两处公共能力变更的批准",
+      "basis": "用户在会话中口述「已申报 owner 获批」",
+      "falsifier": "Owner 未批准或批准范围不含 frontend/application 公共组件"
+    },
+    {
+      "text": "sys_user.mobile_phone 在当前租户内对已登录用户可见，与既有页面一致",
+      "basis": "系统管理用户列表与测试管理提出人页面已对同类角色展示手机号",
+      "falsifier": "安全评审要求电话对无 system:access 的用户脱敏"
+    },
+    {
+      "text": "Element Plus el-popover 的 teleport 定位在表格固定列与横向滚动容器内正确",
+      "basis": "Element Plus 默认 teleported 为 true，浮层挂载到 body",
+      "falsifier": "验收中出现浮层被裁剪或错位"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "大列表（100 行、多人员列）预取的实际批次数",
+      "impact": "若超过 1 批，需要补充页面级批大小策略",
+      "owner": "研发",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "范围只含只读展示（表格列、详情描述、时间线操作人），不含人员选择器",
+      "reason": "选择器是选人控件，el-select 内嵌卡片会牵动多选 tag、远程搜索与失效人员提示，收益低而回归面大",
+      "source": "用户回复「A 没问题」"
+    },
+    {
+      "id": "D2",
+      "decision": "采用方案乙：触发器 + 浮层卡片 + 共享目录 store",
+      "reason": "避免大列表请求放大，取数逻辑集中可测，符合优先复用公共能力",
+      "source": "用户在方案对比后确认采用方案乙"
+    },
+    {
+      "id": "D3",
+      "decision": "三档字段显示在卡片本体上，因此必须预取",
+      "reason": "用户明确最小的有人员姓名、中等还有电话、大型还有归属团队",
+      "source": "用户回复「A，顺便留出可配置的空间」"
+    },
+    {
+      "id": "D4",
+      "decision": "三档形态采用两行堆叠",
+      "reason": "窄表格列下电话与团队可换行，信息层级清晰",
+      "source": "用户在看图后回复「B 挺好」"
+    },
+    {
+      "id": "D5",
+      "decision": "浮层采用分区卡片加角色 chips，并接受 5 条共同约定",
+      "reason": "扫读顺序自然，多角色可控，新增字段有位置可放",
+      "source": "用户在看图后回复「可以」"
+    },
+    {
+      "id": "D6",
+      "decision": "触屏使用点击触发，桌面保留 hover",
+      "reason": "hover 在触屏不存在，design-h5.md 要求移动端功能对等",
+      "source": "用户确认触屏方案 A"
+    },
+    {
+      "id": "D7",
+      "decision": "补齐 3 处缺失 userId 的后端字段",
+      "reason": "避免出现有的卡片能悬停、有的不能的认知不一致",
+      "source": "用户回复「补齐后端字段，其他无问题」"
+    },
+    {
+      "id": "D8",
+      "decision": "在组件示范页新增三档与三个开关的示例区",
+      "reason": "原设计把 ComponentShowcaseView 仅列为回归对象，导致 R1 的开关行为缺少可复现载体；该页本就是组件示例页",
+      "source": "计划阶段自检发现，随设计修订 2 一并请用户确认"
+    },
+    {
+      "id": "D9",
+      "decision": "人员列固定宽小于 130px 时改为 min-width",
+      "reason": "小档含 24px 头像，100px 列宽会挤压姓名",
+      "source": "计划阶段自检发现，随设计修订 2 一并请用户确认"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "新接口把电话暴露给所有已登录用户",
+      "impact": "数据暴露面扩大",
+      "mitigation": "仅同租户、白名单字段、不含口令与登录信息；暴露面与既有页面一致，已含在 Owner 审批范围"
+    },
+    {
+      "risk": "列表预取增加请求量",
+      "impact": "页面加载变慢",
+      "mitigation": "去重、50 个一批、10 分钟缓存；验收时实测请求数，超过 1 批再补批大小策略"
+    },
+    {
+      "risk": "固定列或横向滚动表格内浮层定位异常",
+      "impact": "浮层被裁剪或错位",
+      "mitigation": "依赖 Element Plus teleport；如异常只调整 placement，不改公共组件契约"
+    },
+    {
+      "risk": "38 处替换出现遗漏或误改选人控件",
+      "impact": "出现纯文本与卡片混排或交互回归",
+      "mitigation": "按附录 A 逐处走查，git diff 核对，现有 12 处调用点回归"
+    },
+    {
+      "risk": "补齐 3 处 DTO 字段影响架构模块既有查询",
+      "impact": "架构模块回归失败",
+      "mitigation": "只加字段不改语义；mvn -pl :ccb-architecture -am test 全量回归"
+    }
+  ],
+  "rollback": "删除 web/src/api/user-profile.ts 与 web/src/components/ui/UiPersonProfileCard.vue 及 stores/person-directory.ts，恢复 UiUserIdentity.vue 与 styles.css，回滚平台接口与 3 个架构 DTO 字段。无数据库迁移、无数据补偿。",
+  "baseline_defects": [
+    {
+      "defect": "node scripts/check-ai-control-layout.mjs 因 docs/requirements/REQ-20260904-061-release-plan-timeline-instructions/codex-task-scope.yaml 不是 JSON 兼容 YAML 而失败",
+      "evidence": "脚本报 Unexpected token 's', \"schema_ver\"... is not valid JSON；该文件最后一次改动为 0f8d76f feat: complete release operations management，本次未修改",
+      "impact": "治理门禁当前为红状态，实施阶段无法直接以全绿门禁作为完成信号",
+      "decision": "known-exception"
+    }
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "修订 1 的用户确认：范围（只读展示）、数据来源（平台批量接口且已获 Owner 批准）、触屏点击、三档形态（两行堆叠）、浮层布局（分区卡片加角色 chips）、段 3 清单与档位分配、段 4 数据流权限失败行为与验证策略、补齐 3 处后端字段，复核落盘文件后回复「可以」。修订 2 的增量（R11 组件示范页示例、D8、D9、文件计数更正）在复核计划时一并获批，用户回复「批准，本次不修历史问题」。用户同时明确了基线故障的处理方向：本次不修复，声明为已知例外，完成报告需如实标注门禁未全绿的原因。",
+    "confirmed_at": "2026-09-12T15:43:11+08:00"
+  }
+}

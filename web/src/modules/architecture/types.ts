@@ -38,6 +38,8 @@ export interface PhysicalSubsystem {
   englishName: string | null
   status: PublishedSubsystemStatus
   rowVersion: number
+  securityNodeNo: string | null
+  fileTransferNodeNo: string | null
 }
 
 export interface PhysicalDraftInput {
@@ -60,6 +62,8 @@ export interface PhysicalDraftInput {
   description: string | null
   remark: string | null
   sourceRowVersion: number | null
+  securityNodeNo: string | null
+  fileTransferNodeNo: string | null
 }
 
 export interface PhysicalDraft extends Omit<PhysicalDraftInput, 'responsibleTeamOrgId'> {
@@ -136,8 +140,18 @@ export interface OrganizationOption { id: number; name: string; parentId: number
 export interface UserOption { id: number; displayName: string; username: string; phone: string | null }
 export interface ParameterOption { code: string; label: string }
 
-export type ArchitectureResource = 'physical-subsystem'
-export type DetailItem = { label: string; value: string; wide?: boolean; tone?: 'warning' | 'danger' }
+export type ArchitectureResource = 'physical-subsystem' | 'delivery-unit'
+export type StatusTone = 'primary' | 'success' | 'warning' | 'danger' | 'info'
+export type DetailItem = {
+  label: string
+  value: string
+  wide?: boolean
+  tone?: 'warning' | 'danger'
+  tag?: { value: string | number | boolean; labels?: Record<string, string>; tone?: StatusTone }
+  /** 带人员标识的条目改由人员卡片渲染，value 作为未取到档案时的姓名兜底。 */
+  userId?: number | string | null
+}
+export type DetailSection = { title: string; items: DetailItem[] }
 
 // ---------- 架构规范 ----------
 export type StandardDocumentStatus = 'DRAFT' | 'PUBLISHED' | 'OFFLINE'
@@ -166,6 +180,7 @@ export interface StandardDocumentDetail {
   publishedByName: string | null
   rowVersion: number
   createdByName: string | null
+  createdBy: number
   createdAt: string
   updatedAt: string
 }
@@ -214,6 +229,7 @@ export interface DecisionMatterSummary {
   firstHandlingOutcome: FirstHandlingOutcome | null
   reviewMode: ReviewMethod | null
   proposerName: string
+  proposerId: number
   updatedAt: string
 }
 
@@ -253,6 +269,7 @@ export interface DecisionMaterial {
   kind: MaterialKind
   content: string
   createdByName: string | null
+  createdBy: number
   createdAt: string
 }
 
@@ -421,6 +438,50 @@ export interface DeploymentUnitImportItem {
 export interface DeploymentUnitImportBatchDetail {
   batch: DeploymentUnitImportBatch
   items: DeploymentUnitImportItem[]
+}
+
+// ---------- 交付单元 ----------
+
+export type DeliveryUnitStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface DeliveryUnit {
+  id: number
+  code: string
+  physicalSubsystemId: number
+  physicalSubsystemCode: string | null
+  physicalSubsystemName: string | null
+  physicalSubsystemStatus: string | null
+  name: string
+  status: DeliveryUnitStatus
+  artifactTypeCode: string | null
+  relatedDeploymentUnits: RelatedDeploymentUnit[]
+  description: string | null
+  remark: string | null
+  createdBy: number
+  createdByDisplayName: string | null
+  updatedBy: number
+  updatedByDisplayName: string | null
+  createdAt: string
+  updatedAt: string
+  rowVersion: number
+}
+
+export interface DeliveryUnitPayload {
+  physicalSubsystemId: number | null
+  name: string
+  description: string | null
+  remark: string | null
+  relatedDeploymentUnitIds: number[]
+  rowVersion?: number | null
+  artifactTypeCode: string | null
+}
+
+/** 部署单元侧反查到的交付单元只读引用。 */
+export interface RelatedDeliveryUnit {
+  id: number
+  code: string
+  name: string
+  status: DeliveryUnitStatus
 }
 
 export interface PhysicalSubsystemOption {
@@ -1034,4 +1095,23 @@ export interface DisasterRecoveryPayload {
   standbyInstanceId: number
   drMode: DisasterRecoveryMode
   description?: string
+}
+
+/** 系统显式分工与实时有效资格分开返回，失效名单不悄悄删除。 */
+export interface SubsystemParticipantCandidate {
+  userId: number
+  displayName: string
+}
+export interface SubsystemParticipation {
+  ownerUserId: number | null
+  explicitParticipantUserIds: number[]
+  effectiveParticipantUserIds: number[]
+  rowVersion: number
+  canManage: boolean
+  participants: SubsystemParticipantCandidate[]
+}
+export interface SubsystemParticipationPayload {
+  participantUserIds: number[]
+  rowVersion: number
+  reason: string
 }

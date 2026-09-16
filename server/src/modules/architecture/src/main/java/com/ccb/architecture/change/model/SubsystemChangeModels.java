@@ -86,6 +86,7 @@ public final class SubsystemChangeModels {
     public record ChangeApplication(
             long id,
             long tenantId,
+            long projectId,
             TargetKind targetKind,
             ActionType actionType,
             Long targetId,
@@ -110,6 +111,7 @@ public final class SubsystemChangeModels {
             long applicationId,
             int lineNo,
             long tenantId,
+            long projectId,
             Long sourcePhysicalSubsystemId,
             String code,
             String shortName,
@@ -132,10 +134,13 @@ public final class SubsystemChangeModels {
             int draftRevision,
             String submittedSnapshotJson,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+            String securityNodeNo,
+            String fileTransferNodeNo) {
 
         /** 兼容 V82-V94 期间不含登记表来源字段的测试与内部构造。 */
-        public PhysicalDraft(long applicationId, int lineNo, long tenantId, Long sourcePhysicalSubsystemId,
+        public PhysicalDraft(long applicationId, int lineNo, long tenantId, long projectId,
+                             Long sourcePhysicalSubsystemId,
                              String code, String shortName, String name, String logicalSubsystemName,
                              String businessComponentCode, String englishName,
                              String businessGroupName, long responsibleTeamOrgId,
@@ -143,12 +148,12 @@ public final class SubsystemChangeModels {
                              String developmentFrameworkCode, Long ownerUserId, String description, String remark,
                              Long sourceRowVersion, int draftRevision,
                              String submittedSnapshotJson, LocalDateTime createdAt, LocalDateTime updatedAt) {
-            this(applicationId, lineNo, tenantId, sourcePhysicalSubsystemId, code,
+            this(applicationId, lineNo, tenantId, projectId, sourcePhysicalSubsystemId, code,
                     shortName, name, logicalSubsystemName, businessComponentCode, englishName, businessGroupName,
                     null, null,
                     responsibleTeamOrgId, responsibleTeamNameSnapshot, runtimeCode, systemLevelCode,
                     developmentFrameworkCode, ownerUserId, description, remark, sourceRowVersion, draftRevision,
-                    submittedSnapshotJson, createdAt, updatedAt);
+                    submittedSnapshotJson, createdAt, updatedAt, null, null);
         }
     }
 
@@ -156,6 +161,7 @@ public final class SubsystemChangeModels {
     public record ChangeHistoryEvent(
             long id,
             long tenantId,
+            long projectId,
             long applicationId,
             String eventType,
             ApplicationStatus fromStatus,
@@ -172,6 +178,7 @@ public final class SubsystemChangeModels {
     public record WorkflowRound(
             long id,
             long tenantId,
+            long projectId,
             long applicationId,
             int roundNo,
             Long workflowDefinitionId,
@@ -189,6 +196,7 @@ public final class SubsystemChangeModels {
     public record WorkflowReceiptStart(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             Long applicationId,
@@ -201,6 +209,7 @@ public final class SubsystemChangeModels {
     public record WorkflowReceipt(
             long id,
             long tenantId,
+            long projectId,
             String eventId,
             String subscriberKey,
             Long applicationId,
@@ -213,21 +222,22 @@ public final class SubsystemChangeModels {
             LocalDateTime processedAt) {
     }
 
-    public record TargetLock(long tenantId, TargetKind targetKind, long targetId, long applicationId,
+    public record TargetLock(long tenantId, long projectId, TargetKind targetKind, long targetId, long applicationId,
                              LocalDateTime acquiredAt) {
     }
 
-    public record ValueReservation(long tenantId, String reservationScope, String normalizedValue,
+    public record ValueReservation(long tenantId, long projectId, String reservationScope, String normalizedValue,
                                    long applicationId, int lineNo, LocalDateTime reservedAt) {
     }
 
-    public record PhysicalReplacement(long id, long tenantId, long oldPhysicalSubsystemId,
+    public record PhysicalReplacement(long id, long tenantId, long projectId, long oldPhysicalSubsystemId,
                                       long newPhysicalSubsystemId, long applicationId, LocalDateTime approvedAt) {
     }
 
     public record PhysicalPublishedState(
             long id,
             long tenantId,
+            long projectId,
             String code,
             String logicalSubsystemName,
             String businessComponentCode,

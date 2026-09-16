@@ -1,0 +1,128 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "将架构交付单元制品类型安全归一为 IMAGE/BINARY",
+      "requirement_ids": ["R1", "R7"],
+      "prerequisites": [],
+      "input_facts": ["V212 新增 nullable artifact_type_code，并为 tenant 1 建立三条旧字典项", "DeliveryUnitService 使用 SystemParameterReference.code 校验并原样持久化", "现有迁移集成断言位于 DeliveryUnitMySqlTest"],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V213__normalize_delivery_unit_artifact_types.sql",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitMySqlTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeliveryUnitServiceTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/ArchitectureOptionsControllerTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/web/DeliveryUnitControllerTest.java"
+      ],
+      "invariants": ["不修改 V212", "不猜测空制品类型的业务含义", "迁移遇到稳定 ID 或规范 key 冲突时失败关闭"],
+      "interface_contracts": ["ARCH_ARTIFACT_TYPE 启用项 code 为 IMAGE/BINARY、label 为镜像/二进制", "旧 container 映射 IMAGE，archive/script 映射 BINARY"],
+      "non_goals": ["强制所有历史空值为某一类型", "修改其他架构字典"],
+      "action_bounds": ["只追加一条 Flyway 迁移并更新直接依赖旧 code 的测试夹具"],
+      "acceptance_checks": ["全量迁移后启用项仅为 IMAGE/BINARY", "非空旧类型按规则迁移", "DeliveryUnitService 仅接受启用规范 code"],
+      "evidence_required": ["迁移和测试 diff", "Flyway 检查退出码", "目标 Maven 测试结果"],
+      "rollback": "发布前停止并恢复代码；已执行数据库使用发布前备份或补偿迁移恢复",
+      "stop_conditions": ["发现非架构业务表持久依赖三种旧 code", "稳定 ID 被不同业务占用"],
+      "escalation_conditions": ["需要为未知存量类型决定映射", "需要修改既有迁移"]
+    },
+    {
+      "id": "T2",
+      "goal": "建立项目隔离的架构主数据查询契约和配置消费适配器",
+      "requirement_ids": ["R2", "R7"],
+      "prerequisites": [],
+      "input_facts": ["architecture 已有 integration 公开查询模式", "ccb-boot 同时依赖 architecture 和 release", "DevelopmentSystemDirectoryAdapter 已证明组合根适配模式可用"],
+      "write_scope": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcReleaseMasterDataQuery.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcReleaseMasterDataQueryTest.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapterTest.java"
+      ],
+      "invariants": ["release 不依赖 architecture 实现", "architecture 查询只读且始终使用 actor.tenantId", "公共契约不包含维护动作"],
+      "interface_contracts": ["查询按 tenantId/projectId/deleted/status/parent 过滤", "精确解析一次返回父项和请求的全部子项或空结果"],
+      "non_goals": ["复用架构维护权限", "修改现有架构 Controller"],
+      "action_bounds": ["新增最小 record 契约、JDBC 查询和字段转换适配器"],
+      "acceptance_checks": ["跨租户和跨项目数据不可返回", "停用或错父数据不满足精确解析", "Maven 不产生循环依赖"],
+      "evidence_required": ["新增契约和实现 diff", "查询参数/SQL 单元测试", "适配转换测试", "模块编译结果"],
+      "rollback": "删除新增查询契约、实现和 Boot 适配器",
+      "stop_conditions": ["Maven 出现循环依赖", "必须公开架构私有持久化类型"],
+      "escalation_conditions": ["发现 Boot 不是唯一安全组合根", "公共查询需要写权限"]
+    },
+    {
+      "id": "T3",
+      "goal": "提供配置管理主数据 API 并在申请写入前生成可信快照",
+      "requirement_ids": ["R3", "R4", "R6", "R7"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["ProjectAccessService.requireAccessible 同时完成项目授权和 ref 到数值 ID 映射", "ReleaseApplicationService.prepare 当前信任客户端子系统和交付单元展示字段", "create/update/conflict preview 均经过 prepare"],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseMasterDataService.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/web/ReleaseMasterDataController.java",
+        "server/src/modules/release/src/main/java/com/ccb/release/application/service/ReleaseApplicationService.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseMasterDataServiceTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/web/ReleaseMasterDataControllerSecurityTest.java",
+        "server/src/modules/release/src/test/java/com/ccb/release/application/service/ReleaseApplicationServiceTest.java"
+      ],
+      "invariants": ["Controller 同时执行 release RBAC 和项目范围校验", "文件介质路径逻辑不变", "历史读取继续使用 release 快照", "失败发生在持久化前"],
+      "interface_contracts": ["GET API 返回 ID/code/name/type 的最小 DTO", "客户端快照字段不具权威性", "普通交付单元只接受 IMAGE/BINARY"],
+      "non_goals": ["修改审批、冲突、窗口或投产状态机", "迁移历史 release 数据"],
+      "action_bounds": ["新增查询服务/Controller", "仅在 prepare 的普通交付单元规范化段接入批量精确解析", "调整直接构造服务的测试夹具"],
+      "acceptance_checks": ["有 release 权限和项目权限返回 200", "无项目权限返回 403", "伪造字段被权威值覆盖", "错项目、错父、停用、缺失或无效类型被拒绝且 store 无写入"],
+      "evidence_required": ["服务/API diff", "安全测试结果", "防伪和历史兼容测试结果"],
+      "rollback": "回退 release 新增 API、依赖注入和 prepare 规范化",
+      "stop_conditions": ["必须改变历史申请读取语义", "外部消费者依赖客户端伪造快照"],
+      "escalation_conditions": ["错误语义无法保持兼容", "需要改 release 数据库结构"]
+    },
+    {
+      "id": "T4",
+      "goal": "版本申请抽屉使用真实项目化主数据并完整处理异步和失效草稿状态",
+      "requirement_ids": ["R5", "R6", "R7"],
+      "prerequisites": ["T3"],
+      "input_facts": ["ReleaseApplicationDrawer 是 release-master-data.mock.ts 唯一消费者", "项目由只读 prop 提供", "Element Plus select 支持 loading、disabled option 和空状态"],
+      "write_scope": [
+        "web/src/api/release.ts",
+        "web/src/modules/release/components/ReleaseApplicationDrawer.vue",
+        "web/src/modules/release/release-prototype.css",
+        "web/src/modules/release/release-master-data.mock.ts"
+      ],
+      "invariants": ["保持现有申请 payload 字段兼容", "附件、窗口、需求编号和文件介质交互不变", "桌面与 H5 均无横向溢出"],
+      "interface_contracts": ["前端仅从 release master-data API 获取选项", "每次父项变化先清空子项", "只有最新请求代次可落入 UI 状态"],
+      "non_goals": ["重设计整个申请抽屉", "改变申请业务规则"],
+      "action_bounds": ["新增 API 类型/调用", "删除 Mock 消费和文件", "在制品登记区增加加载、空、错误、重试和失效提示"],
+      "acceptance_checks": ["仓库无 release-master-data.mock 引用", "项目/父项切换无旧值残留或请求乱序覆盖", "失效草稿显示快照但保存提交均被前后端阻止", "前端 build 和四视口验收通过"],
+      "evidence_required": ["Vue/API/CSS diff", "build 退出码", "桌面和移动端 DOM/网络/控制台证据"],
+      "rollback": "恢复任务开始前 API、抽屉、CSS 和 Mock 文件",
+      "stop_conditions": ["需要修改抽屉之外的共享组件", "既有调用方无法提供 project"],
+      "escalation_conditions": ["必须改变全局项目上下文契约", "API 无法支持所需错误状态"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T3", "reason": "服务端权威快照只接受统一后的制品类型"},
+    {"from": "T2", "to": "T3", "reason": "配置服务依赖架构查询端口和 Boot 适配器"},
+    {"from": "T3", "to": "T4", "reason": "前端必须消费已受权限和防伪保护的配置 API"}
+  ],
+  "parallel_groups": [["T1", "T2"], ["T3"], ["T4"]],
+  "integration_points": [
+    {"after_tasks": ["T1", "T2"], "checks": ["架构、release 和 boot 模块编译", "Flyway 顺序检查"]},
+    {"after_tasks": ["T3"], "checks": ["release/architecture/boot 目标测试", "模块治理检查"]},
+    {"after_tasks": ["T4"], "checks": ["前端生产构建", "范围和全治理检查", "四视口浏览器验收"]}
+  ],
+  "sampling_plan": [
+    {"label": "基线采样", "trigger": "实施前", "observer": "主控制器", "sensors": ["S6"], "requirement_ids": ["R7"]},
+    {"label": "T1 数据采样", "trigger": "T1 完成", "observer": "独立测试传感器", "sensors": ["S1", "S6"], "requirement_ids": ["R1", "R7"]},
+    {"label": "T2 边界采样", "trigger": "T2 完成", "observer": "独立测试传感器", "sensors": ["S2", "S6"], "requirement_ids": ["R2", "R7"]},
+    {"label": "T3 安全采样", "trigger": "T3 完成", "observer": "独立测试传感器", "sensors": ["S3", "S4"], "requirement_ids": ["R3", "R4", "R6", "R7"]},
+    {"label": "T4 用户入口采样", "trigger": "T4 完成", "observer": "真实浏览器传感器", "sensors": ["S5", "S6"], "requirement_ids": ["R5", "R6", "R7"]},
+    {"label": "最终异质采样", "trigger": "进入 verifying", "observer": "主控制器", "sensors": ["S1", "S3", "S5", "S6"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1"], "sensor_ids": ["S1", "S6"]},
+    {"requirement_id": "R2", "task_ids": ["T2"], "sensor_ids": ["S2", "S6"]},
+    {"requirement_id": "R3", "task_ids": ["T3"], "sensor_ids": ["S3"]},
+    {"requirement_id": "R4", "task_ids": ["T3"], "sensor_ids": ["S4"]},
+    {"requirement_id": "R5", "task_ids": ["T4"], "sensor_ids": ["S5", "S6"]},
+    {"requirement_id": "R6", "task_ids": ["T3", "T4"], "sensor_ids": ["S4", "S5"]},
+    {"requirement_id": "R7", "task_ids": ["T1", "T2", "T3", "T4"], "sensor_ids": ["S1", "S2", "S3", "S4", "S5", "S6"]}
+  ],
+  "plan_status": "ready"
+}

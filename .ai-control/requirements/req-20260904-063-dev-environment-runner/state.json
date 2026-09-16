@@ -1,0 +1,4266 @@
+{
+  "schema_version": 4,
+  "revision": 36,
+  "created_at": "2026-09-04T07:03:16+00:00",
+  "updated_at": "2026-09-04T08:04:38+00:00",
+  "mode": "standard",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=1；设计确认=用户于 2026-09-04 确认落盘设计可以继续。；计划确认=用户于 2026-09-04 确认实施计划，并确认代表模块 Owner 批准本次公共能力变更。",
+      "recorded_at": "2026-09-04T07:03:16+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "baseline revision 2 ready；无阻塞未知项；R1-R5 均绑定候选测量",
+      "recorded_at": "2026-09-04T07:07:07+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model revision 1 ready；所有 must 需求存在因果链、传感器、执行器和可控性处置",
+      "recorded_at": "2026-09-04T07:07:33+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "control-plan revision 1 ready；全部 must 需求覆盖且任务依赖无环，开始执行 T1",
+      "recorded_at": "2026-09-04T07:08:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "执行前采样发现现有固定容器名和历史卷会使固定凭据不可控；需在同一 docker-compose.yml 内参数化专用 dev 容器与命名卷后再执行",
+      "recorded_at": "2026-09-04T07:09:13+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "replanned T1 保证固定凭据与历史 Docker 数据隔离；任务边界未扩大且仍覆盖 R1-R5",
+      "recorded_at": "2026-09-04T07:10:45+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "planning",
+      "evidence": "T1 运行采样证明 reactor 根执行 spring-boot:run 找不到主类；改为 reactor install + boot POM 启动，并由 Node 在变更后自动重启后端，不再依赖 DevTools",
+      "recorded_at": "2026-09-04T07:21:31+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "modeling",
+      "evidence": "运行证据推翻 DevTools 因果假设和 reactor 启动命令；重新建模为 reactor install + boot POM 进程重启",
+      "recorded_at": "2026-09-04T07:21:51+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model revision 2 ready；R4 由 Maven install、Node 进程和 HTTP 传感器可观测可控",
+      "recorded_at": "2026-09-04T07:24:16+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "revised control plan ready；任务边界缩小，不修改 platform boot POM，继续 T1/T2 实施",
+      "recorded_at": "2026-09-04T07:24:40+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T3 执行报告齐全，三项任务均进入 observing",
+      "recorded_at": "2026-09-04T08:01:48+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "全部任务 verified，观测无反馈，进入最终收敛验收",
+      "recorded_at": "2026-09-04T08:01:49+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁通过，五项 must 需求和三项任务均有最终证据",
+      "recorded_at": "2026-09-04T08:04:38+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=1；设计确认=用户于 2026-09-04 确认落盘设计可以继续。；计划确认=用户于 2026-09-04 确认实施计划，并确认代表模块 Owner 批准本次公共能力变更。",
+        "recorded_at": "2026-09-04T07:03:16+00:00",
+        "data": {
+          "objective": "通过跨平台薄入口和无第三方依赖的 Node.js 编排器，一键启动固定、可热重载且自动执行 Flyway 的 RDDMP 本地开发环境。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Windows 与 macOS/Linux 入口复用同一 Node.js 标准库编排器并保持行为一致。",
+              "acceptance": [
+                "wrapper 透传参数和退出码",
+                "编排器无第三方 npm 依赖",
+                "工具缺失时启动前失败"
+              ],
+              "priority": "must",
+              "source": "用户确认跨平台和 Node 编排方案",
+              "counterexample": [
+                "两套完整且漂移的脚本实现"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "启动器固定且隔离本地开发环境，并提供 admin/admin123。",
+              "acceptance": [
+                "固定 local profile",
+                "不覆盖用户 .env",
+                "空库和已有库均可登录",
+                "不接受远程地址"
+              ],
+              "priority": "must",
+              "source": "用户确认固定账号和确定环境",
+              "counterexample": [
+                "依赖手工 .env",
+                "密码只在首次建库有效"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "编排本地基础设施并由 Spring Boot 自动执行 Flyway。",
+              "acceptance": [
+                "基础设施就绪后启动后端",
+                "Flyway 成功",
+                "健康检查 UP",
+                "不修改历史迁移"
+              ],
+              "priority": "must",
+              "source": "用户要求支持 Flyway",
+              "counterexample": [
+                "执行 Flyway clean 或修改历史迁移"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "支持 Vite HMR 和后端源码自动编译重启。",
+              "acceptance": [
+                "Vite HMR",
+                "后端防抖串行编译",
+                "DevTools 重启",
+                "编译失败可恢复"
+              ],
+              "priority": "must",
+              "source": "用户要求前后端热重载",
+              "counterexample": [
+                "后端必须手工重启"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "可预测地管理日志、退出、容器停止和研发提示。",
+              "acceptance": [
+                "日志分组",
+                "Ctrl+C 清理应用",
+                "默认保留基础设施",
+                "--down 不删卷",
+                "AGENTS 提示"
+              ],
+              "priority": "must",
+              "source": "用户批准设计",
+              "counterexample": [
+                "遗留进程或默认删除卷"
+              ]
+            }
+          ],
+          "invariants": [
+            "不连接生产或共享环境",
+            "不修改历史迁移",
+            "不删除卷",
+            "不覆盖用户 .env",
+            "不越过任务范围"
+          ],
+          "constraints": [
+            "JDK 17",
+            "Maven 3.9",
+            "Node.js 20 标准库",
+            "Docker Compose V2",
+            "Spring local profile",
+            "Owner 复核高风险文件"
+          ],
+          "non_goals": [
+            "应用容器化",
+            "自动安装工具",
+            "Flyway clean/repair",
+            "业务代码变更"
+          ],
+          "assumptions": [
+            {
+              "text": "Docker Compose V2 可用",
+              "basis": "README 既有命令",
+              "falsifier": "docker compose version 失败"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "macOS/Linux 真实进程树行为",
+              "impact": "对应平台运行验收等级",
+              "owner": "跨平台复核人",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "admin/admin123",
+              "reason": "用户指定",
+              "source": "2026-09-04 用户确认"
+            },
+            {
+              "id": "D2",
+              "decision": "Node 标准库编排器",
+              "reason": "单一跨平台实现",
+              "source": "2026-09-04 用户批准"
+            },
+            {
+              "id": "D3",
+              "decision": "Spring Boot 管理 Flyway",
+              "reason": "复用现有 local 配置",
+              "source": "工程事实"
+            },
+            {
+              "id": "D4",
+              "decision": "kkFileView 使用 host-gateway",
+              "reason": "Linux 跨平台访问",
+              "source": "计划复核"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R5"
+              ],
+              "signal": "语法和退出行为",
+              "method": "Node、PowerShell、Bash 检查和生命周期验收"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "signal": "Flyway、健康和登录",
+              "method": "空库/已有库 HTTP 与数据库断言"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "HMR 和 restart 日志",
+              "method": "受控变更触发"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准设计和计划；需求基准复核通过，R1-R5 均有可判别验收与测量意图",
+        "recorded_at": "2026-09-04T07:06:58+00:00",
+        "data": {
+          "objective": "研发人员在 Windows、macOS 和 Linux 上通过一个平台对应命令获得配置确定、可登录、自动迁移且支持前后端热重载的本地 RDDMP 开发环境。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Windows 与 macOS/Linux 必须具有行为一致的启动入口。",
+              "acceptance": [
+                "PowerShell 和 Bash 入口均调用同一编排实现",
+                "入口透传参数和退出码",
+                "编排实现不依赖第三方 npm 包"
+              ],
+              "priority": "must",
+              "source": "用户确认全部平台均需支持并批准 Node 编排方案",
+              "counterexample": [
+                "两套入口分别维护 Docker、Maven、npm 和进程逻辑"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "启动环境必须使用固定本地配置，并保证 admin/admin123 在空库和已有本地库均可登录。",
+              "acceptance": [
+                "显式激活 local profile",
+                "不创建或覆盖 .env",
+                "管理员恢复只命中 tenant_id=1、id=1、username=admin",
+                "启动器不接受远程地址和生产 profile"
+              ],
+              "priority": "must",
+              "source": "用户指定 admin/admin123 并要求确定环境配置",
+              "counterexample": [
+                "需要手工编辑 .env",
+                "已有数据库仍保留未知 admin 密码"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "启动器必须在基础设施就绪后启动后端，并由 Spring Boot 自动执行 Flyway。",
+              "acceptance": [
+                "MySQL、MinIO、kkFileView 启动",
+                "MySQL 就绪后才启动后端",
+                "Flyway 无失败且健康接口为 UP",
+                "不修改历史迁移或执行 clean/repair"
+              ],
+              "priority": "must",
+              "source": "用户要求支持 Flyway和通用开发环境",
+              "counterexample": [
+                "MySQL 未就绪即启动后端",
+                "脚本直接修改 flyway_schema_history"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "前端源码变化必须由 Vite HMR 更新，后端源码或资源变化必须自动编译并重启。",
+              "acceptance": [
+                "前端通过现有 Vite dev server 启动",
+                "后端编译防抖且串行",
+                "DevTools 在产物变化后重启并恢复健康",
+                "编译失败不终止当前后端且后续可重试"
+              ],
+              "priority": "must",
+              "source": "用户要求前后端热重载",
+              "counterexample": [
+                "修改 Java 后需要手工停止并重启 Maven"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "启动器必须提供可判别日志和可预测的退出、容器停止及研发提示。",
+              "acceptance": [
+                "前后端日志可区分",
+                "Ctrl+C 清理应用子进程并保留基础设施",
+                "--down 停止容器但不删除卷",
+                "AGENTS.md 记录命令、账号和仅限本地边界"
+              ],
+              "priority": "must",
+              "source": "用户要求在 AGENTS.md 提示并批准生命周期设计",
+              "counterexample": [
+                "退出后遗留 8080 或 5173 进程",
+                "--down 删除数据库卷"
+              ]
+            }
+          ],
+          "invariants": [
+            "不连接生产或共享环境",
+            "不修改历史 Flyway 文件和数据库结构",
+            "不删除 Docker 数据卷",
+            "不覆盖用户 .env",
+            "不纳入其他任务改动"
+          ],
+          "constraints": [
+            "JDK 17+",
+            "Maven 3.9+",
+            "Node.js 20+ 标准库",
+            "Docker Compose V2",
+            "Spring local profile",
+            "只写任务范围授权路径"
+          ],
+          "non_goals": [
+            "应用容器化",
+            "自动安装开发工具",
+            "Flyway clean/repair",
+            "业务 API、权限或页面变更",
+            "生产启动入口"
+          ],
+          "assumptions": [
+            {
+              "text": "目标环境提供 Docker Compose V2",
+              "basis": "项目 README 和本机版本探测",
+              "falsifier": "docker compose version 失败"
+            },
+            {
+              "text": "固定端口可作为确定环境的一部分",
+              "basis": "现有 README 和 Vite 配置",
+              "falsifier": "端口被不可释放的其他服务占用"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "macOS/Linux 真实进程组和文件监听行为是否与静态设计一致",
+              "impact": "限制对应平台的运行验收等级",
+              "owner": "跨平台复核人",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "固定管理员账号密码",
+              "options": [
+                "admin/admin123",
+                "外部配置"
+              ],
+              "selected": "admin/admin123",
+              "blocking": false,
+              "source": "用户明确指定"
+            },
+            {
+              "question": "跨平台编排实现",
+              "options": [
+                "Node 公共编排器",
+                "两套完整脚本",
+                "Compose Watch"
+              ],
+              "selected": "Node 公共编排器",
+              "blocking": false,
+              "source": "用户批准"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "wrapper 结构、语法、参数和退出码",
+              "candidate_sensor": "脚本静态检查和 CLI 失败路径"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "local profile、环境值、admin 登录和 SQL 命中范围",
+              "candidate_sensor": "进程环境检查、数据库断言和登录 HTTP"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "容器状态、MySQL ping、Flyway 日志和健康接口",
+              "candidate_sensor": "Docker、SQL 和 HTTP 探针"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Vite HMR、Maven compile、DevTools restart 和健康恢复",
+              "candidate_sensor": "日志、进程和 HTTP 探针"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "日志前缀、端口释放、容器/卷状态和 AGENTS 文本",
+              "candidate_sensor": "进程、Docker、静态治理检查"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Node/Java/Maven/npm/Docker/Compose 版本与现有 Flyway、Vite、管理员初始化链路已只读验证；R1-R5 均有传感器和授权执行器",
+        "recorded_at": "2026-09-04T07:07:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "PowerShell/Bash wrapper",
+              "Node 编排器",
+              "RDDMP Docker Compose",
+              "Spring Boot local/Flyway",
+              "Vite dev server",
+              "ccb-boot DevTools",
+              "AGENTS 研发提示"
+            ],
+            "environment": [
+              "Windows/macOS/Linux",
+              "JDK 17",
+              "Maven 3.9",
+              "Node.js 20+",
+              "npm",
+              "Docker Engine/Compose",
+              "本地端口和依赖缓存"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "toolchain_state",
+              "owner": "Node 编排器",
+              "valid_values": [
+                "unchecked",
+                "ready",
+                "blocked"
+              ]
+            },
+            {
+              "name": "infrastructure_state",
+              "owner": "Docker Compose",
+              "valid_values": [
+                "stopped",
+                "starting",
+                "ready",
+                "failed"
+              ]
+            },
+            {
+              "name": "migration_state",
+              "owner": "Spring Boot Flyway",
+              "valid_values": [
+                "pending",
+                "applied",
+                "failed"
+              ]
+            },
+            {
+              "name": "application_state",
+              "owner": "Node 编排器",
+              "valid_values": [
+                "stopped",
+                "starting",
+                "healthy",
+                "failed",
+                "stopping"
+              ]
+            },
+            {
+              "name": "compile_state",
+              "owner": "后端监听器",
+              "valid_values": [
+                "idle",
+                "debouncing",
+                "compiling",
+                "pending-retry",
+                "failed"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "平台 wrapper 命令",
+              "transitions": [
+                "定位脚本目录",
+                "调用同一 dev.mjs",
+                "透传参数和退出码"
+              ],
+              "outputs": [
+                "一致 CLI 行为"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "默认启动",
+              "transitions": [
+                "构造固定本地环境",
+                "启动 MySQL",
+                "判断 sys_user 是否存在",
+                "精确恢复 admin 哈希",
+                "调用登录接口"
+              ],
+              "outputs": [
+                "local profile 和 admin/admin123 登录"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "基础设施启动",
+              "transitions": [
+                "Compose up",
+                "MySQL ping",
+                "Spring Boot 启动",
+                "Flyway migrate",
+                "Actuator health"
+              ],
+              "outputs": [
+                "迁移完成且后端 UP"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "前端或后端文件变化",
+              "transitions": [
+                "Vite HMR 或路径过滤",
+                "防抖串行 compile",
+                "classpath 变化",
+                "DevTools restart",
+                "健康恢复"
+              ],
+              "outputs": [
+                "更新后的前后端"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "日志、Ctrl+C 或 --down",
+              "transitions": [
+                "输出加前缀",
+                "终止应用进程树/组",
+                "保留容器或 Compose down",
+                "检查卷"
+              ],
+              "outputs": [
+                "可判别日志和预期资源状态"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "dev CLI",
+              "producers": [
+                "dev.ps1",
+                "dev.sh"
+              ],
+              "consumers": [
+                "研发人员",
+                "dev.mjs"
+              ],
+              "invariant": "只允许默认启动和 --down，退出码原样返回"
+            },
+            {
+              "name": "fixed child environment",
+              "producers": [
+                "dev.mjs"
+              ],
+              "consumers": [
+                "Docker Compose",
+                "Spring Boot",
+                "Vite"
+              ],
+              "invariant": "local-only 且覆盖所有必需配置"
+            },
+            {
+              "name": "local database",
+              "producers": [
+                "ccb-platform-mysql"
+              ],
+              "consumers": [
+                "Flyway",
+                "admin reset"
+              ],
+              "invariant": "只访问 ccb_platform 和 tenant 1 admin 精确行"
+            },
+            {
+              "name": "compile trigger",
+              "producers": [
+                "Node 文件监听器"
+              ],
+              "consumers": [
+                "Maven",
+                "DevTools"
+              ],
+              "invariant": "500ms 防抖、单并发、失败可重试"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "wrapper 与 Node CLI",
+              "method": "node --check、PowerShell AST、bash -n、未知参数运行",
+              "blind_spots": [
+                "未实测平台的进程信号差异"
+              ],
+              "independence": "语言解析器和真实 CLI 退出码"
+            },
+            {
+              "id": "S2",
+              "target": "工具和固定配置",
+              "method": "版本命令、子进程参数和环境白名单审查",
+              "blind_spots": [
+                "未来工具输出格式变化"
+              ],
+              "independence": "工具自身版本输出"
+            },
+            {
+              "id": "S3",
+              "target": "Compose 与基础设施",
+              "method": "docker compose config、container inspect、mysqladmin ping",
+              "blind_spots": [
+                "镜像仓库临时不可用"
+              ],
+              "independence": "Docker Engine 和 MySQL 原生探针"
+            },
+            {
+              "id": "S4",
+              "target": "Flyway、健康与 admin 登录",
+              "method": "Flyway 日志/历史表、Actuator HTTP、登录 HTTP、SQL 行断言",
+              "blind_spots": [
+                "未覆盖全部业务接口"
+              ],
+              "independence": "数据库和 HTTP 两类运行输出"
+            },
+            {
+              "id": "S5",
+              "target": "热重载",
+              "method": "Maven compile 退出码、DevTools/Vite 日志、重启后健康",
+              "blind_spots": [
+                "macOS/Linux 尚需人工实测"
+              ],
+              "independence": "构建输出与运行 HTTP"
+            },
+            {
+              "id": "S6",
+              "target": "退出和资源状态",
+              "method": "端口探测、子进程状态、Docker 容器与卷列表",
+              "blind_spots": [
+                "异常断电"
+              ],
+              "independence": "OS 网络和 Docker 状态"
+            },
+            {
+              "id": "S7",
+              "target": "治理和范围",
+              "method": "check-all-governance、check-codex-scope、git diff --check",
+              "blind_spots": [
+                "人工 Owner 复核质量"
+              ],
+              "independence": "仓库治理脚本"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "跨平台入口与编排",
+              "action": "创建三个 scripts/dev 文件",
+              "authority": "任务 writable_paths",
+              "impact_radius": "本地开发入口",
+              "rollback": "删除新脚本"
+            },
+            {
+              "id": "A2",
+              "target": "kkFileView 宿主访问",
+              "action": "增加 Compose host-gateway",
+              "authority": "任务 writable_paths",
+              "impact_radius": "本地 kkFileView 容器",
+              "rollback": "回退 extra_hosts"
+            },
+            {
+              "id": "A3",
+              "target": "后端重启",
+              "action": "ccb-boot 增加 optional runtime DevTools",
+              "authority": "Owner 批准的 writable_paths",
+              "impact_radius": "boot 开发运行时",
+              "rollback": "回退依赖"
+            },
+            {
+              "id": "A4",
+              "target": "研发提示",
+              "action": "更新根 AGENTS.md",
+              "authority": "Owner 批准的 writable_paths",
+              "impact_radius": "仓库研发入口",
+              "rollback": "回退提示段落"
+            },
+            {
+              "id": "A5",
+              "target": "运行状态",
+              "action": "启动/停止本地容器和应用进程、精确更新 admin 哈希",
+              "authority": "本地 Docker 与进程权限",
+              "impact_radius": "本机 RDDMP 开发环境",
+              "rollback": "停止应用；保留卷；再次设置开发哈希"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S5",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S6",
+                "S7"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "端口冲突",
+              "effect": "启动失败或连接到错误服务",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Docker Engine 权限或未启动",
+              "effect": "基础设施不可用",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "依赖或镜像缓存缺失",
+              "effect": "首次启动延迟或网络失败",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "文件事件风暴",
+              "effect": "重复 Maven 编译",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "操作系统进程语义差异",
+              "effect": "退出后遗留进程",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "MySQL 首次初始化",
+              "consequence": "容器 running 不等于可连接",
+              "sampling_rule": "mysqladmin ping 成功后继续"
+            },
+            {
+              "source": "Flyway 和 Spring 启动",
+              "consequence": "端口开放前健康不可用",
+              "sampling_rule": "轮询 Actuator 至 UP 或超时"
+            },
+            {
+              "source": "文件防抖和 Maven compile",
+              "consequence": "源码变化到重启存在秒级延迟",
+              "sampling_rule": "编译完成并健康恢复后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Node.js 20+ 的递归 fs.watch 支持目标平台",
+              "evidence": "本机 Node v24，项目最低 Node 20",
+              "falsifier": "目标平台监听测试无法接收嵌套目录变化"
+            },
+            {
+              "text": "host-gateway 可供 kkFileView 访问宿主机 MinIO",
+              "evidence": "Docker Engine 29 和 Compose v5 支持 host-gateway",
+              "falsifier": "运行文件预览探针无法连接"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Windows 运行验证加 PowerShell/Bash 静态验证；保留 macOS/Linux 人工 UAT 风险"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "实施固定环境和精确 SQL 后运行登录断言"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "复用 Compose 和 Spring Flyway 并运行 Docker/HTTP/SQL 传感器"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Windows 实测 compile/restart，其他平台保留人工 UAT"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进程、端口、Docker、治理联合检查"
+            }
+          ],
+          "model_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "model revision 2：真实运行推翻 DevTools/聚合根启动假设；验证 reactor install + boot POM 启动为可控路径",
+        "recorded_at": "2026-09-04T07:24:01+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "PowerShell/Bash wrapper",
+              "Node 编排器",
+              "RDDMP Docker Compose",
+              "Maven reactor 与 boot POM",
+              "Spring Boot local/Flyway",
+              "Vite dev server",
+              "AGENTS 研发提示"
+            ],
+            "environment": [
+              "Windows/macOS/Linux",
+              "JDK 17",
+              "Maven 3.9",
+              "Node.js 20+",
+              "npm",
+              "Docker Engine/Compose",
+              "本地端口和依赖缓存"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "toolchain_state",
+              "owner": "Node 编排器",
+              "valid_values": [
+                "unchecked",
+                "ready",
+                "blocked"
+              ]
+            },
+            {
+              "name": "infrastructure_state",
+              "owner": "Docker Compose",
+              "valid_values": [
+                "stopped",
+                "starting",
+                "ready",
+                "failed"
+              ]
+            },
+            {
+              "name": "migration_state",
+              "owner": "Spring Boot Flyway",
+              "valid_values": [
+                "pending",
+                "applied",
+                "failed"
+              ]
+            },
+            {
+              "name": "application_state",
+              "owner": "Node 编排器",
+              "valid_values": [
+                "stopped",
+                "starting",
+                "healthy",
+                "failed",
+                "stopping"
+              ]
+            },
+            {
+              "name": "compile_state",
+              "owner": "后端监听器",
+              "valid_values": [
+                "idle",
+                "debouncing",
+                "compiling",
+                "pending-retry",
+                "failed"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "平台 wrapper 命令",
+              "transitions": [
+                "定位脚本目录",
+                "调用同一 dev.mjs",
+                "透传参数和退出码"
+              ],
+              "outputs": [
+                "一致 CLI 行为"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "默认启动",
+              "transitions": [
+                "构造固定本地环境",
+                "启动 MySQL",
+                "判断 sys_user 是否存在",
+                "精确恢复 admin 哈希",
+                "调用登录接口"
+              ],
+              "outputs": [
+                "local profile 和 admin/admin123 登录"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "基础设施启动",
+              "transitions": [
+                "Compose up",
+                "MySQL ping",
+                "Spring Boot 启动",
+                "Flyway migrate",
+                "Actuator health"
+              ],
+              "outputs": [
+                "迁移完成且后端 UP"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "前端或后端文件变化",
+              "transitions": [
+                "Vite HMR 或路径过滤",
+                "防抖串行 reactor install",
+                "成功后终止旧后端",
+                "从 boot POM 启动新后端",
+                "健康恢复"
+              ],
+              "outputs": [
+                "更新后的前后端"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "日志、Ctrl+C 或 --down",
+              "transitions": [
+                "输出加前缀",
+                "终止应用进程树/组",
+                "保留容器或 Compose down",
+                "检查卷"
+              ],
+              "outputs": [
+                "可判别日志和预期资源状态"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "dev CLI",
+              "producers": [
+                "dev.ps1",
+                "dev.sh"
+              ],
+              "consumers": [
+                "研发人员",
+                "dev.mjs"
+              ],
+              "invariant": "只允许默认启动和 --down，退出码原样返回"
+            },
+            {
+              "name": "fixed child environment",
+              "producers": [
+                "dev.mjs"
+              ],
+              "consumers": [
+                "Docker Compose",
+                "Spring Boot",
+                "Vite"
+              ],
+              "invariant": "local-only 且覆盖所有必需配置"
+            },
+            {
+              "name": "local database",
+              "producers": [
+                "ccb-platform-mysql"
+              ],
+              "consumers": [
+                "Flyway",
+                "admin reset"
+              ],
+              "invariant": "只访问 ccb_platform 和 tenant 1 admin 精确行"
+            },
+            {
+              "name": "backend reload",
+              "producers": [
+                "Node 文件监听器"
+              ],
+              "consumers": [
+                "Maven reactor",
+                "boot Spring 进程"
+              ],
+              "invariant": "500ms 防抖、单并发、安装成功才重启、失败保留旧进程"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "wrapper 与 Node CLI",
+              "method": "node --check、PowerShell AST、bash -n、未知参数运行",
+              "blind_spots": [
+                "未实测平台的进程信号差异"
+              ],
+              "independence": "语言解析器和真实 CLI 退出码"
+            },
+            {
+              "id": "S2",
+              "target": "工具和固定配置",
+              "method": "版本命令、子进程参数和环境白名单审查",
+              "blind_spots": [
+                "未来工具输出格式变化"
+              ],
+              "independence": "工具自身版本输出"
+            },
+            {
+              "id": "S3",
+              "target": "Compose 与基础设施",
+              "method": "docker compose config、container inspect、mysqladmin ping",
+              "blind_spots": [
+                "镜像仓库临时不可用"
+              ],
+              "independence": "Docker Engine 和 MySQL 原生探针"
+            },
+            {
+              "id": "S4",
+              "target": "Flyway、健康与 admin 登录",
+              "method": "Flyway 日志/历史表、Actuator HTTP、登录 HTTP、SQL 行断言",
+              "blind_spots": [
+                "未覆盖全部业务接口"
+              ],
+              "independence": "数据库和 HTTP 两类运行输出"
+            },
+            {
+              "id": "S5",
+              "target": "热重载",
+              "method": "Maven install 退出码、Node/Vite 日志、后端 PID 和重启后健康",
+              "blind_spots": [
+                "macOS/Linux 尚需人工实测"
+              ],
+              "independence": "构建输出、OS 进程与运行 HTTP"
+            },
+            {
+              "id": "S6",
+              "target": "退出和资源状态",
+              "method": "端口探测、子进程状态、Docker 容器与卷列表",
+              "blind_spots": [
+                "异常断电"
+              ],
+              "independence": "OS 网络和 Docker 状态"
+            },
+            {
+              "id": "S7",
+              "target": "治理和范围",
+              "method": "check-all-governance、check-codex-scope、git diff --check",
+              "blind_spots": [
+                "人工 Owner 复核质量"
+              ],
+              "independence": "仓库治理脚本"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "跨平台入口与编排",
+              "action": "创建三个 scripts/dev 文件",
+              "authority": "任务 writable_paths",
+              "impact_radius": "本地开发入口",
+              "rollback": "删除新脚本"
+            },
+            {
+              "id": "A2",
+              "target": "kkFileView 宿主访问",
+              "action": "增加 Compose host-gateway",
+              "authority": "任务 writable_paths",
+              "impact_radius": "本地 kkFileView 容器",
+              "rollback": "回退 extra_hosts"
+            },
+            {
+              "id": "A3",
+              "target": "后端重启",
+              "action": "Node 在 reactor install 成功后重启 boot Maven 进程",
+              "authority": "scripts/dev.mjs writable_paths 和本地进程权限",
+              "impact_radius": "本地后端开发进程",
+              "rollback": "回退自动重启逻辑"
+            },
+            {
+              "id": "A4",
+              "target": "研发提示",
+              "action": "更新根 AGENTS.md",
+              "authority": "Owner 批准的 writable_paths",
+              "impact_radius": "仓库研发入口",
+              "rollback": "回退提示段落"
+            },
+            {
+              "id": "A5",
+              "target": "运行状态",
+              "action": "启动/停止本地容器和应用进程、精确更新 admin 哈希",
+              "authority": "本地 Docker 与进程权限",
+              "impact_radius": "本机 RDDMP 开发环境",
+              "rollback": "停止应用；保留卷；再次设置开发哈希"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S5",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S6",
+                "S7"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "端口冲突",
+              "effect": "启动失败或连接到错误服务",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Docker Engine 权限或未启动",
+              "effect": "基础设施不可用",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "依赖或镜像缓存缺失",
+              "effect": "首次启动延迟或网络失败",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "文件事件风暴",
+              "effect": "重复 Maven 编译",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "操作系统进程语义差异",
+              "effect": "退出后遗留进程",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "MySQL 首次初始化",
+              "consequence": "容器 running 不等于可连接",
+              "sampling_rule": "mysqladmin ping 成功后继续"
+            },
+            {
+              "source": "Flyway 和 Spring 启动",
+              "consequence": "端口开放前健康不可用",
+              "sampling_rule": "轮询 Actuator 至 UP 或超时"
+            },
+            {
+              "source": "文件防抖和 Maven install",
+              "consequence": "源码变化到重启存在秒级延迟",
+              "sampling_rule": "安装完成并健康恢复后采样"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Node.js 20+ 的递归 fs.watch 支持目标平台",
+              "evidence": "本机 Node v24，项目最低 Node 20",
+              "falsifier": "目标平台监听测试无法接收嵌套目录变化"
+            },
+            {
+              "text": "host-gateway 可供 kkFileView 访问宿主机 MinIO",
+              "evidence": "Docker Engine 29 和 Compose v5 支持 host-gateway",
+              "falsifier": "运行文件预览探针无法连接"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Windows 运行验证加 PowerShell/Bash 静态验证；保留 macOS/Linux 人工 UAT 风险"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "实施固定环境和精确 SQL 后运行登录断言"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "复用 Compose 和 Spring Flyway 并运行 Docker/HTTP/SQL 传感器"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Windows 实测 reactor install/Node restart，其他平台保留人工 UAT"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "进程、端口、Docker、治理联合检查"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3 串行任务包覆盖 R1-R5；写入边界、检查、采样、回滚、停止和升级条件完整",
+        "recorded_at": "2026-09-04T07:07:48+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "提供可静态验证并可运行的跨平台启动入口、固定环境、基础设施和生命周期编排。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Node v24.19.0、Java 17.0.2、Maven 3.9.16、npm 11.17.0、Docker 29.7.2、Compose v5.4.0 已探测",
+                "application-local.yml 已启用 Flyway",
+                "Vite dev script 已存在"
+              ],
+              "write_scope": [
+                "scripts/dev.ps1",
+                "scripts/dev.sh",
+                "scripts/dev.mjs",
+                "docker-compose.yml",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T1.json"
+              ],
+              "invariants": [
+                "local-only",
+                "不覆盖 .env",
+                "不删除卷",
+                "不修改历史迁移",
+                "不打印 JWT 或 BCrypt 哈希"
+              ],
+              "interface_contracts": [
+                "wrapper 透传参数和退出码",
+                "dev.mjs 只接受默认或 --down",
+                "admin SQL 精确限定 tenant_id=1、id=1、username=admin",
+                "编译 500ms 防抖且单并发"
+              ],
+              "non_goals": [
+                "应用容器化",
+                "自动安装工具",
+                "业务代码修改"
+              ],
+              "action_bounds": [
+                "仅创建三个启动文件并修改 kkFileView extra_hosts",
+                "只启动本地 Compose 服务和应用进程",
+                "只更新本地 admin 精确行"
+              ],
+              "acceptance_checks": [
+                "三种脚本语法通过",
+                "未知参数无副作用失败",
+                "Compose config 通过",
+                "默认启动达到健康和登录",
+                "Ctrl+C 与 --down 符合资源状态"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "语法和版本退出码",
+                "Docker/MySQL/HTTP/登录/端口摘要",
+                "扰动和未决项"
+              ],
+              "rollback": "删除三个脚本并回退 docker-compose.yml extra_hosts。",
+              "stop_conditions": [
+                "需要远程地址、真实凭据、删除卷或修改历史迁移",
+                "发现任务范围外必需修改"
+              ],
+              "escalation_conditions": [
+                "host-gateway 无法支持目标平台",
+                "无法可靠清理应用进程树"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "使后端增量编译产物触发 Spring Boot 自动重启。",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 提供串行 Maven compile 触发",
+                "ccb-boot 当前无 DevTools"
+              ],
+              "write_scope": [
+                "server/src/platform/boot/pom.xml",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T2.json"
+              ],
+              "invariants": [
+                "DevTools 仅限 ccb-boot optional runtime",
+                "不修改父 POM",
+                "Flyway 重启无失败"
+              ],
+              "interface_contracts": [
+                "Maven compile 成功产生 classpath 变化",
+                "DevTools restart 后健康恢复"
+              ],
+              "non_goals": [
+                "JRebel",
+                "Spring Maven 插件重构",
+                "业务模块依赖变更"
+              ],
+              "action_bounds": [
+                "只增加一个 Spring Boot DevTools 依赖并验证依赖树和运行行为"
+              ],
+              "acceptance_checks": [
+                "boot reactor compile/test 通过",
+                "DevTools 只在 boot 依赖树",
+                "compile 后 restart 且健康恢复",
+                "编译失败可重试"
+              ],
+              "evidence_required": [
+                "POM diff",
+                "dependency:tree",
+                "Maven 退出码",
+                "restart 和健康摘要"
+              ],
+              "rollback": "回退 ccb-boot DevTools 依赖。",
+              "stop_conditions": [
+                "DevTools 传递到业务模块或进入非开发产物",
+                "重启导致 Flyway 异常"
+              ],
+              "escalation_conditions": [
+                "必须修改 Maven 插件或 application 配置才能重启"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "补充 AGENTS 研发提示并完成治理、构建、范围和运行验收。",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1/T2 的最终 CLI 和运行行为已经形成证据"
+              ],
+              "write_scope": [
+                "AGENTS.md",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T3.json"
+              ],
+              "invariants": [
+                "提示仅描述真实已实现行为",
+                "固定密码明确仅限本地",
+                "不声称未实测平台已通过"
+              ],
+              "interface_contracts": [
+                "Windows .\\scripts\\dev.ps1",
+                "macOS/Linux ./scripts/dev.sh",
+                "--down 不删卷"
+              ],
+              "non_goals": [
+                "修改 README 或正式治理规则",
+                "跨平台虚假运行结论"
+              ],
+              "action_bounds": [
+                "只在根 AGENTS 增加本地启动提示并运行授权检查"
+              ],
+              "acceptance_checks": [
+                "AGENTS 命令和边界准确",
+                "治理、范围、后端测试、前端构建通过",
+                "Windows 全链路通过或形成可行动反馈"
+              ],
+              "evidence_required": [
+                "AGENTS diff",
+                "全部命令退出码",
+                "运行验收摘要",
+                "范围审计和残余风险"
+              ],
+              "rollback": "回退 AGENTS 提示，保留历史执行证据。",
+              "stop_conditions": [
+                "治理、范围、构建、Flyway、登录或清理失败"
+              ],
+              "escalation_conditions": [
+                "需要修改任务范围外文档或运行配置"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 依赖 T1 的长期后端进程和 compile 触发。"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 依赖稳定的最终启动与重启行为。"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "脚本语法",
+                "Compose config",
+                "CLI 失败路径"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "boot 测试",
+                "Windows 启动、Flyway、登录和 restart"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "治理",
+                "前端构建",
+                "范围",
+                "diff",
+                "生命周期"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 执行报告完成",
+              "observer": "主 Agent 使用 Docker/HTTP/语言解析器复核（非独立上下文）",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "T2 集成采样",
+              "trigger": "T2 执行报告完成",
+              "observer": "主 Agent 使用 Maven/HTTP 复核（非独立上下文）",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R4"
+              ]
+            },
+            {
+              "label": "最终收敛采样",
+              "trigger": "T3 和全部回归完成",
+              "observer": "治理脚本、构建工具和运行探针联合复核",
+              "sensors": [
+                "S1",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S6",
+                "S7"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "planning revision 2：使用 rddmp-dev 专用 Compose 项目、容器和命名卷隔离固定凭据，保留原 Compose 默认行为",
+        "recorded_at": "2026-09-04T07:10:33+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "提供可静态验证并可运行的跨平台启动入口、固定环境、基础设施和生命周期编排。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Node v24.19.0、Java 17.0.2、Maven 3.9.16、npm 11.17.0、Docker 29.7.2、Compose v5.4.0 已探测",
+                "application-local.yml 已启用 Flyway",
+                "Vite dev script 已存在",
+                "现有固定容器名和历史卷的初始化密码不能由新环境变量覆盖"
+              ],
+              "write_scope": [
+                "scripts/dev.ps1",
+                "scripts/dev.sh",
+                "scripts/dev.mjs",
+                "docker-compose.yml",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T1.json"
+              ],
+              "invariants": [
+                "local-only",
+                "不覆盖 .env",
+                "不删除卷",
+                "不修改历史迁移",
+                "不打印 JWT 或 BCrypt 哈希"
+              ],
+              "interface_contracts": [
+                "wrapper 透传参数和退出码",
+                "dev.mjs 只接受默认或 --down",
+                "固定 COMPOSE_PROJECT_NAME=rddmp-dev、rddmp-dev-* 容器和命名卷",
+                "Compose 未传变量时保持 ccb-platform-* 默认值",
+                "admin SQL 精确限定 tenant_id=1、id=1、username=admin",
+                "编译 500ms 防抖且单并发"
+              ],
+              "non_goals": [
+                "应用容器化",
+                "自动安装工具",
+                "业务代码修改"
+              ],
+              "action_bounds": [
+                "仅创建三个启动文件并参数化 Compose 容器名/卷及 kkFileView extra_hosts",
+                "只启动 rddmp-dev 专用 Compose 服务和应用进程",
+                "只更新专用本地库 admin 精确行"
+              ],
+              "acceptance_checks": [
+                "三种脚本语法通过",
+                "未知参数无副作用失败",
+                "Compose 默认值与 rddmp-dev 覆盖配置均通过",
+                "不接触 ccb-platform-* 历史资源",
+                "默认启动达到健康和登录",
+                "Ctrl+C 与 --down 符合资源状态"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "语法和版本退出码",
+                "Docker/MySQL/HTTP/登录/端口摘要",
+                "扰动和未决项"
+              ],
+              "rollback": "删除三个脚本并回退 docker-compose.yml extra_hosts。",
+              "stop_conditions": [
+                "需要远程地址、真实凭据、删除卷或修改历史迁移",
+                "发现任务范围外必需修改"
+              ],
+              "escalation_conditions": [
+                "host-gateway 无法支持目标平台",
+                "无法可靠清理应用进程树"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "使后端增量编译产物触发 Spring Boot 自动重启。",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "T1 提供串行 Maven compile 触发",
+                "ccb-boot 当前无 DevTools"
+              ],
+              "write_scope": [
+                "server/src/platform/boot/pom.xml",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T2.json"
+              ],
+              "invariants": [
+                "DevTools 仅限 ccb-boot optional runtime",
+                "不修改父 POM",
+                "Flyway 重启无失败"
+              ],
+              "interface_contracts": [
+                "Maven compile 成功产生 classpath 变化",
+                "DevTools restart 后健康恢复"
+              ],
+              "non_goals": [
+                "JRebel",
+                "Spring Maven 插件重构",
+                "业务模块依赖变更"
+              ],
+              "action_bounds": [
+                "只增加一个 Spring Boot DevTools 依赖并验证依赖树和运行行为"
+              ],
+              "acceptance_checks": [
+                "boot reactor compile/test 通过",
+                "DevTools 只在 boot 依赖树",
+                "compile 后 restart 且健康恢复",
+                "编译失败可重试"
+              ],
+              "evidence_required": [
+                "POM diff",
+                "dependency:tree",
+                "Maven 退出码",
+                "restart 和健康摘要"
+              ],
+              "rollback": "回退 ccb-boot DevTools 依赖。",
+              "stop_conditions": [
+                "DevTools 传递到业务模块或进入非开发产物",
+                "重启导致 Flyway 异常"
+              ],
+              "escalation_conditions": [
+                "必须修改 Maven 插件或 application 配置才能重启"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "补充 AGENTS 研发提示并完成治理、构建、范围和运行验收。",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1/T2 的最终 CLI 和运行行为已经形成证据"
+              ],
+              "write_scope": [
+                "AGENTS.md",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T3.json"
+              ],
+              "invariants": [
+                "提示仅描述真实已实现行为",
+                "固定密码明确仅限本地",
+                "不声称未实测平台已通过"
+              ],
+              "interface_contracts": [
+                "Windows .\\scripts\\dev.ps1",
+                "macOS/Linux ./scripts/dev.sh",
+                "--down 不删卷"
+              ],
+              "non_goals": [
+                "修改 README 或正式治理规则",
+                "跨平台虚假运行结论"
+              ],
+              "action_bounds": [
+                "只在根 AGENTS 增加本地启动提示并运行授权检查"
+              ],
+              "acceptance_checks": [
+                "AGENTS 命令和边界准确",
+                "治理、范围、后端测试、前端构建通过",
+                "Windows 全链路通过或形成可行动反馈"
+              ],
+              "evidence_required": [
+                "AGENTS diff",
+                "全部命令退出码",
+                "运行验收摘要",
+                "范围审计和残余风险"
+              ],
+              "rollback": "回退 AGENTS 提示，保留历史执行证据。",
+              "stop_conditions": [
+                "治理、范围、构建、Flyway、登录或清理失败"
+              ],
+              "escalation_conditions": [
+                "需要修改任务范围外文档或运行配置"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 依赖 T1 的长期后端进程和 compile 触发。"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 依赖稳定的最终启动与重启行为。"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "脚本语法",
+                "Compose config",
+                "CLI 失败路径"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "boot 测试",
+                "Windows 启动、Flyway、登录和 restart"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "治理",
+                "前端构建",
+                "范围",
+                "diff",
+                "生命周期"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 执行报告完成",
+              "observer": "主 Agent 使用 Docker/HTTP/语言解析器复核（非独立上下文）",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "T2 集成采样",
+              "trigger": "T2 执行报告完成",
+              "observer": "主 Agent 使用 Maven/HTTP 复核（非独立上下文）",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R4"
+              ]
+            },
+            {
+              "label": "最终收敛采样",
+              "trigger": "T3 和全部回归完成",
+              "observer": "治理脚本、构建工具和运行探针联合复核",
+              "sensors": [
+                "S1",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S6",
+                "S7"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "planning revision 3：T2 改为只修改 dev.mjs 的 reactor install + Node 后端重启，不再修改 boot POM",
+        "recorded_at": "2026-09-04T07:24:29+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "提供可静态验证并可运行的跨平台启动入口、固定环境、基础设施和生命周期编排。",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Node v24.19.0、Java 17.0.2、Maven 3.9.16、npm 11.17.0、Docker 29.7.2、Compose v5.4.0 已探测",
+                "application-local.yml 已启用 Flyway",
+                "Vite dev script 已存在",
+                "现有固定容器名和历史卷的初始化密码不能由新环境变量覆盖"
+              ],
+              "write_scope": [
+                "scripts/dev.ps1",
+                "scripts/dev.sh",
+                "scripts/dev.mjs",
+                "docker-compose.yml",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T1.json"
+              ],
+              "invariants": [
+                "local-only",
+                "不覆盖 .env",
+                "不删除卷",
+                "不修改历史迁移",
+                "不打印 JWT 或 BCrypt 哈希"
+              ],
+              "interface_contracts": [
+                "wrapper 透传参数和退出码",
+                "dev.mjs 只接受默认或 --down",
+                "固定 COMPOSE_PROJECT_NAME=rddmp-dev、rddmp-dev-* 容器和项目卷",
+                "Compose 未传变量时保持 ccb-platform-* 默认值",
+                "admin SQL 精确限定 tenant_id=1、id=1、username=admin",
+                "初始 reactor install 后从 boot POM 启动"
+              ],
+              "non_goals": [
+                "应用容器化",
+                "自动安装工具",
+                "业务代码修改"
+              ],
+              "action_bounds": [
+                "仅创建三个启动文件并参数化 Compose 容器名/卷及 kkFileView extra_hosts",
+                "只启动 rddmp-dev 专用 Compose 服务和应用进程",
+                "只更新专用本地库 admin 精确行"
+              ],
+              "acceptance_checks": [
+                "三种脚本语法通过",
+                "未知参数无副作用失败",
+                "Compose 默认值与 rddmp-dev 覆盖配置均通过",
+                "不接触 ccb-platform-* 历史资源",
+                "reactor install 后 boot POM 启动达到健康和登录",
+                "Ctrl+C 与 --down 符合资源状态"
+              ],
+              "evidence_required": [
+                "实际 diff",
+                "语法和版本退出码",
+                "Docker/MySQL/HTTP/登录/端口摘要",
+                "扰动和未决项"
+              ],
+              "rollback": "删除三个脚本并回退 docker-compose.yml extra_hosts。",
+              "stop_conditions": [
+                "需要远程地址、真实凭据、删除卷或修改历史迁移",
+                "发现任务范围外必需修改"
+              ],
+              "escalation_conditions": [
+                "host-gateway 无法支持目标平台",
+                "无法可靠清理应用进程树"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "使后端变更触发 reactor 安装并由 Node 自动重启 boot 后端进程。",
+              "requirement_ids": [
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "聚合根 spring-boot:run 实测找不到主类",
+                "reactor install 可生成 boot 依赖产物",
+                "boot POM 是实际 Spring Boot 启动模块"
+              ],
+              "write_scope": [
+                "scripts/dev.mjs",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T2.json"
+              ],
+              "invariants": [
+                "只在 install 成功后重启",
+                "install 失败保留当前后端",
+                "不修改任何 POM",
+                "Flyway 重启无失败"
+              ],
+              "interface_contracts": [
+                "mvn -pl :ccb-boot -am -DskipTests install",
+                "mvn -f server/src/platform/boot/pom.xml spring-boot:run",
+                "主动重启不触发全局失败"
+              ],
+              "non_goals": [
+                "DevTools",
+                "JRebel",
+                "POM 或 application 配置变更"
+              ],
+              "action_bounds": [
+                "只修改 dev.mjs 的初始构建、健康取消和后端重启状态机"
+              ],
+              "acceptance_checks": [
+                "reactor install 和 boot POM 启动通过",
+                "install 后后端 PID 变化且健康恢复",
+                "install 失败不终止旧后端",
+                "后续变化可重试"
+              ],
+              "evidence_required": [
+                "dev.mjs diff",
+                "Maven 退出码",
+                "重启前后 PID、日志和健康摘要"
+              ],
+              "rollback": "回退 dev.mjs 的自动重启逻辑。",
+              "stop_conditions": [
+                "boot POM 仍找不到主类",
+                "重启导致 Flyway 异常"
+              ],
+              "escalation_conditions": [
+                "必须修改只读 POM 或 application 配置才能启动"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "补充 AGENTS 研发提示并完成治理、构建、范围和运行验收。",
+              "requirement_ids": [
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1/T2 的最终 CLI 和运行行为已经形成证据"
+              ],
+              "write_scope": [
+                "AGENTS.md",
+                ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T3.json"
+              ],
+              "invariants": [
+                "提示仅描述真实已实现行为",
+                "固定密码明确仅限本地",
+                "不声称未实测平台已通过"
+              ],
+              "interface_contracts": [
+                "Windows .\\scripts\\dev.ps1",
+                "macOS/Linux ./scripts/dev.sh",
+                "--down 不删卷"
+              ],
+              "non_goals": [
+                "修改 README 或正式治理规则",
+                "跨平台虚假运行结论"
+              ],
+              "action_bounds": [
+                "只在根 AGENTS 增加本地启动提示并运行授权检查"
+              ],
+              "acceptance_checks": [
+                "AGENTS 命令和边界准确",
+                "治理、范围、后端测试、前端构建通过",
+                "Windows 全链路通过或形成可行动反馈"
+              ],
+              "evidence_required": [
+                "AGENTS diff",
+                "全部命令退出码",
+                "运行验收摘要",
+                "范围审计和残余风险"
+              ],
+              "rollback": "回退 AGENTS 提示，保留历史执行证据。",
+              "stop_conditions": [
+                "治理、范围、构建、Flyway、登录或清理失败"
+              ],
+              "escalation_conditions": [
+                "需要修改任务范围外文档或运行配置"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 依赖 T1 的长期后端进程和 compile 触发。"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 依赖稳定的最终启动与重启行为。"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "脚本语法",
+                "Compose config",
+                "CLI 失败路径"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "boot 测试",
+                "Windows 启动、Flyway、登录和 restart"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "治理",
+                "前端构建",
+                "范围",
+                "diff",
+                "生命周期"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 完成采样",
+              "trigger": "T1 执行报告完成",
+              "observer": "主 Agent 使用 Docker/HTTP/语言解析器复核（非独立上下文）",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S6"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "T2 集成采样",
+              "trigger": "T2 执行报告完成",
+              "observer": "主 Agent 使用 Maven/HTTP 复核（非独立上下文）",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R4"
+              ]
+            },
+            {
+              "label": "最终收敛采样",
+              "trigger": "T3 和全部回归完成",
+              "observer": "治理脚本、构建工具和运行探针联合复核",
+              "sensors": [
+                "S1",
+                "S3",
+                "S4",
+                "S5",
+                "S6",
+                "S7"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S5",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S6",
+                "S7"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 脚本、Compose 与 Windows 全链路运行证据已完成",
+        "recorded_at": "2026-09-04T07:52:49+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "scripts/dev.ps1、scripts/dev.sh、scripts/dev.mjs",
+              "purpose": "提供跨平台薄入口和不依赖第三方 npm 包的统一 Node.js 开发环境编排器。"
+            },
+            {
+              "path_or_resource": "docker-compose.yml",
+              "purpose": "允许启动器隔离容器名、端口、卷和 host-gateway，同时保留原 ccb-platform 默认值。"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "node --check scripts/dev.mjs",
+              "exit_code": 0,
+              "salient_output": "Node.js 语法检查通过。"
+            },
+            {
+              "command": "PowerShell AST 解析 scripts/dev.ps1",
+              "exit_code": 0,
+              "salient_output": "PowerShell 入口无语法错误。"
+            },
+            {
+              "command": "bash -n scripts/dev.sh",
+              "exit_code": 0,
+              "salient_output": "Bash 入口无语法错误。"
+            },
+            {
+              "command": "node scripts/dev.mjs --unknown",
+              "exit_code": 2,
+              "salient_output": "未知参数在启动 Docker、Maven 或 npm 前失败。"
+            },
+            {
+              "command": "docker compose config --quiet",
+              "exit_code": 0,
+              "salient_output": "Compose 默认配置和 rddmp-dev 覆盖配置均可解析。"
+            },
+            {
+              "command": ".\\scripts\\dev.ps1",
+              "exit_code": 0,
+              "salient_output": "Windows 空库执行 143 个 Flyway 迁移至版本 148；已有库验证 143 个迁移并保持版本 148；后端健康 UP、前端 HTTP 200、admin/admin123 登录成功。"
+            },
+            {
+              "command": ".\\scripts\\dev.ps1 --down",
+              "exit_code": 0,
+              "salient_output": "rddmp-dev 三个基础设施容器移除，两个命名数据卷保留。"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "固定且隔离的本地环境",
+              "result": "pass",
+              "evidence": "使用 rddmp-dev 项目、rddmp-dev-* 容器、独立端口和命名卷；应用只注入 local profile 和固定本地连接参数。",
+              "limitations": [
+                "只在 Windows Docker Desktop 上完成真实运行。"
+              ]
+            },
+            {
+              "check": "Flyway、健康、登录与权限",
+              "result": "pass",
+              "evidence": "空库迁移、已有库 validate、Actuator UP、前端 200 和 admin/admin123 登录均通过；受保护 permission-check 仍返回 403。",
+              "limitations": [
+                "未连接任何共享或生产环境。"
+              ]
+            },
+            {
+              "check": "退出与资源保留",
+              "result": "pass",
+              "evidence": "Ctrl+C 后 8080/5173 释放且基础设施保留；--down 后容器移除且卷保留。",
+              "limitations": [
+                "PTY 注入 Ctrl+C 时外层 PowerShell 返回 1，但脚本进入正常清理分支且进程树和端口均已释放。"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "新增 PowerShell、Bash 薄入口和统一 Node.js 编排器。",
+            "固定本地 admin/admin123、local profile、基础设施端口和 rddmp-dev 资源命名。",
+            "编排基础设施就绪、管理员密码恢复、Maven 后端、Vite 前端、健康等待和退出清理。",
+            "Compose 参数化时保持原默认项目行为。"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "不连接生产或共享环境，也不覆盖 .env。",
+              "result": "pass",
+              "evidence": "启动器仅使用硬编码 loopback 地址和 local profile，未读取或写入 .env。"
+            },
+            {
+              "invariant": "不修改历史 Flyway 迁移或数据库结构。",
+              "result": "pass",
+              "evidence": "真实启动仅由 Spring Boot 执行现有 143 个迁移，代码差异不包含 migration 文件。"
+            },
+            {
+              "invariant": "不删除 Docker 数据卷。",
+              "result": "pass",
+              "evidence": "Ctrl+C 和 --down 后 rddmp-dev 两个命名卷均保留。"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "已有固定容器名和历史卷的初始化密码可能与新固定密码冲突。",
+              "impact": "通过独立 rddmp-dev Compose 项目、容器和卷隔离，未接触历史 ccb-platform 资源。"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "macOS/Linux 仅完成 Bash 静态检查，真实进程组终止和文件监听仍需对应平台人工复核。"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 重启前后 PID、Flyway 与健康恢复证据已完成",
+        "recorded_at": "2026-09-04T07:52:49+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "scripts/dev.mjs",
+              "purpose": "监听后端源码和资源变化，串行执行 reactor install，并在成功后重启 boot 后端进程。"
+            }
+          ],
+          "requirements_addressed": [
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-boot -am -DskipTests install",
+              "exit_code": 0,
+              "salient_output": "完整 reactor 安装成功，boot 依赖产物可供独立 POM 启动。"
+            },
+            {
+              "command": "mvn -f server/src/platform/boot/pom.xml spring-boot:run -Dspring-boot.run.profiles=local",
+              "exit_code": 0,
+              "salient_output": "后端从实际 boot POM 启动，Flyway 校验版本 148，健康接口恢复 UP。"
+            },
+            {
+              "command": "$env:RDDMP_DEV_VERIFY_BACKEND_RESTART=1; .\\scripts\\dev.ps1",
+              "exit_code": 0,
+              "salient_output": "测试探针触发源码变化；reactor install 成功，Java PID 从 21820 变为 55476，新后端健康恢复且前端持续可访问。"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "后端自动重启状态机",
+              "result": "pass",
+              "evidence": "变化事件防抖并串行构建；构建完成后旧 PID 终止、新 PID 启动，健康连续稳定 3 秒后报告恢复。",
+              "limitations": [
+                "真实运行验证在 Windows 完成。"
+              ]
+            },
+            {
+              "check": "重启期间 Flyway 与前端连续性",
+              "result": "pass",
+              "evidence": "新后端成功 validate 143 个迁移并保持 schema 148；Vite 前端进程未重启且 HTTP 入口可访问。",
+              "limitations": [
+                "未注入故意的 Maven 编译失败；失败保留旧后端由状态机分支和进程退出处理静态复核。"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "以 fs.watch、防抖和构建队列监听后端 Java、资源和 POM 变化。",
+            "初始及变更构建均使用 reactor install，运行使用 boot POM。",
+            "只有 install 成功才切换后端；主动终止不升级为全局失败。"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Maven 构建串行且只在成功后重启。",
+              "result": "pass",
+              "evidence": "状态机以 building/buildAgain 限制并发，实际探针仅出现一次成功切换。"
+            },
+            {
+              "invariant": "不修改 POM 或 Spring 配置。",
+              "result": "pass",
+              "evidence": "工作区差异不包含任何 POM 或 application 配置。"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "聚合根直接执行 spring-boot:run 无法定位主类。",
+              "impact": "修正为先 reactor install，再从 server/src/platform/boot/pom.xml 启动。"
+            }
+          ],
+          "assumptions_falsified": [
+            "聚合根可直接作为 Spring Boot 启动模块。"
+          ],
+          "unresolved_items": [
+            "macOS/Linux 的 fs.watch 事件形态和进程组清理需对应平台人工复核。"
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 Maven、前端、治理、范围与文档证据已完成",
+        "recorded_at": "2026-09-04T08:01:48+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "AGENTS.md",
+              "purpose": "记录 Windows、macOS/Linux 本地研发启动命令、固定账号、热重载、Flyway、退出和安全边界。"
+            },
+            {
+              "path_or_resource": "docs/requirements/REQ-20260904-063-dev-environment-runner、docs/engineering-control 与当前 .ai-control 前缀",
+              "purpose": "维护本需求范围、设计、实施计划和可审计控制证据。"
+            }
+          ],
+          "requirements_addressed": [
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-boot -am test",
+              "exit_code": 0,
+              "salient_output": "15 个 reactor 模块全部 SUCCESS，总耗时 15:33；ccb-architecture 269 个测试、ccb-test-management 20 个测试、ccb-boot 8 个测试均为 0 failures、0 errors。"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "前端类型检查和 Vite 生产构建通过。"
+            },
+            {
+              "command": "node scripts/check-development-entry.mjs --require-plugin",
+              "exit_code": 0,
+              "salient_output": "研发入口和 control-engineering 插件检查通过。"
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260904-063-dev-environment-runner/codex-task-scope.yaml --base HEAD~1 --head HEAD --working-tree",
+              "exit_code": 0,
+              "salient_output": "REQ-20260904-063 范围检查通过，检查时共 15 个变更文件。"
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "salient_output": "模块治理、仓库 Skill 和研发入口通过；AI control layout 因多个其他历史需求 topic mismatch、无效 JSON/账本和缺失验收证据失败，本任务前缀未出现在错误列表。"
+            },
+            {
+              "command": "git diff --check HEAD~1",
+              "exit_code": 0,
+              "salient_output": "未发现空白错误，仅有 Git 的 LF/CRLF 提示。"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "AGENTS 研发提示准确性",
+              "result": "pass",
+              "evidence": "提示包含两个平台入口、admin/admin123、local-only、Vite HMR、后端自动重启、Flyway、Ctrl+C 和 --down 不删卷。",
+              "limitations": [
+                "macOS/Linux 真实运行仍明确列为人工复核项。"
+              ]
+            },
+            {
+              "check": "后端和前端回归",
+              "result": "pass",
+              "evidence": "Maven 15 模块 reactor BUILD SUCCESS；前端构建退出码 0。",
+              "limitations": []
+            },
+            {
+              "check": "治理与范围",
+              "result": "pass-with-disturbance",
+              "evidence": "本任务范围检查通过，本任务账本 JSON 可解析且 topic mismatch 已消失；全量治理只剩任务范围外历史账本问题。",
+              "limitations": [
+                "仓库既有历史问题使 check-all-governance 总退出码仍为 1。"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "根 AGENTS 增加一键开发环境的推荐用法和本地凭据边界。",
+            "需求、设计、计划和控制账本与最终 Node 自动重启实现保持一致。",
+            "完成范围、后端 reactor、前端构建、JSON 和 diff 验证。"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "文档不声称未实测平台已通过。",
+              "result": "pass",
+              "evidence": "验收证据明确区分 Windows 真实运行和 macOS/Linux 静态检查。"
+            },
+            {
+              "invariant": "修改保持在 codex-task-scope.yaml 授权范围。",
+              "result": "pass",
+              "evidence": "check-codex-scope working-tree 模式通过。"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "check-all-governance 检测到多个其他历史需求账本问题。",
+              "impact": "全量治理包装命令无法绿色结束；本任务未出现在错误列表，且模块治理、Skill、研发入口和范围检查独立通过。"
+            },
+            {
+              "event": "架构模块的 Testcontainers/Flyway 集成测试为多个隔离库重复执行迁移。",
+              "impact": "全 reactor 测试耗时 15 分 33 秒，但最终全部成功。"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "任务范围外历史 AI control 账本问题继续阻塞 check-all-governance 总退出码。",
+            "macOS/Linux 真实进程组、fs.watch 和 Docker host-gateway 行为仍需人工复核。"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Windows 运行、语言解析、Maven、Vite、Docker、HTTP 与治理传感器联合观测",
+        "recorded_at": "2026-09-04T08:01:48+00:00",
+        "data": {
+          "sample_label": "跨平台开发环境启动器集成观测",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 Node/PowerShell/Bash 语法与 CLI 失败路径",
+              "result": "pass",
+              "raw_evidence": "三个入口语法通过；PowerShell 和 Bash 均只定位仓库根并透传给 dev.mjs；未知参数退出 2 且无环境副作用；Node 编排器只使用标准库。",
+              "limitation": [
+                "Bash 入口未在 macOS/Linux 真实运行。"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 启动器环境静态审计加 S4 Windows 登录与 RBAC HTTP 探针",
+              "result": "pass",
+              "raw_evidence": "应用使用 loopback、local profile 和 rddmp-dev 隔离资源；空库和已有库均可用 admin/admin123 登录；permission-check 返回 403，服务端权限未被绕过。",
+              "limitation": [
+                "仅验证本地虚构凭据，不涉及共享或生产环境。"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S3 Docker/MySQL/Flyway 日志加 S4 Actuator 健康探针",
+              "result": "pass",
+              "raw_evidence": "MySQL、MinIO、kkFileView 就绪后才启动后端；空库应用 143 个迁移至 148，已有库 validate 143 个迁移并保持 148；健康连续稳定 3 秒为 UP。",
+              "limitation": [
+                "运行传感器为 Windows Docker Desktop。"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S5 Maven/PID/HTTP 重启探针加 Vite 进程连续性",
+              "result": "pass",
+              "raw_evidence": "reactor install 成功后 Java PID 21820 变为 55476，新后端 Flyway validate 并恢复 UP；前端持续 HTTP 200；全 Maven reactor 15 模块 BUILD SUCCESS。",
+              "limitation": [
+                "未运行故意编译失败注入；失败保留旧进程分支仅完成静态状态机复核。"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S6 端口/容器/卷生命周期探针加 S7 AGENTS、范围和治理检查",
+              "result": "pass",
+              "raw_evidence": "Ctrl+C 后 8080/5173 释放且基础设施保留；--down 后容器移除而卷保留；AGENTS 提示准确；范围检查通过，本任务未出现在治理错误列表。",
+              "limitation": [
+                "check-all-governance 因任务范围外历史账本问题总退出码为 1。"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "仓库既有多个历史 AI control 账本不符合当前布局检查。",
+              "classification": "disturbance",
+              "evidence": "check-all-governance 的失败清单不包含 req-20260904-063-dev-environment-runner；其他独立治理与范围检查通过。"
+            }
+          ],
+          "coverage_gaps": [
+            "macOS/Linux 仅有 Bash 静态检查，缺少真实进程组、fs.watch 和 host-gateway 运行采样。",
+            "未注入 Maven 编译失败以动态验证旧后端保留分支。"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "最终需求追踪、两次零误差采样、Maven/Vite/运行/范围/不变量审计",
+        "recorded_at": "2026-09-04T08:04:38+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "PowerShell 和 Bash 薄入口均调用同一 scripts/dev.mjs 并透传参数与退出码。",
+                "Node、PowerShell、Bash 语法检查通过，未知参数退出码 2，编排器无第三方 npm 依赖。"
+              ],
+              "limitations": [
+                "macOS/Linux 仅完成 Bash 静态检查，未执行真实启动。"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "启动器固定 loopback、本地端口、local profile 和 rddmp-dev 隔离资源，不读取或覆盖 .env。",
+                "Windows 空库和已有本地库均可使用 admin/admin123 登录；permission-check 返回 403，RBAC 仍由服务端执行。"
+              ],
+              "limitations": [
+                "固定凭据只在隔离本地 Docker 数据中验证。"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "基础设施就绪后启动后端，空库执行 143 个 Flyway 迁移至版本 148，已有库验证 143 个迁移并保持 148。",
+                "后端 Actuator 连续稳定 3 秒为 UP；Maven 15 模块 reactor BUILD SUCCESS。"
+              ],
+              "limitations": [
+                "Flyway 真实启动传感器仅覆盖 Windows Docker Desktop。"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "前端以现有 Vite dev server 启动并持续 HTTP 200，前端生产构建通过。",
+                "源码变化后 reactor install 成功，Java PID 从 21820 切换为 55476，新后端 Flyway validate 并恢复 UP。"
+              ],
+              "limitations": [
+                "未动态注入 Maven 编译失败；保留旧后端的失败分支通过状态机静态审计。"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "Ctrl+C 后 8080/5173 释放且基础设施容器保留；--down 后容器移除且两个数据卷保留。",
+                "AGENTS.md 已记录双平台命令、admin/admin123、热重载、Flyway、退出行为和 local-only 边界；最终范围检查通过。"
+              ],
+              "limitations": [
+                "PTY 注入 Ctrl+C 时外层 PowerShell 返回 1，但脚本清理分支、端口和进程树均验证成功。"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "脚本/Compose 静态检查和 Windows 空库、已有库、登录、权限、退出、--down 全链路通过。"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "reactor install、Java PID 切换、Flyway 校验和健康恢复通过。"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "Maven 15 模块、前端构建、Compose 实际环境解析、JSON、范围和 diff 检查通过；本任务无治理布局错误。"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "Maven 全 reactor 测试",
+              "result": "pass",
+              "evidence": "15 个模块全部 SUCCESS，总耗时 15:33；架构模块 269 个测试、test-management 20 个、boot 8 个均零失败。"
+            },
+            {
+              "check": "前端类型与生产构建",
+              "result": "pass",
+              "evidence": "npm --prefix web run build 退出码 0。"
+            },
+            {
+              "check": "启动脚本和 Compose",
+              "result": "pass",
+              "evidence": "Node/PowerShell/Bash 语法、未知参数失败路径和按启动器实际固定环境执行的 docker compose config 均通过。"
+            },
+            {
+              "check": "治理、范围和差异完整性",
+              "result": "pass-with-disturbance",
+              "evidence": "研发入口、当前账本 JSON、codex scope 和 git diff --check 通过；check-all-governance 仅被其他历史需求账本问题阻塞，本任务不在错误列表。"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "不连接生产或共享环境，不覆盖用户 .env。",
+              "result": "pass",
+              "evidence": "启动器只注入固定 loopback 和 local profile，未读写 .env。"
+            },
+            {
+              "invariant": "Flyway 迁移只由 Spring Boot 执行且历史脚本不修改。",
+              "result": "pass",
+              "evidence": "差异不含 migration 文件，真实启动完成 migrate/validate。"
+            },
+            {
+              "invariant": "Ctrl+C 和 --down 不删除数据卷。",
+              "result": "pass",
+              "evidence": "两种退出路径后 rddmp-dev 命名卷均存在。"
+            },
+            {
+              "invariant": "修改位于批准范围并保持 Compose 原默认行为。",
+              "result": "pass",
+              "evidence": "working-tree 范围检查通过；Compose 参数均提供 ccb-platform 兼容默认值。"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "历史 ccb-platform 容器和卷可能含不同初始化密码。",
+              "result": "pass",
+              "evidence": "使用独立 rddmp-dev Compose 项目、容器、端口和卷，未接触历史资源。"
+            },
+            {
+              "disturbance": "仓库存在其他需求的无效 AI control 账本。",
+              "result": "controlled",
+              "evidence": "全量治理错误清单不包含本任务；模块治理、Skill、研发入口、JSON 和任务范围均独立通过。"
+            },
+            {
+              "disturbance": "架构集成测试大量重复创建 MySQL 并执行迁移。",
+              "result": "pass",
+              "evidence": "测试持续 15:33 后正常结束，15 个 reactor 模块全部成功。"
+            }
+          ],
+          "residual_risks": [
+            "macOS/Linux 尚未完成真实启动、进程组清理、fs.watch 和 Docker host-gateway 运行复核。",
+            "未动态注入后端编译失败以验证旧进程保持可用的分支。",
+            "其他历史需求账本问题继续使 node scripts/check-all-governance.mjs 总退出码为 1。",
+            "MySQL 8.4 测试日志包含 Flyway 支持版本和旧 SQL/字符集弃用警告，均为仓库既有警告。"
+          ],
+          "gate_result": "pass",
+          "route_reason": "五项 must 需求均具备任务、实际修改和运行/静态传感器证据；T1-T3 全部 verified；两次 standard 采样误差为零；最终范围、不变量和回归检查满足门禁。"
+        }
+      }
+    ]
+  },
+  "objective": "研发人员在 Windows、macOS 和 Linux 上通过一个平台对应命令获得配置确定、可登录、自动迁移且支持前后端热重载的本地 RDDMP 开发环境。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Windows 与 macOS/Linux 必须具有行为一致的启动入口。",
+      "acceptance": [
+        "PowerShell 和 Bash 入口均调用同一编排实现",
+        "入口透传参数和退出码",
+        "编排实现不依赖第三方 npm 包"
+      ],
+      "priority": "must",
+      "source": "用户确认全部平台均需支持并批准 Node 编排方案",
+      "counterexample": [
+        "两套入口分别维护 Docker、Maven、npm 和进程逻辑"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "启动环境必须使用固定本地配置，并保证 admin/admin123 在空库和已有本地库均可登录。",
+      "acceptance": [
+        "显式激活 local profile",
+        "不创建或覆盖 .env",
+        "管理员恢复只命中 tenant_id=1、id=1、username=admin",
+        "启动器不接受远程地址和生产 profile"
+      ],
+      "priority": "must",
+      "source": "用户指定 admin/admin123 并要求确定环境配置",
+      "counterexample": [
+        "需要手工编辑 .env",
+        "已有数据库仍保留未知 admin 密码"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "启动器必须在基础设施就绪后启动后端，并由 Spring Boot 自动执行 Flyway。",
+      "acceptance": [
+        "MySQL、MinIO、kkFileView 启动",
+        "MySQL 就绪后才启动后端",
+        "Flyway 无失败且健康接口为 UP",
+        "不修改历史迁移或执行 clean/repair"
+      ],
+      "priority": "must",
+      "source": "用户要求支持 Flyway和通用开发环境",
+      "counterexample": [
+        "MySQL 未就绪即启动后端",
+        "脚本直接修改 flyway_schema_history"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "前端源码变化必须由 Vite HMR 更新，后端源码或资源变化必须自动编译并重启。",
+      "acceptance": [
+        "前端通过现有 Vite dev server 启动",
+        "后端编译防抖且串行",
+        "DevTools 在产物变化后重启并恢复健康",
+        "编译失败不终止当前后端且后续可重试"
+      ],
+      "priority": "must",
+      "source": "用户要求前后端热重载",
+      "counterexample": [
+        "修改 Java 后需要手工停止并重启 Maven"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "启动器必须提供可判别日志和可预测的退出、容器停止及研发提示。",
+      "acceptance": [
+        "前后端日志可区分",
+        "Ctrl+C 清理应用子进程并保留基础设施",
+        "--down 停止容器但不删除卷",
+        "AGENTS.md 记录命令、账号和仅限本地边界"
+      ],
+      "priority": "must",
+      "source": "用户要求在 AGENTS.md 提示并批准生命周期设计",
+      "counterexample": [
+        "退出后遗留 8080 或 5173 进程",
+        "--down 删除数据库卷"
+      ]
+    }
+  ],
+  "invariants": [
+    "不连接生产或共享环境",
+    "不修改历史 Flyway 文件和数据库结构",
+    "不删除 Docker 数据卷",
+    "不覆盖用户 .env",
+    "不纳入其他任务改动"
+  ],
+  "constraints": [
+    "JDK 17+",
+    "Maven 3.9+",
+    "Node.js 20+ 标准库",
+    "Docker Compose V2",
+    "Spring local profile",
+    "只写任务范围授权路径"
+  ],
+  "non_goals": [
+    "应用容器化",
+    "自动安装开发工具",
+    "Flyway clean/repair",
+    "业务 API、权限或页面变更",
+    "生产启动入口"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260904-063-dev-environment-runner\\handoff.json",
+    "imported_at": "2026-09-04T07:03:16+00:00",
+    "topic": "dev-environment-runner",
+    "design_revision": 2,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "dev-environment-runner",
+      "handoff_status": "approved",
+      "created_at": "2026-09-04T14:53:42+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "dev-environment-runner",
+        "design_revision": 2,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-04-dev-environment-runner-design.md",
+        "objective": "通过跨平台薄入口和无第三方依赖的 Node.js 编排器，一键启动固定、可热重载且自动执行 Flyway 的 RDDMP 本地开发环境。",
+        "users": [
+          "Windows PowerShell 研发人员",
+          "macOS/Linux Bash 研发人员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Windows 与 macOS/Linux 入口复用同一 Node.js 标准库编排器并保持行为一致。",
+            "acceptance": [
+              "wrapper 透传参数和退出码",
+              "编排器无第三方 npm 依赖",
+              "工具缺失时启动前失败"
+            ],
+            "priority": "must",
+            "source": "用户确认跨平台和 Node 编排方案",
+            "counterexample": [
+              "两套完整且漂移的脚本实现"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "启动器固定且隔离本地开发环境，并提供 admin/admin123。",
+            "acceptance": [
+              "固定 local profile",
+              "不覆盖用户 .env",
+              "空库和已有库均可登录",
+              "不接受远程地址"
+            ],
+            "priority": "must",
+            "source": "用户确认固定账号和确定环境",
+            "counterexample": [
+              "依赖手工 .env",
+              "密码只在首次建库有效"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "编排本地基础设施并由 Spring Boot 自动执行 Flyway。",
+            "acceptance": [
+              "基础设施就绪后启动后端",
+              "Flyway 成功",
+              "健康检查 UP",
+              "不修改历史迁移"
+            ],
+            "priority": "must",
+            "source": "用户要求支持 Flyway",
+            "counterexample": [
+              "执行 Flyway clean 或修改历史迁移"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "支持 Vite HMR 和后端源码自动编译重启。",
+            "acceptance": [
+              "Vite HMR",
+              "后端防抖串行编译",
+              "DevTools 重启",
+              "编译失败可恢复"
+            ],
+            "priority": "must",
+            "source": "用户要求前后端热重载",
+            "counterexample": [
+              "后端必须手工重启"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "可预测地管理日志、退出、容器停止和研发提示。",
+            "acceptance": [
+              "日志分组",
+              "Ctrl+C 清理应用",
+              "默认保留基础设施",
+              "--down 不删卷",
+              "AGENTS 提示"
+            ],
+            "priority": "must",
+            "source": "用户批准设计",
+            "counterexample": [
+              "遗留进程或默认删除卷"
+            ]
+          }
+        ],
+        "invariants": [
+          "不连接生产或共享环境",
+          "不修改历史迁移",
+          "不删除卷",
+          "不覆盖用户 .env",
+          "不越过任务范围"
+        ],
+        "constraints": [
+          "JDK 17",
+          "Maven 3.9",
+          "Node.js 20 标准库",
+          "Docker Compose V2",
+          "Spring local profile",
+          "Owner 复核高风险文件"
+        ],
+        "non_goals": [
+          "应用容器化",
+          "自动安装工具",
+          "Flyway clean/repair",
+          "业务代码变更"
+        ],
+        "selected_approach": {
+          "name": "PowerShell/Bash 薄入口加 Node.js 标准库编排器",
+          "reason": "集中跨平台复杂度且不增加项目前置条件。",
+          "alternatives": [
+            {
+              "name": "两套完整脚本",
+              "rejected_because": "重复维护和行为漂移。"
+            },
+            {
+              "name": "Compose Watch",
+              "rejected_because": "改动和资源开销过大。"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "scripts/dev.ps1",
+              "scripts/dev.sh",
+              "scripts/dev.mjs",
+              "docker-compose.yml host-gateway",
+              "ccb-boot DevTools",
+              "AGENTS.md"
+            ],
+            "outside": [
+              "生产配置",
+              "业务模块",
+              "历史迁移",
+              "应用容器镜像"
+            ]
+          },
+          "components": [
+            {
+              "name": "wrapper",
+              "responsibility": "定位并调用 Node 编排器",
+              "depends_on": [
+                "Node.js"
+              ]
+            },
+            {
+              "name": "Node 编排器",
+              "responsibility": "环境、基础设施、应用进程、监听和退出",
+              "depends_on": [
+                "Docker",
+                "Maven",
+                "npm"
+              ]
+            },
+            {
+              "name": "DevTools",
+              "responsibility": "编译产物变化后重启后端",
+              "depends_on": [
+                "Maven compile"
+              ]
+            },
+            {
+              "name": "Flyway",
+              "responsibility": "后端启动时迁移本地数据库",
+              "depends_on": [
+                "MySQL"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "开发 CLI",
+              "producer": "wrapper",
+              "consumers": [
+                "研发人员"
+              ],
+              "contract": "默认启动；--down 只停容器不删卷。"
+            },
+            {
+              "name": "固定环境",
+              "producer": "Node 编排器",
+              "consumers": [
+                "Compose",
+                "Spring",
+                "Vite"
+              ],
+              "contract": "公开本地夹具和 local profile。"
+            },
+            {
+              "name": "编译触发",
+              "producer": "文件监听器",
+              "consumers": [
+                "Maven",
+                "DevTools"
+              ],
+              "contract": "防抖、串行、失败可重试。"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "启动命令",
+              "transitions": [
+                "预检",
+                "Docker",
+                "MySQL 等待",
+                "admin 恢复",
+                "后端/Flyway",
+                "前端",
+                "健康检查"
+              ],
+              "output": "可登录热重载环境"
+            },
+            {
+              "input": "后端文件变化",
+              "transitions": [
+                "过滤",
+                "防抖",
+                "Maven compile",
+                "DevTools restart"
+              ],
+              "output": "更新后端"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "工具、端口、Docker 或 MySQL 不可用",
+            "behavior": "启动应用前失败",
+            "recovery": "修复环境后重试"
+          },
+          {
+            "condition": "增量编译失败",
+            "behavior": "保留当前后端并报告",
+            "recovery": "修复后由下一次变化重试"
+          },
+          {
+            "condition": "应用初始启动或健康检查失败",
+            "behavior": "清理应用进程并失败退出",
+            "recovery": "依据日志修复"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "仅限 local 和本地地址",
+            "不打印 JWT 或 BCrypt 哈希"
+          ],
+          "performance": [
+            "监听防抖和单编译队列"
+          ],
+          "compatibility": [
+            "PowerShell",
+            "Bash",
+            "Node.js 20"
+          ],
+          "operations": [
+            "日志分组",
+            "应用进程清理",
+            "卷保留"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R5"
+            ],
+            "signal": "语法和退出行为",
+            "method": "Node、PowerShell、Bash 检查和生命周期验收"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "signal": "Flyway、健康和登录",
+            "method": "空库/已有库 HTTP 与数据库断言"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "HMR 和 restart 日志",
+            "method": "受控变更触发"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Docker Compose V2 可用",
+            "basis": "README 既有命令",
+            "falsifier": "docker compose version 失败"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "macOS/Linux 真实进程树行为",
+            "impact": "对应平台运行验收等级",
+            "owner": "跨平台复核人",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "admin/admin123",
+            "reason": "用户指定",
+            "source": "2026-09-04 用户确认"
+          },
+          {
+            "id": "D2",
+            "decision": "Node 标准库编排器",
+            "reason": "单一跨平台实现",
+            "source": "2026-09-04 用户批准"
+          },
+          {
+            "id": "D3",
+            "decision": "Spring Boot 管理 Flyway",
+            "reason": "复用现有 local 配置",
+            "source": "工程事实"
+          },
+          {
+            "id": "D4",
+            "decision": "kkFileView 使用 host-gateway",
+            "reason": "Linux 跨平台访问",
+            "source": "计划复核"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "平台进程终止差异",
+            "impact": "遗留进程",
+            "mitigation": "进程树/组终止和分别验收"
+          },
+          {
+            "risk": "频繁编译",
+            "impact": "资源占用",
+            "mitigation": "路径过滤、防抖、串行"
+          },
+          {
+            "risk": "开发密码误用",
+            "impact": "弱凭据",
+            "mitigation": "强制 local 并明确警告"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-04 确认落盘设计可以继续。",
+          "confirmed_at": "2026-09-04T14:53:42+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-04-dev-environment-runner-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "仅本地 local profile",
+          "无第三方 Node 依赖",
+          "不修改历史迁移",
+          "不删除卷",
+          "只写授权路径"
+        ],
+        "file_map": [
+          {
+            "path": "scripts/dev.ps1",
+            "status": "candidate-new",
+            "responsibility": "Windows wrapper",
+            "evidence": "设计 R1"
+          },
+          {
+            "path": "scripts/dev.sh",
+            "status": "candidate-new",
+            "responsibility": "Unix wrapper",
+            "evidence": "设计 R1"
+          },
+          {
+            "path": "scripts/dev.mjs",
+            "status": "candidate-new",
+            "responsibility": "公共编排器",
+            "evidence": "设计 D2"
+          },
+          {
+            "path": "docker-compose.yml",
+            "status": "existing",
+            "responsibility": "kkFileView host-gateway",
+            "evidence": "现有 Compose"
+          },
+          {
+            "path": "server/src/platform/boot/pom.xml",
+            "status": "existing",
+            "responsibility": "DevTools runtime 依赖",
+            "evidence": "现有 boot POM"
+          },
+          {
+            "path": "AGENTS.md",
+            "status": "existing",
+            "responsibility": "研发启动提示",
+            "evidence": "用户要求"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "实现跨平台入口、固定环境、基础设施、Flyway 启动链和进程生命周期。",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Node.js 20 是项目前置条件",
+              "application-local.yml 已启用 Flyway",
+              "Vite 已提供 HMR"
+            ],
+            "files": {
+              "create": [
+                "scripts/dev.ps1",
+                "scripts/dev.sh",
+                "scripts/dev.mjs"
+              ],
+              "modify": [
+                "docker-compose.yml"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "docker compose 服务名",
+                "local 环境变量",
+                "Maven 和 npm CLI"
+              ],
+              "produces": [
+                "scripts/dev.mjs [--down]",
+                "托管子进程",
+                "Maven compile 触发"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "建立脚本和 Compose 基线",
+                "command": "docker compose config",
+                "expected": "Compose 当前配置可解析",
+                "evidence": "退出码和配置摘要"
+              },
+              {
+                "id": "T1-S2",
+                "action": "实现薄 wrapper 和 Node 编排器",
+                "command": null,
+                "expected": "固定环境、工具预检、Docker、MySQL、admin、应用、监听和清理职责完整",
+                "evidence": "代码 diff"
+              },
+              {
+                "id": "T1-S3",
+                "action": "接入 kkFileView host-gateway",
+                "command": "docker compose config",
+                "expected": "extra_hosts 解析成功",
+                "evidence": "Compose 输出摘要"
+              },
+              {
+                "id": "T1-S4",
+                "action": "执行脚本语法和未知参数检查",
+                "command": "node --check scripts/dev.mjs; PowerShell AST; bash -n scripts/dev.sh",
+                "expected": "语法通过，未知参数无副作用失败",
+                "evidence": "退出码"
+              }
+            ],
+            "acceptance_checks": [
+              "空库和已有库 admin 行为",
+              "健康和登录",
+              "Ctrl+C 清理",
+              "--down 保留卷"
+            ],
+            "risks": [
+              "跨平台进程树",
+              "host-gateway 差异",
+              "端口冲突"
+            ],
+            "rollback": "删除新脚本并回退 Compose extra_hosts。",
+            "stop_conditions": [
+              "需要远程地址或真实凭据",
+              "需要删除卷或修改历史迁移"
+            ],
+            "escalation_conditions": [
+              "host-gateway 无法满足 Linux MinIO 访问",
+              "无法可靠识别端口占用"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "让 Maven 增量编译产物触发 Spring Boot 后端自动重启。",
+            "requirement_ids": [
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "T1 产出串行 Maven compile 触发",
+              "boot 当前无 DevTools"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/platform/boot/pom.xml"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "Maven compile 产物"
+              ],
+              "produces": [
+                "DevTools restart"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "记录 DevTools 依赖基线",
+                "command": "mvn -pl :ccb-boot dependency:tree -Dincludes=org.springframework.boot:spring-boot-devtools",
+                "expected": "当前不包含 DevTools",
+                "evidence": "依赖树"
+              },
+              {
+                "id": "T2-S2",
+                "action": "增加 optional runtime DevTools",
+                "command": null,
+                "expected": "依赖只存在于 ccb-boot",
+                "evidence": "POM diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "编译并验证重启",
+                "command": "mvn -pl :ccb-boot -am -DskipTests compile",
+                "expected": "编译成功并出现 DevTools restart，健康恢复",
+                "evidence": "Maven、重启和健康日志"
+              }
+            ],
+            "acceptance_checks": [
+              "DevTools 不传递到业务模块",
+              "编译失败可恢复",
+              "Flyway 重启无异常"
+            ],
+            "risks": [
+              "运行 classpath 不刷新",
+              "开发依赖进入产物"
+            ],
+            "rollback": "回退 ccb-boot DevTools 依赖。",
+            "stop_conditions": [
+              "DevTools 进入非开发产物",
+              "Flyway 重启异常"
+            ],
+            "escalation_conditions": [
+              "需要修改 Spring Boot Maven 插件配置"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "补充 AGENTS 提示并完成治理、构建、运行和范围验收。",
+            "requirement_ids": [
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "T1/T2 最终命令和运行行为已稳定"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "AGENTS.md"
+              ],
+              "test": [
+                "当前前缀 execution/observation/convergence JSON"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "最终 CLI 和验证证据"
+              ],
+              "produces": [
+                "研发提示",
+                "收敛证据"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "增加 AGENTS 本地启动提示",
+                "command": null,
+                "expected": "命令、账号和安全边界准确",
+                "evidence": "AGENTS diff"
+              },
+              {
+                "id": "T3-S2",
+                "action": "执行静态、治理和构建检查",
+                "command": "node scripts/check-all-governance.mjs; mvn -pl :ccb-boot -am test; npm --prefix web run build",
+                "expected": "全部退出码 0",
+                "evidence": "命令结果"
+              },
+              {
+                "id": "T3-S3",
+                "action": "执行 Windows 全链路和范围验收",
+                "command": "scripts/dev.ps1 与 check-codex-scope",
+                "expected": "Flyway、登录、热重载、清理和范围通过",
+                "evidence": "HTTP、Docker、进程和范围摘要"
+              },
+              {
+                "id": "T3-S4",
+                "action": "写入当前前缀闭环证据",
+                "command": null,
+                "expected": "无未关闭 must 反馈后才收敛",
+                "evidence": "当前前缀 JSON"
+              }
+            ],
+            "acceptance_checks": [
+              "AGENTS 提示准确",
+              "Windows 运行证据",
+              "未验收平台如实列风险",
+              "无范围越界"
+            ],
+            "risks": [
+              "治理入口误导",
+              "工作区无关未跟踪文件干扰范围检查"
+            ],
+            "rollback": "回退 AGENTS 和实现提交，保留历史证据。",
+            "stop_conditions": [
+              "治理、范围、构建、登录、Flyway 或清理失败"
+            ],
+            "escalation_conditions": [
+              "需要写任务范围外文件或修改业务模块"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "T2 依赖 T1 产出的长期运行后端进程和串行 Maven compile 触发接口。"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 只能基于已稳定的启动命令和后端重启行为编写准确提示并执行集成验收。"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "脚本语法和 docker compose config",
+            "expected": "全部通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "mvn -pl :ccb-boot -am test 与 Windows 运行验收",
+            "expected": "构建、健康、登录和重启通过"
+          },
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "governance、frontend build、scope、diff",
+            "expected": "全部退出码 0"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户于 2026-09-04 确认实施计划，并确认代表模块 Owner 批准本次公共能力变更。",
+          "confirmed_at": "2026-09-04T14:58:58+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "wrapper",
+          "Node 编排器",
+          "Docker 基础设施",
+          "Spring/Flyway",
+          "Vite",
+          "DevTools"
+        ],
+        "state_variable_candidates": [
+          "工具状态",
+          "端口状态",
+          "容器状态",
+          "MySQL 状态",
+          "迁移状态",
+          "健康状态",
+          "编译队列",
+          "清理状态"
+        ],
+        "interface_candidates": [
+          "CLI",
+          "子进程环境",
+          "Compose 服务",
+          "MySQL SQL",
+          "健康 HTTP",
+          "文件事件"
+        ],
+        "sensor_candidates": [
+          "退出码",
+          "版本",
+          "Docker 状态",
+          "Flyway 日志",
+          "HTTP",
+          "登录",
+          "restart 日志",
+          "端口"
+        ],
+        "actuator_candidates": [
+          "容器启停",
+          "进程启停",
+          "SQL 更新",
+          "Maven compile",
+          "AGENTS 修改"
+        ],
+        "disturbance_candidates": [
+          "端口冲突",
+          "Docker 未运行",
+          "缓存缺失",
+          "平台信号差异",
+          "文件事件风暴",
+          "已有数据"
+        ],
+        "delay_candidates": [
+          "镜像拉取",
+          "MySQL 初始化",
+          "Maven 首编译",
+          "Flyway",
+          "DevTools restart",
+          "Vite 启动"
+        ],
+        "assumptions": [
+          {
+            "text": "Docker Compose V2 和固定端口可用",
+            "basis": "README 与设计",
+            "falsifier": "预检失败"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Windows/macOS/Linux\", \"JDK 17\", \"Maven 3.9\", \"Node.js 20+\", \"npm\", \"Docker Engine/Compose\", \"本地端口和依赖缓存\"], \"inside\": [\"PowerShell/Bash wrapper\", \"Node 编排器\", \"RDDMP Docker Compose\", \"Maven reactor 与 boot POM\", \"Spring Boot local/Flyway\", \"Vite dev server\", \"AGENTS 研发提示\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"未实测平台的进程信号差异\"], \"id\": \"S1\", \"independence\": \"语言解析器和真实 CLI 退出码\", \"method\": \"node --check、PowerShell AST、bash -n、未知参数运行\", \"target\": \"wrapper 与 Node CLI\"}",
+      "{\"blind_spots\": [\"未来工具输出格式变化\"], \"id\": \"S2\", \"independence\": \"工具自身版本输出\", \"method\": \"版本命令、子进程参数和环境白名单审查\", \"target\": \"工具和固定配置\"}",
+      "{\"blind_spots\": [\"镜像仓库临时不可用\"], \"id\": \"S3\", \"independence\": \"Docker Engine 和 MySQL 原生探针\", \"method\": \"docker compose config、container inspect、mysqladmin ping\", \"target\": \"Compose 与基础设施\"}",
+      "{\"blind_spots\": [\"未覆盖全部业务接口\"], \"id\": \"S4\", \"independence\": \"数据库和 HTTP 两类运行输出\", \"method\": \"Flyway 日志/历史表、Actuator HTTP、登录 HTTP、SQL 行断言\", \"target\": \"Flyway、健康与 admin 登录\"}",
+      "{\"blind_spots\": [\"macOS/Linux 尚需人工实测\"], \"id\": \"S5\", \"independence\": \"构建输出、OS 进程与运行 HTTP\", \"method\": \"Maven install 退出码、Node/Vite 日志、后端 PID 和重启后健康\", \"target\": \"热重载\"}",
+      "{\"blind_spots\": [\"异常断电\"], \"id\": \"S6\", \"independence\": \"OS 网络和 Docker 状态\", \"method\": \"端口探测、子进程状态、Docker 容器与卷列表\", \"target\": \"退出和资源状态\"}",
+      "{\"blind_spots\": [\"人工 Owner 复核质量\"], \"id\": \"S7\", \"independence\": \"仓库治理脚本\", \"method\": \"check-all-governance、check-codex-scope、git diff --check\", \"target\": \"治理和范围\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"创建三个 scripts/dev 文件\", \"authority\": \"任务 writable_paths\", \"id\": \"A1\", \"impact_radius\": \"本地开发入口\", \"rollback\": \"删除新脚本\", \"target\": \"跨平台入口与编排\"}",
+      "{\"action\": \"增加 Compose host-gateway\", \"authority\": \"任务 writable_paths\", \"id\": \"A2\", \"impact_radius\": \"本地 kkFileView 容器\", \"rollback\": \"回退 extra_hosts\", \"target\": \"kkFileView 宿主访问\"}",
+      "{\"action\": \"Node 在 reactor install 成功后重启 boot Maven 进程\", \"authority\": \"scripts/dev.mjs writable_paths 和本地进程权限\", \"id\": \"A3\", \"impact_radius\": \"本地后端开发进程\", \"rollback\": \"回退自动重启逻辑\", \"target\": \"后端重启\"}",
+      "{\"action\": \"更新根 AGENTS.md\", \"authority\": \"Owner 批准的 writable_paths\", \"id\": \"A4\", \"impact_radius\": \"仓库研发入口\", \"rollback\": \"回退提示段落\", \"target\": \"研发提示\"}",
+      "{\"action\": \"启动/停止本地容器和应用进程、精确更新 admin 哈希\", \"authority\": \"本地 Docker 与进程权限\", \"id\": \"A5\", \"impact_radius\": \"本机 RDDMP 开发环境\", \"rollback\": \"停止应用；保留卷；再次设置开发哈希\", \"target\": \"运行状态\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"启动失败或连接到错误服务\", \"source\": \"端口冲突\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"基础设施不可用\", \"source\": \"Docker Engine 权限或未启动\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"首次启动延迟或网络失败\", \"source\": \"依赖或镜像缓存缺失\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"重复 Maven 编译\", \"source\": \"文件事件风暴\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"退出后遗留进程\", \"source\": \"操作系统进程语义差异\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"本机 Node v24，项目最低 Node 20\", \"falsifier\": \"目标平台监听测试无法接收嵌套目录变化\", \"text\": \"Node.js 20+ 的递归 fs.watch 支持目标平台\"}",
+      "{\"evidence\": \"Docker Engine 29 和 Compose v5 支持 host-gateway\", \"falsifier\": \"运行文件预览探针无法连接\", \"text\": \"host-gateway 可供 kkFileView 访问宿主机 MinIO\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S5\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S6\", \"S7\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "提供可静态验证并可运行的跨平台启动入口、固定环境、基础设施和生命周期编排。",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Node v24.19.0、Java 17.0.2、Maven 3.9.16、npm 11.17.0、Docker 29.7.2、Compose v5.4.0 已探测",
+        "application-local.yml 已启用 Flyway",
+        "Vite dev script 已存在",
+        "现有固定容器名和历史卷的初始化密码不能由新环境变量覆盖"
+      ],
+      "write_scope": [
+        "scripts/dev.ps1",
+        "scripts/dev.sh",
+        "scripts/dev.mjs",
+        "docker-compose.yml",
+        ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T1.json"
+      ],
+      "invariants": [
+        "local-only",
+        "不覆盖 .env",
+        "不删除卷",
+        "不修改历史迁移",
+        "不打印 JWT 或 BCrypt 哈希"
+      ],
+      "interface_contracts": [
+        "wrapper 透传参数和退出码",
+        "dev.mjs 只接受默认或 --down",
+        "固定 COMPOSE_PROJECT_NAME=rddmp-dev、rddmp-dev-* 容器和项目卷",
+        "Compose 未传变量时保持 ccb-platform-* 默认值",
+        "admin SQL 精确限定 tenant_id=1、id=1、username=admin",
+        "初始 reactor install 后从 boot POM 启动"
+      ],
+      "non_goals": [
+        "应用容器化",
+        "自动安装工具",
+        "业务代码修改"
+      ],
+      "action_bounds": [
+        "仅创建三个启动文件并参数化 Compose 容器名/卷及 kkFileView extra_hosts",
+        "只启动 rddmp-dev 专用 Compose 服务和应用进程",
+        "只更新专用本地库 admin 精确行"
+      ],
+      "acceptance": [
+        "三种脚本语法通过",
+        "未知参数无副作用失败",
+        "Compose 默认值与 rddmp-dev 覆盖配置均通过",
+        "不接触 ccb-platform-* 历史资源",
+        "reactor install 后 boot POM 启动达到健康和登录",
+        "Ctrl+C 与 --down 符合资源状态"
+      ],
+      "evidence_required": [
+        "实际 diff",
+        "语法和版本退出码",
+        "Docker/MySQL/HTTP/登录/端口摘要",
+        "扰动和未决项"
+      ],
+      "rollback": "删除三个脚本并回退 docker-compose.yml extra_hosts。",
+      "stop_conditions": [
+        "需要远程地址、真实凭据、删除卷或修改历史迁移",
+        "发现任务范围外必需修改"
+      ],
+      "escalation_conditions": [
+        "host-gateway 无法支持目标平台",
+        "无法可靠清理应用进程树"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-04T07:10:56+00:00",
+          "text": "执行前采样完成；使用专用 rddmp-dev Docker 资源避免历史卷凭据污染"
+        },
+        {
+          "recorded_at": "2026-09-04T07:32:37+00:00",
+          "text": "开始实施跨平台启动、固定本地环境和运行链路"
+        },
+        {
+          "recorded_at": "2026-09-04T07:52:49+00:00",
+          "text": "T1 已实现，进入独立观测"
+        },
+        {
+          "recorded_at": "2026-09-04T08:01:49+00:00",
+          "text": "跨平台入口静态检查与 Windows 全链路运行通过"
+        }
+      ],
+      "updated_at": "2026-09-04T08:01:49+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "使后端变更触发 reactor 安装并由 Node 自动重启 boot 后端进程。",
+      "requirements": [
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "聚合根 spring-boot:run 实测找不到主类",
+        "reactor install 可生成 boot 依赖产物",
+        "boot POM 是实际 Spring Boot 启动模块"
+      ],
+      "write_scope": [
+        "scripts/dev.mjs",
+        ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T2.json"
+      ],
+      "invariants": [
+        "只在 install 成功后重启",
+        "install 失败保留当前后端",
+        "不修改任何 POM",
+        "Flyway 重启无失败"
+      ],
+      "interface_contracts": [
+        "mvn -pl :ccb-boot -am -DskipTests install",
+        "mvn -f server/src/platform/boot/pom.xml spring-boot:run",
+        "主动重启不触发全局失败"
+      ],
+      "non_goals": [
+        "DevTools",
+        "JRebel",
+        "POM 或 application 配置变更"
+      ],
+      "action_bounds": [
+        "只修改 dev.mjs 的初始构建、健康取消和后端重启状态机"
+      ],
+      "acceptance": [
+        "reactor install 和 boot POM 启动通过",
+        "install 后后端 PID 变化且健康恢复",
+        "install 失败不终止旧后端",
+        "后续变化可重试"
+      ],
+      "evidence_required": [
+        "dev.mjs diff",
+        "Maven 退出码",
+        "重启前后 PID、日志和健康摘要"
+      ],
+      "rollback": "回退 dev.mjs 的自动重启逻辑。",
+      "stop_conditions": [
+        "boot POM 仍找不到主类",
+        "重启导致 Flyway 异常"
+      ],
+      "escalation_conditions": [
+        "必须修改只读 POM 或 application 配置才能启动"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-04T07:52:49+00:00",
+          "text": "开始确认后端 reactor install 与自动重启"
+        },
+        {
+          "recorded_at": "2026-09-04T07:52:49+00:00",
+          "text": "T2 已实现，自动重启探针通过"
+        },
+        {
+          "recorded_at": "2026-09-04T08:01:49+00:00",
+          "text": "reactor install、PID 切换、Flyway 和健康恢复通过"
+        }
+      ],
+      "updated_at": "2026-09-04T08:01:49+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "补充 AGENTS 研发提示并完成治理、构建、范围和运行验收。",
+      "requirements": [
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1/T2 的最终 CLI 和运行行为已经形成证据"
+      ],
+      "write_scope": [
+        "AGENTS.md",
+        ".ai-control/requirements/req-20260904-063-dev-environment-runner/execution-T3.json"
+      ],
+      "invariants": [
+        "提示仅描述真实已实现行为",
+        "固定密码明确仅限本地",
+        "不声称未实测平台已通过"
+      ],
+      "interface_contracts": [
+        "Windows .\\scripts\\dev.ps1",
+        "macOS/Linux ./scripts/dev.sh",
+        "--down 不删卷"
+      ],
+      "non_goals": [
+        "修改 README 或正式治理规则",
+        "跨平台虚假运行结论"
+      ],
+      "action_bounds": [
+        "只在根 AGENTS 增加本地启动提示并运行授权检查"
+      ],
+      "acceptance": [
+        "AGENTS 命令和边界准确",
+        "治理、范围、后端测试、前端构建通过",
+        "Windows 全链路通过或形成可行动反馈"
+      ],
+      "evidence_required": [
+        "AGENTS diff",
+        "全部命令退出码",
+        "运行验收摘要",
+        "范围审计和残余风险"
+      ],
+      "rollback": "回退 AGENTS 提示，保留历史执行证据。",
+      "stop_conditions": [
+        "治理、范围、构建、Flyway、登录或清理失败"
+      ],
+      "escalation_conditions": [
+        "需要修改任务范围外文档或运行配置"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-04T07:52:49+00:00",
+          "text": "开始治理、范围、构建与最终回归收口"
+        },
+        {
+          "recorded_at": "2026-09-04T08:01:48+00:00",
+          "text": "T3 已实现并完成回归，进入观测"
+        },
+        {
+          "recorded_at": "2026-09-04T08:01:49+00:00",
+          "text": "Maven 15 模块、前端构建、范围和本任务治理证据通过"
+        }
+      ],
+      "updated_at": "2026-09-04T08:01:49+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "集成运行采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "空库/已有库 Flyway、登录、RBAC、热重启、Ctrl+C、--down、语法和构建均未观察到需求偏差",
+      "recorded_at": "2026-09-04T08:03:34+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "最终回归采样",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Maven 15 模块 BUILD SUCCESS，前端构建、最终 JSON、Compose 实际环境解析、范围和 diff 检查通过；本任务无治理错误",
+      "recorded_at": "2026-09-04T08:03:34+00:00"
+    }
+  ]
+}

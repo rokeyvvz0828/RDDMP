@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import {
   decideWorkflowTask,
@@ -116,7 +117,9 @@ function toInput(source: SubsystemChangeApplicationDetail['physicalDrafts'][numb
     ownerUserId: source.ownerUserId,
     description: source.description,
     remark: source.remark,
-    sourceRowVersion: source.sourceRowVersion
+    sourceRowVersion: source.sourceRowVersion,
+    securityNodeNo: source.securityNodeNo,
+    fileTransferNodeNo: source.fileTransferNodeNo
   }
 }
 
@@ -139,11 +142,6 @@ async function loadReferences() {
   if (results[5].status === 'fulfilled') frameworks.value = results[5].value
   if (results[6].status === 'fulfilled') deploymentPlatforms.value = results[6].value
   if (results[7].status === 'fulfilled') disasterRecoveryModes.value = results[7].value
-}
-
-function userLabel(id: number) {
-  const user = users.value.find(item => item.id === id)
-  return user ? `${user.displayName}（${user.username}）` : `用户 #${id}`
 }
 
 async function loadPublished(applicationDetail: SubsystemChangeApplicationDetail) {
@@ -272,9 +270,9 @@ onMounted(() => { void load() })
           <h2>{{ actionTypeLabels[application.actionType] }}{{ targetKindLabels[application.targetKind] }}</h2>
           <p>{{ application.reason }}</p>
         </div>
-        <UiStatusTag :value="application.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(application.status)" />
+        <UiStatusTag :value="application.status" :labels="applicationStatusLabels" :tone="applicationStatusTone(application.status)" indicator />
         <dl>
-          <div><dt>申请人</dt><dd>{{ userLabel(application.applicantId) }}</dd></div>
+          <div><dt>申请人</dt><dd><UiUserIdentity :user-id="application.applicantId" variant="standard" /></dd></div>
           <div><dt>业务轮次</dt><dd>第 {{ application.currentBusinessRound }} 轮</dd></div>
           <div><dt>创建时间</dt><dd>{{ formatDateTime(application.createdAt) }}</dd></div>
           <div><dt>最后更新</dt><dd>{{ formatDateTime(application.updatedAt) }}</dd></div>

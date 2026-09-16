@@ -10,6 +10,7 @@ import com.ccb.architecture.network.service.NetworkAccessService.SubmissionPrepa
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowProgress;
@@ -63,27 +64,30 @@ public class NetworkAccessApplicationSubmissionService {
         this.clock = Objects.requireNonNull(clock, "时钟不能为空");
     }
 
-    public NetworkAccessApplication submit(AuthUser actor, long applicationId, long expectedRowVersion) {
-        access.coordinateSubmission(actor, applicationId, expectedRowVersion,
-                preparation -> startWorkflow(actor, preparation));
-        return store.findApplication(actor.tenantId(), applicationId)
+    public NetworkAccessApplication submit(AuthUser actor, ProjectAccess project,
+                                           long applicationId, long expectedRowVersion) {
+        access.coordinateSubmission(actor, project, applicationId, expectedRowVersion,
+                preparation -> startWorkflow(actor, project, preparation));
+        return store.findApplication(actor.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> conflict("网络访问申请不存在"));
     }
 
-    public NetworkAccessApplication cancel(AuthUser actor, long applicationId, long expectedRowVersion) {
-        NetworkAccessApplication current = store.findApplication(actor.tenantId(), applicationId)
+    public NetworkAccessApplication cancel(AuthUser actor, ProjectAccess project,
+                                           long applicationId, long expectedRowVersion) {
+        NetworkAccessApplication current = store.findApplication(actor.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> conflict("网络访问申请不存在"));
         if (current.status() != ApplicationStatus.IN_REVIEW) {
-            return access.cancelApplication(actor, applicationId, expectedRowVersion);
+            return access.cancelApplication(actor, project, applicationId, expectedRowVersion);
         }
-        access.coordinateCancellation(actor, applicationId, expectedRowVersion,
+        access.coordinateCancellation(actor, project, applicationId, expectedRowVersion,
                 preparation -> terminateWorkflow(actor, preparation));
-        return store.findApplication(actor.tenantId(), applicationId)
+        return store.findApplication(actor.tenantId(), project.id(), applicationId)
                 .orElseThrow(() -> conflict("网络访问申请不存在"));
     }
 
-    private void startWorkflow(AuthUser actor, SubmissionPreparation preparation) {
-        NetworkAccessApplication prepared = store.lockApplication(actor.tenantId(), preparation.applicationId())
+    private void startWorkflow(AuthUser actor, ProjectAccess project, SubmissionPreparation preparation) {
+        NetworkAccessApplication prepared = store.lockApplication(
+                        actor.tenantId(), project.id(), preparation.applicationId())
                 .orElseThrow(() -> conflict("提交准备后的网络访问申请不存在"));
         if (prepared.status() != ApplicationStatus.IN_REVIEW
                 || prepared.currentBusinessRound() != preparation.nextRound() - 1) {
@@ -91,21 +95,23 @@ public class NetworkAccessApplicationSubmissionService {
         }
 
         long roundId = nextId();
-        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.id(),
+        store.insertPendingWorkflowRound(new WorkflowRound(
+                roundId, prepared.tenantId(), prepared.projectId(), prepared.id(),
                 preparation.nextRound(), null, null, null, null, WorkflowRoundStatus.PENDING,
                 null, null, null, null));
-        WorkflowBusinessContext context = context(prepared, preparation);
+        WorkflowBusinessContext context = context(prepared, project, preparation);
         WorkflowStartResult result = workflowGateway.startByCode(new WorkflowStartCommand(
                 WORKFLOW_DEFINITION_CODE, context, workflowVariables(prepared)), actor);
         validateWorkflowResult(result, context);
 
         LocalDateTime startedAt = LocalDateTime.now(clock);
-        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.id(), preparation.nextRound(),
+        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.projectId(),
+                prepared.id(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), startedAt)) {
             throw conflict("网络访问申请审批轮次启动状态已变化");
         }
-        if (!store.compareAndSetApplicationWorkflowContext(prepared.tenantId(), prepared.id(),
+        if (!store.compareAndSetApplicationWorkflowContext(prepared.tenantId(), prepared.projectId(), prepared.id(),
                 prepared.currentBusinessRound(), prepared.rowVersion(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), actor.id())) {
@@ -124,7 +130,7 @@ public class NetworkAccessApplicationSubmissionService {
                 preparation.businessRound(), "申请人取消网络访问申请"), actor);
     }
 
-    private WorkflowBusinessContext context(NetworkAccessApplication application,
+    private WorkflowBusinessContext context(NetworkAccessApplication application, ProjectAccess project,
                                             SubmissionPreparation preparation) {
         return new WorkflowBusinessContext(
                 MODULE_CODE,
@@ -133,8 +139,8 @@ public class NetworkAccessApplicationSubmissionService {
                 String.valueOf(application.id()),
                 "网络访问申请 " + application.applicationNo(),
                 preparation.nextRound(),
-                null,
-                null,
+                project.projectRef(),
+                project.projectName(),
                 DETAIL_PATH_PREFIX,
                 preparation.digest());
     }
@@ -156,6 +162,8 @@ public class NetworkAccessApplicationSubmissionService {
                 || !Objects.equals(result.context().businessType(), expected.businessType())
                 || !Objects.equals(result.context().businessKey(), expected.businessKey())
                 || result.context().businessRound() != expected.businessRound()
+                || !Objects.equals(result.context().projectRef(), expected.projectRef())
+                || !Objects.equals(result.context().projectName(), expected.projectName())
                 || !Objects.equals(result.context().dataDigest(), expected.dataDigest())) {
             throw conflict("审批流程启动结果与网络访问申请上下文不一致");
         }

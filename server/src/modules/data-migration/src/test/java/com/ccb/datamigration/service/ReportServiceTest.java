@@ -102,7 +102,7 @@ class ReportServiceTest {
     private ReportService service(StubJdbcTemplate jdbc, AttachmentGateway attachments) {
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
         ContentAttachmentService contentAttachments = new ContentAttachmentService(jdbc, attachments);
-        ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments, permissions);
+        ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments);
         return new ReportService(jdbc, attachments, contentAttachments, fileAssets, permissions, TestDataMigrationCodeValues.service());
     }
 

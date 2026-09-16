@@ -12,6 +12,7 @@ import com.ccb.architecture.change.service.SubsystemChangeService.SubmissionPrep
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowProgress;
@@ -71,27 +72,29 @@ public class ArchitectureSubsystemSubmissionService {
     }
 
     /** 申请人本人提交；manage 用户发起自己的申请时仍走同一工作流。 */
-    public ApplicationDetail submit(AuthUser actor, long applicationId, long expectedRowVersion) {
-        changes.coordinateSubmission(actor, AccessScope.OWN, applicationId, expectedRowVersion,
-                preparation -> startWorkflow(actor, preparation));
-        return changes.detail(actor, AccessScope.OWN, applicationId);
+    public ApplicationDetail submit(AuthUser actor, ProjectAccess project, long applicationId,
+                                    long expectedRowVersion) {
+        changes.coordinateSubmission(actor, project, AccessScope.OWN, applicationId, expectedRowVersion,
+                preparation -> startWorkflow(actor, project, preparation));
+        return changes.detail(actor, project, AccessScope.OWN, applicationId);
     }
 
     /**
      * 草稿/退回同步取消；审批中先登记取消请求并调用 terminate，等待当前轮次 TERMINATED 事件终态化。
      */
-    public ApplicationDetail cancel(AuthUser actor, long applicationId, long expectedRowVersion) {
-        ApplicationDetail current = changes.detail(actor, AccessScope.OWN, applicationId);
+    public ApplicationDetail cancel(AuthUser actor, ProjectAccess project, long applicationId,
+                                    long expectedRowVersion) {
+        ApplicationDetail current = changes.detail(actor, project, AccessScope.OWN, applicationId);
         if (current.application().status() != ApplicationStatus.IN_REVIEW) {
-            return changes.cancel(actor, AccessScope.OWN, applicationId, expectedRowVersion);
+            return changes.cancel(actor, project, AccessScope.OWN, applicationId, expectedRowVersion);
         }
-        changes.coordinateCancellation(actor, applicationId, expectedRowVersion,
+        changes.coordinateCancellation(actor, project, applicationId, expectedRowVersion,
                 preparation -> terminateWorkflow(actor, preparation));
-        return changes.detail(actor, AccessScope.OWN, applicationId);
+        return changes.detail(actor, project, AccessScope.OWN, applicationId);
     }
 
-    private void startWorkflow(AuthUser actor, SubmissionPreparation preparation) {
-        ChangeApplication prepared = store.lockApplication(actor.tenantId(), preparation.applicationId())
+    private void startWorkflow(AuthUser actor, ProjectAccess project, SubmissionPreparation preparation) {
+        ChangeApplication prepared = store.lockApplication(actor.tenantId(), project.id(), preparation.applicationId())
                 .orElseThrow(() -> conflict("提交准备后的工单不存在"));
         if (prepared.status() != ApplicationStatus.IN_REVIEW
                 || prepared.currentBusinessRound() != preparation.nextRound() - 1) {
@@ -99,21 +102,21 @@ public class ArchitectureSubsystemSubmissionService {
         }
 
         long roundId = nextId();
-        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.id(),
+        store.insertPendingWorkflowRound(new WorkflowRound(roundId, prepared.tenantId(), prepared.projectId(), prepared.id(),
                 preparation.nextRound(), null, null, null, null, WorkflowRoundStatus.PENDING,
                 null, null, null, null));
-        WorkflowBusinessContext context = context(prepared, preparation);
+        WorkflowBusinessContext context = context(prepared, project, preparation);
         WorkflowStartResult result = workflowGateway.startByCode(new WorkflowStartCommand(
                 WORKFLOW_DEFINITION_CODE, context, workflowVariables(prepared, preparation)), actor);
         validateWorkflowResult(result, context);
 
         LocalDateTime startedAt = LocalDateTime.now(clock);
-        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.id(), preparation.nextRound(),
+        if (!store.bindWorkflowRoundStarted(prepared.tenantId(), prepared.projectId(), prepared.id(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), startedAt)) {
             throw conflict("审批轮次启动状态已变化");
         }
-        if (!store.compareAndSetApplicationWorkflowContext(prepared.tenantId(), prepared.id(),
+        if (!store.compareAndSetApplicationWorkflowContext(prepared.tenantId(), prepared.projectId(), prepared.id(),
                 prepared.currentBusinessRound(), prepared.rowVersion(), preparation.nextRound(),
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 preparation.digest(), actor.id())) {
@@ -132,7 +135,11 @@ public class ArchitectureSubsystemSubmissionService {
                 preparation.businessRound(), "申请人取消架构子系统变更工单"), actor);
     }
 
-    private WorkflowBusinessContext context(ChangeApplication application, SubmissionPreparation preparation) {
+    private WorkflowBusinessContext context(ChangeApplication application, ProjectAccess project,
+                                            SubmissionPreparation preparation) {
+        if (application.projectId() != project.id()) {
+            throw conflict("架构子系统工单与当前项目不一致");
+        }
         return new WorkflowBusinessContext(
                 MODULE_CODE,
                 MODULE_NAME,
@@ -140,8 +147,8 @@ public class ArchitectureSubsystemSubmissionService {
                 String.valueOf(application.id()),
                 "架构子系统变更申请 " + application.id(),
                 preparation.nextRound(),
-                null,
-                null,
+                project.projectRef(),
+                project.projectName(),
                 DETAIL_PATH_PREFIX + application.id(),
                 preparation.digest());
     }
@@ -164,6 +171,8 @@ public class ArchitectureSubsystemSubmissionService {
                 || !Objects.equals(result.context().businessType(), expected.businessType())
                 || !Objects.equals(result.context().businessKey(), expected.businessKey())
                 || result.context().businessRound() != expected.businessRound()
+                || !Objects.equals(result.context().projectRef(), expected.projectRef())
+                || !Objects.equals(result.context().projectName(), expected.projectName())
                 || !Objects.equals(result.context().dataDigest(), expected.dataDigest())) {
             throw conflict("审批流程启动结果与架构子系统工单上下文不一致");
         }

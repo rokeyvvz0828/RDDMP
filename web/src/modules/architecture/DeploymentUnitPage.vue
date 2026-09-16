@@ -9,6 +9,7 @@ import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   createDeploymentUnit,
   deactivateDeploymentUnit,
@@ -34,6 +35,7 @@ import {
 import './architecture.css'
 
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 const rows = ref<DeploymentUnit[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -89,6 +91,8 @@ const canView = computed(() => auth.hasPermission('architecture:deployment-unit:
   || auth.hasPermission('architecture:deployment-unit:manage')
   || ['architecture:view', 'architecture:apply', 'architecture:manage'].some(p => auth.hasPermission(p)))
 const canManage = computed(() => auth.hasPermission('architecture:deployment-unit:manage'))
+// 关联写入统一要求交付单元维护权限（与发起侧无关，见设计修订2）
+const canManageRelations = computed(() => auth.hasPermission('architecture:delivery-unit:manage'))
 
 function text(value: string | null | undefined) {
   const normalized = value?.trim()
@@ -183,6 +187,7 @@ async function searchRelatedOptions(keyword = '') {
 }
 
 async function loadPhysicals() {
+  if (!projectContext.currentRef) return
   try {
     physicalOptions.value = await loadPhysicalSubsystemOptions('', 100)
   } catch (error) {
@@ -199,7 +204,7 @@ async function loadNetworkZones() {
 }
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   const request = ++listRequest
   loading.value = true
   loadError.value = ''
@@ -406,8 +411,8 @@ async function refresh() {
 function changePage(value: number) { page.value = value; void load() }
 function changePageSize(value: number) { pageSize.value = value; page.value = 1; void load() }
 
-watch(canView, allowed => {
-  if (allowed) void Promise.all([load(), loadPhysicals(), loadNetworkZones()])
+watch(() => [canView.value, projectContext.currentRef] as const, ([allowed, projectRef]) => {
+  if (allowed && projectRef) void Promise.all([load(), loadPhysicals(), loadNetworkZones()])
 }, { immediate: true })
 
 </script>
@@ -458,10 +463,12 @@ watch(canView, allowed => {
       :title="detail?.name || '部署单元详情'"
       :unit="detail"
       :versions="versions"
+      :can-manage-relations="canManageRelations"
       @edit="detail && openEdit(detail)"
       @deactivate="detail && confirmLifecycle('deactivate', detail)"
       @reactivate="detail && confirmLifecycle('reactivate', detail)"
       @void="detail && confirmLifecycle('void', detail)"
+      @updated="() => { void load() }"
     />
 
     <el-dialog v-model="formOpen" :title="formMode === 'create' ? '新建部署单元' : '修改并发布新版本'" width="min(620px, 94vw)" destroy-on-close :before-close="requestCloseForm">
@@ -492,11 +499,12 @@ watch(canView, allowed => {
             collapse-tags-tooltip
             :loading="relatedLoading"
             :remote-method="searchRelatedOptions"
-            :no-data-text="relatedError || '没有匹配的启用部署单元'"
             placeholder="按名称、编号或物理子系统搜索，可多选"
             class="architecture-related-unit-select"
           >
             <el-option v-for="unit in relatedOptions" :key="unit.id" :label="`${unit.name}（${unit.code} · ${unit.physicalSubsystemName || '未知物理子系统'}）`" :value="unit.id" />
+            <!-- remote 选择器必须在空结果时提供 empty 插槽，否则下拉会自动收起 -->
+            <template #empty><p class="el-select-dropdown__empty">{{ relatedError || '没有匹配的启用部署单元' }}</p></template>
           </el-select>
           <p v-if="relatedError" class="architecture-field-error">{{ relatedError }}，已选项已保留，可重新输入关键字重试。</p>
         </el-form-item>

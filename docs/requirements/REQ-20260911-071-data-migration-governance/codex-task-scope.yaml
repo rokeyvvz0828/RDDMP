@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260911-071", "status": "ready", "document": "docs/requirements/REQ-20260911-071-data-migration-governance/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "codex", "module": "business/data-migration", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260820-031-data-migration", "worktree": "/home/song/workspace/RDDMP"},
+  "scope": {
+    "writable_paths": ["scripts/check-ai-control-layout.mjs", "docs/requirements/REQ-20260911-071-data-migration-governance/**", ".ai-control/requirements/req-20260911-071-dm-governance/*.json", ".ai-control/requirements/req-20260820-031-data-migration-asset-library-v3/*.json", ".ai-control/requirements/req-20260906-067-dm-param/*.json", ".ai-control/requirements/req-20260910-068-dm-dependency/*.json", ".ai-control/requirements/req-20260910-069-dm-param-field/*.json"],
+    "read_only_paths": ["server/**", "web/**", "docs/governance/**", "governance/**"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "仅回退治理脚本和账本格式调整"},
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [{"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "数据迁移治理规则通过，剩余历史阻塞明确"}, {"name": "diff-check", "command": "git diff --check", "expected": "无空白错误"}],
+  "risk": {"level": "medium", "items": ["历史账本命名兼容规则可能影响全仓库检查", "缺失验收证据不能自动补写"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260911-071-dm-governance", "acceptance_evidence": [], "rollback": "回退治理脚本和账本格式调整"},
+  "codex": {"production_access": false, "contains_confidential_information": false}
+}

@@ -1,0 +1,70 @@
+{
+  "iteration_id": "I13",
+  "task_id": "T5",
+  "status": "verified",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeliveryUnitStore.java",
+      "purpose": "交付单元批量读取、同子系统启用候选、部署单元侧覆盖式替换"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/DeliveryUnitService.java",
+      "purpose": "部署单元侧候选与关联保存的服务校验与审计"
+    },
+    {
+      "path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/web/DeploymentUnitDeliveryUnitController.java",
+      "purpose": "新增 PUT delivery-units 与 GET delivery-unit-options"
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test-compile",
+      "exit_code": 1,
+      "salient_output": "预期的失败信号：cannot find symbol replaceDeploymentUnitsFromDeploymentSide"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitMySqlTest",
+      "exit_code": 0,
+      "salient_output": "Tests run: 12, Failures: 0, Errors: 0（含不对版本与关系历史产生副作用的两条断言）"
+    },
+    {
+      "command": "mvn -q -pl :ccb-architecture -am test -Dtest=DeliveryUnitServiceTest,DeliveryUnitControllerTest,DeploymentUnitServiceTest,DeploymentUnitControllerTest",
+      "exit_code": 0,
+      "salient_output": "Tests run: 24+10+18+3, Failures: 0, Errors: 0"
+    },
+    {
+      "command": "git commit -m \"feat(architecture): 部署单元侧支持关联交付单元（方案A后端）\"",
+      "exit_code": 0,
+      "salient_output": "见 git log"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "部署单元侧候选仅限同物理子系统启用交付单元（MySQL searchActiveOptions 断言）；跨物理子系统关联 409（服务测试）",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "两侧写同一张关系表：MySQL 断言部署单元侧保存后交付单元侧查询可见、清空后两侧同步消失",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "result": "pass",
+      "evidence": "PUT /deployment-units/{id}/delivery-units 要求 architecture:delivery-unit:manage；候选接口沿用部署单元查看权限；均写入审计",
+      "limitations": [
+        "由同一 Agent 执行与观测，非独立验证"
+      ]
+    }
+  ],
+  "feedback": [],
+  "correction": null,
+  "next": "controlling"
+}

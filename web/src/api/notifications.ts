@@ -2,6 +2,11 @@ import http from './http'
 import type { ApiResponse } from '../types/auth'
 import type { NotificationModuleSummary, NotificationPage, NotificationView } from '../types/notification'
 
+export interface NotificationStreamTicket {
+  ticket: string
+  expiresAt: string
+}
+
 export function getNotifications(page = 1, size = 20, view: NotificationView = 'ALL', moduleCode?: string) {
   return http.get<ApiResponse<NotificationPage>>('/notifications', {
     params: { page, size, view, moduleCode: moduleCode || undefined }
@@ -14,6 +19,10 @@ export function getNotificationModules(view: NotificationView = 'ALL') {
 
 export function getNotificationUnreadCount() {
   return http.get<ApiResponse<{ count: number }>>('/notifications/unread-count')
+}
+
+export function createNotificationStreamTicket() {
+  return http.post<ApiResponse<NotificationStreamTicket>>('/notifications/stream-ticket')
 }
 
 export function markNotificationRead(notificationId: number) {

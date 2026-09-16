@@ -40,20 +40,20 @@ class ArchitectureSubsystemRepositoryTest {
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
 
-        repository.pagePhysical(9L, new PageQuery(1, 20),
+        repository.pagePhysical(9L, 91L, new PageQuery(1, 20),
                 new PhysicalSubsystemQuery("W", "物理", "系统", "逻辑域",
                         "architecture.business-component.employee-portal", "事业群", 31L, "VOIDED"));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).query(sql.capture(), any(RowMapper.class), args.capture());
-        assertTrue(sql.getValue().contains("tenant_id = ? AND deleted = 0"));
+        assertTrue(sql.getValue().contains("tenant_id = ? AND project_id = ? AND deleted = 0"));
         assertTrue(sql.getValue().contains("logical_subsystem_name LIKE ?"));
         assertTrue(sql.getValue().contains("business_component_code = ?"));
         assertTrue(sql.getValue().contains("status = ?"));
         assertTrue(sql.getValue().contains("logical_subsystem_name, business_component_code"));
         assertFalse(sql.getValue().contains("logical_subsystem_id"));
-        assertEquals(List.of(9L, "%W%", "%物理%", "%系统%", "%逻辑域%",
+        assertEquals(List.of(9L, 91L, "%W%", "%物理%", "%系统%", "%逻辑域%",
                         "architecture.business-component.employee-portal", "%事业群%", 31L, "VOIDED", 20L, 0L),
                 List.of(args.getValue()));
     }
@@ -62,28 +62,29 @@ class ArchitectureSubsystemRepositoryTest {
     void 唯一性检查可排除当前物理记录且包含软删除历史() {
         when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
 
-        assertTrue(repository.physicalCodeExists(9L, "PHY_DEMO", 12L));
+        assertTrue(repository.physicalCodeExists(9L, 91L, "PHY_DEMO", 12L));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForObject(sql.capture(), eq(Long.class), args.capture());
         assertTrue(sql.getValue().contains("arch_physical_subsystem"));
         assertTrue(sql.getValue().contains("code = ?"));
+        assertTrue(sql.getValue().contains("project_id = ?"));
         assertTrue(sql.getValue().contains("id <> ?"));
         assertFalse(sql.getValue().contains("deleted = 0"));
-        assertEquals(List.of(9L, "PHY_DEMO", 12L), List.of(args.getValue()));
+        assertEquals(List.of(9L, 91L, "PHY_DEMO", 12L), List.of(args.getValue()));
     }
 
     @Test
     void 软删除物理仍限定当前租户和未删除记录() {
         when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
 
-        assertEquals(1, repository.softDeletePhysical(9L, 12L, 7L));
+        assertEquals(1, repository.softDeletePhysical(9L, 91L, 12L, 7L));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).update(sql.capture(), args.capture());
-        assertTrue(sql.getValue().contains("tenant_id = ? AND id = ? AND deleted = 0"));
-        assertEquals(List.of(7L, 9L, 12L), List.of(args.getValue()));
+        assertTrue(sql.getValue().contains("tenant_id = ? AND project_id = ? AND id = ? AND deleted = 0"));
+        assertEquals(List.of(7L, 9L, 91L, 12L), List.of(args.getValue()));
     }
 }

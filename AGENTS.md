@@ -16,6 +16,47 @@
 
 所有实现、修复、重构和代码评审任务必须读取并执行 `.agents/skills/rddmp-delivery-engineer/SKILL.md`，业务功能、跨模块功能和复杂需求还必须遵循 `control-engineering` 插件的需求定标、系统建模、任务规划、受控执行、独立观测、偏差纠正和收敛验收闭环。Skill 不能扩大任务权限，也不能替代需求和任务范围。
 
+## 常用命令
+
+```powershell
+# Windows：启动本地开发环境（local、Flyway、前后端热重载；账号 admin/admin123，仅限本机）
+.\scripts\dev.ps1
+
+# Windows：停止本地基础设施，保留数据卷
+.\scripts\dev.ps1 --down
+```
+
+```bash
+# macOS/Linux/WSL：启动本地开发环境（local、Flyway、前后端热重载；账号 admin/admin123，仅限本机）
+./scripts/dev.sh
+
+# macOS/Linux/WSL：停止本地基础设施，保留数据卷
+./scripts/dev.sh --down
+```
+
+```bash
+# 检查研发准入和工程控制插件
+node scripts/check-development-entry.mjs --require-plugin
+
+# 查看本地容器状态
+docker ps --filter "name=rddmp-dev-"
+
+# 检查治理规则和 Flyway 迁移
+node scripts/check-all-governance.mjs
+node scripts/check-flyway-migrations.mjs
+
+# 执行后端聚焦测试和完整测试
+mvn -pl :ccb-boot -am test
+mvn test
+
+# 执行前端生产构建
+npm --prefix web run build
+
+# 检查未提交修改和空白错误
+git status --short
+git diff --check
+```
+
 ## 业务前端设计准入
 
 - 新增或改造业务功能时，必须先检查 `web/src/modules/delivery-showcase/` 中的页面结构、组件组合、交互状态和语义主题样式，并优先复用交付示范中心已验证的设计。

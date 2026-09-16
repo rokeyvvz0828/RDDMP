@@ -1,0 +1,119 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardMetricDefinition.java",
+      "purpose": "建立13项静态白名单和同源计数/下钻SQL"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java",
+      "purpose": "新增单指标实时计数和固定20条分页下钻"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricDefinitionTest.java",
+      "purpose": "验证白名单、颗粒度、最终域字段和未知码拒绝"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardServiceTest.java",
+      "purpose": "验证SQL条件、参数、稳定排序和分页边界"
+    },
+    {
+      "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DashboardMetricMySqlTest.java",
+      "purpose": "MySQL 8.4验证13项口径、作用域、分页、索引和局部延迟"
+    }
+  ],
+  "requirements_addressed": [
+    "R1",
+    "R4",
+    "R5",
+    "R7"
+  ],
+  "commands": [
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 1,
+      "salient_output": "预期失败基准：18个缺失DashboardMetricDefinition/metric/drilldown符号"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "Tests run: 7, Failures: 0, Errors: 0, Skipped: 0"
+    },
+    {
+      "command": "mvn -pl :ccb-data-migration -am -Dtest=DashboardMetricDefinitionTest,DashboardServiceTest,DashboardMetricMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "salient_output": "MySQL 8.4容器启动；Tests run: 9, Failures: 0, Errors: 0, Skipped: 0"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "13项静态白名单与最终域字段",
+      "result": "pass",
+      "evidence": "DashboardMetricDefinitionTest 4项通过",
+      "limitations": []
+    },
+    {
+      "check": "服务SQL租户/项目/deleted/颗粒度/分页",
+      "result": "pass",
+      "evidence": "DashboardServiceTest 3项通过",
+      "limitations": [
+        "使用JdbcTemplate捕获替身，不覆盖优化器"
+      ]
+    },
+    {
+      "check": "真实MySQL口径和查询计划",
+      "result": "pass",
+      "evidence": "DashboardMetricMySqlTest 2项通过，EXPLAIN ANALYZE命中idx_dm_plan_dashboard",
+      "limitations": [
+        "最小测试表和数据量不代表生产最大项目"
+      ]
+    },
+    {
+      "check": "局部性能门槛",
+      "result": "pass",
+      "evidence": "20轮13项与下钻P95断言通过",
+      "limitations": [
+        "本地容器小数据样本，仅验证明显回归"
+      ]
+    }
+  ],
+  "diff_summary": [
+    "新增枚举式静态查询定义，所有SQL标识符来自编译期常量",
+    "新增metric和drilldown只读方法，复用现有requireProject并保留overall/component",
+    "新增9项聚焦及MySQL测试"
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "认证租户、可访问项目和deleted=0恒定过滤",
+      "result": "pass",
+      "evidence": "服务参数测试与MySQL跨租户/项目/删除夹具"
+    },
+    {
+      "invariant": "指标计数与下钻共享同一静态定义",
+      "result": "pass",
+      "evidence": "两条路径都消费countSql/scopeArguments，MySQL全分页一致"
+    },
+    {
+      "invariant": "不修改兼容overall/component与CRUD",
+      "result": "pass",
+      "evidence": "DashboardService旧方法保持未改"
+    },
+    {
+      "invariant": "不增加缓存、调度、快照或迁移",
+      "result": "pass",
+      "evidence": "T1 diff仅服务、定义和测试"
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "规则与参数已完成后续域化，旧doc_code/doc_name列不存在",
+      "impact": "静态定义改用rule_code/rule_code_desc与parameter_name，符合当前Service事实"
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "目标环境代表性数据量P95和生产索引计划留到T4运行验收"
+  ],
+  "recommended_next": "observe"
+}

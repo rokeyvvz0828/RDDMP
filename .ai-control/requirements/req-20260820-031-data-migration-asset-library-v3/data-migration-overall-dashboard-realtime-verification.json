@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "prefix": "req-20260820-031-data-migration-asset-library-v3",
+  "baseline_revision": "2",
+  "requirement_results": [
+    {"id": "R1", "status": "pass", "evidence": "T1 MySQL/JUnit口径、T3浏览器13项和总量完整性"},
+    {"id": "R2", "status": "pass", "evidence": "T2调度退役与路由回归、T4静态搜索和Network"},
+    {"id": "R3", "status": "pass", "evidence": "T3受控并发4路、独立失败/重试和项目代次隔离"},
+    {"id": "R4", "status": "pass", "evidence": "T1固定分页契约、T3点击后滚动两页且无预取"},
+    {"id": "R5", "status": "pass", "evidence": "T1租户项目deleted过滤、T2 RBAC、T3未知码与切换隔离"},
+    {"id": "R6", "status": "pass", "evidence": "T3六个明暗主题视口、无横向溢出、canvas非空"},
+    {"id": "R7", "status": "pass", "evidence": "T1/T4 EXPLAIN与单指标8ms、13项93ms、下钻15ms本地P95"}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": "DashboardMetricDefinition/Service/MySQL tests"},
+    {"id": "T2", "status": "verified", "evidence": "DashboardControllerSecurityTest、模块注册测试和静态审计"},
+    {"id": "T3", "status": "verified", "evidence": "前端构建与Playwright网络/DOM/截图验收"},
+    {"id": "T4", "status": "verified", "evidence": "170项全量模块测试、11项聚焦测试、治理/范围/diff检查"}
+  ],
+  "feedback_summary": [],
+  "sample_trend": [
+    {"label": "T1后端契约采样", "score": 0},
+    {"label": "T3前端集成采样", "score": 0},
+    {"label": "T4组合性能治理完成采样", "score": 0}
+  ],
+  "regression_checks": [
+    {"name": "backend-module-tests", "result": "pass", "evidence": "170 tests, 0 failures/errors"},
+    {"name": "dashboard-focused-tests", "result": "pass", "evidence": "11 tests, 0 failures/errors"},
+    {"name": "frontend-build", "result": "pass", "evidence": "npm --prefix web run build exit 0"},
+    {"name": "scope-audit", "result": "pass", "evidence": "check-codex-scope passed"},
+    {"name": "governance", "result": "blocked-by-external-disturbance", "evidence": "REQ-20260904-061 scope YAML格式不兼容；未修改任务外文件"}
+  ],
+  "invariant_results": [
+    {"name": "no-dashboard-snapshot-runtime", "result": "pass", "evidence": "主源码静态搜索无命中"},
+    {"name": "shared-definition-for-count-and-drilldown", "result": "pass", "evidence": "DashboardMetricDefinition统一提供SQL"},
+    {"name": "no-unrelated-surface-change", "result": "pass", "evidence": "产品改动限数据迁移模块看板授权路径"}
+  ],
+  "scope_audit": {"result": "pass", "evidence": "Codex scope check passed"},
+  "disturbance_resilience": [{"source": "REQ-20260904-061格式错误", "result": "isolated", "evidence": "任务范围检查独立通过"}],
+  "residual_risks": ["生产代表性数据量P95和生产EXPLAIN仍需上线前复测", "全局治理脚本需待任务外REQ-061修复后重跑"],
+  "gate_result": "pass",
+  "route_reason": "T1-T4均已verified，最终采样误差为0，R1-R7均有独立证据；仅任务外治理脚本格式错误隔离记录",
+  "verdict": "all_in_scope_requirements_verified"
+}

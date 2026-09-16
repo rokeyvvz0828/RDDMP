@@ -1,0 +1,2393 @@
+{
+  "schema_version": 4,
+  "revision": 29,
+  "created_at": "2026-09-09T06:04:01+00:00",
+  "updated_at": "2026-09-09T07:04:26+00:00",
+  "mode": "high-assurance",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the proposed SSE design and requested implementation with '按此调整'.；计划确认=User requested direct implementation after confirming the SSE design.",
+      "recorded_at": "2026-09-09T06:04:01+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "R1-R4 均有可判别验收和测量意图",
+      "recorded_at": "2026-09-09T06:07:19+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "R1-R4 均可观测且在授权范围内可控",
+      "recorded_at": "2026-09-09T06:07:19+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "计划覆盖 R1-R4 且任务依赖无环",
+      "recorded_at": "2026-09-09T06:07:19+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "All three implemented task outputs are measurable",
+      "recorded_at": "2026-09-09T06:58:19+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "All tasks independently observed with three zero-error samples",
+      "recorded_at": "2026-09-09T06:59:24+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "High-assurance gate passed with three zero-error samples and all tasks verified",
+      "recorded_at": "2026-09-09T07:04:26+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the proposed SSE design and requested implementation with '按此调整'.；计划确认=User requested direct implementation after confirming the SSE design.",
+        "recorded_at": "2026-09-09T06:04:01+00:00",
+        "data": {
+          "objective": "Replace one-second notification polling with secure event-driven SSE while preserving eventual consistency during outages.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "The notification center must refresh from server invalidation events instead of one-second polling.",
+              "acceptance": [
+                "Normal connected idle pages issue no one-second unread-count requests",
+                "An event refreshes unread count and an open drawer"
+              ],
+              "priority": "must",
+              "source": "user-approved SSE design",
+              "counterexample": [
+                "A recurring 1000 ms unread-count timer remains"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "SSE authentication must use a short-lived single-use ticket bound to the authenticated tenant and user.",
+              "acceptance": [
+                "Ticket expires after 30 seconds",
+                "Reused, expired, or invalid tickets return unauthorized",
+                "JWT is absent from the stream URL"
+              ],
+              "priority": "must",
+              "source": "user-approved authentication decision",
+              "counterexample": [
+                "Access JWT appears in query parameters"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Notification mutations must invalidate all live tabs for affected users only after successful transaction commit.",
+              "acceptance": [
+                "Rows changed causes matching tenant/user emitters to receive notification",
+                "Rollback and zero-row updates emit nothing",
+                "Heartbeat is sent every 25 seconds and dead emitters are removed"
+              ],
+              "priority": "must",
+              "source": "confirmed design",
+              "counterexample": [
+                "Rollback sends a notification event"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "The client and proxies must recover from interruption without restoring high-frequency polling.",
+              "acceptance": [
+                "Reconnect delays are 1/2/5/15/30 seconds",
+                "Persistent failure enables 60-second fallback polling",
+                "Hidden pages disconnect and visible pages reconnect",
+                "Nginx does not buffer the SSE endpoint"
+              ],
+              "priority": "must",
+              "source": "confirmed design",
+              "counterexample": [
+                "Hidden tabs retain connections indefinitely",
+                "Fallback polls every second"
+              ]
+            }
+          ],
+          "invariants": [
+            "Existing notification CRUD contracts remain compatible",
+            "Tenant and recipient isolation remains server-enforced",
+            "SSE payload contains no business or personal data",
+            "No database migration"
+          ],
+          "constraints": [
+            "Java 17",
+            "Spring Boot 3.4.4",
+            "Vue 3 native EventSource",
+            "single backend instance",
+            "preserve unrelated rokey changes"
+          ],
+          "non_goals": [
+            "WebSocket",
+            "Redis Pub/Sub",
+            "horizontal scaling",
+            "remote deployment",
+            "notification UI redesign"
+          ],
+          "assumptions": [
+            {
+              "text": "Deployment has one backend instance",
+              "basis": "confirmed current deployment",
+              "falsifier": "more than one backend replica"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use SSE and a one-time stream ticket",
+              "reason": "Fits unidirectional updates without exposing JWT",
+              "source": "user approval"
+            }
+          ],
+          "measurement_intents": [
+            "focused Java tests",
+            "frontend production build",
+            "governance checks",
+            "browser network inspection",
+            "Nginx config review"
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "用户批准 SSE 设计，需求基准复核通过",
+        "recorded_at": "2026-09-09T06:07:19+00:00",
+        "data": {
+          "objective": "以安全、可恢复的 SSE 通知失效事件替代通知中心每秒轮询。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "正常连接期间通知中心必须由服务端事件触发刷新，不得保持每秒未读数轮询。",
+              "acceptance": [
+                "初始化查询一次未读数",
+                "收到事件刷新未读数和打开的抽屉",
+                "空闲一分钟无 1000ms 未读数请求"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "保留 1000ms 定时查询"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "SSE 必须使用绑定认证租户和用户的 30 秒单次票据建立。",
+              "acceptance": [
+                "无效、过期、复用票据返回 401",
+                "JWT 不出现在流 URL",
+                "合法票据只恢复签发用户身份"
+              ],
+              "priority": "must",
+              "source": "用户确认的认证方案",
+              "counterexample": [
+                "JWT 直接放查询参数"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "通知数据实际变化后必须仅在事务成功提交时通知受影响用户的全部在线页签。",
+              "acceptance": [
+                "发布、已读、全部已读、归档、恢复和批量归档有变化时广播",
+                "零行更新与回滚不广播",
+                "25 秒心跳且失效连接被清理"
+              ],
+              "priority": "must",
+              "source": "用户确认的事件方案",
+              "counterexample": [
+                "事务提交前广播",
+                "跨用户广播"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "SSE 中断时客户端和代理必须支持有界重连与低频降级。",
+              "acceptance": [
+                "1/2/5/15/30 秒重连",
+                "持续失败后 60 秒轮询",
+                "页面隐藏断开、恢复可见重连",
+                "Nginx 不缓冲 SSE"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "隐藏页保持连接",
+                "失败后恢复秒级轮询"
+              ]
+            }
+          ],
+          "invariants": [
+            "通知业务 API 和规则不变",
+            "租户与接收人隔离不变",
+            "事件不携带业务数据",
+            "不修改数据库",
+            "不覆盖 rokey 未提交改动"
+          ],
+          "constraints": [
+            "Java 17",
+            "Spring Boot 3.4.4",
+            "Vue 3 原生 EventSource",
+            "当前单后端实例"
+          ],
+          "non_goals": [
+            "WebSocket",
+            "Redis Pub/Sub",
+            "水平扩容",
+            "远程部署",
+            "UI 改版"
+          ],
+          "assumptions": [
+            {
+              "text": "当前部署只有一个后端实例",
+              "basis": "已确认部署架构",
+              "falsifier": "运行副本数大于一"
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "通知推送技术",
+              "options": [
+                "SSE",
+                "WebSocket"
+              ],
+              "selected": "SSE",
+              "blocking": false,
+              "source": "用户批准"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "浏览器请求频率与事件后刷新",
+              "candidate_sensor": "浏览器网络面板"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "票据状态和 HTTP 响应",
+              "candidate_sensor": "NotificationSseServiceTest 与 API 探针"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "事务回调和 emitter 收到事件",
+              "candidate_sensor": "JUnit 与 SSE 客户端"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "重连时序、可见性和代理响应",
+              "candidate_sensor": "浏览器与 Nginx 配置检查"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "代码、事务、浏览器和代理边界已核对",
+        "recorded_at": "2026-09-09T06:07:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "NotificationController",
+              "NotificationStreamController",
+              "NotificationSseService",
+              "SystemNotificationService",
+              "SecurityConfiguration",
+              "UiNotificationCenter",
+              "Nginx SSE locations"
+            ],
+            "environment": [
+              "authenticated browser",
+              "Spring transaction manager",
+              "Vite proxy",
+              "single backend process"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "stream_ticket",
+              "owner": "platform/system",
+              "valid_values": [
+                "unused and unexpired",
+                "consumed",
+                "expired"
+              ]
+            },
+            {
+              "name": "active_emitters",
+              "owner": "platform/system",
+              "valid_values": [
+                "grouped by tenantId/userId"
+              ]
+            },
+            {
+              "name": "client_connection",
+              "owner": "frontend/application",
+              "valid_values": [
+                "connecting",
+                "open",
+                "retrying",
+                "fallback",
+                "hidden"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "notification invalidation event",
+              "transitions": [
+                "EventSource listener",
+                "unread count refresh",
+                "optional drawer refresh"
+              ],
+              "outputs": [
+                "current badge/list without periodic one-second query"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "authenticated ticket request",
+              "transitions": [
+                "random ticket issue",
+                "single remove on stream exchange",
+                "tenant/user key restoration"
+              ],
+              "outputs": [
+                "authorized SseEmitter"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "notification database mutation",
+              "transitions": [
+                "affected-row check",
+                "transaction afterCommit",
+                "tenant/user emitter lookup",
+                "SSE send"
+              ],
+              "outputs": [
+                "all matching live tabs invalidated"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "network/visibility/timeout event",
+              "transitions": [
+                "close stale stream",
+                "bounded fresh-ticket retry",
+                "60-second fallback",
+                "unbuffered proxy forwarding"
+              ],
+              "outputs": [
+                "recovered or eventually consistent client"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "stream ticket REST",
+              "producers": [
+                "NotificationController"
+              ],
+              "consumers": [
+                "UiNotificationCenter"
+              ],
+              "invariant": "authenticated and 30-second single-use"
+            },
+            {
+              "name": "notification SSE",
+              "producers": [
+                "NotificationSseService"
+              ],
+              "consumers": [
+                "EventSource"
+              ],
+              "invariant": "payload is only an invalidation signal"
+            },
+            {
+              "name": "after-commit broadcast",
+              "producers": [
+                "SystemNotificationService"
+              ],
+              "consumers": [
+                "NotificationSseService"
+              ],
+              "invariant": "actual changed rows and committed transaction only"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "ticket and connection lifecycle",
+              "method": "NotificationSseServiceTest",
+              "blind_spots": [
+                "real proxy"
+              ],
+              "independence": "direct service assertions"
+            },
+            {
+              "id": "S2",
+              "target": "mutation broadcast timing",
+              "method": "SystemNotificationServiceTest with transaction synchronization",
+              "blind_spots": [
+                "full MySQL transaction manager"
+              ],
+              "independence": "mock JDBC and synchronization callbacks"
+            },
+            {
+              "id": "S3",
+              "target": "frontend compile and stale timer removal",
+              "method": "Vue TypeScript build and source search",
+              "blind_spots": [
+                "runtime network timing"
+              ],
+              "independence": "compiler/static evidence"
+            },
+            {
+              "id": "S4",
+              "target": "runtime request and reconnect behavior",
+              "method": "browser network and console inspection",
+              "blind_spots": [
+                "unobserved long outage"
+              ],
+              "independence": "real browser"
+            },
+            {
+              "id": "S5",
+              "target": "proxy streaming settings",
+              "method": "Nginx configuration inspection",
+              "blind_spots": [
+                "remote host not deployed"
+              ],
+              "independence": "configuration evidence"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "backend SSE channel",
+              "action": "add ticket/emitter service and exact stream endpoint",
+              "authority": "REQ-065 scope",
+              "impact_radius": "platform/system and exact security matcher",
+              "rollback": "revert Java files"
+            },
+            {
+              "id": "A2",
+              "target": "notification mutation flow",
+              "action": "schedule affected-user invalidation after commit",
+              "authority": "REQ-065 scope",
+              "impact_radius": "notification writes",
+              "rollback": "remove broadcaster calls"
+            },
+            {
+              "id": "A3",
+              "target": "frontend refresh lifecycle",
+              "action": "replace one-second timers with EventSource/retry/fallback",
+              "authority": "REQ-065 scope",
+              "impact_radius": "global notification center",
+              "rollback": "revert Vue/API files"
+            },
+            {
+              "id": "A4",
+              "target": "proxy streaming",
+              "action": "disable buffering/cache on exact SSE path",
+              "authority": "REQ-065 scope",
+              "impact_radius": "notification stream only",
+              "rollback": "revert Nginx locations"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "network outage",
+              "effect": "stream error and retries",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "page hidden",
+              "effect": "unneeded connection",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "rokey unrelated uncommitted changes",
+              "effect": "merge contamination risk",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "future multiple backend replicas",
+              "effect": "in-memory broadcast misses users on other replicas",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "heartbeat",
+              "consequence": "dead connections detected within about 25 seconds",
+              "sampling_rule": "observe at least one heartbeat"
+            },
+            {
+              "source": "reconnect backoff",
+              "consequence": "recovery delay up to 30 seconds",
+              "sampling_rule": "assert configured sequence"
+            },
+            {
+              "source": "fallback poll",
+              "consequence": "outage consistency up to 60 seconds",
+              "sampling_rule": "verify no lower interval"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "one backend instance",
+              "evidence": "current deployment topology",
+              "falsifier": "replica count > 1"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1/T3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2/T3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3 写入边界、依赖、验证和回滚已定义",
+        "recorded_at": "2026-09-09T06:07:19+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "提供一次性票据、用户隔离 SSE 和事务提交后通知广播。",
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "system depends on security and Spring Web",
+                "boot enables scheduling"
+              ],
+              "write_scope": [
+                "NotificationStreamTicket.java",
+                "NotificationSseService.java",
+                "NotificationController.java",
+                "NotificationStreamController.java",
+                "SystemNotificationService.java",
+                "SecurityConfiguration.java",
+                "NotificationSseServiceTest.java",
+                "SystemNotificationServiceTest.java"
+              ],
+              "invariants": [
+                "JWT not in URL",
+                "tenant/user isolation",
+                "zero-row and rollback do not emit"
+              ],
+              "interface_contracts": [
+                "POST stream-ticket returns ticket and expiresAt",
+                "GET stream consumes ticket once",
+                "notification event contains no business data"
+              ],
+              "non_goals": [
+                "database",
+                "Redis",
+                "WebSocket"
+              ],
+              "action_bounds": [
+                "exact GET security matcher",
+                "in-memory registries only"
+              ],
+              "acceptance_checks": [
+                "focused system/security/boot tests pass",
+                "invalid/reused/expired ticket rejected",
+                "afterCommit behavior verified"
+              ],
+              "evidence_required": [
+                "diff",
+                "Surefire output"
+              ],
+              "rollback": "revert T1 Java changes",
+              "stop_conditions": [
+                "requires JWT query parameter",
+                "requires database change"
+              ],
+              "escalation_conditions": [
+                "multiple backend replicas"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "前端改为 SSE 事件刷新并具有可见性、重连和 60 秒降级。",
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "native EventSource cannot add Authorization header",
+                "existing unread/list APIs remain"
+              ],
+              "write_scope": [
+                "web/src/api/notifications.ts",
+                "web/src/components/ui/UiNotificationCenter.vue"
+              ],
+              "invariants": [
+                "UI and notification operations unchanged",
+                "fallback interval >= 60 seconds"
+              ],
+              "interface_contracts": [
+                "fresh ticket per connection",
+                "notification event invalidates count and open drawer"
+              ],
+              "non_goals": [
+                "notification UI redesign"
+              ],
+              "action_bounds": [
+                "replace polling lifecycle only"
+              ],
+              "acceptance_checks": [
+                "frontend build passes",
+                "no 1000ms polling constant",
+                "hidden page disconnect logic present"
+              ],
+              "evidence_required": [
+                "diff",
+                "build output",
+                "browser network observation"
+              ],
+              "rollback": "revert T2 files",
+              "stop_conditions": [
+                "JWT exposure",
+                "high-frequency fallback"
+              ],
+              "escalation_conditions": [
+                "EventSource unsupported"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "代理不缓冲 SSE 并完成组合验收。",
+              "requirement_ids": [
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "container and host Nginx both proxy app traffic"
+              ],
+              "write_scope": [
+                "deploy/nginx/default.conf.template",
+                "deploy/nginx/host-rddmp.conf",
+                "docs/integration/system-notification-contract.md",
+                "REQ-065 control evidence"
+              ],
+              "invariants": [
+                "only exact stream path gets long-lived settings"
+              ],
+              "interface_contracts": [
+                "HTTP/1.1",
+                "proxy_buffering off",
+                "proxy_cache off",
+                "proxy_read_timeout 1h"
+              ],
+              "non_goals": [
+                "remote deployment"
+              ],
+              "action_bounds": [
+                "config and contract only"
+              ],
+              "acceptance_checks": [
+                "governance and diff checks pass",
+                "local stream and browser verify no one-second polling"
+              ],
+              "evidence_required": [
+                "command outputs",
+                "runtime observations"
+              ],
+              "rollback": "revert T3 config/docs",
+              "stop_conditions": [
+                "stream still buffered",
+                "connection leak observed"
+              ],
+              "escalation_conditions": [
+                "remote-only proxy behavior requires deployment validation"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "frontend consumes stream contract"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "combination test needs client"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "backend tests",
+                "frontend build",
+                "governance",
+                "browser network"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "backend",
+              "trigger": "T1 complete",
+              "observer": "JUnit",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "frontend",
+              "trigger": "T2 complete",
+              "observer": "compiler and browser",
+              "sensors": [
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ]
+            },
+            {
+              "label": "integration",
+              "trigger": "T3 complete",
+              "observer": "governance and runtime probes",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3",
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "27 focused tests and backend package passed",
+        "recorded_at": "2026-09-09T06:58:18+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/NotificationSseService.java",
+              "purpose": "一次性票据、SSE 连接、心跳和事务提交后广播"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationStreamController.java",
+              "purpose": "公开 SSE 流端点及无效票据 401"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+              "purpose": "认证票据签发端点"
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+              "purpose": "通知数据实际变化并提交后广播"
+            },
+            {
+              "path_or_resource": "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java",
+              "purpose": "仅允许精确 SSE GET 路径使用票据认证"
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            "mvn -pl :ccb-system -am -DskipTests package",
+            "mvn -pl :ccb-system -am -Dtest=NotificationSseServiceTest,NotificationStreamControllerTest,SystemNotificationServiceTest -Dsurefire.failIfNoSpecifiedTests=false -DargLine=-javaagent:... test"
+          ],
+          "local_checks": [
+            "后端 reactor 编译成功",
+            "NotificationSseServiceTest 5 条通过",
+            "NotificationStreamControllerTest 1 条通过",
+            "SystemNotificationServiceTest 21 条通过"
+          ],
+          "diff_summary": [
+            "新增 30 秒、单次、绑定租户和用户的随机票据",
+            "新增 10 分钟 SSE emitter、25 秒心跳和失效连接清理",
+            "发布及六类状态变更仅在影响行数大于零且事务提交后广播"
+          ],
+          "invariants_checked": [
+            "JWT 不进入流 URL",
+            "无效、过期和复用票据返回 401",
+            "跨租户和跨用户不广播",
+            "回滚及零行更新不广播"
+          ],
+          "disturbances": [
+            "全仓回归在既有 ccb-data-migration 测试失败，SQL 引用当前基线不存在的 arch_physical_subsystem.project_id；ccb-system 及其前置 reactor 均已通过"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "多后端副本需要 Redis Pub/Sub 等跨实例广播，本次单实例部署范围不包含"
+          ],
+          "recommended_next": "独立观测票据、事务时序和用户隔离"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Frontend production build and source timer scan passed",
+        "recorded_at": "2026-09-09T06:58:19+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/notifications.ts",
+              "purpose": "申请通知流票据"
+            },
+            {
+              "path_or_resource": "web/src/components/ui/UiNotificationCenter.vue",
+              "purpose": "EventSource 生命周期、重连和低频降级"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R4"
+          ],
+          "commands": [
+            "npm --prefix /private/tmp/rddmp-sse-web-build-20260909 run build",
+            "rg source scan for polling and EventSource lifecycle"
+          ],
+          "local_checks": [
+            "Vue TypeScript 生产构建成功",
+            "旧 POLL_INTERVAL_MS、runPollingCycle 和 restartPolling 不存在",
+            "降级轮询固定为 60000ms"
+          ],
+          "diff_summary": [
+            "首次加载未读数后建立 EventSource",
+            "消息事件刷新角标，并在抽屉打开时刷新列表和业务板块",
+            "使用 1/2/5/15/30 秒有界重连，持续失败后启用 60 秒兜底",
+            "页面隐藏关闭流和定时器，恢复可见后重新申请票据"
+          ],
+          "invariants_checked": [
+            "通知抽屉现有业务操作与样式未改变",
+            "JWT 不传给 EventSource",
+            "不存在每秒兜底轮询"
+          ],
+          "disturbances": [
+            "隔离工作树初始无 node_modules，使用基于 package-lock 的临时依赖目录完成首次构建；标准启动器随后 npm ci 成功"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "浏览器空闲周期和连接数量观测"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Local health, SSE heartbeat, ticket rejection, browser idle and socket checks passed",
+        "recorded_at": "2026-09-09T06:58:19+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "deploy/nginx/default.conf.template",
+              "purpose": "容器 Nginx 精确 SSE 长连接配置"
+            },
+            {
+              "path_or_resource": "deploy/nginx/host-rddmp.conf",
+              "purpose": "宿主 Nginx 精确 SSE 长连接配置"
+            },
+            {
+              "path_or_resource": "docs/integration/system-notification-contract.md",
+              "purpose": "SSE 票据、事件、降级和单实例边界契约"
+            }
+          ],
+          "requirements_addressed": [
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            "node scripts/dev.mjs with existing local seeded-workflow fix",
+            "curl EventSource-compatible stream for 28 seconds",
+            "browser idle observation for more than 60 seconds",
+            "lsof connection count inspection"
+          ],
+          "local_checks": [
+            "后端健康状态 UP，前端 5173 可登录并进入工作台",
+            "流立即收到 connected，并连续收到 25 秒 heartbeat",
+            "复用和无效票据均返回 HTTP 401",
+            "浏览器空闲超过一分钟无控制台错误，Vite 到后端保持 1 条通知长连接"
+          ],
+          "diff_summary": [
+            "两层 Nginx 对精确通知流路径关闭 buffering/cache，使用 HTTP/1.1 和 1 小时读取超时",
+            "集成契约明确客户端和服务端行为及多副本限制"
+          ],
+          "invariants_checked": [
+            "长连接设置不影响其他 API 路径",
+            "页面正常显示且通知按钮可用",
+            "运行期间未出现反复连接"
+          ],
+          "disturbances": [
+            "基线启动器原值会发布已禁用的平台流程；运行验证临时采用 rokey 工作区已有的关闭演示发布器配置，验证后已恢复隔离工作树文件"
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "远程 Nginx 配置需在后续部署时随应用发布，本次请求不包含远程部署"
+          ],
+          "recommended_next": "记录独立运行观测并执行最终收敛门禁"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "JUnit service and MockMvc controller observation",
+        "recorded_at": "2026-09-09T06:58:57+00:00",
+        "data": {
+          "sample_label": "T1 backend security and transaction observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "JUnit service and MockMvc controller tests",
+              "result": "pass",
+              "raw_evidence": "单次票据、过期票据、复用票据和控制器 401 测试通过",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "JUnit emitter and transaction synchronization tests",
+              "result": "pass",
+              "raw_evidence": "租户用户隔离、afterCommit 和 rollback 测试通过；状态变更零行不广播测试通过",
+              "limitation": [
+                "未覆盖多实例，因为当前模型限定单实例"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "TypeScript build and source timing scan",
+        "recorded_at": "2026-09-09T06:58:57+00:00",
+        "data": {
+          "sample_label": "T2 frontend lifecycle observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "TypeScript build and source timing scan",
+              "result": "pass",
+              "raw_evidence": "生产构建退出 0；旧 1000ms 轮询符号均不存在；首次加载后由 notification 事件刷新",
+              "limitation": [
+                "浏览器工具不直接暴露逐请求网络日志"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Source lifecycle scan",
+              "result": "pass",
+              "raw_evidence": "重连数组为 1/2/5/15/30 秒，兜底 60 秒，visibilitychange 关闭并恢复连接",
+              "limitation": [
+                "未人为制造长时间网络故障"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Real local HTTP, SSE, browser idle and socket observation",
+        "recorded_at": "2026-09-09T06:58:58+00:00",
+        "data": {
+          "sample_label": "T3 integrated runtime observation",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "Real browser idle observation plus socket inspection",
+              "result": "pass",
+              "raw_evidence": "工作台空闲超过 60 秒无控制台错误，Vite 到后端持续只有 1 条 ESTABLISHED 连接",
+              "limitation": [
+                "浏览器工具不直接导出网络瀑布"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Real HTTP ticket and stream requests",
+              "result": "pass",
+              "raw_evidence": "43 字符随机票据可连接；复用票据和 invalid 票据均返回 401",
+              "limitation": []
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Real SSE stream and focused transaction tests",
+              "result": "pass",
+              "raw_evidence": "流返回 connected，并收到两次间隔约 25 秒的 heartbeat；事务广播测试通过",
+              "limitation": [
+                "未在浏览器中制造新的业务通知"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Nginx configuration inspection and real local stream",
+              "result": "pass",
+              "raw_evidence": "两层精确 location 均为 HTTP/1.1、buffering/cache off、read timeout 1h；本地 Vite 代理流持续工作",
+              "limitation": [
+                "远程 Nginx 尚未部署本提交"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "既有演示工作流发布器与平台流程禁用规则冲突",
+              "impact": "使用 rokey 已有本地启动修正关闭发布器后完成验证，未改变 SSE 产品实现"
+            }
+          ],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final requirement trace, runtime evidence, scope audit and residual risks reviewed",
+        "recorded_at": "2026-09-09T07:04:26+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Vue TypeScript 生产构建退出 0",
+                "源码扫描确认旧 1000ms 轮询实现不存在，失败兜底为 60000ms",
+                "真实浏览器工作台空闲超过 60 秒无错误，Vite 到后端持续只有 1 条长连接"
+              ],
+              "limitations": [
+                "浏览器控制接口未直接导出网络瀑布，结合源码定时器扫描与套接字观测判定"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "票据单次使用、过期和租户用户绑定 JUnit 测试通过",
+                "无效票据控制器 401 MockMvc 测试通过",
+                "真实流连接成功后复用票据和 invalid 票据均返回 HTTP 401"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "事务 afterCommit、rollback、跨租户隔离和零行更新测试通过",
+                "真实 SSE 返回 connected，并连续收到约 25 秒间隔 heartbeat",
+                "通知发布及全部六类状态变更均按受影响用户广播"
+              ],
+              "limitations": [
+                "当前为单实例内存广播，多副本扩展明确不在本次范围"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "前端实现 1/2/5/15/30 秒重连、60 秒降级和页面可见性生命周期",
+                "两层 Nginx 精确流路径均关闭 buffering/cache，HTTP/1.1 且读取超时 1h",
+                "真实本地代理流保持连接并接收心跳"
+              ],
+              "limitations": [
+                "远程代理需在后续部署时应用本配置"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "27 条通知聚焦测试全部通过"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "前端构建、源码扫描和浏览器空闲观测通过"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "健康、真实 SSE、401、心跳、套接字和代理配置检查通过"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "ccb-system focused notification tests",
+              "result": "pass",
+              "evidence": "27 tests, 0 failures, 0 errors"
+            },
+            {
+              "check": "backend package",
+              "result": "pass",
+              "evidence": "ccb-system and required reactor modules BUILD SUCCESS"
+            },
+            {
+              "check": "frontend production build",
+              "result": "pass",
+              "evidence": "vue-tsc and vite build exit 0"
+            },
+            {
+              "check": "full Maven regression",
+              "result": "disturbance",
+              "evidence": "ccb-system/workflow/release passed; pre-existing ccb-data-migration tests fail on missing arch_physical_subsystem.project_id"
+            },
+            {
+              "check": "diff and requirement scope",
+              "result": "pass",
+              "evidence": "git diff --check and check-codex-scope exit 0"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "JWT 不进入 URL",
+              "result": "pass",
+              "evidence": "EventSource URL 仅包含一次性随机票据"
+            },
+            {
+              "invariant": "租户和用户隔离",
+              "result": "pass",
+              "evidence": "ConnectionKey 和隔离测试"
+            },
+            {
+              "invariant": "回滚与零行更新不广播",
+              "result": "pass",
+              "evidence": "事务和服务测试"
+            },
+            {
+              "invariant": "不恢复高频轮询",
+              "result": "pass",
+              "evidence": "旧轮询符号不存在，唯一兜底间隔为 60000ms"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "SSE 超时或网络中断",
+              "result": "pass",
+              "evidence": "有界重连并在持续失败后低频降级"
+            },
+            {
+              "disturbance": "页面隐藏",
+              "result": "pass",
+              "evidence": "visibilitychange 关闭流和定时器，恢复后申请新票据"
+            },
+            {
+              "disturbance": "既有本地演示工作流启动冲突",
+              "result": "pass",
+              "evidence": "采用 rokey 已有关闭演示发布器配置完成运行验证，隔离分支未携带该无关改动"
+            }
+          ],
+          "residual_risks": [
+            "多后端副本部署前需要跨实例消息总线",
+            "远程 Nginx 仅在后续部署本提交后获得 SSE 专用配置",
+            "全仓数据迁移测试存在本次范围外的架构表字段基线问题"
+          ],
+          "gate_result": "pass",
+          "route_reason": "四条必须需求均由受控任务、自动化测试、真实 HTTP/SSE、浏览器和代理配置证据覆盖，三个样本 P0-P3 均为零且范围审计通过"
+        }
+      }
+    ]
+  },
+  "objective": "以安全、可恢复的 SSE 通知失效事件替代通知中心每秒轮询。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "正常连接期间通知中心必须由服务端事件触发刷新，不得保持每秒未读数轮询。",
+      "acceptance": [
+        "初始化查询一次未读数",
+        "收到事件刷新未读数和打开的抽屉",
+        "空闲一分钟无 1000ms 未读数请求"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "保留 1000ms 定时查询"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "SSE 必须使用绑定认证租户和用户的 30 秒单次票据建立。",
+      "acceptance": [
+        "无效、过期、复用票据返回 401",
+        "JWT 不出现在流 URL",
+        "合法票据只恢复签发用户身份"
+      ],
+      "priority": "must",
+      "source": "用户确认的认证方案",
+      "counterexample": [
+        "JWT 直接放查询参数"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "通知数据实际变化后必须仅在事务成功提交时通知受影响用户的全部在线页签。",
+      "acceptance": [
+        "发布、已读、全部已读、归档、恢复和批量归档有变化时广播",
+        "零行更新与回滚不广播",
+        "25 秒心跳且失效连接被清理"
+      ],
+      "priority": "must",
+      "source": "用户确认的事件方案",
+      "counterexample": [
+        "事务提交前广播",
+        "跨用户广播"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "SSE 中断时客户端和代理必须支持有界重连与低频降级。",
+      "acceptance": [
+        "1/2/5/15/30 秒重连",
+        "持续失败后 60 秒轮询",
+        "页面隐藏断开、恢复可见重连",
+        "Nginx 不缓冲 SSE"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "隐藏页保持连接",
+        "失败后恢复秒级轮询"
+      ]
+    }
+  ],
+  "invariants": [
+    "通知业务 API 和规则不变",
+    "租户与接收人隔离不变",
+    "事件不携带业务数据",
+    "不修改数据库",
+    "不覆盖 rokey 未提交改动"
+  ],
+  "constraints": [
+    "Java 17",
+    "Spring Boot 3.4.4",
+    "Vue 3 原生 EventSource",
+    "当前单后端实例"
+  ],
+  "non_goals": [
+    "WebSocket",
+    "Redis Pub/Sub",
+    "水平扩容",
+    "远程部署",
+    "UI 改版"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260909-065-notification-sse/handoff.json",
+    "imported_at": "2026-09-09T06:04:01+00:00",
+    "topic": "notification-sse",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "notification-sse",
+      "handoff_status": "approved",
+      "created_at": "2026-09-09T13:59:47+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "notification-sse",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-09-notification-sse-design.md",
+        "objective": "Replace one-second notification polling with secure event-driven SSE while preserving eventual consistency during outages.",
+        "users": [
+          "authenticated RDDMP users"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "The notification center must refresh from server invalidation events instead of one-second polling.",
+            "acceptance": [
+              "Normal connected idle pages issue no one-second unread-count requests",
+              "An event refreshes unread count and an open drawer"
+            ],
+            "priority": "must",
+            "source": "user-approved SSE design",
+            "counterexample": [
+              "A recurring 1000 ms unread-count timer remains"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "SSE authentication must use a short-lived single-use ticket bound to the authenticated tenant and user.",
+            "acceptance": [
+              "Ticket expires after 30 seconds",
+              "Reused, expired, or invalid tickets return unauthorized",
+              "JWT is absent from the stream URL"
+            ],
+            "priority": "must",
+            "source": "user-approved authentication decision",
+            "counterexample": [
+              "Access JWT appears in query parameters"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Notification mutations must invalidate all live tabs for affected users only after successful transaction commit.",
+            "acceptance": [
+              "Rows changed causes matching tenant/user emitters to receive notification",
+              "Rollback and zero-row updates emit nothing",
+              "Heartbeat is sent every 25 seconds and dead emitters are removed"
+            ],
+            "priority": "must",
+            "source": "confirmed design",
+            "counterexample": [
+              "Rollback sends a notification event"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "The client and proxies must recover from interruption without restoring high-frequency polling.",
+            "acceptance": [
+              "Reconnect delays are 1/2/5/15/30 seconds",
+              "Persistent failure enables 60-second fallback polling",
+              "Hidden pages disconnect and visible pages reconnect",
+              "Nginx does not buffer the SSE endpoint"
+            ],
+            "priority": "must",
+            "source": "confirmed design",
+            "counterexample": [
+              "Hidden tabs retain connections indefinitely",
+              "Fallback polls every second"
+            ]
+          }
+        ],
+        "invariants": [
+          "Existing notification CRUD contracts remain compatible",
+          "Tenant and recipient isolation remains server-enforced",
+          "SSE payload contains no business or personal data",
+          "No database migration"
+        ],
+        "constraints": [
+          "Java 17",
+          "Spring Boot 3.4.4",
+          "Vue 3 native EventSource",
+          "single backend instance",
+          "preserve unrelated rokey changes"
+        ],
+        "non_goals": [
+          "WebSocket",
+          "Redis Pub/Sub",
+          "horizontal scaling",
+          "remote deployment",
+          "notification UI redesign"
+        ],
+        "selected_approach": {
+          "name": "SSE with one-time ticket",
+          "reason": "Traffic is server-to-client only and native EventSource cannot attach Authorization headers.",
+          "alternatives": [
+            "WebSocket rejected as unnecessary",
+            "JWT query parameter rejected for credential exposure"
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "system ticket and emitter registry",
+              "notification transaction hooks",
+              "security matcher",
+              "frontend stream lifecycle",
+              "Nginx SSE path"
+            ],
+            "outside": [
+              "database schema",
+              "Redis",
+              "notification recipient rules"
+            ]
+          },
+          "components": [
+            "NotificationSseService",
+            "NotificationStreamController",
+            "UiNotificationCenter"
+          ],
+          "interfaces": [
+            "POST /api/notifications/stream-ticket",
+            "GET /api/notifications/stream?ticket=...",
+            "notification and heartbeat SSE events"
+          ],
+          "data_flows": [
+            "JWT request -> one-time ticket -> EventSource",
+            "committed mutation -> user-keyed invalidation -> unread/list refresh"
+          ]
+        },
+        "error_handling": [
+          "Unauthorized ticket exchange returns 401",
+          "Failed emitters are removed",
+          "Client retries with a fresh ticket",
+          "Persistent failure uses 60-second polling"
+        ],
+        "quality_attributes": {
+          "security": [
+            "single-use random tickets",
+            "no JWT in URL",
+            "tenant/user binding"
+          ],
+          "performance": [
+            "no idle one-second database polling"
+          ],
+          "compatibility": [
+            "existing REST notification APIs unchanged"
+          ],
+          "operations": [
+            "25-second heartbeat",
+            "Nginx buffering disabled"
+          ]
+        },
+        "verification_strategy": [
+          "focused Java tests",
+          "frontend production build",
+          "governance checks",
+          "browser network inspection",
+          "Nginx config review"
+        ],
+        "assumptions": [
+          {
+            "text": "Deployment has one backend instance",
+            "basis": "confirmed current deployment",
+            "falsifier": "more than one backend replica"
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use SSE and a one-time stream ticket",
+            "reason": "Fits unidirectional updates without exposing JWT",
+            "source": "user approval"
+          }
+        ],
+        "risks": [
+          "Long-lived emitter cleanup",
+          "transaction timing",
+          "proxy buffering",
+          "browser reconnection races"
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the proposed SSE design and requested implementation with '按此调整'.",
+          "confirmed_at": "2026-09-09T13:59:47+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-09-notification-sse-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "No database migration",
+          "No JWT in URL",
+          "No notification business-rule changes",
+          "Preserve unrelated work"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/service/NotificationSseService.java",
+            "status": "candidate-new",
+            "responsibility": "ticket and connection lifecycle",
+            "evidence": "no existing SSE implementation"
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+            "status": "existing",
+            "responsibility": "notification persistence and mutation",
+            "evidence": "repository inspection"
+          },
+          {
+            "path": "web/src/components/ui/UiNotificationCenter.vue",
+            "status": "existing",
+            "responsibility": "notification center state and refresh lifecycle",
+            "evidence": "repository inspection"
+          },
+          {
+            "path": "deploy/nginx/default.conf.template",
+            "status": "existing",
+            "responsibility": "container reverse proxy",
+            "evidence": "repository inspection"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Provide authenticated user-scoped SSE and committed invalidation broadcasts",
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "System module already depends on security and Spring Web",
+              "Scheduling is enabled in boot"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/system/src/main/java/com/ccb/system/service/NotificationSseService.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationStreamController.java"
+              ],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/web/NotificationController.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java",
+                "server/src/platform/security/src/main/java/com/ccb/security/config/SecurityConfiguration.java"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/service/NotificationSseServiceTest.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/service/SystemNotificationServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthUser principal",
+                "Spring transaction synchronization"
+              ],
+              "produces": [
+                "stream-ticket REST contract",
+                "SSE stream contract"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add focused failure-path and transaction tests",
+                "command": "mvn -pl :ccb-system -am test",
+                "expected": "Tests become executable and pass after implementation",
+                "evidence": "Surefire results"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement ticket, emitter, controller, security and mutation broadcasts",
+                "command": null,
+                "expected": "Only matching users receive after-commit invalidation",
+                "evidence": "Scoped diff and tests"
+              }
+            ],
+            "acceptance_checks": [
+              "invalid/reused/expired ticket rejected",
+              "rollback emits nothing",
+              "zero-row mutation emits nothing"
+            ],
+            "risks": [
+              "connection leaks",
+              "security matcher too broad"
+            ],
+            "rollback": "Revert T1 Java files",
+            "stop_conditions": [
+              "JWT must enter URL",
+              "database change becomes necessary"
+            ],
+            "escalation_conditions": [
+              "multiple backend replicas discovered"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Replace one-second polling with resilient frontend SSE lifecycle",
+            "requirement_ids": [
+              "R1",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "JWT is stored in localStorage",
+              "native EventSource cannot add Authorization header"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/notifications.ts",
+                "web/src/components/ui/UiNotificationCenter.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "stream ticket response",
+                "notification SSE event"
+              ],
+              "produces": [
+                "event-triggered count/list refresh",
+                "60-second fallback"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Implement ticket request, EventSource lifecycle, retries and fallback",
+                "command": "npm --prefix web run build",
+                "expected": "TypeScript and Vite build pass",
+                "evidence": "Build exit code"
+              }
+            ],
+            "acceptance_checks": [
+              "no 1000 ms polling",
+              "hidden page disconnects",
+              "open drawer refreshes after event"
+            ],
+            "risks": [
+              "stale async ticket race"
+            ],
+            "rollback": "Revert T2 frontend files",
+            "stop_conditions": [
+              "JWT must be exposed",
+              "fallback becomes high frequency"
+            ],
+            "escalation_conditions": [
+              "target browser lacks EventSource"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Prevent proxy buffering and verify the integrated path",
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "container and host Nginx both proxy application traffic"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "deploy/nginx/default.conf.template",
+                "deploy/nginx/host-rddmp.conf",
+                "docs/integration/system-notification-contract.md"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "SSE GET path"
+              ],
+              "produces": [
+                "unbuffered long-lived proxy path"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Configure exact SSE proxy locations and update contract",
+                "command": "node scripts/check-all-governance.mjs",
+                "expected": "Governance checks pass",
+                "evidence": "Command exit code"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Run browser network verification",
+                "command": null,
+                "expected": "SSE stays open and unread-count is not polled each second",
+                "evidence": "Network and console observations"
+              }
+            ],
+            "acceptance_checks": [
+              "proxy_buffering off",
+              "proxy_read_timeout 1h",
+              "browser receives heartbeat/event"
+            ],
+            "risks": [
+              "host proxy include overrides"
+            ],
+            "rollback": "Revert T3 config and documentation",
+            "stop_conditions": [
+              "SSE remains buffered"
+            ],
+            "escalation_conditions": [
+              "deployment-specific proxy requires separate change"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "frontend consumes backend contract"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "integration verification needs both implementations"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "mvn -pl :ccb-system,:ccb-security,:ccb-boot -am test && npm --prefix web run build && node scripts/check-all-governance.mjs",
+            "expected": "all commands exit 0"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User requested direct implementation after confirming the SSE design.",
+          "confirmed_at": "2026-09-09T13:59:47+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "browser notification center",
+          "system notification service",
+          "security filter",
+          "reverse proxies"
+        ],
+        "state_variable_candidates": [
+          "ticket validity",
+          "active emitters by tenant/user",
+          "stream failure count",
+          "fallback timer"
+        ],
+        "interface_candidates": [
+          "ticket POST",
+          "SSE GET",
+          "notification event"
+        ],
+        "sensor_candidates": [
+          "JUnit",
+          "frontend build",
+          "browser network panel",
+          "Nginx config assertions"
+        ],
+        "actuator_candidates": [
+          "ticket registry",
+          "after-commit broadcast",
+          "EventSource lifecycle",
+          "proxy buffering flags"
+        ],
+        "disturbance_candidates": [
+          "page visibility",
+          "network outage",
+          "SSE timeout",
+          "transaction rollback"
+        ],
+        "delay_candidates": [
+          "25-second heartbeat",
+          "1/2/5/15/30-second retries",
+          "60-second fallback",
+          "10-minute stream timeout"
+        ],
+        "assumptions": [
+          {
+            "text": "One backend instance is active",
+            "basis": "current deployment description",
+            "falsifier": "replica count greater than one"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"authenticated browser\", \"Spring transaction manager\", \"Vite proxy\", \"single backend process\"], \"inside\": [\"NotificationController\", \"NotificationStreamController\", \"NotificationSseService\", \"SystemNotificationService\", \"SecurityConfiguration\", \"UiNotificationCenter\", \"Nginx SSE locations\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"real proxy\"], \"id\": \"S1\", \"independence\": \"direct service assertions\", \"method\": \"NotificationSseServiceTest\", \"target\": \"ticket and connection lifecycle\"}",
+      "{\"blind_spots\": [\"full MySQL transaction manager\"], \"id\": \"S2\", \"independence\": \"mock JDBC and synchronization callbacks\", \"method\": \"SystemNotificationServiceTest with transaction synchronization\", \"target\": \"mutation broadcast timing\"}",
+      "{\"blind_spots\": [\"runtime network timing\"], \"id\": \"S3\", \"independence\": \"compiler/static evidence\", \"method\": \"Vue TypeScript build and source search\", \"target\": \"frontend compile and stale timer removal\"}",
+      "{\"blind_spots\": [\"unobserved long outage\"], \"id\": \"S4\", \"independence\": \"real browser\", \"method\": \"browser network and console inspection\", \"target\": \"runtime request and reconnect behavior\"}",
+      "{\"blind_spots\": [\"remote host not deployed\"], \"id\": \"S5\", \"independence\": \"configuration evidence\", \"method\": \"Nginx configuration inspection\", \"target\": \"proxy streaming settings\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"add ticket/emitter service and exact stream endpoint\", \"authority\": \"REQ-065 scope\", \"id\": \"A1\", \"impact_radius\": \"platform/system and exact security matcher\", \"rollback\": \"revert Java files\", \"target\": \"backend SSE channel\"}",
+      "{\"action\": \"schedule affected-user invalidation after commit\", \"authority\": \"REQ-065 scope\", \"id\": \"A2\", \"impact_radius\": \"notification writes\", \"rollback\": \"remove broadcaster calls\", \"target\": \"notification mutation flow\"}",
+      "{\"action\": \"replace one-second timers with EventSource/retry/fallback\", \"authority\": \"REQ-065 scope\", \"id\": \"A3\", \"impact_radius\": \"global notification center\", \"rollback\": \"revert Vue/API files\", \"target\": \"frontend refresh lifecycle\"}",
+      "{\"action\": \"disable buffering/cache on exact SSE path\", \"authority\": \"REQ-065 scope\", \"id\": \"A4\", \"impact_radius\": \"notification stream only\", \"rollback\": \"revert Nginx locations\", \"target\": \"proxy streaming\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"stream error and retries\", \"source\": \"network outage\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"unneeded connection\", \"source\": \"page hidden\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"merge contamination risk\", \"source\": \"rokey unrelated uncommitted changes\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"in-memory broadcast misses users on other replicas\", \"source\": \"future multiple backend replicas\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"current deployment topology\", \"falsifier\": \"replica count > 1\", \"text\": \"one backend instance\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S3\", \"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "提供一次性票据、用户隔离 SSE 和事务提交后通知广播。",
+      "requirements": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "system depends on security and Spring Web",
+        "boot enables scheduling"
+      ],
+      "write_scope": [
+        "NotificationStreamTicket.java",
+        "NotificationSseService.java",
+        "NotificationController.java",
+        "NotificationStreamController.java",
+        "SystemNotificationService.java",
+        "SecurityConfiguration.java",
+        "NotificationSseServiceTest.java",
+        "SystemNotificationServiceTest.java"
+      ],
+      "invariants": [
+        "JWT not in URL",
+        "tenant/user isolation",
+        "zero-row and rollback do not emit"
+      ],
+      "interface_contracts": [
+        "POST stream-ticket returns ticket and expiresAt",
+        "GET stream consumes ticket once",
+        "notification event contains no business data"
+      ],
+      "non_goals": [
+        "database",
+        "Redis",
+        "WebSocket"
+      ],
+      "action_bounds": [
+        "exact GET security matcher",
+        "in-memory registries only"
+      ],
+      "acceptance": [
+        "focused system/security/boot tests pass",
+        "invalid/reused/expired ticket rejected",
+        "afterCommit behavior verified"
+      ],
+      "evidence_required": [
+        "diff",
+        "Surefire output"
+      ],
+      "rollback": "revert T1 Java changes",
+      "stop_conditions": [
+        "requires JWT query parameter",
+        "requires database change"
+      ],
+      "escalation_conditions": [
+        "multiple backend replicas"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T06:58:18+00:00",
+          "text": "Backend SSE implementation and focused tests completed"
+        },
+        {
+          "recorded_at": "2026-09-09T06:58:57+00:00",
+          "text": "Backend implementation ready for independent measurement"
+        },
+        {
+          "recorded_at": "2026-09-09T06:59:24+00:00",
+          "text": "27 focused tests pass; ticket isolation and afterCommit behavior verified"
+        }
+      ],
+      "updated_at": "2026-09-09T06:59:24+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "前端改为 SSE 事件刷新并具有可见性、重连和 60 秒降级。",
+      "requirements": [
+        "R1",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "native EventSource cannot add Authorization header",
+        "existing unread/list APIs remain"
+      ],
+      "write_scope": [
+        "web/src/api/notifications.ts",
+        "web/src/components/ui/UiNotificationCenter.vue"
+      ],
+      "invariants": [
+        "UI and notification operations unchanged",
+        "fallback interval >= 60 seconds"
+      ],
+      "interface_contracts": [
+        "fresh ticket per connection",
+        "notification event invalidates count and open drawer"
+      ],
+      "non_goals": [
+        "notification UI redesign"
+      ],
+      "action_bounds": [
+        "replace polling lifecycle only"
+      ],
+      "acceptance": [
+        "frontend build passes",
+        "no 1000ms polling constant",
+        "hidden page disconnect logic present"
+      ],
+      "evidence_required": [
+        "diff",
+        "build output",
+        "browser network observation"
+      ],
+      "rollback": "revert T2 files",
+      "stop_conditions": [
+        "JWT exposure",
+        "high-frequency fallback"
+      ],
+      "escalation_conditions": [
+        "EventSource unsupported"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T06:58:18+00:00",
+          "text": "Frontend EventSource lifecycle and production build completed"
+        },
+        {
+          "recorded_at": "2026-09-09T06:58:57+00:00",
+          "text": "Frontend implementation ready for compiler and source lifecycle measurement"
+        },
+        {
+          "recorded_at": "2026-09-09T06:59:24+00:00",
+          "text": "Frontend production build passes; source and browser idle checks show no one-second polling"
+        }
+      ],
+      "updated_at": "2026-09-09T06:59:24+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "代理不缓冲 SSE 并完成组合验收。",
+      "requirements": [
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "container and host Nginx both proxy app traffic"
+      ],
+      "write_scope": [
+        "deploy/nginx/default.conf.template",
+        "deploy/nginx/host-rddmp.conf",
+        "docs/integration/system-notification-contract.md",
+        "REQ-065 control evidence"
+      ],
+      "invariants": [
+        "only exact stream path gets long-lived settings"
+      ],
+      "interface_contracts": [
+        "HTTP/1.1",
+        "proxy_buffering off",
+        "proxy_cache off",
+        "proxy_read_timeout 1h"
+      ],
+      "non_goals": [
+        "remote deployment"
+      ],
+      "action_bounds": [
+        "config and contract only"
+      ],
+      "acceptance": [
+        "governance and diff checks pass",
+        "local stream and browser verify no one-second polling"
+      ],
+      "evidence_required": [
+        "command outputs",
+        "runtime observations"
+      ],
+      "rollback": "revert T3 config/docs",
+      "stop_conditions": [
+        "stream still buffered",
+        "connection leak observed"
+      ],
+      "escalation_conditions": [
+        "remote-only proxy behavior requires deployment validation"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-09T06:58:18+00:00",
+          "text": "Proxy configuration and local runtime checks completed"
+        },
+        {
+          "recorded_at": "2026-09-09T06:58:58+00:00",
+          "text": "Integrated implementation ready for real runtime measurement"
+        },
+        {
+          "recorded_at": "2026-09-09T06:59:24+00:00",
+          "text": "Local SSE connected and heartbeat observed; invalid and reused tickets return 401; exact proxy settings verified"
+        }
+      ],
+      "updated_at": "2026-09-09T06:59:24+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 backend security and transaction",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "27 focused notification tests pass; ticket, isolation, afterCommit and rollback covered",
+      "recorded_at": "2026-09-09T06:58:57+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 frontend lifecycle",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Production build passes; one-second polling removed; bounded reconnect and 60-second fallback present",
+      "recorded_at": "2026-09-09T06:58:57+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "T3 integrated runtime",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Health UP; connected and 25-second heartbeat observed; invalid/reused 401; browser stable over 60 seconds with one backend stream connection",
+      "recorded_at": "2026-09-09T06:58:58+00:00"
+    }
+  ]
+}

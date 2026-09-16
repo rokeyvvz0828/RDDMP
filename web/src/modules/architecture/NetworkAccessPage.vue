@@ -7,6 +7,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import {
@@ -775,7 +776,7 @@ function buildEndpointPayload(
     return { kind: 'EXTERNAL', externalAddressId: endpoint.externalAddressId }
   }
   if (!endpoint.physicalSubsystemId || !endpoint.environmentId || !endpoint.deploymentUnitId) {
-    reportError(`${label}请选择物理子系统、具体环境和部署单元`)
+    reportError(`${label}请选择物理子系统、环境和部署单元`)
     return null
   }
   const instanceIds = normalizeInstanceIds(endpoint.instanceIds)
@@ -1289,7 +1290,7 @@ watch(() => ({
             <template #default="scope">
               <button type="button" class="architecture-table-identity" @click="openApplicationDetail(scope.row)">
                 <strong>{{ scope.row.applicationNo }}</strong>
-                <small>{{ actionTypeLabel(scope.row.actionType) }} · 申请人 #{{ scope.row.applicantId }}</small>
+                <small>{{ actionTypeLabel(scope.row.actionType) }} · 申请人 <UiUserIdentity :user-id="scope.row.applicantId" variant="compact" /></small>
               </button>
             </template>
           </el-table-column>
@@ -1581,7 +1582,7 @@ watch(() => ({
       <section v-if="selectedApplication" class="architecture-drawer-body">
         <header class="architecture-detail-heading">
           <strong>{{ selectedApplication.applicationNo }}</strong>
-          <span>申请人 #{{ selectedApplication.applicantId }} · {{ applicationStatusLabels[selectedApplication.status] }}</span>
+          <span><span class="architecture-muted">申请人</span> <UiUserIdentity :user-id="selectedApplication.applicantId" variant="standard" /> · {{ applicationStatusLabels[selectedApplication.status] }}</span>
         </header>
 
         <dl class="architecture-detail-list">
@@ -1814,7 +1815,7 @@ watch(() => ({
                   <el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="具体环境">
+              <el-form-item label="环境">
                 <el-select v-model="applicationForm.source.environmentId" filterable placeholder="请选择" @change="loadEndpointInstances(applicationForm.source, applicationForm.target)">
                   <el-option v-for="item in environments" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>
@@ -1853,7 +1854,7 @@ watch(() => ({
                   <el-option v-for="item in physicalOptions" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="具体环境">
+              <el-form-item label="环境">
                 <el-select v-model="applicationForm.target.environmentId" filterable placeholder="请选择" @change="loadEndpointInstances(applicationForm.target, applicationForm.source)">
                   <el-option v-for="item in environments" :key="item.id" :label="`${item.name} (${item.code})`" :value="item.id" />
                 </el-select>

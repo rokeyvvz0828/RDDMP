@@ -13,4 +13,5 @@ export interface ProjectContextProvider {
   list(): Promise<ProjectContextItem[]>
   readSelection(): string | null
   saveSelection(projectRef: string): void
+  clearSelection(): void
 }

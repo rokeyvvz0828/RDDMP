@@ -10,6 +10,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { listDecisionMatters, listDecisionTypes } from './api'
 import type { DecisionMatterStatus, DecisionMatterSummary, StandardCategory } from './types'
 import { formatDateTime, httpStatus } from './utils'
@@ -149,8 +150,8 @@ onMounted(async () => {
       <el-table-column label="评审方式" width="100">
         <template #default="{ row }">{{ row.reviewMode === 'ASYNC' ? '异步' : row.reviewMode === 'MEETING' ? '会议' : '—' }}</template>
       </el-table-column>
-      <el-table-column label="提出人" width="120">
-        <template #default="{ row }">{{ row.proposerName }}</template>
+      <el-table-column label="提出人" min-width="130">
+        <template #default="{ row }"><UiUserIdentity :user-id="row.proposerId" :fallback-name="row.proposerName" variant="compact" /></template>
       </el-table-column>
       <el-table-column label="更新时间" width="170">
         <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Connection, Delete, Plus, Refresh, Search, View, Warning } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
@@ -8,8 +8,10 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
+import { useProjectContextStore } from '../../stores/project-context'
 import {
   createInstanceDisasterRecovery,
   deleteInstanceDisasterRecovery,
@@ -37,6 +39,7 @@ import './architecture.css'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const projectContext = useProjectContextStore()
 
 const loading = ref(false)
 const loadError = ref('')
@@ -123,6 +126,7 @@ const drForm = reactive({
 })
 
 async function loadOptions() {
+  if (!projectContext.currentRef) return
   try {
     const [envList, physList] = await Promise.all([
       listEnvironments({ limit: 100, offset: 0 }),
@@ -149,7 +153,7 @@ async function onPhysicalChange(physId: number | null) {
 }
 
 async function load() {
-  if (!canView.value) return
+  if (!canView.value || !projectContext.currentRef) return
   loading.value = true
   loadError.value = ''
   forbidden.value = false
@@ -350,7 +354,8 @@ function navigateToRequest(requestId: number) {
   router.push(`/architecture/resource-requests/${requestId}`)
 }
 
-onMounted(async () => {
+watch(() => [canView.value, projectContext.currentRef] as const, async ([allowed, projectRef]) => {
+  if (!allowed || !projectRef) return
   if (route.query.environmentId) {
     filters.environmentId = Number(route.query.environmentId)
   }
@@ -362,7 +367,7 @@ onMounted(async () => {
     filters.deploymentUnitId = Number(route.query.deploymentUnitId)
   }
   await Promise.all([loadOptions(), load()])
-})
+}, { immediate: true })
 </script>
 
 <template>
@@ -398,7 +403,7 @@ onMounted(async () => {
 
       <!-- Filter Toolbar -->
       <UiToolbar>
-        <el-select v-model="filters.environmentId" placeholder="所属具体环境" clearable filterable style="width: 180px;" @change="search">
+        <el-select v-model="filters.environmentId" placeholder="所属环境" clearable filterable style="width: 180px;" @change="search">
           <el-option v-for="env in environments" :key="env.id" :label="`${env.name} (${env.code})`" :value="env.id" />
         </el-select>
         <el-select v-model="filters.physicalSubsystemId" placeholder="所属物理子系统" clearable filterable style="width: 190px;" @change="onPhysicalChange(filters.physicalSubsystemId); search()">
@@ -624,7 +629,7 @@ onMounted(async () => {
             <header><strong style="color: var(--el-text-color-secondary);">下线审计事实</strong></header>
             <dl class="architecture-detail-list" style="margin-top: 8px;">
               <div><dt>下线时间</dt><dd>{{ formatDateTime(detail.offlinedAt) }}</dd></div>
-              <div><dt>下线操作人 ID</dt><dd>{{ detail.offlinedBy }}</dd></div>
+              <div><dt>下线操作人</dt><dd><UiUserIdentity :user-id="detail.offlinedBy" variant="standard" /></dd></div>
               <div class="is-wide"><dt>下线原因</dt><dd style="font-weight: 500;">{{ detail.offlineReason }}</dd></div>
             </dl>
           </section>
@@ -683,7 +688,7 @@ onMounted(async () => {
           show-icon
           style="margin-bottom: 16px;"
           :title="offlineRisks.length ? `下线风险警示：存在 ${offlineRisks.length} 项灾备关系` : '下线风险警示'"
-          description="实例下线后将释放该机器的资源分配指标，该机器名及IP在具体环境中将被标记为历史下线事实。若存在关联灾备关系，请确认是否同步调整灾备拓扑。"
+          description="实例下线后将释放该机器的资源分配指标，该机器名及IP在环境中将被标记为历史下线事实。若存在关联灾备关系，请确认是否同步调整灾备拓扑。"
         />
         <div v-if="offlineRiskLoading || offlineRisks.length" v-loading="offlineRiskLoading" class="architecture-offline-risk-list">
           <strong>关联灾备关系 {{ offlineRisks.length }} 项</strong>

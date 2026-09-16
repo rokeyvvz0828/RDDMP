@@ -20,7 +20,7 @@
 - 保持现有 Java 包名、Maven artifact、JWT 格式、统一 API 响应与顶部项目切换入口。
 - 系统管理权限仅由系统角色授予；项目角色不能授予系统管理权限。
 - 项目业务权限必须由服务端按租户、用户、项目、成员和角色校验，前端显隐不替代后端授权。
-- Flyway 只新增 `V201__project_scoped_role_permissions.sql`，不修改 V1-V200。
+- Flyway 只新增 `V20260911165001__project_scoped_role_permissions.sql`，不修改 V1-V200。
 - 权限目录及项目角色权限写操作保留审计；不接触 `.env`、生产数据、凭据和外部系统。
 - 只修改 REQ-20260909-074 范围文件中的 `writable_paths`。
 - 实施前 `node scripts/check-development-entry.mjs --require-plugin` 必须通过；当前 `unknown error` 未解除时禁止进入产品代码执行。
@@ -29,7 +29,7 @@
 
 ## 文件职责地图
 
-- `server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql`（candidate-new）：创建项目角色权限关系、菜单调整和存量角色初始化。
+- `server/src/platform/infrastructure/src/main/resources/db/migration/V20260911165001__project_scoped_role_permissions.sql`（candidate-new）：创建项目角色权限关系、菜单调整和存量角色初始化。
 - `server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java`（existing）：权限目录生命周期、引用保护和系统权限审计。
 - `server/src/platform/system/src/main/java/com/ccb/system/web/SystemController.java`（existing）：权限目录 HTTP 契约。
 - `server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java`（existing）：项目角色权限读写、项目作用域校验和项目业务动作授权。
@@ -67,7 +67,7 @@
 
 **文件：**
 
-- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V201__project_scoped_role_permissions.sql`
+- 新建：`server/src/platform/infrastructure/src/main/resources/db/migration/V20260911165001__project_scoped_role_permissions.sql`
 - 测试：`server/src/platform/system/src/test/java/com/ccb/system/project/ProjectRolePermissionMigrationTest.java`（candidate-new）
 
 **接口：**

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import UiStatusTag from '../../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../../components/ui/UiUserIdentity.vue'
 import type { SubsystemChangeHistory } from '../types'
 import { applicationStatusLabels, applicationStatusTone, formatDateTime } from '../utils'
 
@@ -29,7 +30,7 @@ function eventLabel(eventType: string) {
         <article>
           <header>
             <strong>{{ eventLabel(item.eventType) }}</strong>
-            <span>第 {{ item.businessRound }} 轮 · 操作人 #{{ item.operatorId }}</span>
+            <span>第 {{ item.businessRound }} 轮 · 操作人 <UiUserIdentity :user-id="item.operatorId" variant="compact" /></span>
           </header>
           <div v-if="item.fromStatus || item.toStatus" class="architecture-change-timeline__status">
             <UiStatusTag

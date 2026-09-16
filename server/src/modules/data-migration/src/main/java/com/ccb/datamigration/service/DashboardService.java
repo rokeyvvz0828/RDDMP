@@ -1,6 +1,10 @@
 package com.ccb.datamigration.service;
 
+import com.ccb.common.api.PageResult;
+import com.ccb.common.exception.BusinessException;
+import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import java.time.Instant;
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -12,6 +16,35 @@ public class DashboardService {
     public DashboardService(JdbcTemplate jdbc, DataMigrationPermissionService permissions) {
         this.jdbc = jdbc;
         this.permissions = permissions;
+    }
+
+    /** Returns one current-project metric from the fixed dashboard whitelist. */
+    public Map<String, Object> metric(String metricCode, Long projectId, AuthUser user) {
+        DashboardMetricDefinition definition = DashboardMetricDefinition.require(metricCode);
+        long scope = permissions.requireProject(projectId, user);
+        Long count = jdbc.queryForObject(definition.countSql(), Long.class,
+                definition.scopeArguments(user.tenantId(), scope).toArray());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("metricCode", definition.code());
+        result.put("count", count == null ? 0L : count);
+        result.put("calculatedAt", Instant.now());
+        return result;
+    }
+
+    /** Returns a fixed-size dashboard drilldown page without loading domain details or attachments. */
+    public PageResult<Map<String, Object>> drilldown(String metricCode, Long projectId, int page, int size,
+                                                     AuthUser user) {
+        if (page < 1) throw new BusinessException(ErrorCode.BAD_REQUEST, "page 必须大于等于 1");
+        if (size != 20) throw new BusinessException(ErrorCode.BAD_REQUEST, "下钻分页大小固定为 20");
+        DashboardMetricDefinition definition = DashboardMetricDefinition.require(metricCode);
+        long scope = permissions.requireProject(projectId, user);
+        List<Object> scopeArgs = definition.scopeArguments(user.tenantId(), scope);
+        Long total = jdbc.queryForObject(definition.countSql(), Long.class, scopeArgs.toArray());
+        List<Object> pageArgs = new ArrayList<>(scopeArgs);
+        pageArgs.add(size);
+        pageArgs.add((long) (page - 1) * size);
+        List<Map<String, Object>> records = jdbc.queryForList(definition.drilldownSql(), pageArgs.toArray());
+        return new PageResult<>(records, total == null ? 0L : total, page, size);
     }
 
     /**
@@ -69,7 +102,7 @@ public class DashboardService {
                 + "COALESCE(s.short_name, s.name, c.system_code) AS system_name, "
                 + "COALESCE(agg.cnt, 0) AS asset_count "
                 + "FROM dm_component c "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
+                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.project_id = c.project_id AND s.code = c.system_code AND s.deleted = 0 "
                 + "LEFT JOIN (SELECT system_code, tenant_id, COUNT(*) AS cnt FROM (" + union + ") u "
                 + "   WHERE system_code IS NOT NULL AND system_code <> '' GROUP BY system_code, tenant_id) agg "
                 + "   ON agg.system_code = c.system_code AND agg.tenant_id = c.tenant_id "

@@ -39,6 +39,7 @@ public class DataMigrationCodeValueService {
     public static final String DM_RULE_CATEGORY = "DM_RULE_CATEGORY";
     public static final String DM_PARAMETER_TYPE = "DM_PARAMETER_TYPE";
     public static final String DM_PARAMETER_SCOPE = "DM_PARAMETER_SCOPE";
+    public static final String DM_PARAMETER_FIELD_TYPE = "DM_PARAMETER_FIELD_TYPE";
 
     private static final Set<String> ALLOWED_CATEGORIES = Set.of(
             DM_TOPIC_GRANULARITY, DM_PLAN_GRANULARITY, DM_PLAN_TYPE,
@@ -46,7 +47,7 @@ public class DataMigrationCodeValueService {
             DM_MEETING_GRANULARITY, DM_MEETING_SOURCE, DM_REPORT_PERIOD, DM_TARGET_TABLE_CATEGORY,
             DM_RELEASE_DRILL_GRANULARITY, DM_RELEASE_DRILL_TYPE, DM_PROGRAM_TYPE, DM_MAPPING_TYPE,
             DM_RULE_TARGET_TYPE, DM_RULE_CATEGORY,
-            DM_PARAMETER_TYPE, DM_PARAMETER_SCOPE);
+            DM_PARAMETER_TYPE, DM_PARAMETER_SCOPE, DM_PARAMETER_FIELD_TYPE);
 
     private final SystemReferenceQuery systemReferences;
 

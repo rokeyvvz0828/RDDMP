@@ -1,0 +1,158 @@
+{
+  "baseline_revision": 2,
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "result": "pass",
+      "evidence": "rg 全仓对 4 个已删类零代码引用；Files.notExists 断言覆盖 4 文件；全量 mvn 207 测试通过",
+      "limitations": [
+        "专属来源 javadoc 文本链接为 P2 文档残留"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "ContentFileAssetService 仅保留 BUSINESS_TYPE/resolveAttachment/replaceMainFile 与 3 参构造；专属服务调用编译通过；GovernanceTest 通过",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "ContentDocCodeGeneratorTest 通过：6 前缀 + DEPENDENCY/PARAMETER 抛 BusinessException；RecycleBinService 注释已更正",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R4",
+      "result": "pass",
+      "evidence": "AssetListView/StructuredListView 与 12 项通用 API/辅助/类型已删除；web/src 零引用；npm build 退出码 0",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "DataMigrationModuleRegistrationTest/GovernanceTest/ReportServiceTest/TopicServiceTest 全部通过（聚焦 76/0/0 + 全量 207/0/0），不再读取已删文件",
+      "limitations": []
+    },
+    {
+      "requirement_id": "R6",
+      "result": "pass",
+      "evidence": "ContentAssetTables.java git diff 无差异；DashboardMetricMySqlTest 2/ContentAssetMigrationMySqlTest 9/DashboardMetricDefinitionTest 5 全部通过；平台附件链测试通过",
+      "limitations": []
+    }
+  ],
+  "task_results": [
+    {
+      "task_id": "T1",
+      "result": "verified",
+      "evidence": "执行产物 + S-0001 采样 + 全量回归通过"
+    },
+    {
+      "task_id": "T2",
+      "result": "verified",
+      "evidence": "执行产物 + 聚焦 76/0/0 + 全量 207/0/0"
+    },
+    {
+      "task_id": "T3",
+      "result": "verified",
+      "evidence": "执行产物 + npm build 0 + 零引用"
+    },
+    {
+      "task_id": "T4",
+      "result": "verified",
+      "evidence": "执行产物 + 全量回归/构建/冒烟/git diff --check/范围自审计"
+    }
+  ],
+  "feedback_summary": "无负反馈：反馈总数 0，未关闭 0",
+  "sample_trend": [
+    "S-0001 分数 5：删除面精确性采样",
+    "S-0002 分数 5：全量回归采样",
+    "S-0003 分数 5：启动冒烟与范围审计采样",
+    "趋势：P0/P1 恒为 0，P2 均为已知残余风险，无上升"
+  ],
+  "regression_checks": [
+    {
+      "check": "mvn -pl :ccb-data-migration -am test",
+      "result": "pass",
+      "evidence": "Tests run: 207, Failures: 0, Errors: 0, Skipped: 0（BUILD SUCCESS）"
+    },
+    {
+      "check": "npm --prefix web run build",
+      "result": "pass",
+      "evidence": "vue-tsc --noEmit 通过；vite build ✓ built in 19.67s；退出码 0"
+    },
+    {
+      "check": "git diff --check",
+      "result": "pass",
+      "evidence": "无空白错误"
+    },
+    {
+      "check": "后端启动冒烟",
+      "result": "pass",
+      "evidence": "CcbApplication Started 4.663s；health 200；业务路由认证门禁 401 可达；限制：无凭据验证 404 层"
+    }
+  ],
+  "invariant_results": [
+    {
+      "invariant": "ContentAssetTables 及其计数 UNION SQL 保持不变",
+      "result": "pass",
+      "evidence": "git diff --exit-code 无差异；计数测试通过"
+    },
+    {
+      "invariant": "平台附件能力（ContentAttachmentService/AttachmentStreamService/AttachmentGateway/DataMigrationAssetAttachmentAccessPolicy）保持不变",
+      "result": "pass",
+      "evidence": "相关文件未改动；附件绑定/访问策略测试通过"
+    },
+    {
+      "invariant": "全部专属 Service/Controller/RecycleBinSource 保持不变",
+      "result": "pass",
+      "evidence": "逻辑未改动（仅确认；专属来源 javadoc 对已删类链接为 P2 文档残留）"
+    },
+    {
+      "invariant": "无 Flyway 迁移、无权限/菜单/路由变更",
+      "result": "pass",
+      "evidence": "无迁移文件变更；git diff 无权限/菜单/路由文件"
+    },
+    {
+      "invariant": "只修改 REQ-20260911-070 writable_paths；不覆盖并行 REQ-067/069 未提交改动",
+      "result": "pass",
+      "evidence": "范围自审计 PASS；共享文件仅精确修改本次删除面"
+    }
+  ],
+  "scope_audit": {
+    "result": "pass",
+    "evidence": "本次改动 24 个文件全部落在 writable_paths（自审计脚本逐文件匹配 forbidden/read_only/writable）；check-codex-scope 指认的越界文件均为其他需求未提交/已提交文件（P2 基线噪声）"
+  },
+  "disturbance_resilience": [
+    {
+      "disturbance": "REQ-067/069 未提交改动",
+      "handling": "未触碰共享文件中的其他需求改动；精确删除本次目标"
+    },
+    {
+      "disturbance": "旧 surefire 报告残留",
+      "handling": "按 mtime 2026-09-10 23:25:00 过滤，统计 207/0/0 均来自本轮"
+    },
+    {
+      "disturbance": "治理脚本基线（check-codex-scope 指认其他 REQ 文件）",
+      "handling": "以自审计替代并记录 P2，需求文档 scope 已补齐新版 schema 字段"
+    }
+  ],
+  "residual_risks": [
+    {
+      "severity": "P2",
+      "risk": "专属来源 javadoc 文本链接已删类 #TYPES/#MANAGED_TYPES（只读面不可改），不影响编译/运行/测试",
+      "mitigation": "已在需求文档 risk 与执行报告中记录；后续重构专属来源时可一并清理"
+    },
+    {
+      "severity": "P2",
+      "risk": "check-codex-scope 单需求模式与多需求未提交工作区不兼容（指认其他 REQ 文件）",
+      "mitigation": "以本次改动自审计替代，P2 治理基线问题升级由 Owner 在后续需求统一处理"
+    },
+    {
+      "severity": "P2",
+      "risk": "启动冒烟无认证凭据，已删通用端点仅验证到 401 门禁层，未直接验证 404",
+      "mitigation": "端点下线已由源码删除 + 模块注册测试 Files.notExists + 全量回归覆盖"
+    }
+  ],
+  "gate_result": "pass",
+  "route_reason": "6 项 must 需求全部 pass；4 任务全部 verified；3 次采样无 P0/P1；回归/构建/冒烟/范围审计通过；残余风险均为 P2 且与本需求正面作用面无关"
+}

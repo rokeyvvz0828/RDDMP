@@ -70,7 +70,7 @@ public class TargetTableService {
                         "JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                         "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                         "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
+                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.project_id = dc.project_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                         "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                         "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?");
         List<Object> args = new ArrayList<>();
@@ -126,7 +126,7 @@ public class TargetTableService {
                         "FROM dm_target_table t " +
                         "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                         "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
+                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.project_id = dc.project_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                         "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                         "WHERE t.table_code = ? AND t.tenant_id = ? AND t.deleted = 0 AND t.table_category = ?",
                 tableCode, user.tenantId(), cat);
@@ -456,7 +456,7 @@ public class TargetTableService {
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                     "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                             "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
+                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.project_id = dc.project_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                             "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                             "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ? AND t.project_id = ? AND f.field_code IN (" + placeholders + ") ORDER BY t.table_code ASC, f.field_code ASC",
                     concat(List.of(user.tenantId(), cat, scope), fieldCodes).toArray());
@@ -469,7 +469,7 @@ public class TargetTableService {
                             "FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
                             "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
                             "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
+                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.project_id = dc.project_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
                             "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
                             "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?");
             List<Object> args = new ArrayList<>(List.of(user.tenantId(), cat));

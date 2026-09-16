@@ -1,0 +1,50 @@
+{
+  "iteration_id": "I9",
+  "task_id": "T3",
+  "status": "feedback-open",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "web/src/modules/architecture/DeliveryUnitPage.vue",
+      "purpose": "UAT 反馈：关联部署单元下拉无候选时自动收起"
+    },
+    {
+      "path_or_resource": "web/src/modules/architecture/components/DeliveryUnitDetailDrawer.vue",
+      "purpose": "同一问题的详情抽屉入口"
+    }
+  ],
+  "commands": [
+    {
+      "command": "node /tmp/pwtest/repro-select2.mjs",
+      "exit_code": 0,
+      "salient_output": "场景 A（物理子系统无部署单元）：7ms 出现 popper，341ms 起 closed，之后始终保持关闭（缺陷复现）；场景 B（有 1 个候选）保持打开"
+    },
+    {
+      "command": "node /tmp/pwtest/repro-select3.mjs",
+      "exit_code": 0,
+      "salient_output": "事件时间线显示 5988ms 打开、6327ms 关闭，期间无 click/focusout/网络请求，关闭时刻约等于 remote debounce 300ms"
+    }
+  ],
+  "checks": [
+    {
+      "requirement_id": "R5",
+      "result": "pass",
+      "evidence": "下拉自动收起为展示层问题，关联数据的同物理子系统约束不受影响",
+      "limitations": []
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-3",
+      "requirement_id": "R5",
+      "expected": "所选物理子系统下没有可关联部署单元时，下拉保持打开并展示“没有匹配的启用部署单元”",
+      "observed": "下拉闪现约 300ms 后自动收起，看起来像异常闪烁",
+      "reproduction": "交付单元新建表单选择 PHY_MOBILE（无部署单元）后点击“关联部署单元”下拉；详情抽屉的编辑关联同理",
+      "evidence": "repro-select2.mjs 场景 A 时间序列：341ms 起 closed；repro-select3.mjs 事件时间线：5988ms 打开、6327ms 关闭且无任何用户交互或网络事件",
+      "severity": "P2",
+      "confidence": "high",
+      "status": "open"
+    }
+  ],
+  "correction": null,
+  "next": "controlling"
+}

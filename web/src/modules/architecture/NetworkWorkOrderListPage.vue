@@ -8,6 +8,7 @@ import UiEmptyState from '../../components/ui/UiEmptyState.vue'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
 import UiToolbar from '../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../api/error'
 import { useAuthStore } from '../../stores/auth'
 import { listNetworkWorkOrders } from './network'
@@ -202,7 +203,7 @@ watch(canView, allowed => {
             <span :class="{ 'architecture-inline-code': scope.row.resultStatus, 'architecture-muted': !scope.row.resultStatus }">{{ resultLabel(scope.row.resultStatus) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="申请人" width="100"><template #default="scope">#{{ scope.row.applicantId }}</template></el-table-column>
+        <el-table-column label="申请人" min-width="130"><template #default="scope"><UiUserIdentity :user-id="scope.row.applicantId" variant="compact" /></template></el-table-column>
         <el-table-column label="最后更新" width="150"><template #default="scope">{{ formatDateTime(scope.row.updatedAt) }}</template></el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
@@ -226,7 +227,7 @@ watch(canView, allowed => {
           <p class="architecture-mobile-card__reason">{{ row.reason || '未填写申请原因' }}</p>
           <dl>
             <div><dt>办理结果</dt><dd>{{ resultLabel(row.resultStatus) }}</dd></div>
-            <div><dt>申请人</dt><dd>#{{ row.applicantId }}</dd></div>
+            <div><dt>申请人</dt><dd><UiUserIdentity :user-id="row.applicantId" variant="full" /></dd></div>
             <div><dt>最后更新</dt><dd>{{ formatDateTime(row.updatedAt) }}</dd></div>
           </dl>
           <footer>

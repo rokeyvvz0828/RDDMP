@@ -1,0 +1,36 @@
+{
+  "sample_label": "T3 组合验证与浏览器验收",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 数据库+API+前端表单校验", "result": "pass", "raw_evidence": "V198 ascii_general_ci 必填列；ParameterServiceTest 11 项；前端必填/正则提示与请求 parameterNameEn"},
+    {"requirement_id": "R2", "sensor": "S2 MySQL 8.4 唯一性验证", "result": "pass", "raw_evidence": "同范围 ABC_01/abc_01 冲突 1062，跨项目可复用"},
+    {"requirement_id": "R3", "sensor": "S3 REST + 页面/回收站可观察", "result": "pass", "raw_evidence": "浏览器 1280 列表列含 参数英文名，点击 查看 打开详情显示 MIGRATION_BATCH_NO"},
+    {"requirement_id": "R4", "sensor": "S4 Excel 模板/导入/导出", "result": "pass", "raw_evidence": "六列模板、逐行校验、导出包含英文名的单测通过"},
+    {"requirement_id": "R5", "sensor": "S5 关键字搜索", "result": "pass", "raw_evidence": "ParameterServiceTest 关键字覆盖 parameter_name/parameter_name_en/parameter_description"},
+    {"requirement_id": "R6", "sensor": "S6 前端全状态与视口", "result": "pass", "raw_evidence": "375/390/430 移动视口表格可横向滚动且共享 CSS body overflow-x:hidden；未发现控制台错误"},
+    {"requirement_id": "R7", "sensor": "S7 RBAC/审计", "result": "pass", "raw_evidence": "DataMigrationModuleRegistrationTest 与 ParameterServiceTest 中权限/审计断言通过"}
+  ],
+  "feedback": [
+    {
+      "requirement_id": "R3",
+      "expected": "参数英文名在页面详情可观察",
+      "observed": "首次 T3 扫描发现 ParametersPage 定义 openDetail 但操作列没有触发按钮",
+      "reproduction": "源码检查确认操作列仅有 编辑/删除",
+      "evidence": "ParametersPage.vue 源码 diff 与浏览器无 查看 按钮",
+      "severity": "P1",
+      "confidence": "high",
+      "sensor_limit": "只覆盖页面源码与浏览器初始扫描",
+      "causal_hypothesis": "实现详情对话框时遗漏操作列入口",
+      "correction_check": "操作列新增 查看 后浏览器点击详情显示参数英文名",
+      "classification": "deviation"
+    }
+  ],
+  "disturbances": [
+    "运行中的后端进程早于本改动，浏览器验收通过请求拦截隔离；未覆盖真实后端联调",
+    "CDP 移动视口该环境偶现 documentElement.scrollWidth=460 而视觉 viewport 375；共享样式 body overflow-x:hidden 已约束可视横向滚动"
+  ],
+  "coverage_gaps": ["未在真实设备/浏览器驱动上验收无权限角色", "未覆盖 Excel 文件上传的真实浏览器操作"],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

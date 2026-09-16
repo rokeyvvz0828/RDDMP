@@ -1,0 +1,687 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "移植开发功能并适配远端项目边界",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+      ],
+      "write_scope": [
+        "server/src/modules/development/pom.xml",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+        "docs/integration/development-module-contract.md",
+        "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".github/CODEOWNERS",
+        "pom.xml",
+        "server/src/platform/boot/pom.xml",
+        "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+        "web/src/modules/development/api.ts",
+        "web/src/modules/development/types.ts",
+        "web/src/modules/development/composables/useDevelopmentTasks.ts",
+        "web/src/modules/development/composables/useWorkItems.ts",
+        "web/src/modules/development/DevelopmentTaskListPage.vue",
+        "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+        "web/src/modules/development/components/PendingRequirementsPanel.vue",
+        "web/src/modules/development/components/TaskFormDrawer.vue",
+        "web/src/modules/development/components/WorkItemsView.vue",
+        "web/src/modules/development/components/WorkItemFormDrawer.vue",
+        "web/src/modules/development/components/TaskStagePanel.vue",
+        "web/src/modules/development/components/TaskChangeLog.vue",
+        "web/src/modules/development/development.css",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+        "web/src/router/index.ts",
+        "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+        "web/src/modules/development/components/WorkItemBoard.vue",
+        "web/src/modules/development/components/WorkItemCard.vue",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json"
+      ],
+      "invariants": [
+        "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+        "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+        "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+        "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+        "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+      ],
+      "interface_contracts": [
+        "物理系统公开查询",
+        "默认dev runner"
+      ],
+      "non_goals": [
+        "合并main分叉的数迁和平台审计功能",
+        "修改已发布迁移",
+        "生产发布或Git推送"
+      ],
+      "action_bounds": [
+        "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+      ],
+      "acceptance_checks": [
+        "关联需求对应测试与范围审计通过",
+        "无新项目越权或迁移历史更改"
+      ],
+      "evidence_required": [
+        "实际diff、退出码与测试计数",
+        "独立复核和运行证据"
+      ],
+      "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+      "stop_conditions": [
+        "需修改已执行迁移",
+        "将覆盖用户未提交内容"
+      ],
+      "escalation_conditions": [
+        "出现新的产品需求或生产访问",
+        "需变更未授权公共能力"
+      ]
+    },
+    {
+      "id": "T2",
+      "goal": "完成最终回归与独立观察",
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+      ],
+      "write_scope": [
+        "server/src/modules/development/pom.xml",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSourceDirectory.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/integration/DevelopmentSystemDirectory.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementDevelopmentQuery.java",
+        "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/PhysicalSystemDirectoryQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQuery.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSourceDirectoryAdapter.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/development/DevelopmentSystemDirectoryAdapter.java",
+        "docs/integration/development-module-contract.md",
+        "docs/architecture/decisions/2026-09-08-development-module-boundaries.md",
+        "governance/modules.yaml",
+        "docs/architecture/MODULES.md",
+        ".github/CODEOWNERS",
+        "pom.xml",
+        "server/src/platform/boot/pom.xml",
+        "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQueryTest.java",
+        "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcPhysicalSystemDirectoryQueryTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentDirectoryAdapterTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/config/DevelopmentSettings.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentSourceResolver.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentNumberService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentTaskService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentTaskRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentChangeRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentTaskModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentTaskController.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentExceptionAdvice.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V199__development_task_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentTaskServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentSettingsTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentTaskMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentTaskControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentWorkItemModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentWorkItemService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentWorkItemRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentWorkItemController.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentWorkItemServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentWorkItemMySqlTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/web/DevelopmentWorkItemControllerTest.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/model/DevelopmentStageModels.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentStageService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/service/DevelopmentCalendarService.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentStageRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/repository/DevelopmentCalendarRepository.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicy.java",
+        "server/src/modules/development/src/main/java/com/ccb/development/web/DevelopmentStageController.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V200__development_stage_calendar_schema.sql",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentStageServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/service/DevelopmentCalendarServiceTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/attachment/DevelopmentAttachmentAccessPolicyTest.java",
+        "server/src/modules/development/src/test/java/com/ccb/development/repository/DevelopmentStageMySqlTest.java",
+        "web/src/modules/development/api.ts",
+        "web/src/modules/development/types.ts",
+        "web/src/modules/development/composables/useDevelopmentTasks.ts",
+        "web/src/modules/development/composables/useWorkItems.ts",
+        "web/src/modules/development/DevelopmentTaskListPage.vue",
+        "web/src/modules/development/DevelopmentTaskDetailPage.vue",
+        "web/src/modules/development/components/PendingRequirementsPanel.vue",
+        "web/src/modules/development/components/TaskFormDrawer.vue",
+        "web/src/modules/development/components/WorkItemsView.vue",
+        "web/src/modules/development/components/WorkItemFormDrawer.vue",
+        "web/src/modules/development/components/TaskStagePanel.vue",
+        "web/src/modules/development/components/TaskChangeLog.vue",
+        "web/src/modules/development/development.css",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V201__development_menu_permissions.sql",
+        "web/src/router/index.ts",
+        "web/src/modules/development/DevelopmentWorkItemBoardPage.vue",
+        "web/src/modules/development/components/WorkItemBoard.vue",
+        "web/src/modules/development/components/WorkItemCard.vue",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java",
+        "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java",
+        "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java",
+        "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+        "mock/mock-data.json",
+        "scripts/dev.mjs",
+        "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+        "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+        ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+      ],
+      "invariants": [
+        "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+        "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+        "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+        "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+        "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+      ],
+      "interface_contracts": [
+        "物理系统公开查询",
+        "默认dev runner"
+      ],
+      "non_goals": [
+        "合并main分叉的数迁和平台审计功能",
+        "修改已发布迁移",
+        "生产发布或Git推送"
+      ],
+      "action_bounds": [
+        "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+      ],
+      "acceptance_checks": [
+        "关联需求对应测试与范围审计通过",
+        "无新项目越权或迁移历史更改"
+      ],
+      "evidence_required": [
+        "实际diff、退出码与测试计数",
+        "独立复核和运行证据"
+      ],
+      "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+      "stop_conditions": [
+        "需修改已执行迁移",
+        "将覆盖用户未提交内容"
+      ],
+      "escalation_conditions": [
+        "出现新的产品需求或生产访问",
+        "需变更未授权公共能力"
+      ]
+    },
+    {
+      "id": "T3",
+      "goal": "切换本地分支并通过标准脚本交付UAT",
+      "requirement_ids": [
+        "R17",
+        "R18"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "远端tip3e87a09；受保护备份已完成；基线目标测试退出0。"
+      ],
+      "write_scope": [
+        "scripts/dev.mjs",
+        "docs/requirements/REQ-20260909-072-development-task-integration/requirement.md",
+        "docs/requirements/REQ-20260909-072-development-task-integration/codex-task-scope.yaml",
+        ".ai-control/requirements/req-20260909-072-development-task-integration/*.json"
+      ],
+      "invariants": [
+        "保持原R1-R16业务基准，尤其唯一承接、无自动工作项、纯TEST豁免、可选报告和手动完成。",
+        "原main/feature未提交内容及20提交备份不丢失；不读取.env或生产数据。",
+        "远端V156-V159和其余既有迁移字节不变；仅追加开发V199-V201。",
+        "使用公开契约；物理系统查询与任务项目一致，不能跨项目暴露系统或来源。",
+        "不推送远端，不伪造Owner审批，不修改其他任务账本。"
+      ],
+      "interface_contracts": [
+        "物理系统公开查询",
+        "默认dev runner"
+      ],
+      "non_goals": [
+        "合并main分叉的数迁和平台审计功能",
+        "修改已发布迁移",
+        "生产发布或Git推送"
+      ],
+      "action_bounds": [
+        "只改精确范围；先失败测试再修复新边界；不修改旧工作树。"
+      ],
+      "acceptance_checks": [
+        "关联需求对应测试与范围审计通过",
+        "无新项目越权或迁移历史更改"
+      ],
+      "evidence_required": [
+        "实际diff、退出码与测试计数",
+        "独立复核和运行证据"
+      ],
+      "rollback": "保留旧工作区及备份，撤下本次新实例；不自动删库。",
+      "stop_conditions": [
+        "需修改已执行迁移",
+        "将覆盖用户未提交内容"
+      ],
+      "escalation_conditions": [
+        "出现新的产品需求或生产访问",
+        "需变更未授权公共能力"
+      ]
+    }
+  ],
+  "dependency_edges": [
+    {
+      "from": "T1",
+      "to": "T2",
+      "reason": "先完成移植"
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "reason": "通过验证后切换当前工作区"
+    }
+  ],
+  "parallel_groups": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ],
+    [
+      "T3"
+    ]
+  ],
+  "integration_points": [
+    {
+      "after_tasks": [
+        "T1"
+      ],
+      "checks": [
+        "真实权限和空库/159升级迁移"
+      ]
+    },
+    {
+      "after_tasks": [
+        "T2"
+      ],
+      "checks": [
+        "独立浏览器和主工作区保护"
+      ]
+    }
+  ],
+  "sampling_plan": [
+    {
+      "label": "移植基线",
+      "trigger": "T1开始前",
+      "observer": "主代理",
+      "sensors": [
+        "S1",
+        "S2"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ]
+    },
+    {
+      "label": "集成回归",
+      "trigger": "T2完成",
+      "observer": "独立上下文与主代理",
+      "sensors": [
+        "S2",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "R8",
+        "R9",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18"
+      ]
+    },
+    {
+      "label": "标准脚本运行",
+      "trigger": "T3完成",
+      "observer": "主代理",
+      "sensors": [
+        "S1",
+        "S3"
+      ],
+      "requirement_ids": [
+        "R17",
+        "R18"
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "requirement_id": "R1",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R2",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R3",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R4",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R5",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R6",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R7",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R8",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R9",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R10",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R11",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R12",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R13",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R14",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R15",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R16",
+      "task_ids": [
+        "T1",
+        "T2"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R17",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "requirement_id": "R18",
+      "task_ids": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "sensor_ids": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    }
+  ],
+  "plan_status": "ready"
+}

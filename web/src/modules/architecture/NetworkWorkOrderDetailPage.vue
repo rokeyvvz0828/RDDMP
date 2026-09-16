@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import UiPageHeader from '../../components/ui/UiPageHeader.vue'
 import UiStatusTag from '../../components/ui/UiStatusTag.vue'
+import UiUserIdentity from '../../components/ui/UiUserIdentity.vue'
 import {
   getAttachment,
   getAttachmentDownload,
@@ -322,7 +323,7 @@ onMounted(() => { void load() })
         <UiStatusTag :value="workOrder.status" :labels="networkStatusLabels" :tone="networkStatusTone(workOrder.status)" />
         <dl>
           <div><dt>主体</dt><dd>{{ workOrder.subject }}</dd></div>
-          <div><dt>申请人</dt><dd>#{{ workOrder.applicantId }}</dd></div>
+          <div><dt>申请人</dt><dd><UiUserIdentity :user-id="workOrder.applicantId" variant="standard" /></dd></div>
           <div><dt>业务轮次</dt><dd>第 {{ workOrder.currentBusinessRound }} 轮</dd></div>
           <div><dt>创建时间</dt><dd>{{ formatDateTime(workOrder.createdAt) }}</dd></div>
           <div><dt>最后更新</dt><dd>{{ formatDateTime(workOrder.updatedAt) }}</dd></div>
@@ -402,7 +403,7 @@ onMounted(() => { void load() })
               <article>
                 <header>
                   <strong>{{ historyEventLabel(item.eventType) }}</strong>
-                  <span>第 {{ item.businessRound }} 轮 · 操作人 #{{ item.operatorId }}</span>
+                  <span>第 {{ item.businessRound }} 轮 · 操作人 <UiUserIdentity :user-id="item.operatorId" variant="compact" /></span>
                 </header>
                 <div v-if="item.fromStatus || item.toStatus" class="architecture-change-timeline__status">
                   <UiStatusTag v-if="item.fromStatus" :value="item.fromStatus" :labels="networkStatusLabels" :tone="networkStatusTone(item.fromStatus)" />

@@ -29,6 +29,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.capability.ProjectAccess;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
@@ -111,78 +112,92 @@ public class ArchitectureDecisionService {
         return referenceQuery.activeParameters(actor, TYPE_CATEGORY_CODE);
     }
 
-    public PageResult<DecisionMatter> list(AuthUser actor, PageQuery page, MatterQuery query) {
+    public PageResult<DecisionMatter> list(AuthUser actor, ProjectAccess project,
+                                           PageQuery page, MatterQuery query) {
         requireActor(actor);
-        return store.pageMatters(actor.tenantId(), page, normalizeQuery(query));
+        requireProject(project);
+        return store.pageMatters(actor.tenantId(), project.id(), page, normalizeQuery(query));
     }
 
-    public DecisionMatter detail(AuthUser actor, long id) {
+    public DecisionMatter detail(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        return requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        return requireMatter(actor.tenantId(), project.id(), id);
     }
 
-    public List<MaterialRecord> materials(AuthUser actor, long id) {
+    public List<MaterialRecord> materials(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        requireMatter(actor.tenantId(), id);
-        return store.listMaterials(actor.tenantId(), id);
+        requireProject(project);
+        requireMatter(actor.tenantId(), project.id(), id);
+        return store.listMaterials(actor.tenantId(), project.id(), id);
     }
 
-    public List<ReviewRecord> reviews(AuthUser actor, long id) {
+    public List<ReviewRecord> reviews(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        requireMatter(actor.tenantId(), id);
-        return store.listReviews(actor.tenantId(), id);
+        requireProject(project);
+        requireMatter(actor.tenantId(), project.id(), id);
+        return store.listReviews(actor.tenantId(), project.id(), id);
     }
 
-    public List<Map<String, Object>> reviewParticipants(AuthUser actor, long id, long reviewId) {
+    public List<Map<String, Object>> reviewParticipants(AuthUser actor, ProjectAccess project,
+                                                        long id, long reviewId) {
         requireActor(actor);
-        requireMatter(actor.tenantId(), id);
-        store.findReview(actor.tenantId(), id, reviewId)
+        requireProject(project);
+        requireMatter(actor.tenantId(), project.id(), id);
+        store.findReview(actor.tenantId(), project.id(), id, reviewId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("评审记录不存在"));
-        return store.listParticipants(actor.tenantId(), reviewId);
+        return store.listParticipants(actor.tenantId(), project.id(), reviewId);
     }
 
-    public List<ActionItem> reviewActionItems(AuthUser actor, long id, long reviewId) {
+    public List<ActionItem> reviewActionItems(AuthUser actor, ProjectAccess project, long id, long reviewId) {
         requireActor(actor);
-        requireMatter(actor.tenantId(), id);
-        store.findReview(actor.tenantId(), id, reviewId)
+        requireProject(project);
+        requireMatter(actor.tenantId(), project.id(), id);
+        store.findReview(actor.tenantId(), project.id(), id, reviewId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("评审记录不存在"));
-        return store.listActionItems(actor.tenantId(), reviewId);
+        return store.listActionItems(actor.tenantId(), project.id(), reviewId);
     }
 
     @Transactional
-    public DecisionMatter create(AuthUser actor, MatterCommand command) {
+    public DecisionMatter create(AuthUser actor, ProjectAccess project, MatterCommand command) {
         requireActor(actor);
+        requireProject(project);
         MatterCommand normalized = normalizeCommand(command);
         LocalDateTime now = LocalDateTime.now(clock);
         long id = nextId();
-        String matterNo = allocateMatterNo(actor.tenantId(), now);
+        String matterNo = allocateMatterNo(actor.tenantId(), project.id(), now);
         DecisionMatter matter = new DecisionMatter(
-                id, actor.tenantId(), matterNo, normalized.title(), normalized.problem(), null,
+                id, actor.tenantId(), project.id(), matterNo, normalized.title(), normalized.problem(), null,
                 MatterStatus.SUBMITTED, now, now.toLocalDate().plusDays(FIRST_HANDLING_DEADLINE_DAYS),
                 null, null, null, null, null, null,
                 actor.id(), actor.displayName(), actor.id(), actor.displayName(),
                 null, null, 0, null, null, null, null, 0,
                 actor.id(), actor.displayName(), now, now);
         store.createMatter(matter);
-        return requireMatter(actor.tenantId(), id);
+        return requireMatter(actor.tenantId(), project.id(), id);
     }
 
     @Transactional
-    public DecisionMatter update(AuthUser actor, AccessLevel access, long id, long rowVersion,
+    public DecisionMatter update(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                 long id, long rowVersion,
                                  MatterCommand command) {
         requireActor(actor);
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         requireProposerOrManage(actor, access, matter, "只有事项提出人可以编辑本人事项");
         requireEditableByProposer(actor, matter, "只有待首次处理或要求补充的事项可以编辑标题与问题");
         MatterCommand normalized = normalizeCommand(command);
-        store.updateMatter(actor.tenantId(), id, rowVersion, normalized.title(), normalized.problem(), actor.id());
-        return requireMatter(actor.tenantId(), id);
+        store.updateMatter(actor.tenantId(), project.id(), id, rowVersion,
+                normalized.title(), normalized.problem(), actor.id());
+        return requireMatter(actor.tenantId(), project.id(), id);
     }
 
     @Transactional
-    public MaterialRecord addMaterial(AuthUser actor, AccessLevel access, long id, MaterialCommand command) {
+    public MaterialRecord addMaterial(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                      long id, MaterialCommand command) {
         requireActor(actor);
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         requireProposerOrReviewer(actor, access, matter, "只有提出人或架构组成员可以补充材料");
         if (matter.status() == MatterStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项已完成，不能再补充材料");
@@ -190,7 +205,7 @@ public class ArchitectureDecisionService {
         MaterialKind kind = command == null || command.kind() == null ? MaterialKind.OTHER : command.kind();
         String content = requireText(command == null ? null : command.content(), "材料内容", 20000);
         long materialId = nextId();
-        MaterialRecord record = new MaterialRecord(materialId, actor.tenantId(), id, kind, content,
+        MaterialRecord record = new MaterialRecord(materialId, actor.tenantId(), project.id(), id, kind, content,
                 actor.id(), actor.displayName(), LocalDateTime.now(clock));
         store.addMaterial(record);
         return record;
@@ -198,11 +213,13 @@ public class ArchitectureDecisionService {
 
     /** 首次处理：受理/要求补充/确定评审方式；期限由受理时间 + 7 自然日计算并持久化。 */
     @Transactional
-    public DecisionMatter firstHandling(AuthUser actor, AccessLevel access, long id, long rowVersion,
+    public DecisionMatter firstHandling(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                        long id, long rowVersion,
                                         FirstHandlingOutcome outcome, String comment, ReviewMethod reviewMode) {
         requireActor(actor);
+        requireProject(project);
         requireReviewer(access, "只有架构组成员可以办理首次处理");
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         if (matter.status() != MatterStatus.SUBMITTED) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有待首次处理的事项可以办理首次处理");
         }
@@ -210,117 +227,129 @@ public class ArchitectureDecisionService {
         if (normalizedOutcome != FirstHandlingOutcome.REQUESTED_INFO && reviewMode == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "确认受理或确定评审方式时必须指定异步或会议评审方式");
         }
-        store.applyFirstHandling(actor.tenantId(), id, rowVersion, normalizedOutcome,
+        store.applyFirstHandling(actor.tenantId(), project.id(), id, rowVersion, normalizedOutcome,
                 limit(comment, 2000), reviewMode, actor.id(), actor.displayName());
-        return requireMatter(actor.tenantId(), id);
+        return requireMatter(actor.tenantId(), project.id(), id);
     }
 
     /** 要求补充后由提出人补充材料并重新提交，重置受理时间与首次处理期限。 */
     @Transactional
-    public DecisionMatter resubmit(AuthUser actor, AccessLevel access, long id, long rowVersion) {
+    public DecisionMatter resubmit(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                   long id, long rowVersion) {
         requireActor(actor);
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         requireProposerOrManage(actor, access, matter, "只有提出人可以重新提交本人事项");
         if (matter.status() != MatterStatus.RETURNED_FOR_INFO) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有要求补充信息的事项可以重新提交");
         }
         LocalDateTime now = LocalDateTime.now(clock);
-        store.resubmit(actor.tenantId(), id, rowVersion, now,
+        store.resubmit(actor.tenantId(), project.id(), id, rowVersion, now,
                 now.toLocalDate().plusDays(FIRST_HANDLING_DEADLINE_DAYS), actor.id(), actor.displayName());
-        return requireMatter(actor.tenantId(), id);
+        return requireMatter(actor.tenantId(), project.id(), id);
     }
 
     @Transactional
-    public ReviewRecord recordReview(AuthUser actor, AccessLevel access, long id, ReviewCommand command) {
+    public ReviewRecord recordReview(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                     long id, ReviewCommand command) {
         requireActor(actor);
+        requireProject(project);
         requireReviewer(access, "只有架构组成员可以记录评审");
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         if (matter.status() != MatterStatus.IN_REVIEW) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有评审中的事项可以记录评审");
         }
         ReviewCommand normalized = normalizeReviewCommand(command, false);
-        int reviewNo = store.nextReviewNo(actor.tenantId(), id);
+        int reviewNo = store.nextReviewNo(actor.tenantId(), project.id(), id);
         long reviewId = nextId();
-        ReviewRecord review = new ReviewRecord(reviewId, actor.tenantId(), id, reviewNo,
+        ReviewRecord review = new ReviewRecord(reviewId, actor.tenantId(), project.id(), id, reviewNo,
                 normalized.method(), normalized.reviewedAt(), normalized.processMaterialSummary(),
                 normalized.keyOpinion(), normalized.conclusionContent(), normalized.conclusionRationale(),
                 actor.id(), actor.displayName(), LocalDateTime.now(clock), LocalDateTime.now(clock));
         store.insertReview(review);
-        store.replaceParticipants(actor.tenantId(), reviewId, normalized.participantUserIds(), participantNames(actor, normalized.participantUserIds()));
-        store.replaceActionItems(actor.tenantId(), reviewId, normalized.actionItems(), actor.id());
-        return store.findReview(actor.tenantId(), id, reviewId).orElseThrow();
+        store.replaceParticipants(actor.tenantId(), project.id(), reviewId,
+                normalized.participantUserIds(), participantNames(actor, normalized.participantUserIds()));
+        store.replaceActionItems(actor.tenantId(), project.id(), reviewId, normalized.actionItems(), actor.id());
+        return store.findReview(actor.tenantId(), project.id(), id, reviewId).orElseThrow();
     }
 
     @Transactional
-    public ReviewRecord updateReview(AuthUser actor, AccessLevel access, long matterId, long reviewId,
+    public ReviewRecord updateReview(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                     long matterId, long reviewId,
                                      ReviewCommand command) {
         requireActor(actor);
+        requireProject(project);
         requireReviewer(access, "只有架构组成员可以修改评审记录");
-        DecisionMatter matter = requireMatter(actor.tenantId(), matterId);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), matterId);
         if (matter.status() == MatterStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项已完成，评审记录不可再修改");
         }
-        ReviewRecord existing = store.findReview(actor.tenantId(), matterId, reviewId)
+        ReviewRecord existing = store.findReview(actor.tenantId(), project.id(), matterId, reviewId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("评审记录不存在"));
         ReviewCommand normalized = normalizeReviewCommand(command, false);
-        ReviewRecord updated = new ReviewRecord(existing.id(), existing.tenantId(), existing.matterId(),
+        ReviewRecord updated = new ReviewRecord(existing.id(), existing.tenantId(), existing.projectId(), existing.matterId(),
                 existing.reviewNo(), normalized.method(), normalized.reviewedAt(),
                 normalized.processMaterialSummary(), normalized.keyOpinion(),
                 normalized.conclusionContent(), normalized.conclusionRationale(),
                 existing.createdBy(), existing.createdByName(), existing.createdAt(), LocalDateTime.now(clock));
         store.updateReview(updated);
-        store.replaceParticipants(actor.tenantId(), reviewId, normalized.participantUserIds(), participantNames(actor, normalized.participantUserIds()));
-        store.replaceActionItems(actor.tenantId(), reviewId, normalized.actionItems(), actor.id());
-        return store.findReview(actor.tenantId(), matterId, reviewId).orElseThrow();
+        store.replaceParticipants(actor.tenantId(), project.id(), reviewId,
+                normalized.participantUserIds(), participantNames(actor, normalized.participantUserIds()));
+        store.replaceActionItems(actor.tenantId(), project.id(), reviewId, normalized.actionItems(), actor.id());
+        return store.findReview(actor.tenantId(), project.id(), matterId, reviewId).orElseThrow();
     }
 
     /** 行动项完成：发布后仍可跟踪，只允许状态推进。 */
     @Transactional
-    public ActionItem completeActionItem(AuthUser actor, AccessLevel access, long matterId, long reviewId,
+    public ActionItem completeActionItem(AuthUser actor, ProjectAccess project, AccessLevel access,
+                                         long matterId, long reviewId,
                                          long actionItemId) {
         requireActor(actor);
+        requireProject(project);
         requireReviewer(access, "只有架构组成员可以完成行动项");
-        requireMatter(actor.tenantId(), matterId);
-        store.findActionItem(actor.tenantId(), reviewId, actionItemId)
+        requireMatter(actor.tenantId(), project.id(), matterId);
+        store.findActionItem(actor.tenantId(), project.id(), reviewId, actionItemId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("行动项不存在"));
-        store.completeActionItem(actor.tenantId(), reviewId, actionItemId, actor.id());
-        return store.findActionItem(actor.tenantId(), reviewId, actionItemId).orElseThrow();
+        store.completeActionItem(actor.tenantId(), project.id(), reviewId, actionItemId, actor.id());
+        return store.findActionItem(actor.tenantId(), project.id(), reviewId, actionItemId).orElseThrow();
     }
 
     // ---------- 发布门禁 ----------
 
     /** 发布准备：确定类型与结论来源，登记替代/部分修订目标，保存意图与摘要。 */
     @Transactional
-    public PublicationIntent preparePublication(AuthUser actor, long id, long rowVersion,
+    public PublicationIntent preparePublication(AuthUser actor, ProjectAccess project, long id, long rowVersion,
                                                 long reviewId, List<SupersessionTarget> targets) {
         requireActor(actor);
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         if (matter.status() != MatterStatus.IN_REVIEW) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有评审中的事项可以准备结论发布");
         }
         if (matter.typeCode() == null || matter.typeCode().isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "正式决策发布前必须确定事项类型");
         }
-        ReviewRecord review = store.findReview(actor.tenantId(), id, reviewId)
+        ReviewRecord review = store.findReview(actor.tenantId(), project.id(), id, reviewId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("结论来源评审记录不存在"));
         if (review.conclusionContent() == null || review.conclusionContent().isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "评审记录必须先填写正式结论");
         }
-        List<SupersessionTarget> normalizedTargets = normalizeTargets(actor, targets);
+        List<SupersessionTarget> normalizedTargets = normalizeTargets(actor, project.id(), targets);
         String digest = sha256(canonicalIntent(id, reviewId, normalizedTargets));
-        PublicationIntent intent = new PublicationIntent(id, actor.tenantId(), reviewId, normalizedTargets,
+        PublicationIntent intent = new PublicationIntent(id, actor.tenantId(), project.id(), reviewId, normalizedTargets,
                 digest, actor.id(), actor.displayName(), LocalDateTime.now(clock));
         store.upsertPublicationIntent(intent);
-        touchPublicationPreparation(actor, id, rowVersion);
+        touchPublicationPreparation(actor, project.id(), id, rowVersion);
         return intent;
     }
 
     /** 启动发布工作流：新轮次实例，事件 APPROVED 才发布结论。 */
     @Transactional
-    public DecisionMatter startPublication(AuthUser actor, long id, long rowVersion) {
+    public DecisionMatter startPublication(AuthUser actor, ProjectAccess project, long id, long rowVersion) {
         requireActor(actor);
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
-        PublicationIntent intent = store.findPublicationIntent(actor.tenantId(), id)
+        requireProject(project);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
+        PublicationIntent intent = store.findPublicationIntent(actor.tenantId(), project.id(), id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "请先完成结论发布准备"));
         if (matter.status() != MatterStatus.IN_REVIEW) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有评审中的事项可以启动结论发布");
@@ -330,32 +359,36 @@ public class ArchitectureDecisionService {
         }
         int nextRound = matter.currentBusinessRound() + 1;
         long roundId = nextId();
-        store.insertPendingWorkflowRound(new WorkflowRound(roundId, actor.tenantId(), id, nextRound,
+        store.insertPendingWorkflowRound(new WorkflowRound(
+                roundId, actor.tenantId(), project.id(), id, nextRound,
                 null, null, null, null, WorkflowRoundStatus.PENDING, null, null, null, null));
         WorkflowBusinessContext context = new WorkflowBusinessContext(
                 MODULE_CODE, MODULE_NAME, BUSINESS_TYPE, String.valueOf(id),
-                "架构决策事项 " + matter.matterNo(), nextRound, null, null,
+                "架构决策事项 " + matter.matterNo(), nextRound,
+                project.projectRef(), project.projectName(),
                 DETAIL_PATH_PREFIX + id, intent.payloadDigest());
         WorkflowStartResult result = workflowGateway.startByCode(new WorkflowStartCommand(
                 WORKFLOW_DEFINITION_CODE, context, workflowVariables(matter, intent)), actor);
         if (result == null || result.context() == null
                 || !Objects.equals(result.context().dataDigest(), intent.payloadDigest())
                 || !String.valueOf(id).equals(result.context().businessKey())
-                || result.context().businessRound() != nextRound) {
+                || result.context().businessRound() != nextRound
+                || !Objects.equals(result.context().projectRef(), project.projectRef())
+                || !Objects.equals(result.context().projectName(), project.projectName())) {
             throw new BusinessException(ErrorCode.CONFLICT, "工作流启动结果与发布准备不一致");
         }
         LocalDateTime startedAt = LocalDateTime.now(clock);
-        if (!store.bindWorkflowRoundStarted(actor.tenantId(), id, nextRound,
+        if (!store.bindWorkflowRoundStarted(actor.tenantId(), project.id(), id, nextRound,
                 result.definitionId(), result.definitionVersion(), result.instanceId(),
                 intent.payloadDigest(), startedAt)) {
             throw new BusinessException(ErrorCode.CONFLICT, "发布轮次启动状态已变化");
         }
-        if (!store.compareAndSetMatterWorkflowContext(actor.tenantId(), id, matter.currentBusinessRound(),
+        if (!store.compareAndSetMatterWorkflowContext(actor.tenantId(), project.id(), id, matter.currentBusinessRound(),
                 matter.rowVersion(), nextRound, result.definitionId(), result.definitionVersion(),
                 result.instanceId(), intent.payloadDigest(), actor.id())) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项工作流上下文已被其他操作更新");
         }
-        return requireMatter(actor.tenantId(), id);
+        return requireMatter(actor.tenantId(), project.id(), id);
     }
 
     private Map<String, Object> workflowVariables(DecisionMatter matter, PublicationIntent intent) {
@@ -370,8 +403,8 @@ public class ArchitectureDecisionService {
         return Map.copyOf(variables);
     }
 
-    private void touchPublicationPreparation(AuthUser actor, long id, long rowVersion) {
-        int updated = store.touchPublicationPreparation(actor.tenantId(), id, rowVersion, actor.id());
+    private void touchPublicationPreparation(AuthUser actor, long projectId, long id, long rowVersion) {
+        int updated = store.touchPublicationPreparation(actor.tenantId(), projectId, id, rowVersion, actor.id());
         if (updated != 1) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项状态或行版本冲突");
         }
@@ -379,8 +412,10 @@ public class ArchitectureDecisionService {
 
     // ---------- 查询与替代链 ----------
 
-    public List<ConclusionView> conclusions(AuthUser actor, PageQuery page, String effectiveStatus) {
+    public List<ConclusionView> conclusions(AuthUser actor, ProjectAccess project,
+                                            PageQuery page, String effectiveStatus) {
         requireActor(actor);
+        requireProject(project);
         String normalized = normalizeOptional(effectiveStatus);
         if (normalized != null) {
             normalized = normalized.toUpperCase(Locale.ROOT);
@@ -391,25 +426,28 @@ public class ArchitectureDecisionService {
                         "结论有效状态仅支持 EFFECTIVE、SUPERSEDED 或 PARTIALLY_SUPERSEDED");
             }
         }
-        PageResult<Conclusion> result = store.pageConclusions(actor.tenantId(), page, normalized);
-        return result.records().stream().map(conclusion -> toConclusionView(actor, conclusion)).toList();
+        PageResult<Conclusion> result = store.pageConclusions(actor.tenantId(), project.id(), page, normalized);
+        return result.records().stream()
+                .map(conclusion -> toConclusionView(actor, project.id(), conclusion)).toList();
     }
 
-    public ConclusionView conclusionChain(AuthUser actor, long conclusionId) {
+    public ConclusionView conclusionChain(AuthUser actor, ProjectAccess project, long conclusionId) {
         requireActor(actor);
-        Conclusion conclusion = store.findConclusionById(actor.tenantId(), conclusionId)
+        requireProject(project);
+        Conclusion conclusion = store.findConclusionById(actor.tenantId(), project.id(), conclusionId)
                 .orElseThrow(() -> new ArchitectureNotFoundException("结论不存在"));
-        return toConclusionView(actor, conclusion);
+        return toConclusionView(actor, project.id(), conclusion);
     }
 
-    private ConclusionView toConclusionView(AuthUser actor, Conclusion conclusion) {
-        DecisionMatter matter = store.findMatter(actor.tenantId(), conclusion.matterId()).orElse(null);
-        ConclusionEffectiveStatus effective = store.conclusionEffectiveStatus(actor.tenantId(), conclusion.id());
-        List<ChainLink> supersedes = store.listSupersedes(actor.tenantId(), conclusion.id()).stream()
-                .map(supersession -> toChainLink(actor, supersession))
+    private ConclusionView toConclusionView(AuthUser actor, long projectId, Conclusion conclusion) {
+        DecisionMatter matter = store.findMatter(actor.tenantId(), projectId, conclusion.matterId()).orElse(null);
+        ConclusionEffectiveStatus effective = store.conclusionEffectiveStatus(
+                actor.tenantId(), projectId, conclusion.id());
+        List<ChainLink> supersedes = store.listSupersedes(actor.tenantId(), projectId, conclusion.id()).stream()
+                .map(supersession -> toChainLink(actor, projectId, supersession))
                 .toList();
-        List<ChainLink> supersededBy = store.listSupersededBy(actor.tenantId(), conclusion.id()).stream()
-                .map(supersession -> toChainLink(actor, supersession))
+        List<ChainLink> supersededBy = store.listSupersededBy(actor.tenantId(), projectId, conclusion.id()).stream()
+                .map(supersession -> toChainLink(actor, projectId, supersession))
                 .toList();
         return new ConclusionView(conclusion.id(), conclusion.matterId(),
                 matter == null ? null : matter.matterNo(),
@@ -420,24 +458,28 @@ public class ArchitectureDecisionService {
                 effective.name(), supersedes, supersededBy);
     }
 
-    private ChainLink toChainLink(AuthUser actor, Supersession supersession) {
-        Conclusion source = store.findConclusionById(actor.tenantId(), supersession.conclusionId()).orElse(null);
-        Conclusion target = store.findConclusionById(actor.tenantId(), supersession.supersededConclusionId())
+    private ChainLink toChainLink(AuthUser actor, long projectId, Supersession supersession) {
+        Conclusion source = store.findConclusionById(
+                actor.tenantId(), projectId, supersession.conclusionId()).orElse(null);
+        Conclusion target = store.findConclusionById(
+                        actor.tenantId(), projectId, supersession.supersededConclusionId())
                 .orElse(null);
         DecisionMatter sourceMatter = source == null ? null
-                : store.findMatter(actor.tenantId(), source.matterId()).orElse(null);
+                : store.findMatter(actor.tenantId(), projectId, source.matterId()).orElse(null);
         DecisionMatter targetMatter = target == null ? null
-                : store.findMatter(actor.tenantId(), target.matterId()).orElse(null);
+                : store.findMatter(actor.tenantId(), projectId, target.matterId()).orElse(null);
         return new ChainLink(supersession.id(), supersession.kind().name(),
                 supersession.conclusionId(), sourceMatter == null ? null : sourceMatter.matterNo(),
                 supersession.supersededConclusionId(), targetMatter == null ? null : targetMatter.matterNo(),
                 supersession.createdAt());
     }
 
-    public void setMatterType(AuthUser actor, AccessLevel access, long id, long rowVersion, String typeCode) {
+    public void setMatterType(AuthUser actor, ProjectAccess project, AccessLevel access,
+                              long id, long rowVersion, String typeCode) {
         requireActor(actor);
+        requireProject(project);
         requireReviewer(access, "只有架构组成员或管理人员可以确定事项类型");
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         if (matter.status() == MatterStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项已完成，类型不可修改");
         }
@@ -447,22 +489,24 @@ public class ArchitectureDecisionService {
         if (!exists) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "事项类型不存在或已停用");
         }
-        store.setMatterType(actor.tenantId(), id, rowVersion, normalizedType, actor.id());
+        store.setMatterType(actor.tenantId(), project.id(), id, rowVersion, normalizedType, actor.id());
     }
 
     // ---------- 附件（platform/attachment 公开契约） ----------
 
-    public List<com.ccb.attachment.model.AttachmentItem> attachments(AuthUser actor, long id) {
+    public List<com.ccb.attachment.model.AttachmentItem> attachments(AuthUser actor, ProjectAccess project, long id) {
         requireActor(actor);
-        requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        requireMatter(actor.tenantId(), project.id(), id);
         return attachmentPort.list(MATTER_ATTACHMENT_BUSINESS_TYPE, id, actor.tenantId(),
                 new PageQuery(1, 100), null, null).records();
     }
 
     @Transactional
-    public void bindAttachment(AuthUser actor, long id, long attachmentId) {
+    public void bindAttachment(AuthUser actor, ProjectAccess project, long id, long attachmentId) {
         requireActor(actor);
-        requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        requireMatter(actor.tenantId(), project.id(), id);
         if (attachmentId <= 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件标识无效");
         }
@@ -471,9 +515,10 @@ public class ArchitectureDecisionService {
     }
 
     @Transactional
-    public void deleteAttachment(AuthUser actor, long id, long attachmentId) {
+    public void deleteAttachment(AuthUser actor, ProjectAccess project, long id, long attachmentId) {
         requireActor(actor);
-        DecisionMatter matter = requireMatter(actor.tenantId(), id);
+        requireProject(project);
+        DecisionMatter matter = requireMatter(actor.tenantId(), project.id(), id);
         if (matter.status() == MatterStatus.PUBLISHED) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项已完成，附件不可删除");
         }
@@ -506,16 +551,17 @@ public class ArchitectureDecisionService {
         return names;
     }
 
-    private String allocateMatterNo(long tenantId, LocalDateTime now) {
+    private String allocateMatterNo(long tenantId, long projectId, LocalDateTime now) {
         int year = now.getYear();
-        int ordinal = store.allocateMatterOrdinal(tenantId, year);
+        int ordinal = store.allocateMatterOrdinal(tenantId, projectId, year);
         if (ordinal > MATTER_NO_MAX_ORDINAL) {
             throw new BusinessException(ErrorCode.CONFLICT, "事项编号年度容量已耗尽");
         }
         return "AD-" + year + "-" + String.format(Locale.ROOT, "%04d", ordinal);
     }
 
-    private List<SupersessionTarget> normalizeTargets(AuthUser actor, List<SupersessionTarget> targets) {
+    private List<SupersessionTarget> normalizeTargets(AuthUser actor, long projectId,
+                                                      List<SupersessionTarget> targets) {
         List<SupersessionTarget> normalized = new ArrayList<>();
         Set<Long> seen = new java.util.LinkedHashSet<>();
         for (SupersessionTarget target : targets == null ? List.<SupersessionTarget>of() : targets) {
@@ -526,7 +572,7 @@ public class ArchitectureDecisionService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "同一结论不能重复登记替代关系");
             }
             SupersessionKind kind = target.kind() == null ? SupersessionKind.SUPERSEDE : target.kind();
-            Conclusion existing = store.findConclusionById(actor.tenantId(), target.conclusionId())
+            Conclusion existing = store.findConclusionById(actor.tenantId(), projectId, target.conclusionId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST,
                             "替代目标必须是已发布结论：" + target.conclusionId()));
             normalized.add(new SupersessionTarget(existing.id(), kind));
@@ -612,8 +658,8 @@ public class ArchitectureDecisionService {
         return outcome;
     }
 
-    private DecisionMatter requireMatter(long tenantId, long id) {
-        return store.findMatter(tenantId, id)
+    private DecisionMatter requireMatter(long tenantId, long projectId, long id) {
+        return store.findMatter(tenantId, projectId, id)
                 .orElseThrow(() -> new ArchitectureNotFoundException("架构决策事项不存在"));
     }
 
@@ -649,6 +695,12 @@ public class ArchitectureDecisionService {
     private void requireActor(AuthUser actor) {
         if (actor == null || actor.id() <= 0 || actor.tenantId() <= 0) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "需要有效的认证用户和租户");
+        }
+    }
+
+    private void requireProject(ProjectAccess project) {
+        if (project == null || project.id() <= 0 || project.projectRef() == null || project.projectRef().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "当前项目不能为空");
         }
     }
 
