@@ -1,0 +1,43 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ExcelService.java", "purpose": "Move export, component validation, import persistence, and audit writes behind the Excel Repository boundary."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ExcelMapper.xml", "purpose": "Own parameter-bound Excel content SQL; table identifiers arrive only from the ContentAssetTables allowlist in the Repository."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/StructuredAssetService.java", "purpose": "Move structured content, recycle-bin, relation, component validation, and audit persistence into Repository/Mapper while retaining service authorization and transaction orchestration."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/StructuredAssetMapper.xml", "purpose": "Own fixed MyBatis statements for structured-asset persistence and the dm_rule relation guard."},
+    {"path_or_resource": "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementChangeLogTestSupport.java", "purpose": "Adapt existing requirement service fixtures to the migrated RequirementChangeLog Repository without restoring a production JDBC constructor."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-requirement -am test-compile -q", "exit_code": 0, "salient_output": "Requirement test sources compile after the change-log Repository fixture update."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-requirement -am '-Dtest=RequirementWorkflowListenerTest,RequirementBaselineServiceTest,RequirementDifferenceServiceTest,RequirementLegacyServiceTest,RequirementImportServiceTest' test -q", "exit_code": 0, "salient_output": "Five focused requirement service tests passed."},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "exit_code": 0, "salient_output": "Data-migration production sources compile after both Mapper/XML migrations."},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Data-migration test sources compile."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "DataMigrationModuleRegistrationTest passed."},
+    {"command": "PowerShell XML parse and Mapper method-to-statement audit", "exit_code": 0, "salient_output": "ExcelMapper has 4/4 methods and StructuredAssetMapper has 13/13 methods represented by XML statements."},
+    {"command": "rg -l 'JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery' server/src/modules server/src/platform --glob '*.java' --glob '!**/src/test/**' | Measure-Object", "exit_code": 0, "salient_output": "Residual production direct-SQL files reduced from 49 to 47; data-migration residuals reduced from 16 to 14."}
+  ],
+  "local_checks": [
+    {"check": "Migrated service static scan", "result": "pass", "evidence": "ExcelService and StructuredAssetService contain no JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, or native-query usage.", "limitations": ["Static scanning does not execute statements against MySQL."]},
+    {"check": "Mapper resource coverage", "result": "pass", "evidence": "Both XML resources parse and every declared mapper method is covered.", "limitations": ["Does not prove MySQL runtime result mapping."]}
+  ],
+  "diff_summary": [
+    "Added explicit Mapper/Repository/XML layers for ExcelService and StructuredAssetService.",
+    "Kept permission checks, project-scope enforcement, transaction annotations, audit intent, API signatures, and schema unchanged.",
+    "Updated requirement test fixtures only; production RequirementChangeLogService remains Repository-only."
+  ],
+  "invariants_checked": [
+    {"invariant": "Dynamic content table identifiers are allowlisted", "result": "pass", "evidence": "Both repositories resolve table names exclusively through ContentAssetTables.tableFor before XML ${table} interpolation."},
+    {"invariant": "Authorization and project scope stay in services", "result": "pass", "evidence": "DataMigrationPermissionService calls remain in ExcelService and StructuredAssetService before persistence operations."},
+    {"invariant": "No schema or public API change", "result": "pass", "evidence": "No Flyway, controller, DTO, or integration-contract file was changed."}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "47 production Java files still have direct SQL access, including 14 in data-migration.",
+    "MySQL/Flyway and Testcontainers validation remains deferred until the migration inventory is complete and a Docker daemon is available.",
+    "T2 and T3 remain active; no repository-wide convergence claim is made."
+  ],
+  "recommended_next": "continue T3 with the remaining data-migration services, then migrate the remaining platform/system services and run observation."
+}

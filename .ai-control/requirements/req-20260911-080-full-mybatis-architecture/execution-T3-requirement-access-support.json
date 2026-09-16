@@ -1,0 +1,54 @@
+{
+  "task": "T3",
+  "scope": "ccb-requirement access/support migration checkpoint",
+  "phase": "executing",
+  "completed_classes": [
+    "RequirementWorkflowListener",
+    "RequirementSystemService",
+    "RequirementAttachmentService",
+    "RequirementSecurityService"
+  ],
+  "architecture": "Service -> Repository -> Mapper interface -> Mapper XML",
+  "invariants_preserved": [
+    "workflow lifecycle idempotency and retry propagation",
+    "project and legacy data-scope authorization",
+    "transaction annotations and requirement change-log audit calls",
+    "existing routes, DTOs and schema"
+  ],
+  "files_added": [
+    "RequirementWorkflowMapper.java",
+    "RequirementWorkflowRepository.java",
+    "RequirementWorkflowMapper.xml",
+    "RequirementSystemMapper.java",
+    "RequirementSystemRepository.java",
+    "RequirementSystemMapper.xml",
+    "RequirementAttachmentMapper.java",
+    "RequirementAttachmentRepository.java",
+    "RequirementAttachmentMapper.xml",
+    "RequirementSecurityMapper.java",
+    "RequirementSecurityRepository.java",
+    "RequirementSecurityMapper.xml"
+  ],
+  "verification": [
+    {"command": "mvn -DskipTests -pl :ccb-requirement -am compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -pl :ccb-requirement -am test-compile -q", "result": "passed"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -Dsurefire.failIfNoSpecifiedTests=false -pl :ccb-requirement -am -Dtest=RequirementWorkflowListenerTest,RequirementDifferenceServiceTest,RequirementImportServiceTest,RequirementLegacyServiceTest,RequirementBaselineServiceTest test -q", "result": "passed"},
+    {"command": "XML parse and scoped git diff --check", "result": "passed"}
+  ],
+  "remaining_direct_sql_files": [
+    "RequirementBaselineService",
+    "RequirementDifferenceService",
+    "RequirementImportService",
+    "RequirementLegacyEnhanceService",
+    "RequirementLegacyService",
+    "RequirementProjectService",
+    "RequirementSql"
+  ],
+  "integration_status": "MySQL/Testcontainers integration has not been run in this checkpoint; environment evidence remains required before convergence.",
+  "full_module_test_attempt": {
+    "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-requirement -am test -q",
+    "result": "blocked before ccb-requirement tests by 11 ccb-infrastructure MockDataInitializerTest NoSuchMethodError failures for a removed JdbcTemplate constructor",
+    "ownership": "pre-existing upstream infrastructure migration incompatibility; not modified in this task scope"
+  },
+  "database_schema_changed": false
+}

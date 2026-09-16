@@ -1,0 +1,28 @@
+{
+  "task": "T3-testmanagement-executions",
+  "recorded_at": "2026-09-15T00:00:00+08:00",
+  "phase": "executing",
+  "objective": "Move TestExecutionService persistence access to its explicit MyBatis Repository/Mapper/XML contract.",
+  "files": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/execution/TestExecutionService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/execution/TestExecutionRepository.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/execution/TestExecutionMapper.java",
+    "server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestExecutionMapper.xml"
+  ],
+  "invariants": [
+    "Service retains domain/project checks, role checks, transactions, attachment gateway calls and trace audit orchestration.",
+    "SQL is XML-owned and parameters are bound through named mapper parameters.",
+    "No Flyway/schema/API/DTO change was made."
+  ],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-test-management -am compile -q", "result": "passed"},
+    {"command": "mvn '-DskipTests' -pl :ccb-test-management -am test-compile -q", "result": "passed"},
+    {"command": "production Jdbc access scan for execution package", "result": "passed; no matches"},
+    {"command": "Mapper method/XML statement coverage audit", "result": "passed; 34 methods covered"}
+  ],
+  "unresolved": [
+    "Focused MySQL/Testcontainers integration was not run in this execution checkpoint; environment-wide Docker access remains unavailable.",
+    "TestCaseService and TestConfigurationService remain separate outstanding migrations."
+  ],
+  "rollback": "Revert this execution-service checkpoint as a single module-local change."
+}

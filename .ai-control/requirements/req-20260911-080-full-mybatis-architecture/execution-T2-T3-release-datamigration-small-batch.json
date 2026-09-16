@@ -1,0 +1,28 @@
+{
+  "task_id": "T2-T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/application/persistence/ReleaseApplicationStore.java", "purpose": "Replace direct JDBC application, child snapshot, transition, and relation persistence with the existing ReleaseApplicationMapper XML contract."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardSnapshotScheduler.java", "purpose": "Move scheduled dashboard snapshot SQL into DashboardSnapshotMapper.xml."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DashboardService.java", "purpose": "Move project-isolated dashboard statistics into DashboardRepository and DashboardMapper.xml."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationPermissionService.java", "purpose": "Move RBAC permission checks into DataMigrationPermissionRepository and Mapper XML."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-release -am '-Dtest=ReleaseApplicationPersistenceContractTest,ReleaseAnalyticsStoreTest' test -q", "exit_code": 0, "salient_output": "Release focused persistence tests passed."},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Data-migration production and test source compilation passed after fixture updates."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=DataMigrationPermissionServiceTest' test -q", "exit_code": 0, "salient_output": "DataMigrationPermissionServiceTest passed."},
+    {"command": "production direct-SQL rg scan", "exit_code": 0, "salient_output": "Residual direct-SQL production files reduced from 55 to 51."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Release application child snapshots retain deactivate-then-insert sequencing", "result": "pass", "evidence": "Focused contract test verifies Mapper calls and failed optimistic-lock update does not mutate children."},
+    {"invariant": "Dashboard content counts remain tenant/project isolated", "result": "pass", "evidence": "Mapper XML binds tenantId and projectId for every one of the fixed content tables."},
+    {"invariant": "Data migration RBAC and platform project-scope ownership remain distinct", "result": "pass", "evidence": "Focused permission test passes; project access stays delegated to ProjectWorkflowDirectoryService."}
+  ],
+  "unresolved_items": [
+    "51 production Java direct-SQL files remain; current work does not satisfy repository-wide completion.",
+    "MySQL/Testcontainers verification remains dependent on a reachable local Docker daemon.",
+    "T2 and T3 remain active; no convergence claim is made."
+  ],
+  "recommended_next": "Continue serially with the remaining platform/system and business Stores, then run full regression and convergence gates."
+}

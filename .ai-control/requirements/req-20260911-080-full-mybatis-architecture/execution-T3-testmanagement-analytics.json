@@ -1,0 +1,31 @@
+{
+  "task_id":"T3-testmanagement-analytics",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsService.java","purpose":"Replace direct JDBC persistence with repository calls while retaining report orchestration."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsAdvancedService.java","purpose":"Replace direct JDBC persistence with repository calls while retaining preset calculations."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsMapper.java","purpose":"Declare explicit MyBatis persistence contract."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsRepository.java","purpose":"Provide Service-to-Mapper boundary."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestAnalyticsMapper.xml","purpose":"Own parameterized SQL statements and dynamic optional filters."}
+  ],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am compile -q","exit_code":0,"salient_output":"Reactor compilation succeeded."},
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am test-compile -q","exit_code":0,"salient_output":"Reactor test compilation succeeded."},
+    {"command":"Mapper interface/XML coverage audit","exit_code":0,"salient_output":"methods=31 xmlIds=32 missing=0"},
+    {"command":"analytics direct SQL static scan","exit_code":0,"salient_output":"No analytics production Java matches."}
+  ],
+  "local_checks":[
+    {"check":"XML parse","result":"pass","evidence":"TestAnalyticsMapper XML parsed with namespace com.ccb.testmanagement.analytics.TestAnalyticsMapper."},
+    {"check":"Diff whitespace","result":"pass","evidence":"git diff --check reported no errors; only existing CRLF conversion warnings."}
+  ],
+  "diff_summary":["Migrated TestAnalyticsService and TestAnalyticsAdvancedService to a dedicated Mapper/Repository/XML contract."],
+  "invariants_checked":[
+    {"invariant":"Routes, DTOs and transaction annotations preserved","result":"pass","evidence":"Public method signatures and @Transactional archive/save methods retained."},
+    {"invariant":"No schema or Flyway change","result":"pass","evidence":"Only Java mapper/repository/service and XML mapping files changed."}
+  ],
+  "disturbances":[{"event":"No focused analytics unit test exists","impact":"Behavior is compile/static verified only; MySQL integration remains required in final T4."}],
+  "assumptions_falsified":[],
+  "unresolved_items":["Nine remaining test-management services still have direct JDBC access.","MySQL/Flyway integration and full Maven regression are deferred to final T4."],
+  "recommended_next":"continue T3 with TestAnnouncementService, TestPlanService, TestReportService, TestCaseService, TestDefectService, TestExecutionService, TestScopeService, BusinessDayService and TestConfigurationService"
+}

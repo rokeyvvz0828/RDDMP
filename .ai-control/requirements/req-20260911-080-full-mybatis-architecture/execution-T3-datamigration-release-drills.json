@@ -1,0 +1,33 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillService.java", "purpose": "Replace all direct SQL access with the ReleaseDrillRepository contract while retaining service authorization, attachment lifecycle, transaction and audit orchestration."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillMapper.java", "purpose": "Declare the complete MyBatis persistence contract for active and recycle-bin release-drill records."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReleaseDrillRepository.java", "purpose": "Provide service-owned not-found semantics over the Mapper without exposing SQL."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ReleaseDrillMapper.xml", "purpose": "Own parameter-bound release-drill, attachment, component, recycle-bin and audit SQL."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReleaseDrillServiceTest.java", "purpose": "Replace JdbcTemplate test double with an explicit ReleaseDrillMapper contract double."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "exit_code": 0, "salient_output": "Data-migration production sources compile."},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Data-migration tests compile."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=ReleaseDrillServiceTest,ReleaseDrillRecycleBinSourceTest,DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "All selected release-drill and registration tests passed."},
+    {"command": "Production direct-SQL scan plus Mapper/XML method-ID audit", "exit_code": 0, "salient_output": "ReleaseDrillService has no direct JDBC/SQL references; no Mapper method is missing an XML statement."}
+  ],
+  "local_checks": [
+    {"check": "Permission, project scope, transaction and audit ownership", "result": "pass", "evidence": "Service retains project/access/admin/write checks, @Transactional methods, attachment calls and ordered audit delegation."},
+    {"check": "SQL ownership", "result": "pass", "evidence": "All active and recycle-bin SQL is in ReleaseDrillMapper.xml using bound parameters."}
+  ],
+  "diff_summary": ["Migrated one data-migration service persistence cluster without schema, route, DTO, public API or Flyway changes."],
+  "invariants_checked": [
+    {"invariant": "Public behavior remains service-owned", "result": "pass", "evidence": "Focused service tests cover validation, attachment replacement, authorization, delete/restore conflicts and audit signals."},
+    {"invariant": "Rollback remains module-local", "result": "pass", "evidence": "Only ReleaseDrill service, mapper/repository/XML and its unit test changed."}
+  ],
+  "disturbances": [
+    {"event": "MySQL integration environment remains unavailable", "impact": "Testcontainers integration must be rerun in a Docker-enabled local/CI environment; no integration success is claimed."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Remaining data-migration, architecture, requirement, release, test-management and platform/system direct-SQL files are pending under T2/T3."],
+  "recommended_next": "continue executing next module checkpoint"
+}

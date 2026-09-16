@@ -1,0 +1,37 @@
+{
+  "task_id": "T3",
+  "recorded_at": "2026-09-15T14:57:03+08:00",
+  "scope": "RequirementBaselineService MyBatis persistence migration",
+  "phase": "executing",
+  "modified_files": [
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementBaselineService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementBaselineMapper.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementBaselineRepository.java",
+    "server/src/modules/requirement/src/main/resources/mapper/requirement/RequirementBaselineMapper.xml",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/support/StubJdbcTemplate.java",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementBaselineServiceTest.java"
+  ],
+  "contract": "Service delegates all baseline persistence to Repository and MyBatis Mapper XML; project authorization, transaction boundary, change-log order and snapshot serialization are unchanged.",
+  "verification": [
+    {
+      "command": "mvn -DskipTests -f src/modules/requirement/pom.xml test-compile -q",
+      "result": "passed"
+    },
+    {
+      "command": "mvn -Dnet.bytebuddy.experimental=true -Dsurefire.failIfNoSpecifiedTests=false -f src/modules/requirement/pom.xml -Dtest=RequirementBaselineServiceTest test -q",
+      "result": "passed"
+    },
+    {
+      "command": "rg -n JdbcTemplate|RequirementSql|jdbc. RequirementBaselineService.java",
+      "result": "no matches"
+    },
+    {
+      "command": "XML parse and statement count",
+      "result": "passed; 10 mapped statements"
+    }
+  ],
+  "known_limitations": [
+    "MySQL/Testcontainers integration remains unavailable because local Docker engine access is denied.",
+    "Remaining requirement-module SQL migrations require separate execution checkpoints."
+  ]
+}

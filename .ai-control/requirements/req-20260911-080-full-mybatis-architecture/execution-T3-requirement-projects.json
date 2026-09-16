@@ -1,0 +1,20 @@
+{
+  "task_id": "T3",
+  "recorded_at": "2026-09-15T15:05:00+08:00",
+  "scope": "RequirementProjectService MyBatis persistence migration",
+  "phase": "executing",
+  "modified_files": [
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementProjectService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementProjectMapper.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementProjectRepository.java",
+    "server/src/modules/requirement/src/main/resources/mapper/requirement/RequirementProjectMapper.xml"
+  ],
+  "contract": "Project, member and duplicate-check persistence is XML-owned. Existing service authorization, transaction, validation and change-log behavior remain unchanged.",
+  "verification": [
+    {"command": "mvn -DskipTests -f src/modules/requirement/pom.xml compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -f src/modules/requirement/pom.xml test-compile -q", "result": "passed"},
+    {"command": "RequirementProjectService direct-access scanner", "result": "no matches"},
+    {"command": "RequirementProjectMapper.xml parse", "result": "passed; 12 mapped statements"}
+  ],
+  "known_limitations": ["No dedicated RequirementProjectService test exists; MySQL/Testcontainers integration is unavailable due Docker access denial."]
+}

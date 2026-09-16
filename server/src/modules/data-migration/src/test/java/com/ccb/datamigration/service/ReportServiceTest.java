@@ -19,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * 汇报材料服务切换后（REQ-20260831-050）的行为测试：存储改指 dm_report，主文件经
@@ -100,10 +104,16 @@ class ReportServiceTest {
     }
 
     private ReportService service(StubJdbcTemplate jdbc, AttachmentGateway attachments) {
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        ContentAttachmentService contentAttachments = new ContentAttachmentService(jdbc, attachments);
-        ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments, permissions);
-        return new ReportService(jdbc, attachments, contentAttachments, fileAssets, permissions, TestDataMigrationCodeValues.service());
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.allow());
+        ContentAttachmentService contentAttachments = ContentAttachmentTestSupport.service(jdbc, attachments);
+        ContentFileAssetRepository fileAssetRepository = mock(ContentFileAssetRepository.class);
+        when(fileAssetRepository.currentMainAttachmentIds(anyLong(), anyString(), anyLong()))
+            .thenAnswer(invocation -> {
+                long businessId = invocation.getArgument(2);
+                return new ArrayList<>(jdbc.contentMain.getOrDefault(businessId, List.of()));
+            });
+        ContentFileAssetService fileAssets = new ContentFileAssetService(fileAssetRepository, attachments, contentAttachments, permissions, null, new ContentDocCodeGenerator());
+        return new ReportService(new ReportRepository(jdbc), attachments, contentAttachments, fileAssets, permissions, new ContentDocCodeGenerator(), TestDataMigrationCodeValues.service());
     }
 
     private static AttachmentItem attachment(long id, String name) {
@@ -147,7 +157,7 @@ class ReportServiceTest {
     }
 
     /** 模拟 dm_report 与 dm_content_attachment 两张表的最小 JDBC 桩。 */
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends JdbcTemplate implements ReportMapper {
         private final List<String> events;
         private final Map<Long, Map<String, Object>> reports = new LinkedHashMap<>();
         private final Map<Long, List<Long>> contentMain = new LinkedHashMap<>();
@@ -265,5 +275,16 @@ class ReportServiceTest {
             row.put("deleted", 0);
             return row;
         }
+
+        @Override public Long count(long tenantId, long projectId, boolean deleted, String reportPeriod, String keyword) { return reports.values().stream().filter(row -> ((Number) row.get("project_id")).longValue() == projectId && ((Number) row.get("deleted")).intValue() == (deleted ? 1 : 0)).count(); }
+        @Override public List<Map<String, Object>> page(long tenantId, long projectId, boolean deleted, String reportPeriod, String keyword, int limit, long offset) { return reports.values().stream().filter(row -> ((Number) row.get("project_id")).longValue() == projectId && ((Number) row.get("deleted")).intValue() == (deleted ? 1 : 0)).skip(offset).limit(limit).toList(); }
+        @Override public List<Map<String, Object>> find(long tenantId, long id, boolean deleted) { Map<String, Object> row = reports.get(id); return row != null && ((Number) row.get("deleted")).intValue() == (deleted ? 1 : 0) ? List.of(row) : List.of(); }
+        @Override public int insert(Map<String, Object> p) { long id=((Number)p.get("id")).longValue(); reports.put(id,reportRow(id,((Number)p.get("projectId")).longValue())); contentMain.putIfAbsent(id,new ArrayList<>()); insertedCodes.add(String.valueOf(p.get("docCode"))); return 1; }
+        @Override public int update(Map<String, Object> p) { return 1; }
+        @Override public int softDelete(long tenantId, long id, long deletedBy) { reports.get(id).put("deleted",1); return 1; }
+        @Override public int restore(long tenantId, long id) { events.add("db:restore"); if(restoreUpdateCount==1) reports.get(id).put("deleted",0); return restoreUpdateCount; }
+        @Override public int purge(long tenantId, long id) { reports.remove(id); return 1; }
+        @Override public List<Map<String, Object>> projectOptions(long tenantId) { return List.of(); }
+        @Override public int insertAudit(long tenantId, long actorId, long projectId, String operation, long entityId) { events.add("audit:"+operation); return 1; }
     }
 }

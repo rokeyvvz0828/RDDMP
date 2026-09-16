@@ -1,0 +1,21 @@
+{
+  "sample_label": "S2-workflow-mapper-xml",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 static direct-SQL scan and XML/interface audit", "result": "pass", "raw_evidence": "No production workflow JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, native-query, or annotated SQL usage; 128 declared Mapper methods are represented by 134 unique XML statements.", "limitation": ["Static scan cannot observe third-party Flowable SQL."]},
+    {"requirement_id": "R2", "sensor": "Mapper resource and Boot configuration audit", "result": "pass", "raw_evidence": "18 workflow XML files parse; Boot scans com.ccb and the local MyBatis mapper location is classpath*:mapper/**/*.xml.", "limitation": ["No live application context was started."]},
+    {"requirement_id": "R3", "sensor": "Focused Maven unit suite", "result": "pass", "raw_evidence": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-workflow -am '-Dtest=Workflow*Test,!*MigrationMySqlTest' test -q printed MAVEN_WORKFLOW_UNIT_TESTS_OK.", "limitation": ["Docker-backed MySQL migration tests were excluded after confirming no Docker daemon is available."]},
+    {"requirement_id": "R4", "sensor": "Scope and diff audit", "result": "pass", "raw_evidence": "Changes are confined to workflow test fixtures and current task evidence; no schema migration or public API modification was made.", "limitation": ["T2 covers more platform modules and remains partial."]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Testcontainers cannot connect to \\.\\pipe\\docker_engine", "classification": "disturbance", "impact": "MySQL/Flyway migration evidence remains unavailable locally."}
+  ],
+  "coverage_gaps": [
+    "WorkflowDefinitionSummaryMigrationMySqlTest and WorkflowPlatformRetirementMigrationMySqlTest require a reachable Docker daemon.",
+    "This observation is non-independent because it was performed in the same Codex context as the execution work."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

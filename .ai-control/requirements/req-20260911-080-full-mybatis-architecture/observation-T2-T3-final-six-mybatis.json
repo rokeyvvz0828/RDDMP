@@ -1,0 +1,26 @@
+{
+  "sample_label": "final-six-mybatis-static-and-focused-test-sample",
+  "task_ids": ["T2", "T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "direct production JDBC/native-query scanner", "result": "pass", "raw_evidence": "DIRECT_SQL_SCAN_OK for ProjectService, SubsystemChangeStore, EnvironmentResourceStore, NetworkAccessStore, PlanStore, and ReleaseOperationsStore", "limitation": ["Scanner is restricted to the six requested classes."]},
+    {"requirement_id": "R1", "sensor": "Mapper XML well-formedness parser and interface statement audit", "result": "pass", "raw_evidence": "All six target Mapper XML documents parsed after DTD stripping for well-formedness validation; no Mapper method was missing a statement", "limitation": ["Well-formedness parsing does not execute SQL against MySQL."]},
+    {"requirement_id": "R2", "sensor": "source-to-XML predicate and lock comparison", "result": "pass", "raw_evidence": "FOR UPDATE counts match the pre-migration source; Plan count/list filters and tenant-scoped environment join are identical", "limitation": ["No HTTP controller runtime probe was run."]},
+    {"requirement_id": "R3", "sensor": "focused Maven tests, module compiles, and full Maven regression", "result": "partial", "raw_evidence": "ProjectServiceTest, focused architecture tests, ReleaseOperationsControllerSecurityTest, ReleaseOperationsServiceTest, the complete ccb-data-migration module regression, ArchitectureWorkflowIntegrationMySqlTest (4/4), SubsystemChangeStoreMySqlTest (8/8), and all three module compiles passed with -Dnet.bytebuddy.experimental=true. The prior full Maven stopped in ccb-data-migration before those repairs; a new full-suite run remains pending.", "limitation": ["A full-suite pass remains unavailable until the repaired worktree is rerun end to end."]},
+    {"requirement_id": "R4", "sensor": "scope and diff audit", "result": "pass", "raw_evidence": "No Flyway migration, public route, DTO, package, or module dependency change was made for the six migrations. Under explicit authorization, CcbApplication received a package-scoped MapperScan for the pre-existing BootWorkflowMapper.", "limitation": ["The shared worktree contains unrelated concurrent migration changes that were not reverted or attributed to this checkpoint."]},
+    {"requirement_id": "R4", "sensor": "local runtime probe", "result": "pass", "raw_evidence": "With process-local .env values and the documented seed publisher disabled only for the local acceptance process, backend /actuator/health returned UP and frontend http://localhost:5173 returned HTTP 200.", "limitation": ["No authenticated browser user-flow or production-equivalent seed-publication check was run."]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Java 25 requires Byte Buddy experimental mode for Mockito", "classification": "disturbance", "impact": "Default focused test invocation fails before business tests; task-specified property restores the test sensor."}
+    ,{"event": "Full Maven initially reached ccb-data-migration and failed in test fixtures and MySQL test setup", "classification": "disturbance", "impact": "Those data-migration repairs subsequently passed at module scope. A later architecture integration failure exposed standalone Mapper XML and record-constructor mapping gaps; those targeted tests now pass, but a renewed full run is still required."},
+    {"event": "Local seed publisher rejects incomplete existing workflow data", "classification": "environment data disturbance", "impact": "The process-level WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED=false override was required to avoid publishing a project workflow with unconfigured approvers; backend health and frontend availability then passed."}
+  ],
+  "coverage_gaps": [
+    "Full repository Maven was attempted before the data-migration and architecture test repairs; a renewed complete run is pending.",
+    "Backend health and frontend availability passed; no authenticated browser user-flow acceptance was run.",
+    "Observation is non-independent for the final static sampling because the coordinating agent also applied the Plan count correction."
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

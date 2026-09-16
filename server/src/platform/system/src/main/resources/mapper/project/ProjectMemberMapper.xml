@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.system.project.ProjectMemberMapper">
+    <select id="selectMembers" resultType="map">
+        SELECT m.id, m.project_id, m.user_id, m.org_id, po.org_name, u.username, u.display_name,
+               u.avatar_object_key, m.status, m.joined_at
+        FROM pm_project_member m
+        JOIN sys_user u ON u.id = m.user_id AND u.tenant_id = m.tenant_id AND u.deleted = 0
+        LEFT JOIN pm_project_org po ON po.id = m.org_id AND po.project_id = m.project_id
+            AND po.tenant_id = m.tenant_id AND po.deleted = 0
+        WHERE m.project_id = #{projectId} AND m.tenant_id = #{tenantId} AND m.deleted = 0
+        ORDER BY m.joined_at, m.id
+    </select>
+
+    <select id="selectRolesByMemberIds" resultType="map">
+        SELECT mr.member_id, r.id, r.role_code, r.role_name
+        FROM pm_project_member_role mr
+        JOIN pm_project_role r ON r.id = mr.role_id AND r.tenant_id = mr.tenant_id AND r.deleted = 0
+        WHERE mr.tenant_id = #{tenantId}
+          AND mr.member_id IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+        ORDER BY mr.member_id, r.id
+    </select>
+</mapper>

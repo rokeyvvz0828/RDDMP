@@ -1,0 +1,31 @@
+{
+  "task_id":"T3-testmanagement-announcements",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/announcement/TestAnnouncementService.java","purpose":"Keep announcement validation, project scope, attachment lifecycle and transactional audit orchestration while removing direct persistence access."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/announcement/TestAnnouncementMapper.java","purpose":"Declare the announcement persistence contract."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/announcement/TestAnnouncementRepository.java","purpose":"Provide the Service-to-Mapper boundary."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestAnnouncementMapper.xml","purpose":"Own parameterized announcement, attachment, project scope and audit SQL."}
+  ],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am compile -q","exit_code":0,"salient_output":"Reactor compilation succeeded."},
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am test-compile -q","exit_code":0,"salient_output":"Reactor test compilation succeeded."},
+    {"command":"mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-test-management -am '-Dtest=TestAnnouncementSanitizerTest' test -q","exit_code":0,"salient_output":"Announcement HTML sanitizer test passed."},
+    {"command":"announcement production direct-SQL static scan","exit_code":0,"salient_output":"No JdbcTemplate, EntityManager or SQL statement matches remain in TestAnnouncementService."}
+  ],
+  "local_checks":[
+    {"check":"XML parse","result":"pass","evidence":"TestAnnouncementMapper.xml parsed successfully."},
+    {"check":"Diff whitespace","result":"pass","evidence":"git diff --check reported no errors; only pre-existing CRLF conversion warnings."}
+  ],
+  "diff_summary":["Migrated TestAnnouncementService to a dedicated Mapper/Repository/XML contract without changing routes or DTOs."],
+  "invariants_checked":[
+    {"invariant":"Tenant, domain and project scope remain server-side","result":"pass","evidence":"Scope checks retain tenant/domain/project predicates before mapper calls."},
+    {"invariant":"Attachment lifecycle and write audit remain transactional","result":"pass","evidence":"Existing @Transactional service methods retain attachment binding/deletion and audit ordering."},
+    {"invariant":"No schema or Flyway change","result":"pass","evidence":"Only service, mapper/repository, mapper XML and current-task execution evidence changed."}
+  ],
+  "disturbances":[],
+  "assumptions_falsified":[],
+  "unresolved_items":["Eight test-management production services still have direct JDBC access.","MySQL/Flyway integration remains unavailable until Docker access is restored."],
+  "recommended_next":"continue T3 with TestPlanService"
+}

@@ -1,0 +1,56 @@
+{
+  "task_id": "T2-T3-final-six-mybatis",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java and project Mapper/Repository/XML", "purpose": "Move project persistence SQL out of the service while retaining service authorization, audit, transaction annotations, and public API behavior."},
+    {"path_or_resource": "server/src/modules/architecture/**/(SubsystemChangeStore|EnvironmentResourceStore|NetworkAccessStore|PlanStore) and Mapper/XML", "purpose": "Move the four remaining architecture persistence stores to parameter-bound MyBatis XML."},
+    {"path_or_resource": "server/src/modules/release/src/main/java/com/ccb/release/operations/persistence/ReleaseOperationsStore.java and Mapper/XML", "purpose": "Move release operations persistence SQL to MyBatis XML."},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java and architecture test fixtures", "purpose": "Update tests to the Repository/Mapper construction contracts without restoring production JdbcTemplate access."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "rg direct JDBC/native-query scan over the six target production classes", "exit_code": 0, "salient_output": "DIRECT_SQL_SCAN_OK"},
+    {"command": "PowerShell XmlDocument well-formedness parse over six target Mapper XML files", "exit_code": 0, "salient_output": "six XML_OK records"},
+    {"command": "mvn -pl :ccb-system -am -DskipTests compile -q; ccb-architecture; ccb-release", "exit_code": 0, "salient_output": "all three target module compile commands completed successfully"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am -Dtest=ProjectServiceTest test -q", "exit_code": 0, "salient_output": "Repository-contract ProjectServiceTest passed"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-architecture -am focused change/environment/network tests -q", "exit_code": 0, "salient_output": "focused architecture suite passed after Mapper fixture migration"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-release -am -Dtest=ReleaseOperationsControllerSecurityTest,ReleaseOperationsServiceTest test -q", "exit_code": 0, "salient_output": "focused release suite passed"},
+    {"command": "mvn -pl :ccb-data-migration -am -Dnet.bytebuddy.experimental=true -Dtest=DataMigrationModuleRegistrationTest -Dsurefire.failIfNoSpecifiedTests=false test -q", "exit_code": 0, "salient_output": "DataMigrationModuleRegistrationTest passed after its Mapper XML static assertions were updated for pre-existing MyBatis migrations."},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true test -q", "exit_code": 1, "salient_output": "completed through ccb-data-migration; 3 failures and 18 errors remain outside the six target migrations: DataMigrationModuleRegistrationTest fixture drift (subsequently fixed and focused test passed), IssueMigrationMySqlTest MySQL SUPER privilege/BadSqlGrammar failures, and ReportServiceTest/TopicServiceTest missing test helper classes."},
+    {"command": "mvn -pl :ccb-boot -am -DskipTests compile -q", "exit_code": 0, "salient_output": "platform boot module and its dependencies compiled after the package-scoped MyBatis Mapper scan registration."},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-architecture -Dtest=com.ccb.architecture.change.persistence.ArchitectureWorkflowIntegrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test -q", "exit_code": 0, "salient_output": "4 tests passed after explicit XML loading, Spring-managed test transactions, and exact record constructor type mappings."},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-architecture -Dtest=com.ccb.architecture.change.persistence.SubsystemChangeStoreMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test -q", "exit_code": 0, "salient_output": "8 tests passed, covering tenant isolation, locking, CAS, transaction rollback, and receipt idempotency."},
+    {"command": "local acceptance startup: mvn -pl :ccb-boot spring-boot:run -Dspring-boot.run.profiles=local; npm --prefix web run dev", "exit_code": 0, "salient_output": "with authorized process-local .env loading and WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED=false for local acceptance, backend /actuator/health returned UP and frontend http://localhost:5173 returned HTTP 200."}
+  ],
+  "local_checks": [
+    {"check": "Plan list/count equivalence", "result": "pass", "evidence": "countPlans now has the same tenant-scoped environment join and five dynamic predicates as searchPlans", "limitations": ["No live MySQL result-set comparison was run."]},
+    {"check": "locking migration", "result": "pass", "evidence": "FOR UPDATE occurrence counts match pre-migration source for the six targets: 5, 4, 4, 7, 2, 10", "limitations": ["Static comparison does not execute concurrent transactions."]},
+    {"check": "tenant and optimistic-lock SQL ownership", "result": "pass", "evidence": "target Mapper XML files contain tenant_id predicates; architecture and release XML retain row_version predicates", "limitations": ["ProjectService did not have row_version SQL before this migration."]}
+  ],
+  "diff_summary": [
+    "All six listed production classes have no direct JdbcTemplate, named JDBC, native-query, or annotated SQL access.",
+    "SQL is represented in the corresponding MyBatis Mapper XML files; service transaction, permission, and audit orchestration remains in Java.",
+    "No Flyway migration, route, DTO, package, or public module dependency was changed by this checkpoint.",
+    "Under explicit platform-change authorization, CcbApplication now scans the existing BootWorkflowMapper package so BootWorkflowRepository can be assembled at runtime."
+  ],
+  "invariants_checked": [
+    {"invariant": "tenant predicates", "result": "pass", "evidence": "Mapper XML static audit and direct source-to-XML review"},
+    {"invariant": "FOR UPDATE and optimistic locking", "result": "pass", "evidence": "pre/post FOR UPDATE count comparison and row_version XML scan"},
+    {"invariant": "service authorization and audit ownership", "result": "pass", "evidence": "ProjectService Repository-contract tests cover denied action and delete audit; no controller or public API changes"},
+    {"invariant": "transaction ownership", "result": "pass", "evidence": "existing service @Transactional methods and Store transaction guards remain; targeted modules compile"}
+  ],
+  "disturbances": [
+    {"event": "Initial focused tests used Java 25 without Byte Buddy experimental mode", "impact": "Mockito failed before business assertions; rerun with the task-required property passed."},
+    {"event": "Several test fixtures used the old JdbcTemplate Store constructors", "impact": "Updated only test construction contracts to obtain MyBatis Mapper instances from SqlSessionTemplate."},
+    {"event": "Standalone MyBatis test configuration did not register Mapper XML statements or Spring transaction integration", "impact": "The two affected architecture tests now explicitly parse the XML under SpringManagedTransactionFactory; Mapper constructor arguments use exact primitive and String javaType aliases."}
+    ,{"event": "Full repository test reached ccb-data-migration", "impact": "The target module suites pass, but unrelated data-migration fixture, MySQL privilege, and missing-helper test failures prevent a full-suite success conclusion."},
+    {"event": "Local workflow seed publisher rejects incomplete existing workflow data", "impact": "The non-mutating local acceptance process disables the documented seed publisher with WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED=false; production source and database data were not changed."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "The earlier full Maven failure in ccb-data-migration was repaired and its module regression passed; a new full Maven run after the architecture test repair remains pending.",
+    "Backend and frontend runtime availability passed; authenticated end-to-end business-flow acceptance was not run.",
+    "This execution evidence does not establish high-assurance task convergence."
+  ],
+  "recommended_next": "observe"
+}

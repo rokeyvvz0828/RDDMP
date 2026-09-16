@@ -1,0 +1,40 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAttachmentService.java", "purpose": "Move content attachment relation persistence to the Repository boundary while preserving attachment gateway calls, transaction boundaries, and soft-delete ordering."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ContentAttachmentMapper.xml", "purpose": "Own active/recycle-bin attachment relation queries and mutations with tenant and business predicates."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentAttachmentTestSupport.java", "purpose": "Provide a test-only Mapper adapter over existing JDBC fixtures without retaining a production JDBC constructor."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java", "purpose": "Retain main-file replacement and binding-order coverage through the Repository-based attachment service."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java", "purpose": "Retain topic attachment lifecycle coverage through the Repository-based attachment service."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Data-migration production and test sources compile after the attachment repository migration."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=ReportServiceTest,TopicServiceTest,DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "Attachment collaboration and registration tests passed."},
+    {"command": "PowerShell XML parse and Mapper method-to-statement audit", "exit_code": 0, "salient_output": "ContentAttachmentMapper XML parses and covers all 14 declared Mapper methods."},
+    {"command": "production direct-SQL rg scan", "exit_code": 0, "salient_output": "Residual production direct-SQL files reduced from 47 to 46; data-migration residuals reduced from 14 to 13."}
+  ],
+  "local_checks": [
+    {"check": "ContentAttachmentService direct-SQL scan", "result": "pass", "evidence": "No JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, native-query, or SQL literal remains in the production service.", "limitations": ["Static checking does not exercise MySQL statement execution."]},
+    {"check": "Attachment collaboration behavior", "result": "pass", "evidence": "ReportServiceTest and TopicServiceTest pass using the Repository boundary and existing attachment gateway fixtures.", "limitations": ["MySQL/Testcontainers coverage is still deferred."]}
+  ],
+  "diff_summary": [
+    "Added ContentAttachmentMapper, ContentAttachmentRepository, and tenant-bound Mapper XML.",
+    "Kept AttachmentGateway binding/unbinding decisions, user-directory enrichment, service transactions, and public service methods unchanged.",
+    "Moved test fixtures to a test-only Mapper adapter and updated the source registration assertion to inspect XML ownership."
+  ],
+  "invariants_checked": [
+    {"invariant": "Attachment platform access remains through AttachmentGateway", "result": "pass", "evidence": "Service continues to bind, resolve, and delete bound attachments through the existing gateway."},
+    {"invariant": "Tenant and business predicates remain bound", "result": "pass", "evidence": "Every XML statement receives tenantId; relation operations additionally bind businessType/businessId or relation row id."},
+    {"invariant": "No public API or schema change", "result": "pass", "evidence": "No controller, DTO, Flyway, or platform attachment contract file changed."}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "46 production Java files still have direct SQL access, including 13 in data-migration.",
+    "MySQL/Flyway and Testcontainers verification remains deferred until migration implementation is complete and a Docker daemon is available.",
+    "T2 and T3 remain active; no repository-wide convergence claim is made."
+  ],
+  "recommended_next": "continue T3 with the remaining data-migration services, then complete platform/system and business module migration before independent observation."
+}

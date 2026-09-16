@@ -1,0 +1,1714 @@
+{
+  "schema_version": 5,
+  "revision": 24,
+  "created_at": "2026-09-11T12:25:01+00:00",
+  "updated_at": "2026-09-14T09:30:51+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化 full 工作流",
+      "recorded_at": "2026-09-11T12:25:01+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Full migration baseline is measurable and scope is recorded",
+      "recorded_at": "2026-09-11T12:25:33+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All requirements have measurable static, test, integration and runtime sensors",
+      "recorded_at": "2026-09-11T12:26:10+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Plan covers all must requirements and isolates module rollback",
+      "recorded_at": "2026-09-11T12:26:56+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 inventory has reproducible counts and module mapping",
+      "recorded_at": "2026-09-11T12:27:50+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 observed and verified; begin serial module migrations",
+      "recorded_at": "2026-09-11T12:28:13+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "First platform/system batch has focused and module test evidence",
+      "recorded_at": "2026-09-11T12:32:01+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "Batch observation passed; continue remaining module migration",
+      "recorded_at": "2026-09-11T12:32:15+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "Workflow module execution evidence is available for mapper, XML and focused unit-test observation",
+      "recorded_at": "2026-09-14T09:30:02+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "Workflow migration batch has no observed product deviation; continue remaining platform modules under T2",
+      "recorded_at": "2026-09-14T09:30:51+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "User selected full repository migration; baseline records API, security, transaction and rollback invariants",
+        "recorded_at": "2026-09-11T12:25:31+00:00",
+        "data": {
+          "objective": "Migrate all production SQL access to MyBatis Repository/Mapper layers while preserving API, authorization, tenant, transaction and audit behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "All production SQL is owned by MyBatis Mapper/XML or Repository; Controller and Service contain no direct SQL access.",
+              "acceptance": [
+                "static scan finds no direct SQL in Controller/Service",
+                "all SQL paths have Mapper/XML tests"
+              ],
+              "priority": "must",
+              "source": "user-confirmed方案C",
+              "counterexample": [
+                "Service calls JdbcTemplate"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Each migrated module exposes Controller, Service and Repository/Mapper boundaries without changing public APIs.",
+              "acceptance": [
+                "layer audit passes",
+                "existing routes and DTOs remain compatible"
+              ],
+              "priority": "must",
+              "source": "user requirement",
+              "counterexample": [
+                "Controller contains persistence SQL"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Module, integration and full feature tests prove behavior, permissions, transactions, audit and pagination remain equivalent.",
+              "acceptance": [
+                "focused tests pass",
+                "MySQL/Flyway and full Maven regressions pass",
+                "core controller flows are reachable"
+              ],
+              "priority": "must",
+              "source": "user requirement",
+              "counterexample": [
+                "permission or transaction regression"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Each module migration has an independent rollback point and no unresolved high-severity feedback.",
+              "acceptance": [
+                "module checkpoints exist",
+                "final P0/P1 count is zero"
+              ],
+              "priority": "must",
+              "source": "engineering constraint",
+              "counterexample": [
+                "cross-module rollback required"
+              ]
+            }
+          ],
+          "invariants": [
+            "com.ccb package names preserved",
+            "API responses and routes preserved",
+            "tenant and entity authorization remain server-side",
+            "Flyway history unchanged",
+            "writes retain transaction and audit behavior"
+          ],
+          "constraints": [
+            "no production access",
+            ".env only for local runtime configuration",
+            "module dependency rules remain enforced",
+            "migration is staged with rollback"
+          ],
+          "non_goals": [
+            "new ORM",
+            "business rule redesign",
+            "frontend redesign",
+            "schema rewrite"
+          ],
+          "assumptions": [
+            {
+              "text": "Existing SQL can be represented by MyBatis XML or annotated Mapper with equivalent parameter binding",
+              "basis": "current project already contains MyBatis dependencies and Mapper/XML examples",
+              "falsifier": "unsupported vendor-specific SQL or result behavior"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Which modules contain dynamic SQL or implicit transaction coupling not covered by tests",
+              "impact": "migration order and test scope",
+              "owner": "Codex",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use explicit Repository interfaces backed by MyBatis Mapper/XML and migrate modules serially",
+              "reason": "preserve business boundaries and isolate rollback",
+              "source": "user-selected方案C with staged safety"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "signal": "production Java SQL static scan",
+              "method": "rg-based scanner plus layer audit"
+            },
+            {
+              "requirement_id": "R2",
+              "signal": "dependency/layer graph",
+              "method": "module boundary check and code review"
+            },
+            {
+              "requirement_id": "R3",
+              "signal": "test and endpoint outcomes",
+              "method": "Maven, MySQL/Flyway, controller smoke checks"
+            },
+            {
+              "requirement_id": "R4",
+              "signal": "task checkpoints and feedback severity",
+              "method": "control ledger gate"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Inventory found 168 Java files with SQL access; sensors and module rollback boundaries defined",
+        "recorded_at": "2026-09-11T12:26:08+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "server/src/platform/**",
+              "server/src/modules/**",
+              "Controller to database persistence paths",
+              "MyBatis configuration and Mapper XML"
+            ],
+            "environment": [
+              "MySQL 8.4",
+              "Flyway migrations",
+              "MinIO/outbox workers",
+              "local .env configuration",
+              "HTTP clients"
+            ]
+          },
+          "state_variables": [
+            "SQL access locations",
+            "module layer ownership",
+            "tenant and permission predicates",
+            "transaction boundaries",
+            "query result mappings",
+            "migration checkpoint status"
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Service or Controller direct SQL",
+              "transitions": [
+                "identify SQL entry",
+                "move query to Repository/Mapper",
+                "bind parameters in XML",
+                "inject Repository into Service"
+              ],
+              "outputs": [
+                "static scan has no direct SQL in upper layers"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "module endpoint",
+              "transitions": [
+                "Controller delegates",
+                "Service authorizes and orchestrates",
+                "Repository/Mapper persists"
+              ],
+              "outputs": [
+                "same route and response"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "module operation",
+              "transitions": [
+                "focused tests",
+                "integration tests",
+                "full regression",
+                "controller smoke validation"
+              ],
+              "outputs": [
+                "equivalent behavior evidence"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "migration batch",
+              "transitions": [
+                "checkpoint",
+                "observe",
+                "rollback if needed"
+              ],
+              "outputs": [
+                "independent recovery point"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Controller-Service",
+              "producers": [
+                "Controller"
+              ],
+              "consumers": [
+                "Service"
+              ],
+              "invariant": "public route and DTO unchanged"
+            },
+            {
+              "name": "Service-Repository",
+              "producers": [
+                "Service"
+              ],
+              "consumers": [
+                "Repository"
+              ],
+              "invariant": "authorization and transaction remain in Service"
+            },
+            {
+              "name": "Repository-Mapper",
+              "producers": [
+                "Repository/Mapper"
+              ],
+              "consumers": [
+                "MyBatis session"
+              ],
+              "invariant": "parameterized tenant-bound SQL"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "direct SQL residuals",
+              "method": "rg scanner over production Java",
+              "blind_spots": [
+                "reflection-generated SQL"
+              ],
+              "independence": "static"
+            },
+            {
+              "id": "S2",
+              "target": "module behavior",
+              "method": "focused Maven and contract tests",
+              "blind_spots": [
+                "uncovered endpoints"
+              ],
+              "independence": "automated"
+            },
+            {
+              "id": "S3",
+              "target": "database compatibility",
+              "method": "MySQL/Flyway integration tests",
+              "blind_spots": [
+                "production data variants"
+              ],
+              "independence": "database integration"
+            },
+            {
+              "id": "S4",
+              "target": "HTTP behavior",
+              "method": "authenticated controller smoke tests",
+              "blind_spots": [
+                "unavailable credentials or external services"
+              ],
+              "independence": "runtime"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "SQL ownership",
+              "action": "create Repository/Mapper/XML and remove direct SQL from Service/Controller",
+              "authority": "REQ-080 writable server scope",
+              "impact_radius": "module",
+              "rollback": "revert current module checkpoint"
+            },
+            {
+              "id": "A2",
+              "target": "verification",
+              "action": "add focused tests and run module/integration suites",
+              "authority": "REQ-080",
+              "impact_radius": "module",
+              "rollback": "remove tests with code checkpoint"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "dynamic SQL",
+              "effect": "mapping or predicate drift",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "implicit transactions",
+              "effect": "partial writes",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "module dependency rules",
+              "effect": "compile or boundary failure",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "environmental MySQL/MinIO availability",
+              "effect": "integration test interruption",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "full repository regression",
+              "consequence": "late feedback",
+              "sampling_rule": "run focused tests after every module and full suite at final integration"
+            },
+            {
+              "source": "HTTP smoke credentials",
+              "consequence": "runtime evidence gap",
+              "sampling_rule": "use local test fixtures and record unavailable probes"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "MyBatis can preserve all current SQL semantics",
+              "evidence": "existing MyBatis mappers compile in system/workflow",
+              "falsifier": "module integration mismatch"
+            },
+            {
+              "text": "All direct SQL is discoverable by static scans",
+              "evidence": "current inventory finds 168 Java files",
+              "falsifier": "runtime SQL not represented in source scan"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 with S1"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1 with S2/S4"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "A2 with S2/S3/S4"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "module checkpoints with ledger"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Serial module plan with checkpoints, rollback and four sampling points",
+        "recorded_at": "2026-09-11T12:26:55+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Build SQL inventory and layer baseline",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "168 Java files currently contain SQL-related access"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/**",
+                "docs/requirements/REQ-20260911-080-full-mybatis-architecture/**"
+              ],
+              "invariants": [
+                "no product behavior changes"
+              ],
+              "interface_contracts": [
+                "module dependency graph"
+              ],
+              "non_goals": [
+                "migration implementation"
+              ],
+              "action_bounds": [
+                "inventory and scanner only"
+              ],
+              "acceptance_checks": [
+                "inventory maps every production SQL entry to a module and owner"
+              ],
+              "evidence_required": [
+                "scanner output",
+                "module inventory"
+              ],
+              "rollback": "remove inventory artifacts",
+              "stop_conditions": [
+                "forbidden path discovered"
+              ],
+              "escalation_conditions": [
+                "unowned module or hidden runtime SQL"
+              ],
+              "rollback_point": "before migration"
+            },
+            {
+              "id": "T2",
+              "goal": "Migrate platform persistence layers",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "existing system/workflow MyBatis examples"
+              ],
+              "write_scope": [
+                "server/src/platform/**"
+              ],
+              "invariants": [
+                "authorization, tenant, transaction and audit behavior"
+              ],
+              "interface_contracts": [
+                "existing platform Controller and DTO APIs"
+              ],
+              "non_goals": [
+                "business rule changes"
+              ],
+              "action_bounds": [
+                "one platform module per checkpoint"
+              ],
+              "acceptance_checks": [
+                "module tests and static layer scan pass"
+              ],
+              "evidence_required": [
+                "diff",
+                "focused tests",
+                "rollback checkpoint"
+              ],
+              "rollback": "revert current platform module checkpoint",
+              "stop_conditions": [
+                "API or permission mismatch"
+              ],
+              "escalation_conditions": [
+                "owner approval or schema change required"
+              ],
+              "rollback_point": "each platform module commit"
+            },
+            {
+              "id": "T3",
+              "goal": "Migrate business persistence layers",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "business modules contain direct SQL and existing service tests"
+              ],
+              "write_scope": [
+                "server/src/modules/**"
+              ],
+              "invariants": [
+                "public integration contracts and module dependencies"
+              ],
+              "interface_contracts": [
+                "business Controller/Service/integration APIs"
+              ],
+              "non_goals": [
+                "frontend changes"
+              ],
+              "action_bounds": [
+                "one business module per checkpoint"
+              ],
+              "acceptance_checks": [
+                "module tests, permission tests and mapper tests pass"
+              ],
+              "evidence_required": [
+                "diff",
+                "focused tests",
+                "module checkpoint"
+              ],
+              "rollback": "revert current business module checkpoint",
+              "stop_conditions": [
+                "contract or transaction mismatch"
+              ],
+              "escalation_conditions": [
+                "cross-module private table access"
+              ],
+              "rollback_point": "each business module checkpoint"
+            },
+            {
+              "id": "T4",
+              "goal": "Run full integration and controller acceptance",
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T2",
+                "T3"
+              ],
+              "input_facts": [
+                "all module migrations have focused evidence"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/**"
+              ],
+              "invariants": [
+                "no API, security or data regression"
+              ],
+              "interface_contracts": [
+                "all existing routes"
+              ],
+              "non_goals": [
+                "production verification"
+              ],
+              "action_bounds": [
+                "verification only"
+              ],
+              "acceptance_checks": [
+                "full Maven, MySQL/Flyway and authenticated core endpoint flows pass"
+              ],
+              "evidence_required": [
+                "test output",
+                "runtime probes"
+              ],
+              "rollback": "return to last failing module checkpoint",
+              "stop_conditions": [
+                "P0/P1 regression"
+              ],
+              "escalation_conditions": [
+                "environment blocks required evidence"
+              ],
+              "rollback_point": "last module checkpoint"
+            },
+            {
+              "id": "T5",
+              "goal": "Static architecture audit and convergence",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "input_facts": [
+                "full verification evidence"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/**"
+              ],
+              "invariants": [
+                "all must requirements trace to evidence"
+              ],
+              "interface_contracts": [
+                "Repository/Mapper ownership"
+              ],
+              "non_goals": [
+                "new optimizations"
+              ],
+              "action_bounds": [
+                "audit and gate only"
+              ],
+              "acceptance_checks": [
+                "zero direct SQL in upper layers and zero open P0/P1 feedback"
+              ],
+              "evidence_required": [
+                "static scan",
+                "convergence gate"
+              ],
+              "rollback": "reopen latest module task",
+              "stop_conditions": [
+                "unverified SQL entry"
+              ],
+              "escalation_conditions": [
+                "production-only behavior uncertainty"
+              ],
+              "rollback_point": "retain all module checkpoints"
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2"
+            },
+            {
+              "from": "T2",
+              "to": "T3"
+            },
+            {
+              "from": "T3",
+              "to": "T4"
+            },
+            {
+              "from": "T4",
+              "to": "T5"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ],
+            [
+              "T5"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "platform reactor tests",
+                "layer scanner"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "business reactor tests",
+                "dependency checks"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "checks": [
+                "full Maven and controller acceptance"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "S1",
+              "trigger": "inventory complete",
+              "observer": "Codex",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ]
+            },
+            {
+              "label": "S2",
+              "trigger": "each module checkpoint",
+              "observer": "Codex",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ]
+            },
+            {
+              "label": "S3",
+              "trigger": "full integration",
+              "observer": "Codex",
+              "sensors": [
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "S4",
+              "trigger": "final audit",
+              "observer": "Codex",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3",
+                "T5"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "Static production SQL inventory completed",
+        "recorded_at": "2026-09-11T12:27:49+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/inventory.json",
+              "purpose": "Record static SQL access inventory by module."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "rg -l 'JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery' server/src/modules server/src/platform --glob '*.java' --glob '!**/src/test/**'",
+              "exit_code": 0,
+              "salient_output": "103 production Java files and 326 matching SQL access occurrences."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Module inventory",
+              "result": "pass",
+              "evidence": "All 12 platform/business module groups have counts."
+            }
+          ],
+          "diff_summary": [
+            "Added static inventory only; no product code changed."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "No production behavior changed",
+              "result": "pass",
+              "evidence": "T1 only adds control evidence."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Runtime-generated SQL and implicit transaction coupling require module tests."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "First platform/system migration batch",
+        "recorded_at": "2026-09-11T12:32:00+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemUserDirectory.java",
+              "purpose": "Delegate user directory reads to Repository."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemUserDirectoryRepository.java",
+              "purpose": "Repository boundary over MyBatis user directory mapper."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/org/OrganizationRepository.java",
+              "purpose": "Repository boundary over organization/user tree reads."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/resources/mapper/system/*.xml",
+              "purpose": "Parameterized tenant-bound MyBatis SQL."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/service/SystemUserDirectoryTest.java",
+              "purpose": "Test Service-to-Repository contract."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "All ccb-system reactor tests passed; system module 99/99."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Repository/Mapper compilation and resource packaging",
+              "result": "pass",
+              "evidence": "ccb-system package and tests compile new Mapper/XML resources."
+            },
+            {
+              "check": "Behavior regression",
+              "result": "pass",
+              "evidence": "Existing system tests 99/99 passed."
+            }
+          ],
+          "diff_summary": [
+            "Migrated two system read clusters; remaining platform/system SQL and other modules are intentionally pending."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant-bound reads",
+              "result": "pass",
+              "evidence": "Mapper XML binds tenantId and deleted/status predicates."
+            },
+            {
+              "invariant": "public UserDirectoryPort behavior",
+              "result": "pass",
+              "evidence": "SystemUserDirectoryTest passed."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "SystemService, audit, notification and project SQL remain direct JdbcTemplate paths.",
+            "Other platform and business modules remain unmigrated."
+          ],
+          "recommended_next": "replan"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Workflow Mapper XML audit and focused unit tests completed; Docker-backed migration tests remain environment-blocked",
+        "recorded_at": "2026-09-14T09:29:50+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "partial",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/workflow/src/main/resources/mapper/workflow/*.xml",
+              "purpose": "Retain workflow SQL in MyBatis XML statements mapped to service-layer Mapper interfaces."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowCursorPaginationTest.java",
+              "purpose": "Exercise seek pagination through WorkflowInboxRepository rather than retired JDBC test access."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java",
+              "purpose": "Stub definition history counts and audit persistence at the Repository boundary."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementTest.java",
+              "purpose": "Inject Mapper and Repository collaborators for retired platform workflow scenarios."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTaskContextTest.java",
+              "purpose": "Exercise task-context behavior through WorkflowTaskQueryRepository."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTaskProjectionTest.java",
+              "purpose": "Exercise inbox and done projections through their repositories."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTemplateScopeTest.java",
+              "purpose": "Inject definition persistence for template-scope behavior."
+            },
+            {
+              "path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTest.java",
+              "purpose": "Update constructor and definition Repository test fixtures to match the MyBatis migration."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "rg -n -i JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery|@Select|@Insert|@Update|@Delete server/src/platform/workflow/src/main/java --glob *.java",
+              "exit_code": 0,
+              "salient_output": "No production workflow direct-SQL access was found."
+            },
+            {
+              "command": "PowerShell XML and Mapper method audit",
+              "exit_code": 0,
+              "salient_output": "18 XML files parse successfully; 128 Mapper interface methods are covered across 17 namespaces; 134 statement ids are unique."
+            },
+            {
+              "command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-workflow -am '-Dtest=Workflow*Test,!*MigrationMySqlTest' test -q",
+              "exit_code": 0,
+              "salient_output": "MAVEN_WORKFLOW_UNIT_TESTS_OK"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Workflow Mapper/XML ownership",
+              "result": "pass",
+              "evidence": "No production Java direct SQL and every declared Mapper method has a unique XML statement.",
+              "limitations": [
+                "Does not execute against MySQL."
+              ]
+            },
+            {
+              "check": "Workflow unit regressions",
+              "result": "pass",
+              "evidence": "All Workflow*Test tests excluding Docker-backed migration tests passed.",
+              "limitations": [
+                "MySQL Testcontainers tests require a working local Docker daemon."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Updated workflow unit fixtures from obsolete JDBC collaborators to current Repository/Mapper collaborators.",
+            "Preserved the existing workflow Mapper/XML migration and public service APIs.",
+            "No database migration or production SQL was added."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Production SQL stays in Mapper XML",
+              "result": "pass",
+              "evidence": "Static scan and XML/interface mapping audit pass."
+            },
+            {
+              "invariant": "Workflow behavior remains covered at service boundaries",
+              "result": "pass",
+              "evidence": "Focused workflow unit suite passes through Repository test doubles."
+            },
+            {
+              "invariant": "No schema or public API change",
+              "result": "pass",
+              "evidence": "Only Mapper resources and test fixtures are in scope."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Local Docker daemon unavailable",
+              "impact": "Two Testcontainers MySQL migration tests cannot run in this environment."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Run WorkflowDefinitionSummaryMigrationMySqlTest and WorkflowPlatformRetirementMigrationMySqlTest once Docker is available.",
+            "T2 remains partial because other platform modules are not yet complete."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Inventory observation S1",
+        "recorded_at": "2026-09-11T12:28:09+00:00",
+        "data": {
+          "sample_label": "S1-inventory",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "observed": "103 production Java files and 326 direct SQL access occurrences across 12 module groups",
+              "expected": "all production SQL entry points identified",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R2",
+              "observed": "existing system and workflow Mapper/XML examples identified",
+              "expected": "migration reference patterns available",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "runtime-generated SQL not detectable statically"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "System directory batch observation",
+        "recorded_at": "2026-09-11T12:32:13+00:00",
+        "data": {
+          "sample_label": "S2-system-directory-batch",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "observed": "SystemUserDirectory and OrganizationService no longer contain direct SQL; SQL is in Mapper XML",
+              "expected": "upper-layer SQL removed for migrated cluster",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R2",
+              "observed": "Service tests and existing system tests pass",
+              "expected": "public behavior preserved",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R3",
+              "observed": "ccb-system 99/99 tests pass",
+              "expected": "module behavior regression-free",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "remaining system and all other modules"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Workflow static, configuration, XML and focused unit-test observation found no product deviation; MySQL observation remains Docker-blocked",
+        "recorded_at": "2026-09-14T09:30:39+00:00",
+        "data": {
+          "sample_label": "S2-workflow-mapper-xml",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S1 static direct-SQL scan and XML/interface audit",
+              "result": "pass",
+              "raw_evidence": "No production workflow JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, native-query, or annotated SQL usage; 128 declared Mapper methods are represented by 134 unique XML statements.",
+              "limitation": [
+                "Static scan cannot observe third-party Flowable SQL."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "Mapper resource and Boot configuration audit",
+              "result": "pass",
+              "raw_evidence": "18 workflow XML files parse; Boot scans com.ccb and the local MyBatis mapper location is classpath*:mapper/**/*.xml.",
+              "limitation": [
+                "No live application context was started."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "Focused Maven unit suite",
+              "result": "pass",
+              "raw_evidence": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-workflow -am '-Dtest=Workflow*Test,!*MigrationMySqlTest' test -q printed MAVEN_WORKFLOW_UNIT_TESTS_OK.",
+              "limitation": [
+                "Docker-backed MySQL migration tests were excluded after confirming no Docker daemon is available."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "Scope and diff audit",
+              "result": "pass",
+              "raw_evidence": "Changes are confined to workflow test fixtures and current task evidence; no schema migration or public API modification was made.",
+              "limitation": [
+                "T2 covers more platform modules and remains partial."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Testcontainers cannot connect to \\.\\pipe\\docker_engine",
+              "classification": "disturbance",
+              "impact": "MySQL/Flyway migration evidence remains unavailable locally."
+            }
+          ],
+          "coverage_gaps": [
+            "WorkflowDefinitionSummaryMigrationMySqlTest and WorkflowPlatformRetirementMigrationMySqlTest require a reachable Docker daemon.",
+            "This observation is non-independent because it was performed in the same Codex context as the execution work."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Migrate all production SQL access to MyBatis Repository/Mapper layers while preserving API, authorization, tenant, transaction and audit behavior.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "All production SQL is owned by MyBatis Mapper/XML or Repository; Controller and Service contain no direct SQL access.",
+      "acceptance": [
+        "static scan finds no direct SQL in Controller/Service",
+        "all SQL paths have Mapper/XML tests"
+      ],
+      "priority": "must",
+      "source": "user-confirmed方案C",
+      "counterexample": [
+        "Service calls JdbcTemplate"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Each migrated module exposes Controller, Service and Repository/Mapper boundaries without changing public APIs.",
+      "acceptance": [
+        "layer audit passes",
+        "existing routes and DTOs remain compatible"
+      ],
+      "priority": "must",
+      "source": "user requirement",
+      "counterexample": [
+        "Controller contains persistence SQL"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Module, integration and full feature tests prove behavior, permissions, transactions, audit and pagination remain equivalent.",
+      "acceptance": [
+        "focused tests pass",
+        "MySQL/Flyway and full Maven regressions pass",
+        "core controller flows are reachable"
+      ],
+      "priority": "must",
+      "source": "user requirement",
+      "counterexample": [
+        "permission or transaction regression"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Each module migration has an independent rollback point and no unresolved high-severity feedback.",
+      "acceptance": [
+        "module checkpoints exist",
+        "final P0/P1 count is zero"
+      ],
+      "priority": "must",
+      "source": "engineering constraint",
+      "counterexample": [
+        "cross-module rollback required"
+      ]
+    }
+  ],
+  "invariants": [
+    "com.ccb package names preserved",
+    "API responses and routes preserved",
+    "tenant and entity authorization remain server-side",
+    "Flyway history unchanged",
+    "writes retain transaction and audit behavior"
+  ],
+  "constraints": [
+    "no production access",
+    ".env only for local runtime configuration",
+    "module dependency rules remain enforced",
+    "migration is staged with rollback"
+  ],
+  "non_goals": [
+    "new ORM",
+    "business rule redesign",
+    "frontend redesign",
+    "schema rewrite"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL 8.4\", \"Flyway migrations\", \"MinIO/outbox workers\", \"local .env configuration\", \"HTTP clients\"], \"inside\": [\"server/src/platform/**\", \"server/src/modules/**\", \"Controller to database persistence paths\", \"MyBatis configuration and Mapper XML\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"reflection-generated SQL\"], \"id\": \"S1\", \"independence\": \"static\", \"method\": \"rg scanner over production Java\", \"target\": \"direct SQL residuals\"}",
+      "{\"blind_spots\": [\"uncovered endpoints\"], \"id\": \"S2\", \"independence\": \"automated\", \"method\": \"focused Maven and contract tests\", \"target\": \"module behavior\"}",
+      "{\"blind_spots\": [\"production data variants\"], \"id\": \"S3\", \"independence\": \"database integration\", \"method\": \"MySQL/Flyway integration tests\", \"target\": \"database compatibility\"}",
+      "{\"blind_spots\": [\"unavailable credentials or external services\"], \"id\": \"S4\", \"independence\": \"runtime\", \"method\": \"authenticated controller smoke tests\", \"target\": \"HTTP behavior\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"create Repository/Mapper/XML and remove direct SQL from Service/Controller\", \"authority\": \"REQ-080 writable server scope\", \"id\": \"A1\", \"impact_radius\": \"module\", \"rollback\": \"revert current module checkpoint\", \"target\": \"SQL ownership\"}",
+      "{\"action\": \"add focused tests and run module/integration suites\", \"authority\": \"REQ-080\", \"id\": \"A2\", \"impact_radius\": \"module\", \"rollback\": \"remove tests with code checkpoint\", \"target\": \"verification\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"mapping or predicate drift\", \"source\": \"dynamic SQL\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"partial writes\", \"source\": \"implicit transactions\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"compile or boundary failure\", \"source\": \"module dependency rules\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"integration test interruption\", \"source\": \"environmental MySQL/MinIO availability\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"existing MyBatis mappers compile in system/workflow\", \"falsifier\": \"module integration mismatch\", \"text\": \"MyBatis can preserve all current SQL semantics\"}",
+      "{\"evidence\": \"current inventory finds 168 Java files\", \"falsifier\": \"runtime SQL not represented in source scan\", \"text\": \"All direct SQL is discoverable by static scans\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Build SQL inventory and layer baseline",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "168 Java files currently contain SQL-related access"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/**",
+        "docs/requirements/REQ-20260911-080-full-mybatis-architecture/**"
+      ],
+      "invariants": [
+        "no product behavior changes"
+      ],
+      "interface_contracts": [
+        "module dependency graph"
+      ],
+      "non_goals": [
+        "migration implementation"
+      ],
+      "action_bounds": [
+        "inventory and scanner only"
+      ],
+      "acceptance": [
+        "inventory maps every production SQL entry to a module and owner"
+      ],
+      "evidence_required": [
+        "scanner output",
+        "module inventory"
+      ],
+      "rollback": "remove inventory artifacts",
+      "stop_conditions": [
+        "forbidden path discovered"
+      ],
+      "escalation_conditions": [
+        "unowned module or hidden runtime SQL"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T12:27:47+00:00",
+          "text": "Starting repository-wide SQL inventory"
+        },
+        {
+          "recorded_at": "2026-09-11T12:28:12+00:00",
+          "text": "Inventory is complete for static production Java scope"
+        }
+      ],
+      "updated_at": "2026-09-11T12:28:12+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Migrate platform persistence layers",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "existing system/workflow MyBatis examples"
+      ],
+      "write_scope": [
+        "server/src/platform/**"
+      ],
+      "invariants": [
+        "authorization, tenant, transaction and audit behavior"
+      ],
+      "interface_contracts": [
+        "existing platform Controller and DTO APIs"
+      ],
+      "non_goals": [
+        "business rule changes"
+      ],
+      "action_bounds": [
+        "one platform module per checkpoint"
+      ],
+      "acceptance": [
+        "module tests and static layer scan pass"
+      ],
+      "evidence_required": [
+        "diff",
+        "focused tests",
+        "rollback checkpoint"
+      ],
+      "rollback": "revert current platform module checkpoint",
+      "stop_conditions": [
+        "API or permission mismatch"
+      ],
+      "escalation_conditions": [
+        "owner approval or schema change required"
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T12:31:58+00:00",
+          "text": "System directory batch started; remaining platform clusters pending"
+        }
+      ],
+      "updated_at": "2026-09-11T12:31:58+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Migrate business persistence layers",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "business modules contain direct SQL and existing service tests"
+      ],
+      "write_scope": [
+        "server/src/modules/**"
+      ],
+      "invariants": [
+        "public integration contracts and module dependencies"
+      ],
+      "interface_contracts": [
+        "business Controller/Service/integration APIs"
+      ],
+      "non_goals": [
+        "frontend changes"
+      ],
+      "action_bounds": [
+        "one business module per checkpoint"
+      ],
+      "acceptance": [
+        "module tests, permission tests and mapper tests pass"
+      ],
+      "evidence_required": [
+        "diff",
+        "focused tests",
+        "module checkpoint"
+      ],
+      "rollback": "revert current business module checkpoint",
+      "stop_conditions": [
+        "contract or transaction mismatch"
+      ],
+      "escalation_conditions": [
+        "cross-module private table access"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-11T12:26:55+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "Run full integration and controller acceptance",
+      "requirements": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T2",
+        "T3"
+      ],
+      "input_facts": [
+        "all module migrations have focused evidence"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/**"
+      ],
+      "invariants": [
+        "no API, security or data regression"
+      ],
+      "interface_contracts": [
+        "all existing routes"
+      ],
+      "non_goals": [
+        "production verification"
+      ],
+      "action_bounds": [
+        "verification only"
+      ],
+      "acceptance": [
+        "full Maven, MySQL/Flyway and authenticated core endpoint flows pass"
+      ],
+      "evidence_required": [
+        "test output",
+        "runtime probes"
+      ],
+      "rollback": "return to last failing module checkpoint",
+      "stop_conditions": [
+        "P0/P1 regression"
+      ],
+      "escalation_conditions": [
+        "environment blocks required evidence"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-11T12:26:55+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "Static architecture audit and convergence",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T4"
+      ],
+      "input_facts": [
+        "full verification evidence"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-080-full-mybatis-architecture/**"
+      ],
+      "invariants": [
+        "all must requirements trace to evidence"
+      ],
+      "interface_contracts": [
+        "Repository/Mapper ownership"
+      ],
+      "non_goals": [
+        "new optimizations"
+      ],
+      "action_bounds": [
+        "audit and gate only"
+      ],
+      "acceptance": [
+        "zero direct SQL in upper layers and zero open P0/P1 feedback"
+      ],
+      "evidence_required": [
+        "static scan",
+        "convergence gate"
+      ],
+      "rollback": "reopen latest module task",
+      "stop_conditions": [
+        "unverified SQL entry"
+      ],
+      "escalation_conditions": [
+        "production-only behavior uncertainty"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-11T12:26:55+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S1-inventory",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "103 production files and 326 SQL access occurrences inventoried",
+      "recorded_at": "2026-09-11T12:28:10+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S2-system-directory-batch",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "ccb-system 99/99 passed; migrated cluster verified",
+      "recorded_at": "2026-09-11T12:32:14+00:00"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "task": "T3",
+  "scope": "ccb-data-migration RuleService SQL ownership migration",
+  "phase": "executing",
+  "completed_at": "2026-09-15T00:00:00+08:00",
+  "modified": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RuleService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RuleMapper.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/RuleRepository.java",
+    "server/src/modules/data-migration/src/main/resources/mapper/datamigration/RuleMapper.xml",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/RuleServiceTest.java"
+  ],
+  "invariants": [
+    "Service retains authorization, code-value validation, transaction boundaries and audit order",
+    "Mapper XML owns all Rule SQL with bound parameters",
+    "No Flyway migration or public API change"
+  ],
+  "verification": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "result": "passed"},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=RuleServiceTest' test -q", "result": "passed"},
+    {"command": "production RuleService JDBC/direct access scan", "result": "no matches"},
+    {"command": "RuleMapper XML parse", "result": "passed; 14 mapped statements"}
+  ],
+  "risks": [
+    "MySQL/Testcontainers integration remains blocked by unavailable Docker engine and is not represented as passed."
+  ]
+}

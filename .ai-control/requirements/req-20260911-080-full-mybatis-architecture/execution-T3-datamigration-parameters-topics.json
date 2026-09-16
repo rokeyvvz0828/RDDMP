@@ -1,0 +1,26 @@
+{
+  "task": "T3",
+  "phase": "executing",
+  "scope": "data-migration ParameterService and TopicService MyBatis ownership migration",
+  "modified": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterMapper.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ParameterRepository.java",
+    "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ParameterMapper.xml",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ParameterServiceTest.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicMapper.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TopicRepository.java",
+    "server/src/modules/data-migration/src/main/resources/mapper/datamigration/TopicMapper.xml",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java"
+  ],
+  "invariants": ["Service authorization, transaction, attachment lifecycle and audit ordering retained", "Production SQL is Mapper XML-owned", "No Flyway, public API or platform changes"],
+  "verification": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "result": "passed"},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "result": "passed"},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=ParameterServiceTest' test -q", "result": "passed"},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=TopicServiceTest' test -q", "result": "passed"},
+    {"command": "ParameterService/TopicService direct JDBC scanner and Mapper XML parse", "result": "passed"}
+  ],
+  "risk": "MySQL/Testcontainers integration remains blocked because Docker engine is unavailable."
+}

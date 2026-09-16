@@ -1,0 +1,20 @@
+{
+  "task_id": "T3",
+  "recorded_at": "2026-09-15T15:29:00+08:00",
+  "scope": "RequirementLegacyEnhanceService MyBatis persistence migration",
+  "phase": "executing",
+  "modified_files": [
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceMapper.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceRepository.java",
+    "server/src/modules/requirement/src/main/resources/mapper/requirement/RequirementLegacyEnhanceMapper.xml"
+  ],
+  "contract": "Deliverable type selection is restricted to existing WORKLOAD/SOFT service validation. Service-level authorization, review transitions, audit sequence and transaction boundaries remain unchanged; persistence is Mapper/XML owned.",
+  "verification": [
+    {"command": "mvn -DskipTests -f src/modules/requirement/pom.xml compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -f src/modules/requirement/pom.xml test-compile -q", "result": "passed"},
+    {"command": "RequirementLegacyEnhanceService direct-access scanner", "result": "no matches"},
+    {"command": "RequirementLegacyEnhanceMapper.xml parse", "result": "passed; 14 mapped statements"}
+  ],
+  "known_limitations": ["No dedicated service test exists; MySQL/Testcontainers integration is unavailable because Docker engine access is denied."]
+}

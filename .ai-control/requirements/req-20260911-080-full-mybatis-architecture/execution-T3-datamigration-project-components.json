@@ -1,0 +1,40 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java", "purpose": "Move component list, export, options, CRUD, content-occupancy guard, and audit persistence behind Repository/Mapper while retaining project and RBAC checks."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ProjectComponentMapper.xml", "purpose": "Own parameter-bound component filtering and fixed nine-table active-content occupancy SQL."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentAssetTables.java", "purpose": "Remove now-unused Java SQL generators so cross-content SQL has a single XML owner."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/DataMigrationGovernanceRemediationMySqlTest.java", "purpose": "Load ProjectComponentMapper.xml through MyBatis for the existing Testcontainers integration scenarios."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "exit_code": 0, "salient_output": "Data-migration production sources compile after component Mapper migration."},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Data-migration test sources compile with MyBatis Mapper integration-test wiring."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "DataMigrationModuleRegistrationTest passed."},
+    {"command": "PowerShell XML parse and Mapper method-to-statement audit", "exit_code": 0, "salient_output": "ProjectComponentMapper XML parses and covers all 13 declared Mapper methods."},
+    {"command": "production direct-SQL rg scan", "exit_code": 0, "salient_output": "Residual production direct-SQL files reduced from 46 to 45; data-migration residuals reduced from 13 to 12."}
+  ],
+  "local_checks": [
+    {"check": "ProjectComponentService and ContentAssetTables direct-SQL scan", "result": "pass", "evidence": "No JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, native-query, or SQL literal remains in either production class.", "limitations": ["Static checking does not execute against MySQL."]},
+    {"check": "Integration test Mapper ownership", "result": "pass", "evidence": "Existing Testcontainers fixture now obtains a ProjectComponentMapper from ProjectComponentMapper.xml using an auto-commit MyBatis session.", "limitations": ["Docker is unavailable locally, so the Testcontainers scenarios were compiled but not run."]}
+  ],
+  "diff_summary": [
+    "Added ProjectComponentMapper, ProjectComponentRepository, and XML statements for the full component persistence contract.",
+    "Moved dynamic optional filters to MyBatis XML and fixed the content occupancy union in XML instead of Java string assembly.",
+    "Preserved existing service authorization, audit payload construction, transactions, DTOs, routes, and schema."
+  ],
+  "invariants_checked": [
+    {"invariant": "Project and entity authorization remains in the service layer", "result": "pass", "evidence": "requireProject, requireAccessible, requireStoredProject, requireAdmin, and requireWrite calls remain before the equivalent repository operations."},
+    {"invariant": "Content occupancy checks cover the original fixed table set", "result": "pass", "evidence": "Mapper XML expands dm_plan, dm_mapping_doc, dm_dependency, dm_script, dm_topic, dm_release_drill, dm_report, dm_rule, and dm_parameter as fixed UNION ALL branches."},
+    {"invariant": "No schema or public contract change", "result": "pass", "evidence": "No Flyway, controller, DTO, or API route was modified."}
+  ],
+  "disturbances": [{"event": "Local Docker daemon unavailable", "impact": "The MySQL/Testcontainers component scenarios cannot execute in this environment."}],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "45 production Java files still have direct SQL access, including 12 in data-migration.",
+    "Run DataMigrationGovernanceRemediationMySqlTest with a reachable Docker daemon to execute the new XML statements against MySQL.",
+    "T2 and T3 remain active; no repository-wide convergence claim is made."
+  ],
+  "recommended_next": "continue T3 with the remaining data-migration services, then migrate the remaining platform/system and business modules before observation."
+}

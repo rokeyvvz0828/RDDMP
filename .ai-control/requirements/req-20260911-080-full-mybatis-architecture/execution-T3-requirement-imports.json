@@ -1,0 +1,21 @@
+{
+  "task_id": "T3",
+  "recorded_at": "2026-09-15T15:15:00+08:00",
+  "scope": "RequirementImportService MyBatis persistence migration",
+  "phase": "executing",
+  "modified_files": [
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportMapper.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportRepository.java",
+    "server/src/modules/requirement/src/main/resources/mapper/requirement/RequirementImportMapper.xml",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/support/StubJdbcTemplate.java",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementImportServiceTest.java"
+  ],
+  "contract": "Import parsing, validation, authorization, transaction and change-log rules remain service-owned. Batch, project, sequence and import-row persistence is MyBatis-owned.",
+  "verification": [
+    {"command": "mvn -DskipTests -f src/modules/requirement/pom.xml test-compile -q", "result": "passed"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -Dsurefire.failIfNoSpecifiedTests=false -f src/modules/requirement/pom.xml -Dtest=RequirementImportServiceTest test -q", "result": "passed"},
+    {"command": "RequirementImportService direct-access scanner", "result": "no matches"}
+  ],
+  "known_limitations": ["MySQL/Testcontainers integration is unavailable because Docker engine access is denied."]
+}

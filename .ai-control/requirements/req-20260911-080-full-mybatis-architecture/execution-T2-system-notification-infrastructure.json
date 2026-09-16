@@ -1,0 +1,28 @@
+{
+  "task_id": "T2",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/service/SystemNotificationService.java", "purpose": "Move notification persistence from JdbcTemplate to the notification repository boundary while retaining validation, audit, and transactions."},
+    {"path_or_resource": "server/src/platform/system/src/main/resources/mapper/system/SystemNotificationMapper.xml", "purpose": "Own notification SQL, including the view filter and recipient collection binding."},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java", "purpose": "Move mock state, reference validation, and allowlisted upsert persistence to a repository."},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/mapper/infrastructure/MockDataMapper.xml", "purpose": "Own mock-data SQL; dynamic identifiers remain Java allowlist-validated before XML interpolation."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-system -am compile -q", "exit_code": 0, "salient_output": "System production sources compile."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-system -am '-Dtest=SystemNotificationServiceTest' test -q", "exit_code": 0, "salient_output": "SystemNotificationServiceTest passed."},
+    {"command": "mvn '-DskipTests' -pl :ccb-infrastructure -am compile -q", "exit_code": 0, "salient_output": "Infrastructure production sources compile."},
+    {"command": "PowerShell XML parse and production direct-SQL scan", "exit_code": 0, "salient_output": "Both new Mapper XML files parse; 55 production Java direct-SQL files remain."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Notification tenant/user and archive predicates remain server-owned", "result": "pass", "evidence": "Repository signatures retain authenticated tenant and user identifiers; XML binds them in every relevant statement."},
+    {"invariant": "Mock dynamic table SQL remains constrained", "result": "pass", "evidence": "MockDataInitializer continues to validate table and column names against its fixed allowlist and quotes identifiers before calling the Mapper."},
+    {"invariant": "No schema or public API change", "result": "pass", "evidence": "No Flyway migration or controller/DTO change was made."}
+  ],
+  "unresolved_items": [
+    "T2 remains active: SystemService, ProjectService, and BusinessFormMetadataService still have direct SQL.",
+    "T3 has not started: 52 remaining direct-SQL files are in architecture, release, requirement, test-management, and data-migration.",
+    "Full module, MySQL/Flyway, and repository-wide test evidence is deferred until every migration batch is complete."
+  ],
+  "recommended_next": "Continue the remaining system module batch before entering T3."
+}

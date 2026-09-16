@@ -1,0 +1,29 @@
+{
+  "task_id":"T3-testmanagement-configuration",
+  "status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationService.java","purpose":"Retain domain, tenant, user-directory validation, transaction and audit orchestration without direct JDBC access."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationMapper.java","purpose":"Declare named configuration persistence operations."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestConfigurationRepository.java","purpose":"Provide the Service-to-Mapper boundary."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestConfigurationMapper.xml","purpose":"Own all project/system/role/round/cycle/dictionary/option/audit SQL."},
+    {"path_or_resource":"server/src/modules/test-management/src/test/java/com/ccb/testmanagement/service/TestConfigurationServiceTest.java","purpose":"Use the Mapper contract rather than a JdbcTemplate constructor."}
+  ],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am compile -q","exit_code":0,"salient_output":"Reactor compilation succeeded."},
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am test-compile -q","exit_code":0,"salient_output":"Reactor test compilation succeeded."},
+    {"command":"mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-test-management -am '-Dtest=TestConfigurationServiceTest' test -q","exit_code":0,"salient_output":"Focused domain and role validation tests passed."}
+  ],
+  "local_checks":[
+    {"check":"XML parse and Mapper coverage","result":"pass","evidence":"56 declared mapper methods and 56 XML statement ids; the sole additional XML id is the systemFilter SQL fragment."},
+    {"check":"TestConfigurationService static direct-SQL scan","result":"pass","evidence":"No JdbcTemplate, NamedParameterJdbcTemplate, EntityManager or createNativeQuery match remains."},
+    {"check":"Diff whitespace","result":"pass","evidence":"git diff --check reported no errors; only existing CRLF warnings."}
+  ],
+  "invariants_checked":[
+    {"invariant":"No schema or Flyway change","result":"pass","evidence":"Only module Java/XML/test and current task evidence changed."},
+    {"invariant":"Tenant, domain, project and enabled-system checks remain server-side","result":"pass","evidence":"Validation remains in Service and all Mapper predicates are parameterized."},
+    {"invariant":"Transactional writes and configuration audit remain","result":"pass","evidence":"Existing transactional methods still invoke named Mapper writes and audit insertion."}
+  ],
+  "unresolved_items":["TestCaseService remains the only test-management direct-JDBC production residual.","MySQL/Flyway integration remains blocked because Docker is unavailable."],
+  "recommended_next":"Migrate TestCaseService directory, case, attachment and import persistence under a dedicated Mapper contract."
+}

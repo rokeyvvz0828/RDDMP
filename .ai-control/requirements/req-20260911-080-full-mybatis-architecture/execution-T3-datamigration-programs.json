@@ -1,0 +1,24 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramService.java", "purpose": "Delegate all dm_script persistence to ProgramRepository while retaining service-owned authorization, attachment lifecycle, transactions and audit orchestration."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramMapper.java", "purpose": "Declare the complete dm_script MyBatis persistence contract."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProgramRepository.java", "purpose": "Provide typed persistence boundary and not-found semantics."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ProgramMapper.xml", "purpose": "Own parameter-bound program, attachment, component, recycle-bin and audit SQL."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ProgramServiceTest.java", "purpose": "Inject the service through an explicit ProgramMapper test double."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "exit_code": 0, "salient_output": "Production compilation passed."},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Test compilation passed."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=ProgramServiceTest,ProgramRecycleBinSourceTest,DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "Selected program tests passed."}
+  ],
+  "local_checks": [{"check": "Production direct-SQL scan and XML parse", "result": "pass", "evidence": "ProgramService has no direct JDBC/SQL references and ProgramMapper.xml parsed."}],
+  "diff_summary": ["Migrated one dm_script service persistence boundary; no schema, route, DTO or Flyway change."],
+  "invariants_checked": [{"invariant": "Authorization, attachment, transaction and audit behavior remains service-owned", "result": "pass", "evidence": "Focused service tests cover validation, owner checks, attachments, recycle-bin administration and audit signals."}],
+  "disturbances": [{"event": "Docker remains inaccessible", "impact": "MySQL/Testcontainers regression is deferred to Docker-enabled CI/local environment."}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["40 production direct-SQL files remain repository-wide."],
+  "recommended_next": "continue executing data-migration batch"
+}

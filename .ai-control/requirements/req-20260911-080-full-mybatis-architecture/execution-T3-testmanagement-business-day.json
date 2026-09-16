@@ -1,0 +1,20 @@
+{
+  "task_id":"T3-testmanagement-business-day","status":"implemented",
+  "changed_surfaces":[
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayService.java","purpose":"Retain environment/calendar/batch validation, user-directory enforcement, natural-key overwrite and transactional audit orchestration without direct SQL."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayMapper.java","purpose":"Declare explicit environment, schedule, batch requirement and audit persistence methods."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/BusinessDayRepository.java","purpose":"Provide Service-to-Mapper persistence boundary."},
+    {"path_or_resource":"server/src/modules/test-management/src/main/resources/mapper/testmanagement/BusinessDayMapper.xml","purpose":"Own parameterized SQL and optional paging filters."}
+  ],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[
+    {"command":"mvn '-DskipTests' -pl :ccb-test-management -am compile -q","exit_code":0,"salient_output":"Reactor compilation succeeded."},
+    {"command":"mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-test-management -am '-Dtest=BusinessDayServiceTest' test -q","exit_code":0,"salient_output":"BusinessDayService input-boundary tests passed."},
+    {"command":"BusinessDayService direct-SQL static scan","exit_code":0,"salient_output":"No JdbcTemplate, EntityManager or SQL statement matches remain."}
+  ],
+  "local_checks":[{"check":"XML parse","result":"pass","evidence":"BusinessDayMapper.xml parsed successfully."},{"check":"Diff whitespace","result":"pass","evidence":"git diff --check reported no errors; only CRLF conversion warnings."}],
+  "diff_summary":["Migrated BusinessDayService's three persistence aggregates to an explicit Mapper/Repository/XML contract."],
+  "invariants_checked":[{"invariant":"Tenant scope and user-directory checks remain server-side","result":"pass","evidence":"Tenant predicates are mapper-bound and proposer validation remains in Service."},{"invariant":"Natural-key overwrite, environment rename and audit remain transactional","result":"pass","evidence":"Existing @Transactional methods and write ordering retained."},{"invariant":"No schema or Flyway change","result":"pass","evidence":"Only test-management Java/XML/test and current task evidence changed."}],
+  "disturbances":[{"event":"Concurrent attachment policy migration left TestPlanAttachmentPolicyTest on obsolete JdbcTemplate constructor","impact":"Updated the test fixture to mock TestAttachmentAccessMapper; module test compilation then succeeded."}],
+  "assumptions_falsified":[],"unresolved_items":["Seven test-management production services still have direct JDBC access.","MySQL/Flyway integration remains blocked by unavailable Docker access."],"recommended_next":"continue T3 with TestConfigurationService"
+}

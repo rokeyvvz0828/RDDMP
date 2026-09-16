@@ -1,0 +1,76 @@
+{
+  "task_id": "T2-infrastructure-mockdata-tests",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java",
+      "purpose": "Move the mock-data initializer test fixture from obsolete JdbcTemplate construction and SQL-text stubs to the MockDataRepository contract introduced by the MyBatis migration."
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {
+      "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-infrastructure -am -Dtest=MockDataInitializerTest -Dsurefire.failIfNoSpecifiedTests=false test -q",
+      "exit_code": 0,
+      "salient_output": "INFRA_MOCK_TEST_EXIT=0"
+    },
+    {
+      "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-infrastructure -am test -q",
+      "exit_code": 0,
+      "salient_output": "INFRASTRUCTURE_FULL_TEST_EXIT=0"
+    },
+    {
+      "command": "rg production direct-SQL scan over server/src/platform/infrastructure",
+      "exit_code": 0,
+      "salient_output": "INFRASTRUCTURE_PRODUCTION_DIRECT_SQL_SCAN_CLEAR"
+    },
+    {
+      "command": "PowerShell XML parse over infrastructure mapper resources",
+      "exit_code": 0,
+      "salient_output": "INFRASTRUCTURE_XML_PARSE_OK"
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Mock-data Repository test contract",
+      "result": "pass",
+      "evidence": "The test fixture stubs and verifies MockDataRepository upsert, state persistence, and architecture reference validation behavior without using JdbcTemplate.",
+      "limitations": ["The unit suite mocks the Repository and does not execute MySQL SQL statements."]
+    },
+    {
+      "check": "Infrastructure regression suite",
+      "result": "pass",
+      "evidence": "The complete ccb-infrastructure Maven test suite exited 0.",
+      "limitations": ["MySQL/Testcontainers integration remains outside this local unit-suite evidence."]
+    }
+  ],
+  "diff_summary": [
+    "Removed obsolete JdbcTemplate mock setup and SQL implementation assertions from MockDataInitializerTest.",
+    "Retained allowlist, mock-data synchronization, architecture reference validation, profile, and transaction behavior coverage.",
+    "No production API, database schema, Mapper XML, or SQL safety constraint was changed in this follow-up."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Mock dynamic identifiers remain allowlist-validated before XML interpolation",
+      "result": "pass",
+      "evidence": "Existing rejection and successful allowlisted-row tests pass through the Repository contract."
+    },
+    {
+      "invariant": "Infrastructure production persistence has no direct SQL entry",
+      "result": "pass",
+      "evidence": "Production direct-SQL static scan is clear."
+    },
+    {
+      "invariant": "No schema or public API change",
+      "result": "pass",
+      "evidence": "The only follow-up production-facing change is test fixture adaptation."
+    }
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Six production direct-SQL classes remain in system, architecture, and release modules outside the infrastructure boundary.",
+    "Independent observation and MySQL-backed migration evidence remain required before the repository-wide task can converge."
+  ],
+  "recommended_next": "observe"
+}

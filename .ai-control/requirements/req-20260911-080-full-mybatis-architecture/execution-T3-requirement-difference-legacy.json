@@ -1,0 +1,44 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java", "purpose": "Replace direct JDBC persistence with RequirementDifferenceRepository while retaining workflow, RBAC, transaction and audit orchestration."},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyService.java", "purpose": "Replace direct JDBC persistence with RequirementLegacyRepository while retaining stage, member, flow, version, transaction and audit behavior."},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceMapper.java", "purpose": "Typed MyBatis Mapper contract for difference persistence and workflow support queries."},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyMapper.java", "purpose": "Typed MyBatis Mapper contract for legacy requirement persistence."},
+    {"path_or_resource": "server/src/modules/requirement/src/main/resources/mapper/requirement/RequirementDifferenceMapper.xml", "purpose": "Own parameter-bound difference SQL in XML."},
+    {"path_or_resource": "server/src/modules/requirement/src/main/resources/mapper/requirement/RequirementLegacyMapper.xml", "purpose": "Own parameter-bound legacy requirement SQL in XML."},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementSql.java", "purpose": "Removed obsolete generic SQL builder."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-requirement -am compile -q", "exit_code": 0, "salient_output": "Requirement production compilation completed."},
+    {"command": "mvn '-DskipTests' -pl :ccb-requirement -am test-compile -q", "exit_code": 0, "salient_output": "Requirement test sources compiled."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-requirement -am '-Dtest=RequirementDifferenceServiceTest,RequirementLegacyServiceTest' test -q", "exit_code": 0, "salient_output": "Focused difference and legacy service tests passed after test Mapper adapters were corrected to use the stubbed overloads."},
+    {"command": "rg -n 'JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery|RequirementSql' server/src/modules/requirement/src/main/java --glob '*.java'", "exit_code": 1, "salient_output": "No production requirement module direct-SQL access or RequirementSql reference remained."}
+  ],
+  "local_checks": [
+    {"check": "Difference and legacy Mapper XML parse", "result": "pass", "evidence": "PowerShell XML parser accepted both new Mapper XML files.", "limitations": ["This is structural XML parsing, not a live MySQL execution."]},
+    {"check": "No dynamic identifier interpolation in new XML", "result": "pass", "evidence": "Search for ${ in both new XML files returned no matches.", "limitations": []},
+    {"check": "Global direct-SQL residual scan", "result": "pass", "evidence": "The migrated requirement classes no longer occur; current remaining results are in other modules.", "limitations": ["Repository-wide migration remains in progress."]}
+  ],
+  "diff_summary": [
+    "Added explicit Service -> Repository -> Mapper -> Mapper XML paths for difference and legacy requirement persistence.",
+    "Preserved Service ownership of authorization, workflow invocation, transaction annotations and change-log auditing.",
+    "Replaced test construction with Repository-backed Mapper adapters and removed the generic RequirementSql helper."
+  ],
+  "invariants_checked": [
+    {"invariant": "Public APIs and package names remain compatible", "result": "pass", "evidence": "Only persistence constructor dependencies changed internally; controller and DTO paths were not edited."},
+    {"invariant": "Writes retain transaction and audit orchestration", "result": "pass", "evidence": "Existing @Transactional methods and changeLog calls remain in the Service methods; focused service tests passed."},
+    {"invariant": "No schema or Flyway change", "result": "pass", "evidence": "No migration file was modified or added."}
+  ],
+  "disturbances": [
+    {"event": "Local Docker/Testcontainers is unavailable", "impact": "MySQL/Flyway integration validation was not executed in this batch."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Run MySQL/Flyway integration and full repository regression when the shared final migration batch has completed and Docker is available.",
+    "Independent observing-phase review remains required by the high-assurance workflow."
+  ],
+  "recommended_next": "observe"
+}

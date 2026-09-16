@@ -16,11 +16,12 @@ class DataMigrationModuleRegistrationTest {
     void targetTableMigrationAndServiceUseCurrentProjectContract() throws Exception {
         Path migration = Path.of("../../platform/infrastructure/src/main/resources/db/migration/V88__data_migration_target_table_structure.sql");
         Path service = Path.of("src/main/java/com/ccb/datamigration/service/TargetTableService.java");
+        Path mapper = Path.of("src/main/resources/mapper/datamigration/TargetTableMapper.xml");
         assertTrue(Files.exists(migration));
         String migrationSql = Files.readString(migration);
         String source = Files.readString(service);
         assertTrue(migrationSql.contains("pm_project"));
-        assertTrue(source.contains("pm_project"));
+        assertTrue(Files.readString(mapper).contains("pm_project"));
         assertTrue(source.contains("ensureTableUnique(user.tenantId()"));
         assertTrue(source.contains("normalizedTableNameEn"));
         assertTrue(source.contains("if (createTableSafely"));
@@ -149,18 +150,18 @@ class DataMigrationModuleRegistrationTest {
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS dm_issue"));
         assertTrue(sql.contains("DELETE FROM dm_asset_relation"));
         assertTrue(sql.contains("DELETE FROM dm_asset"));
-        String issue = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
-        assertTrue(issue.contains("FROM dm_issue"));
-        assertTrue(!issue.contains("FROM dm_asset a"));
+        String issueMapper = Files.readString(Path.of("src/main/resources/mapper/datamigration/IssueMapper.xml"));
+        assertTrue(issueMapper.contains("FROM dm_issue"));
+        assertTrue(!issueMapper.contains("FROM dm_asset a"));
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/StructuredAssetService.java")).contains("\"ISSUE\""));
         assertTrue(!Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java")).contains("\"ISSUE\""));
     }
 
     @Test
     void issueCreateInsertBindsAllColumns() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
+        String source = Files.readString(Path.of("src/main/resources/mapper/datamigration/IssueMapper.xml"));
         String insert = source.lines().filter(line -> line.contains("INSERT INTO dm_issue")).findFirst().orElseThrow();
-        assertTrue(insert.substring(insert.indexOf("VALUES")).chars().filter(ch -> ch == '?').count() == 21);
+        assertTrue(insert.substring(insert.indexOf("VALUES")).chars().filter(ch -> ch == '#').count() == 21);
         assertTrue(insert.contains("system_code, issue_source"));
         assertTrue(!insert.contains("system_id"));
         assertTrue(insert.contains("created_by, updated_by"));
@@ -183,26 +184,28 @@ class DataMigrationModuleRegistrationTest {
 
     @Test
     void meetingRelationsAndAttachmentLifecycleUseDedicatedStorage() throws Exception {
-        String issue = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/IssueService.java"));
+        String issue = Files.readString(Path.of("src/main/resources/mapper/datamigration/IssueMapper.xml"));
         String meeting = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/MeetingService.java"));
+        String meetingMapper = Files.readString(Path.of("src/main/resources/mapper/datamigration/MeetingMapper.xml"));
         String policy = Files.readString(Path.of("src/main/java/com/ccb/datamigration/integration/DataMigrationMeetingAttachmentAccessPolicy.java"));
+        String attachmentMapper = Files.readString(Path.of("src/main/resources/mapper/datamigration/ContentAttachmentMapper.xml"));
         assertTrue(issue.contains("FROM dm_meeting WHERE tenant_id"));
         assertTrue(issue.contains("JOIN dm_meeting m ON m.meeting_id = r.related_id"));
-        assertTrue(issue.contains("FROM dm_meeting WHERE meeting_id = ?"));
+        assertTrue(issue.contains("FROM dm_meeting WHERE meeting_id = #{id}"));
         assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentAttachmentService.java")).contains("attachmentGateway.deleteBound"));
-        assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentAttachmentService.java")).contains("DELETE FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ?"));
-        assertTrue(meeting.contains("contentAttachments.unbindAndRemoveAll"));
-        assertTrue(meeting.contains("related_type = 'MEETING'"));
+        assertTrue(attachmentMapper.contains("DELETE FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId}"));
+        assertTrue(meeting.contains("attachments.unbindAndRemoveAll"));
+        assertTrue(meetingMapper.contains("related_type='MEETING'"));
         assertTrue(policy.contains("DATA_MIGRATION_MEETING") || policy.contains("MeetingService.BUSINESS_TYPE"));
     }
 
     @Test
     void genericAssetRecycleBinWritesDeletionAuditFields() throws Exception {
-        String asset = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java"));
-        assertTrue(asset.contains("deleted_by = ?"));
-        assertTrue(asset.contains("deleted_at = CURRENT_TIMESTAMP"));
-        assertTrue(asset.contains("deleted_by = NULL"));
-        assertTrue(asset.contains("deleted_at = NULL"));
+        String asset = Files.readString(Path.of("src/main/resources/mapper/datamigration/ContentFileAssetMapper.xml"));
+        assertTrue(asset.contains("deleted_by=#{actorId}"));
+        assertTrue(asset.contains("deleted_at=CURRENT_TIMESTAMP"));
+        assertTrue(asset.contains("deleted_by=NULL"));
+        assertTrue(asset.contains("deleted_at=NULL"));
     }
 
     @Test
@@ -223,7 +226,7 @@ class DataMigrationModuleRegistrationTest {
         // V177：字段表冗余 table_code 下线后（V161），关联键改名 table_id -> table_code，服务按业务编号关联。
         String targetTableMigration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V178__data_migration_target_table_code_pk.sql"));
         assertTrue(targetTableMigration.contains("CHANGE COLUMN table_id table_code"));
-        assertTrue(Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/TargetTableService.java")).contains("t.table_code = f.table_code"));
+        assertTrue(Files.readString(Path.of("src/main/resources/mapper/datamigration/TargetTableMapper.xml")).contains("t.table_code=f.table_code"));
         // V178（T42）：全模块下线 active_* 活动生成列，唯一键直接建在业务列。
         String activeRemovalMigration = Files.readString(Path.of("../../platform/infrastructure/src/main/resources/db/migration/V179__data_migration_active_uniqueness_columns_removal.sql"));
         assertTrue(activeRemovalMigration.contains("DROP COLUMN active_table_code"));
@@ -279,10 +282,11 @@ class DataMigrationModuleRegistrationTest {
         assertTrue(sql.contains("'DM_RULE_CATEGORY'"));
         assertTrue(sql.contains("INSERT IGNORE INTO sys_config"));
 
+        String mapper = Files.readString(Path.of("src/main/resources/mapper/datamigration/RuleMapper.xml"));
+        assertTrue(mapper.contains("FROM dm_rule"));
+        assertTrue(mapper.contains("entity_type,entity_id"));
+        assertTrue(mapper.contains("'RULE'"));
         String service = Files.readString(Path.of("src/main/java/com/ccb/datamigration/service/RuleService.java"));
-        assertTrue(service.contains("FROM dm_rule"));
-        assertTrue(service.contains("entity_type, entity_id"));
-        assertTrue(service.contains("'RULE'"));
         assertTrue(service.contains("RULE_CREATE"));
         assertTrue(service.contains("RULE_IMPORT"));
 

@@ -1,0 +1,10 @@
+{
+  "task_id":"T1","status":"implemented",
+  "changed_surfaces":[{"path_or_resource":".ai-control/requirements/req-20260911-080-full-mybatis-architecture/inventory.json","purpose":"Record static SQL access inventory by module."}],
+  "requirements_addressed":["R1","R2","R4"],
+  "commands":[{"command":"rg -l 'JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery' server/src/modules server/src/platform --glob '*.java' --glob '!**/src/test/**'","exit_code":0,"salient_output":"103 production Java files and 326 matching SQL access occurrences."}],
+  "local_checks":[{"check":"Module inventory","result":"pass","evidence":"All 12 platform/business module groups have counts."}],
+  "diff_summary":["Added static inventory only; no product code changed."],
+  "invariants_checked":[{"invariant":"No production behavior changed","result":"pass","evidence":"T1 only adds control evidence."}],
+  "disturbances":[],"assumptions_falsified":[],"unresolved_items":["Runtime-generated SQL and implicit transaction coupling require module tests."],"recommended_next":"observe"
+}

@@ -1,0 +1,26 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportService.java", "purpose": "Replace report JDBC access and Java SQL construction with ReportRepository while retaining attachment lifecycle, permissions, transactions, recycle-bin and audit orchestration."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportRepository.java", "purpose": "Provide the explicit report persistence boundary."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ReportMapper.java", "purpose": "Declare list, detail, CRUD, recycle-bin, project option and audit SQL methods."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ReportMapper.xml", "purpose": "Own parameter-bound report SQL, including optional metadata update fields."},
+    {"path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java", "purpose": "Use a test-only ReportMapper adapter while retaining existing attachment collaboration fixtures."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Data-migration sources compile with Report Mapper contract."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=ReportServiceTest,DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "Report attachment lifecycle behavior and module registration tests passed."},
+    {"command": "PowerShell XML parse and Mapper method-to-statement audit", "exit_code": 0, "salient_output": "ReportMapper.xml parses; all 10 Mapper methods have matching XML statements."},
+    {"command": "production direct-SQL rg scan", "exit_code": 0, "salient_output": "Residual production direct-SQL files reduced from 43 to 42."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Attachment platform lifecycle remains unchanged", "result": "pass", "evidence": "ReportService continues to resolve temporary attachments and delegates binding/replacement/removal through existing ContentFileAssetService and ContentAttachmentService."},
+    {"invariant": "Authorization, transaction and audit stay in Service", "result": "pass", "evidence": "Project access, entity write checks, @Transactional methods, restore conflict handling and audit invocation remain in ReportService."},
+    {"invariant": "No schema or public API change", "result": "pass", "evidence": "No Flyway, controller, DTO, route or package was modified."}
+  ],
+  "disturbances": [{"event": "Docker named-pipe access remains unavailable", "impact": "MySQL/Testcontainers validation remains deferred."}],
+  "unresolved_items": ["42 production Java files still have direct SQL access.", "Run MySQL/Testcontainers regression with Docker access before observation.", "T2 and T3 remain active."],
+  "recommended_next": "Continue T3 with the remaining data-migration services."
+}

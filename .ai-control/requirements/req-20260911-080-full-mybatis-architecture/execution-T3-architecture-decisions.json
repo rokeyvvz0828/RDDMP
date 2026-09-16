@@ -1,0 +1,34 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/persistence/DecisionStore.java", "purpose": "Keep the existing service-facing persistence API while delegating all storage work to DecisionRepository."},
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/persistence/DecisionRepository.java", "purpose": "Map typed decision models and preserve tenant predicates, row-version conflict behavior, annual sequence allocation, publication intent serialization and workflow receipt semantics."},
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/decision/persistence/DecisionMapper.java", "purpose": "Declare the explicit MyBatis persistence contract for decision matters, reviews, conclusions, workflow rounds and receipts."},
+    {"path_or_resource": "server/src/modules/architecture/src/main/resources/mapper/architecture/DecisionMapper.xml", "purpose": "Own all parameter-bound decision SQL, including FOR UPDATE row locks, CAS updates and receipt idempotency."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-architecture -am compile -q", "exit_code": 0, "salient_output": "Architecture production sources compiled after the DecisionStore migration."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-architecture -am '-Dtest=ArchitectureDecisionServiceTest,ArchitectureDecisionWorkflowLifecycleConsumerTest' test -q", "exit_code": 0, "salient_output": "Focused service and workflow lifecycle tests completed without Maven errors."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-architecture -am '-Dtest=ArchitectureStandardsDecisionsMySqlTest' test -q", "exit_code": 0, "salient_output": "Selected architecture standards/decisions integration command completed without Maven errors; full T4 integration evidence remains pending."},
+    {"command": "XML parse, Mapper method-to-statement ID audit, direct-JDBC scan and git diff --check", "exit_code": 0, "salient_output": "DecisionMapper.xml parsed; 43 declared Mapper methods have XML statement IDs; DecisionStore and DecisionRepository have no direct JDBC access; whitespace check has no errors."}
+  ],
+  "local_checks": [
+    {"check": "SQL ownership", "result": "pass", "evidence": "DecisionStore contains no JdbcTemplate, NamedParameterJdbcTemplate, EntityManager or native-query access; all SQL is in DecisionMapper.xml.", "limitations": []},
+    {"check": "Tenant, lock and CAS preservation", "result": "pass", "evidence": "XML keeps tenant predicates on decision tables, FOR UPDATE for matter/annual-number/workflow-round locks, and expected row-version/current-round CAS predicates.", "limitations": []},
+    {"check": "Workflow publication and audit path", "result": "pass", "evidence": "Repository preserves publication intent JSON handling, immutable conclusion/supersession inserts, workflow-round transitions and receipt idempotency; service transaction boundaries are unchanged.", "limitations": ["Full repository integration and controller acceptance remain T4 work."]}
+  ],
+  "diff_summary": [
+    "Migrated the DecisionStore persistence cluster to Store -> Repository -> Mapper -> XML without route, DTO, schema or Flyway changes.",
+    "Kept service authorization, tenant source, workflow lifecycle orchestration and transaction annotations unchanged."
+  ],
+  "invariants_checked": [
+    {"invariant": "Public DecisionStore API remains compatible", "result": "pass", "evidence": "Existing ArchitectureDecisionService and workflow lifecycle tests compile and execute against the unchanged Store method signatures."},
+    {"invariant": "Migration rollback remains module-local", "result": "pass", "evidence": "Only architecture decision persistence sources, its Mapper XML and this REQ-080 execution record changed; no schema or cross-module contract changed."}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Final full Maven, MySQL/Flyway and authenticated controller acceptance are deferred to T4/T5 after all remaining migrations."],
+  "recommended_next": "continue executing remaining architecture persistence checkpoints"
+}

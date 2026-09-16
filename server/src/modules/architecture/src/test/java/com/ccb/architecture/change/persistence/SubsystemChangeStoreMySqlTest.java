@@ -16,6 +16,11 @@ import com.ccb.architecture.change.model.SubsystemChangeModels.WorkflowReceiptSt
 import com.ccb.architecture.change.model.SubsystemChangeModels.WorkflowReceiptStatus;
 import com.ccb.architecture.change.model.SubsystemChangeModels.WorkflowRound;
 import com.ccb.architecture.change.model.SubsystemChangeModels.WorkflowRoundStatus;
+import org.apache.ibatis.builder.xml.XMLMapperBuilder;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.AfterAll;
@@ -26,6 +31,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.mybatis.spring.SqlSessionTemplate;
+import org.mybatis.spring.transaction.SpringManagedTransactionFactory;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -56,11 +63,12 @@ class SubsystemChangeStoreMySqlTest {
     private static DriverManagerDataSource dataSource;
     private static JdbcTemplate jdbc;
     private static TransactionTemplate transactions;
+    private static SqlSessionTemplate sqlSession;
 
     private SubsystemChangeStore store;
 
     @BeforeAll
-    static void migrate() {
+    static void migrate() throws Exception {
         dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         jdbc = new JdbcTemplate(dataSource);
         jdbc.execute("ALTER DATABASE `" + DATABASE + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
@@ -74,6 +82,13 @@ class SubsystemChangeStoreMySqlTest {
         flyway.clean();
         flyway.migrate();
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        Configuration configuration = new Configuration(
+                new Environment("test", new SpringManagedTransactionFactory(), dataSource));
+        try (var input = Resources.getResourceAsStream("mapper/architecture/SubsystemChangeMapper.xml")) {
+            new XMLMapperBuilder(input, configuration, "mapper/architecture/SubsystemChangeMapper.xml",
+                    configuration.getSqlFragments()).parse();
+        }
+        sqlSession = new SqlSessionTemplate(new SqlSessionFactoryBuilder().build(configuration));
     }
 
     @AfterAll
@@ -94,7 +109,7 @@ class SubsystemChangeStoreMySqlTest {
         jdbc.update("DELETE FROM arch_subsystem_physical_draft WHERE tenant_id IN (?, ?)", TENANT_1, TENANT_2);
         jdbc.update("DELETE FROM arch_subsystem_change_application WHERE tenant_id IN (?, ?)", TENANT_1, TENANT_2);
         jdbc.update("DELETE FROM arch_physical_subsystem WHERE tenant_id IN (?, ?)", TENANT_1, TENANT_2);
-        store = new SubsystemChangeStore(jdbc);
+        store = new SubsystemChangeStore(sqlSession.getMapper(SubsystemChangeMapper.class));
     }
 
     @Test

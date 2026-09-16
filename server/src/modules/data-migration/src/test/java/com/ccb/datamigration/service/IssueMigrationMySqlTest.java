@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.core.io.ClassPathResource;
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -21,9 +24,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -90,9 +96,10 @@ class IssueMigrationMySqlTest {
             execute(connection, issueInsert(9402, "ROLLBACK-2", true));
         }
 
-        RaceInjectingJdbcTemplate jdbc = new RaceInjectingJdbcTemplate(dataSource());
-        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
-        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
+        DriverManagerDataSource dataSource = dataSource();
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        IssueService service = issueService(dataSource, jdbc, true);
+        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> transaction.executeWithoutResult(status -> service.restore(List.of(9401L, 9402L), ADMIN)));
@@ -112,9 +119,10 @@ class IssueMigrationMySqlTest {
             execute(connection, issueInsert(9501, "RELATION-ROLLBACK", false));
         }
 
-        RaceInjectingJdbcTemplate jdbc = new RaceInjectingJdbcTemplate(dataSource());
-        IssueService service = new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
-        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()));
+        DriverManagerDataSource dataSource = dataSource();
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        IssueService service = issueService(dataSource, jdbc, false);
+        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("projectId", 100L);
         body.put("issueCode", "RELATION-ROLLBACK");
@@ -149,6 +157,38 @@ class IssueMigrationMySqlTest {
 
     private DriverManagerDataSource dataSource() {
         return new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+    }
+
+    private IssueService issueService(DriverManagerDataSource dataSource, JdbcTemplate jdbc, boolean injectRestoreConflict) throws Exception {
+        SqlSessionFactoryBean mapperFactory = new SqlSessionFactoryBean();
+        mapperFactory.setDataSource(dataSource);
+        mapperFactory.setMapperLocations(new ClassPathResource("mapper/datamigration/IssueMapper.xml"));
+        IssueMapper mapper = new SqlSessionTemplate(mapperFactory.getObject()).getMapper(IssueMapper.class);
+        if (injectRestoreConflict) mapper = injectRestoreConflict(mapper, jdbc);
+        return new IssueService(new IssueRepository(mapper), adminPermissions(), TestDataMigrationCodeValues.service());
+    }
+
+    private DataMigrationPermissionService adminPermissions() {
+        DataMigrationPermissionMapper mapper = new DataMigrationPermissionMapper() {
+            @Override public Integer adminPermissionCount(long userId, long tenantId) { return 1; }
+            @Override public Integer actionPermissionCount(long userId, long tenantId, String permissionCode, String action) { return 1; }
+        };
+        return new DataMigrationPermissionService(new DataMigrationPermissionRepository(mapper), StubProjectAccess.allow());
+    }
+
+    private IssueMapper injectRestoreConflict(IssueMapper delegate, JdbcTemplate jdbc) {
+        AtomicInteger restoreCalls = new AtomicInteger();
+        return (IssueMapper) Proxy.newProxyInstance(IssueMapper.class.getClassLoader(), new Class<?>[] {IssueMapper.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("restore") && restoreCalls.incrementAndGet() == 2) {
+                        jdbc.update(issueInsert(9499, "ROLLBACK-2"));
+                    }
+                    try {
+                        return method.invoke(delegate, args);
+                    } catch (InvocationTargetException ex) {
+                        throw ex.getCause();
+                    }
+                });
     }
 
     private void migrateFreshTo94() {
@@ -311,28 +351,4 @@ class IssueMigrationMySqlTest {
         }
     }
 
-    private final class RaceInjectingJdbcTemplate extends JdbcTemplate {
-        private int restoreUpdates;
-
-        private RaceInjectingJdbcTemplate(DriverManagerDataSource dataSource) {
-            super(dataSource);
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (sql.contains("FROM sys_user_role") || sql.contains("FROM pm_project")) {
-                return (T) Integer.valueOf(1);
-            }
-            return super.queryForObject(sql, requiredType, args);
-        }
-
-        @Override
-        public int update(String sql, Object... args) {
-            if (sql.startsWith("UPDATE dm_issue SET deleted = 0") && ++restoreUpdates == 2) {
-                super.update(issueInsert(9499, "ROLLBACK-2"));
-            }
-            return super.update(sql, args);
-        }
-    }
 }

@@ -1,0 +1,24 @@
+{
+  "task": "T3",
+  "module": "ccb-data-migration",
+  "phase": "executing",
+  "scope": "ContentFileAssetService MyBatis contract migration",
+  "actual_files": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetRepository.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ContentFileAssetMapper.java",
+    "server/src/modules/data-migration/src/main/resources/mapper/datamigration/ContentFileAssetMapper.xml",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ContentFileAssetDocCodeGovernanceTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ReportServiceTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/TopicServiceTest.java"
+  ],
+  "invariants": ["DEPENDENCY table whitelist remains enforced before XML ${table} substitution", "project/entity authorization and transactions remain in Service", "attachment binding and audit order remain unchanged", "no Flyway or public API change"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "result": "passed"},
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "result": "passed"},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=ContentFileAssetDocCodeGovernanceTest' test -q", "result": "passed"},
+    {"command": "rg -n 'JdbcTemplate|jdbc\\.' ContentFileAssetService.java", "result": "no matches"}
+  ],
+  "remaining_risks": ["MySQL/Testcontainers integration is deferred to the final module batch; no schema change was made."],
+  "rollback": "Revert this service, Repository, Mapper XML and its focused test adaptation together."
+}

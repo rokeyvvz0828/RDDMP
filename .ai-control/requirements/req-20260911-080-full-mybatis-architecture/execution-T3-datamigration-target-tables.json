@@ -1,0 +1,24 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableService.java", "purpose": "Replace all direct JDBC access with the TargetTableRepository while retaining category RBAC, entity authorization, transactions, import/export, cascade deletion, and audit orchestration."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableRepository.java", "purpose": "Own service-to-Mapper result adaptation and missing table/field error semantics."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/TargetTableMapper.java", "purpose": "Declare the target-table persistence contract."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/TargetTableMapper.xml", "purpose": "Own parameter-bound table/field list, detail, CRUD, uniqueness, import lookup, export, and audit SQL."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am test-compile -q", "exit_code": 0, "salient_output": "Production and test sources compile after TargetTable Mapper migration."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "DataMigrationModuleRegistrationTest passed after SQL ownership assertions moved to XML."},
+    {"command": "PowerShell XML parse and Mapper method-to-statement audit", "exit_code": 0, "salient_output": "TargetTableMapper XML parses; 25 Mapper methods have matching statement IDs."},
+    {"command": "production direct-SQL rg scan", "exit_code": 0, "salient_output": "Residual production direct-SQL files reduced from 44 to 43."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Category RBAC, project scope, entity write authorization, transaction and audit remain in Service", "result": "pass", "evidence": "Existing permission, @Transactional, import/export and audit orchestration remains in TargetTableService."},
+    {"invariant": "No schema or public API change", "result": "pass", "evidence": "No Flyway, controller, DTO, route or package was modified."}
+  ],
+  "disturbances": [{"event": "Docker named-pipe access remains unavailable", "impact": "Existing Testcontainers governance scenarios are compiled but cannot run locally."}],
+  "unresolved_items": ["43 production Java files still have direct SQL access.", "Run DataMigrationGovernanceRemediationMySqlTest with Docker access before observation.", "T2 and T3 remain active."],
+  "recommended_next": "Continue T3 with the remaining data-migration services."
+}

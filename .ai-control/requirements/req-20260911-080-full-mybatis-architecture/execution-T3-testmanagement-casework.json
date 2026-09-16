@@ -1,0 +1,85 @@
+{
+  "task_id": "T3-testmanagement-casework",
+  "status": "implemented",
+  "changed_surfaces": [
+    {
+      "path_or_resource": "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/casework/TestCaseService.java",
+      "purpose": "Replace all direct JdbcTemplate reads and writes with the package-local TestCaseRepository while retaining service authorization, transaction, attachment, and audit orchestration."
+    },
+    {
+      "path_or_resource": "server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestCaseMapper.xml",
+      "purpose": "Provide parameter-bound MyBatis XML statements for case listing, directory and case mutation, attachments, validation lookups, and audit persistence."
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {
+      "command": "PowerShell XML parse and Mapper method/statement contract audit",
+      "exit_code": 0,
+      "salient_output": "TestCaseMapper.xml parses successfully and all declared Mapper methods have XML statements."
+    },
+    {
+      "command": "rg -n JdbcTemplate|NamedParameterJdbcTemplate|createNativeQuery|@Select|@Insert|@Update|@Delete server/src/modules/test-management/src/main/java/com/ccb/testmanagement/casework",
+      "exit_code": 1,
+      "salient_output": "No direct SQL access remains in the casework production package."
+    },
+    {
+      "command": "mvn -pl :ccb-test-management -DskipTests compile -q",
+      "exit_code": 0,
+      "salient_output": "TEST_MANAGEMENT_COMPILE_EXIT=0"
+    },
+    {
+      "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test -q",
+      "exit_code": 1,
+      "salient_output": "Stopped in ccb-infrastructure: MockDataInitializerTest has 11 NoSuchMethodError failures against the removed JdbcTemplate constructor before ccb-test-management tests run."
+    }
+  ],
+  "local_checks": [
+    {
+      "check": "Casework SQL ownership",
+      "result": "pass",
+      "evidence": "TestCaseService has no JdbcTemplate or direct-SQL reference; Mapper XML owns all declared persistence operations.",
+      "limitations": ["Static check does not exercise MySQL result mappings."]
+    },
+    {
+      "check": "Target module production compilation",
+      "result": "pass",
+      "evidence": "Maven compile exited 0 for ccb-test-management.",
+      "limitations": ["The dependent reactor test run is blocked by an existing infrastructure test constructor mismatch."]
+    }
+  ],
+  "diff_summary": [
+    "Added the missing TestCaseMapper XML resource for the already-created Mapper and Repository contract.",
+    "Kept Controller/Service API, validation, tenant checks, attachment gateway calls, transaction boundaries, and audit semantics unchanged.",
+    "No schema migration, public API, permission model, or package relocation was introduced."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Tenant, domain, and project predicates remain bound in every case and directory operation",
+      "result": "pass",
+      "evidence": "Each XML statement receives tenantId; domain/project filters are retained for scope, directory, and case identity operations."
+    },
+    {
+      "invariant": "Writes retain service transaction and audit orchestration",
+      "result": "pass",
+      "evidence": "Transactional service methods remain unchanged and call the existing audit helper after Repository mutation."
+    },
+    {
+      "invariant": "No database schema or public API change",
+      "result": "pass",
+      "evidence": "Only casework persistence wiring and mapper XML were changed."
+    }
+  ],
+  "disturbances": [
+    {
+      "event": "ccb-infrastructure MockDataInitializerTest constructor mismatch",
+      "impact": "The reactor test run cannot reach ccb-test-management tests; this pre-existing upstream migration incompatibility needs a separate controlled fix."
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Six production direct-SQL classes remain outside this casework slice.",
+    "Run MySQL-backed test-management integration checks and an independent observation after the infrastructure test mismatch is resolved."
+  ],
+  "recommended_next": "observe"
+}

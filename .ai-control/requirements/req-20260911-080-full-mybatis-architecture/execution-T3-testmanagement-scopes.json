@@ -1,0 +1,30 @@
+{
+  "task_id": "T3",
+  "module": "ccb-test-management",
+  "scope": "TestScopeService MyBatis Repository/Mapper/XML migration",
+  "actual_files": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/scope/TestScopeService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/scope/TestScopeMapper.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/scope/TestScopeRepository.java",
+    "server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestScopeMapper.xml"
+  ],
+  "invariants": [
+    "routes and DTOs unchanged",
+    "service retains tenant/project/system validation, transactions and audit sequencing",
+    "pagination, recycle-bin filters and scope-code synchronization remain parameterized in the mapper",
+    "Flyway unchanged"
+  ],
+  "checks": [
+    {"command": "mvn -DskipTests -pl :ccb-test-management -am compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -pl :ccb-test-management -am test-compile -q", "result": "passed"},
+    {"command": "TestScopeMapper.xml parse", "result": "passed"},
+    {"command": "TestScopeMapper method to XML statement audit", "result": "passed: 34 methods covered"},
+    {"command": "TestScopeService production direct-SQL residual scan", "result": "passed: no JdbcTemplate, native-query or inline SQL reference"},
+    {"command": "git diff --check scoped paths", "result": "passed"}
+  ],
+  "test_gap": "No TestScopeService-focused test class exists in the module; full module and MySQL/Flyway integration remain deferred to T4.",
+  "database": "No schema or Flyway change.",
+  "integration_status": "not run; local Testcontainers Docker endpoint is unavailable.",
+  "rollback": "Revert this module-local Mapper, Repository, XML and service checkpoint.",
+  "phase": "executing"
+}

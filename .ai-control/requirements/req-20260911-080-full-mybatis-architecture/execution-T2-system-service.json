@@ -1,0 +1,27 @@
+{
+  "task": "T2",
+  "scope": "platform/system SystemService MyBatis contract migration",
+  "completed_at": "2026-09-16T00:00:00+08:00",
+  "files": [
+    "server/src/platform/system/src/main/java/com/ccb/system/service/SystemService.java",
+    "server/src/platform/system/src/main/java/com/ccb/system/service/SystemRepository.java",
+    "server/src/platform/system/src/main/java/com/ccb/system/service/SystemMapper.java",
+    "server/src/platform/system/src/main/resources/mapper/system/SystemMapper.xml",
+    "server/src/platform/system/src/test/java/com/ccb/system/service/SystemServicePasswordResetTest.java",
+    "server/src/platform/system/src/test/java/com/ccb/system/service/SystemPermissionCatalogTest.java"
+  ],
+  "invariants": [
+    "Existing service API, RBAC checks, organization-cycle validation, transaction annotations and audit capture were retained.",
+    "No Flyway migration or public DTO change was made.",
+    "All SQL previously in SystemService is owned by SystemMapper.xml."
+  ],
+  "verification": [
+    {"command": "mvn -DskipTests -pl :ccb-system -am compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -pl :ccb-system -am test-compile -q", "result": "passed"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -Dsurefire.failIfNoSpecifiedTests=false -pl :ccb-system -am -Dtest=SystemServicePasswordResetTest,SystemPermissionCatalogTest test -q", "result": "passed"},
+    {"command": "SystemMapper Java-to-XML id audit", "result": "85 methods, 95 XML ids, no missing methods"},
+    {"command": "direct SQL static scan for SystemService", "result": "no JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, native query, or jdbc calls"}
+  ],
+  "environment_limitations": ["MySQL/Flyway integration was not run in this checkpoint; Docker/Testcontainers access remains unavailable in the local environment."],
+  "rollback": "Revert this SystemService checkpoint together with its repository, mapper, XML and adapted unit tests."
+}

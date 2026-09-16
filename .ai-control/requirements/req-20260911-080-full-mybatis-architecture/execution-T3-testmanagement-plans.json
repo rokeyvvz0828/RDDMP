@@ -1,0 +1,23 @@
+{
+  "task_id": "T3",
+  "module": "ccb-test-management",
+  "scope": "TestPlanService MyBatis Repository/Mapper/XML migration",
+  "actual_files": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanMapper.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/plan/TestPlanRepository.java",
+    "server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestPlanMapper.xml",
+    "server/src/modules/test-management/src/test/java/com/ccb/testmanagement/plan/TestPlanServiceTest.java"
+  ],
+  "invariants": ["routes and DTOs unchanged", "service keeps validation, transaction, attachment binding and audit", "Flyway unchanged"],
+  "checks": [
+    {"command": "mvn -DskipTests -pl :ccb-test-management -am compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -pl :ccb-test-management -am test-compile -q", "result": "passed"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -Dsurefire.failIfNoSpecifiedTests=false -pl :ccb-test-management -am -Dtest=TestPlanServiceTest test -q", "result": "passed"},
+    {"command": "production direct SQL residual scan", "result": "TestPlanService absent"}
+  ],
+  "database": "No schema or Flyway change.",
+  "integration_status": "not run; local Testcontainers Docker endpoint is unavailable.",
+  "rollback": "Revert this module-local Mapper, Repository, XML, service and focused test checkpoint.",
+  "phase": "executing"
+}

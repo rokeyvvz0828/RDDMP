@@ -1,0 +1,43 @@
+{
+  "task_id": "T2",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/workflow/src/main/resources/mapper/workflow/*.xml", "purpose": "Retain workflow SQL in MyBatis XML statements mapped to service-layer Mapper interfaces."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowCursorPaginationTest.java", "purpose": "Exercise seek pagination through WorkflowInboxRepository rather than retired JDBC test access."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionLifecycleTest.java", "purpose": "Stub definition history counts and audit persistence at the Repository boundary."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowPlatformRetirementTest.java", "purpose": "Inject Mapper and Repository collaborators for retired platform workflow scenarios."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTaskContextTest.java", "purpose": "Exercise task-context behavior through WorkflowTaskQueryRepository."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTaskProjectionTest.java", "purpose": "Exercise inbox and done projections through their repositories."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowTemplateScopeTest.java", "purpose": "Inject definition persistence for template-scope behavior."},
+    {"path_or_resource": "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTest.java", "purpose": "Update constructor and definition Repository test fixtures to match the MyBatis migration."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "rg -n -i JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery|@Select|@Insert|@Update|@Delete server/src/platform/workflow/src/main/java --glob *.java", "exit_code": 0, "salient_output": "No production workflow direct-SQL access was found."},
+    {"command": "PowerShell XML and Mapper method audit", "exit_code": 0, "salient_output": "18 XML files parse successfully; 128 Mapper interface methods are covered across 17 namespaces; 134 statement ids are unique."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-workflow -am '-Dtest=Workflow*Test,!*MigrationMySqlTest' test -q", "exit_code": 0, "salient_output": "MAVEN_WORKFLOW_UNIT_TESTS_OK"}
+  ],
+  "local_checks": [
+    {"check": "Workflow Mapper/XML ownership", "result": "pass", "evidence": "No production Java direct SQL and every declared Mapper method has a unique XML statement.", "limitations": ["Does not execute against MySQL."]},
+    {"check": "Workflow unit regressions", "result": "pass", "evidence": "All Workflow*Test tests excluding Docker-backed migration tests passed.", "limitations": ["MySQL Testcontainers tests require a working local Docker daemon."]}
+  ],
+  "diff_summary": [
+    "Updated workflow unit fixtures from obsolete JDBC collaborators to current Repository/Mapper collaborators.",
+    "Preserved the existing workflow Mapper/XML migration and public service APIs.",
+    "No database migration or production SQL was added."
+  ],
+  "invariants_checked": [
+    {"invariant": "Production SQL stays in Mapper XML", "result": "pass", "evidence": "Static scan and XML/interface mapping audit pass."},
+    {"invariant": "Workflow behavior remains covered at service boundaries", "result": "pass", "evidence": "Focused workflow unit suite passes through Repository test doubles."},
+    {"invariant": "No schema or public API change", "result": "pass", "evidence": "Only Mapper resources and test fixtures are in scope."}
+  ],
+  "disturbances": [
+    {"event": "Local Docker daemon unavailable", "impact": "Two Testcontainers MySQL migration tests cannot run in this environment."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Run WorkflowDefinitionSummaryMigrationMySqlTest and WorkflowPlatformRetirementMigrationMySqlTest once Docker is available.",
+    "T2 remains partial because other platform modules are not yet complete."
+  ],
+  "recommended_next": "observe"
+}

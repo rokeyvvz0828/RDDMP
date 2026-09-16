@@ -1,0 +1,25 @@
+{
+  "task_id": "T3",
+  "module": "ccb-test-management",
+  "scope": ["TestReportService", "TestDefectService"],
+  "actual_files": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportMapper.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportRepository.java",
+    "server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestReportMapper.xml",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/defect/TestDefectService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/defect/TestDefectMapper.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/defect/TestDefectRepository.java",
+    "server/src/modules/test-management/src/main/resources/mapper/testmanagement/TestDefectMapper.xml"
+  ],
+  "invariants": ["service authorization, transitions, transactions, attachments and audits preserved", "no Flyway change", "public routes and DTOs unchanged"],
+  "checks": [
+    {"command": "mvn -DskipTests -pl :ccb-test-management -am compile -q", "result": "passed"},
+    {"command": "mvn -DskipTests -pl :ccb-test-management -am test-compile -q", "result": "passed"},
+    {"command": "XML parse", "result": "TestReportMapper 36 statements; TestDefectMapper 30 statements"},
+    {"command": "production direct SQL residual scan", "result": "TestReportService and TestDefectService absent"}
+  ],
+  "integration_status": "not run; Testcontainers is blocked by local Docker endpoint access.",
+  "rollback": "Revert the report or defect Mapper/Repository/XML/service checkpoint independently.",
+  "phase": "executing"
+}

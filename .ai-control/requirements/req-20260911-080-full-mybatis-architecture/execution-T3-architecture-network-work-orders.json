@@ -1,0 +1,38 @@
+{
+  "task_id": "T3",
+  "checkpoint": "architecture-network-work-orders",
+  "recorded_at": "2026-09-15T00:00:00+08:00",
+  "status": "implemented_pending_module_compile",
+  "objective": "Move NetworkWorkOrderStore SQL ownership to Repository/Mapper/XML without changing work-order, workflow-round, CAS, lock, or receipt semantics.",
+  "actual_changes": [
+    "Added NetworkWorkOrderMapper and NetworkWorkOrderMapper.xml with 20 parameter-bound statements.",
+    "Added NetworkWorkOrderRepository for typed record mapping and Mapper delegation.",
+    "Replaced NetworkWorkOrderStore JdbcTemplate/RowMapper SQL with transaction guards, existing validation, and Repository delegation.",
+    "Updated the two Testcontainers persistence suites to instantiate the Store from a SqlSessionTemplate-backed Mapper."
+  ],
+  "invariants_checked": [
+    "Store retains requireTransaction checks for writes and FOR UPDATE reads.",
+    "CAS predicates, IN_REVIEW guards, receipt INSERT IGNORE idempotency, tenant filters, history ordering, and workflow round status predicates are XML-owned unchanged.",
+    "No routes, DTOs, permissions, audit services, or Flyway migrations changed."
+  ],
+  "commands": [
+    {
+      "command": "PowerShell XML parse and Mapper-method statement coverage audit",
+      "result": "pass: 20 Mapper methods have 20 matching XML statements"
+    },
+    {
+      "command": "rg direct SQL access scan for NetworkWorkOrderStore",
+      "result": "pass: no JdbcTemplate, NamedParameterJdbcTemplate, EntityManager, native query, or SQL text remains"
+    },
+    {
+      "command": "mvn '-DskipTests' -pl :ccb-architecture -am test-compile -q",
+      "result": "blocked by concurrent unrelated StandardStore.java compilation error: String.name() at line 31; NetworkWorkOrder sources were not reported as errors"
+    }
+  ],
+  "disturbances": [
+    "Architecture module has concurrent in-progress migrations; a StandardStore compilation failure currently blocks reactor test compilation.",
+    "Docker/Testcontainers remains unavailable locally, so MySQL/Flyway test execution is deferred."
+  ],
+  "rollback": "Revert this checkpoint's Store, Mapper, Repository, XML, and test fixture changes together.",
+  "next": "Retry architecture compile and focused NetworkWorkOrder tests after the concurrent StandardStore compilation error is resolved; then run MySQL tests when Docker is available."
+}

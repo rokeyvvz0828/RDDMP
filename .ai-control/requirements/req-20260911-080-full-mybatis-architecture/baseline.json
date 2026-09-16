@@ -1,0 +1,17 @@
+{
+  "objective":"Migrate all production SQL access to MyBatis Repository/Mapper layers while preserving API, authorization, tenant, transaction and audit behavior.",
+  "requirements":[
+    {"id":"R1","statement":"All production SQL is owned by MyBatis Mapper/XML or Repository; Controller and Service contain no direct SQL access.","acceptance":["static scan finds no direct SQL in Controller/Service","all SQL paths have Mapper/XML tests"],"priority":"must","source":"user-confirmed方案C","counterexample":["Service calls JdbcTemplate"]},
+    {"id":"R2","statement":"Each migrated module exposes Controller, Service and Repository/Mapper boundaries without changing public APIs.","acceptance":["layer audit passes","existing routes and DTOs remain compatible"],"priority":"must","source":"user requirement","counterexample":["Controller contains persistence SQL"]},
+    {"id":"R3","statement":"Module, integration and full feature tests prove behavior, permissions, transactions, audit and pagination remain equivalent.","acceptance":["focused tests pass","MySQL/Flyway and full Maven regressions pass","core controller flows are reachable"],"priority":"must","source":"user requirement","counterexample":["permission or transaction regression"]},
+    {"id":"R4","statement":"Each module migration has an independent rollback point and no unresolved high-severity feedback.","acceptance":["module checkpoints exist","final P0/P1 count is zero"],"priority":"must","source":"engineering constraint","counterexample":["cross-module rollback required"]}
+  ],
+  "invariants":["com.ccb package names preserved","API responses and routes preserved","tenant and entity authorization remain server-side","Flyway history unchanged","writes retain transaction and audit behavior"],
+  "constraints":["no production access",".env only for local runtime configuration","module dependency rules remain enforced","migration is staged with rollback"],
+  "non_goals":["new ORM","business rule redesign","frontend redesign","schema rewrite"],
+  "assumptions":[{"text":"Existing SQL can be represented by MyBatis XML or annotated Mapper with equivalent parameter binding","basis":"current project already contains MyBatis dependencies and Mapper/XML examples","falsifier":"unsupported vendor-specific SQL or result behavior"}],
+  "unknowns":[{"question":"Which modules contain dynamic SQL or implicit transaction coupling not covered by tests","impact":"migration order and test scope","owner":"Codex","blocking":false}],
+  "decisions":[{"id":"D1","decision":"Use explicit Repository interfaces backed by MyBatis Mapper/XML and migrate modules serially","reason":"preserve business boundaries and isolate rollback","source":"user-selected方案C with staged safety"}],
+  "measurement_intents":[{"requirement_id":"R1","signal":"production Java SQL static scan","method":"rg-based scanner plus layer audit"},{"requirement_id":"R2","signal":"dependency/layer graph","method":"module boundary check and code review"},{"requirement_id":"R3","signal":"test and endpoint outcomes","method":"Maven, MySQL/Flyway, controller smoke checks"},{"requirement_id":"R4","signal":"task checkpoints and feedback severity","method":"control ledger gate"}],
+  "baseline_status":"ready"
+}

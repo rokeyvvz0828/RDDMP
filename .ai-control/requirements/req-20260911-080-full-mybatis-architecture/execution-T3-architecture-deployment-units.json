@@ -1,0 +1,44 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitStore.java", "purpose": "Remove direct JDBC access and preserve domain orchestration through Repository"},
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitMapper.java", "purpose": "Declare named MyBatis persistence contract"},
+    {"path_or_resource": "server/src/modules/architecture/src/main/java/com/ccb/architecture/persistence/DeploymentUnitRepository.java", "purpose": "Provide Store-to-Mapper repository boundary"},
+    {"path_or_resource": "server/src/modules/architecture/src/main/resources/mapper/architecture/DeploymentUnitMapper.xml", "purpose": "Own unit, sequence, relation, version, option and import SQL"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitLifecycleMySqlTest.java", "purpose": "Construct Store through XML Mapper in MySQL integration test"},
+    {"path_or_resource": "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/DeploymentUnitImportMySqlTest.java", "purpose": "Construct Store through XML Mapper in MySQL integration test"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn '-Dmaven.compiler.useIncrementalCompilation=false' '-DskipTests' -pl :ccb-architecture -am compile -q", "exit_code": 0, "salient_output": "No compilation errors after the DeploymentUnitMapper contract type correction."},
+    {"command": "mvn '-Dmaven.compiler.useIncrementalCompilation=false' '-DskipTests' -pl :ccb-architecture -am test-compile -q", "exit_code": 1, "salient_output": "Blocked by concurrent StandardStore.java:31 compilation error: String has no name() method."},
+    {"command": "PowerShell XML parse and Mapper/XML method-ID audit", "exit_code": 0, "salient_output": "DeploymentUnitMapper.xml parsed; 37 Mapper methods and 37 statement IDs; missing=0."},
+    {"command": "rg -n 'JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery|jdbc\\.' DeploymentUnitStore.java", "exit_code": 1, "salient_output": "No direct JDBC or native-query residuals in DeploymentUnitStore."},
+    {"command": "git diff --check -- deployment-unit migration paths", "exit_code": 0, "salient_output": "No whitespace errors."}
+  ],
+  "local_checks": [
+    {"check": "Mapper/XML ownership", "result": "pass", "evidence": "All 37 declared Mapper methods have an XML statement ID.", "limitations": ["No live MySQL execution in this agent turn."]},
+    {"check": "Store direct-SQL residual", "result": "pass", "evidence": "Static scan produced no hits.", "limitations": []},
+    {"check": "Architecture test compilation", "result": "blocked", "evidence": "Concurrent StandardStore compilation defect blocks reactor test-compile.", "limitations": ["Must rerun after that independent change is corrected."]}
+  ],
+  "diff_summary": [
+    "Kept public Store methods, tenant-bound parameters, named-lock allocation, FOR UPDATE relation reads and optimistic-lock updates.",
+    "Moved all SQL, dynamic filters and IN-list binding to DeploymentUnitMapper.xml.",
+    "Kept JDBC only in integration-test setup and assertions, not production Store construction."
+  ],
+  "invariants_checked": [
+    {"invariant": "Public service-facing Store API remains compatible", "result": "pass", "evidence": "All existing public methods are retained; tests compile only after external StandardStore issue is resolved."},
+    {"invariant": "Tenant predicates and concurrency locks remain SQL-owned", "result": "pass", "evidence": "Every mapper statement accepts tenantId; lockUnit, lockNextOrdinal, lockRelatedIds and lockActiveUnits retain FOR UPDATE."},
+    {"invariant": "No schema or Flyway change", "result": "pass", "evidence": "No migration files modified."}
+  ],
+  "disturbances": [
+    {"event": "Concurrent StandardStore edit caused ccb-architecture test compilation failure", "impact": "Focused test and full module compile must be rerun after the other migration is repaired."},
+    {"event": "Docker engine pipe is inaccessible", "impact": "Testcontainers MySQL integration remains unavailable in this environment."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Rerun focused DeploymentUnit tests after StandardStore compiles.",
+    "Run MySQL/Flyway integration when Docker access is available."],
+  "recommended_next": "observe"
+}

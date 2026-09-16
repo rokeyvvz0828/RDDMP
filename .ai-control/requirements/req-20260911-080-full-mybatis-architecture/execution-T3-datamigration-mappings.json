@@ -1,0 +1,19 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingService.java", "purpose": "Delegate persistence to MappingRepository while retaining service-owned authorization, attachment lifecycle, transactions and audit."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingMapper.java", "purpose": "Declare the explicit MyBatis persistence contract."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/MappingRepository.java", "purpose": "Provide typed persistence and not-found boundary."},
+    {"path_or_resource": "server/src/modules/data-migration/src/main/resources/mapper/datamigration/MappingMapper.xml", "purpose": "Own bound active, recycle-bin, attachment, component and audit SQL."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-data-migration -am compile -q", "exit_code": 0, "salient_output": "Production compilation completed without Maven errors."},
+    {"command": "rg -n 'JdbcTemplate|NamedParameterJdbcTemplate|EntityManager|createNativeQuery' MappingService.java", "exit_code": 1, "salient_output": "No production direct-SQL client reference found."},
+    {"command": "git diff --check -- MappingService.java MappingMapper.java MappingRepository.java MappingMapper.xml", "exit_code": 0, "salient_output": "No whitespace errors."}
+    ,{"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-data-migration -am '-Dtest=MappingServiceTest,MappingRecycleBinSourceTest,DataMigrationModuleRegistrationTest' test -q", "exit_code": 0, "salient_output": "MappingServiceTest completed: 14 tests, 0 failures, 0 errors."}
+  ],
+  "unresolved_items": ["MeetingService and PlanService remain pending in this assigned data-migration batch.", "MySQL/Testcontainers regression remains blocked for Docker-enabled final verification."],
+  "recommended_next": "continue the explicit MeetingService and PlanService Mapper migrations"
+}

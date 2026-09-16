@@ -1,0 +1,24 @@
+{
+  "task_id": "T2",
+  "status": "partial",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/BusinessFormMetadataService.java", "purpose": "Keep authorization, validation, transactions and audit orchestration while delegating persistence."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/BusinessFormMetadataRepository.java", "purpose": "Dedicated Repository boundary for form metadata persistence."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/formmetadata/BusinessFormMetadataMapper.java", "purpose": "Typed MyBatis Mapper contract."},
+    {"path_or_resource": "server/src/platform/system/src/main/resources/mapper/system/BusinessFormMetadataMapper.xml", "purpose": "Parameterized scope, section, field, rule, option and revision SQL."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R4"],
+  "commands": [
+    {"command": "mvn '-DskipTests' -pl :ccb-system -am compile -q", "exit_code": 0, "salient_output": "System module compiled."},
+    {"command": "mvn '-DskipTests' -pl :ccb-system -am test-compile -q", "exit_code": 0, "salient_output": "System test sources compiled."},
+    {"command": "PowerShell XML parse BusinessFormMetadataMapper.xml", "exit_code": 0, "salient_output": "xml-ok"},
+    {"command": "production direct-SQL scan for formmetadata", "exit_code": 0, "salient_output": "No JdbcTemplate, JPA native query, or jdbc calls remain."}
+  ],
+  "invariants_checked": [
+    {"invariant": "Service-side RBAC, transaction and audit behavior", "result": "pass", "evidence": "SystemService requireAction/audit calls and existing @Transactional methods remain in the Service."},
+    {"invariant": "Tenant-bound persistence", "result": "pass", "evidence": "Every Mapper statement binds tenantId."},
+    {"invariant": "Schema unchanged", "result": "pass", "evidence": "No Flyway files modified."}
+  ],
+  "unresolved_items": ["No focused BusinessFormMetadataService unit test exists; MySQL/Testcontainers verification remains deferred to T4."],
+  "recommended_next": "Complete remaining platform/release persistence stores, then run module and MySQL integration regressions."
+}
