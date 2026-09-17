@@ -1,0 +1,32 @@
+{
+  "objective": "让已授权测试成员在各自测试大类入口中获得中文、统一口径、可版本化且可验证的报告与分析统计结果。",
+  "requirements": [
+    {"id":"R1","statement":"系统必须由当前菜单入口固定测试大类，并拒绝任何跨大类数据读取。","acceptance":["四个入口的 API 探测均不能返回其他测试大类记录"],"priority":"must","source":"用户确认","counterexample":["应用组装入口可读取用户测试统计"]},
+    {"id":"R2","statement":"系统必须生成项目、机构、系统分别在全周期和轮次粒度下的八章节中文报告，并维护不可变版本。","acceptance":["六种报告组合可生成、查看和导出，且快照版本不因后续数据改变"],"priority":"must","source":"V1.1 与用户确认","counterexample":["新报告仍允许周期级或专项级"]},
+    {"id":"R3","statement":"系统必须以有效案例为基数，独立展示执行中，且只将成功、失败和阻塞计入已执行。","acceptance":["构造执行中样本时，执行中计数增加而已执行和相关比率不增加"],"priority":"must","source":"V1.1 与用户确认","counterexample":["执行中被计为已执行"]},
+    {"id":"R4","statement":"系统必须提供 RPT-001 至 RPT-026 和 CHT-001 至 CHT-016 的固定分析目录与数据结果。","acceptance":["目录完整性测试包含 26 个报表和 16 个图表编号，并可对适用样本返回结果或中文空态"],"priority":"must","source":"V1.1 与用户确认","counterexample":["保留四项预置而缺少其他编号"]},
+    {"id":"R5","statement":"系统必须提供受约束的中文自定义分析、共享、下钻、快照和 XLSX/PDF/PNG 导出。","acceptance":["无效维度/图表组合和越范围请求被拒绝；有效视图可保存、下钻和导出"],"priority":"must","source":"V1.1","counterexample":["自定义分析执行任意字段或跨项目查询"]},
+    {"id":"R6","statement":"系统必须在测试配置中维护可启停的项目加测试大类质量阈值，且报告只使用生效指标。","acceptance":["停用指标不显示、不参与总体判定且配置写入审计"],"priority":"must","source":"用户确认","counterexample":["停用指标仍导致风险结论"]},
+    {"id":"R7","statement":"系统必须保留 V1 报告、统计快照和自定义配置的历史读取/导出能力，并只追加迁移。","acceptance":["V142 至 V146 无变更，历史对象仍能读取或导出"],"priority":"must","source":"项目治理","counterexample":["删除历史数据或修改已发布迁移"]},
+    {"id":"R8","statement":"系统必须在用户可见位置使用中文，并在桌面及三种手机视口覆盖完整交互状态且无页面级横向溢出。","acceptance":["浏览器在 1280×800、375×812、390×844、430×932 检查中文文案、状态和 scrollWidth"],"priority":"must","source":"用户确认与 design-h5.md","counterexample":["页面保留英文混杂或手机页面横向滚动"]},
+    {"id":"R9","statement":"系统必须提供独立、幂等、仅写测试管理自有表的本地虚构模拟数据脚本。","acceptance":["满足主数据前提时脚本生成至少 3 系统、2 机构、3 轮次、6 周期和 60 案例样本；连续两次执行不重复写入；前提不足时零写入失败"],"priority":"must","source":"用户确认","counterexample":["Flyway 写入模拟数据或脚本写入架构主数据"]}
+  ],
+  "invariants":["机构按物理子系统责任团队组织归集","测试大类由路由 domain 固定","服务端认证、RBAC、租户、项目和实体范围校验始终有效","报告版本不可变","用户可见文本使用中文","模拟数据不写主数据和 Flyway"],
+  "constraints":["Java 17、Spring Boot 3.4.4、Vue 3、MySQL 8.4","仅写当前任务范围","V147 仅追加","不新增依赖","不连接生产系统或使用真实数据"],
+  "non_goals":["变更项目、组织、物理子系统、案例、执行或缺陷主数据所有权","跨测试大类聚合","删除 V1 历史数据"],
+  "assumptions":[{"text":"本地验证库具备至少 3 个可用物理子系统和 2 个责任团队组织","basis":"用户要求机构/系统统计验证","falsifier":"模拟脚本的只读预检计数不足"},{"text":"现有 ECharts 和 POI 能覆盖图表与 XLSX 输出","basis":"当前模块已使用这些能力","falsifier":"固定目录图形或中文输出测试失败"}],
+  "unknowns":[{"question":"当前 PDF 实现是否能稳定输出中文","impact":"若不能满足导出验收，需请求字体或依赖的范围审批","owner":"模块 Owner","blocking":false}],
+  "decisions":[{"question":"机构维度的归集来源","options":["项目组织映射","物理子系统责任团队组织"],"selected":"物理子系统责任团队组织","blocking":false,"source":"用户确认"},{"question":"执行中是否计入已执行","options":["计入","独立展示"],"selected":"独立展示","blocking":false,"source":"用户确认"},{"question":"测试大类筛选方式","options":["页面筛选","路由入口固定"],"selected":"路由入口固定","blocking":false,"source":"用户确认"},{"question":"本地数据生成方式","options":["Flyway 种子","独立幂等脚本"],"selected":"独立幂等脚本","blocking":false,"source":"用户确认"}],
+  "measurement_intents":[
+    {"requirement_id":"R1","observable":"跨大类 API 和权限拒绝响应","candidate_sensor":"服务端 API/模块测试"},
+    {"requirement_id":"R2","observable":"六种快照、八章节、版本和中文导出","candidate_sensor":"报告服务测试与实际文件检查"},
+    {"requirement_id":"R3","observable":"状态计数和比率分母","candidate_sensor":"指标单元测试"},
+    {"requirement_id":"R4","observable":"RPT/CHT 目录和查询结果","candidate_sensor":"目录覆盖测试"},
+    {"requirement_id":"R5","observable":"配置校验、共享、下钻和导出","candidate_sensor":"统计服务/API 测试"},
+    {"requirement_id":"R6","observable":"阈值启停、质量结论和审计","candidate_sensor":"配置/报告服务测试"},
+    {"requirement_id":"R7","observable":"发布迁移未变和历史对象可读","candidate_sensor":"Flyway/差异检查与兼容测试"},
+    {"requirement_id":"R8","observable":"中文、全状态和视口无溢出","candidate_sensor":"前端构建与真实浏览器检查"},
+    {"requirement_id":"R9","observable":"模拟数据数量、分布、幂等与零写入失败","candidate_sensor":"隔离本地 MySQL 执行和聚合查询"}
+  ],
+  "baseline_status":"ready"
+}

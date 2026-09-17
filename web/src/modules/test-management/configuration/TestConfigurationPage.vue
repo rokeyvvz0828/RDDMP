@@ -48,11 +48,13 @@ import {
   listTestProjects,
   listTestRounds,
   listTestCycles,
+  listQualityThresholds,
   saveTestDictionary,
   saveTestDictionaryOption,
   saveTestCycle,
   saveTestRound,
   setParticipatingSystem,
+  saveQualityThresholds,
   type ParticipatingSystem,
   type SystemRole,
   type TestCycle,
@@ -60,6 +62,7 @@ import {
   type TestDictionaryOption,
   type TestDomain,
   type TestProjectOption,
+  type QualityThreshold,
   type TestRound,
   type UserDirectoryItem,
 } from "../api";
@@ -98,6 +101,8 @@ const rounds = ref<TestRound[]>([]);
 const dictionaries = ref<TestDictionary[]>([]);
 const cycles = ref<TestCycle[]>([]);
 const options = ref<TestDictionaryOption[]>([]);
+const qualityThresholds = ref<QualityThreshold[]>([]);
+const qualitySaving = ref(false);
 const selectedSystem = ref<ParticipatingSystem>();
 const selectedRound = ref<TestRound>();
 const selectedDictionary = ref<TestDictionary>();
@@ -331,6 +336,10 @@ async function loadCurrent() {
           })
         ).data.data.records;
     }
+    if (activeTab.value === "quality")
+      qualityThresholds.value = (
+        await listQualityThresholds(domain.value, projectId.value)
+      ).data.data;
   } catch (cause: any) {
     error.value =
       cause?.response?.data?.message || "加载配置失败，请稍后重试。";
@@ -682,6 +691,31 @@ async function toggleOption(option: TestDictionaryOption, enabled: boolean) {
   } catch (cause: any) {
     ElMessage.error(cause?.response?.data?.message || "更新选项失败");
   }
+}
+function qualityDirection(threshold: QualityThreshold) {
+  return threshold.comparison_direction === "AT_LEAST" ? "数值越高越好" : "数值越低越好";
+}
+async function saveQuality() {
+  if (!projectId.value || qualitySaving.value) return;
+  for (const threshold of qualityThresholds.value) {
+    if (!threshold.enabled) continue;
+    const qualified = Number(threshold.qualified_threshold), risk = Number(threshold.risk_threshold);
+    if (!Number.isFinite(qualified) || !Number.isFinite(risk)) {
+      ElMessage.warning(`请填写“${threshold.metric_name}”的达标和风险阈值`);
+      return;
+    }
+    if ((threshold.comparison_direction === "AT_LEAST" && qualified < risk) || (threshold.comparison_direction === "AT_MOST" && qualified > risk)) {
+      ElMessage.warning(`“${threshold.metric_name}”的达标阈值与风险阈值关系不正确`);
+      return;
+    }
+  }
+  qualitySaving.value = true;
+  try {
+    qualityThresholds.value = (await saveQualityThresholds(domain.value, projectId.value, qualityThresholds.value)).data.data;
+    ElMessage.success("质量阈值已保存，后续报告将只显示已生效指标");
+  } catch (cause: any) {
+    ElMessage.error(cause?.response?.data?.message || "质量阈值保存失败");
+  } finally { qualitySaving.value = false; }
 }
 function openImport(kind: "systems" | "roles") {
   importKind.value = kind;
@@ -1283,6 +1317,20 @@ async function importFile(event: Event) {
           </div>
         </div></el-tab-pane
       >
+      <el-tab-pane name="quality">
+        <template #label><span class="test-configuration-tab-label"><el-icon><Collection /></el-icon><span>质量阈值</span></span></template>
+        <section class="test-configuration-quality-panel">
+          <header><div><strong>质量指标阈值</strong><small>按当前项目与测试大类生效；停用指标不会显示在测试报告中，也不参与总体质量判定。</small></div><el-button type="primary" :loading="qualitySaving" :disabled="!hasProject" @click="saveQuality">保存阈值</el-button></header>
+          <UiDataTable :data="qualityThresholds" :loading="loading" row-key="metric_code" border class="configuration-table">
+            <el-table-column prop="metric_name" label="质量指标" min-width="170" />
+            <el-table-column label="判定方向" min-width="140"><template #default="scope"><el-tag effect="plain">{{ qualityDirection(scope.row) }}</el-tag></template></el-table-column>
+            <el-table-column label="是否生效" width="110" align="center"><template #default="scope"><el-switch v-model="scope.row.enabled" /></template></el-table-column>
+            <el-table-column label="达标阈值" min-width="130"><template #default="scope"><el-input-number v-model="scope.row.qualified_threshold" :disabled="!scope.row.enabled" :min="0" :precision="2" controls-position="right" /></template></el-table-column>
+            <el-table-column label="风险阈值" min-width="130"><template #default="scope"><el-input-number v-model="scope.row.risk_threshold" :disabled="!scope.row.enabled" :min="0" :precision="2" controls-position="right" /></template></el-table-column>
+          </UiDataTable>
+          <UiEmptyState v-if="!loading && !qualityThresholds.length" title="暂无质量指标" description="请刷新页面后重试；固定质量指标由服务端统一维护。" />
+        </section>
+      </el-tab-pane>
     </el-tabs>
     <input
       ref="importInput"

@@ -1,0 +1,27 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "scope": "V2 八章节报告、责任团队组织范围、固定统计目录、本地模拟数据及手工上传报告版本管理",
+  "files": [
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/report/TestReportService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsAdvancedService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/analytics/TestAnalyticsService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/service/TestReportDocumentService.java",
+    "server/src/modules/test-management/src/main/java/com/ccb/testmanagement/web/TestReportController.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V147__test_management_report_analytics_refactor.sql",
+    "web/src/modules/test-management/report/TestReportPage.vue",
+    "web/src/modules/test-management/api.ts",
+    "server/src/modules/test-management/scripts/seed-report-analytics-mock.sql"
+  ],
+  "evidence": [
+    "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-test-management -am test -Dtest=TestAnalyticsMetricCatalogTest,TestConfigurationServiceTest -Dsurefire.failIfNoSpecifiedTests=false：7 tests passed",
+    "git diff --check：passed",
+    "使用主工作区 .env 的只读运行时注入启动 ccb-boot：应用已连接本地 MySQL，随后 Flyway 在既有 V93 重复版本处停止",
+    "2026-09-14：mvn -pl :ccb-test-management -DskipTests compile：passed；vue-tsc -p web/tsconfig.json --noEmit：passed；本地 ccb-boot（local）/actuator/health：UP；隐藏浏览器验证报告页已显示“上传报告”入口"
+  ],
+  "limitations": [
+    "web/node_modules 不存在且任务范围禁止写入该目录；借用主工作区依赖执行构建时仍无法解析 vite/client，前端构建和开发服务器未启动",
+    "本地依赖的 kkFileView 容器名已被既有容器占用，未删除或替换该容器",
+    "后端启动与完整 Flyway 检查均受既有 V93 重复版本迁移阻断；另有既有 V84_1 命名问题，均不在当前任务 writable_paths"
+  ]
+}

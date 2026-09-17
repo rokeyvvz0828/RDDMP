@@ -1,0 +1,17 @@
+{
+  "sample_label": "T1 阈值与迁移完成采样",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R6", "sensor": "S6 配置服务测试与控制器路径检查", "result": "pass", "raw_evidence": "TestConfigurationServiceTest 在 -Dnet.bytebuddy.experimental=true 下 5/5 通过；固定七指标以服务端目录返回，defect_density 方向为 AT_MOST，反向阈值被拒绝；控制器读取需 configuration、保存需 configuration:update。", "limitation": ["未连接本地 MySQL 读取实际审计行"]},
+    {"requirement_id": "R7", "sensor": "S7 历史迁移 diff 与 Flyway 检查", "result": "partial", "raw_evidence": "V142-V146 diff 为空；node scripts/check-flyway-migrations.mjs 在未触及的 V84_1__seed_requirement_system_catalog.sql 命名处失败。", "limitation": ["全仓 Flyway 命名门禁受既有历史文件影响，尚未对 V147 执行本地库迁移"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "JDK 26 与现有 Mockito/Byte Buddy 默认 inline mock 不兼容", "classification": "environment-disturbance", "evidence": "默认测试命令在 JdbcTemplate mock 创建时失败；加入 net.bytebuddy.experimental 后同一测试 5/5 通过。"},
+    {"event": "既有 V84_1 Flyway 文件名与检查脚本规则不一致", "classification": "baseline-disturbance", "evidence": "迁移检查未解析 V147 即失败；历史文件不在当前任务写入范围。"}
+  ],
+  "coverage_gaps": ["本地 MySQL 未采样，尚未实测 V147 DDL、质量阈值持久化和配置审计行。"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}
