@@ -8,7 +8,6 @@ import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
 import com.ccb.workflow.integration.WorkflowProjectMember;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,11 +19,11 @@ import java.util.Set;
 
 @Service
 public class WorkflowAssigneeResolver {
-    private final JdbcTemplate jdbc;
+    private final WorkflowAssigneeRepository repository;
     private WorkflowProjectAccessGateway projectAccess;
 
-    public WorkflowAssigneeResolver(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public WorkflowAssigneeResolver(WorkflowAssigneeRepository repository) {
+        this.repository = repository;
     }
 
     @Autowired(required = false)
@@ -107,35 +106,18 @@ public class WorkflowAssigneeResolver {
 
     private List<Long> usersForRoles(List<Long> roleIds, long tenantId) {
         if (roleIds.isEmpty()) return List.of();
-        String placeholders = String.join(",", java.util.Collections.nCopies(roleIds.size(), "?"));
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
-        args.addAll(roleIds);
-        return jdbc.queryForList("SELECT DISTINCT u.id FROM sys_user u " +
-                        "JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id " +
-                        "JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id " +
-                        "WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1 AND r.deleted = 0 AND r.status = 1 " +
-                        "AND ur.role_id IN (" + placeholders + ") ORDER BY u.id", Long.class, args.toArray());
+        return repository.usersForRoles(tenantId, roleIds);
     }
 
     private List<ResolvedAssignee> activeUsers(List<Long> ids, long tenantId) {
         if (ids.isEmpty()) return List.of();
-        String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
-        args.addAll(ids);
-        return jdbc.query("SELECT id, display_name FROM sys_user WHERE tenant_id = ? AND deleted = 0 AND status = 1 AND id IN (" + placeholders + ") ORDER BY id",
-                (rs, rowNum) -> new ResolvedAssignee(rs.getLong("id"), rs.getString("display_name")), args.toArray());
+        return repository.activeUsers(tenantId, ids).stream().map(row -> new ResolvedAssignee(((Number) row.get("id")).longValue(), (String) row.get("display_name"))).toList();
     }
 
     private OrganizationOwner resolveOrgOwner(long starterId, long tenantId) {
-        List<OrganizationOwner> owners = jdbc.query("SELECT o.leader_id, u.display_name FROM sys_user starter " +
-                        "JOIN sys_org o ON o.id = starter.org_id AND o.tenant_id = starter.tenant_id AND o.deleted = 0 " +
-                        "JOIN sys_user u ON u.id = o.leader_id AND u.tenant_id = o.tenant_id AND u.deleted = 0 AND u.status = 1 " +
-                        "WHERE starter.id = ? AND starter.tenant_id = ? AND starter.deleted = 0",
-                (rs, rowNum) -> new OrganizationOwner(rs.getLong("leader_id"), rs.getString("display_name")), starterId, tenantId);
-        if (owners.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "发起人所属组织未配置有效负责人");
-        return owners.get(0);
+        Map<String,Object> row = repository.organizationOwner(starterId, tenantId);
+        if (row == null || row.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "发起人所属组织未配置有效负责人");
+        return new OrganizationOwner(((Number) row.get("leader_id")).longValue(), (String) row.get("display_name"));
     }
 
     private void requireUserId(String expression, Map<String, Object> variables, String nodeId, String source) {

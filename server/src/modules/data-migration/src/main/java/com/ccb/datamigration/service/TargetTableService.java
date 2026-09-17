@@ -14,7 +14,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +27,12 @@ public class TargetTableService {
             "所属项目编码", "系统编号", "表英文名称", "表中文名称", "表含义",
             "字段英文名称", "字段中文名称", "字段含义", "码值说明",
             "是否关键栏位", "ORACLE字段类型", "mysql字段类型", "是否可空", "是否主键", "数据字典编号");
-    private final JdbcTemplate jdbc;
+    private final TargetTableRepository repository;
     private final DataMigrationPermissionService permissions;
     private final DataMigrationCodeValueService codeValues;
 
-    public TargetTableService(JdbcTemplate jdbc, DataMigrationPermissionService permissions, DataMigrationCodeValueService codeValues) {
-        this.jdbc = jdbc;
+    public TargetTableService(TargetTableRepository repository, DataMigrationPermissionService permissions, DataMigrationCodeValueService codeValues) {
+        this.repository = repository;
         this.permissions = permissions;
         this.codeValues = codeValues;
     }
@@ -61,59 +60,10 @@ public class TargetTableService {
     public PageResult<Map<String, Object>> list(String category, Map<String, Object> params, AuthUser user, PageQuery page) {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "read");
-        StringBuilder sql = new StringBuilder(
-                "SELECT t.table_code, f.field_code, f.field_name_en, f.field_name_cn, f.field_meaning, " +
-                        "f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
-                        "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, t.owner_id, t.created_at, t.updated_at, " +
-                        "p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name " +
-                        "FROM dm_target_table_field f " +
-                        "JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
-                        "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                        "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
-                        "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
-                        "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(user.tenantId());
-        args.add(cat);
         // T32 决策 D1/D3：表结构列表必须限定在可访问的具体项目内，缺失 projectId 返回 400。
         long scope = permissions.requireProject(parseProjectId(params.get("projectId")), user);
-        sql.append(" AND t.project_id = ?");
-        args.add(scope);
-        Object systemCode = params.get("systemCode");
-        if (systemCode != null && !String.valueOf(systemCode).isBlank()) {
-            sql.append(" AND t.system_code = ?");
-            args.add(String.valueOf(systemCode).trim());
-        }
-        Object isKeyField = params.get("isKeyField");
-        if (isKeyField != null && !String.valueOf(isKeyField).isBlank()) {
-            sql.append(" AND f.is_key_field = ?");
-            args.add(Integer.parseInt(String.valueOf(isKeyField)));
-        }
-        Object dictCode = params.get("dictCode");
-        if (dictCode != null && !String.valueOf(dictCode).isBlank()) {
-            sql.append(" AND f.dict_code LIKE ?");
-            args.add("%" + String.valueOf(dictCode).trim() + "%");
-        }
-        Object tableKeyword = params.get("tableKeyword");
-        if (tableKeyword != null && !String.valueOf(tableKeyword).isBlank()) {
-            sql.append(" AND (t.table_name_en LIKE ? OR t.table_name_cn LIKE ?)");
-            String k = "%" + String.valueOf(tableKeyword).trim() + "%";
-            args.add(k);
-            args.add(k);
-        }
-        Object fieldKeyword = params.get("fieldKeyword");
-        if (fieldKeyword != null && !String.valueOf(fieldKeyword).isBlank()) {
-            sql.append(" AND (f.field_name_en LIKE ? OR f.field_name_cn LIKE ?)");
-            String k = "%" + String.valueOf(fieldKeyword).trim() + "%";
-            args.add(k);
-            args.add(k);
-        }
-        int total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") s", Integer.class, args.toArray());
-        sql.append(" ORDER BY t.updated_at DESC, t.table_code DESC, f.field_code ASC LIMIT ? OFFSET ?");
-        args.add(page.size());
-        args.add((page.page() - 1) * page.size());
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        int total = repository.countFields(user.tenantId(), cat, scope, params);
+        List<Map<String, Object>> rows = repository.pageFields(user.tenantId(), cat, scope, params, page.size(), (page.page() - 1) * page.size());
         return new PageResult<>(rows, total, page.page(), page.size());
     }
 
@@ -121,21 +71,9 @@ public class TargetTableService {
     public Map<String, Object> getDetail(long tableCode, String category, AuthUser user) {
         String cat = categoryOf(category);
         permissions.requireCategoryPermission(user, cat, "read");
-        List<Map<String, Object>> tables = jdbc.queryForList(
-                "SELECT t.*, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name " +
-                        "FROM dm_target_table t " +
-                        "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                        "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                        "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
-                        "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
-                        "WHERE t.table_code = ? AND t.tenant_id = ? AND t.deleted = 0 AND t.table_category = ?",
-                tableCode, user.tenantId(), cat);
-        if (tables.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标表不存在");
-        Map<String, Object> table = tables.get(0);
+        Map<String, Object> table = repository.requireTable(user.tenantId(), tableCode, cat);
         permissions.requireStoredProject(table.get("project_id"), user);
-        List<Map<String, Object>> fields = jdbc.queryForList(
-                "SELECT f.* FROM dm_target_table_field f WHERE f.table_code = ? AND f.tenant_id = ? AND f.deleted = 0 ORDER BY f.field_code ASC",
-                tableCode, user.tenantId());
+        List<Map<String, Object>> fields = repository.fields(user.tenantId(), tableCode);
         table.put("fields", fields);
         return table;
     }
@@ -154,8 +92,7 @@ public class TargetTableService {
         ensureTableUnique(user.tenantId(), projectId, systemCode, tableNameEn, tableNameCn, 0L);
         long tableCode = nextId();
         String meaning = opt(body.get("tableMeaning"));
-        jdbc.update("INSERT INTO dm_target_table (tenant_id, table_code, project_id, system_code, table_name_en, table_name_cn, table_meaning, table_category, owner_id, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                user.tenantId(), tableCode, projectId, systemCode, tableNameEn, tableNameCn, meaning, cat, user.id(), user.id(), user.id());
+        repository.insertTable(tableValues(user.tenantId(), tableCode, projectId, systemCode, tableNameEn, tableNameCn, meaning, cat, user.id()));
         audit(user, "TARGET_TABLE_CREATE", projectId, tableCode);
         List<?> fields = body.get("fields") instanceof List ? (List<?>) body.get("fields") : List.of();
         for (Object f : fields) {
@@ -178,8 +115,7 @@ public class TargetTableService {
         String tableNameCn = noSpace(body.getOrDefault("tableNameCn", current.get("table_name_cn")), "tableNameCn");
         ensureTableUnique(user.tenantId(), projectId, systemCode, tableNameEn, tableNameCn, tableCode);
         String meaning = opt(body.getOrDefault("tableMeaning", current.get("table_meaning")));
-        jdbc.update("UPDATE dm_target_table SET table_name_en = ?, table_name_cn = ?, table_meaning = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE table_code = ? AND tenant_id = ? AND deleted = 0",
-                tableNameEn, tableNameCn, meaning, user.id(), tableCode, user.tenantId());
+        repository.updateTable(tableValues(user.tenantId(), tableCode, projectId, systemCode, tableNameEn, tableNameCn, meaning, cat, user.id()));
         audit(user, "TARGET_TABLE_UPDATE", projectId, tableCode);
         return getDetail(tableCode, category, user);
     }
@@ -193,8 +129,7 @@ public class TargetTableService {
             Map<String, Object> current = requireTable(tableCode, cat, user);
                         long projectId = permissions.requireStoredProject(current.get("project_id"), user);
             permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
-            jdbc.update("UPDATE dm_target_table_field SET deleted = 1 WHERE table_code = ? AND tenant_id = ? AND deleted = 0", tableCode, user.tenantId());
-            jdbc.update("UPDATE dm_target_table SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE table_code = ? AND tenant_id = ? AND deleted = 0", user.id(), tableCode, user.tenantId());
+            repository.deleteTable(user.tenantId(), tableCode, user.id());
             audit(user, "TARGET_TABLE_DELETE", projectId, tableCode);
         }
     }
@@ -205,7 +140,7 @@ public class TargetTableService {
         permissions.requireCategoryPermission(user, cat, "read");
         Map<String, Object> table = requireTable(tableCode, cat, user);
         permissions.requireStoredProject(table.get("project_id"), user);
-        return jdbc.queryForList("SELECT f.* FROM dm_target_table_field f WHERE f.table_code = ? AND f.tenant_id = ? AND f.deleted = 0 ORDER BY f.field_code ASC", tableCode, user.tenantId());
+        return repository.fields(user.tenantId(), tableCode);
     }
 
     // ============ 字段：新增 ============
@@ -228,11 +163,7 @@ public class TargetTableService {
     public Map<String, Object> updateField(long fieldCode, String category, Map<String, Object> body, AuthUser user) {
         String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "update");
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT f.*, t.table_code AS table_code, t.owner_id, t.project_id, t.system_code FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
-                fieldCode, user.tenantId(), cat);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "字段不存在");
-        Map<String, Object> current = rows.get(0);
+        Map<String, Object> current = repository.requireField(user.tenantId(), fieldCode, cat);
         long projectId = permissions.requireStoredProject(current.get("project_id"), user);
         permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
         long tableCode = ((Number) current.get("table_code")).longValue();
@@ -247,10 +178,9 @@ public class TargetTableService {
         int isNullable = bool(body.getOrDefault("isNullable", current.get("is_nullable")));
         int isPrimaryKey = bool(body.getOrDefault("isPrimaryKey", current.get("is_primary_key")));
         String dictCode = noSpaceOpt(body.getOrDefault("dictCode", current.get("dict_code")), "dictCode");
-        jdbc.update("UPDATE dm_target_table_field SET field_name_en = ?, field_name_cn = ?, field_meaning = ?, code_description = ?, is_key_field = ?, oracle_type = ?, mysql_type = ?, is_nullable = ?, is_primary_key = ?, dict_code = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE field_code = ? AND tenant_id = ? AND deleted = 0",
-                fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, user.id(), fieldCode, user.tenantId());
+        repository.updateField(fieldValues(user.tenantId(), fieldCode, tableCode, fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, ((Number) current.get("owner_id")).longValue(), user.id()));
         audit(user, "TARGET_TABLE_FIELD_UPDATE", projectId, tableCode);
-        return jdbc.queryForMap("SELECT f.* FROM dm_target_table_field f WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0", fieldCode, user.tenantId());
+        return repository.field(user.tenantId(), fieldCode);
     }
 
     // ============ 字段：删除（单条，级联删空表） ============
@@ -258,15 +188,11 @@ public class TargetTableService {
     public void deleteField(long fieldCode, String category, AuthUser user) {
         String cat = requireCategory(category, user);
         permissions.requireCategoryPermission(user, cat, "delete");
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT f.*, t.owner_id, t.project_id FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
-                fieldCode, user.tenantId(), cat);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "字段不存在");
-        Map<String, Object> current = rows.get(0);
+        Map<String, Object> current = repository.requireField(user.tenantId(), fieldCode, cat);
         long projectId = permissions.requireStoredProject(current.get("project_id"), user);
         long tableCode = ((Number) current.get("table_code")).longValue();
         permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
-        jdbc.update("UPDATE dm_target_table_field SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE field_code = ? AND tenant_id = ? AND deleted = 0", user.id(), fieldCode, user.tenantId());
+        repository.deleteField(user.tenantId(), fieldCode, user.id());
         audit(user, "TARGET_TABLE_FIELD_DELETE", projectId, tableCode);
         // 字段被全部删除时，同步删除对应的表
         cascadeDeleteTableIfEmpty(tableCode, projectId, cat, user);
@@ -279,15 +205,13 @@ public class TargetTableService {
         permissions.requireCategoryPermission(user, cat, "delete");
         Map<Long, Long> affectedTables = new LinkedHashMap<>();
         for (Long fieldCode : fieldCodes == null ? List.<Long>of() : fieldCodes) {
-            List<Map<String, Object>> rows = jdbc.queryForList(
-                    "SELECT f.*, t.owner_id, t.project_id FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?",
-                    fieldCode, user.tenantId(), cat);
-            if (rows.isEmpty()) continue;
-            Map<String, Object> current = rows.get(0);
+            Map<String, Object> current;
+            try { current = repository.requireField(user.tenantId(), fieldCode, cat); }
+            catch (BusinessException ignored) { continue; }
             long projectId = permissions.requireStoredProject(current.get("project_id"), user);
             permissions.requireWrite(user, ((Number) current.get("owner_id")).longValue());
             long tableCode = ((Number) current.get("table_code")).longValue();
-            jdbc.update("UPDATE dm_target_table_field SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE field_code = ? AND tenant_id = ? AND deleted = 0", user.id(), fieldCode, user.tenantId());
+            repository.deleteField(user.tenantId(), fieldCode, user.id());
             audit(user, "TARGET_TABLE_FIELD_DELETE", projectId, tableCode);
             affectedTables.put(tableCode, projectId);
         }
@@ -297,11 +221,8 @@ public class TargetTableService {
 
     // 若表下已无未删除字段，则软删除该表；projectId 来自待删字段关联表的实体上下文
     private void cascadeDeleteTableIfEmpty(long tableCode, long projectId, String cat, AuthUser user) {
-        Integer remain = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_target_table_field WHERE table_code = ? AND tenant_id = ? AND deleted = 0",
-                Integer.class, tableCode, user.tenantId());
-        if (remain != null && remain == 0) {
-            jdbc.update("UPDATE dm_target_table SET deleted = 1, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE table_code = ? AND tenant_id = ? AND deleted = 0 AND table_category = ?", user.id(), tableCode, user.tenantId(), cat);
+        if (!repository.hasActiveFields(user.tenantId(), tableCode)) {
+            repository.cascadeDeleteTable(user.tenantId(), tableCode, cat, user.id());
             audit(user, "TARGET_TABLE_DELETE", projectId, tableCode);
         }
     }
@@ -426,10 +347,10 @@ public class TargetTableService {
 
     private Long resolveProject(String projCode, AuthUser user) {
         if (projCode == null || projCode.isBlank()) throw new BusinessException(ErrorCode.BAD_REQUEST, "所属项目编码不能为空");
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id FROM pm_project WHERE project_code = ? AND tenant_id = ? AND deleted = 0", projCode.trim(), user.tenantId());
+        List<Map<String, Object>> rows = repository.projectByCode(user.tenantId(), projCode.trim());
         if (rows.isEmpty()) {
             try {
-                rows = jdbc.queryForList("SELECT id FROM pm_project WHERE id = ? AND tenant_id = ? AND deleted = 0", Long.parseLong(projCode.trim()), user.tenantId());
+                rows = repository.projectById(user.tenantId(), Long.parseLong(projCode.trim()));
             } catch (NumberFormatException ignore) {
                 rows = List.of();
             }
@@ -448,46 +369,8 @@ public class TargetTableService {
         // T32：导出同样强制项目范围，按 fieldCode 导出时仍限定在该项目内，避免跨项目脱离。
         long scope = permissions.requireProject(parseProjectId(params == null ? null : params.get("projectId")), user);
         List<Map<String, Object>> rows;
-        if (fieldCodes != null && !fieldCodes.isEmpty()) {
-            String placeholders = fieldCodes.stream().map(i -> "?").collect(Collectors.joining(","));
-            rows = jdbc.queryForList(
-                    "SELECT f.field_code, t.table_code AS table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
-                            "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
-                            "FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
-                    "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                            "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
-                            "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
-                            "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ? AND t.project_id = ? AND f.field_code IN (" + placeholders + ") ORDER BY t.table_code ASC, f.field_code ASC",
-                    concat(List.of(user.tenantId(), cat, scope), fieldCodes).toArray());
-        } else {
-            // 复用 list 的筛选逻辑但导出全量（不分页）
-            Map<String, Object> p = params == null ? Map.of() : params;
-            StringBuilder sql = new StringBuilder(
-                            "SELECT f.field_code, t.table_code AS table_code, f.field_name_en, f.field_name_cn, f.field_meaning, f.code_description, f.is_key_field, f.oracle_type, f.mysql_type, f.is_nullable, f.is_primary_key, f.dict_code, " +
-                            "t.project_id, t.system_code, t.table_name_en, t.table_name_cn, t.table_meaning, p.project_name, ps.business_group_name AS business_group, ps.name AS system_name, u.display_name AS owner_name, t.created_at, t.updated_at " +
-                            "FROM dm_target_table_field f JOIN dm_target_table t ON t.table_code = f.table_code AND t.tenant_id = f.tenant_id AND t.deleted = 0 " +
-                            "LEFT JOIN pm_project p ON p.id = t.project_id AND p.tenant_id = t.tenant_id AND p.deleted = 0 " +
-                            "LEFT JOIN dm_component dc ON dc.tenant_id = t.tenant_id AND dc.project_id = t.project_id AND dc.system_code = t.system_code " +
-                            "LEFT JOIN arch_physical_subsystem ps ON ps.tenant_id = dc.tenant_id AND ps.code = dc.system_code AND ps.deleted = 0 " +
-                            "LEFT JOIN sys_user u ON u.id = t.owner_id AND u.tenant_id = t.tenant_id AND u.deleted = 0 " +
-                            "WHERE f.tenant_id = ? AND f.deleted = 0 AND t.table_category = ?");
-            List<Object> args = new ArrayList<>(List.of(user.tenantId(), cat));
-            sql.append(" AND t.project_id = ?");
-            args.add(scope);
-            Object systemCode = p.get("systemCode");
-            if (systemCode != null && !String.valueOf(systemCode).isBlank()) { sql.append(" AND t.system_code = ?"); args.add(String.valueOf(systemCode).trim()); }
-            Object isKeyField = p.get("isKeyField");
-            if (isKeyField != null && !String.valueOf(isKeyField).isBlank()) { sql.append(" AND f.is_key_field = ?"); args.add(Integer.parseInt(String.valueOf(isKeyField))); }
-            Object dictCode = p.get("dictCode");
-            if (dictCode != null && !String.valueOf(dictCode).isBlank()) { sql.append(" AND f.dict_code LIKE ?"); args.add("%" + String.valueOf(dictCode).trim() + "%"); }
-            Object tableKeyword = p.get("tableKeyword");
-            if (tableKeyword != null && !String.valueOf(tableKeyword).isBlank()) { sql.append(" AND (t.table_name_en LIKE ? OR t.table_name_cn LIKE ?)"); String k = "%" + String.valueOf(tableKeyword).trim() + "%"; args.add(k); args.add(k); }
-            Object fieldKeyword = p.get("fieldKeyword");
-            if (fieldKeyword != null && !String.valueOf(fieldKeyword).isBlank()) { sql.append(" AND (f.field_name_en LIKE ? OR f.field_name_cn LIKE ?)"); String k = "%" + String.valueOf(fieldKeyword).trim() + "%"; args.add(k); args.add(k); }
-            sql.append(" ORDER BY t.table_code ASC, f.field_code ASC");
-            rows = jdbc.queryForList(sql.toString(), args.toArray());
-        }
+        if (fieldCodes != null && !fieldCodes.isEmpty()) rows = repository.exportSelected(user.tenantId(), cat, scope, fieldCodes);
+        else rows = repository.exportAll(user.tenantId(), cat, scope, params == null ? Map.of() : params);
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet("表结构");
             Row header = sheet.createRow(0);
@@ -557,15 +440,12 @@ public class TargetTableService {
         int isNullable = bool(body.get("isNullable"));
         int isPrimaryKey = bool(body.get("isPrimaryKey"));
         String dictCode = noSpaceOpt(body.get("dictCode"), "dictCode");
-        jdbc.update("INSERT INTO dm_target_table_field (tenant_id, field_code, table_code, field_name_en, field_name_cn, field_meaning, code_description, is_key_field, oracle_type, mysql_type, is_nullable, is_primary_key, dict_code, owner_id, created_by, updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                user.tenantId(), fieldCode, tableCode, fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, user.id(), user.id(), user.id());
-        return jdbc.queryForMap("SELECT f.* FROM dm_target_table_field f WHERE f.field_code = ? AND f.tenant_id = ? AND f.deleted = 0", fieldCode, user.tenantId());
+        repository.insertField(fieldValues(user.tenantId(), fieldCode, tableCode, fieldNameEn, fieldNameCn, fieldMeaning, codeDescription, isKeyField, oracleType, mysqlType, isNullable, isPrimaryKey, dictCode, user.id(), user.id()));
+        return repository.field(user.tenantId(), fieldCode);
     }
 
     private Map<String, Object> requireTable(long tableCode, String cat, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT * FROM dm_target_table WHERE table_code = ? AND tenant_id = ? AND deleted = 0 AND table_category = ?", tableCode, user.tenantId(), cat);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标表不存在");
-        return rows.get(0);
+        return repository.requireTable(user.tenantId(), tableCode, cat);
     }
 
     private void ensureProject(long projectId, AuthUser user) {
@@ -583,27 +463,24 @@ public class TargetTableService {
     }
 
     private void ensureSystemBelongsToProject(long projectId, String systemCode, AuthUser user) {
-        Integer c = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 WHERE c.project_id = ? AND c.system_code = ? AND c.tenant_id = ? AND c.enabled = 1",
-                Integer.class, projectId, systemCode, user.tenantId());
-        if (c == null || c == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目下的组件清单");
+        if (!repository.enabledComponentExists(user.tenantId(), projectId, systemCode)) throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不属于所选项目下的组件清单");
     }
     private void ensureTableUnique(long tenantId, long projectId, String systemCode, String tableNameEn, String tableNameCn, long excludeCode) {
-        if (jdbc.queryForObject("SELECT COUNT(*) FROM dm_target_table WHERE tenant_id = ? AND project_id = ? AND system_code = ? AND table_name_en = ? AND table_code <> ?", Integer.class, tenantId, projectId, systemCode, tableNameEn, excludeCode) > 0)
+        if (repository.tableNameEnExists(tenantId, projectId, systemCode, tableNameEn, excludeCode))
             throw new BusinessException(ErrorCode.CONFLICT, "表英文名称在该项目+系统编号下已存在（含已删除记录）");
-        if (jdbc.queryForObject("SELECT COUNT(*) FROM dm_target_table WHERE tenant_id = ? AND project_id = ? AND system_code = ? AND table_name_cn = ? AND table_code <> ?", Integer.class, tenantId, projectId, systemCode, tableNameCn, excludeCode) > 0)
+        if (repository.tableNameCnExists(tenantId, projectId, systemCode, tableNameCn, excludeCode))
             throw new BusinessException(ErrorCode.CONFLICT, "表中文名称在该项目+系统编号下已存在（含已删除记录）");
     }
 
     private void ensureFieldUnique(long tenantId, long tableCode, String fieldNameEn, String fieldNameCn, long excludeCode) {
-        if (jdbc.queryForObject("SELECT COUNT(*) FROM dm_target_table_field WHERE tenant_id = ? AND table_code = ? AND field_name_en = ? AND field_code <> ?", Integer.class, tenantId, tableCode, fieldNameEn, excludeCode) > 0)
+        if (repository.fieldNameEnExists(tenantId, tableCode, fieldNameEn, excludeCode))
             throw new BusinessException(ErrorCode.CONFLICT, "字段英文名称在该表下已存在（含已删除记录）");
-        if (jdbc.queryForObject("SELECT COUNT(*) FROM dm_target_table_field WHERE tenant_id = ? AND table_code = ? AND field_name_cn = ? AND field_code <> ?", Integer.class, tenantId, tableCode, fieldNameCn, excludeCode) > 0)
+        if (repository.fieldNameCnExists(tenantId, tableCode, fieldNameCn, excludeCode))
             throw new BusinessException(ErrorCode.CONFLICT, "字段中文名称在该表下已存在（含已删除记录）");
     }
 
     private void audit(AuthUser user, String op, long projectId, long code) {
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) VALUES (?, ?, ?, ?, 'TARGET_TABLE', ?)", user.tenantId(), user.id(), projectId, op, code);
+        repository.audit(user.tenantId(), user.id(), projectId, op, code);
     }
 
     private String noSpace(Object v, String field) {
@@ -652,6 +529,8 @@ public class TargetTableService {
     }
 
     private String str(Object v) { return v == null ? "" : String.valueOf(v); }
+    private Map<String, Object> tableValues(long tenantId, long tableCode, long projectId, String systemCode, String tableNameEn, String tableNameCn, String tableMeaning, String category, long userId) { Map<String, Object> values = new LinkedHashMap<>(); values.put("tenantId", tenantId); values.put("tableCode", tableCode); values.put("projectId", projectId); values.put("systemCode", systemCode); values.put("tableNameEn", tableNameEn); values.put("tableNameCn", tableNameCn); values.put("tableMeaning", tableMeaning); values.put("category", category); values.put("ownerId", userId); values.put("createdBy", userId); values.put("updatedBy", userId); return values; }
+    private Map<String, Object> fieldValues(long tenantId, long fieldCode, long tableCode, String fieldNameEn, String fieldNameCn, String fieldMeaning, String codeDescription, int isKeyField, String oracleType, String mysqlType, int isNullable, int isPrimaryKey, String dictCode, long ownerId, long userId) { Map<String, Object> values = new LinkedHashMap<>(); values.put("tenantId", tenantId); values.put("fieldCode", fieldCode); values.put("tableCode", tableCode); values.put("fieldNameEn", fieldNameEn); values.put("fieldNameCn", fieldNameCn); values.put("fieldMeaning", fieldMeaning); values.put("codeDescription", codeDescription); values.put("isKeyField", isKeyField); values.put("oracleType", oracleType); values.put("mysqlType", mysqlType); values.put("isNullable", isNullable); values.put("isPrimaryKey", isPrimaryKey); values.put("dictCode", dictCode); values.put("ownerId", ownerId); values.put("createdBy", userId); values.put("updatedBy", userId); return values; }
     private String yes(int v) { return v == 1 ? "是" : "否"; }
     private boolean yes(String s) { return s != null && (s.equals("1") || s.equalsIgnoreCase("true") || s.equalsIgnoreCase("Y") || s.equalsIgnoreCase("是")); }
     private List<Object> concat(List<Object> a, List<Long> b) { List<Object> r = new ArrayList<>(a); r.addAll(b); return r; }

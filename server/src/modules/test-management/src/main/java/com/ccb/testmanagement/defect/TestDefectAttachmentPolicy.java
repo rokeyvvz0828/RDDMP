@@ -11,14 +11,15 @@ package com.ccb.testmanagement.defect;
 import com.ccb.attachment.integration.AttachmentAccessPolicy;
 import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.ccb.testmanagement.persistence.TestAttachmentAccessMapper;
 import org.springframework.stereotype.Component;
+import java.util.Map;
 
 /** 缺陷附件访问必须回到缺陷所属项目及测试大类校验。 */
 @Component
 public class TestDefectAttachmentPolicy implements AttachmentAccessPolicy {
-    private final JdbcTemplate jdbc;
-    public TestDefectAttachmentPolicy(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final TestAttachmentAccessMapper mapper;
+    public TestDefectAttachmentPolicy(TestAttachmentAccessMapper mapper) { this.mapper = mapper; }
     @Override public String businessType() { return TestDefectService.BUSINESS_TYPE; }
-    @Override public boolean canAccess(AuthUser user, String businessId, AttachmentOperation operation) { try { long id = Long.parseLong(businessId); var rows = jdbc.queryForList("SELECT test_domain FROM tm_test_defect WHERE id=? AND tenant_id=? AND deleted=0", id, user.tenantId()); if (!user.enabled() || rows.isEmpty()) return false; String domain = String.valueOf(rows.get(0).get("test_domain")); var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication(); return auth != null && auth.getAuthorities().stream().anyMatch(value -> ("test-management:" + domain + ":defects").equals(value.getAuthority())); } catch (Exception exception) { return false; } }
+    @Override public boolean canAccess(AuthUser user, String businessId, AttachmentOperation operation) { try { long id = Long.parseLong(businessId); String domain = mapper.defectDomain(Map.of("id", id, "tenantId", user.tenantId())); if (!user.enabled() || domain == null) return false; var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication(); return auth != null && auth.getAuthorities().stream().anyMatch(value -> ("test-management:" + domain + ":defects").equals(value.getAuthority())); } catch (Exception exception) { return false; } }
 }

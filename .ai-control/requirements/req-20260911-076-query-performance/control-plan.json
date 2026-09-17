@@ -1,0 +1,120 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Enable only the approved system and workflow Mapper surfaces and prove that their resources can be discovered.",
+      "requirement_ids": ["R1", "R2", "R5"],
+      "prerequisites": [],
+      "input_facts": ["The root POM declares MyBatis-Plus 3.5.12", "Infrastructure already packages the Boot 3 MyBatis starter", "Local configuration declares classpath*:mapper/**/*.xml"],
+      "write_scope": ["server/src/platform/system/pom.xml", "server/src/platform/workflow/pom.xml", "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectMemberMapper.java", "server/src/platform/system/src/main/resources/mapper/project/ProjectMemberMapper.xml", "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionMapper.java", "server/src/platform/workflow/src/main/resources/mapper/workflow/WorkflowDefinitionMapper.xml"],
+      "invariants": ["Every Mapper read accepts and applies tenant ID", "XML uses bound parameters and does not replace service authorization", "No REST/API contract change"],
+      "interface_contracts": ["ProjectMemberMapper returns the existing member columns and role rows", "WorkflowDefinitionMapper returns definition list summaries and a count without definition_json"],
+      "non_goals": ["No mapper migration outside the two approved read clusters", "No global mapper scan or dependency upgrade"],
+      "action_bounds": ["Add the minimal direct module dependency if required", "Create only the two authorized Mapper interfaces and XML files", "Run a focused compilation/test check before consuming the Mappers from services"],
+      "acceptance_checks": ["Mapper XML contains tenant predicates for every select", "Target Maven modules compile/test with mapper resources present"],
+      "evidence_required": ["Actual diff", "Maven command exit code", "Tenant predicate and selected-column inspection"],
+      "rollback": "Revert the new direct dependencies and Mapper files.",
+      "stop_conditions": ["Mapper discovery requires an unapproved global configuration or public-contract change"],
+      "escalation_conditions": ["A required dependency or consumer lies outside the approved scope"]
+    },
+    {
+      "id": "T2",
+      "goal": "Replace the project-member role N+1 read with one tenant-bound batch lookup while preserving response assembly.",
+      "requirement_ids": ["R1", "R5"],
+      "prerequisites": ["T1"],
+      "input_facts": ["ProjectService.members currently performs one member query and one role query for each member", "ProjectService already performs member:read and project-access checks before its query"],
+      "write_scope": ["server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"],
+      "invariants": ["Authorization and project access execute before Mapper calls", "Existing order, avatar URL decoration, and role order remain unchanged", "Empty member results do not execute an IN () query"],
+      "interface_contracts": ["ProjectService.members returns the same List<Map<String,Object>> response shape"],
+      "non_goals": ["No other ProjectService query migration", "No attachment or project-access behavior changes"],
+      "action_bounds": ["Inject the new Mapper without changing other constructors more than necessary for compatibility", "Group role rows in memory by member ID", "Add focused interaction and result tests"],
+      "acceptance_checks": ["A multi-member test proves one member query and one batch-role query", "A zero-member test proves no role batch lookup", "System focused test passes"],
+      "evidence_required": ["Actual diff", "Focused system test exit code", "Mapper invocation assertions"],
+      "rollback": "Revert the ProjectService and its focused test changes; Mapper files may remain unused only during local rollback.",
+      "stop_conditions": ["Response equivalence requires an unapproved consumer or data-contract change"],
+      "escalation_conditions": ["Tenant or authorization behavior differs from the established service path"]
+    },
+    {
+      "id": "T3",
+      "goal": "Persist and read workflow definition summaries without list JSON loading, and synchronize every affected standard and Flowable version write path.",
+      "requirement_ids": ["R2", "R3", "R5"],
+      "prerequisites": ["T1"],
+      "input_facts": ["WorkflowService.definitions currently reads a latest-version JSON correlated subquery only to calculate requires_configuration", "WorkflowService and FlowableWorkflowService both create, edit, publish, and unpublish/copy version data", "current_version must retain published-version semantics"],
+      "write_scope": ["server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java", "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionSummaryProjector.java", "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTest.java", "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowDefinitionSummaryMigrationMySqlTest.java", "server/src/platform/infrastructure/src/main/resources/db/migration/V201__workflow_definition_query_summary.sql"],
+      "invariants": ["Summary fields are additive and tenant-bound", "current_version semantic is preserved", "Full definition JSON remains read by definition detail/version paths only", "All normal and Flowable writers update summaries in their enclosing transaction"],
+      "interface_contracts": ["WorkflowDefinitionMapper list/count contracts from T1", "Workflow definition PageResult and detail response retain existing fields and paging behavior"],
+      "non_goals": ["No schema rewrite or old-migration edit", "No Flowable ACT_* table access", "No full WorkflowService refactor"],
+      "action_bounds": ["Before creating V201, verify it remains unoccupied", "Add only latest_version_no and requires_configuration summary fields plus the minimal support index", "Centralize summary derivation in the authorized projector and call it from each affected write path", "Add lifecycle and focused MySQL/Flyway parity tests"],
+      "acceptance_checks": ["Definition-list XML selects no definition_json", "Migration backfill matches supported configuration-placeholder JSON", "Standard and Flowable create/edit/publish/unpublish paths invoke summary projection", "Workflow focused tests and migration test pass"],
+      "evidence_required": ["Actual diff", "Migration version check", "Focused workflow/migration command exit codes", "Summary parity assertions"],
+      "rollback": "Revert application changes; retain additive schema and issue a later append-only compensation migration for any data correction.",
+      "stop_conditions": ["V201 is occupied", "A writer cannot be covered without modifying an unapproved path", "Backfill behavior disagrees with the supported Java projection"],
+      "escalation_conditions": ["Migration requires destructive DDL or changes to current_version semantics"]
+    },
+    {
+      "id": "T4",
+      "goal": "Measure the final member and definition read paths with bounded metrics and expose only the necessary Actuator endpoint.",
+      "requirement_ids": ["R4", "R5"],
+      "prerequisites": ["T2", "T3"],
+      "input_facts": ["Boot currently exposes health and info only", "Micrometer is available through Spring Boot", "Metric tag keys are fixed by the approved design"],
+      "write_scope": ["server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "server/src/platform/boot/src/main/resources/application.yml", "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowServiceTest.java"],
+      "invariants": ["Only operation, scope_type, and outcome tag keys are used", "Existing API error behavior is rethrown after outcome=error is recorded", "No management endpoint besides metrics is newly exposed"],
+      "interface_contracts": ["ccb.project.members.query and ccb.workflow.definitions.query retain fixed tag cardinality"],
+      "non_goals": ["No external telemetry backend, cache, or request-ID tagging"],
+      "action_bounds": ["Instrument only the two approved service methods", "Expose metrics alongside existing health/info", "Add focused metric assertions"],
+      "acceptance_checks": ["Both timer names are registered after their read paths execute", "Metric tags are restricted to the approved fixed values", "Actuator metrics endpoint is exposed without broader endpoint exposure"],
+      "evidence_required": ["Actual diff", "Metric test output", "Redacted Actuator probe results"],
+      "rollback": "Revert the timer calls, constructor wiring, tests, and management configuration.",
+      "stop_conditions": ["Required observability needs an unapproved telemetry service or dynamic tag"],
+      "escalation_conditions": ["Security policy requires a different management endpoint exposure approach"]
+    },
+    {
+      "id": "T5",
+      "goal": "Verify compatibility, tenant-bound behavior, migration backfill, metric visibility, and scope conformance across the integrated change.",
+      "requirement_ids": ["R1", "R2", "R3", "R4", "R5"],
+      "prerequisites": ["T2", "T3", "T4"],
+      "input_facts": ["All product changes and focused tests are present", "High-assurance mode requires three samples and heterogeneous sensors"],
+      "write_scope": [".ai-control/requirements/req-20260911-076-query-performance/*.json"],
+      "invariants": ["No changes outside the approved task scope", "No uncategorized P0/P1 feedback", "No claim of passing tests that were not run"],
+      "interface_contracts": ["Existing member and definition list API behavior", "MySQL schema and Actuator metrics endpoints"],
+      "non_goals": ["Production deployment, push, merge, or release"],
+      "action_bounds": ["Run focused, module, full Maven, MySQL/Flyway, local API, Actuator, scope, and diff checks only", "Record actual execution and observation evidence"],
+      "acceptance_checks": ["System, workflow, full Maven, migration, API, and Actuator checks are run or their environmental limitation is recorded", "Scope checker and git diff --check pass", "All five requirements have final sensor evidence"],
+      "evidence_required": ["Execution reports", "Observation reports", "Convergence report", "Command exit codes and limitations"],
+      "rollback": "Use the T2-T4 rollback boundaries; retain schema changes as documented.",
+      "stop_conditions": ["Cross-tenant result, summary parity mismatch, or P0/P1 regression"],
+      "escalation_conditions": ["Local MySQL/API runtime is unavailable after documented attempts"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "ProjectService consumes the validated Mapper contract."},
+    {"from": "T1", "to": "T3", "reason": "WorkflowService consumes the validated summary Mapper contract."},
+    {"from": "T2", "to": "T4", "reason": "Metrics instrument the final member read path."},
+    {"from": "T3", "to": "T4", "reason": "Metrics instrument the final definition read path."},
+    {"from": "T2", "to": "T5", "reason": "Integration sampling requires the member implementation."},
+    {"from": "T3", "to": "T5", "reason": "Integration sampling requires migration and summary projection."},
+    {"from": "T4", "to": "T5", "reason": "Integration sampling requires metrics."}
+  ],
+  "parallel_groups": [["T1"], ["T2", "T3"], ["T4"], ["T5"]],
+  "integration_points": [
+    {"after_tasks": ["T1"], "checks": ["mvn -pl :ccb-system,:ccb-workflow -am test"]},
+    {"after_tasks": ["T2", "T3", "T4"], "checks": ["mvn -pl :ccb-system -am test", "mvn -pl :ccb-workflow -am test", "Focused MySQL Flyway test"]},
+    {"after_tasks": ["T5"], "checks": ["mvn test", "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260911-076-query-performance/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "git diff --check"]}
+  ],
+  "sampling_plan": [
+    {"label": "S0-plan baseline", "trigger": "Before T1", "observer": "Primary controller", "sensors": ["S1", "S2", "S5"], "requirement_ids": ["R1", "R2", "R5"]},
+    {"label": "S1-Mapper integration", "trigger": "After T2 and T3", "observer": "Independent command/test measurement", "sensors": ["S1", "S2", "S3", "S5"], "requirement_ids": ["R1", "R2", "R3", "R5"]},
+    {"label": "S2-metrics integration", "trigger": "After T4", "observer": "Independent command/test measurement", "sensors": ["S4", "S5"], "requirement_ids": ["R4", "R5"]},
+    {"label": "S3-final convergence", "trigger": "After T5", "observer": "Independent final validation", "sensors": ["S1", "S2", "S3", "S4", "S5"], "requirement_ids": ["R1", "R2", "R3", "R4", "R5"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T5"], "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T3", "T5"], "sensor_ids": ["S2", "S5"]},
+    {"requirement_id": "R3", "task_ids": ["T3", "T5"], "sensor_ids": ["S3", "S5"]},
+    {"requirement_id": "R4", "task_ids": ["T4", "T5"], "sensor_ids": ["S4", "S5"]},
+    {"requirement_id": "R5", "task_ids": ["T1", "T2", "T3", "T4", "T5"], "sensor_ids": ["S1", "S2", "S3", "S5"]}
+  ],
+  "plan_status": "ready"
+}

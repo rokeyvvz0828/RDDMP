@@ -9,7 +9,6 @@ import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.system.model.UserDirectoryPort;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,32 +42,7 @@ public class TopicService {
             "PROJECT", "DM_TOPIC_PROJECT_TYPE",
             "SYSTEM", "DM_TOPIC_SYSTEM_TYPE");
 
-    private static final String MAIN_FILE_JOIN =
-            " LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = 'TOPIC' AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 ";
-    private static final String SYSTEM_NAMES_SQL =
-            " (SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ') FROM dm_topic_system ts " +
-            " JOIN dm_component c ON c.tenant_id = ts.tenant_id AND c.project_id = ts.project_id AND c.system_code = ts.system_code " +
-            " JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 " +
-            " WHERE ts.tenant_id = a.tenant_id AND ts.topic_id = a.id) ";
-    private static final String SYSTEM_CODES_SQL =
-            " (SELECT GROUP_CONCAT(ts.system_code ORDER BY ts.system_code SEPARATOR ', ') " +
-            " FROM dm_topic_system ts WHERE ts.tenant_id = a.tenant_id AND ts.topic_id = a.id) ";
-    private static final String ATTACHMENT_COUNT_SQL =
-            " (SELECT COUNT(*) FROM dm_content_attachment ca WHERE ca.tenant_id = a.tenant_id AND ca.business_type = 'TOPIC' AND ca.business_id = a.id AND ca.deleted = 0) ";
-    private static final String SELECT_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, a.granularity, a.topic_type_code, " +
-            "a.doc_code AS asset_code, a.doc_name AS asset_name, a.topic_summary, " +
-            "m.attachment_id, " + SYSTEM_NAMES_SQL + " AS system_names, " + SYSTEM_CODES_SQL + " AS system_codes, " +
-            ATTACHMENT_COUNT_SQL + " AS attachment_count, " +
-            "a.owner_id, a.created_by, a.created_at, a.updated_by, a.updated_at ";
-    private static final String RECYCLE_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, 'TOPIC' AS asset_type, a.doc_code AS asset_code, a.doc_name AS asset_name, " +
-            "a.granularity, a.topic_type_code, a.topic_summary, m.attachment_id, " +
-            SYSTEM_NAMES_SQL + " AS system_names, " + SYSTEM_CODES_SQL + " AS system_codes, " +
-            ATTACHMENT_COUNT_SQL + " AS attachment_count, a.owner_id, " +
-            "a.created_at, a.updated_at, a.deleted_by, a.deleted_at ";
-
-    private final JdbcTemplate jdbc;
+    private final TopicRepository repository;
     private final ContentAttachmentService attachments;
     private final ContentFileAssetService fileAssets;
     private final DataMigrationPermissionService permissions;
@@ -77,11 +51,11 @@ public class TopicService {
     private final SystemReferenceQuery systemReferences;
     private final DataMigrationCodeValueService codeValues;
 
-    public TopicService(JdbcTemplate jdbc, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
+    public TopicService(TopicRepository repository, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
                         DataMigrationPermissionService permissions, UserDirectoryPort userDirectory,
                         ContentDocCodeGenerator docCodes, SystemReferenceQuery systemReferences,
                         DataMigrationCodeValueService codeValues) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.attachments = attachments;
         this.fileAssets = fileAssets;
         this.permissions = permissions;
@@ -100,35 +74,20 @@ public class TopicService {
         // 筛选允许任意非空值，保证历史数据只读展示；写入才强制校验参数管理启用项。
         if (topicTypeCode != null && !topicTypeCode.isBlank()) ensureTypeActive(granularity, topicTypeCode, user);
 
-        StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                .append("FROM dm_topic a ").append(MAIN_FILE_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(sql, args, scope, granularity, topicTypeCode, systemCodes, keyword);
-
-        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") t", Long.class, args.toArray());
-        if (total == null) total = 0L;
+        Map<String,Object> filters=filters(user.tenantId(),scope,granularity,topicTypeCode,systemCodes,keyword,0);
+        long total=repository.count(filters);
         int safePage = Math.max(1, page);
         int safeSize = normalizePageSize(size);
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC LIMIT ? OFFSET ?");
-        args.add(safeSize);
-        args.add((long) (safePage - 1) * safeSize);
-        List<Map<String, Object>> records = jdbc.queryForList(sql.toString(), args.toArray());
+        filters.put("limit",safeSize);filters.put("offset",(long)(safePage-1)*safeSize);List<Map<String,Object>> records=repository.list(filters);
         decorateUsers(records, user.tenantId());
         return new PageResult<>(records, total, safePage, safeSize);
     }
 
     /** 单条详情（含多附件与涉及系统）。 */
     public Map<String, Object> detail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                SELECT_COLUMNS + "FROM dm_topic a " + MAIN_FILE_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 0", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "专题不存在");
-        Map<String, Object> row = rows.get(0);
+        Map<String,Object> row=repository.require(user.tenantId(),id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         row.put("attachments", attachments.list(CONTENT_TYPE, id, user.tenantId()));
         return row;
     }
@@ -157,11 +116,7 @@ public class TopicService {
 
         long id = nextId();
         try {
-            jdbc.update("INSERT INTO dm_topic (id, tenant_id, project_id, doc_code, doc_name, " +
-                    "granularity, topic_type_code, topic_summary, owner_id, created_by, updated_by) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, tenantId, projectId, docCodes.generate(CONTENT_TYPE), topicName.trim(),
-                    granularity, topicTypeCode, summary, user.id(), user.id(), user.id());
+            repository.insert(values(id,tenantId,projectId,docCodes.generate(CONTENT_TYPE),topicName.trim(),granularity,topicTypeCode,summary,user.id()));
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.CONFLICT, "专题编号冲突，请刷新后重试");
         }
@@ -203,10 +158,7 @@ public class TopicService {
             attachments.replaceAll(CONTENT_TYPE, BUSINESS_TYPE, id, projectId, entries, user);
         }
 
-        int changed = jdbc.update(
-                "UPDATE dm_topic SET doc_name = ?, granularity = ?, topic_type_code = ?, topic_summary = ?, " +
-                "updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                topicName.trim(), granularity, topicTypeCode, summary, user.id(), id, tenantId);
+        int changed=repository.update(values(id,tenantId,projectId,String.valueOf(existing.get("doc_code")),topicName.trim(),granularity,topicTypeCode,summary,user.id()));
         if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "专题状态已变化，请刷新后重试");
 
         saveSystemRelations(id, projectId, systemCodes, user);
@@ -221,8 +173,7 @@ public class TopicService {
             Map<String, Object> existing = findRaw(id, user.tenantId());
             long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
-            int changed = jdbc.update("UPDATE dm_topic SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
-                    "WHERE id = ? AND tenant_id = ? AND deleted = 0", user.id(), id, user.tenantId());
+            int changed=repository.softDelete(user.tenantId(),id,user.id());
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "专题状态已变化，请刷新后重试");
             audit(user, "TOPIC_DELETE", projectId, id);
         }
@@ -231,10 +182,7 @@ public class TopicService {
     /** 下载（T32）：返回平台附件下载路径（首/主文件 sort_order=0），先校验记录项目归属。 */
     public String download(long id, AuthUser user) {
         permissions.requireStoredProject(findRaw(id, user.tenantId()).get("project_id"), user);
-        List<Long> mainIds = jdbc.queryForList(
-                "SELECT m.attachment_id FROM dm_content_attachment m JOIN dm_topic a ON a.id = m.business_id AND a.tenant_id = m.tenant_id " +
-                "WHERE m.tenant_id = ? AND m.business_type = 'TOPIC' AND m.business_id = ? AND m.sort_order = 0 AND m.deleted = 0 AND a.deleted = 0",
-                Long.class, user.tenantId(), id);
+        List<Long> mainIds=repository.mainAttachmentIds(user.tenantId(),id);
         if (mainIds.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "专题未绑定源文件");
         return "/api/attachments/" + mainIds.get(0) + "/download";
     }
@@ -268,39 +216,22 @@ public class TopicService {
     public long countRecycleBin(long projectId, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM dm_topic a WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        Long total = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
-        return total == null ? 0L : total;
+        return repository.count(filters(user.tenantId(),projectId,null,null,null,keyword,1));
     }
 
     public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
         if (limit <= 0) return List.of();
-        StringBuilder sql = new StringBuilder(RECYCLE_COLUMNS)
-                .append("FROM dm_topic a ").append(MAIN_FILE_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        sql.append(" ORDER BY a.doc_code ASC, a.id ASC LIMIT ?");
-        args.add(limit);
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        Map<String,Object> filters=filters(user.tenantId(),projectId,null,null,null,keyword,1);filters.put("limit",limit);List<Map<String,Object>> rows=repository.list(filters);
         decorateUsers(rows, user.tenantId());
         return rows;
     }
 
     public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                RECYCLE_COLUMNS + "FROM dm_topic a " + MAIN_FILE_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 1", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "专题不存在于回收站");
-        Map<String, Object> row = rows.get(0);
+        Map<String,Object> row=repository.requireDeleted(user.tenantId(),id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row),user.tenantId());
         // 添加附件列表
         List<Map<String, Object>> attachmentList = attachments.list("TOPIC", id, user.tenantId());
         row.put("attachments", attachmentList);
@@ -312,9 +243,7 @@ public class TopicService {
         permissions.requireAdmin(user);
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
-            int changed = jdbc.update("UPDATE dm_topic SET deleted = 0, deleted_by = NULL, deleted_at = NULL, " +
-                    "updated_by = ?, updated_at = CURRENT_TIMESTAMP " +
-                    "WHERE id = ? AND tenant_id = ? AND deleted = 1", user.id(), id, user.tenantId());
+            int changed=repository.restore(user.tenantId(),id,user.id());
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "专题状态已变化，请刷新后重试");
             audit(user, "TOPIC_RESTORE", projectId, id);
         }
@@ -326,51 +255,16 @@ public class TopicService {
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
             attachments.unbindAndRemoveAll(CONTENT_TYPE, BUSINESS_TYPE, id, user);
-            jdbc.update("DELETE FROM dm_topic_system WHERE tenant_id = ? AND topic_id = ?", user.tenantId(), id);
-            jdbc.update("DELETE FROM dm_topic WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+            repository.replaceSystems(user.tenantId(),id,projectId,List.of(),user.id());
+            repository.purge(user.tenantId(),id);
             audit(user, "TOPIC_PURGE", projectId, id);
         }
     }
 
     // ============ 私有辅助 ============
 
-    private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String granularity,
-                               String topicTypeCode, String systemCodes, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (granularity != null && !granularity.isBlank()) {
-            sql.append(" AND a.granularity = ?");
-            args.add(granularity);
-        }
-        if (topicTypeCode != null && !topicTypeCode.isBlank()) {
-            sql.append(" AND a.topic_type_code = ?");
-            args.add(topicTypeCode.trim());
-        }
-        if (systemCodes != null && !systemCodes.isBlank()) {
-            List<String> codes = splitCodes(systemCodes);
-            sql.append(" AND EXISTS (SELECT 1 FROM dm_topic_system ts WHERE ts.tenant_id = a.tenant_id AND ts.topic_id = a.id AND ts.system_code IN (");
-            sql.append(String.join(",", java.util.Collections.nCopies(codes.size(), "?")));
-            sql.append("))");
-            args.addAll(codes);
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.doc_name LIKE ? OR a.topic_summary LIKE ?)");
-            args.add(value);
-            args.add(value);
-        }
-    }
-
-    private void appendRecycleFilters(StringBuilder sql, List<Object> args, long projectId, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.doc_name LIKE ? OR a.topic_summary LIKE ?)");
-            args.add(value);
-            args.add(value);
-        }
-    }
+    private Map<String,Object> filters(long tenantId,long projectId,String granularity,String topicTypeCode,String systemCodes,String keyword,int deleted){Map<String,Object> p=new LinkedHashMap<>();p.put("tenantId",tenantId);p.put("projectId",projectId);p.put("granularity",optionalText(granularity));p.put("topicTypeCode",optionalText(topicTypeCode));p.put("systemCodes",splitCodes(systemCodes));p.put("keyword",optionalText(keyword));p.put("deleted",deleted);return p;}
+    private Map<String,Object> values(long id,long tenantId,long projectId,String docCode,String docName,String granularity,String topicTypeCode,String topicSummary,long actorId){Map<String,Object> p=new LinkedHashMap<>();p.put("id",id);p.put("tenantId",tenantId);p.put("projectId",projectId);p.put("docCode",docCode);p.put("docName",docName);p.put("granularity",granularity);p.put("topicTypeCode",topicTypeCode);p.put("topicSummary",topicSummary);p.put("actorId",actorId);return p;}
 
     /** 颗粒度 + 类型联动校验：编码必须属于对应参数类别且启用；未给颗粒度时在两个类别内查找。 */
     private void ensureTypeActive(String granularity, String topicTypeCode, AuthUser user) {
@@ -419,25 +313,15 @@ public class TopicService {
     }
 
     private void saveSystemRelations(long topicId, long projectId, List<String> systemCodes, AuthUser user) {
-        jdbc.update("DELETE FROM dm_topic_system WHERE tenant_id = ? AND topic_id = ?", user.tenantId(), topicId);
-        for (String systemCode : systemCodes) {
-            jdbc.update("INSERT INTO dm_topic_system (id, tenant_id, topic_id, project_id, system_code, created_by) " +
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    nextId(), user.tenantId(), topicId, projectId, systemCode, user.id());
-        }
+        repository.replaceSystems(user.tenantId(),topicId,projectId,systemCodes,user.id());
     }
 
     private List<String> loadSystemCodes(long topicId, long tenantId) {
-        return jdbc.queryForList("SELECT system_code FROM dm_topic_system WHERE tenant_id = ? AND topic_id = ? ORDER BY id",
-                String.class, tenantId, topicId);
+        return repository.systemCodes(tenantId,topicId);
     }
 
     private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c " +
-                "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ? AND c.enabled = 1",
-                Integer.class, user.tenantId(), projectId, systemCode);
-        if (count == null || count == 0) {
+        if (!repository.enabledComponent(user.tenantId(),projectId,systemCode)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "涉及系统不存在或不属于当前项目");
         }
     }
@@ -482,25 +366,16 @@ public class TopicService {
     }
 
     private Set<Long> boundAttachmentIds(long topicId, long tenantId) {
-        return new LinkedHashSet<>(jdbc.queryForList(
-                "SELECT attachment_id FROM dm_content_attachment WHERE tenant_id = ? AND business_type = 'TOPIC' AND business_id = ? AND deleted = 0",
-                Long.class, tenantId, topicId));
+        return repository.boundAttachmentIds(tenantId,topicId);
     }
 
     private Map<String, Object> findRaw(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, tenant_id, project_id, granularity, topic_type_code, doc_code, doc_name, topic_summary, owner_id " +
-                "FROM dm_topic WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "专题不存在");
-        return rows.get(0);
+        return repository.requireRaw(tenantId,id);
     }
 
     /** 回收站恢复/彻底删除前的行定位 + 项目归属校验，返回归属项目。 */
     private long requireRecycleBinScope(long id, AuthUser user) {
-        List<Long> projects = jdbc.queryForList("SELECT project_id FROM dm_topic WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                Long.class, id, user.tenantId());
-        if (projects.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "专题不存在于回收站");
-        long projectId = projects.get(0);
+        long projectId=repository.requireDeletedProject(user.tenantId(),id);
         permissions.requireStoredProject(projectId, user);
         return projectId;
     }
@@ -522,9 +397,7 @@ public class TopicService {
     }
 
     private void audit(AuthUser user, String operation, long projectId, long id) {
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
-                "VALUES (?, ?, ?, ?, 'TOPIC', ?)",
-                user.tenantId(), user.id(), projectId, operation, id);
+        repository.audit(user.tenantId(),user.id(),projectId,operation,id);
     }
 
     private List<String> splitCodes(String raw) {

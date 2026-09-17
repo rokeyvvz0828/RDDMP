@@ -2,7 +2,6 @@ package com.ccb.requirement.service;
 
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -20,23 +19,17 @@ public class RequirementChangeLogService {
     private static final Set<String> EXCLUDED_FIELDS = Set.of(
             "id", "tenant_id", "deleted", "created_at", "updated_at", "created_by", "updated_by");
 
-    private final JdbcTemplate jdbc;
+    private final RequirementChangeLogRepository repository;
 
-    public RequirementChangeLogService(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public RequirementChangeLogService(RequirementChangeLogRepository repository) {
+        this.repository = repository;
     }
 
     public void record(String bizType, long bizId, String changeType, String field,
                        String oldValue, String newValue, AuthUser user, String source) {
         long id = RequirementIds.next();
-        jdbc.update("""
-                INSERT INTO req_change_log
-                    (id, tenant_id, biz_type, biz_id, field_name, old_value, new_value, change_type,
-                     operator_id, operator_name, source, trace_id, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, id, user.tenantId(), bizType, bizId, field,
-                truncate(oldValue), truncate(newValue), changeType,
-                user.id(), user.displayName(), source, TraceId.getOrCreate());
+        repository.insert(id, user.tenantId(), bizType, bizId, field, truncate(oldValue), truncate(newValue),
+                changeType, user.id(), user.displayName(), source, TraceId.getOrCreate());
     }
 
     public void recordFields(String bizType, long bizId, String changeType,
@@ -61,13 +54,7 @@ public class RequirementChangeLogService {
     }
 
     public List<Map<String, Object>> list(String bizType, long bizId, AuthUser user) {
-        return jdbc.queryForList("""
-                SELECT field_name, old_value, new_value, change_type, operator_id, operator_name,
-                       source, trace_id, created_at
-                FROM req_change_log
-                WHERE tenant_id = ? AND biz_type = ? AND biz_id = ? AND deleted = 0
-                ORDER BY created_at DESC, id DESC
-                """, user.tenantId(), bizType, bizId);
+        return repository.list(user.tenantId(), bizType, bizId);
     }
 
     private static String truncate(String value) {

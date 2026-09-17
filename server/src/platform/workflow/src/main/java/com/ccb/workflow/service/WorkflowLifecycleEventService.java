@@ -6,12 +6,12 @@ import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -19,12 +19,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class WorkflowLifecycleEventService {
     private static final Logger log = LoggerFactory.getLogger(WorkflowLifecycleEventService.class);
-    private final JdbcTemplate jdbc;
+    private final WorkflowLifecycleEventRepository repository;
     private final List<WorkflowLifecycleConsumer> consumers;
     private WorkflowLifecycleDispatcher dispatcher;
 
-    public WorkflowLifecycleEventService(JdbcTemplate jdbc, List<WorkflowLifecycleConsumer> consumers) {
-        this.jdbc = jdbc;
+    public WorkflowLifecycleEventService(WorkflowLifecycleEventRepository repository, List<WorkflowLifecycleConsumer> consumers) {
+        this.repository = repository;
         this.consumers = consumers == null ? List.of() : List.copyOf(consumers);
     }
 
@@ -34,20 +34,32 @@ public class WorkflowLifecycleEventService {
     }
 
     public String emit(long instanceId, WorkflowLifecycleEventType eventType, AuthUser operator) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT tenant_id, business_module_code, business_module_name, business_type, business_key, business_title, business_round, project_ref, project_name, action_path, data_digest FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                instanceId, operator.tenantId());
+        List<Map<String, Object>> rows = repository.instanceContext(instanceId, operator.tenantId());
         if (rows.isEmpty() || rows.get(0).get("business_type") == null) return null;
         Map<String, Object> context = rows.get(0);
         String eventId = UUID.randomUUID().toString();
-        jdbc.update("INSERT INTO wf_lifecycle_event (id, event_id, tenant_id, instance_id, event_type, business_module_code, business_module_name, business_type, business_key, business_round, business_title, project_ref, project_name, action_path, data_digest, operator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                nextId(), eventId, operator.tenantId(), instanceId, eventType.name(), context.get("business_module_code"), context.get("business_module_name"), context.get("business_type"), context.get("business_key"),
-                context.get("business_round"), context.get("business_title"), context.get("project_ref"), context.get("project_name"),
-                context.get("action_path"), context.get("data_digest"), operator.id());
+        Map<String, Object> eventValues = new HashMap<>();
+        eventValues.put("id", nextId());
+        eventValues.put("eventId", eventId);
+        eventValues.put("tenantId", operator.tenantId());
+        eventValues.put("instanceId", instanceId);
+        eventValues.put("eventType", eventType.name());
+        eventValues.put("businessModuleCode", context.get("business_module_code"));
+        eventValues.put("businessModuleName", context.get("business_module_name"));
+        eventValues.put("businessType", context.get("business_type"));
+        eventValues.put("businessKey", context.get("business_key"));
+        eventValues.put("businessRound", context.get("business_round"));
+        eventValues.put("businessTitle", context.get("business_title"));
+        eventValues.put("projectRef", context.get("project_ref"));
+        eventValues.put("projectName", context.get("project_name"));
+        eventValues.put("actionPath", context.get("action_path"));
+        eventValues.put("dataDigest", context.get("data_digest"));
+        eventValues.put("operatorId", operator.id());
+        repository.insertEvent(eventValues);
         boolean hasDeliveries = false;
         for (WorkflowLifecycleConsumer consumer : consumers) {
             if (consumer.supports(String.valueOf(context.get("business_type")))) {
-                jdbc.update("INSERT INTO wf_lifecycle_delivery (id, tenant_id, event_id, subscriber_key, status, next_attempt_at) VALUES (?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP)",
-                        nextId(), operator.tenantId(), eventId, requireSubscriberKey(consumer.subscriberKey()));
+                repository.insertDelivery(nextId(), operator.tenantId(), eventId, requireSubscriberKey(consumer.subscriberKey()));
                 hasDeliveries = true;
             }
         }

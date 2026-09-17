@@ -7,7 +7,6 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,17 +14,16 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProjectComponentService {
-    private final JdbcTemplate jdbc;
+    private final ProjectComponentRepository repository;
     private final DataMigrationPermissionService permissions;
 
-    public ProjectComponentService(JdbcTemplate jdbc, DataMigrationPermissionService permissions) {
-        this.jdbc = jdbc;
+    public ProjectComponentService(ProjectComponentRepository repository, DataMigrationPermissionService permissions) {
+        this.repository = repository;
         this.permissions = permissions;
     }
 
@@ -41,35 +39,12 @@ public class ProjectComponentService {
         long scope = permissions.requireProject(projectId, user);
         ComponentFilter filter = buildFilter(scope, businessGroupName, systemCode, responsibleTeam,
                 systemKeyword, totalCheck, keyword);
-        String select = "SELECT c.project_id, p.project_code, p.project_name, c.system_code, c.enabled, "
-                        + "s.business_group_name, s.short_name AS system_short_name, s.name AS system_name, "
-                        + "s.description AS system_description, s.responsible_team_name_snapshot AS responsible_team_name, "
-                        + "c.total_check, c.owner_id, c.created_at, u1.display_name AS created_by_name, "
-                        + "c.updated_at, u2.display_name AS updated_by_name "
-                        + "FROM dm_component c "
-                        + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
-                        + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
-                        + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
-                        + "WHERE c.tenant_id = ?";
-        String countSql = "SELECT COUNT(*) FROM dm_component c "
-                        + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
-                        + "WHERE c.tenant_id = ?";
-        StringBuilder where = new StringBuilder(select);
-        List<Object> args = new ArrayList<>();
-        args.add(user.tenantId());
-        applyFilter(where, args, filter);
-        StringBuilder countWhere = new StringBuilder(countSql);
-        List<Object> countArgs = new ArrayList<>();
-        countArgs.add(user.tenantId());
-        applyFilter(countWhere, countArgs, filter);
-        Long total = jdbc.queryForObject(countWhere.toString(), Long.class, countArgs.toArray());
-        where.append(" ORDER BY c.updated_at DESC, c.system_code LIMIT ? OFFSET ?");
-        args.add(normalized.size());
-        args.add((normalized.page() - 1) * normalized.size());
-        List<Map<String, Object>> records = jdbc.queryForList(where.toString(), args.toArray());
-        return new PageResult<>(records, total == null ? 0 : total, normalized.page(), normalized.size());
+        long total = repository.count(user.tenantId(), filter.projectId(), filter.businessGroupName(), filter.systemCode(),
+                filter.responsibleTeam(), filter.systemKeyword(), filter.totalCheck(), filter.keyword());
+        List<Map<String, Object>> records = repository.page(user.tenantId(), filter.projectId(), filter.businessGroupName(),
+                filter.systemCode(), filter.responsibleTeam(), filter.systemKeyword(), filter.totalCheck(), filter.keyword(),
+                normalized.size(), (normalized.page() - 1) * normalized.size());
+        return new PageResult<>(records, total, normalized.page(), normalized.size());
     }
 
     /**
@@ -77,12 +52,7 @@ public class ProjectComponentService {
      */
     public List<Map<String, Object>> getSystemOptions(Long projectId, AuthUser user) {
         long scope = permissions.requireProject(projectId, user);
-        String sql = "SELECT c.system_code AS value, CONCAT(c.system_code, ' - ', COALESCE(s.short_name, s.name, '')) AS label "
-                        + "FROM dm_component c "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
-                        + "WHERE c.tenant_id = ? AND c.project_id = ? AND c.enabled = 1 "
-                        + "ORDER BY c.system_code";
-        return jdbc.queryForList(sql, user.tenantId(), scope);
+        return repository.systemOptions(user.tenantId(), scope);
     }
 
     /** 按筛选条件导出全量元数据字段（维护页可用，含停用记录）。 */
@@ -91,24 +61,8 @@ public class ProjectComponentService {
         long scope = permissions.requireProject(projectId, user);
         ComponentFilter filter = buildFilter(scope, businessGroupName, systemCode, responsibleTeam,
                 systemKeyword, totalCheck, keyword);
-        StringBuilder sql = new StringBuilder(
-                "SELECT p.project_code, p.project_name, c.system_code, c.enabled, "
-                        + "s.business_group_name, s.short_name AS system_short_name, "
-                        + "s.name AS system_name, s.description AS system_description, "
-                        + "s.responsible_team_name_snapshot AS responsible_team_name, c.total_check, "
-                        + "c.created_at, u1.display_name AS created_by_name, "
-                        + "c.updated_at, u2.display_name AS updated_by_name "
-                        + "FROM dm_component c "
-                        + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                        + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
-                        + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
-                        + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
-                        + "WHERE c.tenant_id = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(user.tenantId());
-        applyFilter(sql, args, filter);
-        sql.append(" ORDER BY c.updated_at DESC, c.system_code");
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        List<Map<String, Object>> rows = repository.exportRows(user.tenantId(), filter.projectId(), filter.businessGroupName(),
+                filter.systemCode(), filter.responsibleTeam(), filter.systemKeyword(), filter.totalCheck(), filter.keyword());
         String[] columns = {"project_code", "project_name", "system_code", "enabled",
                 "business_group_name", "system_short_name", "system_name", "system_description",
                 "responsible_team_name", "total_check", "created_at", "created_by_name",
@@ -149,29 +103,16 @@ public class ProjectComponentService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private static void applyFilter(StringBuilder sql, List<Object> args, ComponentFilter filter) {
-        sql.append(" AND c.project_id = ?");
-        args.add(filter.projectId());
-        if (filter.businessGroupName() != null) { sql.append(" AND s.business_group_name LIKE ?"); args.add("%" + filter.businessGroupName() + "%"); }
-        if (filter.systemCode() != null) { sql.append(" AND LOWER(c.system_code) LIKE LOWER(?)"); args.add("%" + filter.systemCode() + "%"); }
-        if (filter.responsibleTeam() != null) { sql.append(" AND s.responsible_team_name_snapshot LIKE ?"); args.add("%" + filter.responsibleTeam() + "%"); }
-        if (filter.systemKeyword() != null) { sql.append(" AND (LOWER(s.short_name) LIKE LOWER(?) OR LOWER(s.name) LIKE LOWER(?))"); args.add("%" + filter.systemKeyword() + "%"); args.add("%" + filter.systemKeyword() + "%"); }
-        if (filter.totalCheck() != null) { sql.append(" AND c.total_check = ?"); args.add(filter.totalCheck()); }
-        if (filter.keyword() != null) { sql.append(" AND (LOWER(c.system_code) LIKE LOWER(?) OR LOWER(s.short_name) LIKE LOWER(?) OR LOWER(s.name) LIKE LOWER(?))"); args.add("%" + filter.keyword() + "%"); args.add("%" + filter.keyword() + "%"); args.add("%" + filter.keyword() + "%"); }
-    }
-
     @Transactional
     public Map<String, Object> createComponent(Map<String, Object> body, AuthUser user) {
         long projectId = number(body, "projectId");
         String systemCode = requireText(body, "systemCode");
         permissions.requireAccessible(projectId, user);
-        if (exists("SELECT COUNT(*) FROM dm_component WHERE tenant_id = ? AND project_id = ? AND system_code = ?",
-                user.tenantId(), projectId, systemCode)) {
+        if (repository.exists(user.tenantId(), projectId, systemCode)) {
             throw new BusinessException(ErrorCode.CONFLICT, "系统 " + systemCode + " 已在该项目的组件清单中，请勿重复新增");
         }
         int totalCheck = integer(body, "totalCheck", 0);
-        jdbc.update("INSERT INTO dm_component (tenant_id, project_id, system_code, enabled, total_check, owner_id, created_by) VALUES (?, ?, ?, 1, ?, ?, ?)",
-                user.tenantId(), projectId, systemCode, totalCheck, user.id(), user.id());
+        repository.insert(user.tenantId(), projectId, systemCode, totalCheck, user.id(), user.id());
         audit(user, "COMPONENT_CREATE", projectId, systemCode);
         return componentView(projectId, systemCode, user.tenantId());
     }
@@ -184,8 +125,7 @@ public class ProjectComponentService {
         Map<String, Object> stored = find(projectId, systemCode, user.tenantId());
         permissions.requireStoredProject(stored.get("project_id"), user);
         int totalCheck = integer(body, "totalCheck", 0);
-        jdbc.update("UPDATE dm_component SET total_check = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND project_id = ? AND system_code = ?",
-                totalCheck, user.id(), user.tenantId(), projectId, systemCode);
+        repository.updateTotalCheck(totalCheck, user.id(), user.tenantId(), projectId, systemCode);
         audit(user, "COMPONENT_UPDATE", projectId, systemCode);
         return componentView(projectId, systemCode, user.tenantId());
     }
@@ -196,8 +136,7 @@ public class ProjectComponentService {
         long storedProjectId = permissions.requireStoredProject(row.get("project_id"), user);
         permissions.requireWrite(user, ((Number) row.get("owner_id")).longValue());
         if (hasContentAssets(storedProjectId, systemCode.trim(), user)) throw new BusinessException(ErrorCode.CONFLICT, "该组件存在相关业务数据，拒绝物理删除，请先清理或停用");
-        jdbc.update("DELETE FROM dm_component WHERE tenant_id = ? AND project_id = ? AND system_code = ?",
-                user.tenantId(), storedProjectId, systemCode.trim());
+        repository.delete(user.tenantId(), storedProjectId, systemCode.trim());
         audit(user, "COMPONENT_DELETE", storedProjectId, systemCode.trim());
     }
 
@@ -206,57 +145,27 @@ public class ProjectComponentService {
         Map<String, Object> row = find(projectId, systemCode.trim(), user.tenantId());
         long storedProjectId = permissions.requireStoredProject(row.get("project_id"), user);
         permissions.requireWrite(user, ((Number) row.get("owner_id")).longValue());
-        jdbc.update("UPDATE dm_component SET enabled = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND project_id = ? AND system_code = ?",
-                enabled ? 1 : 0, user.id(), user.tenantId(), storedProjectId, systemCode.trim());
+        repository.updateEnabled(enabled, user.id(), user.tenantId(), storedProjectId, systemCode.trim());
         audit(user, enabled ? "COMPONENT_ENABLE" : "COMPONENT_DISABLE", storedProjectId, systemCode.trim());
         return componentView(storedProjectId, systemCode.trim(), user.tenantId());
     }
 
     private Map<String, Object> componentView(long projectId, String systemCode, long tenantId) {
-        return jdbc.queryForMap("SELECT c.project_id, p.project_code, p.project_name, c.system_code, c.enabled, "
-                + "s.business_group_name, s.short_name AS system_short_name, s.name AS system_name, "
-                + "s.description AS system_description, s.responsible_team_name_snapshot AS responsible_team_name, "
-                + "c.total_check, c.owner_id, "
-                + "c.created_at, u1.display_name AS created_by_name, "
-                + "c.updated_at, u2.display_name AS updated_by_name "
-                + "FROM dm_component c "
-                + "JOIN pm_project p ON p.id = c.project_id AND p.tenant_id = c.tenant_id AND p.deleted = 0 "
-                + "LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 "
-                + "LEFT JOIN sys_user u1 ON u1.id = c.created_by AND u1.tenant_id = c.tenant_id "
-                + "LEFT JOIN sys_user u2 ON u2.id = c.updated_by AND u2.tenant_id = c.tenant_id "
-                + "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ?", tenantId, projectId, systemCode);
+        return repository.view(tenantId, projectId, systemCode);
     }
 
     private Map<String, Object> find(long projectId, String systemCode, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT project_id, owner_id, enabled FROM dm_component WHERE tenant_id = ? AND project_id = ? AND system_code = ?",
-                tenantId, projectId, systemCode);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "Component not found");
-        return rows.get(0);
-    }
-
-    private boolean exists(String sql, Object... args) {
-        Integer count = jdbc.queryForObject(sql, Integer.class, args);
-        return count != null && count > 0;
+        return repository.require(tenantId, projectId, systemCode);
     }
 
     /** 跨全部内容表统计组件占用（含映射/依赖/方案/专题等业务数据），任一活动行即拒绝物理删除。 */
     private boolean hasContentAssets(long projectId, String systemCode, AuthUser user) {
-        String where = "tenant_id = ? AND project_id = ? AND system_code = ? AND deleted = 0";
-        List<Object> args = new ArrayList<>();
-        for (int i = 0; i < ContentAssetTables.ALL_TABLES.size(); i++) {
-            args.add(user.tenantId());
-            args.add(projectId);
-            args.add(systemCode);
-        }
-        Integer total = jdbc.queryForObject("SELECT COALESCE(SUM(cnt), 0) FROM (" + ContentAssetTables.activeCountUnionSql(where, ContentAssetTables.ALL_TABLES) + ") x", Integer.class, args.toArray());
-        return total != null && total > 0;
+        return repository.hasActiveContent(user.tenantId(), projectId, systemCode);
     }
 
     private void audit(AuthUser user, String op, long projectId, String systemCode) {
         String detailJson = "{\"projectId\":" + projectId + ",\"systemCode\":\"" + systemCode.replace("\"", "") + "\"}";
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id, detail_json) VALUES (?, ?, ?, ?, 'COMPONENT', NULL, ?)",
-                user.tenantId(), user.id(), projectId, op, detailJson);
+        repository.insertAudit(user.tenantId(), user.id(), projectId, op, detailJson);
     }
 
     private static String requireText(Map<String, Object> body, String key) {

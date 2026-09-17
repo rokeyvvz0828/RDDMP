@@ -3,7 +3,6 @@ package com.ccb.requirement.service;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.ccb.requirement.support.RequirementIds;
-import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
 
 /** 业务附件绑定：文件上传/预览由平台 file-preview 能力完成，业务只保存平台返回的受控引用。 */
@@ -20,21 +18,17 @@ import com.ccb.requirement.support.RequirementValues;
 public class RequirementAttachmentService {
     private static final List<String> BIZ_TYPES = List.of("NEW_PROJECT_DIFF", "LEGACY_REQUIREMENT");
 
-    private final JdbcTemplate jdbc;
+    private final RequirementAttachmentRepository repository;
     private final RequirementSecurityService security;
 
-    public RequirementAttachmentService(JdbcTemplate jdbc, RequirementSecurityService security) {
-        this.jdbc = jdbc;
+    public RequirementAttachmentService(RequirementAttachmentRepository repository, RequirementSecurityService security) {
+        this.repository = repository;
         this.security = security;
     }
 
     public List<Map<String, Object>> list(String bizType, long bizId, AuthUser user) {
         requireAccess(bizType, bizId, user);
-        return jdbc.queryForList("""
-                SELECT id, biz_type, biz_id, file_name, file_size, content_type, preview_id, preview_url, created_at
-                FROM req_attachment WHERE tenant_id = ? AND biz_type = ? AND biz_id = ? AND deleted = 0
-                ORDER BY created_at DESC, id DESC
-                """, user.tenantId(), bizType, bizId);
+        return repository.list(user.tenantId(), bizType, bizId);
     }
 
     @Transactional
@@ -57,7 +51,7 @@ public class RequirementAttachmentService {
         values.put("preview_url", body.get("previewUrl"));
         values.put("operator_id", user.id());
         values.put("deleted", 0);
-        RequirementSql.insert(jdbc, "req_attachment", values);
+        repository.insert(values);
         return list(bizType, bizId, user).stream()
                 .filter(row -> ((Number) row.get("id")).longValue() == id)
                 .findFirst()
@@ -66,34 +60,27 @@ public class RequirementAttachmentService {
 
     @Transactional
     public void delete(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, biz_type, biz_id FROM req_attachment WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                user.tenantId(), id);
-        if (rows.isEmpty()) {
+        Map<String, Object> row = repository.findActive(user.tenantId(), id);
+        if (row == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
         }
-        Map<String, Object> row = rows.get(0);
         requireAccess(String.valueOf(row.get("biz_type")), ((Number) row.get("biz_id")).longValue(), user);
-        jdbc.update("UPDATE req_attachment SET deleted = 1 WHERE tenant_id = ? AND id = ?", user.tenantId(), id);
+        repository.softDelete(user.tenantId(), id);
     }
 
     private void requireAccess(String bizType, long bizId, AuthUser user) {
         if ("NEW_PROJECT_DIFF".equals(bizType)) {
-            List<Map<String, Object>> rows = jdbc.queryForList(
-                    "SELECT project_id FROM req_difference WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                    user.tenantId(), bizId);
-            if (rows.isEmpty()) {
+            long projectId = repository.findDifferenceProjectId(user.tenantId(), bizId);
+            if (projectId == 0L) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "差异不存在");
             }
-            security.requireProjectAccess(user, ((Number) rows.get(0).get("project_id")).longValue());
+            security.requireProjectAccess(user, projectId);
         } else if ("LEGACY_REQUIREMENT".equals(bizType)) {
-            List<Map<String, Object>> rows = jdbc.queryForList(
-                    "SELECT business_group FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                    user.tenantId(), bizId);
-            if (rows.isEmpty()) {
+            String businessGroup = repository.findLegacyBusinessGroup(user.tenantId(), bizId);
+            if (businessGroup == null) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
             }
-            security.requireLegacyAccess(user, String.valueOf(rows.get(0).get("business_group")));
+            security.requireLegacyAccess(user, businessGroup);
         } else {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件业务类型不受支持：" + bizType);
         }

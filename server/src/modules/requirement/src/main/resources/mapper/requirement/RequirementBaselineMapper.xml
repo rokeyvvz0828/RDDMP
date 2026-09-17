@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementBaselineMapper">
+  <select id="list" resultType="map">SELECT b.id,b.project_id,b.baseline_no,b.baseline_name,b.status,b.difference_count,b.remark,b.created_by,b.created_at,(SELECT COUNT(*) FROM req_baseline_item bi WHERE bi.baseline_id=b.id AND bi.deleted=0) item_count FROM req_baseline b WHERE b.tenant_id=#{tenantId} AND b.project_id=#{projectId} AND b.deleted=0 ORDER BY b.created_at DESC,b.id DESC</select>
+  <select id="findBaseline" resultType="map">SELECT id,project_id,tenant_id FROM req_baseline WHERE tenant_id=#{tenantId} AND id=#{baselineId} AND deleted=0</select>
+  <select id="items" resultType="map">SELECT id,baseline_id,difference_id,snapshot_json,created_at FROM req_baseline_item WHERE tenant_id=#{tenantId} AND baseline_id=#{baselineId} AND deleted=0 ORDER BY id</select>
+  <select id="project" resultType="map">SELECT id,project_code,project_name FROM req_project WHERE tenant_id=#{tenantId} AND id=#{projectId} AND deleted=0</select>
+  <select id="pendingDifferenceCount" resultType="long">SELECT COUNT(*) FROM req_difference WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 AND review_status &lt;&gt; '已评审'</select>
+  <select id="reviewedDifferences" resultType="map">SELECT * FROM req_difference WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 AND review_status='已评审' ORDER BY seq_no,id</select>
+  <select id="baselineCount" resultType="long">SELECT COUNT(*) FROM req_baseline WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0</select>
+  <insert id="insertBaseline">INSERT INTO req_baseline (id,tenant_id,project_id,baseline_no,baseline_name,status,difference_count,remark,created_by,deleted) VALUES (#{p.id},#{p.tenant_id},#{p.project_id},#{p.baseline_no},#{p.baseline_name},#{p.status},#{p.difference_count},#{p.remark},#{p.created_by},#{p.deleted})</insert>
+  <insert id="insertItem">INSERT INTO req_baseline_item (id,tenant_id,baseline_id,difference_id,snapshot_json,deleted) VALUES (#{p.id},#{p.tenant_id},#{p.baseline_id},#{p.difference_id},#{p.snapshot_json},#{p.deleted})</insert>
+  <update id="assignDifference">UPDATE req_difference SET baseline_id=#{baselineId},updated_by=#{operatorId} WHERE tenant_id=#{tenantId} AND id=#{differenceId}</update>
+  <update id="markProjectBaselined">UPDATE req_project SET status='已基线',updated_by=#{operatorId} WHERE tenant_id=#{tenantId} AND id=#{projectId}</update>
+</mapper>

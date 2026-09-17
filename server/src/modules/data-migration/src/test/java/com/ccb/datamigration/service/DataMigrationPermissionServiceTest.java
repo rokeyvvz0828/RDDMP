@@ -42,7 +42,7 @@ class DataMigrationPermissionServiceTest {
     }
 
     private static DataMigrationPermissionService service(StubJdbcTemplate jdbc, StubProjectAccess access) {
-        return new DataMigrationPermissionService(jdbc, access);
+        return new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), access);
     }
 
     private static BusinessException assertFailure(DataMigrationPermissionService service, Long projectId) {

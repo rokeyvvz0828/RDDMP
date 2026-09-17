@@ -16,7 +16,6 @@ import com.ccb.system.model.UserDirectoryPort;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,41 +44,26 @@ public class BusinessDayService {
     private static final AtomicLong IDS = new AtomicLong(System.currentTimeMillis() * 1000);
     private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() { };
 
-    private final JdbcTemplate jdbc;
+    private final BusinessDayRepository repository;
     private final ObjectMapper objectMapper;
     private final UserDirectoryPort userDirectory;
 
     record BatchFields(boolean hasBatch, String type, Time time, String systemsJson, String validationContent) { }
 
-    public BusinessDayService(JdbcTemplate jdbc, ObjectMapper objectMapper, UserDirectoryPort userDirectory) {
-        this.jdbc = jdbc;
+    public BusinessDayService(BusinessDayRepository repository, ObjectMapper objectMapper, UserDirectoryPort userDirectory) {
+        this.repository = repository;
         this.objectMapper = objectMapper;
         this.userDirectory = userDirectory;
     }
 
     // 关键逻辑：所有查询首先绑定认证用户 tenantId，分页条件不得由客户端覆盖租户边界。
     public PageResult<Map<String, Object>> environments(PageQuery query, String keyword, Boolean enabled, AuthUser user) {
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        StringBuilder where = new StringBuilder(" WHERE e.tenant_id = ? AND e.deleted = 0");
-        if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (e.env_code LIKE ? OR e.env_name LIKE ? OR COALESCE(e.purpose, '') LIKE ?)");
-            String like = "%" + keyword.trim() + "%";
-            args.add(like); args.add(like); args.add(like);
-        }
-        if (enabled != null) { where.append(" AND e.enabled = ?"); args.add(enabled ? 1 : 0); }
-        long total = count("tm_test_environment e" + where, args);
-        List<Object> pageArgs = pageArgs(args, query);
-        String select = "SELECT e.id, e.env_code, e.env_name, e.purpose, e.theme, e.sort_no, e.enabled, e.remark, "
-                + "e.created_at, e.updated_at, "
-                + "(SELECT COUNT(*) FROM tm_calendar_schedule s WHERE s.tenant_id=e.tenant_id AND s.env_code=e.env_code AND s.deleted=0) schedule_count, "
-                + "(SELECT COUNT(*) FROM tm_batch_requirement r WHERE r.tenant_id=e.tenant_id AND r.env_code=e.env_code AND r.deleted=0) requirement_count "
-                + "FROM tm_test_environment e" + where + " ORDER BY e.sort_no, e.id DESC LIMIT ?, ?";
-        return new PageResult<>(jdbc.queryForList(select, pageArgs.toArray()), total, query.page(), query.size());
+        Map<String,Object> p=params(user); p.put("keyword", blank(keyword)); p.put("enabled", enabled == null ? null : enabled ? 1 : 0); p.put("offset", (query.page()-1)*query.size()); p.put("size",query.size());
+        return new PageResult<>(repository.environmentPage(p), repository.environmentCount(p), query.page(), query.size());
     }
 
     public List<Map<String, Object>> activeEnvironments(AuthUser user) {
-        return jdbc.queryForList("SELECT id, env_code, env_name, purpose, theme, sort_no FROM tm_test_environment "
-                + "WHERE tenant_id = ? AND deleted = 0 AND enabled = 1 ORDER BY sort_no, id", user.tenantId());
+        return repository.activeEnvironments(params(user));
     }
 
     @Transactional
@@ -87,11 +71,7 @@ public class BusinessDayService {
         String code = envCode(body.get("env_code"));
         requireUniqueEnvironment(code, null, user.tenantId());
         long id = nextId();
-        jdbc.update("INSERT INTO tm_test_environment (id, tenant_id, env_code, env_name, purpose, theme, sort_no, enabled, remark, created_by, updated_by) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, user.tenantId(), code, requiredText(body, "env_name", "环境名称", 128),
-                optionalText(body, "purpose", 255), theme(body.get("theme")), integer(body.get("sort_no"), 0),
-                bool(body.get("enabled"), true) ? 1 : 0, optionalText(body, "remark", 500), user.id(), user.id());
+        repository.insertEnvironment(p("id",id,"tenantId",user.tenantId(),"envCode",code,"envName",requiredText(body,"env_name","环境名称",128),"purpose",optionalText(body,"purpose",255),"theme",theme(body.get("theme")),"sortNo",integer(body.get("sort_no"),0),"enabled",bool(body.get("enabled"),true)?1:0,"remark",optionalText(body,"remark",500),"userId",user.id()));
         audit("ENVIRONMENT", id, "CREATE", Map.of("env_code", code), user);
         return environment(id, user.tenantId());
     }
@@ -103,16 +83,10 @@ public class BusinessDayService {
         String oldCode = String.valueOf(old.get("env_code"));
         String code = envCode(body.get("env_code"));
         requireUniqueEnvironment(code, id, user.tenantId());
-        jdbc.update("UPDATE tm_test_environment SET env_code=?, env_name=?, purpose=?, theme=?, sort_no=?, enabled=?, remark=?, updated_by=? "
-                        + "WHERE id=? AND tenant_id=? AND deleted=0",
-                code, requiredText(body, "env_name", "环境名称", 128), optionalText(body, "purpose", 255),
-                theme(body.get("theme")), integer(body.get("sort_no"), 0), bool(body.get("enabled"), true) ? 1 : 0,
-                optionalText(body, "remark", 500), user.id(), id, user.tenantId());
+        repository.updateEnvironment(p("id",id,"tenantId",user.tenantId(),"envCode",code,"envName",requiredText(body,"env_name","环境名称",128),"purpose",optionalText(body,"purpose",255),"theme",theme(body.get("theme")),"sortNo",integer(body.get("sort_no"),0),"enabled",bool(body.get("enabled"),true)?1:0,"remark",optionalText(body,"remark",500),"userId",user.id()));
         if (!oldCode.equals(code)) {
-            jdbc.update("UPDATE tm_calendar_schedule SET env_code=?, updated_by=? WHERE tenant_id=? AND env_code=? AND deleted=0",
-                    code, user.id(), user.tenantId(), oldCode);
-            jdbc.update("UPDATE tm_batch_requirement SET env_code=?, updated_by=? WHERE tenant_id=? AND env_code=? AND deleted=0",
-                    code, user.id(), user.tenantId(), oldCode);
+            repository.renameSchedules(p("tenantId",user.tenantId(),"envCode",code,"oldEnvCode",oldCode,"userId",user.id()));
+            repository.renameRequirements(p("tenantId",user.tenantId(),"envCode",code,"oldEnvCode",oldCode,"userId",user.id()));
         }
         audit("ENVIRONMENT", id, "UPDATE", Map.of("old_env_code", oldCode, "env_code", code), user);
         return environment(id, user.tenantId());
@@ -123,47 +97,30 @@ public class BusinessDayService {
     public void deleteEnvironment(long id, AuthUser user) {
         Map<String, Object> row = environment(id, user.tenantId());
         String code = String.valueOf(row.get("env_code"));
-        long schedules = count("tm_calendar_schedule WHERE tenant_id=? AND env_code=? AND deleted=0", List.of(user.tenantId(), code));
-        long requirements = count("tm_batch_requirement WHERE tenant_id=? AND env_code=? AND deleted=0", List.of(user.tenantId(), code));
+        long schedules = repository.scheduleReferenceCount(p("tenantId",user.tenantId(),"envCode",code));
+        long requirements = repository.requirementReferenceCount(p("tenantId",user.tenantId(),"envCode",code));
         if (schedules + requirements > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "环境仍被 " + schedules + " 条日历安排和 " + requirements + " 条跑批需求引用");
         }
-        jdbc.update("UPDATE tm_test_environment SET deleted=1, updated_by=? WHERE id=? AND tenant_id=? AND deleted=0", user.id(), id, user.tenantId());
+        repository.deleteEnvironment(p("id",id,"tenantId",user.tenantId(),"userId",user.id()));
         audit("ENVIRONMENT", id, "DELETE", Map.of("env_code", code), user);
     }
 
     public PageResult<Map<String, Object>> schedules(PageQuery query, String keyword, String envCode,
                                                       String dateFrom, String dateTo, Boolean hasBatch,
                                                       String batchType, AuthUser user) {
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        StringBuilder where = new StringBuilder(" WHERE s.tenant_id=? AND s.deleted=0");
-        if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (s.business_date LIKE ? OR COALESCE(s.validation_content,'') LIKE ? OR COALESCE(s.maintainer,'') LIKE ?)");
-            String like = "%" + keyword.trim() + "%"; args.add(like); args.add(like); args.add(like);
-        }
-        if (envCode != null && !envCode.isBlank()) { where.append(" AND s.env_code=?"); args.add(envCode(envCode)); }
-        if (dateFrom != null && !dateFrom.isBlank()) { where.append(" AND s.natural_date>=?"); args.add(Date.valueOf(date(dateFrom, "开始日期"))); }
-        if (dateTo != null && !dateTo.isBlank()) { where.append(" AND s.natural_date<=?"); args.add(Date.valueOf(date(dateTo, "结束日期"))); }
-        if (hasBatch != null) { where.append(" AND s.has_batch=?"); args.add(hasBatch ? 1 : 0); }
-        if (batchType != null && !batchType.isBlank()) { where.append(" AND s.batch_type=?"); args.add(batchType(batchType)); }
-        long total = count("tm_calendar_schedule s" + where, args);
-        List<Object> pageArgs = pageArgs(args, query);
-        List<Map<String, Object>> rows = jdbc.queryForList(scheduleSelect() + where
-                + " ORDER BY s.natural_date DESC, s.id DESC LIMIT ?, ?", pageArgs.toArray());
+        Map<String,Object> p=params(user);p.put("keyword",blank(keyword));p.put("envCode",blank(envCode)==null?null:envCode(envCode));p.put("dateFrom",blank(dateFrom)==null?null:date(dateFrom,"开始日期"));p.put("dateTo",blank(dateTo)==null?null:date(dateTo,"结束日期"));p.put("hasBatch",hasBatch==null?null:hasBatch?1:0);p.put("batchType",blank(batchType)==null?null:batchType(batchType));p.put("offset",(query.page()-1)*query.size());p.put("size",query.size());
+        List<Map<String, Object>> rows = repository.schedulePage(p);
         decorateSystems(rows);
-        return new PageResult<>(rows, total, query.page(), query.size());
+        return new PageResult<>(rows, repository.scheduleCount(p), query.page(), query.size());
     }
 
     public List<Map<String, Object>> overview(String month, String envCode, AuthUser user) {
         YearMonth value;
         try { value = month == null || month.isBlank() ? YearMonth.now() : YearMonth.parse(month); }
         catch (DateTimeParseException exception) { throw bad("月份格式应为 YYYY-MM"); }
-        List<Object> args = new ArrayList<>(List.of(user.tenantId(), Date.valueOf(value.atDay(1)), Date.valueOf(value.atEndOfMonth())));
-        String envFilter = "";
-        if (envCode != null && !envCode.isBlank()) { envFilter = " AND s.env_code=?"; args.add(envCode(envCode)); }
-        List<Map<String, Object>> rows = jdbc.queryForList(scheduleSelect()
-                + " WHERE s.tenant_id=? AND s.deleted=0 AND s.natural_date BETWEEN ? AND ?" + envFilter
-                + " ORDER BY s.natural_date, e.sort_no, s.id", args.toArray());
+        Map<String,Object> p=params(user);p.put("dateFrom",value.atDay(1));p.put("dateTo",value.atEndOfMonth());p.put("envCode",blank(envCode)==null?null:envCode(envCode));
+        List<Map<String, Object>> rows = repository.overview(p);
         decorateSystems(rows);
         return rows;
     }
@@ -186,8 +143,7 @@ public class BusinessDayService {
         String businessDate = businessDate(body.get("business_date"));
         boolean hasBatch = bool(body.get("has_batch"), false);
         BatchFields batch = batchFields(body, hasBatch);
-        List<Map<String, Object>> existing = jdbc.queryForList("SELECT id FROM tm_calendar_schedule WHERE tenant_id=? AND env_code=? AND natural_date=? AND deleted=0",
-                user.tenantId(), code, Date.valueOf(naturalDate));
+        List<Map<String, Object>> existing = repository.scheduleByNaturalKey(p("tenantId",user.tenantId(),"envCode",code,"naturalDate",naturalDate));
         Long id = requestedId;
         boolean overwritten = false;
         if (!existing.isEmpty()) {
@@ -198,15 +154,9 @@ public class BusinessDayService {
         }
         if (id == null) {
             id = nextId();
-            jdbc.update("INSERT INTO tm_calendar_schedule (id,tenant_id,env_code,natural_date,business_date,has_batch,batch_type,batch_time,systems_json,validation_content,maintainer,created_by,updated_by) "
-                            + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    id, user.tenantId(), code, Date.valueOf(naturalDate), businessDate, batch.hasBatch() ? 1 : 0, batch.type(), batch.time(),
-                    batch.systemsJson(), batch.validationContent(), maintainer(body, user), user.id(), user.id());
+            repository.insertSchedule(scheduleParams(id,user,code,naturalDate,businessDate,batch,maintainer(body,user)));
         } else {
-            jdbc.update("UPDATE tm_calendar_schedule SET env_code=?,natural_date=?,business_date=?,has_batch=?,batch_type=?,batch_time=?,systems_json=?,validation_content=?,maintainer=?,updated_by=? "
-                            + "WHERE id=? AND tenant_id=? AND deleted=0",
-                    code, Date.valueOf(naturalDate), businessDate, batch.hasBatch() ? 1 : 0, batch.type(), batch.time(), batch.systemsJson(),
-                    batch.validationContent(), maintainer(body, user), user.id(), id, user.tenantId());
+            repository.updateSchedule(scheduleParams(id,user,code,naturalDate,businessDate,batch,maintainer(body,user)));
         }
         audit("SCHEDULE", id, overwritten ? "OVERWRITE" : action, Map.of("env_code", code, "natural_date", naturalDate.toString()), user);
         Map<String, Object> result = schedule(id, user.tenantId());
@@ -216,7 +166,7 @@ public class BusinessDayService {
 
     @Transactional
     public void deleteSchedule(long id, AuthUser user) {
-        int changed = jdbc.update("UPDATE tm_calendar_schedule SET deleted=1,updated_by=? WHERE id=? AND tenant_id=? AND deleted=0", user.id(), id, user.tenantId());
+        int changed = repository.deleteSchedule(p("id",id,"tenantId",user.tenantId(),"userId",user.id()));
         if (changed == 0) throw notFound("日历安排");
         audit("SCHEDULE", id, "DELETE", Map.of(), user);
     }
@@ -248,21 +198,10 @@ public class BusinessDayService {
 
     public PageResult<Map<String, Object>> requirements(PageQuery query, String keyword, String envCode,
                                                          String naturalDate, String adoption, AuthUser user) {
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        StringBuilder where = new StringBuilder(" WHERE r.tenant_id=? AND r.deleted=0");
-        if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (r.business_date LIKE ? OR COALESCE(r.validation_content,'') LIKE ?)");
-            String like = "%" + keyword.trim() + "%"; args.add(like); args.add(like);
-        }
-        if (envCode != null && !envCode.isBlank()) { where.append(" AND r.env_code=?"); args.add(envCode(envCode)); }
-        if (naturalDate != null && !naturalDate.isBlank()) { where.append(" AND r.natural_date LIKE ?"); args.add(naturalDate.trim() + "%"); }
-        if (adoption != null && !adoption.isBlank()) { where.append(" AND r.adoption=?"); args.add(adoption(adoption)); }
-        long total = count("tm_batch_requirement r" + where, args);
-        List<Object> pageArgs = pageArgs(args, query);
-        List<Map<String, Object>> rows = jdbc.queryForList(requirementSelect() + where
-                + " ORDER BY r.created_at DESC, r.id DESC LIMIT ?, ?", pageArgs.toArray());
+        Map<String,Object> p=params(user);p.put("keyword",blank(keyword));p.put("envCode",blank(envCode)==null?null:envCode(envCode));p.put("naturalDate",blank(naturalDate));p.put("adoption",blank(adoption)==null?null:adoption(adoption));p.put("offset",(query.page()-1)*query.size());p.put("size",query.size());
+        List<Map<String, Object>> rows = repository.requirementPage(p);
         decorateRequirements(rows, user.tenantId());
-        return new PageResult<>(rows, total, query.page(), query.size());
+        return new PageResult<>(rows, repository.requirementCount(p), query.page(), query.size());
     }
 
     @Transactional
@@ -287,15 +226,9 @@ public class BusinessDayService {
         userDirectory.findActive(user.tenantId(), proposerId).orElseThrow(() -> bad("提出人不是当前租户的有效用户"));
         long id = requestedId == null ? nextId() : requestedId;
         if (requestedId == null) {
-            jdbc.update("INSERT INTO tm_batch_requirement (id,tenant_id,env_code,natural_date,business_date,has_batch,batch_type,batch_time,systems_json,validation_content,proposer_id,created_by,updated_by) "
-                            + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    id, user.tenantId(), code, naturalDate, businessDate, 1, batch.type(), batch.time(), batch.systemsJson(),
-                    batch.validationContent(), proposerId, user.id(), user.id());
+            repository.insertRequirement(requirementParams(id,user,code,naturalDate,businessDate,batch,proposerId));
         } else {
-            jdbc.update("UPDATE tm_batch_requirement SET env_code=?,natural_date=?,business_date=?,has_batch=?,batch_type=?,batch_time=?,systems_json=?,validation_content=?,proposer_id=?,updated_by=? "
-                            + "WHERE id=? AND tenant_id=? AND deleted=0",
-                    code, naturalDate, businessDate, 1, batch.type(), batch.time(), batch.systemsJson(),
-                    batch.validationContent(), proposerId, user.id(), id, user.tenantId());
+            repository.updateRequirement(requirementParams(id,user,code,naturalDate,businessDate,batch,proposerId));
         }
         audit("REQUIREMENT", id, action, Map.of("env_code", code, "proposer_id", proposerId), user);
         return requirement(id, user.tenantId());
@@ -306,9 +239,7 @@ public class BusinessDayService {
     public Map<String, Object> reviewRequirement(long id, String value, String comment, AuthUser user) {
         String normalized = adoption(value);
         if ("PENDING".equals(normalized)) throw bad("评审结果只能选择采纳或不采纳");
-        int changed = jdbc.update("UPDATE tm_batch_requirement SET adoption=?,review_comment=?,reviewer_id=?,reviewed_at=CURRENT_TIMESTAMP,updated_by=? "
-                        + "WHERE id=? AND tenant_id=? AND deleted=0",
-                normalized, bounded(comment, 500, "评审意见"), user.id(), user.id(), id, user.tenantId());
+        int changed = repository.reviewRequirement(p("id",id,"tenantId",user.tenantId(),"adoption",normalized,"comment",bounded(comment,500,"评审意见"),"userId",user.id()));
         if (changed == 0) throw notFound("跑批需求");
         audit("REQUIREMENT", id, "REVIEW", Map.of("adoption", normalized), user);
         return requirement(id, user.tenantId());
@@ -316,7 +247,7 @@ public class BusinessDayService {
 
     @Transactional
     public void deleteRequirement(long id, AuthUser user) {
-        int changed = jdbc.update("UPDATE tm_batch_requirement SET deleted=1,updated_by=? WHERE id=? AND tenant_id=? AND deleted=0", user.id(), id, user.tenantId());
+        int changed = repository.deleteRequirement(p("id",id,"tenantId",user.tenantId(),"userId",user.id()));
         if (changed == 0) throw notFound("跑批需求");
         audit("REQUIREMENT", id, "DELETE", Map.of(), user);
     }
@@ -336,33 +267,17 @@ public class BusinessDayService {
     }
 
     private Map<String, Object> environment(long id, long tenantId) {
-        return jdbc.queryForList("SELECT id,env_code,env_name,purpose,theme,sort_no,enabled,remark,created_at,updated_at FROM tm_test_environment WHERE id=? AND tenant_id=? AND deleted=0", id, tenantId)
-                .stream().findFirst().orElseThrow(() -> notFound("测试环境"));
+        Map<String,Object> row=repository.environment(p("id",id,"tenantId",tenantId));if(row==null)throw notFound("测试环境");return row;
     }
 
     private Map<String, Object> schedule(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(scheduleSelect() + " WHERE s.id=? AND s.tenant_id=? AND s.deleted=0", id, tenantId);
-        if (rows.isEmpty()) throw notFound("日历安排");
-        decorateSystems(rows);
-        return rows.get(0);
+        Map<String,Object> row=repository.schedule(p("id",id,"tenantId",tenantId));if(row==null)throw notFound("日历安排");decorateSystems(new ArrayList<>(List.of(row)));return row;
     }
 
     private Map<String, Object> requirement(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(requirementSelect() + " WHERE r.id=? AND r.tenant_id=? AND r.deleted=0", id, tenantId);
-        if (rows.isEmpty()) throw notFound("跑批需求");
-        decorateRequirements(rows, tenantId);
-        return rows.get(0);
+        Map<String,Object> row=repository.requirement(p("id",id,"tenantId",tenantId));if(row==null)throw notFound("跑批需求");decorateRequirements(new ArrayList<>(List.of(row)),tenantId);return row;
     }
 
-    private String scheduleSelect() {
-        return "SELECT s.id,s.env_code,e.env_name,e.theme,s.natural_date,s.business_date,s.has_batch,s.batch_type,s.batch_time,s.systems_json,s.validation_content,s.maintainer,s.created_at,s.updated_at "
-                + "FROM tm_calendar_schedule s LEFT JOIN tm_test_environment e ON e.tenant_id=s.tenant_id AND e.env_code=s.env_code AND e.deleted=0";
-    }
-
-    private String requirementSelect() {
-        return "SELECT r.id,r.env_code,e.env_name,e.theme,r.natural_date,r.business_date,r.has_batch,r.batch_type,r.batch_time,r.systems_json,r.validation_content,r.proposer_id,r.reviewer_id,r.adoption,r.review_comment,r.reviewed_at,r.created_at,r.updated_at "
-                + "FROM tm_batch_requirement r LEFT JOIN tm_test_environment e ON e.tenant_id=r.tenant_id AND e.env_code=r.env_code AND e.deleted=0";
-    }
 
     private void decorateSystems(List<Map<String, Object>> rows) {
         for (Map<String, Object> row : rows) {
@@ -392,31 +307,28 @@ public class BusinessDayService {
     }
 
     private void requireUniqueEnvironment(String code, Long exceptId, long tenantId) {
-        String except = exceptId == null ? "" : " AND id<>?";
-        List<Object> args = new ArrayList<>(List.of(tenantId, code));
-        if (exceptId != null) args.add(exceptId);
-        if (count("tm_test_environment WHERE tenant_id=? AND env_code=? AND deleted=0" + except, args) > 0) {
+        if (repository.uniqueEnvironmentCount(p("tenantId",tenantId,"envCode",code,"exceptId",exceptId)) > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "环境编码已存在");
         }
     }
 
     private String requireActiveEnvironment(Object value, long tenantId) {
         String code = envCode(value);
-        if (count("tm_test_environment WHERE tenant_id=? AND env_code=? AND deleted=0 AND enabled=1", List.of(tenantId, code)) == 0) {
+        if (repository.activeEnvironmentCount(p("tenantId",tenantId,"envCode",code)) == 0) {
             throw bad("测试环境不存在或已停用");
         }
         return code;
     }
 
     private void requireEntity(String table, long id, long tenantId, String label) {
-        if (count(table + " WHERE id=? AND tenant_id=? AND deleted=0", List.of(id, tenantId)) == 0) throw notFound(label);
+        long count = "tm_calendar_schedule".equals(table) ? repository.scheduleExists(p("id",id,"tenantId",tenantId)) : repository.requirementExists(p("id",id,"tenantId",tenantId));
+        if (count == 0) throw notFound(label);
     }
 
     // 关键逻辑：每次写操作在同一业务事务内写入模块自有审计表，失败时业务写入也随事务回滚。
     private void audit(String entityType, long entityId, String action, Map<String, Object> detail, AuthUser user) {
         try {
-            jdbc.update("INSERT INTO tm_business_day_audit (id,tenant_id,entity_type,entity_id,action_code,operator_id,detail_json) VALUES (?,?,?,?,?,?,?)",
-                    nextId(), user.tenantId(), entityType, entityId, action, user.id(), objectMapper.writeValueAsString(detail));
+            repository.insertAudit(p("id",nextId(),"tenantId",user.tenantId(),"entityType",entityType,"entityId",entityId,"action",action,"userId",user.id(),"detailJson",objectMapper.writeValueAsString(detail)));
         } catch (JsonProcessingException exception) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "审计记录序列化失败");
         }
@@ -550,17 +462,11 @@ public class BusinessDayService {
         return value instanceof Number number ? number.longValue() : null;
     }
 
-    private long count(String fromWhere, List<Object> args) {
-        Long value = jdbc.queryForObject("SELECT COUNT(*) FROM " + fromWhere, Long.class, args.toArray());
-        return value == null ? 0 : value;
-    }
-
-    private List<Object> pageArgs(List<Object> args, PageQuery query) {
-        List<Object> result = new ArrayList<>(args);
-        result.add((query.page() - 1) * query.size());
-        result.add(query.size());
-        return result;
-    }
+    private Map<String,Object> params(AuthUser user){return p("tenantId",user.tenantId());}
+    private Map<String,Object> scheduleParams(long id,AuthUser user,String envCode,LocalDate naturalDate,String businessDate,BatchFields batch,String maintainer){return p("id",id,"tenantId",user.tenantId(),"envCode",envCode,"naturalDate",naturalDate,"businessDate",businessDate,"hasBatch",batch.hasBatch()?1:0,"batchType",batch.type(),"batchTime",batch.time(),"systemsJson",batch.systemsJson(),"validationContent",batch.validationContent(),"maintainer",maintainer,"userId",user.id());}
+    private Map<String,Object> requirementParams(long id,AuthUser user,String envCode,String naturalDate,String businessDate,BatchFields batch,long proposerId){return p("id",id,"tenantId",user.tenantId(),"envCode",envCode,"naturalDate",naturalDate,"businessDate",businessDate,"batchType",batch.type(),"batchTime",batch.time(),"systemsJson",batch.systemsJson(),"validationContent",batch.validationContent(),"proposerId",proposerId,"userId",user.id());}
+    private static Map<String,Object> p(Object... values){Map<String,Object> result=new LinkedHashMap<>();for(int i=0;i<values.length;i+=2)result.put((String)values[i],values[i+1]);return result;}
+    private static String blank(String value){return value==null||value.isBlank()?null:value.trim();}
 
     private long nextId() {
         long floor = System.currentTimeMillis() * 1000 + ThreadLocalRandom.current().nextInt(1000);

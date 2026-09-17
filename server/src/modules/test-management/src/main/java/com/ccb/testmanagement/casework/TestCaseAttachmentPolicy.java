@@ -11,7 +11,7 @@ package com.ccb.testmanagement.casework;
 import com.ccb.attachment.integration.AttachmentAccessPolicy;
 import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.ccb.testmanagement.persistence.TestAttachmentAccessMapper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -19,14 +19,14 @@ import org.springframework.stereotype.Component;
 /** 案例附件仅允许当前租户中拥有对应大类案例阅读权限的用户访问。 */
 @Component
 public class TestCaseAttachmentPolicy implements AttachmentAccessPolicy {
-    private final JdbcTemplate jdbc;
-    public TestCaseAttachmentPolicy(JdbcTemplate jdbc) { this.jdbc=jdbc; }
+    private final TestAttachmentAccessMapper mapper;
+    public TestCaseAttachmentPolicy(TestAttachmentAccessMapper mapper) { this.mapper=mapper; }
     @Override public String businessType() { return TestCaseService.BUSINESS_TYPE; }
     @Override public boolean canAccess(AuthUser user,String key,AttachmentOperation operation) {
         if(user==null||!user.enabled()||key==null)return false;
         try { long caseId=Long.parseLong(key); ListRow row=row(caseId,user.tenantId()); return row != null && authority("test-management:"+row.domain+":cases"); } catch(Exception ignored){return false;}
     }
-    private ListRow row(long id,long tenant){return jdbc.query("SELECT test_domain FROM tm_test_case WHERE id=? AND tenant_id=? AND deleted=0",rs->rs.next()?new ListRow(rs.getString(1)):null,id,tenant);}
+    private ListRow row(long id,long tenant){String domain=mapper.caseDomain(java.util.Map.of("id",id,"tenantId",tenant));return domain==null?null:new ListRow(domain);}
     private boolean authority(String expected){Authentication a=SecurityContextHolder.getContext().getAuthentication();return a!=null&&a.getAuthorities()!=null&&a.getAuthorities().stream().anyMatch(x->expected.equals(x.getAuthority()));}
     private record ListRow(String domain) {}
 }

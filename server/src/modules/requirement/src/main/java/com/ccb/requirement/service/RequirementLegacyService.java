@@ -6,7 +6,6 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +17,6 @@ import java.util.Map;
 
 import com.ccb.requirement.support.RequirementEnums;
 import com.ccb.requirement.support.RequirementIds;
-import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
 
 /**
@@ -48,69 +46,39 @@ public class RequirementLegacyService {
             "ba_review_date", "workload_date", "finance_project_date", "soft_submit_date",
             "soft_review_date", "planned_launch_date", "actual_launch_date");
 
-    private static final String SELECT_COLUMNS = """
-            id, project_id, legacy_doc_name, requirement_no, requirement_name, content_summary, propose_dept,
-            proposer, monshang_ba, monshang_architect, expected_launch_date, regulator,
-            regulation_doc_no, regulation_desc, regulation_launch_date, requirement_received_date,
-            requirement_type, regulation_category, business_group, sub_group, jinke_contact,
-            need_jinke_arch_decision, jinke_architect, unified_managed, ba_review_date,
-            workload_date, finance_project_date, soft_doc_name, owner_conglomerate, owner_system,
-            owner_contact, involve_cooperation, coord_conglomerate, coord_system, soft_submit_date,
-            soft_review_date, planned_launch_date, actual_launch_date, launch_mode,
-            requirement_status, remark, change_involved, change_info, change_review_conclusion,
-            change_conclusion_status, change_remark, not_project_developed, version_no,
-            workload_change, current_flow_user_id, current_flow_user_name, created_by, current_stage,
-            propose_stage_status, docking_stage_status, workload_stage_status, project_stage_status,
-            soft_stage_status, launch_stage_status, source, created_at, updated_at
-            """;
-
-    private final JdbcTemplate jdbc;
+    private final RequirementLegacyRepository repository;
     private final RequirementChangeLogService changeLog;
     private final RequirementSecurityService security;
 
-    public RequirementLegacyService(JdbcTemplate jdbc, RequirementChangeLogService changeLog,
+    public RequirementLegacyService(RequirementLegacyRepository repository, RequirementChangeLogService changeLog,
                                     RequirementSecurityService security) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.changeLog = changeLog;
         this.security = security;
     }
 
     public PageResult<Map<String, Object>> list(Long projectId, String businessGroup, String stage, String stageStatus,
                                                 String keyword, PageQuery query, AuthUser user) {
-        StringBuilder where = new StringBuilder(" WHERE tenant_id = ? AND deleted = 0");
-        List<Object> params = new ArrayList<>(List.of(user.tenantId()));
-        if (projectId != null) {
-            // 存量需求与左上角项目关联：直接按 project_id 归属
-            where.append(" AND project_id = ?");
-            params.add(projectId);
-        }
+        Map<String, Object> filter = new LinkedHashMap<>();
+        filter.put("tenantId", user.tenantId()); filter.put("projectId", projectId);
         if (businessGroup != null && !businessGroup.isBlank()) {
-            where.append(" AND business_group = ?");
-            params.add(businessGroup);
+            filter.put("businessGroup", businessGroup);
         }
         if (stage != null && !stage.isBlank()) {
             if (!RequirementEnums.LEGACY_STAGES.contains(stage)) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "阶段不在受控枚举内：" + stage);
             }
-            where.append(" AND current_stage = ?");
-            params.add(stage);
+            filter.put("stage", stage);
         }
         if (stageStatus != null && !stageStatus.isBlank() && stage != null && !stage.isBlank()) {
-            where.append(" AND ").append(RequirementSql.quote(RequirementEnums.LEGACY_STAGE_COLUMNS.get(stage))).append(" = ?");
-            params.add(stageStatus);
+            filter.put("stageStatus", stageStatus);
         }
         if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (requirement_name LIKE ? OR requirement_no LIKE ?)");
-            params.add("%" + keyword + "%");
-            params.add("%" + keyword + "%");
+            filter.put("keyword", keyword);
         }
-        Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM req_legacy_requirement" + where, Long.class, params.toArray());
-        params.add(query.size());
-        params.add((query.page() - 1) * query.size());
-        List<Map<String, Object>> records = jdbc.queryForList(
-                "SELECT " + SELECT_COLUMNS + " FROM req_legacy_requirement" + where
-                        + " ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?", params.toArray());
+        filter.put("size", query.size()); filter.put("offset", (query.page() - 1) * query.size());
+        long total = repository.count(filter);
+        List<Map<String, Object>> records = repository.page(filter);
         Map<Long, List<Map<String, Object>>> itemsByReq = loadSystemItemsByRequirements(records, user);
         boolean admin = security.isAdmin(user);
         for (Map<String, Object> record : records) {
@@ -118,7 +86,7 @@ public class RequirementLegacyService {
             record.put("system_items", itemsByReq.getOrDefault(reqId, List.of()));
             record.put("can_edit", security.canEditLegacy(user, record, admin));
         }
-        return new PageResult<>(records, total == null ? 0 : total, query.page(), query.size());
+        return new PageResult<>(records, total, query.page(), query.size());
     }
 
     public Map<String, Object> get(long id, AuthUser user) {
@@ -160,7 +128,7 @@ public class RequirementLegacyService {
         values.putIfAbsent("version_no", "1.0");
         values.put("created_by", user.id());
         values.put("deleted", 0);
-        RequirementSql.insert(jdbc, "req_legacy_requirement", values);
+        repository.insert(values);
         saveSystemItems(id, body, user);
         changeLog.recordCreate("LEGACY_REQUIREMENT", id, values, user, "ONLINE");
         Map<String, Object> created = get(id, user);
@@ -180,7 +148,7 @@ public class RequirementLegacyService {
             merged.putAll(values);
             validateCoreFields(merged);
             values.put("updated_by", user.id());
-            RequirementSql.update(jdbc, "req_legacy_requirement", id, user.tenantId(), values);
+            repository.update(values);
         }
         if (body.containsKey("system_items")) {
             saveSystemItems(id, body, user);
@@ -194,27 +162,8 @@ public class RequirementLegacyService {
     public void delete(long id, AuthUser user) {
         Map<String, Object> row = row(id, user);
         security.requireLegacyEditable(user, row);
-        jdbc.update("UPDATE req_legacy_requirement SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                user.id(), user.tenantId(), id);
-        jdbc.update("UPDATE req_legacy_system_item SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
-        jdbc.update("UPDATE req_flow_log SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
-        jdbc.update("""
-                UPDATE req_legacy_system_member SET deleted = 1
-                WHERE tenant_id = ? AND system_item_id IN (
-                    SELECT id FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id = ?)
-                """, user.tenantId(), user.tenantId(), id);
-        jdbc.update("UPDATE req_legacy_member SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
-        jdbc.update("UPDATE req_requirement_version SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
-        jdbc.update("UPDATE req_workload SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
-        jdbc.update("UPDATE req_soft_doc SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
-        jdbc.update("UPDATE req_coordination_item SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), id);
+        repository.softDelete(user.tenantId(), id, user.id());
+        repository.deleteChildren(user.tenantId(), id);
         changeLog.record("LEGACY_REQUIREMENT", id, "DELETE", "deleted", "0", "1", user, "ONLINE");
     }
 
@@ -247,15 +196,12 @@ public class RequirementLegacyService {
         String oldRequirementStatus = row.get("requirement_status") == null ? null : String.valueOf(row.get("requirement_status"));
         String newRequirementStatus = RequirementEnums.LEGACY_STAGE_ACTION_TO_REQ_STATUS.get(stage + ":" + action);
         if (newRequirementStatus == null) newRequirementStatus = oldRequirementStatus;
-        jdbc.update("UPDATE req_legacy_requirement SET " + RequirementSql.quote(column)
-                        + " = ?, current_stage = ?, requirement_status = ?, workflow_instance_id = NULL, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                toStatus, stage, newRequirementStatus, user.id(), user.tenantId(), id);
+        Map<String, Object> transition = new LinkedHashMap<>();
+        transition.put("tenantId", user.tenantId()); transition.put("id", id); transition.put("stage", stage);
+        transition.put("toStatus", toStatus); transition.put("requirementStatus", newRequirementStatus); transition.put("operatorId", user.id());
+        repository.transitionStage(transition);
         long logId = RequirementIds.next();
-        jdbc.update("""
-                INSERT INTO req_stage_log (id, tenant_id, requirement_id, from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, approval_result, workflow_instance_id, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, logId, user.tenantId(), id, oldStage, stage, fromStatus, toStatus,
-                user.id(), user.displayName(), comment == null ? "" : comment, "MANUAL", null);
+        Map<String, Object> stageLog = new LinkedHashMap<>(); stageLog.put("id", logId); stageLog.put("tenant_id", user.tenantId()); stageLog.put("requirement_id", id); stageLog.put("from_stage", oldStage); stageLog.put("to_stage", stage); stageLog.put("from_status", fromStatus); stageLog.put("to_status", toStatus); stageLog.put("operator_id", user.id()); stageLog.put("operator_name", user.displayName()); stageLog.put("comment", comment == null ? "" : comment); stageLog.put("approval_result", "MANUAL"); stageLog.put("workflow_instance_id", null); repository.insertStageLog(stageLog);
         changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", column, fromStatus, toStatus, user, "ONLINE");
         if (newRequirementStatus != null && (oldRequirementStatus == null || !oldRequirementStatus.equals(newRequirementStatus))) {
             changeLog.record("LEGACY_REQUIREMENT", id, "STAGE_TRANSITION", "requirement_status",
@@ -269,11 +215,7 @@ public class RequirementLegacyService {
 
     public List<Map<String, Object>> stageLogs(long id, AuthUser user) {
         get(id, user);
-        return jdbc.queryForList("""
-                SELECT from_stage, to_stage, from_status, to_status, operator_id, operator_name, comment, approval_result, workflow_instance_id, created_at
-                FROM req_stage_log WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
-                ORDER BY created_at DESC, id DESC
-                """, user.tenantId(), id);
+        return repository.stageLogs(user.tenantId(), id);
     }
 
     public List<Map<String, Object>> changes(long id, AuthUser user) {
@@ -285,13 +227,7 @@ public class RequirementLegacyService {
 
     public List<Map<String, Object>> members(long id, AuthUser user) {
         get(id, user);
-        return jdbc.queryForList("""
-                SELECT lm.id, lm.requirement_id, lm.user_id, lm.member_role, u.username, u.display_name
-                FROM req_legacy_member lm
-                LEFT JOIN sys_user u ON u.id = lm.user_id AND u.tenant_id = lm.tenant_id
-                WHERE lm.tenant_id = ? AND lm.requirement_id = ? AND lm.deleted = 0
-                ORDER BY lm.created_at, lm.id
-                """, user.tenantId(), id);
+        return repository.members(user.tenantId(), id);
     }
 
     @Transactional
@@ -303,56 +239,37 @@ public class RequirementLegacyService {
         if (userId <= 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "成员用户不能为空");
         }
-        Integer userCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                Integer.class, user.tenantId(), userId);
-        if (userCount == null || userCount == 0) {
+        if (repository.userCount(user.tenantId(), userId) == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "成员用户不存在");
         }
-        Integer duplicate = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM req_legacy_member WHERE tenant_id = ? AND requirement_id = ? AND user_id = ? AND deleted = 0",
-                Integer.class, user.tenantId(), id, userId);
-        if (duplicate != null && duplicate > 0) {
+        if (repository.legacyMemberCount(user.tenantId(), id, userId) > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "该用户已是需求成员");
         }
-        List<String> names = jdbc.queryForList(
-                "SELECT display_name FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                String.class, user.tenantId(), userId);
         long memberId = RequirementIds.next();
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("id", memberId);
         values.put("tenant_id", user.tenantId());
         values.put("requirement_id", id);
         values.put("user_id", userId);
-        values.put("user_name", names.isEmpty() ? null : names.get(0));
+        values.put("user_name", repository.userName(user.tenantId(), userId));
         values.put("member_role", role == null || role.isBlank() ? "MEMBER" : role);
         values.put("created_by", user.id());
         values.put("deleted", 0);
-        RequirementSql.insert(jdbc, "req_legacy_member", values);
-        return jdbc.queryForMap("""
-                SELECT lm.id, lm.requirement_id, lm.user_id, lm.member_role, u.username, u.display_name
-                FROM req_legacy_member lm
-                LEFT JOIN sys_user u ON u.id = lm.user_id AND u.tenant_id = lm.tenant_id
-                WHERE lm.tenant_id = ? AND lm.id = ?
-                """, user.tenantId(), memberId);
+        repository.insertMember(values);
+        return repository.member(user.tenantId(), memberId);
     }
 
     @Transactional
     public void removeMember(long memberId, AuthUser user) {
         security.requireLegacyMemberManage(user);
-        jdbc.update("UPDATE req_legacy_member SET deleted = 1 WHERE tenant_id = ? AND id = ?",
-                user.tenantId(), memberId);
+        repository.deleteMember(user.tenantId(), memberId);
     }
 
     // ---------------- 系统子表 ----------------
 
     public List<Map<String, Object>> systemItems(long id, AuthUser user) {
         requireAccessById(id, user);
-        List<Map<String, Object>> items = jdbc.queryForList("""
-                SELECT id, system_role, system_code, system_name, owner_user_id, owner_user_name, remark, created_at
-                FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
-                ORDER BY FIELD(system_role, '主责', '协同'), id
-                """, user.tenantId(), id);
+        List<Map<String, Object>> items = repository.systemItems(user.tenantId(), id);
         if (!items.isEmpty()) {
             Map<Long, List<Map<String, Object>>> membersByItem = loadMembersByItems(items, user.tenantId());
             for (Map<String, Object> item : items) {
@@ -368,18 +285,11 @@ public class RequirementLegacyService {
         if (records.isEmpty()) {
             return result;
         }
-        List<Object> params = new ArrayList<>(List.of(user.tenantId()));
-        StringBuilder in = new StringBuilder(" (");
+        List<Long> ids = new ArrayList<>();
         for (Map<String, Object> record : records) {
-            if (in.length() > 2) in.append(", ");
-            in.append("?");
-            params.add(((Number) record.get("id")).longValue());
+            ids.add(((Number) record.get("id")).longValue());
         }
-        in.append(")");
-        List<Map<String, Object>> items = jdbc.queryForList("""
-                SELECT requirement_id, system_role, system_code, system_name, owner_user_id, owner_user_name
-                FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id IN
-                """ + in + " AND deleted = 0 ORDER BY id", params.toArray());
+        List<Map<String, Object>> items = repository.systemItemsForRequirements(user.tenantId(), ids);
         for (Map<String, Object> item : items) {
             result.computeIfAbsent(((Number) item.get("requirement_id")).longValue(),
                     key -> new ArrayList<>()).add(item);
@@ -392,18 +302,11 @@ public class RequirementLegacyService {
         if (items.isEmpty()) {
             return result;
         }
-        List<Object> params = new ArrayList<>(List.of(tenantId));
-        StringBuilder in = new StringBuilder(" (");
+        List<Long> ids = new ArrayList<>();
         for (Map<String, Object> item : items) {
-            if (in.length() > 2) in.append(", ");
-            in.append("?");
-            params.add(((Number) item.get("id")).longValue());
+            ids.add(((Number) item.get("id")).longValue());
         }
-        in.append(")");
-        List<Map<String, Object>> members = jdbc.queryForList("""
-                SELECT system_item_id, user_id, user_name
-                FROM req_legacy_system_member WHERE tenant_id = ? AND system_item_id IN
-                """ + in + " AND deleted = 0 ORDER BY id", params.toArray());
+        List<Map<String, Object>> members = repository.systemMembersForItems(tenantId, ids);
         for (Map<String, Object> member : members) {
             result.computeIfAbsent(((Number) member.get("system_item_id")).longValue(),
                     key -> new ArrayList<>()).add(member);
@@ -417,13 +320,7 @@ public class RequirementLegacyService {
         if (!(raw instanceof List<?> list)) {
             return;
         }
-        jdbc.update("UPDATE req_legacy_system_item SET deleted = 1 WHERE tenant_id = ? AND requirement_id = ?",
-                user.tenantId(), requirementId);
-        jdbc.update("""
-                UPDATE req_legacy_system_member SET deleted = 1
-                WHERE tenant_id = ? AND system_item_id IN (
-                    SELECT id FROM req_legacy_system_item WHERE tenant_id = ? AND requirement_id = ?)
-                """, user.tenantId(), user.tenantId(), requirementId);
+        repository.replaceSystemItems(user.tenantId(), requirementId);
         boolean hasOwner = false;
         for (Object o : list) {
             if (!(o instanceof Map<?, ?> m)) {
@@ -447,12 +344,7 @@ public class RequirementLegacyService {
             Long ownerUserId = ownerIdRaw == null || String.valueOf(ownerIdRaw).isBlank()
                     ? null : Long.parseLong(String.valueOf(ownerIdRaw));
             long itemId = RequirementIds.next();
-            jdbc.update("""
-                    INSERT INTO req_legacy_system_item (id, tenant_id, requirement_id, system_role, system_code, system_name, owner_user_id, owner_user_name, remark, created_by, deleted)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                    """, itemId, user.tenantId(), requirementId, role, code, name,
-                    ownerUserId, RequirementValues.text(item, "owner_user_name"),
-                    RequirementValues.text(item, "remark"), user.id());
+            Map<String, Object> value = new LinkedHashMap<>(); value.put("id", itemId); value.put("tenant_id", user.tenantId()); value.put("requirement_id", requirementId); value.put("system_role", role); value.put("system_code", code); value.put("system_name", name); value.put("owner_user_id", ownerUserId); value.put("owner_user_name", RequirementValues.text(item, "owner_user_name")); value.put("remark", RequirementValues.text(item, "remark")); value.put("created_by", user.id()); repository.insertSystemItem(value);
             saveSystemMembers(itemId, item.get("members"), user);
         }
         if (!hasOwner) {
@@ -478,46 +370,32 @@ public class RequirementLegacyService {
                 memberUserId = Long.parseLong(String.valueOf(m));
             }
             String userName = lookupUserName(memberUserId, user.tenantId());
-            jdbc.update("""
-                    INSERT INTO req_legacy_system_member (id, tenant_id, system_item_id, user_id, user_name, created_by, deleted)
-                    VALUES (?, ?, ?, ?, ?, ?, 0)
-                    ON DUPLICATE KEY UPDATE deleted = 0, user_name = VALUES(user_name)
-                    """, RequirementIds.next(), user.tenantId(), systemItemId, memberUserId, userName, user.id());
+            Map<String, Object> value = new LinkedHashMap<>(); value.put("id", RequirementIds.next()); value.put("tenant_id", user.tenantId()); value.put("system_item_id", systemItemId); value.put("user_id", memberUserId); value.put("user_name", userName); value.put("created_by", user.id()); repository.upsertSystemMember(value);
         }
     }
 
     private String lookupUserName(long userId, long tenantId) {
-        List<String> names = jdbc.queryForList(
-                "SELECT display_name FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                String.class, tenantId, userId);
-        return names.isEmpty() ? null : names.get(0);
+        return repository.userName(tenantId, userId);
     }
 
     // ---------------- 整条需求流转 ----------------
 
     public List<Map<String, Object>> flowLogs(long id, AuthUser user) {
         requireAccessById(id, user);
-        return jdbc.queryForList("""
-                SELECT action, from_user_id, from_user_name, to_user_id, to_user_name, comment, created_at
-                FROM req_flow_log WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
-                ORDER BY created_at DESC, id DESC
-                """, user.tenantId(), id);
+        return repository.flowLogs(user.tenantId(), id);
     }
 
     @Transactional
     public Map<String, Object> sendFlow(long id, long toUserId, String comment, AuthUser user) {
         Map<String, Object> row = row(id, user);
         security.requireLegacyEditable(user, row);
-        List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT id, display_name FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0 AND status = 1",
-                user.tenantId(), toUserId);
-        if (users.isEmpty()) {
+        Map<String, Object> target = repository.activeUser(user.tenantId(), toUserId);
+        if (target == null || target.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "流转目标用户不存在或已停用");
         }
-        String targetName = users.get(0).get("display_name") == null ? "" : String.valueOf(users.get(0).get("display_name"));
+        String targetName = target.get("display_name") == null ? "" : String.valueOf(target.get("display_name"));
         Object oldAssignee = row.get("current_flow_user_id");
-        jdbc.update("UPDATE req_legacy_requirement SET current_flow_user_id = ?, current_flow_user_name = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                toUserId, targetName, user.id(), user.tenantId(), id);
+        repository.updateFlow(user.tenantId(), id, toUserId, targetName, user.id());
         insertFlowLog(id, "SEND", user, toUserId, targetName, comment, user.tenantId());
         changeLog.record("LEGACY_REQUIREMENT", id, "FLOW_SEND", "current_flow_user_id",
                 String.valueOf(oldAssignee), String.valueOf(toUserId), user, "ONLINE");
@@ -535,15 +413,12 @@ public class RequirementLegacyService {
         // 回传给最近一次 SEND 的发起人（无则清空）
         Long backUserId = null;
         String backUserName = null;
-        List<Map<String, Object>> sends = jdbc.queryForList(
-                "SELECT from_user_id, from_user_name FROM req_flow_log WHERE tenant_id = ? AND requirement_id = ? AND action = 'SEND' AND deleted = 0 ORDER BY id DESC LIMIT 1",
-                user.tenantId(), id);
-        if (!sends.isEmpty() && sends.get(0).get("from_user_id") != null) {
-            backUserId = ((Number) sends.get(0).get("from_user_id")).longValue();
-            backUserName = sends.get(0).get("from_user_name") == null ? null : String.valueOf(sends.get(0).get("from_user_name"));
+        Map<String, Object> sender = repository.latestSender(user.tenantId(), id);
+        if (sender != null && sender.get("from_user_id") != null) {
+            backUserId = ((Number) sender.get("from_user_id")).longValue();
+            backUserName = sender.get("from_user_name") == null ? null : String.valueOf(sender.get("from_user_name"));
         }
-        jdbc.update("UPDATE req_legacy_requirement SET current_flow_user_id = ?, current_flow_user_name = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                backUserId, backUserName, user.id(), user.tenantId(), id);
+        repository.updateFlow(user.tenantId(), id, backUserId, backUserName, user.id());
         insertFlowLog(id, "RETURN", user, backUserId, backUserName, comment, user.tenantId());
         changeLog.record("LEGACY_REQUIREMENT", id, "FLOW_RETURN", "current_flow_user_id",
                 String.valueOf(current), String.valueOf(backUserId), user, "ONLINE");
@@ -557,22 +432,14 @@ public class RequirementLegacyService {
 
     private void insertFlowLog(long requirementId, String action, AuthUser user,
                                Long toUserId, String toUserName, String comment, long tenantId) {
-        jdbc.update("""
-                INSERT INTO req_flow_log (id, tenant_id, requirement_id, action, from_user_id, from_user_name, to_user_id, to_user_name, comment, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, RequirementIds.next(), tenantId, requirementId, action,
-                user.id(), user.displayName(), toUserId, toUserName, comment == null ? "" : comment);
+        Map<String, Object> value = new LinkedHashMap<>(); value.put("id", RequirementIds.next()); value.put("tenant_id", tenantId); value.put("requirement_id", requirementId); value.put("action", action); value.put("from_user_id", user.id()); value.put("from_user_name", user.displayName()); value.put("to_user_id", toUserId); value.put("to_user_name", toUserName); value.put("comment", comment == null ? "" : comment); repository.insertFlowLog(value);
     }
 
     // ---------------- 版本历史 ----------------
 
     public List<Map<String, Object>> versions(long id, AuthUser user) {
         requireAccessById(id, user);
-        return jdbc.queryForList("""
-                SELECT version_no, change_summary, snapshot_json, created_by, created_at
-                FROM req_requirement_version WHERE tenant_id = ? AND requirement_id = ? AND deleted = 0
-                ORDER BY version_no DESC, id DESC
-                """, user.tenantId(), id);
+        return repository.versions(user.tenantId(), id);
     }
 
     /** 需求变更：保存变更字段；涉及变更时版本递增并写版本快照（历史版本保留）。 */
@@ -593,7 +460,7 @@ public class RequirementLegacyService {
         RequirementValues.requireOption("changeConclusionStatuses", RequirementValues.text(values, "change_conclusion_status"));
         if (!values.isEmpty()) {
             values.put("updated_by", user.id());
-            RequirementSql.update(jdbc, "req_legacy_requirement", id, user.tenantId(), values);
+            repository.update(values);
         }
         Map<String, Object> after = row(id, user);
         changeLog.recordFields("LEGACY_REQUIREMENT", id, "CHANGE", before, after, user, "ONLINE");
@@ -601,8 +468,7 @@ public class RequirementLegacyService {
             String currentVersion = String.valueOf(after.get("version_no") == null ? "1.0" : after.get("version_no"));
             String next = nextVersion(currentVersion);
             if (!next.equals(currentVersion)) {
-                jdbc.update("UPDATE req_legacy_requirement SET version_no = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                        next, user.id(), user.tenantId(), id);
+                repository.updateVersion(user.tenantId(), id, next, user.id());
             }
             String summary = after.get("change_info") == null ? "" : String.valueOf(after.get("change_info"));
             writeVersionSnapshot(id, next, summary, after, user);
@@ -624,12 +490,7 @@ public class RequirementLegacyService {
                                       Map<String, Object> row, AuthUser user) {
         try {
             String snapshot = new ObjectMapper().writeValueAsString(row);
-            jdbc.update("""
-                    INSERT INTO req_requirement_version (id, tenant_id, requirement_id, version_no, change_summary, snapshot_json, created_by, deleted)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-                    ON DUPLICATE KEY UPDATE change_summary = VALUES(change_summary), snapshot_json = VALUES(snapshot_json)
-                    """, RequirementIds.next(), user.tenantId(), id, versionNo,
-                    summary == null ? "" : summary, snapshot, user.id());
+            Map<String, Object> value = new LinkedHashMap<>(); value.put("id", RequirementIds.next()); value.put("tenant_id", user.tenantId()); value.put("requirement_id", id); value.put("version_no", versionNo); value.put("change_summary", summary == null ? "" : summary); value.put("snapshot_json", snapshot); value.put("created_by", user.id()); repository.upsertVersion(value);
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "版本快照保存失败：" + e.getMessage());
         }
@@ -646,22 +507,17 @@ public class RequirementLegacyService {
     }
 
     private void requireAccessById(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                user.tenantId(), id);
-        if (rows.isEmpty()) {
+        if (!repository.exists(user.tenantId(), id)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
         }
     }
 
     Map<String, Object> row(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT " + SELECT_COLUMNS + " FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                user.tenantId(), id);
-        if (rows.isEmpty()) {
+        Map<String, Object> row = repository.find(user.tenantId(), id);
+        if (row == null || row.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
         }
-        return rows.get(0);
+        return row;
     }
 
     private void validateCoreFields(Map<String, Object> row) {

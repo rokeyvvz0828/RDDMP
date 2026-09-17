@@ -1,0 +1,2521 @@
+{
+  "schema_version": 5,
+  "revision": 29,
+  "created_at": "2026-09-11T08:42:59+00:00",
+  "updated_at": "2026-09-11T09:52:34+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed this remaining optimization and authorized all subsequent confirmations.；计划确认=User authorized automatic subsequent confirmations.",
+      "recorded_at": "2026-09-11T08:42:59+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "All five must requirements are measurable and have no blocking unknowns",
+      "recorded_at": "2026-09-11T08:44:13+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All requirements have concrete sensors and authorized actuators",
+      "recorded_at": "2026-09-11T08:45:35+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Authorized controlled plan is ready",
+      "recorded_at": "2026-09-11T08:46:48+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T3 execution reports recorded and outputs are measurable",
+      "recorded_at": "2026-09-11T09:48:21+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "All T1-T3 observations, three samples and verified task evidence are recorded",
+      "recorded_at": "2026-09-11T09:50:40+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Gate passed with three zero-severity samples and all tasks verified",
+      "recorded_at": "2026-09-11T09:52:34+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed this remaining optimization and authorized all subsequent confirmations.；计划确认=User authorized automatic subsequent confirmations.",
+        "recorded_at": "2026-09-11T08:42:59+00:00",
+        "data": {
+          "objective": "Provide bounded seek reads for workflow inbox, audit actions, and instance history without changing existing administrative page pagination or authorization.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Three high-growth workflow reads must return cursor pages ordered by created_at and id without OFFSET or COUNT.",
+              "acceptance": [
+                "SQL has seek predicate",
+                "fetch is size plus one",
+                "response contains cursor state"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "deep page uses LIMIT offset,size"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Continuation pages must be stable across equal timestamps and must not repeat or skip records under a fixed dataset.",
+              "acceptance": [
+                "two-page test covers same timestamp IDs"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "same timestamp causes duplicate record"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Seek reads must preserve current authentication, tenant isolation, project range, and instance visibility rules.",
+              "acceptance": [
+                "service reuses existing range builders",
+                "tenant and project tests pass"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "cursor carries a foreign tenant position"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "The database must have append-only indexes aligned to seek filtering and sorting.",
+              "acceptance": [
+                "V204 applies",
+                "three composite indexes exist"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "migration edits a released version"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Existing page-based workflow endpoints and frontend consumers must remain compatible.",
+              "acceptance": [
+                "existing endpoint tests remain green",
+                "no old route or response edit"
+              ],
+              "priority": "must",
+              "source": "repository compatibility requirement",
+              "counterexample": [
+                "PageResult changes shape"
+              ]
+            }
+          ],
+          "invariants": [
+            "No public endpoint removal",
+            "All SQL preserves tenant predicate",
+            "Cursor contains no business or identity data",
+            "Flyway is append-only"
+          ],
+          "constraints": [
+            "Java 17",
+            "MySQL 8.4",
+            "No production access",
+            "No frontend changes in this task"
+          ],
+          "non_goals": [
+            "Migrate definitions pagination",
+            "Update workflow UI",
+            "Change Flowable ACT tables",
+            "Replace all OFFSET queries"
+          ],
+          "assumptions": [
+            {
+              "text": "created_at plus id is immutable after insert for all three sources.",
+              "basis": "schema and current ORDER BY",
+              "falsifier": "writer updates created_at."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use new /seek routes rather than mutate legacy routes",
+              "reason": "Protect current page response contract",
+              "source": "approved design"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2"
+              ],
+              "signal": "seek SQL and record continuity",
+              "method": "JUnit cursor tests"
+            },
+            {
+              "requirement_ids": [
+                "R3",
+                "R5"
+              ],
+              "signal": "existing scope and endpoint behavior",
+              "method": "workflow regressions and protected API probe"
+            },
+            {
+              "requirement_ids": [
+                "R4"
+              ],
+              "signal": "V204 applies",
+              "method": "Flyway local migration"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved seek-pagination baseline reviewed against current workflow services",
+        "recorded_at": "2026-09-11T08:44:13+00:00",
+        "data": {
+          "objective": "Provide bounded cursor navigation for workflow inbox, audit actions and instance history while keeping current administrator pagination and authorization behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Inbox, done-action and instance-history reads must expose seek pages ordered by created_at and id without OFFSET or COUNT.",
+              "acceptance": [
+                "each seek query has a timestamp/id predicate",
+                "each reads size plus one only",
+                "response returns records, next cursor and has_more"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "query uses LIMIT offset,size or COUNT(*)"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "A next cursor must continue a fixed result set without duplicate or omitted timestamp/id records.",
+              "acceptance": [
+                "equal created_at records are returned in descending id order across two pages"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "continuation repeats the final first-page row"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Seek reads must preserve authentication, tenant isolation, project range and instance visibility.",
+              "acceptance": [
+                "existing visibility/project predicates are present before seek predicate",
+                "tenant/project focused tests pass"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "a cursor reveals a row outside current scope"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Append-only indexes must support the fixed filters and timestamp/id ordering for all three reads.",
+              "acceptance": [
+                "V204 contains only ADD INDEX statements",
+                "local Flyway applies V204"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "migration changes a released script"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Existing page-based endpoints remain compatible.",
+              "acceptance": [
+                "legacy workflow regression tests pass",
+                "old controller signatures remain unchanged"
+              ],
+              "priority": "must",
+              "source": "repository compatibility requirement",
+              "counterexample": [
+                "old PageResult contract changes"
+              ]
+            }
+          ],
+          "invariants": [
+            "Existing endpoints remain",
+            "tenant predicates remain",
+            "cursor has no identity or business data",
+            "Flyway is append-only"
+          ],
+          "constraints": [
+            "Java 17",
+            "MySQL 8.4",
+            "no production access",
+            "no frontend change"
+          ],
+          "non_goals": [
+            "definition pagination",
+            "time-line pagination",
+            "Flowable ACT table changes",
+            "legacy endpoint replacement"
+          ],
+          "assumptions": [
+            {
+              "text": "created_at is immutable after insert for tasks, actions and instances.",
+              "basis": "current schemas and order clauses",
+              "falsifier": "a writer updates created_at."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "How to preserve legacy clients",
+              "options": [
+                "replace old routes",
+                "add seek routes"
+              ],
+              "selected": "add seek routes",
+              "blocking": false,
+              "source": "approved design"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "seek predicate/limit and cursor response",
+              "candidate_sensor": "WorkflowCursorPaginationTest"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "two-page ordered record sequence",
+              "candidate_sensor": "WorkflowCursorPaginationTest"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "tenant/project scope in SQL and tests",
+              "candidate_sensor": "Workflow cursor scope test"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "V204 schema result",
+              "candidate_sensor": "local Flyway migration"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "legacy regression remains green",
+              "candidate_sensor": "workflow Maven test"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Workflow cursor model grounded in current controller, service, range and schema paths",
+        "recorded_at": "2026-09-11T08:45:35+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "WorkflowController",
+              "WorkflowService",
+              "WorkflowMonitorService",
+              "JdbcTemplate reads",
+              "workflow MySQL schema"
+            ],
+            "environment": [
+              "authenticated callers",
+              "MySQL 8.4",
+              "existing project access gateway"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "cursor_position",
+              "owner": "WorkflowCursorCodec",
+              "valid_values": [
+                "first-page",
+                "timestamp/id position",
+                "invalid"
+              ]
+            },
+            {
+              "name": "visibility_scope",
+              "owner": "existing services",
+              "valid_values": [
+                "tenant/user/project constrained"
+              ]
+            },
+            {
+              "name": "has_more",
+              "owner": "seek query",
+              "valid_values": [
+                "true",
+                "false"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "seek route request",
+              "transitions": [
+                "controller size/cursor binding",
+                "service range builder",
+                "timestamp/id seek query",
+                "size+1 trim"
+              ],
+              "outputs": [
+                "cursor page"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "next cursor",
+              "transitions": [
+                "codec decode",
+                "strict descending predicate"
+              ],
+              "outputs": [
+                "non-overlapping next rows"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "authenticated request",
+              "transitions": [
+                "existing InstanceVisibility or project range",
+                "seek predicate appended"
+              ],
+              "outputs": [
+                "scoped rows"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Flyway V204",
+              "transitions": [
+                "add composite indexes"
+              ],
+              "outputs": [
+                "indexable seek order"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "legacy route request",
+              "transitions": [
+                "unchanged controller method"
+              ],
+              "outputs": [
+                "existing PageResult"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "WorkflowCursorPage",
+              "producers": [
+                "WorkflowService",
+                "WorkflowMonitorService"
+              ],
+              "consumers": [
+                "WorkflowController"
+              ],
+              "invariant": "records,next_cursor,has_more only"
+            },
+            {
+              "name": "existing visibility builders",
+              "producers": [
+                "WorkflowService",
+                "WorkflowMonitorService"
+              ],
+              "consumers": [
+                "seek methods"
+              ],
+              "invariant": "range precedes seek"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "seek SQL and page trim",
+              "method": "WorkflowCursorPaginationTest stub JDBC assertions",
+              "blind_spots": [
+                "real optimizer selection"
+              ],
+              "independence": "asserts emitted query rather than implementation helper"
+            },
+            {
+              "id": "S2",
+              "target": "module compatibility",
+              "method": "Maven workflow tests",
+              "blind_spots": [
+                "runtime credentials"
+              ],
+              "independence": "existing regression suite"
+            },
+            {
+              "id": "S3",
+              "target": "migration",
+              "method": "local Flyway start",
+              "blind_spots": [
+                "production table volume"
+              ],
+              "independence": "database migration runtime"
+            },
+            {
+              "id": "S4",
+              "target": "protected endpoint",
+              "method": "local API two-page probe",
+              "blind_spots": [
+                "browser client not in scope"
+              ],
+              "independence": "HTTP runtime"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "cursor response and parsing",
+              "action": "add workflow model and codec",
+              "authority": "REQ-077 writable paths",
+              "impact_radius": "new workflow API",
+              "rollback": "revert new files"
+            },
+            {
+              "id": "A2",
+              "target": "deep pagination queries",
+              "action": "add seek methods and routes",
+              "authority": "REQ-077 writable paths",
+              "impact_radius": "new endpoints",
+              "rollback": "revert methods/routes"
+            },
+            {
+              "id": "A3",
+              "target": "query access paths",
+              "action": "append V204 indexes",
+              "authority": "REQ-077 migration path",
+              "impact_radius": "database indexes",
+              "rollback": "retain additive indexes"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "equal timestamps",
+              "effect": "ordering boundary error",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "project range gateway",
+              "effect": "complex where/args ordering",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "local MySQL availability",
+              "effect": "runtime migration sample unavailable",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flyway startup",
+              "consequence": "V204 only observable after boot",
+              "sampling_rule": "probe after health is UP"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "created_at is immutable.",
+              "evidence": "schema only defines default and reads already order by it",
+              "falsifier": "writer updates created_at"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1,A2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1,A2"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Seek pagination tasks have non-overlapping write scopes and measured acceptance",
+        "recorded_at": "2026-09-11T08:46:48+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Add cursor contract and inbox/done seek reads.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "WorkflowService owns inbox/done visibility"
+              ],
+              "write_scope": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/model/WorkflowCursorPage.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowCursorCodec.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowCursorPaginationTest.java"
+              ],
+              "invariants": [
+                "legacy routes unchanged",
+                "tenant visibility retained"
+              ],
+              "interface_contracts": [
+                "new /inbox/seek and /done/seek response"
+              ],
+              "non_goals": [
+                "frontend changes"
+              ],
+              "action_bounds": [
+                "only new cursor paths"
+              ],
+              "acceptance_checks": [
+                "cursor test passes",
+                "seek SQL has no offset/count"
+              ],
+              "evidence_required": [
+                "diff",
+                "test output"
+              ],
+              "rollback": "revert new cursor code",
+              "stop_conditions": [
+                "scope bypass"
+              ],
+              "escalation_conditions": [
+                "legacy contract must change"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Add instances seek read and V204 indexes.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "WorkflowMonitorService owns instance filters"
+              ],
+              "write_scope": [
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+                "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+                "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowCursorPaginationTest.java",
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V204__workflow_seek_pagination_indexes.sql"
+              ],
+              "invariants": [
+                "project range retained",
+                "Flyway append-only"
+              ],
+              "interface_contracts": [
+                "new /instances/seek response"
+              ],
+              "non_goals": [
+                "old instances route edit"
+              ],
+              "action_bounds": [
+                "only seek method/indexes"
+              ],
+              "acceptance_checks": [
+                "module test passes",
+                "V204 is additive"
+              ],
+              "evidence_required": [
+                "diff",
+                "test and migration result"
+              ],
+              "rollback": "revert route/service code and retain indexes",
+              "stop_conditions": [
+                "migration conflict"
+              ],
+              "escalation_conditions": [
+                "data model change required"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Observe integration behavior.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "new routes and migration exist"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260911-077-workflow-seek-pagination/*.json"
+              ],
+              "invariants": [
+                "scope remains authorized"
+              ],
+              "interface_contracts": [
+                "protected API behavior"
+              ],
+              "non_goals": [
+                "frontend change"
+              ],
+              "action_bounds": [
+                "tests and evidence only"
+              ],
+              "acceptance_checks": [
+                "module/full tests and local probe"
+              ],
+              "evidence_required": [
+                "commands",
+                "HTTP outcomes"
+              ],
+              "rollback": "T1/T2 rollback",
+              "stop_conditions": [
+                "repeat/skip/authorization regression"
+              ],
+              "escalation_conditions": [
+                "runtime unavailable"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "shared cursor contract"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "probe inbox/done"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "probe instances/migration"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "mvn -pl :ccb-workflow -am test"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "S1",
+              "trigger": "T1",
+              "observer": "independent test command",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "S2",
+              "trigger": "T2",
+              "observer": "migration and test",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4"
+              ]
+            },
+            {
+              "label": "S3",
+              "trigger": "T3",
+              "observer": "runtime probe",
+              "sensors": [
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 cursor contract and inbox/done seek implementation evidence",
+        "recorded_at": "2026-09-11T09:47:34+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "WorkflowCursorPage and WorkflowCursorCodec",
+              "purpose": "Bounded opaque timestamp/id cursor contract"
+            },
+            {
+              "path_or_resource": "WorkflowService and WorkflowController",
+              "purpose": "Protected inbox/done seek routes while preserving page routes"
+            },
+            {
+              "path_or_resource": "WorkflowCursorPaginationTest",
+              "purpose": "Cursor and inbox continuity coverage"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-workflow -am -Dtest=WorkflowCursorPaginationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "4 tests passed"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "cursor encode/decode, malformed input, inbox continuity",
+              "result": "pass",
+              "evidence": "WorkflowCursorPaginationTest",
+              "limitations": [
+                "authenticated HTTP data pagination requires local credentials not available to this task"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added opaque cursor page envelope and validation",
+            "Added bounded inbox/done seek reads without OFFSET or COUNT"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "legacy page routes remain separate",
+              "result": "pass",
+              "evidence": "new routes use /seek"
+            },
+            {
+              "invariant": "cursor contains no tenant/project/business fields",
+              "result": "pass",
+              "evidence": "round-trip test"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 instance seek and V204 migration implementation evidence",
+        "recorded_at": "2026-09-11T09:47:36+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "WorkflowMonitorService",
+              "purpose": "Instance history seek read retains existing filters and project scope"
+            },
+            {
+              "path_or_resource": "V204__workflow_seek_pagination_indexes.sql",
+              "purpose": "Append-only indexes for the three seek paths"
+            },
+            {
+              "path_or_resource": "WorkflowCursorPaginationTest",
+              "purpose": "Instance predicate and project-range coverage"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-workflow -am -Dtest=WorkflowCursorPaginationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "4 tests passed"
+            },
+            {
+              "command": "temporary MySQL migration validation for V204 and V205",
+              "exit_code": 0,
+              "salient_output": "three V204 indexes present"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "instance seek SQL",
+              "result": "pass",
+              "evidence": "asserts timestamp/id predicate, project scope, LIMIT size+1 and no OFFSET/COUNT",
+              "limitations": []
+            },
+            {
+              "check": "V204 MySQL syntax",
+              "result": "pass",
+              "evidence": "temporary mysql:8.4 applied V204",
+              "limitations": [
+                "validated against minimal prerequisite tables"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added instance seek query with existing visibility gateway",
+            "Added three additive MySQL indexes"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "project visibility remains in service query",
+              "result": "pass",
+              "evidence": "project scope assertion"
+            },
+            {
+              "invariant": "migration is append-only",
+              "result": "pass",
+              "evidence": "new V204 only"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 regression and protected runtime sample evidence",
+        "recorded_at": "2026-09-11T09:47:39+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "local runtime and task ledger",
+              "purpose": "Regression, migration and protected-route sampling"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-workflow -am test",
+              "exit_code": 0,
+              "salient_output": "completed before final test-only additions; workflow focused test was rerun after additions"
+            },
+            {
+              "command": "GET /api/workflows/{inbox,done,instances}/seek without credentials",
+              "exit_code": 0,
+              "salient_output": "all routes returned HTTP 401"
+            },
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true test",
+              "exit_code": 1,
+              "salient_output": "stopped after existing NetworkWorkOrderMySqlTest hung in Flyway socket read"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "protected seek route probe",
+              "result": "pass",
+              "evidence": "three routes returned 401",
+              "limitations": [
+                "no authorized local account credentials were read"
+              ]
+            },
+            {
+              "check": "full reactor regression",
+              "result": "inconclusive",
+              "evidence": "thread dump identified architecture NetworkWorkOrderMySqlTest Flyway socket wait",
+              "limitations": [
+                "not caused by V204/V205; full suite was terminated after prolonged wait"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Recorded runtime and regression evidence"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "new routes require authentication",
+              "result": "pass",
+              "evidence": "HTTP 401 probes"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "full reactor architecture migration test retained a dead socket after its temporary MySQL container exited",
+              "impact": "full suite outcome unavailable"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Authorized sequential-page HTTP probe requires a separately supplied local test identity"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "S1 non-independent cursor behavior observation recorded",
+        "recorded_at": "2026-09-11T09:49:36+00:00",
+        "data": {
+          "sample_label": "S1 cursor behavior sampling",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "WorkflowCursorPaginationTest",
+              "result": "pass",
+              "raw_evidence": "4 focused tests passed; query fetches size+1 with no OFFSET or COUNT",
+              "limitation": [
+                "same Codex context as implementation"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "WorkflowCursorPaginationTest",
+              "result": "pass",
+              "raw_evidence": "same timestamp records continue by descending id",
+              "limitation": [
+                "uses JDBC test double"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "instance scope test",
+              "result": "pass",
+              "raw_evidence": "project scope predicate is asserted in seek SQL",
+              "limitation": [
+                "authorized HTTP data sample not available"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Not independently observed by a separate Codex context or Owner",
+            "No authorized local user was supplied for live continuity data"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "S2 non-independent instance and migration observation recorded",
+        "recorded_at": "2026-09-11T09:49:38+00:00",
+        "data": {
+          "sample_label": "S2 instance and migration sampling",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "WorkflowCursorPaginationTest",
+              "result": "pass",
+              "raw_evidence": "instance seek uses created_at/id continuation and size+1",
+              "limitation": [
+                "same Codex context as implementation"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "WorkflowCursorPaginationTest",
+              "result": "pass",
+              "raw_evidence": "existing project gateway list is reflected in query scope",
+              "limitation": [
+                "JDBC test double"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "disposable mysql:8.4",
+              "result": "pass",
+              "raw_evidence": "V204 applied and all three named indexes were present",
+              "limitation": [
+                "minimal prerequisite schema"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Not independently observed by a separate Codex context or Owner"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "S3 non-independent protected-route and regression observation recorded",
+        "recorded_at": "2026-09-11T09:49:41+00:00",
+        "data": {
+          "sample_label": "S3 protected-route and regression sampling",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "workflow module regression",
+              "result": "pass",
+              "raw_evidence": "workflow module regression passed before final test-only additions; final focused cursor suite passed after additions",
+              "limitation": [
+                "full reactor was not available"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "HTTP unauthenticated probes",
+              "result": "pass",
+              "raw_evidence": "inbox, done and instances seek routes all returned HTTP 401",
+              "limitation": [
+                "does not measure authorized data scope"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "diff check",
+              "result": "pass",
+              "raw_evidence": "git diff --check exited successfully with CRLF warnings only",
+              "limitation": [
+                "worktree also contains REQ-076 changes"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "full reactor was stopped after a non-task architecture MySQL migration test retained a dead socket",
+              "classification": "disturbance",
+              "impact": "full regression conclusion unavailable"
+            }
+          ],
+          "coverage_gaps": [
+            "No authorized sequential page probe because task scope forbids credential access",
+            "Full reactor did not complete because NetworkWorkOrderMySqlTest blocked",
+            "Not independently observed by a separate Codex context or Owner"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final requirement, task, sample, scope and residual-risk audit recorded",
+        "recorded_at": "2026-09-11T09:52:06+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "WorkflowCursorPaginationTest: 4 passed",
+                "seek SQL assertions verify size+1 and no OFFSET/COUNT"
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "same-timestamp descending-id continuation test"
+              ],
+              "limitations": [
+                "JDBC test double rather than a live authorized dataset"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "project scope assertion",
+                "all protected routes returned HTTP 401 without credentials"
+              ],
+              "limitations": [
+                "authorized local account was not read"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "disposable mysql:8.4 applied V204 and found all three indexes"
+              ],
+              "limitations": [
+                "minimal prerequisite schema"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "new /seek routes preserve legacy page routes",
+                "workflow module regression passed before final test-only additions"
+              ],
+              "limitations": [
+                "full reactor was blocked by unrelated architecture migration test"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "execution-T2.json",
+                "observation-T2.json"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "execution-T3.json",
+                "observation-T3.json"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "WorkflowCursorPaginationTest",
+              "result": "pass",
+              "evidence": "4 tests passed"
+            },
+            {
+              "check": "workflow module regression",
+              "result": "pass",
+              "evidence": "completed before final test-only additions"
+            },
+            {
+              "check": "full reactor",
+              "result": "inconclusive",
+              "evidence": "NetworkWorkOrderMySqlTest Flyway socket wait after temporary MySQL exit"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "legacy page endpoints retain PageResult contract",
+              "result": "pass",
+              "evidence": "no legacy controller route replacement"
+            },
+            {
+              "invariant": "cursor has no scope payload",
+              "result": "pass",
+              "evidence": "cursor codec round-trip test"
+            },
+            {
+              "invariant": "authorized file scope",
+              "result": "pass",
+              "evidence": "task-specific diff review; unrelated REQ-076 changes preserved"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "malformed cursor",
+              "result": "pass",
+              "evidence": "focused malformed cursor test"
+            },
+            {
+              "disturbance": "unauthenticated request",
+              "result": "pass",
+              "evidence": "HTTP 401 probes"
+            }
+          ],
+          "residual_risks": [
+            "Full reactor completion is blocked by an unrelated architecture migration test environment failure",
+            "Authorized live data pagination and independent Owner observation remain release follow-ups"
+          ],
+          "gate_result": "pass",
+          "route_reason": "All must requirements have verified task, automated, migration or protected-route evidence; non-task environment limits are disclosed."
+        }
+      }
+    ]
+  },
+  "objective": "Provide bounded cursor navigation for workflow inbox, audit actions and instance history while keeping current administrator pagination and authorization behavior.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Inbox, done-action and instance-history reads must expose seek pages ordered by created_at and id without OFFSET or COUNT.",
+      "acceptance": [
+        "each seek query has a timestamp/id predicate",
+        "each reads size plus one only",
+        "response returns records, next cursor and has_more"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "query uses LIMIT offset,size or COUNT(*)"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "A next cursor must continue a fixed result set without duplicate or omitted timestamp/id records.",
+      "acceptance": [
+        "equal created_at records are returned in descending id order across two pages"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "continuation repeats the final first-page row"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Seek reads must preserve authentication, tenant isolation, project range and instance visibility.",
+      "acceptance": [
+        "existing visibility/project predicates are present before seek predicate",
+        "tenant/project focused tests pass"
+      ],
+      "priority": "must",
+      "source": "repository governance",
+      "counterexample": [
+        "a cursor reveals a row outside current scope"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Append-only indexes must support the fixed filters and timestamp/id ordering for all three reads.",
+      "acceptance": [
+        "V204 contains only ADD INDEX statements",
+        "local Flyway applies V204"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "migration changes a released script"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Existing page-based endpoints remain compatible.",
+      "acceptance": [
+        "legacy workflow regression tests pass",
+        "old controller signatures remain unchanged"
+      ],
+      "priority": "must",
+      "source": "repository compatibility requirement",
+      "counterexample": [
+        "old PageResult contract changes"
+      ]
+    }
+  ],
+  "invariants": [
+    "Existing endpoints remain",
+    "tenant predicates remain",
+    "cursor has no identity or business data",
+    "Flyway is append-only"
+  ],
+  "constraints": [
+    "Java 17",
+    "MySQL 8.4",
+    "no production access",
+    "no frontend change"
+  ],
+  "non_goals": [
+    "definition pagination",
+    "time-line pagination",
+    "Flowable ACT table changes",
+    "legacy endpoint replacement"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260911-077-workflow-seek-pagination\\handoff.json",
+    "imported_at": "2026-09-11T08:42:59+00:00",
+    "topic": "workflow-seek-pagination",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "workflow-seek-pagination",
+      "handoff_status": "approved",
+      "created_at": "2026-09-11T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "workflow-seek-pagination",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-11-workflow-seek-pagination-design.md",
+        "objective": "Provide bounded seek reads for workflow inbox, audit actions, and instance history without changing existing administrative page pagination or authorization.",
+        "users": [
+          "审批办理人",
+          "流程管理员",
+          "平台运维人员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Three high-growth workflow reads must return cursor pages ordered by created_at and id without OFFSET or COUNT.",
+            "acceptance": [
+              "SQL has seek predicate",
+              "fetch is size plus one",
+              "response contains cursor state"
+            ],
+            "priority": "must",
+            "source": "user-confirmed optimization",
+            "counterexample": [
+              "deep page uses LIMIT offset,size"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Continuation pages must be stable across equal timestamps and must not repeat or skip records under a fixed dataset.",
+            "acceptance": [
+              "two-page test covers same timestamp IDs"
+            ],
+            "priority": "must",
+            "source": "user-confirmed optimization",
+            "counterexample": [
+              "same timestamp causes duplicate record"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Seek reads must preserve current authentication, tenant isolation, project range, and instance visibility rules.",
+            "acceptance": [
+              "service reuses existing range builders",
+              "tenant and project tests pass"
+            ],
+            "priority": "must",
+            "source": "repository governance",
+            "counterexample": [
+              "cursor carries a foreign tenant position"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "The database must have append-only indexes aligned to seek filtering and sorting.",
+            "acceptance": [
+              "V204 applies",
+              "three composite indexes exist"
+            ],
+            "priority": "must",
+            "source": "user-confirmed optimization",
+            "counterexample": [
+              "migration edits a released version"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Existing page-based workflow endpoints and frontend consumers must remain compatible.",
+            "acceptance": [
+              "existing endpoint tests remain green",
+              "no old route or response edit"
+            ],
+            "priority": "must",
+            "source": "repository compatibility requirement",
+            "counterexample": [
+              "PageResult changes shape"
+            ]
+          }
+        ],
+        "invariants": [
+          "No public endpoint removal",
+          "All SQL preserves tenant predicate",
+          "Cursor contains no business or identity data",
+          "Flyway is append-only"
+        ],
+        "constraints": [
+          "Java 17",
+          "MySQL 8.4",
+          "No production access",
+          "No frontend changes in this task"
+        ],
+        "non_goals": [
+          "Migrate definitions pagination",
+          "Update workflow UI",
+          "Change Flowable ACT tables",
+          "Replace all OFFSET queries"
+        ],
+        "selected_approach": {
+          "name": "Add dedicated seek endpoints with opaque position cursor",
+          "reason": "Preserves stable existing PageResult contracts while providing bounded reads to high-growth consumers.",
+          "alternatives": [
+            {
+              "name": "Replace existing endpoints",
+              "rejected_because": "Breaks administrator pagination consumers."
+            },
+            {
+              "name": "Add cursor fields to PageResult",
+              "rejected_because": "Mixes mutually different total and navigation semantics."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "WorkflowService",
+              "WorkflowMonitorService",
+              "WorkflowController",
+              "workflow model",
+              "V204"
+            ],
+            "outside": [
+              "frontend",
+              "Flowable engine tables",
+              "existing page endpoints"
+            ]
+          },
+          "components": [
+            {
+              "name": "WorkflowCursorCodec",
+              "responsibility": "validate and encode timestamp/id positions",
+              "depends_on": []
+            },
+            {
+              "name": "WorkflowCursorPage",
+              "responsibility": "read response envelope",
+              "depends_on": []
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "seek routes",
+              "producer": "WorkflowController",
+              "consumers": [
+                "future workflow UI and integrations"
+              ],
+              "contract": "records,next_cursor,has_more"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "cursor and authenticated user",
+              "transitions": [
+                "authorization scope",
+                "seek query",
+                "size plus one trim",
+                "next cursor encode"
+              ],
+              "output": "bounded page"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "invalid cursor",
+            "behavior": "BAD_REQUEST",
+            "recovery": "request first page"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "current service range checks",
+            "opaque cursor without identity"
+          ],
+          "performance": [
+            "no OFFSET or count",
+            "covering indexes"
+          ],
+          "compatibility": [
+            "new routes only"
+          ],
+          "operations": [
+            "query plan review"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "signal": "seek SQL and record continuity",
+            "method": "JUnit cursor tests"
+          },
+          {
+            "requirement_ids": [
+              "R3",
+              "R5"
+            ],
+            "signal": "existing scope and endpoint behavior",
+            "method": "workflow regressions and protected API probe"
+          },
+          {
+            "requirement_ids": [
+              "R4"
+            ],
+            "signal": "V204 applies",
+            "method": "Flyway local migration"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "created_at plus id is immutable after insert for all three sources.",
+            "basis": "schema and current ORDER BY",
+            "falsifier": "writer updates created_at."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use new /seek routes rather than mutate legacy routes",
+            "reason": "Protect current page response contract",
+            "source": "approved design"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "A range condition differs from the existing endpoint",
+            "impact": "visibility regression",
+            "mitigation": "reuse service range construction and focused tests"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed this remaining optimization and authorized all subsequent confirmations.",
+          "confirmed_at": "2026-09-11T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-11-workflow-seek-pagination-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Keep old page routes unchanged",
+          "Tenant and project predicates remain in service SQL",
+          "Only V204 is added",
+          "No web changes"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+            "status": "existing",
+            "responsibility": "inbox and done reads",
+            "evidence": "current service inspection"
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+            "status": "existing",
+            "responsibility": "instance monitor reads",
+            "evidence": "current service inspection"
+          },
+          {
+            "path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/model/WorkflowCursorPage.java",
+            "status": "candidate-new",
+            "responsibility": "cursor response",
+            "evidence": "approved design D1"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Add validated cursor contract and bounded inbox/done reads.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Existing inbox/done reuse InstanceVisibility",
+              "Current reads use OFFSET and COUNT"
+            ],
+            "files": {
+              "create": [
+                "WorkflowCursorPage",
+                "WorkflowCursorCodec",
+                "WorkflowCursorPaginationTest"
+              ],
+              "modify": [
+                "WorkflowService",
+                "WorkflowController"
+              ],
+              "test": [
+                "WorkflowCursorPaginationTest"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "AuthUser",
+                "InstanceVisibility"
+              ],
+              "produces": [
+                "inbox/seek",
+                "done/seek"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add and run SQL/continuity tests",
+                "command": "mvn -pl :ccb-workflow -am -Dtest=WorkflowCursorPaginationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "new cursor cases are covered",
+                "evidence": "Surefire result"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement model, codec, service and route changes",
+                "command": null,
+                "expected": "size+1 seek reads preserve scope",
+                "evidence": "source diff"
+              }
+            ],
+            "acceptance_checks": [
+              "invalid cursor rejected",
+              "no offset/count in seek SQL",
+              "same timestamp IDs continue"
+            ],
+            "risks": [
+              "scope divergence"
+            ],
+            "rollback": "revert T1 application changes",
+            "stop_conditions": [
+              "any cursor can bypass scope"
+            ],
+            "escalation_conditions": [
+              "legacy route needs contract change"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Add instance seek reads and V204 indexes.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Monitor service owns instance filters",
+              "V203 is latest migration"
+            ],
+            "files": {
+              "create": [
+                "V204__workflow_seek_pagination_indexes.sql"
+              ],
+              "modify": [
+                "WorkflowMonitorService",
+                "WorkflowService",
+                "WorkflowController",
+                "WorkflowCursorPaginationTest"
+              ],
+              "test": [
+                "WorkflowCursorPaginationTest"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "WorkflowCursorCodec",
+                "WorkflowProjectAccessGateway"
+              ],
+              "produces": [
+                "instances/seek",
+                "three lookup indexes"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Implement instance seek method with filters",
+                "command": null,
+                "expected": "original filter semantics are retained",
+                "evidence": "source diff"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Append V204 and run migration/module tests",
+                "command": "mvn -pl :ccb-workflow -am test",
+                "expected": "zero workflow failures",
+                "evidence": "Surefire result and Flyway verification"
+              }
+            ],
+            "acceptance_checks": [
+              "project range retained",
+              "V204 is append-only",
+              "same timestamp continuity"
+            ],
+            "risks": [
+              "index mismatch"
+            ],
+            "rollback": "revert route/service changes and retain V204",
+            "stop_conditions": [
+              "migration version conflict"
+            ],
+            "escalation_conditions": [
+              "query needs data model change"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Produce integration and scope evidence.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "All target code and migration exist"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "task ledger JSON"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 and T2 outputs"
+              ],
+              "produces": [
+                "execution, observation, convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Run full regression and scope checks",
+                "command": "mvn test",
+                "expected": "all runnable tests pass",
+                "evidence": "exit result and limitation record"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Probe two seek pages and invalid cursor",
+                "command": "local protected API verification",
+                "expected": "continuity and BAD_REQUEST",
+                "evidence": "redacted status results"
+              }
+            ],
+            "acceptance_checks": [
+              "legacy endpoints unchanged",
+              "scope audit passes"
+            ],
+            "risks": [
+              "local authentication dependency"
+            ],
+            "rollback": "apply T1/T2 rollback",
+            "stop_conditions": [
+              "repeat, skip, or authorization regression"
+            ],
+            "escalation_conditions": [
+              "local runtime cannot be sampled"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "instance route reuses cursor contract"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "T3 samples inbox and done"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 samples instance route and V204"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "mvn -pl :ccb-workflow -am test",
+            "expected": "zero workflow failures"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "git diff --check",
+            "expected": "no whitespace errors"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User authorized automatic subsequent confirmations.",
+          "confirmed_at": "2026-09-11T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "workflow seek routes",
+          "instance range builder",
+          "MySQL indexes"
+        ],
+        "state_variable_candidates": [
+          "cursor position",
+          "has_more",
+          "tenant scope",
+          "project scope"
+        ],
+        "interface_candidates": [
+          "WorkflowController seek routes",
+          "WorkflowCursorPage"
+        ],
+        "sensor_candidates": [
+          "JUnit SQL assertions",
+          "workflow module test",
+          "Flyway local migration",
+          "protected API probe"
+        ],
+        "actuator_candidates": [
+          "codec",
+          "seek predicate",
+          "V204 indexes"
+        ],
+        "disturbance_candidates": [
+          "same timestamp records",
+          "project range expansion",
+          "migration version conflict"
+        ],
+        "delay_candidates": [
+          "database commit",
+          "migration application"
+        ],
+        "assumptions": [
+          {
+            "text": "created_at and id make a stable ordering pair.",
+            "basis": "current schema and ordering",
+            "falsifier": "writer changes created_at."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"authenticated callers\", \"MySQL 8.4\", \"existing project access gateway\"], \"inside\": [\"WorkflowController\", \"WorkflowService\", \"WorkflowMonitorService\", \"JdbcTemplate reads\", \"workflow MySQL schema\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"real optimizer selection\"], \"id\": \"S1\", \"independence\": \"asserts emitted query rather than implementation helper\", \"method\": \"WorkflowCursorPaginationTest stub JDBC assertions\", \"target\": \"seek SQL and page trim\"}",
+      "{\"blind_spots\": [\"runtime credentials\"], \"id\": \"S2\", \"independence\": \"existing regression suite\", \"method\": \"Maven workflow tests\", \"target\": \"module compatibility\"}",
+      "{\"blind_spots\": [\"production table volume\"], \"id\": \"S3\", \"independence\": \"database migration runtime\", \"method\": \"local Flyway start\", \"target\": \"migration\"}",
+      "{\"blind_spots\": [\"browser client not in scope\"], \"id\": \"S4\", \"independence\": \"HTTP runtime\", \"method\": \"local API two-page probe\", \"target\": \"protected endpoint\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"add workflow model and codec\", \"authority\": \"REQ-077 writable paths\", \"id\": \"A1\", \"impact_radius\": \"new workflow API\", \"rollback\": \"revert new files\", \"target\": \"cursor response and parsing\"}",
+      "{\"action\": \"add seek methods and routes\", \"authority\": \"REQ-077 writable paths\", \"id\": \"A2\", \"impact_radius\": \"new endpoints\", \"rollback\": \"revert methods/routes\", \"target\": \"deep pagination queries\"}",
+      "{\"action\": \"append V204 indexes\", \"authority\": \"REQ-077 migration path\", \"id\": \"A3\", \"impact_radius\": \"database indexes\", \"rollback\": \"retain additive indexes\", \"target\": \"query access paths\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"ordering boundary error\", \"source\": \"equal timestamps\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"complex where/args ordering\", \"source\": \"project range gateway\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"runtime migration sample unavailable\", \"source\": \"local MySQL availability\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"schema only defines default and reads already order by it\", \"falsifier\": \"writer updates created_at\", \"text\": \"created_at is immutable.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S3\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Add cursor contract and inbox/done seek reads.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "WorkflowService owns inbox/done visibility"
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/model/WorkflowCursorPage.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowCursorCodec.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowCursorPaginationTest.java"
+      ],
+      "invariants": [
+        "legacy routes unchanged",
+        "tenant visibility retained"
+      ],
+      "interface_contracts": [
+        "new /inbox/seek and /done/seek response"
+      ],
+      "non_goals": [
+        "frontend changes"
+      ],
+      "action_bounds": [
+        "only new cursor paths"
+      ],
+      "acceptance": [
+        "cursor test passes",
+        "seek SQL has no offset/count"
+      ],
+      "evidence_required": [
+        "diff",
+        "test output"
+      ],
+      "rollback": "revert new cursor code",
+      "stop_conditions": [
+        "scope bypass"
+      ],
+      "escalation_conditions": [
+        "legacy contract must change"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T09:47:07+00:00",
+          "text": "Execution evidence prepared from actual changes and commands"
+        },
+        {
+          "recorded_at": "2026-09-11T09:48:00+00:00",
+          "text": "Implementation outputs are ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-11T09:50:21+00:00",
+          "text": "Observed with recorded automated, migration and runtime evidence; limitations are documented"
+        }
+      ],
+      "updated_at": "2026-09-11T09:50:21+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Add instances seek read and V204 indexes.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "WorkflowMonitorService owns instance filters"
+      ],
+      "write_scope": [
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowMonitorService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java",
+        "server/src/platform/workflow/src/main/java/com/ccb/workflow/web/WorkflowController.java",
+        "server/src/platform/workflow/src/test/java/com/ccb/workflow/service/WorkflowCursorPaginationTest.java",
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V204__workflow_seek_pagination_indexes.sql"
+      ],
+      "invariants": [
+        "project range retained",
+        "Flyway append-only"
+      ],
+      "interface_contracts": [
+        "new /instances/seek response"
+      ],
+      "non_goals": [
+        "old instances route edit"
+      ],
+      "action_bounds": [
+        "only seek method/indexes"
+      ],
+      "acceptance": [
+        "module test passes",
+        "V204 is additive"
+      ],
+      "evidence_required": [
+        "diff",
+        "test and migration result"
+      ],
+      "rollback": "revert route/service code and retain indexes",
+      "stop_conditions": [
+        "migration conflict"
+      ],
+      "escalation_conditions": [
+        "data model change required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T09:47:08+00:00",
+          "text": "Execution evidence prepared from actual changes and commands"
+        },
+        {
+          "recorded_at": "2026-09-11T09:48:01+00:00",
+          "text": "Implementation outputs are ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-11T09:50:24+00:00",
+          "text": "Observed with recorded automated, migration and runtime evidence; limitations are documented"
+        }
+      ],
+      "updated_at": "2026-09-11T09:50:24+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Observe integration behavior.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "new routes and migration exist"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-077-workflow-seek-pagination/*.json"
+      ],
+      "invariants": [
+        "scope remains authorized"
+      ],
+      "interface_contracts": [
+        "protected API behavior"
+      ],
+      "non_goals": [
+        "frontend change"
+      ],
+      "action_bounds": [
+        "tests and evidence only"
+      ],
+      "acceptance": [
+        "module/full tests and local probe"
+      ],
+      "evidence_required": [
+        "commands",
+        "HTTP outcomes"
+      ],
+      "rollback": "T1/T2 rollback",
+      "stop_conditions": [
+        "repeat/skip/authorization regression"
+      ],
+      "escalation_conditions": [
+        "runtime unavailable"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T09:47:12+00:00",
+          "text": "Execution evidence prepared from actual changes and commands"
+        },
+        {
+          "recorded_at": "2026-09-11T09:48:04+00:00",
+          "text": "Implementation outputs are ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-11T09:50:27+00:00",
+          "text": "Observed with recorded automated, migration and runtime evidence; limitations are documented"
+        }
+      ],
+      "updated_at": "2026-09-11T09:50:27+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S1",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "S1 focused cursor tests passed",
+      "recorded_at": "2026-09-11T09:50:05+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S2",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "S2 instance scope and V204 temporary MySQL migration passed",
+      "recorded_at": "2026-09-11T09:50:07+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S3",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "S3 protected routes returned 401 and workflow regression evidence passed",
+      "recorded_at": "2026-09-11T09:50:08+00:00"
+    }
+  ]
+}

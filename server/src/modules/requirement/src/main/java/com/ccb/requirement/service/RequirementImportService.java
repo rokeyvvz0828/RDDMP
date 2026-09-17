@@ -14,7 +14,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,7 +31,6 @@ import java.util.regex.Pattern;
 
 import com.ccb.requirement.support.RequirementEnums;
 import com.ccb.requirement.support.RequirementIds;
-import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
 
 /** Excel 导入：模板下载、逐行校验与校验报告、确认后事务化导入。 */
@@ -42,16 +40,16 @@ public class RequirementImportService {
     private static final Map<String, String> DIFF_HEADERS = diffHeaders();
     private static final Map<String, String> LEGACY_HEADERS = legacyHeaders();
 
-    private final JdbcTemplate jdbc;
+    private final RequirementImportRepository repository;
     private final RequirementSecurityService security;
     private final RequirementSystemService systemService;
     private final RequirementChangeLogService changeLog;
     private final ObjectMapper objectMapper;
 
-    public RequirementImportService(JdbcTemplate jdbc, RequirementSecurityService security,
+    public RequirementImportService(RequirementImportRepository repository, RequirementSecurityService security,
                                     RequirementSystemService systemService,
                                     RequirementChangeLogService changeLog, ObjectMapper objectMapper) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.security = security;
         this.systemService = systemService;
         this.changeLog = changeLog;
@@ -206,30 +204,19 @@ public class RequirementImportService {
         batch.put("operator_id", user.id());
         batch.put("operator_name", user.displayName());
         batch.put("deleted", 0);
-        RequirementSql.insert(jdbc, "req_import_batch", batch);
+        repository.insertBatch(batch);
         return Map.of("batchId", batchId, "totalRows", rows.size(), "successRows", success);
     }
 
     public List<Map<String, Object>> listBatches(AuthUser user) {
-        return jdbc.queryForList("""
-                SELECT id, biz_type, project_id, file_name, template_type, total_rows, success_rows,
-                       error_rows, status, operator_id, operator_name, created_at
-                FROM req_import_batch WHERE tenant_id = ? AND deleted = 0
-                ORDER BY created_at DESC, id DESC
-                """, user.tenantId());
+        return repository.listBatches(user.tenantId());
     }
 
     private int importDifferences(Long projectId, List<Map<String, Object>> rows, AuthUser user) {
-        Integer projectCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM req_project WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                Integer.class, user.tenantId(), projectId);
-        if (projectCount == null || projectCount == 0) {
+        if (!repository.projectExists(user.tenantId(), projectId)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "导入项目不存在");
         }
-        Long maxSeq = jdbc.queryForObject(
-                "SELECT COALESCE(MAX(seq_no), 0) FROM req_difference WHERE tenant_id = ? AND project_id = ? AND deleted = 0",
-                Long.class, user.tenantId(), projectId);
-        int seq = maxSeq == null ? 0 : maxSeq.intValue();
+        int seq = (int) repository.maxDifferenceSequence(user.tenantId(), projectId);
         for (Map<String, Object> values : rows) {
             seq++;
             long id = RequirementIds.next();
@@ -243,7 +230,7 @@ public class RequirementImportService {
             values.put("source", "IMPORT");
             values.put("created_by", user.id());
             values.put("deleted", 0);
-            RequirementSql.insert(jdbc, "req_difference", values);
+            repository.insertDifference(values);
             changeLogImport("NEW_PROJECT_DIFF", id, values, user);
         }
         return rows.size();
@@ -264,7 +251,7 @@ public class RequirementImportService {
             values.put("source", "IMPORT");
             values.put("created_by", user.id());
             values.put("deleted", 0);
-            RequirementSql.insert(jdbc, "req_legacy_requirement", values);
+            repository.insertLegacy(values);
             changeLogImport("LEGACY_REQUIREMENT", id, values, user);
         }
         return rows.size();
@@ -334,10 +321,7 @@ public class RequirementImportService {
             messages.add("错误：需求编号在文件内重复：" + requirementNo);
         }
         if (checkDb && requirementNo != null) {
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM req_legacy_requirement WHERE tenant_id = ? AND requirement_no = ? AND deleted = 0",
-                    Integer.class, user.tenantId(), requirementNo);
-            if (count != null && count > 0) {
+            if (repository.legacyRequirementExists(user.tenantId(), requirementNo)) {
                 messages.add("错误：需求编号已存在：" + requirementNo);
             }
         }

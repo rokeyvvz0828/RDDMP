@@ -9,6 +9,8 @@ import com.ccb.common.exception.ErrorCode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.core.io.ClassPathResource;
+import org.mybatis.spring.SqlSessionFactoryBean;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -279,10 +281,10 @@ class DataMigrationGovernanceRemediationMySqlTest {
         assertTrue(flyway("176", "176").migrate().success);
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        IssueService issueService = new IssueService(jdbc, permissions, TestDataMigrationCodeValues.service());
-        ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions);
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.allow());
+        IssueService issueService = issueService(dataSource, jdbc, permissions);
+        ProjectComponentService componentService = projectComponentService(dataSource, permissions);
+        TargetTableService targetTableService = targetTableService(dataSource, permissions);
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         transaction.executeWithoutResult(status -> {
@@ -910,10 +912,10 @@ class DataMigrationGovernanceRemediationMySqlTest {
 
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        IssueService issueService = new IssueService(jdbc, permissions, TestDataMigrationCodeValues.service());
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
-        ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions);
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.allow());
+        IssueService issueService = issueService(dataSource, jdbc, permissions);
+        TargetTableService targetTableService = targetTableService(dataSource, permissions);
+        ProjectComponentService componentService = projectComponentService(dataSource, permissions);
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         transaction.executeWithoutResult(status -> {
@@ -1170,8 +1172,8 @@ class DataMigrationGovernanceRemediationMySqlTest {
         assertTrue(flyway("177", "178").migrate().success);
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.allow());
+        TargetTableService targetTableService = targetTableService(dataSource, permissions);
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         try (Connection connection = connection()) {
@@ -1454,8 +1456,8 @@ class DataMigrationGovernanceRemediationMySqlTest {
         assertTrue(flyway("177", "179").migrate().success);
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.allow());
+        TargetTableService targetTableService = targetTableService(dataSource, permissions);
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         String[] tables = {
@@ -1586,8 +1588,12 @@ class DataMigrationGovernanceRemediationMySqlTest {
 
         DriverManagerDataSource dataSource = new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.withAccessibleProjects(100L));
-        DashboardService dashboard = new DashboardService(jdbc, permissions);
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.withAccessibleProjects(100L));
+        SqlSessionFactoryBean mapperFactory = new SqlSessionFactoryBean();
+        mapperFactory.setDataSource(dataSource);
+        mapperFactory.setMapperLocations(new ClassPathResource("mapper/datamigration/DashboardMapper.xml"));
+        DashboardMapper mapper = mapperFactory.getObject().openSession().getMapper(DashboardMapper.class);
+        DashboardService dashboard = new DashboardService(new DashboardRepository(mapper), permissions);
 
         List<Map<String, Object>> componentStats = dashboard.component(ADMIN, 100L);
         assertEquals(2, componentStats.size());
@@ -1608,6 +1614,33 @@ class DataMigrationGovernanceRemediationMySqlTest {
         assertEquals(1L, ((Number) byType.get("MAPPING_DOC")).longValue());
         assertEquals(1L, ((Number) byType.get("RULE")).longValue());
         assertEquals(1L, ((Number) byType.get("PARAMETER")).longValue());
+    }
+
+    private ProjectComponentService projectComponentService(DriverManagerDataSource dataSource,
+                                                            DataMigrationPermissionService permissions) throws Exception {
+        SqlSessionFactoryBean mapperFactory = new SqlSessionFactoryBean();
+        mapperFactory.setDataSource(dataSource);
+        mapperFactory.setMapperLocations(new ClassPathResource("mapper/datamigration/ProjectComponentMapper.xml"));
+        ProjectComponentMapper mapper = mapperFactory.getObject().openSession(true).getMapper(ProjectComponentMapper.class);
+        return new ProjectComponentService(new ProjectComponentRepository(mapper), permissions);
+    }
+
+    private IssueService issueService(DriverManagerDataSource dataSource, JdbcTemplate jdbc,
+                                      DataMigrationPermissionService permissions) throws Exception {
+        SqlSessionFactoryBean mapperFactory = new SqlSessionFactoryBean();
+        mapperFactory.setDataSource(dataSource);
+        mapperFactory.setMapperLocations(new ClassPathResource("mapper/datamigration/IssueMapper.xml"));
+        IssueMapper mapper = new org.mybatis.spring.SqlSessionTemplate(mapperFactory.getObject()).getMapper(IssueMapper.class);
+        return new IssueService(new IssueRepository(mapper), permissions, TestDataMigrationCodeValues.service());
+    }
+
+    private TargetTableService targetTableService(DriverManagerDataSource dataSource,
+                                                  DataMigrationPermissionService permissions) throws Exception {
+        SqlSessionFactoryBean mapperFactory = new SqlSessionFactoryBean();
+        mapperFactory.setDataSource(dataSource);
+        mapperFactory.setMapperLocations(new ClassPathResource("mapper/datamigration/TargetTableMapper.xml"));
+        TargetTableMapper mapper = new org.mybatis.spring.SqlSessionTemplate(mapperFactory.getObject()).getMapper(TargetTableMapper.class);
+        return new TargetTableService(new TargetTableRepository(mapper), permissions, TestDataMigrationCodeValues.service());
     }
 
     private Flyway flyway(String baseline, String target) {

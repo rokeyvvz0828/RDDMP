@@ -1,0 +1,18 @@
+{
+  "baseline_revision":"baseline-1",
+  "requirement_results":[
+    {"id":"R1","result":"pass","task_ids":["T1","T2","T3"],"evidence":["Focused test verifies three queries for multiple projects and no per-project decoration query."],"limitations":[]},
+    {"id":"R2","result":"pass","task_ids":["T1","T2","T3"],"evidence":["Focused and system regression suites pass; fields and no-plan defaults preserved."],"limitations":[]},
+    {"id":"R3","result":"pass","task_ids":["T1","T3"],"evidence":["Tenant predicates and unchanged projectScope inspected; system regression passes."],"limitations":[]}
+  ],
+  "task_results":[{"id":"T1","status":"verified","evidence":["execution-T1 and observation-T1"]},{"id":"T2","status":"verified","evidence":["execution-T2 and observation-T2"]},{"id":"T3","status":"verified","evidence":["execution-T3 and observation-T3"]}],
+  "feedback_summary":{"total":0,"accepted_open":0,"escalated":0,"deferred_by_severity":{"P2":0,"P3":0}},
+  "sample_trend":[{"sample_id":"S-0001","P0":0,"P1":0,"P2":0,"P3":0,"score":0},{"sample_id":"S-0002","P0":0,"P1":0,"P2":0,"P3":0,"score":0},{"sample_id":"S-0003","P0":0,"P1":0,"P2":0,"P3":0,"score":0}],
+  "regression_checks":[{"check":"ProjectService focused tests","result":"pass","evidence":"48/48 passed"},{"check":"ccb-system module regression","result":"pass","evidence":"99/99 system tests passed; all reactor modules succeeded"},{"check":"Whitespace","result":"pass","evidence":"git diff --check exited 0"}],
+  "invariant_results":[{"invariant":"No response or authorization contract change","result":"pass","evidence":"Only workbench decoration path changed; projectScope and tenant predicates retained."},{"invariant":"No schema change","result":"pass","evidence":"No migration files changed for REQ-079."}],
+  "scope_audit":{"within_scope":true,"unexpected_changes":[]},
+  "disturbance_resilience":[{"disturbance":"empty project list and projects without plans","result":"pass","evidence":"Focused tests verify empty/no-plan defaults."}],
+  "residual_risks":["No live production query count was performed; rollout monitoring should confirm query latency and counts."],
+  "gate_result":"pass",
+  "route_reason":"All must requirements map to verified tasks, three zero-error samples, passing focused/module regressions and clean scope audit."
+}

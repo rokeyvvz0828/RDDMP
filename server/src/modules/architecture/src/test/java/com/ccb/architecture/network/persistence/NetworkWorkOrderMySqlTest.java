@@ -15,6 +15,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -85,12 +88,12 @@ class NetworkWorkOrderMySqlTest {
     }
 
     @BeforeEach
-    void resetNetworkData() {
+    void resetNetworkData() throws Exception {
         jdbc.update("DELETE FROM arch_network_workflow_receipt");
         jdbc.update("DELETE FROM arch_network_workflow_round");
         jdbc.update("DELETE FROM arch_network_work_order_history");
         jdbc.update("DELETE FROM arch_network_work_order");
-        store = new NetworkWorkOrderStore(jdbc);
+        store = store(dataSource);
     }
 
     @Test
@@ -216,6 +219,14 @@ class NetworkWorkOrderMySqlTest {
 
     private void inTransaction(Runnable action) {
         transactions.executeWithoutResult(status -> action.run());
+    }
+
+    private static NetworkWorkOrderStore store(DriverManagerDataSource source) throws Exception {
+        SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
+        factory.setDataSource(source);
+        factory.setMapperLocations(new ClassPathResource("mapper/architecture/NetworkWorkOrderMapper.xml"));
+        NetworkWorkOrderMapper mapper = new SqlSessionTemplate(factory.getObject()).getMapper(NetworkWorkOrderMapper.class);
+        return new NetworkWorkOrderStore(new NetworkWorkOrderRepository(mapper));
     }
 
     private static String migrationDirectory() {

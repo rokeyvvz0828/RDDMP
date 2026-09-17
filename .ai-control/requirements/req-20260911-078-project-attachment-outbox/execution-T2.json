@@ -1,0 +1,27 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "ProjectAttachmentCleanupOutboxService", "purpose": "Lease-based asynchronous storage cleanup and retry state transition"},
+    {"path_or_resource": "V205__project_attachment_cleanup_outbox.sql", "purpose": "Outbox table, uniqueness and claim index"},
+    {"path_or_resource": "ProjectAttachmentCleanupOutboxServiceTest", "purpose": "success, retry and expired lease claim coverage"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-attachment -am -Dtest=ProjectAttachmentCleanupOutboxServiceTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "3 tests passed"},
+    {"command": "temporary MySQL migration validation for V204 and V205", "exit_code": 0, "salient_output": "Outbox table and unique/claim indexes present"}
+  ],
+  "local_checks": [
+    {"check": "outbox success/retry/expired lease", "result": "pass", "evidence": "3 focused worker tests", "limitations": ["SQL stub validates state transition query shape rather than concurrent database locking"]},
+    {"check": "V205 MySQL syntax", "result": "pass", "evidence": "temporary mysql:8.4 applied V205", "limitations": ["validated against an empty disposable database"]}
+  ],
+  "diff_summary": ["Added lease worker with DONE/RETRY transitions", "Added append-only project attachment Outbox table"],
+  "invariants_checked": [
+    {"invariant": "only a claimed row calls storage", "result": "pass", "evidence": "worker test stub"},
+    {"invariant": "errors are bounded", "result": "pass", "evidence": "worker truncates stored error to 1000 characters"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

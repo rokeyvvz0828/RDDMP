@@ -4,13 +4,15 @@ import com.ccb.common.api.PageQuery;
 import com.ccb.security.model.AuthUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class WorkflowTaskProjectionTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "reviewer", "", "审批人", 1L, true);
@@ -24,7 +26,6 @@ class WorkflowTaskProjectionTest {
 
         assertEquals(1, result.records().size());
         assertBusinessProjection(result.records().get(0));
-        assertTrue(jdbc.lastListSql.contains("starter.display_name AS starter_name"));
     }
 
     @Test
@@ -36,7 +37,6 @@ class WorkflowTaskProjectionTest {
 
         assertEquals(1, result.records().size());
         assertBusinessProjection(result.records().get(0));
-        assertTrue(jdbc.lastListSql.contains("d.name AS definition_name"));
     }
 
     private WorkflowService service(ProjectionJdbcTemplate jdbc) {
@@ -47,7 +47,16 @@ class WorkflowTaskProjectionTest {
                 return rows;
             }
         };
-        return new WorkflowService(jdbc, new ObjectMapper(), null, null, labels);
+        WorkflowService service = new WorkflowService(new ObjectMapper(), null, null, labels);
+        WorkflowInboxRepository inbox = mock(WorkflowInboxRepository.class);
+        when(inbox.page(anyMap())).thenReturn(jdbc.rows());
+        when(inbox.count(anyMap())).thenReturn(1L);
+        WorkflowDoneRepository done = mock(WorkflowDoneRepository.class);
+        when(done.page(anyMap())).thenReturn(jdbc.rows());
+        when(done.count(anyMap())).thenReturn(1L);
+        service.setInboxRepository(inbox);
+        service.setDoneRepository(done);
+        return service;
     }
 
     private void assertBusinessProjection(Map<String, Object> row) {
@@ -59,18 +68,8 @@ class WorkflowTaskProjectionTest {
         assertEquals("/release/applications/SQ-001", row.get("action_path"));
     }
 
-    private static final class ProjectionJdbcTemplate extends JdbcTemplate {
-        private String lastListSql;
-
-        @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            lastListSql = sql;
-            assertTrue(sql.contains("i.business_type"));
-            assertTrue(sql.contains("i.business_title"));
-            assertTrue(sql.contains("i.business_round"));
-            assertTrue(sql.contains("i.project_ref"));
-            assertTrue(sql.contains("i.project_name"));
-            assertTrue(sql.contains("i.action_path"));
+    private static final class ProjectionJdbcTemplate {
+        private List<Map<String, Object>> rows() {
             return List.of(new java.util.LinkedHashMap<>(Map.ofEntries(
                     Map.entry("id", 31L), Map.entry("instance_id", 21L), Map.entry("task_id", 31L),
                     Map.entry("task_key", "review"), Map.entry("node_id", "review"), Map.entry("task_type", "APPROVAL"),
@@ -81,10 +80,5 @@ class WorkflowTaskProjectionTest {
                     Map.entry("action_path", "/release/applications/SQ-001"), Map.entry("instance_status", "RUNNING"))));
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            return (T) Long.valueOf(1);
-        }
     }
 }

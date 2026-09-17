@@ -3,7 +3,6 @@ package com.ccb.system.internal.capability;
 import com.ccb.system.capability.SystemOperationAudit;
 import com.ccb.system.capability.SystemOperationAuditCommand;
 import com.ccb.common.audit.OperationAuditContext;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,10 +11,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class JdbcSystemOperationAudit implements SystemOperationAudit {
-    private final JdbcTemplate jdbc;
+    private final SystemOperationAuditRepository repository;
 
-    public JdbcSystemOperationAudit(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public JdbcSystemOperationAudit(SystemOperationAuditRepository repository) {
+        this.repository = repository;
     }
 
     @Override
@@ -37,20 +36,8 @@ public class JdbcSystemOperationAudit implements SystemOperationAudit {
                 safeError)) {
             return;
         }
-        jdbc.update("""
-                        INSERT INTO sys_operation_log
-                            (id, tenant_id, operator_id, operation_code, request_method, request_path, success, error_message, trace_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                nextId(),
-                command.actor().tenantId(),
-                command.actor().id(),
-                command.operationCode(),
-                command.requestMethod(),
-                command.requestPath(),
-                success,
-                safeError,
-                command.traceId());
+        repository.insert(nextId(), command.actor().tenantId(), command.actor().id(), command.operationCode(),
+                command.requestMethod(), command.requestPath(), success, safeError, command.traceId());
     }
 
     private String targetType(String operationCode) {

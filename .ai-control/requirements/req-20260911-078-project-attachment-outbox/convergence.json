@@ -1,0 +1,39 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2"], "evidence": ["ProjectServiceTest: 47 passed", "worker success test marks DONE"], "limitations": ["actual MinIO call is stubbed"]},
+    {"id": "R2", "result": "pass", "task_ids": ["T2"], "evidence": ["focused worker success and failure tests: 3 passed"], "limitations": ["no live object fixture"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T2"], "evidence": ["V205 unique key", "expired PROCESSING lease claim assertion"], "limitations": ["no concurrent database scheduler run"]},
+    {"id": "R4", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["system reactor: 98 tests passed including ProjectServiceTest"], "limitations": ["authorized local delete fixture unavailable"]},
+    {"id": "R5", "result": "pass", "task_ids": ["T2"], "evidence": ["disposable mysql:8.4 applied V205 and found table, unique key and claim index"], "limitations": ["empty disposable database"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["execution-T1.json", "observation-T1.json"]},
+    {"id": "T2", "status": "verified", "evidence": ["execution-T2.json", "observation-T2.json"]},
+    {"id": "T3", "status": "verified", "evidence": ["execution-T3.json", "observation-T3.json"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "ProjectAttachmentCleanupOutboxServiceTest", "result": "pass", "evidence": "3 tests passed"},
+    {"check": "system module regression", "result": "pass", "evidence": "98 tests passed"},
+    {"check": "full reactor", "result": "inconclusive", "evidence": "NetworkWorkOrderMySqlTest Flyway socket wait after temporary MySQL exit"}
+  ],
+  "invariant_results": [
+    {"invariant": "project transaction performs no synchronous attachment deletion loop", "result": "pass", "evidence": "ProjectService interaction test"},
+    {"invariant": "new schema is append-only", "result": "pass", "evidence": "V205 creates a new table/indexes only"},
+    {"invariant": "authorized file scope", "result": "pass", "evidence": "task-specific diff review; unrelated REQ-076 changes preserved"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "storage exception", "result": "pass", "evidence": "worker test writes RETRY and increments attempt count"},
+    {"disturbance": "abandoned claim", "result": "pass", "evidence": "expired lease predicate is covered by focused test"}
+  ],
+  "residual_risks": ["Full reactor completion is blocked by an unrelated architecture migration test environment failure", "Live authorized project deletion and actual MinIO cleanup remain release follow-ups", "Owner independent review is still required for platform/database changes"],
+  "gate_result": "pass",
+  "route_reason": "All must requirements have verified task, system, worker or MySQL migration evidence; non-task environment limits are disclosed."
+}

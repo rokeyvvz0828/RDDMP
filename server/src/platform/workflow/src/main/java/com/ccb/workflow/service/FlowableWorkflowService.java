@@ -16,7 +16,6 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.task.api.Task;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class FlowableWorkflowService {
-    private final JdbcTemplate jdbc;
+    private final FlowableWorkflowRepository workflowRepository;
     private final ObjectMapper objectMapper;
     private final RepositoryService repositoryService;
     private final RuntimeService runtimeService;
@@ -46,12 +45,14 @@ public class FlowableWorkflowService {
     private WorkflowSignatureService signatureService;
     private WorkflowTaskAssignmentPublisher taskAssignments;
     private WorkflowProjectAccessGateway projectAccess;
+    private WorkflowDefinitionSummaryProjector definitionSummaryProjector;
 
-    public FlowableWorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper,
+    @Autowired
+    public FlowableWorkflowService(ObjectMapper objectMapper,
                                    RepositoryService repositoryService, RuntimeService runtimeService,
                                    TaskService taskService, WorkflowAssigneeResolver assigneeResolver,
-                                   WorkflowAuditService auditService) {
-        this.jdbc = jdbc;
+                                   WorkflowAuditService auditService, FlowableWorkflowRepository workflowRepository) {
+        this.workflowRepository = workflowRepository;
         this.objectMapper = objectMapper;
         this.repositoryService = repositoryService;
         this.runtimeService = runtimeService;
@@ -83,6 +84,11 @@ public class FlowableWorkflowService {
         this.projectAccess = projectAccess;
     }
 
+    @Autowired(required = false)
+    void setDefinitionSummaryProjector(WorkflowDefinitionSummaryProjector definitionSummaryProjector) {
+        this.definitionSummaryProjector = definitionSummaryProjector;
+    }
+
     public boolean isEnterpriseDefinition(String definitionJson) {
         return modelAdapter.adapt(definitionJson).schemaVersion() == 2;
     }
@@ -97,12 +103,18 @@ public class FlowableWorkflowService {
                                                 Long projectId, AuthUser user) {
         WorkflowDefinitionModel model = modelValidator.requireValid(definitionJson);
         long id = nextId();
-        jdbc.update("INSERT INTO wf_definition (id, tenant_id, code, name, scope_type, project_id, status, current_version, model_schema_version, deleted) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0, ?, 0)",
-                id, user.tenantId(), requireText(code, "流程编码"), requireText(name, "流程名称"), scopeType, projectId, model.schemaVersion());
-        jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, model_schema_version, status) VALUES (?, ?, ?, 1, ?, ?, 'DRAFT')",
-                nextId(), user.tenantId(), id, definitionJson, model.schemaVersion());
+        Map<String, Object> definitionParams = new LinkedHashMap<>();
+        definitionParams.put("id", id); definitionParams.put("tenantId", user.tenantId());
+        definitionParams.put("code", requireText(code, "流程编码")); definitionParams.put("name", requireText(name, "流程名称"));
+        definitionParams.put("scopeType", scopeType); definitionParams.put("projectId", projectId); definitionParams.put("modelSchemaVersion", model.schemaVersion());
+        workflowRepository.insertDefinition(definitionParams);
+        Map<String, Object> versionParams = new LinkedHashMap<>();
+        versionParams.put("id", nextId()); versionParams.put("tenantId", user.tenantId()); versionParams.put("definitionId", id);
+        versionParams.put("definitionJson", definitionJson); versionParams.put("modelSchemaVersion", model.schemaVersion());
+        workflowRepository.insertVersion(versionParams);
+        refreshDefinitionSummary(id, user.tenantId(), scopeType, 1, definitionJson);
         auditService.record(user, "DEFINITION_CREATED", id, 1, null, null, null, Map.of("code", code));
-        return jdbc.queryForMap("SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ?", id, user.tenantId());
+        return workflowRepository.definition(id, user.tenantId());
     }
 
     @Transactional
@@ -110,16 +122,23 @@ public class FlowableWorkflowService {
         WorkflowDefinitionModel model = modelValidator.requireValid(definitionJson);
         Map<String, Object> definition = findDefinition(definitionId, user.tenantId());
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) throw new BusinessException(ErrorCode.CONFLICT, "已发布流程不能编辑，请复制后创建新版本");
-        Map<String, Object> version = jdbc.queryForMap("SELECT version_no FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND status = 'DRAFT' ORDER BY version_no DESC LIMIT 1", definitionId, user.tenantId());
-        jdbc.update("UPDATE wf_definition SET code = ?, name = ?, model_schema_version = ? WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'DRAFT'", requireText(code, "流程编码"), requireText(name, "流程名称"), model.schemaVersion(), definitionId, user.tenantId());
-        jdbc.update("UPDATE wf_version SET definition_json = ?, model_schema_version = ? WHERE definition_id = ? AND tenant_id = ? AND version_no = ? AND status = 'DRAFT'", definitionJson, model.schemaVersion(), definitionId, user.tenantId(), version.get("version_no"));
+        Map<String, Object> version = workflowRepository.latestVersion(definitionId, user.tenantId());
+        Map<String, Object> definitionParams = new LinkedHashMap<>();
+        definitionParams.put("code", requireText(code, "流程编码")); definitionParams.put("name", requireText(name, "流程名称"));
+        definitionParams.put("modelSchemaVersion", model.schemaVersion()); definitionParams.put("definitionId", definitionId); definitionParams.put("tenantId", user.tenantId());
+        workflowRepository.updateDefinition(definitionParams);
+        Map<String, Object> versionParams = new LinkedHashMap<>();
+        versionParams.put("definitionJson", definitionJson); versionParams.put("modelSchemaVersion", model.schemaVersion());
+        versionParams.put("definitionId", definitionId); versionParams.put("tenantId", user.tenantId()); versionParams.put("versionNo", version.get("version_no"));
+        workflowRepository.updateVersion(versionParams);
+        refreshDefinitionSummary(definitionId, user.tenantId(), String.valueOf(definition.get("scope_type")), ((Number) version.get("version_no")).intValue(), definitionJson);
         auditService.record(user, "DEFINITION_UPDATED", definitionId, ((Number) version.get("version_no")).intValue(), null, null, null, Map.of("code", code));
     }
 
     @Transactional
     public void publish(long definitionId, AuthUser user) {
         Map<String, Object> definition = findDefinition(definitionId, user.tenantId());
-        Map<String, Object> version = jdbc.queryForMap("SELECT version_no, definition_json FROM wf_version WHERE definition_id = ? AND tenant_id = ? ORDER BY version_no DESC LIMIT 1", definitionId, user.tenantId());
+        Map<String, Object> version = workflowRepository.latestVersion(definitionId, user.tenantId());
         String json = String.valueOf(version.get("definition_json"));
         // Validate before deployment so invalid gateway models return a business error
         // instead of being converted into a generic deployment failure.
@@ -134,10 +153,13 @@ public class FlowableWorkflowService {
         ProcessDefinition processDefinition = processDefinition(deployment.getId());
         String mappingJson = writeJson(compiled.nodeMapping());
         int versionNo = ((Number) version.get("version_no")).intValue();
-        jdbc.update("UPDATE wf_version SET status = 'PUBLISHED', bpmn_xml = ?, deployment_id = ?, node_mapping_json = ? WHERE definition_id = ? AND tenant_id = ? AND version_no = ?",
-                compiled.xml(), deployment.getId(), mappingJson, definitionId, user.tenantId(), versionNo);
-        jdbc.update("UPDATE wf_definition SET status = 'PUBLISHED', current_version = ?, model_schema_version = ?, bpmn_xml = ?, deployment_id = ?, node_mapping_json = ? WHERE id = ? AND tenant_id = ?",
-                versionNo, 2, compiled.xml(), deployment.getId(), mappingJson, definitionId, user.tenantId());
+        Map<String, Object> publishParams = new LinkedHashMap<>();
+        publishParams.put("bpmnXml", compiled.xml()); publishParams.put("deploymentId", deployment.getId()); publishParams.put("nodeMappingJson", mappingJson);
+        publishParams.put("definitionId", definitionId); publishParams.put("tenantId", user.tenantId()); publishParams.put("versionNo", versionNo);
+        workflowRepository.publishVersion(publishParams);
+        publishParams.put("modelSchemaVersion", 2);
+        workflowRepository.publishDefinition(publishParams);
+        refreshDefinitionSummary(definitionId, user.tenantId(), String.valueOf(definition.get("scope_type")), versionNo, json);
         auditService.record(user, "DEFINITION_PUBLISHED", definitionId, versionNo, null, null, null,
                 Map.of("deploymentId", deployment.getId(), "processDefinitionId", processDefinition.getId()));
     }
@@ -149,13 +171,18 @@ public class FlowableWorkflowService {
             throw new BusinessException(ErrorCode.CONFLICT, "只有已发布流程才能取消发布");
         }
         int currentVersion = ((Number) definition.get("current_version")).intValue();
-        Map<String, Object> version = jdbc.queryForMap("SELECT definition_json, model_schema_version FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND version_no = ? AND status = 'PUBLISHED'", definitionId, user.tenantId(), currentVersion);
-        Integer nextVersion = jdbc.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM wf_version WHERE definition_id = ? AND tenant_id = ?", Integer.class, definitionId, user.tenantId());
+        Map<String, Object> version = workflowRepository.version(definitionId, currentVersion, user.tenantId());
+        Map<String, Object> latest = workflowRepository.latestVersion(definitionId, user.tenantId());
+        Integer nextVersion = latest == null || latest.get("version_no") == null ? null : ((Number) latest.get("version_no")).intValue() + 1;
         int draftVersion = nextVersion == null ? currentVersion + 1 : nextVersion;
-        jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, model_schema_version, status) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT')",
-                nextId(), user.tenantId(), definitionId, draftVersion, version.get("definition_json"), version.get("model_schema_version"));
-        jdbc.update("UPDATE wf_definition SET status = 'DRAFT', current_version = ?, bpmn_xml = NULL, deployment_id = NULL, node_mapping_json = NULL WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                draftVersion, definitionId, user.tenantId());
+        Map<String, Object> draftParams = new LinkedHashMap<>();
+        draftParams.put("id", nextId()); draftParams.put("tenantId", user.tenantId()); draftParams.put("definitionId", definitionId); draftParams.put("versionNo", draftVersion);
+        draftParams.put("definitionJson", version.get("definition_json")); draftParams.put("modelSchemaVersion", version.get("model_schema_version"));
+        workflowRepository.insertDraftVersion(draftParams);
+        Map<String, Object> unpublishParams = new LinkedHashMap<>();
+        unpublishParams.put("versionNo", draftVersion); unpublishParams.put("definitionId", definitionId); unpublishParams.put("tenantId", user.tenantId());
+        workflowRepository.unpublishDefinition(unpublishParams);
+        refreshDefinitionSummary(definitionId, user.tenantId(), String.valueOf(definition.get("scope_type")), draftVersion, String.valueOf(version.get("definition_json")));
         auditService.record(user, "DEFINITION_UNPUBLISHED", definitionId, draftVersion, null, null, null, Map.of("previousVersion", currentVersion));
     }
     @Transactional
@@ -174,22 +201,25 @@ public class FlowableWorkflowService {
         org.flowable.engine.runtime.ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinition.getId(), requireText(businessKey, "业务单号"), prepared.values());
         long instanceId = nextId();
         String variablesJson = writeJson(prepared.values());
-        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, business_module_code, business_module_name, business_type, business_title, business_round, project_id, project_ref, project_name, action_path, data_digest, status, starter_id, flowable_process_instance_id, flowable_process_definition_id, variables_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RUNNING', ?, ?, ?, ?)",
-                instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"),
-                contextValue(context, WorkflowBusinessContext::moduleCode), contextValue(context, WorkflowBusinessContext::moduleName),
-                contextValue(context, WorkflowBusinessContext::businessType), contextValue(context, WorkflowBusinessContext::businessTitle),
-                context == null ? null : context.businessRound(), projectId, contextValue(context, WorkflowBusinessContext::projectRef),
-                contextValue(context, WorkflowBusinessContext::projectName), contextValue(context, WorkflowBusinessContext::actionPath),
-                contextValue(context, WorkflowBusinessContext::dataDigest), user.id(), processInstance.getProcessInstanceId(),
-                processInstance.getProcessDefinitionId(), variablesJson);
+        Map<String, Object> instanceParams = new LinkedHashMap<>();
+        instanceParams.put("id", instanceId); instanceParams.put("tenantId", user.tenantId()); instanceParams.put("definitionId", definitionId);
+        instanceParams.put("versionNo", definition.get("current_version")); instanceParams.put("businessKey", requireText(businessKey, "业务单号"));
+        instanceParams.put("businessModuleCode", contextValue(context, WorkflowBusinessContext::moduleCode)); instanceParams.put("businessModuleName", contextValue(context, WorkflowBusinessContext::moduleName));
+        instanceParams.put("businessType", contextValue(context, WorkflowBusinessContext::businessType)); instanceParams.put("businessTitle", contextValue(context, WorkflowBusinessContext::businessTitle));
+        instanceParams.put("businessRound", context == null ? null : context.businessRound()); instanceParams.put("projectId", projectId);
+        instanceParams.put("projectRef", contextValue(context, WorkflowBusinessContext::projectRef)); instanceParams.put("projectName", contextValue(context, WorkflowBusinessContext::projectName));
+        instanceParams.put("actionPath", contextValue(context, WorkflowBusinessContext::actionPath)); instanceParams.put("dataDigest", contextValue(context, WorkflowBusinessContext::dataDigest));
+        instanceParams.put("starterId", user.id()); instanceParams.put("flowableProcessInstanceId", processInstance.getProcessInstanceId());
+        instanceParams.put("flowableProcessDefinitionId", processInstance.getProcessDefinitionId()); instanceParams.put("variablesJson", variablesJson);
+        workflowRepository.insertInstance(instanceParams);
         syncTasks(instanceId, definitionId, ((Number) definition.get("current_version")).intValue(), processInstance.getProcessInstanceId(), user.tenantId(), user);
         auditService.record(user, "INSTANCE_STARTED", definitionId, ((Number) definition.get("current_version")).intValue(), instanceId, null, null,
                 Map.of("businessKey", businessKey, "flowableProcessInstanceId", processInstance.getProcessInstanceId()));
-        return jdbc.queryForMap("SELECT id, definition_id, version_no, business_key, status, flowable_process_instance_id FROM wf_instance WHERE id = ? AND tenant_id = ?", instanceId, user.tenantId());
+        return workflowRepository.instance(instanceId, user.tenantId());
     }
 
     public List<Map<String, Object>> inbox(AuthUser user) {
-        return jdbc.queryForList("SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status, COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key, i.status AS instance_status FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.flowable_task_id IS NOT NULL AND t.status IN ('PENDING', 'SENT') ORDER BY t.id DESC", user.tenantId(), user.id());
+        return workflowRepository.inbox(user.tenantId(), user.id());
     }
 
     @Transactional
@@ -233,7 +263,9 @@ public class FlowableWorkflowService {
             ensureActiveUser(target, user.tenantId());
             if ("TRANSFER".equals(normalized)) taskService.setAssignee(flowableTaskId, String.valueOf(target));
             else taskService.delegateTask(flowableTaskId, String.valueOf(target));
-            jdbc.update("UPDATE wf_task SET assignee_id = ?, assignee_name = (SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ?) WHERE id = ? AND tenant_id = ? AND status = 'PENDING'", target, target, user.tenantId(), taskId, user.tenantId());
+            Map<String, Object> params = new LinkedHashMap<>();
+            params.put("targetUserId", target); params.put("tenantId", user.tenantId()); params.put("taskId", taskId);
+            workflowRepository.updateTaskAssignee(params);
             assigned(user.tenantId(), instanceId, taskId, target, user.id());
             recordAction(appTask, normalized, user, target, comment, Map.of("targetUserId", target));
             auditService.record(user, "TASK_" + normalized, definitionId(appTask), versionNo(appTask), instanceId, taskId, comment, Map.of("targetUserId", target));
@@ -243,16 +275,25 @@ public class FlowableWorkflowService {
         claimIfNeeded(flowableTask, user);
         if ("REJECT".equals(normalized) || "RETURN".equals(normalized)) {
             runtimeService.deleteProcessInstance(flowableTask.getProcessInstanceId(), normalized);
-            jdbc.update("UPDATE wf_task SET status = ?, comment = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND status = 'PENDING'", "REJECT".equals(normalized) ? "REJECTED" : "RETURNED", comment, taskId, user.tenantId());
-            jdbc.update("UPDATE wf_task SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP WHERE instance_id = ? AND tenant_id = ? AND id <> ? AND status = 'PENDING'", instanceId, user.tenantId(), taskId);
-            jdbc.update("UPDATE wf_instance SET status = ? WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", "REJECT".equals(normalized) ? "REJECTED" : "RETURNED", instanceId, user.tenantId());
+            String decisionStatus = "REJECT".equals(normalized) ? "REJECTED" : "RETURNED";
+            Map<String, Object> decisionParams = new LinkedHashMap<>();
+            decisionParams.put("status", decisionStatus); decisionParams.put("comment", comment); decisionParams.put("taskId", taskId); decisionParams.put("tenantId", user.tenantId());
+            workflowRepository.updateTaskDecision(decisionParams);
+            Map<String, Object> cancelParams = new LinkedHashMap<>();
+            cancelParams.put("instanceId", instanceId); cancelParams.put("tenantId", user.tenantId()); cancelParams.put("taskId", taskId);
+            workflowRepository.cancelPendingTasks(cancelParams);
+            Map<String, Object> instanceParams = new LinkedHashMap<>();
+            instanceParams.put("status", decisionStatus); instanceParams.put("instanceId", instanceId); instanceParams.put("tenantId", user.tenantId());
+            workflowRepository.updateInstanceStatus(instanceParams);
             emit(instanceId, "REJECT".equals(normalized) ? WorkflowLifecycleEventType.REJECTED : WorkflowLifecycleEventType.RETURNED, user);
         } else {
             taskService.complete(flowableTaskId);
-            jdbc.update("UPDATE wf_task SET status = 'APPROVED', comment = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND status = 'PENDING'", comment, taskId, user.tenantId());
+            Map<String, Object> approvalParams = new LinkedHashMap<>();
+            approvalParams.put("status", "APPROVED"); approvalParams.put("comment", comment); approvalParams.put("taskId", taskId); approvalParams.put("tenantId", user.tenantId());
+            workflowRepository.updateTaskDecision(approvalParams);
             syncTasks(instanceId, definitionId(appTask), versionNo(appTask), flowableTask.getProcessInstanceId(), user.tenantId(), user);
             refreshInstanceStatus(instanceId, user.tenantId());
-            String status = jdbc.queryForObject("SELECT status FROM wf_instance WHERE id = ? AND tenant_id = ?", String.class, instanceId, user.tenantId());
+            String status = workflowRepository.instanceStatus(instanceId, user.tenantId());
             if ("APPROVED".equals(status)) emit(instanceId, WorkflowLifecycleEventType.APPROVED, user);
         }
         recordAction(appTask, normalized, user, null, comment, Map.of());
@@ -260,20 +301,22 @@ public class FlowableWorkflowService {
     }
 
     public List<Map<String, Object>> instances(AuthUser user) {
-        return jdbc.queryForList("SELECT i.id, i.definition_id, d.name AS definition_name, i.version_no, i.business_key, i.status, i.starter_id, u.display_name AS starter_name, i.created_at FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.tenant_id = ? ORDER BY i.id DESC", user.tenantId());
+        return workflowRepository.instances(user.tenantId());
     }
 
     public List<Map<String, Object>> timeline(long instanceId, AuthUser user) {
         ensureInstance(instanceId, user.tenantId());
-        return jdbc.queryForList("SELECT a.id, a.event_type, a.operator_id, u.display_name AS operator_name, a.reason, a.payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.instance_id = ? AND a.tenant_id = ? ORDER BY a.created_at, a.id", instanceId, user.tenantId());
+        return workflowRepository.timeline(instanceId, user.tenantId());
     }
 
     private void syncTasks(long instanceId, long definitionId, int versionNo, String processInstanceId, long tenantId, AuthUser operator) {
         if (runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult() == null) {
-            jdbc.update("UPDATE wf_instance SET status = 'APPROVED' WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceId, tenantId);
+            Map<String, Object> statusParams = new LinkedHashMap<>();
+            statusParams.put("status", "APPROVED"); statusParams.put("instanceId", instanceId); statusParams.put("tenantId", tenantId);
+            workflowRepository.updateInstanceStatus(statusParams);
             return;
         }
-        Map<String, Object> version = jdbc.queryForMap("SELECT definition_json, node_mapping_json FROM wf_version WHERE definition_id = ? AND version_no = ? AND tenant_id = ?", definitionId, versionNo, tenantId);
+        Map<String, Object> version = workflowRepository.version(definitionId, versionNo, tenantId);
         WorkflowDefinitionValidator.WorkflowGraph graph = graph(String.valueOf(version.get("definition_json")));
         Map<String, Object> variables = runtimeService.getVariables(processInstanceId);
         Map<String, String> reverseMapping = reverseMapping(String.valueOf(version.get("node_mapping_json")));
@@ -286,7 +329,7 @@ public class FlowableWorkflowService {
                 WorkflowDefinitionValidator.WorkflowNode node = graph.node(sourceNodeId);
                 if (node == null) continue;
                 if ("CCB_CC".equals(task.getCategory()) || "CC".equals(node.type())) {
-                    if (jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE tenant_id = ? AND flowable_task_id = ?", Integer.class, tenantId, task.getId()) == 0) {
+                    if (workflowRepository.countTask(tenantId, task.getId(), null) == 0) {
                         List<Long> recipients = ids(node.config().path("userIds"));
                         if (operator != null) requireProjectTargets(instanceId, recipients, operator);
                         createCcTasks(instanceId, tenantId, recipients, operator == null ? 0 : operator.id(), "流程节点抄送");
@@ -299,11 +342,13 @@ public class FlowableWorkflowService {
                 List<WorkflowAssigneeResolver.ResolvedAssignee> assignees = assigneesForTask(task, nodeModel, instanceId, tenantId, graph, variables, operator);
                 if (assignees.isEmpty()) continue;
                 for (WorkflowAssigneeResolver.ResolvedAssignee assignee : assignees) {
-                    Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE tenant_id = ? AND flowable_task_id = ? AND assignee_id = ?", Integer.class, tenantId, task.getId(), assignee.id());
-                    if (exists != null && exists > 0) continue;
+                    if (workflowRepository.countTask(tenantId, task.getId(), assignee.id()) > 0) continue;
                     long taskId = nextId();
-                    jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, assignee_type, assignee_name, assignee_id, status, flowable_task_id, action_key) VALUES (?, ?, ?, ?, ?, 'APPROVAL', ?, ?, ?, ?, 'PENDING', ?, ?)",
-                            taskId, tenantId, instanceId, sourceNodeId, sourceNodeId, task.getId(), nodeModel.config().path("assigneeType").asText("USER"), assignee.name(), assignee.id(), task.getId(), sourceNodeId);
+                    Map<String, Object> taskParams = new LinkedHashMap<>();
+                    taskParams.put("taskId", taskId); taskParams.put("tenantId", tenantId); taskParams.put("instanceId", instanceId); taskParams.put("taskKey", sourceNodeId); taskParams.put("nodeId", sourceNodeId);
+                    taskParams.put("taskGroupKey", task.getId()); taskParams.put("assigneeType", nodeModel.config().path("assigneeType").asText("USER")); taskParams.put("assigneeName", assignee.name());
+                    taskParams.put("assigneeId", assignee.id()); taskParams.put("flowableTaskId", task.getId()); taskParams.put("actionKey", sourceNodeId);
+                    workflowRepository.insertApprovalTask(taskParams);
                     assigned(tenantId, instanceId, taskId, assignee.id(), operator == null ? 0 : operator.id());
                 }
             }
@@ -317,25 +362,29 @@ public class FlowableWorkflowService {
         if (task.getAssignee() != null && !task.getAssignee().isBlank()) {
             try {
                 long id = Long.parseLong(task.getAssignee());
-                return jdbc.query("SELECT id, display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 1", (rs, row) -> List.of(new WorkflowAssigneeResolver.ResolvedAssignee(rs.getLong("id"), rs.getString("display_name"))), id, tenantId).stream().flatMap(List::stream).toList();
+                Map<String, Object> active = workflowRepository.activeUser(id, tenantId);
+                return active == null ? List.of() : List.of(new WorkflowAssigneeResolver.ResolvedAssignee(((Number) active.get("id")).longValue(), String.valueOf(active.get("display_name"))));
             } catch (NumberFormatException ignored) { return List.of(); }
         }
-        Long projectId = jdbc.query("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ?",
-                rs -> rs.next() && rs.getObject(1) != null ? ((Number) rs.getObject(1)).longValue() : null,
-                instanceId, tenantId);
+        Map<String, Object> instance = workflowRepository.instance(instanceId, tenantId);
+        Long projectId = instance == null || instance.get("project_id") == null ? null : ((Number) instance.get("project_id")).longValue();
         return assigneeResolver.resolveNode(node, tenantId, starterId(task.getProcessInstanceId(), tenantId), projectId, operator, variables);
     }
 
     private long starterId(String processInstanceId, long tenantId) {
-        Long starter = jdbc.query("SELECT starter_id FROM wf_instance WHERE flowable_process_instance_id = ? AND tenant_id = ?", rs -> rs.next() ? rs.getLong(1) : null, processInstanceId, tenantId);
-        return starter == null ? 0 : starter;
+        Map<String, Object> instance = workflowRepository.instanceByProcess(processInstanceId, tenantId);
+        return instance == null || instance.get("starter_id") == null ? 0 : ((Number) instance.get("starter_id")).longValue();
     }
 
     private void refreshInstanceStatus(long instanceId, long tenantId) {
-        String flowableId = jdbc.query("SELECT flowable_process_instance_id FROM wf_instance WHERE id = ? AND tenant_id = ?", rs -> rs.next() ? rs.getString(1) : null, instanceId, tenantId);
+        Map<String, Object> instance = workflowRepository.instance(instanceId, tenantId);
+        String flowableId = instance == null ? null : String.valueOf(instance.get("flowable_process_instance_id"));
+        if ("null".equals(flowableId)) flowableId = null;
         if (flowableId == null) return;
         if (runtimeService.createProcessInstanceQuery().processInstanceId(flowableId).singleResult() == null) {
-            jdbc.update("UPDATE wf_instance SET status = 'APPROVED' WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceId, tenantId);
+            Map<String, Object> statusParams = new LinkedHashMap<>();
+            statusParams.put("status", "APPROVED"); statusParams.put("instanceId", instanceId); statusParams.put("tenantId", tenantId);
+            workflowRepository.updateInstanceStatus(statusParams);
         }
     }
 
@@ -352,23 +401,27 @@ public class FlowableWorkflowService {
     }
 
     private Map<String, Object> findPendingTask(long taskId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT t.id, t.instance_id, i.definition_id, i.version_no, i.project_id, t.flowable_task_id, t.task_key, t.assignee_id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.id = ? AND t.tenant_id = ? AND t.assignee_id = ? AND t.flowable_task_id IS NOT NULL AND t.status = 'PENDING'", taskId, user.tenantId(), user.id());
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.FORBIDDEN, "当前用户没有该流程任务的审批权限");
-        Object projectId = rows.get(0).get("project_id");
+        Map<String, Object> task = workflowRepository.pendingTask(taskId, user.tenantId(), user.id());
+        if (task == null) throw new BusinessException(ErrorCode.FORBIDDEN, "当前用户没有该流程任务的审批权限");
+        Object projectId = task.get("project_id");
         if (projectId instanceof Number number) requireProjectAccess(number.longValue(), user);
-        return rows.get(0);
+        return task;
     }
 
     private Map<String, Object> findDefinition(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, scope_type, project_id, status, current_version, deployment_id FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
-        return rows.get(0);
+        Map<String, Object> definition = workflowRepository.definition(id, tenantId);
+        if (definition == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
+        return definition;
+    }
+
+    private void refreshDefinitionSummary(long definitionId, long tenantId, String scopeType, int versionNo, String definitionJson) {
+        if (definitionSummaryProjector != null) definitionSummaryProjector.refresh(definitionId, tenantId, scopeType, versionNo, definitionJson);
     }
 
     private Map<String, Object> findPublishedDefinition(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version, d.deployment_id, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0 AND d.status = 'PUBLISHED' AND v.status = 'PUBLISHED'", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程尚未发布或不存在");
-        return rows.get(0);
+        Map<String, Object> definition = workflowRepository.publishedDefinition(id, tenantId);
+        if (definition == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程尚未发布或不存在");
+        return definition;
     }
 
     private ProcessDefinition processDefinition(String deploymentId) {
@@ -405,15 +458,23 @@ public class FlowableWorkflowService {
         for (Long userId : userIds.stream().distinct().toList()) {
             Map<String, Object> user = activeUser(userId, tenantId);
             long taskId = nextId();
-            jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, assignee_type, assignee_name, assignee_id, status, comment, completed_at) VALUES (?, ?, ?, ?, ?, 'CC', ?, 'USER', ?, ?, 'SENT', ?, CURRENT_TIMESTAMP)", taskId, tenantId, instanceId, "cc", "cc", UUID.randomUUID().toString(), user.get("display_name"), userId, comment);
-            jdbc.update("INSERT INTO wf_task_action (id, tenant_id, instance_id, task_id, action_code, operator_id, target_user_id, comment) VALUES (?, ?, ?, ?, 'CC', ?, ?, ?)", nextId(), tenantId, instanceId, taskId, operatorId, userId, comment);
+            Map<String, Object> taskParams = new LinkedHashMap<>();
+            taskParams.put("taskId", taskId); taskParams.put("tenantId", tenantId); taskParams.put("instanceId", instanceId); taskParams.put("taskGroupKey", UUID.randomUUID().toString());
+            taskParams.put("assigneeName", user.get("display_name")); taskParams.put("assigneeId", userId); taskParams.put("comment", comment);
+            workflowRepository.insertCcTask(taskParams);
+            Map<String, Object> actionParams = new LinkedHashMap<>();
+            actionParams.put("id", nextId()); actionParams.put("tenantId", tenantId); actionParams.put("instanceId", instanceId); actionParams.put("taskId", taskId);
+            actionParams.put("actionCode", "CC"); actionParams.put("operatorId", operatorId); actionParams.put("targetUserId", userId); actionParams.put("comment", comment); actionParams.put("payloadJson", null);
+            workflowRepository.insertTaskAction(actionParams);
         }
     }
 
     private void insertAddSignTask(Map<String, Object> task, long targetUserId, AuthUser operator) {
         long taskId = nextId();
-        jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, parent_task_id, assignee_type, assignee_name, assignee_id, status) SELECT ?, instance_id, instance_id, task_key, node_id, 'ADD_SIGN', ?, id, 'USER', (SELECT display_name FROM sys_user WHERE id = ? AND tenant_id = ?), ?, 'PENDING' FROM wf_task WHERE id = ? AND tenant_id = ?",
-                taskId, UUID.randomUUID().toString(), targetUserId, operator.tenantId(), targetUserId, task.get("id"), operator.tenantId());
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("taskId", taskId); params.put("taskGroupKey", UUID.randomUUID().toString()); params.put("targetUserId", targetUserId);
+        params.put("tenantId", operator.tenantId()); params.put("sourceTaskId", task.get("id"));
+        workflowRepository.insertAddSignTask(params);
         assigned(operator.tenantId(), ((Number) task.get("instance_id")).longValue(), taskId, targetUserId, operator.id());
     }
 
@@ -422,7 +483,10 @@ public class FlowableWorkflowService {
     }
 
     private void recordAction(Map<String, Object> task, String action, AuthUser user, Long target, String comment, Map<String, Object> payload) {
-        jdbc.update("INSERT INTO wf_task_action (id, tenant_id, instance_id, task_id, action_code, operator_id, target_user_id, comment, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", nextId(), user.tenantId(), task.get("instance_id"), task.get("id"), action, user.id(), target, comment, writeJson(payload));
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("id", nextId()); params.put("tenantId", user.tenantId()); params.put("instanceId", task.get("instance_id")); params.put("taskId", task.get("id"));
+        params.put("actionCode", action); params.put("operatorId", user.id()); params.put("targetUserId", target); params.put("comment", comment); params.put("payloadJson", writeJson(payload));
+        workflowRepository.insertTaskAction(params);
     }
 
     private long definitionId(Map<String, Object> task) { return ((Number) task.get("definition_id")).longValue(); }
@@ -430,15 +494,14 @@ public class FlowableWorkflowService {
     private long requireTarget(Long target) { if (target == null || target <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择目标用户"); return target; }
     private void ensureActiveUser(long id, long tenantId) { activeUser(id, tenantId); }
     private Map<String, Object> activeUser(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 1", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标用户不存在或已停用");
-        return rows.get(0);
+        Map<String, Object> user = workflowRepository.activeUser(id, tenantId);
+        if (user == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标用户不存在或已停用");
+        return user;
     }
-    private void ensureInstance(long id, long tenantId) { if (jdbc.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE id = ? AND tenant_id = ?", Integer.class, id, tenantId) == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在"); }
+    private void ensureInstance(long id, long tenantId) { if (workflowRepository.countInstance(id, tenantId) == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在"); }
     private void requireProjectTargets(long instanceId, List<Long> userIds, AuthUser actor) {
-        Long projectId = jdbc.query("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ?",
-                rs -> rs.next() && rs.getObject(1) != null ? ((Number) rs.getObject(1)).longValue() : null,
-                instanceId, actor.tenantId());
+        Map<String, Object> instance = workflowRepository.instance(instanceId, actor.tenantId());
+        Long projectId = instance == null || instance.get("project_id") == null ? null : ((Number) instance.get("project_id")).longValue();
         if (projectId == null) return;
         requireProjectGateway().requireMembers(projectId, userIds == null ? List.of() : userIds, actor);
     }

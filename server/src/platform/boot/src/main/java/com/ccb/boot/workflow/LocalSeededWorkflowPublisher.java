@@ -1,17 +1,16 @@
 package com.ccb.boot.workflow;
 
 import com.ccb.security.model.AuthUser;
+import com.ccb.boot.persistence.BootWorkflowRepository;
 import com.ccb.workflow.integration.WorkflowDefinitionPublisher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,26 +19,17 @@ import java.util.Map;
 @ConditionalOnProperty(prefix = "ccb.workflow.seeded-definition-publisher", name = "enabled",
         havingValue = "true", matchIfMissing = true)
 public class LocalSeededWorkflowPublisher implements ApplicationRunner {
-    private static final String DEFINITION_SQL = """
-            SELECT id, code, status FROM wf_definition
-            WHERE tenant_id = ? AND deleted = 0 AND code IN (%s)
-            """;
-    private static final String OPERATOR_SQL = """
-            SELECT id, username, display_name, org_id FROM sys_user
-            WHERE tenant_id = ? AND id = ? AND deleted = 0 AND status = 1
-            """;
-
-    private final JdbcTemplate jdbc;
+    private final BootWorkflowRepository repository;
     private final WorkflowDefinitionPublisher workflows;
     private final long tenantId;
     private final long operatorUserId;
     private final List<String> definitionCodes;
 
-    public LocalSeededWorkflowPublisher(JdbcTemplate jdbc, WorkflowDefinitionPublisher workflows,
+    public LocalSeededWorkflowPublisher(BootWorkflowRepository repository, WorkflowDefinitionPublisher workflows,
             @Value("${ccb.workflow.seeded-definition-publisher.tenant-id:1}") long tenantId,
             @Value("${ccb.workflow.seeded-definition-publisher.operator-user-id:1}") long operatorUserId,
             @Value("${ccb.workflow.seeded-definition-publisher.definition-codes:architecture.subsystem.change,architecture.resource-request}") String definitionCodes) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.workflows = workflows;
         this.tenantId = tenantId;
         this.operatorUserId = operatorUserId;
@@ -63,23 +53,18 @@ public class LocalSeededWorkflowPublisher implements ApplicationRunner {
     }
 
     private AuthUser loadOperator() {
-        List<Map<String, Object>> rows = jdbc.queryForList(OPERATOR_SQL, tenantId, operatorUserId);
-        if (rows.size() != 1) {
+        Map<String, Object> row = repository.activeOperator(Map.of("tenantId", tenantId, "operatorUserId", operatorUserId));
+        if (row == null) {
             throw new IllegalStateException("本地固定流程发布操作用户不存在或未启用: " + operatorUserId);
         }
-        Map<String, Object> row = rows.get(0);
         return new AuthUser(((Number) row.get("id")).longValue(), tenantId,
                 String.valueOf(row.get("username")), "", String.valueOf(row.get("display_name")),
                 ((Number) row.get("org_id")).longValue(), true);
     }
 
     private Map<String, Map<String, Object>> loadDefinitions() {
-        String placeholders = String.join(",", definitionCodes.stream().map(code -> "?").toList());
-        Object[] args = new Object[definitionCodes.size() + 1];
-        args[0] = tenantId;
-        for (int index = 0; index < definitionCodes.size(); index++) args[index + 1] = definitionCodes.get(index);
-        Map<String, Map<String, Object>> result = new LinkedHashMap<>();
-        for (Map<String, Object> row : jdbc.queryForList(DEFINITION_SQL.formatted(placeholders), args)) {
+        Map<String, Map<String, Object>> result = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> row : repository.seededDefinitions(Map.of("tenantId", tenantId, "codes", definitionCodes))) {
             result.put(String.valueOf(row.get("code")), row);
         }
         return result;

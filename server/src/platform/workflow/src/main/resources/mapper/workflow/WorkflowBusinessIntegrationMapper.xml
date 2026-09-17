@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowBusinessIntegrationMapper">
+    <sql id="publishedColumns">d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version</sql>
+    <sql id="publishedJoin">
+        FROM wf_definition d
+        JOIN wf_version v ON v.definition_id = d.id
+            AND v.tenant_id = d.tenant_id
+            AND v.version_no = d.current_version
+        WHERE d.tenant_id = #{tenantId}
+          AND d.status = 'PUBLISHED'
+          AND d.deleted = 0
+          AND d.deployment_id IS NOT NULL
+          AND v.status = 'PUBLISHED'
+          AND v.deployment_id IS NOT NULL
+    </sql>
+
+    <select id="publishedByCode" resultType="map">
+        SELECT <include refid="publishedColumns"/>
+        <include refid="publishedJoin"/>
+          AND d.code = #{code}
+          AND (d.scope_type = 'PLATFORM'
+               OR (d.scope_type = 'PROJECT' AND d.project_id = #{projectId}))
+        ORDER BY CASE WHEN d.scope_type = 'PROJECT' THEN 0 ELSE 1 END
+        LIMIT 1
+    </select>
+
+    <select id="publishedDefinitions" resultType="map">
+        SELECT <include refid="publishedColumns"/>
+        <include refid="publishedJoin"/>
+          AND d.scope_type IN ('PLATFORM', 'PROJECT')
+        ORDER BY d.name, d.id
+    </select>
+
+    <select id="publishedById" resultType="map">
+        SELECT <include refid="publishedColumns"/>
+        <include refid="publishedJoin"/>
+          AND d.id = #{definitionId}
+          AND d.scope_type IN ('PLATFORM', 'PROJECT')
+    </select>
+
+    <select id="countMatchingInstance" resultType="long">
+        SELECT COUNT(*)
+        FROM wf_instance
+        WHERE id = #{instanceId}
+          AND tenant_id = #{tenantId}
+          AND business_type = #{businessType}
+          AND business_key = #{businessKey}
+          AND business_round = #{businessRound}
+          AND deleted = 0
+    </select>
+
+    <select id="instanceProgress" resultType="map">
+        SELECT id, definition_id, version_no, status, business_module_code, business_module_name,
+               business_type, business_key, business_title, business_round, project_ref, project_name,
+               action_path, data_digest, created_at
+        FROM wf_instance
+        WHERE id = #{instanceId}
+          AND tenant_id = #{tenantId}
+          AND deleted = 0
+    </select>
+</mapper>

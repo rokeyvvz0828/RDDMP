@@ -7,7 +7,6 @@ import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.UserDirectoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,39 +24,25 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 @Service
 public class ContentAttachmentService {
-    private final JdbcTemplate jdbc;
+    private final ContentAttachmentRepository repository;
     private final AttachmentGateway attachmentGateway;
     private final UserDirectoryPort userDirectory;
 
     @Autowired
-    public ContentAttachmentService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway, UserDirectoryPort userDirectory) {
-        this.jdbc = jdbc;
+    public ContentAttachmentService(ContentAttachmentRepository repository, AttachmentGateway attachmentGateway, UserDirectoryPort userDirectory) {
+        this.repository = repository;
         this.attachmentGateway = attachmentGateway;
         this.userDirectory = userDirectory;
     }
 
-    /** 保留测试/嵌入式调用的最小构造方式；未提供目录时不返回删除人显示名。 */
-    public ContentAttachmentService(JdbcTemplate jdbc, AttachmentGateway attachmentGateway) {
-        this(jdbc, attachmentGateway, null);
-    }
-
     /** 活动附件列表（按排序）。 */
     public List<Map<String, Object>> list(String businessType, long businessId, long tenantId) {
-        return jdbc.queryForList(
-                "SELECT id, attachment_id, file_name, sort_order, created_by, created_at " +
-                "FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ? AND deleted = 0 " +
-                "ORDER BY sort_order ASC, created_at ASC",
-                tenantId, businessType, businessId);
+        return repository.listActive(tenantId, businessType, businessId);
     }
 
     /** 附件级回收站列表。 */
     public List<Map<String, Object>> listDeleted(String businessType, long businessId, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT a.id, a.attachment_id, a.file_name, a.sort_order, a.deleted_by, a.deleted_at " +
-                "FROM dm_content_attachment a " +
-                "WHERE a.tenant_id = ? AND a.business_type = ? AND a.business_id = ? AND a.deleted = 1 " +
-                "ORDER BY a.deleted_at DESC",
-                tenantId, businessType, businessId);
+        List<Map<String, Object>> rows = repository.listDeleted(tenantId, businessType, businessId);
         addDeletedByNames(rows, tenantId);
         return rows;
     }
@@ -70,12 +55,8 @@ public class ContentAttachmentService {
     public void replaceAll(String businessType, String attachmentBindingType, long businessId, long projectId,
                            List<Map<String, Object>> entries, AuthUser user) {
         long tenantId = user.tenantId();
-        List<Long> existingIds = jdbc.queryForList(
-                "SELECT attachment_id FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ? AND deleted = 0",
-                Long.class, tenantId, businessType, businessId);
-        List<Long> deletedIds = jdbc.queryForList(
-                "SELECT attachment_id FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ? AND deleted = 1",
-                Long.class, tenantId, businessType, businessId);
+        List<Long> existingIds = repository.activeAttachmentIds(tenantId, businessType, businessId);
+        List<Long> deletedIds = repository.deletedAttachmentIds(tenantId, businessType, businessId);
 
         List<Long> newAttachmentIds = new ArrayList<>();
         int sortOrder = 0;
@@ -88,26 +69,20 @@ public class ContentAttachmentService {
             String fileName = textOrNull(entry.get("fileName"));
             newAttachmentIds.add(attachmentId);
             if (existingIds.contains(attachmentId)) {
-                jdbc.update("UPDATE dm_content_attachment SET sort_order = ? WHERE business_id = ? AND attachment_id = ? AND tenant_id = ? AND business_type = ? AND deleted = 0",
-                        sortOrder, businessId, attachmentId, tenantId, businessType);
+                repository.updateSort(sortOrder, businessId, attachmentId, tenantId, businessType);
             } else if (deletedIds.contains(attachmentId)) {
                 attachmentGateway.bind(new AttachmentBindingCommand(attachmentId, attachmentBindingType, String.valueOf(businessId), String.valueOf(projectId)), user);
-                jdbc.update("UPDATE dm_content_attachment SET deleted = 0, deleted_by = NULL, deleted_at = NULL, file_name = ?, sort_order = ? WHERE business_id = ? AND attachment_id = ? AND tenant_id = ? AND business_type = ? AND deleted = 1",
-                        fileName, sortOrder, businessId, attachmentId, tenantId, businessType);
+                repository.restoreAttachment(fileName, sortOrder, businessId, attachmentId, tenantId, businessType);
             } else {
                 attachmentGateway.bind(new AttachmentBindingCommand(attachmentId, attachmentBindingType, String.valueOf(businessId), String.valueOf(projectId)), user);
-                jdbc.update("INSERT INTO dm_content_attachment (id, tenant_id, business_type, business_id, attachment_id, file_name, sort_order, created_by) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        nextId(), tenantId, businessType, businessId, attachmentId, fileName, sortOrder, user.id());
+                repository.insert(nextId(), tenantId, businessType, businessId, attachmentId, fileName, sortOrder, user.id());
             }
             sortOrder++;
         }
 
         for (Long existingId : existingIds) {
             if (!newAttachmentIds.contains(existingId)) {
-                jdbc.update("UPDATE dm_content_attachment SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
-                        "WHERE tenant_id = ? AND business_type = ? AND business_id = ? AND attachment_id = ? AND deleted = 0",
-                        user.id(), tenantId, businessType, businessId, existingId);
+                repository.softDeleteAttachment(user.id(), tenantId, businessType, businessId, existingId);
             }
         }
     }
@@ -115,10 +90,7 @@ public class ContentAttachmentService {
     /** 单条软删（进附件回收站）。 */
     @Transactional
     public int softDelete(String businessType, long businessId, long attachmentId, AuthUser user) {
-        return jdbc.update(
-                "UPDATE dm_content_attachment SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
-                "WHERE tenant_id = ? AND business_type = ? AND business_id = ? AND attachment_id = ? AND deleted = 0",
-                user.id(), user.tenantId(), businessType, businessId, attachmentId);
+        return repository.softDeleteAttachment(user.id(), user.tenantId(), businessType, businessId, attachmentId);
     }
 
     /** 按关系行 id 恢复。 */
@@ -126,7 +98,7 @@ public class ContentAttachmentService {
     public int restoreByIds(Collection<Long> ids, AuthUser user) {
         int restored = 0;
         for (Long id : ids) {
-            restored += jdbc.update("UPDATE dm_content_attachment SET deleted = 0, deleted_by = NULL, deleted_at = NULL WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+            restored += repository.restoreById(id, user.tenantId());
         }
         return restored;
     }
@@ -136,7 +108,7 @@ public class ContentAttachmentService {
     public int purgeByIds(Collection<Long> ids, AuthUser user) {
         int purged = 0;
         for (Long id : ids) {
-            purged += jdbc.update("DELETE FROM dm_content_attachment WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+            purged += repository.purgeById(id, user.tenantId());
         }
         return purged;
     }
@@ -144,9 +116,7 @@ public class ContentAttachmentService {
     /** 实体彻底删除前解绑并清空其全部附件行（含回收站行）。 */
     @Transactional
     public void unbindAndRemoveAll(String businessType, String attachmentBindingType, long businessId, AuthUser user) {
-        List<Long> candidateIds = jdbc.queryForList(
-                "SELECT DISTINCT attachment_id FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ?",
-                Long.class, user.tenantId(), businessType, businessId);
+        List<Long> candidateIds = repository.attachmentIds(user.tenantId(), businessType, businessId);
         List<Long> boundAttachmentIds = new ArrayList<>();
         for (Long attachmentId : candidateIds) {
             try {
@@ -162,26 +132,21 @@ public class ContentAttachmentService {
         for (Long attachmentId : boundAttachmentIds) {
             attachmentGateway.deleteBound(attachmentId, attachmentBindingType, String.valueOf(businessId), user);
         }
-        jdbc.update("DELETE FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ?", user.tenantId(), businessType, businessId);
+        repository.deleteAll(user.tenantId(), businessType, businessId);
     }
 
     /** 软删附件的 id -> 业务实体 id 映射，供回收站恢复/删除后写审计。 */
     public Map<Long, Long> businessIdsForRows(Collection<Long> ids, AuthUser user) {
         Map<Long, Long> result = new LinkedHashMap<>();
         if (ids == null || ids.isEmpty()) return result;
-        List<Long> idList = new ArrayList<>(ids);
-        String placeholders = String.join(",", idList.stream().map(x -> "?").toList());
-        List<Object> args = new ArrayList<>();
-        args.add(user.tenantId());
-        args.addAll(idList);
-        jdbc.queryForList("SELECT id, business_id FROM dm_content_attachment WHERE tenant_id = ? AND deleted = 1 AND id IN (" + placeholders + ")", args.toArray())
+        repository.softDeletedRows(user.tenantId(), new ArrayList<>(ids))
                 .forEach(row -> result.put(((Number) row.get("id")).longValue(), ((Number) row.get("business_id")).longValue()));
         return result;
     }
 
     /** 校验回收站行存在并返回其业务实体 id；不存在抛业务异常。 */
     public long requireSoftDeletedRow(long id, AuthUser user) {
-        List<Long> rows = jdbc.queryForList("SELECT business_id FROM dm_content_attachment WHERE id = ? AND tenant_id = ? AND deleted = 1", Long.class, id, user.tenantId());
+        List<Long> rows = repository.softDeletedBusinessIds(id, user.tenantId());
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在或未删除");
         return rows.get(0);
     }

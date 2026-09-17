@@ -3,50 +3,35 @@ package com.ccb.system.internal.capability;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectMemberReference;
 import com.ccb.system.capability.ProjectMemberReferenceQuery;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class JdbcProjectMemberReferenceQuery implements ProjectMemberReferenceQuery {
-    private final JdbcTemplate jdbc;
+    private final SystemCapabilityRepository repository;
 
-    public JdbcProjectMemberReferenceQuery(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public JdbcProjectMemberReferenceQuery(SystemCapabilityRepository repository) {
+        this.repository = repository;
     }
 
     @Override
     public List<ProjectMemberReference> findActiveMembers(AuthUser actor, long projectId) {
         Objects.requireNonNull(actor, "actor 不能为空");
         if (projectId <= 0) return List.of();
-        return jdbc.query("""
-                SELECT m.id, m.user_id, u.display_name, u.username
-                FROM pm_project_member m
-                JOIN sys_user u ON u.id = m.user_id AND u.tenant_id = m.tenant_id
-                    AND u.deleted = 0 AND u.status = 1
-                WHERE m.tenant_id = ? AND m.project_id = ? AND m.status = 1 AND m.deleted = 0
-                ORDER BY u.display_name ASC, m.id ASC
-                """, (rs, rowNum) -> new ProjectMemberReference(
-                rs.getLong("id"), rs.getLong("user_id"), rs.getString("display_name"), rs.getString("username")),
-                actor.tenantId(), projectId);
+        return repository.activeProjectMembers(Map.of("tenantId", actor.tenantId(), "projectId", projectId)).stream().map(this::reference).toList();
     }
 
     @Override
     public Optional<ProjectMemberReference> findActiveMember(AuthUser actor, long projectId, long projectMemberId) {
         Objects.requireNonNull(actor, "actor 不能为空");
         if (projectId <= 0 || projectMemberId <= 0) return Optional.empty();
-        return jdbc.query("""
-                SELECT m.id, m.user_id, u.display_name, u.username
-                FROM pm_project_member m
-                JOIN sys_user u ON u.id = m.user_id AND u.tenant_id = m.tenant_id
-                    AND u.deleted = 0 AND u.status = 1
-                WHERE m.id = ? AND m.tenant_id = ? AND m.project_id = ?
-                  AND m.status = 1 AND m.deleted = 0
-                """, (rs, rowNum) -> new ProjectMemberReference(
-                rs.getLong("id"), rs.getLong("user_id"), rs.getString("display_name"), rs.getString("username")),
-                projectMemberId, actor.tenantId(), projectId).stream().findFirst();
+        Map<String, Object> row = repository.activeProjectMember(Map.of("memberId", projectMemberId, "tenantId", actor.tenantId(), "projectId", projectId));
+        return Optional.ofNullable(row).map(this::reference);
     }
+
+    private ProjectMemberReference reference(Map<String, Object> row) { return new ProjectMemberReference(((Number) row.get("id")).longValue(), ((Number) row.get("user_id")).longValue(), String.valueOf(row.get("display_name")), String.valueOf(row.get("username"))); }
 }

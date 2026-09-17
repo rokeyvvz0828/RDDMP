@@ -12,7 +12,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -56,31 +55,14 @@ public class RuleService {
             "规则编码", "规则编码说明", "检核规则说明"
     };
 
-    private static final String SYSTEM_JOIN =
-            " LEFT JOIN dm_component c ON c.tenant_id = a.tenant_id AND c.project_id = a.project_id AND c.system_code = a.system_code " +
-            " LEFT JOIN arch_physical_subsystem sys ON sys.tenant_id = c.tenant_id AND sys.code = c.system_code AND sys.deleted = 0 ";
-    private static final String SELECT_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, a.check_target_type, a.rule_category, a.system_code, " +
-            "sys.short_name AS system_short_name, sys.name AS system_name, " +
-            "a.rule_code, a.rule_code_desc, a.rule_description, " +
-            "a.table_name_en, a.table_name_cn, a.field_name_en, a.field_name_cn, " +
-            "a.owner_id, a.created_by, a.created_at, a.updated_by, a.updated_at ";
-    private static final String RECYCLE_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, 'RULE' AS asset_type, " +
-            "a.rule_code AS asset_code, a.rule_code AS asset_name, " +
-            "a.check_target_type, a.rule_category, a.system_code, sys.name AS system_name, " +
-            "a.table_name_en, a.table_name_cn, a.field_name_en, a.field_name_cn, " +
-            "a.rule_code_desc, a.rule_description, a.owner_id, " +
-            "a.created_at, a.updated_at, a.deleted_by, a.deleted_at ";
-
-    private final JdbcTemplate jdbc;
+    private final RuleRepository repository;
     private final DataMigrationPermissionService permissions;
     private final UserDirectoryPort userDirectory;
     private final DataMigrationCodeValueService codeValues;
 
-    public RuleService(JdbcTemplate jdbc, DataMigrationPermissionService permissions,
+    public RuleService(RuleRepository repository, DataMigrationPermissionService permissions,
                        UserDirectoryPort userDirectory, DataMigrationCodeValueService codeValues) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.permissions = permissions;
         this.userDirectory = userDirectory;
         this.codeValues = codeValues;
@@ -91,39 +73,24 @@ public class RuleService {
                                                 String systemCode, String ruleKeyword, String keyword,
                                                 int page, int size, AuthUser user) {
         long scope = permissions.requireProject(projectId, user);
-        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM dm_rule a WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> countArgs = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(countSql, countArgs, scope, checkTargetType, ruleCategory, systemCode, ruleKeyword, keyword);
-        Long total = jdbc.queryForObject(countSql.toString(), Long.class, countArgs.toArray());
-
         int safePage = Math.max(1, page);
         int safeSize = normalizePageSize(size);
-        StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                .append("FROM dm_rule a ").append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(sql, args, scope, checkTargetType, ruleCategory, systemCode, ruleKeyword, keyword);
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC LIMIT ? OFFSET ?");
-        args.add(safeSize);
-        args.add((long) (safePage - 1) * safeSize);
-        List<Map<String, Object>> records = jdbc.queryForList(sql.toString(), args.toArray());
+        Map<String, Object> filters = filters(user.tenantId(), scope, checkTargetType, ruleCategory, systemCode, ruleKeyword, keyword, 0);
+        long total = repository.count(filters);
+        filters.put("limit", safeSize);
+        filters.put("offset", (long) (safePage - 1) * safeSize);
+        List<Map<String, Object>> records = repository.list(filters);
         decorateCodeLabels(records, user);
         decorateUsers(records, user.tenantId());
-        return new PageResult<>(records, total == null ? 0L : total, safePage, safeSize);
+        return new PageResult<>(records, total, safePage, safeSize);
     }
 
     /** 详情：单条完整信息（点击规则编码/编码说明查看）。 */
     public Map<String, Object> detail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                SELECT_COLUMNS + "FROM dm_rule a " + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 0", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移检核规则不存在");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.require(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateCodeLabels(rows, user);
-        decorateUsers(rows, user.tenantId());
+        decorateCodeLabels(List.of(row), user);
+        decorateUsers(List.of(row), user.tenantId());
         return row;
     }
 
@@ -147,15 +114,10 @@ public class RuleService {
 
         long id = nextId();
         try {
-            jdbc.update("INSERT INTO dm_rule (id, tenant_id, project_id, system_code, check_target_type, rule_category, " +
-                    "rule_code, rule_code_desc, rule_description, table_name_en, table_name_cn, field_name_en, field_name_cn, " +
-                    "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, user.tenantId(), projectId, systemCode.trim(), checkTargetType, ruleCategory,
-                    ruleCode, optionalText(body.get("ruleCodeDesc")),
-                    optionalText(body.get("ruleDescription")),
+            repository.insert(ruleValues(id, user.tenantId(), projectId, systemCode.trim(), checkTargetType, ruleCategory,
+                    ruleCode, optionalText(body.get("ruleCodeDesc")), optionalText(body.get("ruleDescription")),
                     optionalText(body.get("tableNameEn")), optionalText(body.get("tableNameCn")),
-                    optionalText(body.get("fieldNameEn")), optionalText(body.get("fieldNameCn")),
-                    user.id(), user.id(), user.id());
+                    optionalText(body.get("fieldNameEn")), optionalText(body.get("fieldNameCn")), user.id()));
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.CONFLICT, "规则编码已存在");
         }
@@ -186,18 +148,13 @@ public class RuleService {
             throw new BusinessException(ErrorCode.CONFLICT, "规则编码已存在");
         }
 
-        jdbc.update("UPDATE dm_rule SET check_target_type = ?, rule_category = ?, system_code = ?, rule_code = ?, " +
-                        "rule_code_desc = ?, rule_description = ?, table_name_en = ?, table_name_cn = ?, " +
-                        "field_name_en = ?, field_name_cn = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP " +
-                        "WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                checkTargetType, ruleCategory, systemCode, ruleCode,
+        repository.update(ruleValues(id, user.tenantId(), projectId, systemCode, checkTargetType, ruleCategory, ruleCode,
                 optionalTextOrDefault(body, existing.get("rule_code_desc"), "ruleCodeDesc"),
                 optionalTextOrDefault(body, existing.get("rule_description"), "ruleDescription"),
                 optionalTextOrDefault(body, existing.get("table_name_en"), "tableNameEn"),
                 optionalTextOrDefault(body, existing.get("table_name_cn"), "tableNameCn"),
                 optionalTextOrDefault(body, existing.get("field_name_en"), "fieldNameEn"),
-                optionalTextOrDefault(body, existing.get("field_name_cn"), "fieldNameCn"),
-                user.id(), id, user.tenantId());
+                optionalTextOrDefault(body, existing.get("field_name_cn"), "fieldNameCn"), user.id()));
         audit(user, "RULE_UPDATE", projectId, id);
         return detail(id, user);
     }
@@ -209,9 +166,7 @@ public class RuleService {
             Map<String, Object> existing = findRaw(id, user.tenantId());
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
             long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
-            int changed = jdbc.update("UPDATE dm_rule SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP, " +
-                    "updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                    user.id(), user.id(), id, user.tenantId());
+            int changed = repository.softDelete(user.tenantId(), id, user.id());
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移检核规则状态已变化，请刷新后重试");
             audit(user, "RULE_DELETE", projectId, id);
         }
@@ -237,14 +192,9 @@ public class RuleService {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("迁移检核规则");
             writeHeaderRow(sheet, LIST_COLUMNS);
-            StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                    .append("FROM dm_rule a ").append(SYSTEM_JOIN)
-                    .append("LEFT JOIN pm_project p ON a.project_id = p.id AND a.tenant_id = p.tenant_id AND p.deleted = 0 ")
-                    .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-            List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-            appendFilters(sql, args, scope, checkTargetType, ruleCategory, systemCode, ruleKeyword, keyword);
-            sql.append(" ORDER BY a.rule_code ASC");
-            List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+            Map<String, Object> filters = filters(user.tenantId(), scope, checkTargetType, ruleCategory, systemCode, ruleKeyword, keyword, 0);
+            filters.put("export", true);
+            List<Map<String, Object>> rows = repository.list(filters);
             decorateCodeLabels(rows, user);
             int index = 1;
             for (Map<String, Object> data : rows) {
@@ -320,13 +270,9 @@ public class RuleService {
                     validateOptionalLength(fieldNameEn, MAX_OPTIONAL_FIELD_LENGTH, "字段英文名称");
                     validateOptionalLength(fieldNameCn, MAX_OPTIONAL_FIELD_LENGTH, "字段中文名称");
                     long id = nextId();
-                    jdbc.update("INSERT INTO dm_rule (id, tenant_id, project_id, system_code, check_target_type, rule_category, " +
-                                    "rule_code, rule_code_desc, rule_description, table_name_en, table_name_cn, field_name_en, field_name_cn, " +
-                                    "owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                            id, user.tenantId(), scope, sysCode.trim(), targetType, category,
-                            ruleCode, blankAsNull(ruleCodeDesc), blankAsNull(ruleDescription),
-                            tableNameEn, tableNameCn, fieldNameEn, fieldNameCn,
-                            user.id(), user.id(), user.id());
+                    repository.insert(ruleValues(id, user.tenantId(), scope, sysCode.trim(), targetType, category,
+                            ruleCode, blankAsNull(ruleCodeDesc), blankAsNull(ruleDescription), tableNameEn, tableNameCn,
+                            fieldNameEn, fieldNameCn, user.id()));
                     accepted++;
                     audit(user, "RULE_IMPORT", scope, id);
                 } catch (Exception ex) {
@@ -344,39 +290,24 @@ public class RuleService {
     public long countRecycleBin(long projectId, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM dm_rule a WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        Long total = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
-        return total == null ? 0L : total;
+        return repository.count(filters(user.tenantId(), projectId, null, null, null, null, keyword, 1));
     }
 
     public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
         if (limit <= 0) return List.of();
-        StringBuilder sql = new StringBuilder(RECYCLE_COLUMNS)
-                .append("FROM dm_rule a ").append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND a.tenant_id = p.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        sql.append(" ORDER BY a.rule_code ASC, a.id ASC LIMIT ?");
-        args.add(limit);
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        Map<String, Object> filters = filters(user.tenantId(), projectId, null, null, null, null, keyword, 1);
+        filters.put("limit", limit);
+        List<Map<String, Object>> rows = repository.list(filters);
         decorateUsers(rows, user.tenantId());
         return rows;
     }
 
     public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                RECYCLE_COLUMNS + "FROM dm_rule a " + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND a.tenant_id = p.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 1", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移检核规则不存在于回收站");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.requireDeleted(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         return row;
     }
 
@@ -386,9 +317,7 @@ public class RuleService {
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
             try {
-                int changed = jdbc.update("UPDATE dm_rule SET deleted = 0, deleted_by = NULL, deleted_at = NULL, " +
-                        "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                        id, user.tenantId());
+                int changed = repository.restore(user.tenantId(), id);
                 if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移检核规则状态已变化，请刷新后重试");
             } catch (DataIntegrityViolationException ex) {
                 throw new BusinessException(ErrorCode.CONFLICT, "规则编码已存在活动记录，无法恢复");
@@ -402,8 +331,7 @@ public class RuleService {
         permissions.requireAdmin(user);
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
-            int changed = jdbc.update("DELETE FROM dm_rule WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                    id, user.tenantId());
+            int changed = repository.purge(user.tenantId(), id);
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移检核规则状态已变化，请刷新后重试");
             audit(user, "RULE_PURGE", projectId, id);
         }
@@ -411,47 +339,32 @@ public class RuleService {
 
     // ============ 私有辅助 ============
 
-    private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String checkTargetType,
-                               String ruleCategory, String systemCode, String ruleKeyword, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (checkTargetType != null && !checkTargetType.isBlank()) {
-            sql.append(" AND a.check_target_type = ?");
-            args.add(checkTargetType.trim());
-        }
-        if (ruleCategory != null && !ruleCategory.isBlank()) {
-            sql.append(" AND a.rule_category = ?");
-            args.add(ruleCategory.trim());
-        }
-        if (systemCode != null && !systemCode.isBlank()) {
-            sql.append(" AND a.system_code = ?");
-            args.add(systemCode.trim());
-        }
-        if (ruleKeyword != null && !ruleKeyword.isBlank()) {
-            String value = "%" + ruleKeyword.trim() + "%";
-            sql.append(" AND (a.rule_code LIKE ? OR a.rule_code_desc LIKE ? OR a.rule_description LIKE ?)");
-            args.add(value);
-            args.add(value);
-            args.add(value);
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.table_name_cn LIKE ? OR a.table_name_en LIKE ? OR a.field_name_en LIKE ?)");
-            args.add(value);
-            args.add(value);
-            args.add(value);
-        }
+    private Map<String, Object> filters(long tenantId, long projectId, String checkTargetType, String ruleCategory,
+                                        String systemCode, String ruleKeyword, String keyword, int deleted) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("tenantId", tenantId);
+        values.put("projectId", projectId);
+        values.put("checkTargetType", optionalText(checkTargetType));
+        values.put("ruleCategory", optionalText(ruleCategory));
+        values.put("systemCode", optionalText(systemCode));
+        values.put("ruleKeyword", optionalText(ruleKeyword));
+        values.put("keyword", optionalText(keyword));
+        values.put("deleted", deleted);
+        return values;
     }
 
-    private void appendRecycleFilters(StringBuilder sql, List<Object> args, long projectId, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.rule_code LIKE ? OR a.rule_code_desc LIKE ?)");
-            args.add(value);
-            args.add(value);
-        }
+    private Map<String, Object> ruleValues(long id, long tenantId, long projectId, String systemCode,
+                                           String checkTargetType, String ruleCategory, String ruleCode,
+                                           String ruleCodeDesc, String ruleDescription, String tableNameEn,
+                                           String tableNameCn, String fieldNameEn, String fieldNameCn, long actorId) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("id", id); values.put("tenantId", tenantId); values.put("projectId", projectId);
+        values.put("systemCode", systemCode); values.put("checkTargetType", checkTargetType); values.put("ruleCategory", ruleCategory);
+        values.put("ruleCode", ruleCode); values.put("ruleCodeDesc", ruleCodeDesc); values.put("ruleDescription", ruleDescription);
+        values.put("tableNameEn", tableNameEn); values.put("tableNameCn", tableNameCn);
+        values.put("fieldNameEn", fieldNameEn); values.put("fieldNameCn", fieldNameCn);
+        values.put("ownerId", actorId); values.put("createdBy", actorId); values.put("updatedBy", actorId);
+        return values;
     }
 
     /** 新列表/详情返回的码值名称（用启用参数项映射；停用/未知值回退为码值本身，保证存量可读）。 */
@@ -478,40 +391,21 @@ public class RuleService {
     }
 
     private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ? AND c.enabled = 1",
-                Integer.class, user.tenantId(), projectId, systemCode);
-        if (count == null || count == 0) {
+        if (!repository.enabledComponent(user.tenantId(), projectId, systemCode)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "关联系统不存在或不属于当前项目");
         }
     }
 
     private boolean ruleCodeExists(String ruleCode, long tenantId, Long excludeId) {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM dm_rule WHERE tenant_id = ? AND rule_code = ?");
-        List<Object> args = new ArrayList<>(List.of(tenantId, ruleCode));
-        if (excludeId != null) {
-            sql.append(" AND id <> ?");
-            args.add(excludeId);
-        }
-        Integer count = jdbc.queryForObject(sql.toString(), Integer.class, args.toArray());
-        return count != null && count > 0;
+        return repository.ruleCodeExists(tenantId, ruleCode, excludeId);
     }
 
     private Map<String, Object> findRaw(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, project_id, system_code, check_target_type, rule_category, rule_code, rule_code_desc, " +
-                "rule_description, table_name_en, table_name_cn, field_name_en, field_name_cn, owner_id " +
-                "FROM dm_rule WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移检核规则不存在");
-        return rows.get(0);
+        return repository.requireRaw(tenantId, id);
     }
 
     private long requireRecycleBinScope(long id, AuthUser user) {
-        List<Long> projects = jdbc.queryForList(
-                "SELECT project_id FROM dm_rule WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                Long.class, id, user.tenantId());
-        if (projects.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移检核规则不存在于回收站");
-        long projectId = projects.get(0);
+        long projectId = repository.requireDeletedProject(user.tenantId(), id);
         permissions.requireStoredProject(projectId, user);
         return projectId;
     }
@@ -532,8 +426,7 @@ public class RuleService {
     }
 
     private void audit(AuthUser user, String operation, long projectId, long id) {
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
-                "VALUES (?, ?, ?, ?, 'RULE', ?)", user.tenantId(), user.id(), projectId, operation, id);
+        repository.audit(user.tenantId(), user.id(), projectId, operation, id);
     }
 
     private int normalizePageSize(int size) {

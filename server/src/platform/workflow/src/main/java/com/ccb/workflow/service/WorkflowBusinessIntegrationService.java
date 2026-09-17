@@ -15,7 +15,6 @@ import com.ccb.workflow.integration.WorkflowStartResult;
 import com.ccb.workflow.integration.WorkflowTerminateCommand;
 import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +28,14 @@ import java.util.regex.Pattern;
 public class WorkflowBusinessIntegrationService implements WorkflowBusinessGateway, WorkflowDefinitionCatalog {
     private static final Pattern DIGEST = Pattern.compile("^[0-9a-fA-F]{64}$");
 
-    private final JdbcTemplate jdbc;
+    private final WorkflowBusinessIntegrationRepository repository;
     private final WorkflowService workflowService;
     private final WorkflowLifecycleEventService lifecycleEvents;
     private WorkflowProjectAccessGateway projectAccess;
 
-    public WorkflowBusinessIntegrationService(JdbcTemplate jdbc, WorkflowService workflowService,
+    public WorkflowBusinessIntegrationService(WorkflowBusinessIntegrationRepository repository, WorkflowService workflowService,
                                               WorkflowLifecycleEventService lifecycleEvents) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.workflowService = workflowService;
         this.lifecycleEvents = lifecycleEvents;
     }
@@ -59,15 +58,7 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
 
     private Map<String, Object> resolvePublishedByCode(String definitionCode, ResolvedProjectContext resolved,
                                                        AuthUser operator) {
-        String scopeFilter = resolved.projectId() == null
-                ? " AND d.scope_type = 'PLATFORM'"
-                : " AND (d.scope_type = 'PLATFORM' OR (d.scope_type = 'PROJECT' AND d.project_id = ?))";
-        List<Object> args = new java.util.ArrayList<>(List.of(operator.tenantId(), definitionCode));
-        if (resolved.projectId() != null) args.add(resolved.projectId());
-        List<Map<String, Object>> definitions = jdbc.queryForList(
-                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.tenant_id = ? AND d.code = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL"
-                        + scopeFilter + " ORDER BY CASE WHEN d.scope_type = 'PROJECT' THEN 0 ELSE 1 END LIMIT 1",
-                args.toArray());
+        List<Map<String, Object>> definitions = repository.publishedByCode(operator.tenantId(), definitionCode, resolved.projectId());
         if (definitions.size() != 1) {
             String target = resolved.projectId() == null ? "当前业务" : "项目【" + resolved.context().projectName() + "】";
             throw new BusinessException(ErrorCode.CONFLICT, target + "未配置已发布流程【" + definitionCode + "】");
@@ -91,9 +82,7 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
     public List<WorkflowDefinitionSummary> publishedDefinitions(AuthUser operator) {
         java.util.Set<Long> projectIds = projectAccess == null ? java.util.Set.of()
                 : new java.util.HashSet<>(projectAccess.accessibleProjectIds(operator));
-        return jdbc.queryForList(
-                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.tenant_id = ? AND d.scope_type IN ('PLATFORM', 'PROJECT') AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL ORDER BY d.name, d.id",
-                operator.tenantId()).stream()
+        return repository.publishedDefinitions(operator.tenantId()).stream()
                 .filter(row -> "PLATFORM".equals(String.valueOf(row.get("scope_type")))
                         || row.get("project_id") instanceof Number number && projectIds.contains(number.longValue()))
                 .map(this::definitionSummary).toList();
@@ -102,9 +91,7 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
     @Override
     public WorkflowDefinitionSummary requirePublished(long definitionId, AuthUser operator) {
         if (definitionId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不能为空");
-        List<Map<String, Object>> definitions = jdbc.queryForList(
-                "SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.current_version FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.scope_type IN ('PLATFORM', 'PROJECT') AND d.status = 'PUBLISHED' AND d.deleted = 0 AND d.deployment_id IS NOT NULL AND v.status = 'PUBLISHED' AND v.deployment_id IS NOT NULL",
-                definitionId, operator.tenantId());
+        List<Map<String, Object>> definitions = repository.publishedById(operator.tenantId(), definitionId);
         if (definitions.size() != 1) {
             throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布、未部署或不存在");
         }
@@ -139,17 +126,15 @@ public class WorkflowBusinessIntegrationService implements WorkflowBusinessGatew
         if (command == null || command.instanceId() <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不能为空");
         String businessType = requireText(command.businessType(), "业务类型", 64);
         String businessKey = requireText(command.businessKey(), "业务单号", 128);
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_instance WHERE id = ? AND tenant_id = ? AND business_type = ? AND business_key = ? AND business_round = ? AND deleted = 0",
-                Integer.class, command.instanceId(), operator.tenantId(), businessType, businessKey, command.businessRound());
-        if (count == null || count != 1) throw new BusinessException(ErrorCode.CONFLICT, "流程实例与业务上下文不匹配");
+        long count = repository.countMatchingInstance(operator.tenantId(), command.instanceId(), businessType, businessKey, command.businessRound());
+        if (count != 1) throw new BusinessException(ErrorCode.CONFLICT, "流程实例与业务上下文不匹配");
         workflowService.terminate(command.instanceId(), requireText(command.reason(), "终止原因", 500), operator);
     }
 
     @Override
     public WorkflowProgress progress(long instanceId, AuthUser operator) {
         workflowService.requireInstanceAccessible(instanceId, operator);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, definition_id, version_no, status, business_module_code, business_module_name, business_type, business_key, business_title, business_round, project_ref, project_name, action_path, data_digest, created_at FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                instanceId, operator.tenantId());
+        List<Map<String, Object>> rows = repository.instanceProgress(operator.tenantId(), instanceId);
         if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
         Map<String, Object> row = rows.get(0);
         if (row.get("business_type") == null) throw new BusinessException(ErrorCode.CONFLICT, "存量流程实例没有业务接入上下文");

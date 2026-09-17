@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementSecurityMapper">
+  <select id="permissionCount" resultType="int">SELECT COUNT(*) FROM sys_user_role ur JOIN sys_role_permission rp ON rp.role_id=ur.role_id AND rp.tenant_id=ur.tenant_id JOIN sys_menu_permission mp ON mp.id=rp.permission_id AND mp.tenant_id=rp.tenant_id WHERE ur.user_id=#{userId} AND ur.tenant_id=#{tenantId} AND mp.permission_code=#{permissionCode}</select>
+  <select id="legacySystemOwnerCount" resultType="int">SELECT COUNT(*) FROM req_legacy_system_item WHERE tenant_id=#{tenantId} AND requirement_id=#{requirementId} AND owner_user_id=#{userId} AND deleted=0</select>
+  <select id="legacySystemMemberCount" resultType="int">SELECT COUNT(*) FROM req_legacy_system_item si LEFT JOIN req_legacy_system_member m ON m.system_item_id=si.id AND m.tenant_id=si.tenant_id AND m.deleted=0 WHERE si.tenant_id=#{tenantId} AND si.requirement_id=#{requirementId} AND si.deleted=0 AND (si.owner_user_id=#{userId} OR m.user_id=#{userId})</select>
+  <select id="currentFlowAssigneeCount" resultType="int">SELECT COUNT(*) FROM req_legacy_requirement WHERE tenant_id=#{tenantId} AND id=#{requirementId} AND deleted=0 AND current_flow_user_id=#{userId}</select>
+  <select id="legacyMemberCount" resultType="int">SELECT COUNT(*) FROM req_legacy_member WHERE tenant_id=#{tenantId} AND requirement_id=#{requirementId} AND user_id=#{userId} AND deleted=0</select>
+  <select id="projectMemberCount" resultType="int">SELECT COUNT(*) FROM req_project_member WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND user_id=#{userId} AND deleted=0</select>
+  <select id="activeProjectCount" resultType="int">SELECT COUNT(*) FROM req_project WHERE tenant_id=#{tenantId} AND id=#{projectId} AND deleted=0</select>
+  <select id="businessGroupMemberCount" resultType="int">SELECT COUNT(*) FROM req_business_group_member WHERE tenant_id=#{tenantId} AND business_group=#{businessGroup} AND user_id=#{userId} AND deleted=0</select>
+  <select id="listBusinessGroups" resultType="string">SELECT business_group FROM req_business_group_member WHERE tenant_id=#{tenantId} AND user_id=#{userId} AND deleted=0</select>
+</mapper>

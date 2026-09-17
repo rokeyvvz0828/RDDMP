@@ -1,0 +1,34 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Replace per-member JDBC role reads with the approved member Mapper and one batch role grouping pass."},
+    {"path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java", "purpose": "Assert multi-member batch behavior, response decoration, and empty-member behavior."}
+  ],
+  "requirements_addressed": ["R1", "R5"],
+  "commands": [
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am -Dtest=ProjectServiceTest test", "exit_code": 1, "salient_output": "Reactor dependencies had no ProjectServiceTest; the failure was caused by the omitted Surefire allow-empty property before the system module ran."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-system -am -Dtest=ProjectServiceTest test", "exit_code": 0, "salient_output": "ProjectServiceTest ran 44 tests with zero failures and zero errors; reactor build succeeded."}
+  ],
+  "local_checks": [
+    {"check": "Multi-member batch-role service test", "result": "pass", "evidence": "Mocked Mapper receives selectMembers once and selectRolesByMemberIds([101,102], tenant 1) once; grouped roles and avatar URLs match expected response rows.", "limitations": ["Real MyBatis invocation is deferred to final integration/runtime checks."]},
+    {"check": "Empty member-list service test", "result": "pass", "evidence": "Mocked empty member result returns an empty list and verifies no role batch Mapper invocation.", "limitations": []},
+    {"check": "Focused Maven regression", "result": "pass", "evidence": "44 ProjectServiceTest tests passed.", "limitations": ["Full system suite remains part of T5."]}
+  ],
+  "diff_summary": [
+    "ProjectService retains member:read and project-access checks before all Mapper access.",
+    "Member IDs are collected once, role rows are grouped in memory, and member output fields are preserved.",
+    "The previous JDBC per-member role query was removed from the production path."
+  ],
+  "invariants_checked": [
+    {"invariant": "Service-layer authorization remains before data access", "result": "pass", "evidence": "members begins with the unchanged requireAction and requireProjectAccess calls."},
+    {"invariant": "Existing member response decoration remains", "result": "pass", "evidence": "Focused test asserts avatar_url and role data after Mapper grouping."},
+    {"invariant": "No empty IN query", "result": "pass", "evidence": "Focused empty-list test verifies no batch role call."}
+  ],
+  "disturbances": [
+    {"event": "Surefire's dotted allow-empty property also requires PowerShell quoting.", "impact": "The valid rerun quoted the property; product behavior was unaffected."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Real MyBatis binding and cross-tenant runtime behavior remain for final integration sampling."],
+  "recommended_next": "observe"
+}

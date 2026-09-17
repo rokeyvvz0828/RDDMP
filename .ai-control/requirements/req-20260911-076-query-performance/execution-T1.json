@@ -1,0 +1,40 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/system/pom.xml", "purpose": "Declare the existing MyBatis-Plus Boot 3 starter directly for the system module."},
+    {"path_or_resource": "server/src/platform/workflow/pom.xml", "purpose": "Declare the existing MyBatis-Plus Boot 3 starter directly for the workflow module."},
+    {"path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectMemberMapper.java", "purpose": "Define tenant-bound member and batch-role reads."},
+    {"path_or_resource": "server/src/platform/system/src/main/resources/mapper/project/ProjectMemberMapper.xml", "purpose": "Implement the original member projection and an ordered member-ID batch-role projection."},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionMapper.java", "purpose": "Define tenant-bound workflow summary and count reads."},
+    {"path_or_resource": "server/src/platform/workflow/src/main/resources/mapper/workflow/WorkflowDefinitionMapper.xml", "purpose": "Implement compatible scope filtering and summary-only list/count SQL."}
+  ],
+  "requirements_addressed": ["R1", "R2", "R5"],
+  "commands": [
+    {"command": "mvn -pl :ccb-system,:ccb-workflow -am test -Dnet.bytebuddy.experimental=true", "exit_code": 1, "salient_output": "PowerShell parsed the unquoted dotted -D property as a lifecycle phase; no tests were executed."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system,:ccb-workflow -am test", "exit_code": 0, "salient_output": "The reactor completed; 30 current system/workflow Surefire XML reports were then verified with zero failures and zero errors."},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system,:ccb-workflow -am test -DskipTests -q", "exit_code": 0, "salient_output": "Both new Mapper XML files were compiled into their module target/classes mapper paths."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors."}
+  ],
+  "local_checks": [
+    {"check": "System/workflow Maven regression", "result": "pass", "evidence": "30 Surefire XML reports have failures=0 and errors=0.", "limitations": ["This task only creates Mappers; it does not yet prove runtime Mapper invocation."]},
+    {"check": "Mapper resource packaging", "result": "pass", "evidence": "Both XML resources are present in target/classes/mapper after compilation.", "limitations": ["Application-context mapper bean discovery is deferred to integrated verification."]},
+    {"check": "Tenant predicate and list-column review", "result": "pass", "evidence": "Both Mapper XML files bind tenantId in every select; workflow summary projection does not include definition_json.", "limitations": ["Final behavior is verified after the services consume these Mappers."]}
+  ],
+  "diff_summary": [
+    "Added direct module declarations for the managed MyBatis-Plus starter.",
+    "Added only the two authorized Mapper/XML read clusters.",
+    "Kept service authorization and public APIs unchanged because no service call site changed in T1."
+  ],
+  "invariants_checked": [
+    {"invariant": "Mapper reads are tenant-bound", "result": "pass", "evidence": "Each XML select includes tenant_id = #{tenantId} or its equivalent join predicate."},
+    {"invariant": "Definition list SQL does not select definition_json", "result": "pass", "evidence": "WorkflowDefinitionMapper.xml selects only wf_definition summary columns."},
+    {"invariant": "No API behavior changes in T1", "result": "pass", "evidence": "No controller or service call site changed."}
+  ],
+  "disturbances": [
+    {"event": "PowerShell did not preserve the unquoted dotted Maven -D property.", "impact": "The first Maven invocation failed before testing; quoting the property produced a successful rerun."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Integrated Mapper bean discovery and query behavior remain for T2/T3 and final runtime verification."],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "T5",
+  "status": "implemented",
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' test", "exit_code": 0, "salient_output": "15 Maven reactor modules succeeded; total time 39:54."},
+    {"command": "git diff --check", "exit_code": 0},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260911-076-query-performance/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 1, "salient_output": "Tool rejected the valid comma-separated assignment module before evaluating paths."}
+  ],
+  "scope_audit": {"result": "pass", "evidence": "Manual audit of tracked and untracked paths found every change under an authorized writable_paths entry.", "limitation": "Automated scope checker cannot parse this approved two-module assignment."},
+  "changed_surfaces": [{"path": ".ai-control/requirements/req-20260911-076-query-performance/*.json", "purpose": "Record only current-task verification evidence."}],
+  "local_checks": [{"check": "Full repository regression", "result": "pass", "evidence": "All 15 reactor modules succeeded.", "limitations": []}],
+  "diff_summary": ["Ran integrated tests and audited the approved task scope."],
+  "invariants_checked": [{"invariant": "Approved writable paths only", "result": "pass", "evidence": "Manual path audit."}],
+  "disturbances": [{"event": "Scope checker does not support comma-separated multi-module assignments.", "impact": "Manual authorized-path audit substituted for the rejected checker run."}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Authenticated API and metrics payload probe is blocked by absent test credentials; no .env access was used."],
+  "recommended_next": "observe"
+}

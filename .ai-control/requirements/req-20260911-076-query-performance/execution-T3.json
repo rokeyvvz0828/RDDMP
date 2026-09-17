@@ -1,0 +1,26 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "requirements_addressed": ["R2", "R3", "R5"],
+  "changed_surfaces": [
+    {"path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "Use summary mapper reads and refresh summary on standard lifecycle writes."},
+    {"path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/FlowableWorkflowService.java", "purpose": "Refresh summary on Flowable lifecycle writes."},
+    {"path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowDefinitionSummaryProjector.java", "purpose": "Centralize summary projection."},
+    {"path": "server/src/platform/infrastructure/src/main/resources/db/migration/V201__workflow_definition_query_summary.sql", "purpose": "Add and backfill additive workflow definition summaries."}
+  ],
+  "commands": [
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-workflow -am -Dtest=WorkflowDefinitionSummaryMigrationMySqlTest test", "exit_code": 0},
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-system,:ccb-workflow -am '-Dtest=ProjectServiceTest,WorkflowServiceTest,WorkflowPlatformRetirementTest' test", "exit_code": 0}
+  ],
+  "invariants_checked": [
+    {"invariant": "Definition list excludes definition_json", "result": "pass", "evidence": "Workflow mapper summary query and focused tests."},
+    {"invariant": "Summary writes are tenant-bound and transactional", "result": "pass", "evidence": "Lifecycle refreshes execute inside existing transactional service methods."},
+    {"invariant": "current_version semantics remain unchanged", "result": "pass", "evidence": "latest_version_no is stored separately."}
+  ],
+  "local_checks": [{"check": "Workflow summary behavior", "result": "pass", "evidence": "Focused workflow and migration tests passed.", "limitations": []}],
+  "diff_summary": ["Replaced list JSON projection with stored summaries and refreshed summaries in standard and Flowable lifecycle paths."],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Authenticated API probe requires credentials not provided to this task."],
+  "recommended_next": "observe"
+}

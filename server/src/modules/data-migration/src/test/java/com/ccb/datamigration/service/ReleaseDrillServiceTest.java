@@ -7,7 +7,6 @@ import com.ccb.system.capability.SystemParameterReference;
 import com.ccb.system.capability.SystemReferenceQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -38,7 +37,7 @@ class ReleaseDrillServiceTest {
     private static final AuthUser ADMIN = new AuthUser(1L, 1L, "admin", "", "管理员", 11L, true);
     private static final long PROJECT = 10L;
 
-    private StubJdbcTemplate jdbc;
+    private StubReleaseDrillMapper jdbc;
     private ContentAttachmentService attachments;
     private ContentFileAssetService fileAssets;
     private DataMigrationPermissionService permissions;
@@ -46,11 +45,11 @@ class ReleaseDrillServiceTest {
 
     @BeforeEach
     void setUp() {
-        jdbc = new StubJdbcTemplate();
+        jdbc = new StubReleaseDrillMapper();
         attachments = mock(ContentAttachmentService.class);
         fileAssets = mock(ContentFileAssetService.class);
         permissions = mock(DataMigrationPermissionService.class);
-        service = new ReleaseDrillService(jdbc, attachments, fileAssets, permissions, null,
+        service = new ReleaseDrillService(new ReleaseDrillRepository(jdbc), attachments, fileAssets, permissions, null,
                 new ContentDocCodeGenerator(), codeValues());
 
         when(permissions.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
@@ -122,7 +121,7 @@ class ReleaseDrillServiceTest {
         when(rejecting.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该资料操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        ReleaseDrillService rejectingService = new ReleaseDrillService(jdbc, attachments, fileAssets, rejecting, null,
+        ReleaseDrillService rejectingService = new ReleaseDrillService(new ReleaseDrillRepository(jdbc), attachments, fileAssets, rejecting, null,
                 new ContentDocCodeGenerator(), codeValues());
 
         jdbc.putDrill(50L, PROJECT, OTHER.id(), false);
@@ -213,7 +212,7 @@ class ReleaseDrillServiceTest {
         assertTrue(error.getMessage().contains(messageContains), error.getMessage());
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubReleaseDrillMapper implements ReleaseDrillMapper {
         private final Map<Long, Map<String, Object>> drills = new LinkedHashMap<>();
         private final List<String> audits = new ArrayList<>();
         private int restoreUpdateCount = 1;
@@ -251,121 +250,37 @@ class ReleaseDrillServiceTest {
             return row;
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (sql.contains("SELECT COUNT(*) FROM dm_component")) return (T) Integer.valueOf(1);
-            if (sql.contains("COUNT(*)")) {
-                if (requiredType == Long.class) return (T) Long.valueOf(0L);
-                return (T) Integer.valueOf(0);
-            }
-            if (requiredType == Integer.class) return (T) Integer.valueOf(1);
-            if (requiredType == Long.class) return (T) Long.valueOf(0L);
-            return (T) Boolean.TRUE;
+        @Override public Long count(long tenantId, long projectId, String granularity, String materialTypeCode, String systemCode, String keyword) { return 0L; }
+        @Override public List<Map<String, Object>> page(long tenantId, long projectId, String granularity, String materialTypeCode, String systemCode, String keyword, int limit, long offset) { return List.of(); }
+        @Override public List<Map<String, Object>> find(long tenantId, long id) { return active(id); }
+        @Override public int insert(Map<String, Object> p) {
+            long id = ((Number) p.get("id")).longValue();
+            Map<String, Object> row = prepareRow(id, ((Number) p.get("projectId")).longValue(), ((Number) p.get("ownerId")).longValue());
+            row.put("granularity", p.get("granularity")); row.put("material_type_code", p.get("materialTypeCode"));
+            row.put("doc_code", p.get("docCode")); row.put("asset_code", p.get("docCode"));
+            row.put("doc_name", p.get("docName")); row.put("asset_name", p.get("docName"));
+            row.put("drill_round", p.get("drillRound")); row.put("system_code", p.get("systemCode")); drills.put(id, row); return 1;
         }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            if (sql.contains("SELECT project_id FROM dm_release_drill") && sql.contains("deleted = 1")) {
-                long id = ((Number) args[0]).longValue();
-                Map<String, Object> row = drills.get(id);
-                if (row == null || !Integer.valueOf(1).equals(row.get("deleted"))) return List.of();
-                return (List<T>) new ArrayList<>(List.of(row.get("project_id")));
-            }
-            if (sql.contains("SELECT m.attachment_id")) {
-                return (List<T>) new ArrayList<>(List.of(101L));
-            }
-            return List.of();
+        @Override public int update(Map<String, Object> p) {
+            Map<String, Object> row = drills.get(((Number) p.get("id")).longValue()); if (row == null || Integer.valueOf(1).equals(row.get("deleted"))) return 0;
+            row.put("doc_name", p.get("docName")); row.put("asset_name", p.get("docName")); row.put("granularity", p.get("granularity"));
+            row.put("material_type_code", p.get("materialTypeCode")); row.put("drill_round", p.get("drillRound")); row.put("system_code", p.get("systemCode")); return 1;
         }
+        @Override public int softDelete(long tenantId, long id, long deletedBy) { Map<String, Object> row = drills.get(id); if (row == null || Integer.valueOf(1).equals(row.get("deleted"))) return 0; row.put("deleted", 1); row.put("deleted_by", deletedBy); return 1; }
+        @Override public List<Long> mainAttachmentIds(long tenantId, long id) { return List.of(101L); }
+        @Override public Long recycleCount(long tenantId, long projectId, String keyword) { return drills.values().stream().filter(row -> Integer.valueOf(1).equals(row.get("deleted"))).count(); }
+        @Override public List<Map<String, Object>> recyclePage(long tenantId, long projectId, String keyword, int limit) { return drills.values().stream().filter(row -> Integer.valueOf(1).equals(row.get("deleted"))).<Map<String, Object>>map(LinkedHashMap::new).toList(); }
+        @Override public List<Map<String, Object>> findDeleted(long tenantId, long id) { Map<String, Object> row = drills.get(id); return row != null && Integer.valueOf(1).equals(row.get("deleted")) ? List.of(new LinkedHashMap<>(row)) : List.of(); }
+        @Override public int restore(long tenantId, long id) { if (restoreUpdateCount == 0) return 0; Map<String, Object> row = drills.get(id); if (row == null || !Integer.valueOf(1).equals(row.get("deleted"))) return 0; row.put("deleted", 0); return 1; }
+        @Override public int purge(long tenantId, long id) { return drills.remove(id) == null ? 0 : 1; }
+        @Override public Integer enabledComponentCount(long tenantId, long projectId, String systemCode) { return 1; }
+        @Override public List<Map<String, Object>> findRaw(long tenantId, long id) { return active(id); }
+        @Override public List<Long> deletedProjectIds(long tenantId, long id) { Map<String, Object> row = drills.get(id); return row != null && Integer.valueOf(1).equals(row.get("deleted")) ? List.of(((Number) row.get("project_id")).longValue()) : List.of(); }
+        @Override public int insertAudit(long tenantId, long actorId, long projectId, String operation, long entityId) { audits.add(operation); return 1; }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.contains("FROM dm_component c") && sql.contains("AS value")) {
-                Map<String, Object> option = new LinkedHashMap<>();
-                option.put("value", "SYS_A");
-                option.put("label", "SYS_A - 系统A");
-                return List.of(option);
-            }
-            if (sql.contains("FROM dm_release_drill a")) {
-                long id = args.length > 1 && args[args.length - 1] instanceof Number || args.length > 0 && args[0] instanceof Number
-                        ? ((Number) (args.length > 1 && args[args.length - 1] instanceof Number ? args[args.length - 1] : args[0])).longValue()
-                        : 50L;
-                if (sql.contains("ORDER BY")) return List.of();
-                Map<String, Object> row = drills.getOrDefault(id, prepareRow(id, PROJECT, USER.id()));
-                List<Map<String, Object>> result = new ArrayList<>();
-                if (Integer.valueOf(0).equals(row.get("deleted"))) result.add(new LinkedHashMap<>(row));
-                return result;
-            }
-            if (sql.contains("FROM dm_release_drill WHERE")) {
-                long id = args.length > 1 && args[args.length - 1] instanceof Number ? ((Number) args[args.length - 1]).longValue()
-                        : (args.length > 0 && args[0] instanceof Number ? ((Number) args[0]).longValue() : 50L);
-                Map<String, Object> row = drills.getOrDefault(id, prepareRow(id, PROJECT, USER.id()));
-                List<Map<String, Object>> result = new ArrayList<>();
-                if (Integer.valueOf(0).equals(row.get("deleted"))) result.add(new LinkedHashMap<>(row));
-                return result;
-            }
-            if (sql.contains("dm_release_drill") && sql.contains("deleted = 1")) {
-                List<Map<String, Object>> result = new ArrayList<>();
-                for (Map<String, Object> row : drills.values()) {
-                    if (Integer.valueOf(1).equals(row.get("deleted"))) result.add(new LinkedHashMap<>(row));
-                }
-                return result;
-            }
-            return List.of();
-        }
-
-        @Override
-        public int update(String sql, Object... args) {
-            if (sql.startsWith("INSERT INTO dm_release_drill")) {
-                long id = ((Number) args[0]).longValue();
-                Map<String, Object> row = prepareRow(id, ((Number) args[2]).longValue(), ((Number) args[9]).longValue());
-                row.put("granularity", args[5]);
-                row.put("material_type_code", args[6]);
-                row.put("doc_code", args[3]);
-                row.put("doc_name", args[4]);
-                row.put("drill_round", args[7]);
-                row.put("system_code", args[8]);
-                drills.put(id, row);
-                return 1;
-            }
-            if (sql.startsWith("UPDATE dm_release_drill SET deleted = 1")) {
-                long id = ((Number) args[1]).longValue();
-                Map<String, Object> row = drills.get(id);
-                if (row == null) return 0;
-                row.put("deleted", 1);
-                return 1;
-            }
-            if (sql.startsWith("UPDATE dm_release_drill SET deleted = 0")) {
-                if (restoreUpdateCount == 0) return 0;
-                long id = ((Number) args[0]).longValue();
-                Map<String, Object> row = drills.get(id);
-                if (row == null) return 0;
-                row.put("deleted", 0);
-                return 1;
-            }
-            if (sql.startsWith("UPDATE dm_release_drill SET doc_name")) {
-                long id = ((Number) args[6]).longValue();
-                Map<String, Object> row = drills.get(id);
-                if (row == null) return 0;
-                row.put("doc_name", args[0]);
-                row.put("granularity", args[1]);
-                row.put("material_type_code", args[2]);
-                row.put("drill_round", args[3]);
-                row.put("system_code", args[4]);
-                return 1;
-            }
-            if (sql.startsWith("DELETE FROM dm_release_drill")) {
-                long id = ((Number) args[0]).longValue();
-                drills.remove(id);
-                return 1;
-            }
-            if (sql.startsWith("INSERT INTO dm_operation_log")) {
-                audits.add(String.valueOf(args[3]));
-                return 1;
-            }
-            return 1;
+        private List<Map<String, Object>> active(long id) {
+            Map<String, Object> row = drills.getOrDefault(id, prepareRow(id, PROJECT, USER.id()));
+            return Integer.valueOf(0).equals(row.get("deleted")) ? List.of(new LinkedHashMap<>(row)) : List.of();
         }
     }
 }

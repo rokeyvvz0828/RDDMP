@@ -3,7 +3,6 @@ package com.ccb.attachment.service;
 import com.ccb.infrastructure.storage.MinioStorageProperties;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -36,30 +35,29 @@ class AttachmentCleanupServiceTest {
         assertEquals(1, jdbc.cleanupAttempts);
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends AttachmentPersistenceRepository {
         private String status = "TEMP";
         private String cleanupStatus;
         private int cleanupAttempts;
 
+        private StubJdbcTemplate() { super(null); }
+
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+        public List<Map<String, Object>> cleanupCandidates(int limit) {
             return List.of(Map.of("id", 31L, "tenant_id", 1L, "object_key", "attachments/1/object-1",
                     "status", status, "cleanup_attempts", cleanupAttempts));
         }
 
         @Override
-        public int update(String sql, Object... args) {
-            if (sql.contains("status = 'DELETED', deleted_at")) {
+        public int expireTemporaryFile(Map<String, Object> params) {
+            if ("TEMP".equals(status)) {
                 status = "DELETED";
                 cleanupStatus = "PENDING";
-            } else if (sql.contains("cleanup_status = 'DONE'")) {
-                cleanupStatus = "DONE";
-            } else if (sql.contains("cleanup_status = 'RETRY'")) {
-                cleanupStatus = "RETRY";
-                cleanupAttempts++;
             }
             return 1;
         }
+        @Override public int markFileCleanupDone(Map<String, Object> params) { cleanupStatus = "DONE"; return 1; }
+        @Override public int markFileCleanupRetry(Map<String, Object> params) { cleanupStatus = "RETRY"; cleanupAttempts++; return 1; }
     }
 
     private static final class StubStorage extends MinioStorageService {

@@ -12,6 +12,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class WorkflowTemplateScopeTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "admin", "", "管理员", 1L, true);
@@ -40,7 +42,7 @@ class WorkflowTemplateScopeTest {
 
     @Test
     void templateCannotBePublished() {
-        WorkflowService service = new WorkflowService(new TemplateJdbcTemplate(), new ObjectMapper(), null, null, null);
+        WorkflowService service = templateService();
 
         BusinessException error = assertThrows(BusinessException.class, () -> service.publish(100L, USER));
 
@@ -49,13 +51,23 @@ class WorkflowTemplateScopeTest {
 
     @Test
     void templateRejectsConcreteUserEvenWhenApiIsCalledDirectly() {
-        WorkflowService service = new WorkflowService(new TemplateJdbcTemplate(), new ObjectMapper(), null, null, null);
+        WorkflowService service = templateService();
         String graphWithUser = TEMPLATE_GRAPH.replace("TEMPLATE_PLACEHOLDER", "USER").replace("\"assigneeIds\":[]", "\"assigneeIds\":[7]");
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.updateDefinition(100L, "template", "审批模板", graphWithUser, USER));
 
         assertEquals("全局模板只能保留审批人占位或发起人，不能选择具体用户或角色", error.getMessage());
+    }
+
+    private WorkflowService templateService() {
+        WorkflowService service = new WorkflowService(new ObjectMapper(), null, null, null);
+        WorkflowDefinitionRepository definitions = mock(WorkflowDefinitionRepository.class);
+        when(definitions.detail(100L, 1L)).thenReturn(Map.of(
+                "id", 100L, "code", "template", "name", "审批模板", "scope_type", "TEMPLATE",
+                "status", "DRAFT", "current_version", 0, "model_schema_version", 1));
+        service.setDefinitionRepository(definitions);
+        return service;
     }
 
     private static final class TemplateJdbcTemplate extends JdbcTemplate {

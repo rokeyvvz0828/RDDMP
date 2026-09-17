@@ -1,0 +1,85 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "ProjectService.members service-layer authorization and response assembly",
+      "ProjectMemberMapper and project Mapper XML",
+      "WorkflowService definitions/read and non-Flowable version writers",
+      "FlowableWorkflowService version writers",
+      "WorkflowDefinitionMapper, WorkflowDefinitionSummaryProjector, and workflow Mapper XML",
+      "wf_definition summary columns and append-only Flyway migration",
+      "Boot Actuator metric exposure and Micrometer timers"
+    ],
+    "environment": [
+      "MySQL 8.4 and Flyway runtime",
+      "Existing REST controllers and web clients",
+      "Project access gateway, authorization, audit, and object-storage URL generation",
+      "Flowable deployment engine",
+      "Local Maven, Docker/Testcontainers, and Actuator runtime availability"
+    ]
+  },
+  "state_variables": [
+    {"name": "member_role_query_count", "owner": "ProjectMemberMapper", "valid_values": ["one batch query", "unexpected per-member queries"]},
+    {"name": "definition_summary", "owner": "wf_definition", "valid_values": ["latest version number and configuration flag match latest wf_version", "stale or missing"]},
+    {"name": "definition_list_payload", "owner": "WorkflowDefinitionMapper", "valid_values": ["summary columns only", "contains definition_json"]},
+    {"name": "query_metric_series", "owner": "Micrometer registry", "valid_values": ["fixed tag set", "high-cardinality tag set"]},
+    {"name": "definition_visibility", "owner": "WorkflowService and project gateway", "valid_values": ["authorized tenant/scope records", "unauthorized or cross-tenant records"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Authorized project member-list request", "transitions": ["ProjectService requireAction(member, read)", "ProjectService requireProjectAccess", "tenant-bound member Mapper read", "tenant-bound roles-by-memberIds Mapper read", "in-memory role grouping", "MinIO avatar decoration"], "outputs": ["Existing member rows with roles and avatar_url", "Fixed query count for non-empty result"]},
+    {"requirement_id": "R2", "input": "Authorized definition-list request with scope/project parameters", "transitions": ["WorkflowService normalizes scope", "WorkflowProjectAccessGateway validates project reference", "WorkflowDefinitionMapper selects definition summary rows and count", "WorkflowService returns existing PageResult"], "outputs": ["Existing paged rows containing requires_configuration without definition_json"]},
+    {"requirement_id": "R3", "input": "Workflow create, edit, copy/unpublish, or publish action", "transitions": ["Existing validation and access checks", "wf_version write", "WorkflowDefinitionSummaryProjector derives configuration flag from validated JSON", "tenant-bound wf_definition summary update", "transaction commit"], "outputs": ["latest_version_no and requires_configuration match the latest version"]},
+    {"requirement_id": "R4", "input": "Successful or failed member/definition read", "transitions": ["Service timer starts", "existing service query and response behavior", "timer stops with fixed operation, scope_type, and outcome values"], "outputs": ["Two Actuator-visible timer metrics"]},
+    {"requirement_id": "R5", "input": "Authenticated request or version write", "transitions": ["Existing service-layer authorization and project access checks", "all Mapper reads bind tenant_id", "existing page and audit behavior remain in service"], "outputs": ["Same public contract with tenant and authorization isolation"]}
+  ],
+  "interfaces": [
+    {"name": "ProjectService.members response", "producers": ["ProjectService"], "consumers": ["Existing project REST controller and web views"], "invariant": "Rows retain ordering, role lists, avatar_url, and existing authorization semantics."},
+    {"name": "WorkflowService.definitions PageResult", "producers": ["WorkflowService"], "consumers": ["Existing workflow REST controller and web views"], "invariant": "Path, paging, scope behavior, and requires_configuration remain compatible; definition_json is never part of list rows."},
+    {"name": "wf_definition summary fields", "producers": ["WorkflowService", "FlowableWorkflowService", "Flyway V201"], "consumers": ["WorkflowDefinitionMapper"], "invariant": "latest_version_no is independent of current_version and all values are tenant-bound."},
+    {"name": "Actuator metrics endpoint", "producers": ["Micrometer registry and boot configuration"], "consumers": ["Platform operators"], "invariant": "Only metrics is added to existing health/info exposure and tag keys remain fixed."}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 Mapper delegation and role grouping", "method": "ProjectService Mockito tests plus mapper XML inspection", "blind_spots": ["Real MySQL query-plan cost"], "independence": "Unit interaction assertions are independent of final API probes."},
+    {"id": "S2", "target": "R2 list SQL and response behavior", "method": "Workflow tests and XML inspection", "blind_spots": ["Runtime MyBatis resource discovery"], "independence": "SQL inspection is independent from result assembly tests."},
+    {"id": "S3", "target": "R3 migration backfill and summary parity", "method": "Focused MySQL Testcontainers/Flyway integration test", "blind_spots": ["Production-only historical data variants"], "independence": "Exercises MySQL/Flyway rather than mocks."},
+    {"id": "S4", "target": "R4 metric names and tag keys", "method": "MeterRegistry/Actuator test and local Actuator probe", "blind_spots": ["External monitoring backend configuration"], "independence": "Runtime endpoint reading is independent of code inspection."},
+    {"id": "S5", "target": "R5 regression, scope, and authorization invariants", "method": "System/workflow/full Maven suites, scope checker, and targeted local API authorization checks", "blind_spots": ["Unregistered external clients"], "independence": "Combines automated tests with runtime probes."}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Member role N+1 causal source", "action": "Introduce a tenant-bound member/role Mapper and replace the members read implementation", "authority": "Approved system module source, resource, pom, and test paths", "impact_radius": "Project member list only", "rollback": "Revert requirement application changes."},
+    {"id": "A2", "target": "Definition JSON list load", "action": "Introduce summary Mapper/XML, additive columns, and same-transaction projector calls", "authority": "Approved workflow and infrastructure paths", "impact_radius": "Workflow definition list and version writers", "rollback": "Revert application changes; retain additive columns and use a new compensation migration if necessary."},
+    {"id": "A3", "target": "Query observability", "action": "Record bounded Micrometer timers and expose only the metrics Actuator endpoint", "authority": "Approved service and boot application.yml paths", "impact_radius": "Two read paths and management exposure", "rollback": "Revert application/configuration changes."},
+    {"id": "A4", "target": "Detection quality", "action": "Add focused unit/integration tests and run required Maven/API checks", "authority": "Approved test paths and local development environment", "impact_radius": "Task verification only", "rollback": "Tests are additive."}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S5"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S5"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3", "S5"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S4", "S5"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S1", "S2", "S3", "S5"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Legacy definition JSON variants", "effect": "Migration and Java projector may derive different configuration summaries", "detectable": true, "controllable": "partial"},
+    {"source": "Concurrent migration additions on the target branch", "effect": "V201 might be occupied before merge", "detectable": true, "controllable": true},
+    {"source": "Omitted Flowable writer", "effect": "Enterprise definition summary becomes stale", "detectable": true, "controllable": true},
+    {"source": "Java 25 Mockito/Byte Buddy compatibility", "effect": "Focused tests may fail before asserting product behavior", "detectable": true, "controllable": "partial"},
+    {"source": "Docker/Testcontainers or local services unavailable", "effect": "MySQL and API observations cannot run", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Database transaction commit", "consequence": "Summary must be sampled after the writer transaction completes", "sampling_rule": "Use transaction-bound tests and post-commit API/database probes."},
+    {"source": "Flyway migration execution", "consequence": "Backfill cannot be judged from source inspection", "sampling_rule": "Run focused MySQL/Flyway integration test."},
+    {"source": "Micrometer timer publication", "consequence": "Metric presence is observable only after a read path executes", "sampling_rule": "Execute each path before querying Actuator."}
+  ],
+  "assumptions": [
+    {"text": "@Mapper interfaces are discovered by the existing MyBatis-Plus starter once module dependencies are explicit.", "evidence": "Infrastructure already depends on mybatis-plus-spring-boot3-starter and local configuration supplies mapper-locations.", "falsifier": "Focused module test fails mapper bean creation or XML statement lookup."},
+    {"text": "The existing hasConfigurationPlaceholder method represents the required two placeholder patterns for application projection.", "evidence": "WorkflowService currently uses it to derive requires_configuration.", "falsifier": "Focused migration parity test finds a supported JSON structure with a different result."}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A1 with S1 and S5."},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A2 with S2 and S5."},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Use A2 with S3 and S5."},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Use A3 with S4 and S5."},
+    {"requirement_id": "R5", "observable": "yes", "controllable": "yes", "action": "Preserve service checks and tenant-bound Mapper contracts; verify through S5."}
+  ],
+  "model_status": "ready"
+}

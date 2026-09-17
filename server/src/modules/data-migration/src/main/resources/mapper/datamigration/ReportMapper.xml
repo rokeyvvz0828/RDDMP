@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.datamigration.service.ReportMapper">
+  <sql id="columns">a.id,a.project_id,p.project_name,'REPORT' AS asset_type,a.doc_code AS asset_code,a.doc_name AS asset_name,f.content_type,f.file_size,m.attachment_id,a.report_period,a.report_date,a.keywords,a.owner_id,a.created_at,a.updated_at,a.created_by,a.updated_by,a.deleted_by,a.deleted_at</sql>
+  <sql id="from">FROM dm_report a LEFT JOIN dm_content_attachment m ON m.tenant_id=a.tenant_id AND m.business_type='REPORT' AND m.business_id=a.id AND m.sort_order=0 AND m.deleted=0 LEFT JOIN att_file f ON f.id=m.attachment_id AND f.tenant_id=m.tenant_id LEFT JOIN pm_project p ON a.project_id=p.id AND p.tenant_id=a.tenant_id AND p.deleted=0</sql>
+  <sql id="filter">WHERE a.tenant_id=#{tenantId} AND a.project_id=#{projectId} AND a.deleted=<choose><when test="deleted">1</when><otherwise>0</otherwise></choose><if test="reportPeriod != null and reportPeriod != ''"> AND a.report_period=#{reportPeriod}</if><if test="keyword != null and keyword != ''"> AND (a.doc_name LIKE CONCAT('%',#{keyword},'%') OR a.keywords LIKE CONCAT('%',#{keyword},'%'))</if></sql>
+  <select id="count" resultType="long">SELECT COUNT(*) FROM dm_report a <include refid="filter"/></select>
+  <select id="page" resultType="map">SELECT <include refid="columns"/> <include refid="from"/> <include refid="filter"/> ORDER BY a.doc_code ASC,a.id ASC LIMIT #{limit} OFFSET #{offset}</select>
+  <select id="find" resultType="map">SELECT <include refid="columns"/> <include refid="from"/> WHERE a.id=#{id} AND a.tenant_id=#{tenantId} AND a.deleted=<choose><when test="deleted">1</when><otherwise>0</otherwise></choose></select>
+  <insert id="insert">INSERT INTO dm_report (id,tenant_id,project_id,doc_code,doc_name,report_period,report_date,keywords,owner_id,created_by,updated_by) VALUES (#{p.id},#{p.tenantId},#{p.projectId},#{p.docCode},#{p.docName},#{p.reportPeriod},#{p.reportDate},#{p.keywords},#{p.ownerId},#{p.createdBy},#{p.updatedBy})</insert>
+  <update id="update">UPDATE dm_report <set>updated_by=#{p.updatedBy},updated_at=CURRENT_TIMESTAMP<if test="p.reportPeriod != null">,report_period=#{p.reportPeriod}</if><if test="p.docName != null">,doc_name=#{p.docName}</if><if test="p.reportDate != null">,report_date=#{p.reportDate}</if><if test="p.keywords != null">,keywords=#{p.keywords}</if></set> WHERE id=#{p.id} AND tenant_id=#{p.tenantId}</update>
+  <update id="softDelete">UPDATE dm_report SET deleted=1,deleted_by=#{deletedBy},deleted_at=CURRENT_TIMESTAMP WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=0</update>
+  <update id="restore">UPDATE dm_report SET deleted=0,deleted_by=NULL,deleted_at=NULL WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=1</update>
+  <delete id="purge">DELETE FROM dm_report WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=1</delete>
+  <select id="projectOptions" resultType="map">SELECT id,project_name FROM pm_project WHERE tenant_id=#{tenantId} AND deleted=0 ORDER BY project_name</select>
+  <insert id="insertAudit">INSERT INTO dm_operation_log (tenant_id,actor_id,project_id,operation_code,entity_type,entity_id) VALUES (#{tenantId},#{actorId},#{projectId},#{operation},'REPORT',#{entityId})</insert>
+</mapper>

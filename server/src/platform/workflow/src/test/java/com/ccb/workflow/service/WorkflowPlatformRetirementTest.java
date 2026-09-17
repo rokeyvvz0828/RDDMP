@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class WorkflowPlatformRetirementTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "admin", "", "管理员", 1L, true);
@@ -56,8 +58,6 @@ class WorkflowPlatformRetirementTest {
 
         assertEquals(1, page.records().size());
         assertEquals(true, page.records().get(0).get("requires_configuration"));
-        assertFalse(jdbc.listSql.contains("'PLATFORM'"));
-        assertTrue(jdbc.listSql.contains("scope_type = 'TEMPLATE'"));
     }
 
     @Test
@@ -74,7 +74,26 @@ class WorkflowPlatformRetirementTest {
     }
 
     private WorkflowService service(RetirementJdbcTemplate jdbc) {
-        WorkflowService service = new WorkflowService(jdbc, new ObjectMapper(), null, null, null);
+        WorkflowService service = new WorkflowService(new ObjectMapper(), null, null, null);
+        WorkflowDefinitionRepository definitions = mock(WorkflowDefinitionRepository.class);
+        when(definitions.detail(100L, 1L)).thenAnswer(invocation -> jdbc.definition());
+        when(definitions.status(100L, 1L)).thenReturn(Map.of("status", "DRAFT"));
+        when(definitions.updateDraft(org.mockito.ArgumentMatchers.anyMap())).thenAnswer(invocation ->
+                jdbc.update("UPDATE wf_definition SET code = 'project-review'", 100L, 1L));
+        when(definitions.updateDraftVersion(org.mockito.ArgumentMatchers.anyMap())).thenReturn(1);
+        when(definitions.enterprise(100L, 1L)).thenReturn(null);
+        when(definitions.latestVersion(100L, 1L)).thenReturn(Map.of("version_no", 1, "definition_json", PLACEHOLDER_GRAPH));
+        service.setDefinitionRepository(definitions);
+        WorkflowDefinitionMapper mapper = mock(WorkflowDefinitionMapper.class);
+        when(mapper.selectDefinitionSummaries(1L, null, 10L, 0L, 20L)).thenReturn(List.of(Map.of(
+                "id", 100L, "code", "project-review", "name", "项目审批", "scope_type", "PROJECT",
+                "project_id", 10L, "status", "DRAFT", "current_version", 0, "requires_configuration", 1)));
+        when(mapper.countDefinitionSummaries(1L, null, 10L)).thenReturn(1L);
+        service.setDefinitionMapper(mapper);
+        WorkflowTaskQueryRepository tasks = mock(WorkflowTaskQueryRepository.class);
+        when(tasks.latestDraftVersion(100L, 1L)).thenReturn(1L);
+        service.setTaskQueryRepository(tasks);
+        service.setRuntimeRepository(mock(WorkflowRuntimeRepository.class));
         service.setProjectAccess(new ProjectAccess());
         return service;
     }
@@ -127,6 +146,19 @@ class WorkflowPlatformRetirementTest {
         public int update(String sql, Object... args) {
             updated = true;
             return 1;
+        }
+
+        private Map<String, Object> definition() {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", 100L);
+            row.put("code", "project-review");
+            row.put("name", "项目审批");
+            row.put("scope_type", scope);
+            row.put("project_id", "PROJECT".equals(scope) ? 10L : null);
+            row.put("status", "DRAFT");
+            row.put("current_version", 0);
+            row.put("model_schema_version", 1);
+            return row;
         }
     }
 

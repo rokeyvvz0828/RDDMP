@@ -2,6 +2,8 @@ package com.ccb.architecture.service;
 
 import com.ccb.architecture.model.DeploymentUnitModels.DeploymentUnitCommand;
 import com.ccb.architecture.persistence.DeploymentUnitStore;
+import com.ccb.architecture.persistence.DeploymentUnitMapper;
+import com.ccb.architecture.persistence.DeploymentUnitRepository;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.security.model.AuthUser;
@@ -15,6 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -60,7 +65,7 @@ class DeploymentUnitLifecycleMySqlTest {
     private final AuthUser actor = new AuthUser(88L, TENANT_ID, "tech", "-", "技术架构师", 1L, true);
 
     @BeforeAll
-    static void migrate() {
+    static void migrate() throws Exception {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
         jdbc = new JdbcTemplate(dataSource);
@@ -74,12 +79,20 @@ class DeploymentUnitLifecycleMySqlTest {
         flyway.clean();
         flyway.migrate();
 
-        store = new DeploymentUnitStore(jdbc);
+        store = store(dataSource);
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         LongSupplier idSupplier = () -> identifiers.incrementAndGet();
         service = new DeploymentUnitService(store, new DeploymentUnitReferenceGuard(List.of()),
                 mock(SystemReferenceQuery.class), mock(SystemOperationAudit.class),
                 transactions, idSupplier);
+    }
+
+    private static DeploymentUnitStore store(DriverManagerDataSource source) throws Exception {
+        SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
+        factory.setDataSource(source);
+        factory.setMapperLocations(new ClassPathResource("mapper/architecture/DeploymentUnitMapper.xml"));
+        DeploymentUnitMapper mapper = new SqlSessionTemplate(factory.getObject()).getMapper(DeploymentUnitMapper.class);
+        return new DeploymentUnitStore(new DeploymentUnitRepository(mapper));
     }
 
     @BeforeEach

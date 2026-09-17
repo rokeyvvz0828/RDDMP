@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowMonitorMapper">
+    <sql id="monitorFrom">FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id</sql>
+    <sql id="monitorWhere">
+        WHERE i.tenant_id = #{tenantId} AND i.deleted = 0
+        <choose>
+            <when test="projectMode == 'specific'">AND i.project_id = #{projectId}</when>
+            <when test="projectMode == 'nullOnly'">AND i.project_id IS NULL</when>
+            <when test="projectMode == 'accessible'">AND (i.project_id IS NULL OR i.project_id IN <foreach collection="projectIds" item="id" open="(" separator="," close=")">#{id}</foreach>)</when>
+        </choose>
+        <if test="businessKey != null and businessKey != ''">AND i.business_key LIKE #{businessKey}</if>
+        <if test="definitionKeyword != null and definitionKeyword != ''">AND (d.name LIKE #{definitionKeyword} OR d.code LIKE #{definitionKeyword})</if>
+        <if test="status != null and status != ''">AND i.status = #{status}</if>
+        <if test="starterKeyword != null and starterKeyword != ''">AND (u.display_name LIKE #{starterKeyword} OR u.username LIKE #{starterKeyword})</if>
+        <if test="createdFrom != null and createdFrom != ''">AND DATE(i.created_at) &gt;= #{createdFrom}</if>
+        <if test="createdTo != null and createdTo != ''">AND DATE(i.created_at) &lt;= #{createdTo}</if>
+    </sql>
+    <sql id="monitorSelect">SELECT i.id, i.definition_id, d.name AS definition_name, i.version_no, i.business_key, i.status, i.starter_id, u.display_name AS starter_name, i.created_at, COALESCE((SELECT GROUP_CONCAT(DISTINCT t.node_id ORDER BY t.id SEPARATOR ', ') FROM wf_task t WHERE t.instance_id = i.id AND t.tenant_id = i.tenant_id AND t.status = 'PENDING'), '') AS current_node</sql>
+    <select id="instances" resultType="map"><include refid="monitorSelect"/> <include refid="monitorFrom"/> <include refid="monitorWhere"/> ORDER BY i.id DESC LIMIT #{offset}, #{size}</select>
+    <select id="countInstances" resultType="long">SELECT COUNT(*) <include refid="monitorFrom"/> <include refid="monitorWhere"/></select>
+    <select id="instancesSeek" resultType="map"><include refid="monitorSelect"/> <include refid="monitorFrom"/> <include refid="monitorWhere"/> <if test="cursorCreatedAt != null">AND (i.created_at &lt; #{cursorCreatedAt} OR (i.created_at = #{cursorCreatedAt} AND i.id &lt; #{cursorId}))</if> ORDER BY i.created_at DESC, i.id DESC LIMIT #{size}</select>
+    <select id="detail" resultType="map">SELECT i.id, i.definition_id, d.name AS definition_name, d.code AS definition_code, i.version_no, i.business_key, i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path, i.status, i.starter_id, u.display_name AS starter_name, i.created_at FROM wf_instance i JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id LEFT JOIN sys_user u ON u.id = i.starter_id AND u.tenant_id = i.tenant_id WHERE i.id = #{instanceId} AND i.tenant_id = #{tenantId} AND i.deleted = 0</select>
+    <select id="definitionJson" resultType="map">SELECT CAST(v.definition_json AS CHAR) AS definition_json FROM wf_version v WHERE v.definition_id = #{definitionId} AND v.version_no = #{versionNo} AND v.tenant_id = #{tenantId}</select>
+    <select id="instanceStatus" resultType="map">SELECT status FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <update id="softDelete">UPDATE wf_instance SET deleted = 1 WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND deleted = 0</update>
+    <select id="runningInstance" resultType="map">SELECT flowable_process_instance_id FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND status = 'RUNNING'</select>
+    <update id="cancelTasks">UPDATE wf_task SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP WHERE instance_id = #{instanceId} AND tenant_id = #{tenantId} AND status = 'PENDING'</update>
+    <update id="terminateInstance">UPDATE wf_instance SET status = 'TERMINATED' WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND status = 'RUNNING'</update>
+    <select id="projectScope" resultType="map">SELECT project_id FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <select id="nodeStates" resultType="map">SELECT t.id, t.instance_id, t.node_id, t.task_key, t.task_type, t.assignee_name, t.status, t.comment, t.created_at, t.completed_at FROM wf_task t WHERE t.instance_id = #{instanceId} AND t.tenant_id = #{tenantId} ORDER BY t.created_at, t.id</select>
+    <select id="timeline" resultType="map">SELECT a.id, a.event_type, a.operator_id, u.display_name AS operator_name, a.reason, a.payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.instance_id = #{instanceId} AND a.tenant_id = #{tenantId} ORDER BY a.created_at, a.id</select>
+</mapper>

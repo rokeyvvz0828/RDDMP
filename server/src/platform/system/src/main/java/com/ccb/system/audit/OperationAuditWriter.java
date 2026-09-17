@@ -4,22 +4,21 @@ import com.ccb.system.capability.SystemOperationLogCommand;
 import com.ccb.system.capability.SystemOperationLogWriter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class OperationAuditWriter implements SystemOperationLogWriter {
-    private final JdbcTemplate jdbc;
+    private final OperationAuditRepository repository;
     private final ObjectMapper objectMapper;
 
-    public OperationAuditWriter(JdbcTemplate jdbc, ObjectMapper objectMapper) {
-        this.jdbc = jdbc;
+    public OperationAuditWriter(OperationAuditRepository repository, ObjectMapper objectMapper) {
+        this.repository = repository;
         this.objectMapper = objectMapper;
     }
 
@@ -27,24 +26,17 @@ public class OperationAuditWriter implements SystemOperationLogWriter {
     @Override
     public void record(SystemOperationLogCommand command) {
         ProjectSnapshot project = findProject(command.actor().tenantId(), command.projectReference());
-        jdbc.update("""
-                        INSERT INTO sys_operation_log
-                            (id, tenant_id, operator_id, operator_name, operation_code,
-                             module_code, module_name, operation_type, target_type, target_id,
-                             project_id, project_name, request_method, request_path, success,
-                             http_status, duration_ms, error_message, client_ip, user_agent,
-                             changed_fields, trace_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                nextId(), command.actor().tenantId(), command.actor().id(),
-                truncate(command.actor().displayName(), 128), required(command.operationCode(), 128),
-                truncate(command.moduleCode(), 64), truncate(command.moduleName(), 128),
-                truncate(command.operationType(), 32), truncate(command.targetType(), 64),
-                truncate(command.targetId(), 128), project.id(), project.name(),
-                truncate(command.requestMethod(), 16), truncate(command.requestPath(), 255),
-                command.success() ? 1 : 0, command.httpStatus(), Math.max(0, command.durationMs()),
-                truncate(command.errorMessage(), 255), truncate(command.clientIp(), 64),
-                truncate(command.userAgent(), 512), changedFields(command), truncate(command.traceId(), 64));
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", nextId()); row.put("tenantId", command.actor().tenantId()); row.put("operatorId", command.actor().id());
+        row.put("operatorName", truncate(command.actor().displayName(), 128)); row.put("operationCode", required(command.operationCode(), 128));
+        row.put("moduleCode", truncate(command.moduleCode(), 64)); row.put("moduleName", truncate(command.moduleName(), 128));
+        row.put("operationType", truncate(command.operationType(), 32)); row.put("targetType", truncate(command.targetType(), 64));
+        row.put("targetId", truncate(command.targetId(), 128)); row.put("projectId", project.id()); row.put("projectName", project.name());
+        row.put("requestMethod", truncate(command.requestMethod(), 16)); row.put("requestPath", truncate(command.requestPath(), 255));
+        row.put("success", command.success() ? 1 : 0); row.put("httpStatus", command.httpStatus()); row.put("durationMs", Math.max(0, command.durationMs()));
+        row.put("errorMessage", truncate(command.errorMessage(), 255)); row.put("clientIp", truncate(command.clientIp(), 64));
+        row.put("userAgent", truncate(command.userAgent(), 512)); row.put("changedFields", changedFields(command)); row.put("traceId", truncate(command.traceId(), 64));
+        repository.insertLog(row);
     }
 
     private ProjectSnapshot findProject(long tenantId, String reference) {
@@ -52,18 +44,15 @@ public class OperationAuditWriter implements SystemOperationLogWriter {
             return ProjectSnapshot.empty();
         }
         String normalized = reference.trim();
-        List<Map<String, Object>> rows;
+        Map<String, Object> row;
         if (normalized.matches("[0-9]+")) {
-            rows = jdbc.queryForList("SELECT id, project_name FROM pm_project WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                    tenantId, Long.parseLong(normalized));
+            row = repository.findProjectById(tenantId, Long.parseLong(normalized));
         } else {
-            rows = jdbc.queryForList("SELECT id, project_name FROM pm_project WHERE tenant_id = ? AND project_code = ? AND deleted = 0",
-                    tenantId, truncate(normalized, 64));
+            row = repository.findProjectByCode(tenantId, truncate(normalized, 64));
         }
-        if (rows.isEmpty()) {
+        if (row == null || row.isEmpty()) {
             return ProjectSnapshot.empty();
         }
-        Map<String, Object> row = rows.get(0);
         return new ProjectSnapshot(((Number) row.get("id")).longValue(), truncate(String.valueOf(row.get("project_name")), 128));
     }
 

@@ -1,0 +1,31 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant": "ProjectService.workbench and JdbcTemplate read path",
+  "plant_boundary": {"inside": ["workbench main query", "batch owner query", "batch aggregate query"], "outside": ["project detail", "REST controller", "database schema"]},
+  "causal_paths": [{"requirement_id": "R1", "cause": "per-project decoration", "action": "batch owner and aggregate reads", "sensor": "S1"}, {"requirement_id": "R2", "cause": "response assembly", "action": "map fields by project id", "sensor": "S1"}, {"requirement_id": "R3", "cause": "scope SQL", "action": "retain tenant and project predicates", "sensor": "S3"}],
+  "state_variables": ["project rows", "owner names", "member/plan aggregates"],
+  "interfaces": ["ProjectService.workbench(AuthUser)"],
+  "sensors": [
+    {"id": "S1", "method": "ProjectServiceTest query verification", "target": "query count and fields", "independence": "automated test"},
+    {"id": "S2", "method": "ccb-system regression", "target": "authorization and compatibility", "independence": "module regression"},
+    {"id": "S3", "method": "diff and SQL inspection", "target": "tenant/scope invariants", "independence": "static check"}
+  ],
+  "actuators": [
+    {"id": "A1", "action": "batch owner query", "rollback": "restore decorator loop"},
+    {"id": "A2", "action": "batch aggregate query", "rollback": "restore decorator loop"}
+  ],
+  "disturbances": ["empty project list", "multiple owners", "projects with no plans", "non-super-admin scope"],
+  "delays": ["single request round-trip per batch query"],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Use A1/A2 with S1."},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Use A2 with S1/S2."},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Preserve scope SQL and verify with S2/S3."}
+  ],
+  "assumptions": ["correlated aggregate subqueries preserve per-project counts without join multiplication"],
+  "measurements": [
+    {"requirement_id": "R1", "sensor": ["S1"]},
+    {"requirement_id": "R2", "sensor": ["S1", "S2"]},
+    {"requirement_id": "R3", "sensor": ["S2", "S3"]}
+  ],
+  "model_status": "ready"
+}

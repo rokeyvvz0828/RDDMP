@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowBusinessEventMapper">
+    <sql id="fromWhere">FROM wf_lifecycle_delivery d JOIN wf_lifecycle_event e ON e.event_id = d.event_id AND e.tenant_id = d.tenant_id WHERE d.tenant_id = #{tenantId}<if test="status != null and status != ''"> AND d.status = #{status}</if></sql>
+    <select id="selectDeliveries" resultType="map">
+        SELECT d.event_id, d.subscriber_key, d.status, d.attempt_count, d.next_attempt_at, d.last_error, d.delivered_at, e.event_type, e.business_type, e.business_key, e.business_round, e.business_title, e.occurred_at
+        <include refid="fromWhere"/> ORDER BY d.id DESC LIMIT #{offset}, #{size}
+    </select>
+    <select id="countDeliveries" resultType="long">SELECT COUNT(*) <include refid="fromWhere"/></select>
+</mapper>

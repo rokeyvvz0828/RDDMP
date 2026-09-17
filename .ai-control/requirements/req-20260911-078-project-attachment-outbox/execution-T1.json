@@ -1,0 +1,25 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "AttachmentPort and ProjectAttachmentPortAdapter", "purpose": "Transactionally enqueue business attachment cleanup and soft delete metadata"},
+    {"path_or_resource": "ProjectService", "purpose": "Replace synchronous paged attachment deletion loop with one batch enqueue"},
+    {"path_or_resource": "ProjectServiceTest", "purpose": "Preserve project deletion behavior and prohibit per-attachment storage deletion"}
+  ],
+  "requirements_addressed": ["R1", "R3", "R4"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test", "exit_code": 0, "salient_output": "98 tests passed including 47 ProjectService tests"}
+  ],
+  "local_checks": [
+    {"check": "project deletion interaction", "result": "pass", "evidence": "ProjectServiceTest verifies enqueueBusinessDeletion and no list/delete loop", "limitations": ["object storage is intentionally stubbed in transaction test"]}
+  ],
+  "diff_summary": ["Moved project attachment object deletion intent into batch Outbox enqueue"],
+  "invariants_checked": [
+    {"invariant": "existing project delete permission/audit flow remains", "result": "pass", "evidence": "existing ProjectService regression suite"},
+    {"invariant": "no storage I/O inside project delete transaction", "result": "pass", "evidence": "interaction test"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

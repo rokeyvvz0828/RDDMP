@@ -1,0 +1,18 @@
+{
+  "objective": "Provide bounded cursor navigation for workflow inbox, audit actions and instance history while keeping current administrator pagination and authorization behavior.",
+  "requirements": [
+    {"id": "R1", "statement": "Inbox, done-action and instance-history reads must expose seek pages ordered by created_at and id without OFFSET or COUNT.", "acceptance": ["each seek query has a timestamp/id predicate", "each reads size plus one only", "response returns records, next cursor and has_more"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["query uses LIMIT offset,size or COUNT(*)"]},
+    {"id": "R2", "statement": "A next cursor must continue a fixed result set without duplicate or omitted timestamp/id records.", "acceptance": ["equal created_at records are returned in descending id order across two pages"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["continuation repeats the final first-page row"]},
+    {"id": "R3", "statement": "Seek reads must preserve authentication, tenant isolation, project range and instance visibility.", "acceptance": ["existing visibility/project predicates are present before seek predicate", "tenant/project focused tests pass"], "priority": "must", "source": "repository governance", "counterexample": ["a cursor reveals a row outside current scope"]},
+    {"id": "R4", "statement": "Append-only indexes must support the fixed filters and timestamp/id ordering for all three reads.", "acceptance": ["V204 contains only ADD INDEX statements", "local Flyway applies V204"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["migration changes a released script"]},
+    {"id": "R5", "statement": "Existing page-based endpoints remain compatible.", "acceptance": ["legacy workflow regression tests pass", "old controller signatures remain unchanged"], "priority": "must", "source": "repository compatibility requirement", "counterexample": ["old PageResult contract changes"]}
+  ],
+  "invariants": ["Existing endpoints remain", "tenant predicates remain", "cursor has no identity or business data", "Flyway is append-only"],
+  "constraints": ["Java 17", "MySQL 8.4", "no production access", "no frontend change"],
+  "non_goals": ["definition pagination", "time-line pagination", "Flowable ACT table changes", "legacy endpoint replacement"],
+  "assumptions": [{"text": "created_at is immutable after insert for tasks, actions and instances.", "basis": "current schemas and order clauses", "falsifier": "a writer updates created_at."}],
+  "unknowns": [],
+  "decisions": [{"question": "How to preserve legacy clients", "options": ["replace old routes", "add seek routes"], "selected": "add seek routes", "blocking": false, "source": "approved design"}],
+  "measurement_intents": [{"requirement_id": "R1", "observable": "seek predicate/limit and cursor response", "candidate_sensor": "WorkflowCursorPaginationTest"}, {"requirement_id": "R2", "observable": "two-page ordered record sequence", "candidate_sensor": "WorkflowCursorPaginationTest"}, {"requirement_id": "R3", "observable": "tenant/project scope in SQL and tests", "candidate_sensor": "Workflow cursor scope test"}, {"requirement_id": "R4", "observable": "V204 schema result", "candidate_sensor": "local Flyway migration"}, {"requirement_id": "R5", "observable": "legacy regression remains green", "candidate_sensor": "workflow Maven test"}],
+  "baseline_status": "ready"
+}

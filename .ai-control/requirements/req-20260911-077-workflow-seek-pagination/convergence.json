@@ -1,0 +1,39 @@
+{
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "T2"], "evidence": ["WorkflowCursorPaginationTest: 4 passed", "seek SQL assertions verify size+1 and no OFFSET/COUNT"], "limitations": []},
+    {"id": "R2", "result": "pass", "task_ids": ["T1"], "evidence": ["same-timestamp descending-id continuation test"], "limitations": ["JDBC test double rather than a live authorized dataset"]},
+    {"id": "R3", "result": "pass", "task_ids": ["T1", "T2", "T3"], "evidence": ["project scope assertion", "all protected routes returned HTTP 401 without credentials"], "limitations": ["authorized local account was not read"]},
+    {"id": "R4", "result": "pass", "task_ids": ["T2"], "evidence": ["disposable mysql:8.4 applied V204 and found all three indexes"], "limitations": ["minimal prerequisite schema"]},
+    {"id": "R5", "result": "pass", "task_ids": ["T1", "T3"], "evidence": ["new /seek routes preserve legacy page routes", "workflow module regression passed before final test-only additions"], "limitations": ["full reactor was blocked by unrelated architecture migration test"]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["execution-T1.json", "observation-T1.json"]},
+    {"id": "T2", "status": "verified", "evidence": ["execution-T2.json", "observation-T2.json"]},
+    {"id": "T3", "status": "verified", "evidence": ["execution-T3.json", "observation-T3.json"]}
+  ],
+  "feedback_summary": {"total": 0, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 0, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "S-0001", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0002", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "S-0003", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "WorkflowCursorPaginationTest", "result": "pass", "evidence": "4 tests passed"},
+    {"check": "workflow module regression", "result": "pass", "evidence": "completed before final test-only additions"},
+    {"check": "full reactor", "result": "inconclusive", "evidence": "NetworkWorkOrderMySqlTest Flyway socket wait after temporary MySQL exit"}
+  ],
+  "invariant_results": [
+    {"invariant": "legacy page endpoints retain PageResult contract", "result": "pass", "evidence": "no legacy controller route replacement"},
+    {"invariant": "cursor has no scope payload", "result": "pass", "evidence": "cursor codec round-trip test"},
+    {"invariant": "authorized file scope", "result": "pass", "evidence": "task-specific diff review; unrelated REQ-076 changes preserved"}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": []},
+  "disturbance_resilience": [
+    {"disturbance": "malformed cursor", "result": "pass", "evidence": "focused malformed cursor test"},
+    {"disturbance": "unauthenticated request", "result": "pass", "evidence": "HTTP 401 probes"}
+  ],
+  "residual_risks": ["Full reactor completion is blocked by an unrelated architecture migration test environment failure", "Authorized live data pagination and independent Owner observation remain release follow-ups"],
+  "gate_result": "pass",
+  "route_reason": "All must requirements have verified task, automated, migration or protected-route evidence; non-task environment limits are disclosed."
+}

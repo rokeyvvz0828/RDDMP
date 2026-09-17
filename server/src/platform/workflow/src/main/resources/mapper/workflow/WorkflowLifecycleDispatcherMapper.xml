@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowLifecycleDispatcherMapper">
+    <sql id="deliveryColumns">d.id, d.tenant_id, d.event_id, d.subscriber_key, d.attempt_count</sql>
+    <select id="pending" resultType="map">SELECT <include refid="deliveryColumns"/> FROM wf_lifecycle_delivery d WHERE d.status IN ('PENDING','RETRY') AND (d.next_attempt_at IS NULL OR d.next_attempt_at &lt;= CURRENT_TIMESTAMP) ORDER BY d.id LIMIT #{limit}</select>
+    <select id="pendingEvent" resultType="map">SELECT <include refid="deliveryColumns"/> FROM wf_lifecycle_delivery d WHERE d.event_id = #{eventId} AND d.status IN ('PENDING','RETRY') AND (d.next_attempt_at IS NULL OR d.next_attempt_at &lt;= CURRENT_TIMESTAMP) ORDER BY d.id</select>
+    <update id="retryDead">UPDATE wf_lifecycle_delivery SET status = 'RETRY', attempt_count = 0, last_error = NULL, next_attempt_at = CURRENT_TIMESTAMP WHERE tenant_id = #{tenantId} AND event_id = #{eventId} AND subscriber_key = #{subscriberKey} AND status = 'DEAD'</update>
+    <update id="markDelivered">UPDATE wf_lifecycle_delivery SET status = 'DELIVERED', attempt_count = #{attempts}, delivered_at = CURRENT_TIMESTAMP, next_attempt_at = NULL, last_error = NULL WHERE id = #{id} AND status = 'DISPATCHING'</update>
+    <update id="claim">UPDATE wf_lifecycle_delivery SET status = 'DISPATCHING' WHERE id = #{id} AND status IN ('PENDING','RETRY') AND (next_attempt_at IS NULL OR next_attempt_at &lt;= CURRENT_TIMESTAMP)</update>
+    <update id="recoverStale">UPDATE wf_lifecycle_delivery SET status = 'RETRY', next_attempt_at = CURRENT_TIMESTAMP, last_error = COALESCE(last_error, 'Recovered stale dispatch claim') WHERE status = 'DISPATCHING' AND updated_at &lt; #{before}</update>
+    <select id="loadEvent" resultType="map">SELECT event_id, tenant_id, instance_id, event_type, business_module_code, business_module_name, business_type, business_key, business_title, business_round, project_ref, project_name, action_path, data_digest, operator_id, occurred_at FROM wf_lifecycle_event WHERE event_id = #{eventId} AND tenant_id = #{tenantId}</select>
+    <update id="markDead">UPDATE wf_lifecycle_delivery SET status = 'DEAD', attempt_count = #{attempts}, last_error = #{message}, next_attempt_at = NULL WHERE id = #{id} AND status = 'DISPATCHING'</update>
+    <update id="markPending">UPDATE wf_lifecycle_delivery SET status = 'PENDING', attempt_count = #{attempts}, last_error = #{message}, next_attempt_at = CURRENT_TIMESTAMP WHERE id = #{id} AND status = 'DISPATCHING'</update>
+    <update id="markRetry">UPDATE wf_lifecycle_delivery SET status = 'RETRY', attempt_count = #{attempts}, last_error = #{message}, next_attempt_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL #{backoffMinutes} MINUTE) WHERE id = #{id} AND status = 'DISPATCHING'</update>
+</mapper>

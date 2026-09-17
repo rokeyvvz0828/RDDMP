@@ -5,7 +5,6 @@ import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -80,7 +79,7 @@ class WorkflowLifecycleEventServiceTest {
             public boolean supports(String businessType) { return "release".equals(businessType); }
             public void consume(com.ccb.workflow.integration.WorkflowLifecycleEvent event) { }
         };
-        WorkflowLifecycleEventService service = new WorkflowLifecycleEventService(new EventJdbcTemplate(), List.of(consumer));
+        WorkflowLifecycleEventService service = new WorkflowLifecycleEventService(new EventRepository(), List.of(consumer));
         service.setDispatcher(dispatcher);
         return service;
     }
@@ -95,7 +94,7 @@ class WorkflowLifecycleEventServiceTest {
         private RuntimeException failure;
 
         private RecordingDispatcher() {
-            super(new JdbcTemplate(), List.of());
+            super(null, List.of());
         }
 
         @Override
@@ -107,9 +106,11 @@ class WorkflowLifecycleEventServiceTest {
         }
     }
 
-    private static final class EventJdbcTemplate extends JdbcTemplate {
+    private static final class EventRepository extends WorkflowLifecycleEventRepository {
+        private EventRepository() { super(null); }
+
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+        public List<Map<String, Object>> instanceContext(long instanceId, long tenantId) {
             return List.of(Map.ofEntries(
                     Map.entry("tenant_id", 1L),
                     Map.entry("business_module_code", "release"),
@@ -123,7 +124,12 @@ class WorkflowLifecycleEventServiceTest {
         }
 
         @Override
-        public int update(String sql, Object... args) {
+        public int insertEvent(Map<String, Object> values) {
+            return 1;
+        }
+
+        @Override
+        public int insertDelivery(long id, long tenantId, String eventId, String subscriberKey) {
             return 1;
         }
     }

@@ -45,9 +45,10 @@ class RequirementLegacyServiceTest {
 
     private Fixture fixture(String stageStatus) {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(count -> 1L, List.of(row(stageStatus)), Map.of());
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementLegacyService service = new RequirementLegacyService(jdbc, changeLog, security);
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementLegacyService service = new RequirementLegacyService(
+                new RequirementLegacyRepository(new RequirementSqlMigrationTestMapper(jdbc)), changeLog, security);
         return new Fixture(jdbc, service);
     }
 
@@ -114,9 +115,10 @@ class RequirementLegacyServiceTest {
         Map<String, Object> row = row("未开始");
         row.put("requirement_name", null);
         StubJdbcTemplate jdbc = new StubJdbcTemplate(count -> 1L, List.of(row), Map.of());
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementLegacyService service = new RequirementLegacyService(jdbc, changeLog, security);
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementLegacyService service = new RequirementLegacyService(
+                new RequirementLegacyRepository(new RequirementSqlMigrationTestMapper(jdbc)), changeLog, security);
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> service.stageTransition(1L, "PROPOSE", "START", null, true, MEMBER));
         assertEquals(ErrorCode.BAD_REQUEST, exception.code());

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.datamigration.service.ExcelMapper">
+  <select id="exportRows" resultType="map">
+    SELECT doc_code AS asset_code, doc_name AS asset_name, project_id, system_code,
+           #{assetType} AS asset_type, CAST(structured_data AS CHAR) AS structured_data
+    FROM ${table}
+    WHERE tenant_id = #{tenantId} AND project_id = #{projectId} AND deleted = 0
+    <if test="systemCode != null and systemCode != ''">AND system_code = #{systemCode}</if>
+    <if test="keyword != null and keyword != ''">
+      AND (doc_code LIKE CONCAT('%', #{keyword}, '%') OR doc_name LIKE CONCAT('%', #{keyword}, '%'))
+    </if>
+    ORDER BY id
+  </select>
+
+  <select id="enabledComponentCount" resultType="int">
+    SELECT COUNT(*) FROM dm_component
+    WHERE system_code = #{systemCode} AND project_id = #{projectId} AND tenant_id = #{tenantId} AND enabled = 1
+  </select>
+
+  <insert id="insertAsset">
+    INSERT INTO ${table}
+      (id, tenant_id, project_id, system_code, doc_code, doc_name, structured_data, owner_id, created_by, updated_by)
+    VALUES
+      (#{id}, #{tenantId}, #{projectId}, #{systemCode}, #{docCode}, #{docName}, #{structuredData}, #{ownerId}, #{createdBy}, #{updatedBy})
+  </insert>
+
+  <insert id="insertAudit">
+    INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, detail_json)
+    VALUES (#{tenantId}, #{actorId}, #{projectId}, 'STRUCTURED_IMPORT', 'ASSET', #{detailJson})
+  </insert>
+</mapper>

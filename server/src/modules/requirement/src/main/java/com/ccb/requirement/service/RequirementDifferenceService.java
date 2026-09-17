@@ -9,7 +9,6 @@ import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowBusinessGateway;
 import com.ccb.workflow.integration.WorkflowStartDefinitionCommand;
 import com.ccb.workflow.integration.WorkflowStartResult;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.ccb.requirement.support.RequirementIds;
-import com.ccb.requirement.support.RequirementSql;
 import com.ccb.requirement.support.RequirementValues;
 
 /** 新建项目需求差异清单：生命周期状态机（待评审→评审中→已评审/已退回）、数据范围与改动记录。 */
@@ -37,28 +35,17 @@ public class RequirementDifferenceService {
             "solution", "is_special", "decision_level", "decision_conclusion",
             "monshang_confirm_dept", "jinke_confirmer", "dev_status", "test_status");
 
-    private static final String SELECT_COLUMNS = """
-            id, project_id, seq_no, business_conglomerate, business_section, business_group,
-            requirement_no, category, name, system_id, jinke_practice, difference_type,
-            monshang_practice, difference_desc, monshang_dept, monshang_analyst, jinke_analyst,
-            adapt_mode, handle_status, coord_group, solution, is_special, decision_level,
-            decision_conclusion, monshang_confirm_dept, jinke_confirmer, review_status,
-            review_comment, review_report_name, reviewed_by, reviewed_at, workflow_instance_id, dev_status,
-            test_status, baseline_id, source, import_batch_id, created_by,
-            current_handler_user_id, current_handler_user_name, created_at, updated_at
-            """;
-
-    private final JdbcTemplate jdbc;
+    private final RequirementDifferenceRepository repository;
     private final RequirementChangeLogService changeLog;
     private final RequirementSecurityService security;
     private final RequirementSystemService systemService;
     private final WorkflowBusinessGateway workflowGateway;
 
-    public RequirementDifferenceService(JdbcTemplate jdbc, RequirementChangeLogService changeLog,
+    public RequirementDifferenceService(RequirementDifferenceRepository repository, RequirementChangeLogService changeLog,
                                         RequirementSecurityService security,
                                         RequirementSystemService systemService,
                                         WorkflowBusinessGateway workflowGateway) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.changeLog = changeLog;
         this.security = security;
         this.systemService = systemService;
@@ -68,28 +55,17 @@ public class RequirementDifferenceService {
     public PageResult<Map<String, Object>> list(long projectId, String reviewStatus, String devStatus,
                                                 String testStatus, String keyword, PageQuery query, AuthUser user) {
         security.requireProjectVisible(user, projectId);
-        StringBuilder where = new StringBuilder(" WHERE tenant_id = ? AND project_id = ? AND deleted = 0");
-        List<Object> params = new ArrayList<>(List.of(user.tenantId(), projectId));
-        appendLike(where, params, "review_status", reviewStatus);
-        appendLike(where, params, "dev_status", devStatus);
-        appendLike(where, params, "test_status", testStatus);
-        if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (name LIKE ? OR requirement_no LIKE ?)");
-            params.add("%" + keyword + "%");
-            params.add("%" + keyword + "%");
-        }
-        Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM req_difference" + where, Long.class, params.toArray());
-        params.add(query.size());
-        params.add((query.page() - 1) * query.size());
-        List<Map<String, Object>> records = jdbc.queryForList(
-                "SELECT " + SELECT_COLUMNS + " FROM req_difference" + where
-                        + " ORDER BY seq_no, id LIMIT ? OFFSET ?", params.toArray());
+        Map<String, Object> filter = new LinkedHashMap<>();
+        filter.put("tenantId", user.tenantId()); filter.put("projectId", projectId);
+        filter.put("reviewStatus", reviewStatus); filter.put("devStatus", devStatus); filter.put("testStatus", testStatus);
+        filter.put("keyword", keyword); filter.put("size", query.size()); filter.put("offset", (query.page() - 1) * query.size());
+        long total = repository.count(filter);
+        List<Map<String, Object>> records = repository.page(filter);
         boolean admin = security.isAdmin(user);
         for (Map<String, Object> record : records) {
             record.put("can_edit", security.canEditDifference(user, record, admin));
         }
-        return new PageResult<>(records, total == null ? 0 : total, query.page(), query.size());
+        return new PageResult<>(records, total, query.page(), query.size());
     }
 
     public Map<String, Object> get(long id, AuthUser user) {
@@ -122,7 +98,7 @@ public class RequirementDifferenceService {
         values.put("current_handler_user_id", user.id());
         values.put("current_handler_user_name", user.displayName());
         values.put("deleted", 0);
-        RequirementSql.insert(jdbc, "req_difference", values);
+        repository.insert(values);
         changeLog.recordCreate("NEW_PROJECT_DIFF", id, values, user, "ONLINE");
         return get(id, user);
     }
@@ -138,7 +114,7 @@ public class RequirementDifferenceService {
             return before;
         }
         values.put("updated_by", user.id());
-        RequirementSql.update(jdbc, "req_difference", id, user.tenantId(), values);
+        repository.update(values);
         Map<String, Object> after = row(id, user);
         changeLog.recordFields("NEW_PROJECT_DIFF", id, "UPDATE", before, after, user, "ONLINE");
         return after;
@@ -149,8 +125,7 @@ public class RequirementDifferenceService {
         Map<String, Object> row = row(id, user);
         requireEditable(row);
         security.requireDifferenceEditable(user, row);
-        jdbc.update("UPDATE req_difference SET deleted = 1, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                user.id(), user.tenantId(), id);
+        repository.softDelete(user.tenantId(), id, user.id());
         changeLog.record("NEW_PROJECT_DIFF", id, "DELETE", "deleted", "0", "1", user, "ONLINE");
     }
 
@@ -182,9 +157,7 @@ public class RequirementDifferenceService {
         variables.put("submitterName", user.displayName());
         variables.put("approverIds", approverIds);
         variables.put("fromStatus", status);
-        Map<String, Object> project = jdbc.queryForMap(
-                "SELECT COALESCE(project_code, '') AS project_code, COALESCE(project_name, '') AS project_name FROM req_project WHERE tenant_id = ? AND id = ?",
-                user.tenantId(), ((Number) row.get("project_id")).longValue());
+        Map<String, Object> project = repository.project(user.tenantId(), ((Number) row.get("project_id")).longValue());
         String projectCode = String.valueOf(project.get("project_code"));
         String projectName = String.valueOf(project.get("project_name"));
         String title = "差异评审 - " + (row.get("name") == null ? "" : String.valueOf(row.get("name")))
@@ -196,9 +169,7 @@ public class RequirementDifferenceService {
         WorkflowStartResult instance = workflowGateway.startByDefinitionId(
                 new WorkflowStartDefinitionCommand(definitionId, context, variables), user);
         long instanceId = instance.instanceId();
-        jdbc.update("UPDATE req_difference SET review_status = '评审中', review_comment = NULL, review_report_name = ?, workflow_instance_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                reportDocName == null || reportDocName.isBlank() ? null : reportDocName.substring(0, Math.min(200, reportDocName.length())),
-                instanceId, user.id(), user.tenantId(), id);
+        repository.submitReview(user.tenantId(), id, reportDocName == null || reportDocName.isBlank() ? null : reportDocName.substring(0, Math.min(200, reportDocName.length())), instanceId, user.id());
         changeLog.record("NEW_PROJECT_DIFF", id, "SUBMIT_REVIEW", "review_status", status, "评审中", user, "ONLINE");
         return get(id, user);
     }
@@ -218,9 +189,7 @@ public class RequirementDifferenceService {
         }
         String businessKey = "req-diff:" + id;
         terminateResidualDiffInstances(user.tenantId(), businessKey, id, user);
-        jdbc.update("UPDATE req_difference SET review_status = '待评审', review_comment = ?, workflow_instance_id = NULL, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                reason == null || reason.isBlank() ? null : reason.substring(0, Math.min(500, reason.length())),
-                user.id(), user.tenantId(), id);
+        repository.cancelReview(user.tenantId(), id, reason == null || reason.isBlank() ? null : reason.substring(0, Math.min(500, reason.length())), user.id());
         changeLog.record("NEW_PROJECT_DIFF", id, "CANCEL_REVIEW", "review_status", status, "待评审", user, "ONLINE");
         return get(id, user);
     }
@@ -237,22 +206,16 @@ public class RequirementDifferenceService {
         if (toUserId <= 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择流转目标用户");
         }
-        List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT id, display_name FROM sys_user WHERE tenant_id = ? AND id = ? AND deleted = 0 AND status = 1",
-                user.tenantId(), toUserId);
-        if (users.isEmpty()) {
+        Map<String, Object> target = repository.activeUser(user.tenantId(), toUserId);
+        if (target == null || target.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "流转目标用户不存在或已停用");
         }
-        String targetName = users.get(0).get("display_name") == null ? "" : String.valueOf(users.get(0).get("display_name"));
+        String targetName = target.get("display_name") == null ? "" : String.valueOf(target.get("display_name"));
         Object oldHandler = row.get("current_handler_user_id");
-        jdbc.update("UPDATE req_difference SET current_handler_user_id = ?, current_handler_user_name = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                toUserId, targetName, user.id(), user.tenantId(), id);
-        jdbc.update("""
-                INSERT INTO req_difference_flow_log
-                (id, tenant_id, difference_id, action, from_user_id, from_user_name, to_user_id, to_user_name, comment, created_by, deleted)
-                VALUES (?, ?, ?, 'SEND', ?, ?, ?, ?, ?, ?, 0)
-                """, RequirementIds.next(), user.tenantId(), id,
-                user.id(), user.displayName(), toUserId, targetName, comment == null ? "" : comment, user.id());
+        repository.transfer(user.tenantId(), id, toUserId, targetName, user.id());
+        repository.insertFlow(Map.of("id", RequirementIds.next(), "tenant_id", user.tenantId(), "difference_id", id,
+                "from_user_id", user.id(), "from_user_name", user.displayName(), "to_user_id", toUserId,
+                "to_user_name", targetName, "comment", comment == null ? "" : comment, "created_by", user.id()));
         changeLog.record("NEW_PROJECT_DIFF", id, "FLOW_SEND", "current_handler_user_id",
                 oldHandler == null ? null : String.valueOf(oldHandler), String.valueOf(toUserId), user, "ONLINE");
         return get(id, user);
@@ -260,57 +223,33 @@ public class RequirementDifferenceService {
 
     /** 终结指定差异的同 business_key 残留 RUNNING 审批实例 & PENDING 审批任务，为重提/撤销释放锁。 */
     private void terminateResidualDiffInstances(long tenantId, String businessKey, long diffId, AuthUser user) {
-        List<Map<String, Object>> oldInstances = jdbc.queryForList(
-                "SELECT id FROM wf_instance WHERE tenant_id = ? AND business_key = ? AND status IN ('RUNNING','PENDING')",
-                tenantId, businessKey);
+        List<Long> oldInstances = repository.runningInstanceIds(tenantId, businessKey);
         if (oldInstances.isEmpty()) return;
-        for (Map<String, Object> inst : oldInstances) {
-            long instanceId = ((Number) inst.get("id")).longValue();
-            jdbc.update("UPDATE wf_task SET status = 'COMPLETED', comment = '差异评审撤回重提' WHERE tenant_id = ? AND instance_id = ? AND status = 'PENDING'",
-                    tenantId, instanceId);
-            jdbc.update("UPDATE wf_instance SET status = 'TERMINATED' WHERE tenant_id = ? AND id = ? AND status IN ('RUNNING','PENDING')",
-                    tenantId, instanceId);
+        for (Long instanceId : oldInstances) {
+            repository.completePendingTasks(tenantId, instanceId);
+            repository.terminateInstance(tenantId, instanceId);
         }
         // 若当前差异仍挂旧 workflow_instance_id（在审撤回场景），解挂
-        jdbc.update("UPDATE req_difference SET workflow_instance_id = NULL WHERE tenant_id = ? AND id = ?", tenantId, diffId);
+        repository.clearWorkflowInstance(tenantId, diffId);
     }
 
     /** 可选审批人列表：与差异流转一致，展示需求模块全部启用用户，可由提交人任意选择。 */
     public List<Map<String, Object>> reviewers(AuthUser user) {
-        return jdbc.queryForList("""
-                SELECT u.id, u.username, u.display_name
-                FROM sys_user u
-                WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1
-                ORDER BY u.id
-                """, user.tenantId());
+        return repository.reviewers(user.tenantId());
     }
 
     /** 系统用户选项：需求模块内所有登录用户可选（差异流转接收人等选择，不依赖系统管理权限）。 */
     public List<Map<String, Object>> userOptions(String keyword, AuthUser user) {
-        String filter = keyword == null || keyword.isBlank() ? "" : " AND (u.username LIKE ? OR u.display_name LIKE ?)";
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        if (!filter.isBlank()) {
-            String like = "%" + keyword.trim() + "%";
-            args.add(like);
-            args.add(like);
-        }
-        args.add(100);
-        return jdbc.queryForList("""
-                SELECT u.id, u.username, u.display_name, u.org_id
-                FROM sys_user u
-                WHERE u.tenant_id = ? AND u.status = 1 AND u.deleted = 0
-                """ + filter + " ORDER BY u.display_name, u.id LIMIT ?", args.toArray());
+        return repository.userOptions(user.tenantId(), keyword == null ? null : keyword.trim());
     }
 
     /** 按流程编码取已发布流程定义 id；不存在或未发布抛业务异常。 */
     private long lookupDefinitionId(long tenantId, String code) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id FROM wf_definition WHERE tenant_id = ? AND code = ? AND status = 'PUBLISHED' AND deleted = 0",
-                tenantId, code);
-        if (rows.isEmpty()) {
+        Long definitionId = repository.publishedDefinitionId(tenantId, code);
+        if (definitionId == null) {
             throw new BusinessException(ErrorCode.CONFLICT, "流程定义未发布：" + code);
         }
-        return ((Number) rows.get(0).get("id")).longValue();
+        return definitionId;
     }
 
     private String digest(String value) {
@@ -343,28 +282,15 @@ public class RequirementDifferenceService {
         } catch (NumberFormatException e) {
             return List.of();  // 兼容 V39 种子里的 stub 字符串（如 WF-LEGACY-STUB-xxx）
         }
-        return jdbc.queryForList("""
-                SELECT a.id, a.action_code, a.operator_id, u.display_name AS operator_name,
-                       a.target_user_id, tu.display_name AS target_user_name,
-                       a.comment, a.created_at,
-                       t.task_type, t.assignee_name, t.status AS task_status, t.node_id
-                FROM wf_task_action a
-                LEFT JOIN sys_user u  ON u.id = a.operator_id AND u.tenant_id = a.tenant_id
-                LEFT JOIN sys_user tu ON tu.id = a.target_user_id AND tu.tenant_id = a.tenant_id
-                LEFT JOIN wf_task t   ON t.id = a.task_id AND t.tenant_id = a.tenant_id
-                WHERE a.tenant_id = ? AND a.instance_id = ?
-                ORDER BY a.created_at, a.id
-                """, user.tenantId(), instanceId);
+        return repository.approvalLogs(user.tenantId(), instanceId);
     }
 
     Map<String, Object> row(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT " + SELECT_COLUMNS + " FROM req_difference WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                user.tenantId(), id);
-        if (rows.isEmpty()) {
+        Map<String, Object> row = repository.find(user.tenantId(), id);
+        if (row == null || row.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "差异不存在");
         }
-        return rows.get(0);
+        return row;
     }
 
     private void requireEditable(Map<String, Object> row) {
@@ -390,10 +316,8 @@ public class RequirementDifferenceService {
         Object systemId = values.get("system_id");
         if (systemId != null) {
             long resolved = RequirementValues.intOf(systemId, 0);
-            Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM req_system WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                    Integer.class, user.tenantId(), resolved);
-            if (resolved > 0 && (count == null || count == 0)) {
+            int count = repository.systemCount(user.tenantId(), resolved);
+            if (resolved > 0 && count == 0) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "涉及系统不存在");
             }
         }
@@ -416,16 +340,8 @@ public class RequirementDifferenceService {
     }
 
     private int nextSeq(long projectId, AuthUser user) {
-        Long max = jdbc.queryForObject(
-                "SELECT COALESCE(MAX(seq_no), 0) FROM req_difference WHERE tenant_id = ? AND project_id = ? AND deleted = 0",
-                Long.class, user.tenantId(), projectId);
+        Long max = repository.maxSequence(user.tenantId(), projectId);
         return max == null ? 1 : max.intValue() + 1;
     }
 
-    private void appendLike(StringBuilder where, List<Object> params, String column, String value) {
-        if (value != null && !value.isBlank()) {
-            where.append(" AND ").append(RequirementSql.quote(column)).append(" = ?");
-            params.add(value);
-        }
-    }
 }

@@ -1,10 +1,10 @@
 package com.ccb.boot.workflow;
 
 import com.ccb.security.model.AuthUser;
+import com.ccb.boot.persistence.BootWorkflowRepository;
 import com.ccb.workflow.integration.WorkflowDefinitionPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.DefaultApplicationArguments;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -12,7 +12,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -25,10 +24,10 @@ class LocalSeededWorkflowPublisherTest {
 
     @Test
     void publishesDraftDefinitionsAndSkipsPublishedDefinitions() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        BootWorkflowRepository jdbc = mock(BootWorkflowRepository.class);
         WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
-        when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
+        when(jdbc.seededDefinitions(any())).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT"),
                 definition(51L, "architecture.resource-request", "PUBLISHED")));
 
@@ -40,10 +39,10 @@ class LocalSeededWorkflowPublisherTest {
 
     @Test
     void publishesBothDraftDefinitions() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        BootWorkflowRepository jdbc = mock(BootWorkflowRepository.class);
         WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
-        when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
+        when(jdbc.seededDefinitions(any())).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT"),
                 definition(51L, "architecture.resource-request", "DRAFT")));
 
@@ -54,21 +53,21 @@ class LocalSeededWorkflowPublisherTest {
 
     @Test
     void failsWhenARequiredDefinitionIsMissing() {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        BootWorkflowRepository jdbc = mock(BootWorkflowRepository.class);
         WorkflowDefinitionPublisher workflows = mock(WorkflowDefinitionPublisher.class);
         stubOperator(jdbc);
-        when(jdbc.queryForList(contains("FROM wf_definition"), any(Object[].class))).thenReturn(List.of(
+        when(jdbc.seededDefinitions(any())).thenReturn(List.of(
                 definition(31L, "architecture.subsystem.change", "DRAFT")));
 
         assertThrows(IllegalStateException.class,
                 () -> publisher(jdbc, workflows).run(new DefaultApplicationArguments(new String[0])));
     }
 
-    private void stubOperator(JdbcTemplate jdbc) {
-        when(jdbc.queryForList(contains("FROM sys_user"), any(Object[].class))).thenReturn(List.of(OPERATOR));
+    private void stubOperator(BootWorkflowRepository jdbc) {
+        when(jdbc.activeOperator(any())).thenReturn(OPERATOR);
     }
 
-    private LocalSeededWorkflowPublisher publisher(JdbcTemplate jdbc, WorkflowDefinitionPublisher workflows) {
+    private LocalSeededWorkflowPublisher publisher(BootWorkflowRepository jdbc, WorkflowDefinitionPublisher workflows) {
         return new LocalSeededWorkflowPublisher(jdbc, workflows, 1L, 1L,
                 "architecture.subsystem.change,architecture.resource-request");
     }

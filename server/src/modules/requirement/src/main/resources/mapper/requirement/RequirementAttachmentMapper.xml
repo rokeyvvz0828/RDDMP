@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementAttachmentMapper">
+  <select id="list" resultType="map">SELECT id, biz_type, biz_id, file_name, file_size, content_type, preview_id, preview_url, created_at FROM req_attachment WHERE tenant_id=#{tenantId} AND biz_type=#{bizType} AND biz_id=#{bizId} AND deleted=0 ORDER BY created_at DESC, id DESC</select>
+  <insert id="insert">INSERT INTO req_attachment (id, tenant_id, biz_type, biz_id, file_name, file_size, content_type, preview_id, preview_url, operator_id, deleted) VALUES (#{p.id}, #{p.tenant_id}, #{p.biz_type}, #{p.biz_id}, #{p.file_name}, #{p.file_size}, #{p.content_type}, #{p.preview_id}, #{p.preview_url}, #{p.operator_id}, #{p.deleted})</insert>
+  <select id="findActive" resultType="map">SELECT id, biz_type, biz_id FROM req_attachment WHERE tenant_id=#{tenantId} AND id=#{id} AND deleted=0</select>
+  <update id="softDelete">UPDATE req_attachment SET deleted=1 WHERE tenant_id=#{tenantId} AND id=#{id}</update>
+  <select id="findDifferenceProjectId" resultType="long">SELECT project_id FROM req_difference WHERE tenant_id=#{tenantId} AND id=#{differenceId} AND deleted=0</select>
+  <select id="findLegacyBusinessGroup" resultType="string">SELECT business_group FROM req_legacy_requirement WHERE tenant_id=#{tenantId} AND id=#{requirementId} AND deleted=0</select>
+</mapper>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementImportMapper">
+  <insert id="insertBatch">INSERT INTO req_import_batch (id,tenant_id,biz_type,project_id,file_name,template_type,total_rows,success_rows,error_rows,errors_json,status,operator_id,operator_name,deleted) VALUES (#{p.id},#{p.tenant_id},#{p.biz_type},#{p.project_id},#{p.file_name},#{p.template_type},#{p.total_rows},#{p.success_rows},#{p.error_rows},#{p.errors_json},#{p.status},#{p.operator_id},#{p.operator_name},#{p.deleted})</insert>
+  <select id="listBatches" resultType="map">SELECT id,biz_type,project_id,file_name,template_type,total_rows,success_rows,error_rows,status,operator_id,operator_name,created_at FROM req_import_batch WHERE tenant_id=#{tenantId} AND deleted=0 ORDER BY created_at DESC,id DESC</select>
+  <select id="projectCount" resultType="int">SELECT COUNT(*) FROM req_project WHERE tenant_id=#{tenantId} AND id=#{projectId} AND deleted=0</select>
+  <select id="maxDifferenceSequence" resultType="long">SELECT COALESCE(MAX(seq_no),0) FROM req_difference WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0</select>
+  <insert id="insertDifference">INSERT INTO req_difference (<foreach collection="p" item="v" index="k" separator=",">${k}</foreach>) VALUES (<foreach collection="p" item="v" index="k" separator=",">#{v}</foreach>)</insert>
+  <insert id="insertLegacy">INSERT INTO req_legacy_requirement (<foreach collection="p" item="v" index="k" separator=",">${k}</foreach>) VALUES (<foreach collection="p" item="v" index="k" separator=",">#{v}</foreach>)</insert>
+  <select id="legacyRequirementCount" resultType="int">SELECT COUNT(*) FROM req_legacy_requirement WHERE tenant_id=#{tenantId} AND requirement_no=#{requirementNo} AND deleted=0</select>
+</mapper>

@@ -8,7 +8,6 @@ import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.UserDirectoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,21 +38,7 @@ public class MappingService {
     private static final int MAX_FILE_NAME_LENGTH = 200;
     private static final Set<Integer> PAGE_SIZES = Set.of(20, 50, 100);
 
-    private static final String SYSTEM_JOIN =
-            " LEFT JOIN dm_component c ON c.tenant_id = a.tenant_id AND c.project_id = a.project_id AND c.system_code = a.system_code " +
-            " LEFT JOIN arch_physical_subsystem sys ON sys.tenant_id = c.tenant_id AND sys.code = c.system_code AND sys.deleted = 0 ";
-    private static final String SELECT_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, a.mapping_type, a.system_code, " +
-            "sys.short_name AS system_short_name, sys.name AS system_name, " +
-            "a.doc_code AS asset_code, a.doc_name AS asset_name, " +
-            "a.owner_id, a.created_by, a.created_at, a.updated_by, a.updated_at ";
-    private static final String RECYCLE_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, 'MAPPING_DOC' AS asset_type, " +
-            "a.doc_code AS asset_code, a.doc_name AS asset_name, a.mapping_type, a.system_code, " +
-            "sys.short_name AS system_short_name, sys.name AS system_name, " +
-            "a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at ";
-
-    private final JdbcTemplate jdbc;
+    private final MappingRepository repository;
     private final ContentAttachmentService attachments;
     private final ContentFileAssetService fileAssets;
     private final DataMigrationPermissionService permissions;
@@ -62,10 +47,10 @@ public class MappingService {
     private final DataMigrationCodeValueService codeValues;
 
     @Autowired
-    public MappingService(JdbcTemplate jdbc, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
+    public MappingService(MappingRepository repository, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
                           DataMigrationPermissionService permissions, UserDirectoryPort userDirectory,
                           ContentDocCodeGenerator docCodes, DataMigrationCodeValueService codeValues) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.attachments = attachments;
         this.fileAssets = fileAssets;
         this.permissions = permissions;
@@ -81,34 +66,19 @@ public class MappingService {
         if (mappingType != null && !mappingType.isBlank()) {
             codeValues.requireActive(DataMigrationCodeValueService.DM_MAPPING_TYPE, "映射类型", mappingType, user);
         }
-        StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                .append("FROM dm_mapping_doc a ").append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(sql, args, scope, mappingType, systemCode, keyword);
-        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") t", Long.class, args.toArray());
-        if (total == null) total = 0L;
         int safePage = Math.max(1, page);
         int safeSize = normalizePageSize(size);
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC LIMIT ? OFFSET ?");
-        args.add(safeSize);
-        args.add((long) (safePage - 1) * safeSize);
-        List<Map<String, Object>> records = jdbc.queryForList(sql.toString(), args.toArray());
+        long total = repository.count(user.tenantId(), scope, mappingType, systemCode, keyword);
+        List<Map<String, Object>> records = repository.page(user.tenantId(), scope, mappingType, systemCode, keyword, safeSize, (long) (safePage - 1) * safeSize);
         decorateUsers(records, user.tenantId());
         return new PageResult<>(records, total, safePage, safeSize);
     }
 
     /** 详情（含多附件列表）。 */
     public Map<String, Object> detail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                SELECT_COLUMNS + "FROM dm_mapping_doc a " + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 0", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移映射不存在");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.require(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         row.put("attachments", attachments.list(CONTENT_TYPE, id, user.tenantId()));
         return row;
     }
@@ -129,11 +99,7 @@ public class MappingService {
 
         long id = nextId();
         try {
-            jdbc.update("INSERT INTO dm_mapping_doc (id, tenant_id, project_id, system_code, doc_code, doc_name, " +
-                    "mapping_type, owner_id, created_by, updated_by) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, tenantId, projectId, systemCode.trim(), docCodes.generate(CONTENT_TYPE), fileName.trim(),
-                    mappingType, user.id(), user.id(), user.id());
+            repository.insert(Map.of("id",id,"tenantId",tenantId,"projectId",projectId,"systemCode",systemCode.trim(),"docCode",docCodes.generate(CONTENT_TYPE),"docName",fileName.trim(),"mappingType",mappingType,"ownerId",user.id(),"createdBy",user.id(),"updatedBy",user.id()));
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.CONFLICT, "文件编号冲突，请刷新后重试");
         }
@@ -165,10 +131,7 @@ public class MappingService {
             attachments.replaceAll(CONTENT_TYPE, BUSINESS_TYPE, id, projectId, files, user);
         }
 
-        int changed = jdbc.update(
-                "UPDATE dm_mapping_doc SET doc_name = ?, mapping_type = ?, system_code = ?, " +
-                "updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                fileName.trim(), mappingType, systemCode, user.id(), id, user.tenantId());
+        int changed = repository.update(Map.of("id",id,"tenantId",user.tenantId(),"docName",fileName.trim(),"mappingType",mappingType,"systemCode",systemCode,"updatedBy",user.id()));
         if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移映射状态已变化，请刷新后重试");
         audit(user, "MAPPING_UPDATE", projectId, id);
         return detail(id, user);
@@ -181,8 +144,7 @@ public class MappingService {
             Map<String, Object> existing = findRaw(id, user.tenantId());
             long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
-            int changed = jdbc.update("UPDATE dm_mapping_doc SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
-                    "WHERE id = ? AND tenant_id = ? AND deleted = 0", user.id(), id, user.tenantId());
+            int changed = repository.softDelete(user.tenantId(), id, user.id());
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移映射状态已变化，请刷新后重试");
             audit(user, "MAPPING_DELETE", projectId, id);
         }
@@ -191,12 +153,7 @@ public class MappingService {
     /** 单文件下载：不传 attachmentId 时取第一个活动附件。 */
     public String download(long id, Long attachmentId, AuthUser user) {
         permissions.requireStoredProject(findRaw(id, user.tenantId()).get("project_id"), user);
-        List<Long> attachmentIds = jdbc.queryForList(
-                "SELECT m.attachment_id FROM dm_content_attachment m " +
-                "JOIN dm_mapping_doc a ON a.id = m.business_id AND a.tenant_id = m.tenant_id " +
-                "WHERE m.tenant_id = ? AND m.business_type = 'MAPPING_DOC' AND m.business_id = ? " +
-                "AND m.deleted = 0 AND a.deleted = 0 ORDER BY m.sort_order ASC, m.created_at ASC",
-                Long.class, user.tenantId(), id);
+        List<Long> attachmentIds = repository.attachmentIds(user.tenantId(), id);
         if (attachmentIds.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移映射未绑定源文件");
         long target = attachmentId == null ? attachmentIds.get(0) : attachmentId;
         if (!attachmentIds.contains(target)) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在或不属于该迁移映射");
@@ -221,39 +178,22 @@ public class MappingService {
     public long countRecycleBin(long projectId, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM dm_mapping_doc a WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        Long total = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
-        return total == null ? 0L : total;
+        return repository.recycleCount(user.tenantId(), projectId, keyword);
     }
 
     public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
         if (limit <= 0) return List.of();
-        StringBuilder sql = new StringBuilder(RECYCLE_COLUMNS)
-                .append("FROM dm_mapping_doc a ").append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        sql.append(" ORDER BY a.doc_code ASC, a.id ASC LIMIT ?");
-        args.add(limit);
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        List<Map<String, Object>> rows = repository.recyclePage(user.tenantId(), projectId, keyword, limit);
         decorateUsers(rows, user.tenantId());
         return rows;
     }
 
     public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                RECYCLE_COLUMNS + "FROM dm_mapping_doc a " + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 1", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移映射不存在于回收站");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.requireDeleted(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         // 添加附件列表
         List<Map<String, Object>> attachmentList = attachments.list("MAPPING_DOC", id, user.tenantId());
         row.put("attachments", attachmentList);
@@ -266,8 +206,7 @@ public class MappingService {
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
             try {
-                int changed = jdbc.update("UPDATE dm_mapping_doc SET deleted = 0, deleted_by = NULL, deleted_at = NULL " +
-                        "WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+                int changed = repository.restore(user.tenantId(), id);
                 if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移映射状态已变化，请刷新后重试");
             } catch (DataIntegrityViolationException ex) {
                 throw new BusinessException(ErrorCode.CONFLICT, "文件编号已存在活动记录，无法恢复");
@@ -281,7 +220,7 @@ public class MappingService {
         permissions.requireAdmin(user);
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
-            int changed = jdbc.update("DELETE FROM dm_mapping_doc WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+            int changed = repository.purge(user.tenantId(), id);
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移映射状态已变化，请刷新后重试");
             attachments.unbindAndRemoveAll(CONTENT_TYPE, BUSINESS_TYPE, id, user);
             audit(user, "MAPPING_PURGE", projectId, id);
@@ -290,41 +229,8 @@ public class MappingService {
 
     // ============ 私有辅助 ============
 
-    private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String mappingType,
-                               String systemCode, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (mappingType != null && !mappingType.isBlank()) {
-            sql.append(" AND a.mapping_type = ?");
-            args.add(mappingType.trim());
-        }
-        if (systemCode != null && !systemCode.isBlank()) {
-            sql.append(" AND a.system_code = ?");
-            args.add(systemCode.trim());
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND a.doc_name LIKE ?");
-            args.add(value);
-        }
-    }
-
-    private void appendRecycleFilters(StringBuilder sql, List<Object> args, long projectId, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND a.doc_name LIKE ?");
-            args.add(value);
-        }
-    }
-
     private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c " +
-                "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ? AND c.enabled = 1",
-                Integer.class, user.tenantId(), projectId, systemCode);
-        if (count == null || count == 0) {
+        if (!repository.enabledComponent(user.tenantId(), projectId, systemCode)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "系统编号不存在或不属于当前项目");
         }
     }
@@ -374,24 +280,15 @@ public class MappingService {
     }
 
     private Set<Long> boundAttachmentIds(long mappingId, long tenantId) {
-        return new LinkedHashSet<>(jdbc.queryForList(
-                "SELECT attachment_id FROM dm_content_attachment WHERE tenant_id = ? AND business_type = ? AND business_id = ? AND deleted = 0",
-                Long.class, tenantId, CONTENT_TYPE, mappingId));
+        return new LinkedHashSet<>(repository.boundAttachmentIds(tenantId, mappingId));
     }
 
     private Map<String, Object> findRaw(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, project_id, mapping_type, system_code, doc_code, doc_name, owner_id " +
-                "FROM dm_mapping_doc WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移映射不存在");
-        return rows.get(0);
+        return repository.requireRaw(tenantId, id);
     }
 
     private long requireRecycleBinScope(long id, AuthUser user) {
-        List<Long> projects = jdbc.queryForList("SELECT project_id FROM dm_mapping_doc WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                Long.class, id, user.tenantId());
-        if (projects.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移映射不存在于回收站");
-        long projectId = projects.get(0);
+        long projectId = repository.requireDeletedProject(user.tenantId(), id);
         permissions.requireStoredProject(projectId, user);
         return projectId;
     }
@@ -413,9 +310,7 @@ public class MappingService {
     }
 
     private void audit(AuthUser user, String operation, long projectId, long id) {
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
-                "VALUES (?, ?, ?, ?, 'MAPPING', ?)",
-                user.tenantId(), user.id(), projectId, operation, id);
+        repository.audit(user.tenantId(), user.id(), projectId, operation, id);
     }
 
     private int normalizePageSize(int size) {

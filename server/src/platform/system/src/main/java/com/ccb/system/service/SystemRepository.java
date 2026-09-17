@@ -1,0 +1,20 @@
+package com.ccb.system.service;
+
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Map;
+
+@Repository
+public class SystemRepository {
+    private final SystemMapper mapper;
+    public SystemRepository(SystemMapper mapper) { this.mapper = mapper; }
+    public List<Map<String, Object>> list(String resource, Map<String, Object> p) { return switch (resource) { case "users" -> mapper.selectUsers(p); case "roles" -> mapper.selectRoles(p); case "orgs" -> mapper.selectOrganizations(p); case "menus" -> mapper.selectMenus(p); case "params" -> mapper.selectParameters(p); case "param-categories", "dicts" -> mapper.selectDictionaryTypes(p); case "configs" -> mapper.selectConfigurations(p); default -> throw unsupported(resource); }; }
+    public long count(String resource, Map<String, Object> p) { return switch (resource) { case "users" -> mapper.countUsers(p); case "roles" -> mapper.countRoles(p); case "orgs" -> mapper.countOrganizations(p); case "menus" -> mapper.countMenus(p); case "params" -> mapper.countParameters(p); case "param-categories", "dicts" -> mapper.countDictionaryTypes(p); case "configs" -> mapper.countConfigurations(p); default -> throw unsupported(resource); }; }
+    public Map<String, Object> find(String resource, long id, long tenantId) { return switch (resource) { case "users" -> mapper.selectUser(id, tenantId); case "roles" -> mapper.selectRole(id, tenantId); case "orgs" -> mapper.selectOrganization(id, tenantId); case "menus" -> mapper.selectMenu(id, tenantId); case "params" -> mapper.selectParameter(id, tenantId); case "param-categories", "dicts" -> mapper.selectDictionaryType(id, tenantId); case "configs" -> mapper.selectConfiguration(id, tenantId); default -> throw unsupported(resource); }; }
+    public int insert(String resource, Map<String, Object> p) { return switch (resource) { case "users" -> mapper.insertUser(p); case "roles" -> mapper.insertRole(p); case "orgs" -> mapper.insertOrganization(p); case "menus" -> mapper.insertMenu(p); case "params" -> mapper.insertParameter(p); case "param-categories", "dicts" -> mapper.insertDictionaryType(p); case "configs" -> mapper.insertConfiguration(p); default -> throw unsupported(resource); }; }
+    public int update(String resource, Map<String, Object> p) { return switch (resource) { case "users" -> mapper.updateUser(p); case "roles" -> mapper.updateRole(p); case "orgs" -> mapper.updateOrganization(p); case "menus" -> mapper.updateMenu(p); case "params" -> mapper.updateParameter(p); case "param-categories", "dicts" -> mapper.updateDictionaryType(p); case "configs" -> mapper.updateConfiguration(p); default -> throw unsupported(resource); }; }
+    public int updateStatus(String resource, long id, long tenantId, int status) { return switch (resource) { case "users" -> mapper.updateUserStatus(id, tenantId, status); case "roles" -> mapper.updateRoleStatus(id, tenantId, status); case "orgs" -> mapper.updateOrganizationStatus(id, tenantId, status); case "menus" -> mapper.updateMenuStatus(id, tenantId, status); case "params" -> mapper.updateParameterStatus(id, tenantId, status); case "param-categories", "dicts" -> mapper.updateDictionaryTypeStatus(id, tenantId, status); case "configs" -> mapper.updateConfigurationStatus(id, tenantId, status); default -> throw unsupported(resource); }; }
+    public int delete(String resource, long id, long tenantId) { return switch (resource) { case "users" -> mapper.deleteUser(id, tenantId); case "roles" -> mapper.deleteRole(id, tenantId); case "orgs" -> mapper.deleteOrganization(id, tenantId); case "menus" -> mapper.deleteMenu(id, tenantId); case "params" -> mapper.deleteParameter(id, tenantId); case "param-categories", "dicts" -> mapper.deleteDictionaryType(id, tenantId); case "configs" -> mapper.deleteConfiguration(id, tenantId); default -> throw unsupported(resource); }; }
+    public SystemMapper mapper() { return mapper; }
+    private IllegalArgumentException unsupported(String resource) { return new IllegalArgumentException("Unsupported system resource: " + resource); }
+}

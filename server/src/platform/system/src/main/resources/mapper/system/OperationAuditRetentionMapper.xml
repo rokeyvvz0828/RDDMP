@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.system.audit.OperationAuditRetentionMapper">
+    <delete id="deleteOperations">DELETE FROM sys_operation_log WHERE created_at &lt; #{cutoff}</delete>
+    <delete id="deleteLogins">DELETE FROM sys_login_log WHERE created_at &lt; #{cutoff}</delete>
+    <insert id="insertSummary">
+        INSERT INTO sys_operation_log
+            (id, tenant_id, operator_id, operator_name, operation_code, module_code, module_name, operation_type, target_type,
+             target_id, request_method, success, changed_fields)
+        VALUES
+            (#{id}, 1, 0, '系统任务', 'audit:retention:cleanup', 'system', '系统管理', 'DELETE', 'audit-retention',
+             #{summary}, 'SYSTEM', 1, '["operationRows","loginRows"]')
+    </insert>
+</mapper>

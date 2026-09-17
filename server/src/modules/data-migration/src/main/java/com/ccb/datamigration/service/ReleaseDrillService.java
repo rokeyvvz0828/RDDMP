@@ -8,11 +8,9 @@ import com.ccb.security.model.AuthUser;
 import com.ccb.system.model.UserDirectoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,24 +35,7 @@ public class ReleaseDrillService {
     private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
     private static final Set<Integer> PAGE_SIZES = Set.of(20, 50, 100);
 
-    private static final String MAIN_FILE_JOIN =
-            " LEFT JOIN dm_content_attachment m ON m.tenant_id = a.tenant_id AND m.business_type = 'RELEASE_DRILL' " +
-            " AND m.business_id = a.id AND m.sort_order = 0 AND m.deleted = 0 ";
-    private static final String SYSTEM_JOIN =
-            " LEFT JOIN dm_component c ON c.tenant_id = a.tenant_id AND c.project_id = a.project_id AND c.system_code = a.system_code " +
-            " LEFT JOIN arch_physical_subsystem sys ON sys.tenant_id = c.tenant_id AND sys.code = c.system_code AND sys.deleted = 0 ";
-    private static final String SELECT_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, a.granularity, a.material_type_code, " +
-            "a.doc_code AS asset_code, a.doc_name AS asset_name, a.drill_round, " +
-            "a.system_code, sys.short_name AS system_short_name, sys.name AS system_name, " +
-            "m.attachment_id, a.owner_id, a.created_by, a.created_at, a.updated_by, a.updated_at ";
-    private static final String RECYCLE_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, 'RELEASE_DRILL' AS asset_type, " +
-            "a.doc_code AS asset_code, a.doc_name AS asset_name, a.granularity, a.material_type_code, a.drill_round, " +
-            "a.system_code, sys.short_name AS system_short_name, sys.name AS system_name, " +
-            "m.attachment_id, a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at ";
-
-    private final JdbcTemplate jdbc;
+    private final ReleaseDrillRepository repository;
     private final ContentAttachmentService attachments;
     private final ContentFileAssetService fileAssets;
     private final DataMigrationPermissionService permissions;
@@ -63,10 +44,10 @@ public class ReleaseDrillService {
     private final DataMigrationCodeValueService codeValues;
 
     @Autowired
-    public ReleaseDrillService(JdbcTemplate jdbc, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
+    public ReleaseDrillService(ReleaseDrillRepository repository, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
                                DataMigrationPermissionService permissions, UserDirectoryPort userDirectory,
                                ContentDocCodeGenerator docCodes, DataMigrationCodeValueService codeValues) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.attachments = attachments;
         this.fileAssets = fileAssets;
         this.permissions = permissions;
@@ -75,15 +56,15 @@ public class ReleaseDrillService {
         this.codeValues = codeValues;
     }
 
-    public ReleaseDrillService(JdbcTemplate jdbc, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
+    public ReleaseDrillService(ReleaseDrillRepository repository, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
                                DataMigrationPermissionService permissions, UserDirectoryPort userDirectory,
                                DataMigrationCodeValueService codeValues) {
-        this(jdbc, attachments, fileAssets, permissions, userDirectory, new ContentDocCodeGenerator(), codeValues);
+        this(repository, attachments, fileAssets, permissions, userDirectory, new ContentDocCodeGenerator(), codeValues);
     }
 
-    public ReleaseDrillService(JdbcTemplate jdbc, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
+    public ReleaseDrillService(ReleaseDrillRepository repository, ContentAttachmentService attachments, ContentFileAssetService fileAssets,
                                DataMigrationPermissionService permissions, DataMigrationCodeValueService codeValues) {
-        this(jdbc, attachments, fileAssets, permissions, null, new ContentDocCodeGenerator(), codeValues);
+        this(repository, attachments, fileAssets, permissions, null, new ContentDocCodeGenerator(), codeValues);
     }
 
     /** 分页查询：租户 + 项目恒定过滤，支持颗粒度、资料类型、资料名称关键字组合筛选。 */
@@ -97,35 +78,20 @@ public class ReleaseDrillService {
             codeValues.requireActive(DataMigrationCodeValueService.DM_RELEASE_DRILL_TYPE, "资料类型", materialTypeCode, user);
         }
 
-        StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                .append("FROM dm_release_drill a ").append(MAIN_FILE_JOIN).append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(sql, args, scope, granularity, materialTypeCode, systemCode, keyword);
-
-        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + sql + ") t", Long.class, args.toArray());
-        if (total == null) total = 0L;
         int safePage = Math.max(1, page);
         int safeSize = normalizePageSize(size);
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC LIMIT ? OFFSET ?");
-        args.add(safeSize);
-        args.add((long) (safePage - 1) * safeSize);
-        List<Map<String, Object>> records = jdbc.queryForList(sql.toString(), args.toArray());
+        long total = repository.count(user.tenantId(), scope, granularity, materialTypeCode, systemCode, keyword);
+        List<Map<String, Object>> records = repository.page(user.tenantId(), scope, granularity, materialTypeCode, systemCode, keyword,
+                safeSize, (long) (safePage - 1) * safeSize);
         decorateUsers(records, user.tenantId());
         return new PageResult<>(records, total, safePage, safeSize);
     }
 
     /** 详情（含主附件信息）。 */
     public Map<String, Object> detail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                SELECT_COLUMNS + "FROM dm_release_drill a " + MAIN_FILE_JOIN + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 0", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "投产及演练资料不存在");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.require(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         row.put("attachments", attachments.list(CONTENT_TYPE, id, user.tenantId()));
         return row;
     }
@@ -147,11 +113,13 @@ public class ReleaseDrillService {
 
         long id = nextId();
         try {
-            jdbc.update("INSERT INTO dm_release_drill (id, tenant_id, project_id, doc_code, doc_name, " +
-                    "granularity, material_type_code, drill_round, system_code, owner_id, created_by, updated_by) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, tenantId, projectId, docCodes.generate(CONTENT_TYPE), materialName.trim(),
-                    granularity, materialTypeCode, drillRound, systemCode, user.id(), user.id(), user.id());
+            Map<String, Object> values = new LinkedHashMap<>();
+            values.put("id", id); values.put("tenantId", tenantId); values.put("projectId", projectId);
+            values.put("docCode", docCodes.generate(CONTENT_TYPE)); values.put("docName", materialName.trim());
+            values.put("granularity", granularity); values.put("materialTypeCode", materialTypeCode);
+            values.put("drillRound", drillRound); values.put("systemCode", systemCode); values.put("ownerId", user.id());
+            values.put("createdBy", user.id()); values.put("updatedBy", user.id());
+            repository.insert(values);
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.CONFLICT, "资料编号冲突，请刷新后重试");
         }
@@ -193,10 +161,11 @@ public class ReleaseDrillService {
             attachments.replaceAll(CONTENT_TYPE, BUSINESS_TYPE, id, projectId, List.of(file), user);
         }
 
-        int changed = jdbc.update(
-                "UPDATE dm_release_drill SET doc_name = ?, granularity = ?, material_type_code = ?, drill_round = ?, system_code = ?, " +
-                "updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                materialName.trim(), granularity, materialTypeCode, drillRound, systemCode, user.id(), id, user.tenantId());
+        Map<String, Object> updateValues = new LinkedHashMap<>();
+        updateValues.put("id", id); updateValues.put("tenantId", user.tenantId()); updateValues.put("docName", materialName.trim());
+        updateValues.put("granularity", granularity); updateValues.put("materialTypeCode", materialTypeCode);
+        updateValues.put("drillRound", drillRound); updateValues.put("systemCode", systemCode); updateValues.put("updatedBy", user.id());
+        int changed = repository.update(updateValues);
         if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "投产及演练资料状态已变化，请刷新后重试");
         audit(user, "RELEASE_DRILL_UPDATE", projectId, id);
         return detail(id, user);
@@ -209,8 +178,7 @@ public class ReleaseDrillService {
             Map<String, Object> existing = findRaw(id, user.tenantId());
             long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
-            int changed = jdbc.update("UPDATE dm_release_drill SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP " +
-                    "WHERE id = ? AND tenant_id = ? AND deleted = 0", user.id(), id, user.tenantId());
+            int changed = repository.softDelete(user.tenantId(), id, user.id());
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "投产及演练资料状态已变化，请刷新后重试");
             audit(user, "RELEASE_DRILL_DELETE", projectId, id);
         }
@@ -219,12 +187,7 @@ public class ReleaseDrillService {
     /** 下载：返回平台主附件下载路径，先校验记录项目归属。 */
     public String download(long id, AuthUser user) {
         permissions.requireStoredProject(findRaw(id, user.tenantId()).get("project_id"), user);
-        List<Long> mainIds = jdbc.queryForList(
-                "SELECT m.attachment_id FROM dm_content_attachment m " +
-                "JOIN dm_release_drill a ON a.id = m.business_id AND a.tenant_id = m.tenant_id " +
-                "WHERE m.tenant_id = ? AND m.business_type = 'RELEASE_DRILL' AND m.business_id = ? " +
-                "AND m.sort_order = 0 AND m.deleted = 0 AND a.deleted = 0",
-                Long.class, user.tenantId(), id);
+        List<Long> mainIds = repository.mainAttachmentIds(user.tenantId(), id);
         if (mainIds.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "投产及演练资料未绑定源文件");
         return "/api/attachments/" + mainIds.get(0) + "/download";
     }
@@ -247,39 +210,22 @@ public class ReleaseDrillService {
     public long countRecycleBin(long projectId, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM dm_release_drill a WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        Long total = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
-        return total == null ? 0L : total;
+        return repository.recycleCount(user.tenantId(), projectId, keyword);
     }
 
     public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
         if (limit <= 0) return List.of();
-        StringBuilder sql = new StringBuilder(RECYCLE_COLUMNS)
-                .append("FROM dm_release_drill a ").append(MAIN_FILE_JOIN).append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        sql.append(" ORDER BY a.doc_code ASC, a.id ASC LIMIT ?");
-        args.add(limit);
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        List<Map<String, Object>> rows = repository.recyclePage(user.tenantId(), projectId, keyword, limit);
         decorateUsers(rows, user.tenantId());
         return rows;
     }
 
     public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                RECYCLE_COLUMNS + "FROM dm_release_drill a " + MAIN_FILE_JOIN + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 1", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "投产及演练资料不存在于回收站");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.requireDeleted(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         // 添加附件列表
         List<Map<String, Object>> attachmentList = attachments.list("RELEASE_DRILL", id, user.tenantId());
         row.put("attachments", attachmentList);
@@ -292,8 +238,7 @@ public class ReleaseDrillService {
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
             try {
-                int changed = jdbc.update("UPDATE dm_release_drill SET deleted = 0, deleted_by = NULL, deleted_at = NULL " +
-                        "WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+                int changed = repository.restore(user.tenantId(), id);
                 if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "投产及演练资料状态已变化，请刷新后重试");
             } catch (DataIntegrityViolationException ex) {
                 throw new BusinessException(ErrorCode.CONFLICT, "资料编号已存在活动记录，无法恢复");
@@ -308,45 +253,12 @@ public class ReleaseDrillService {
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
             attachments.unbindAndRemoveAll(CONTENT_TYPE, BUSINESS_TYPE, id, user);
-            jdbc.update("DELETE FROM dm_release_drill WHERE id = ? AND tenant_id = ? AND deleted = 1", id, user.tenantId());
+            repository.purge(user.tenantId(), id);
             audit(user, "RELEASE_DRILL_PURGE", projectId, id);
         }
     }
 
     // ============ 私有辅助 ============
-
-    private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String granularity,
-                               String materialTypeCode, String systemCode, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (granularity != null && !granularity.isBlank()) {
-            sql.append(" AND a.granularity = ?");
-            args.add(granularity);
-        }
-        if (materialTypeCode != null && !materialTypeCode.isBlank()) {
-            sql.append(" AND a.material_type_code = ?");
-            args.add(materialTypeCode.trim());
-        }
-        if (systemCode != null && !systemCode.isBlank()) {
-            sql.append(" AND a.system_code = ?");
-            args.add(systemCode.trim());
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND a.doc_name LIKE ?");
-            args.add(value);
-        }
-    }
-
-    private void appendRecycleFilters(StringBuilder sql, List<Object> args, long projectId, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (keyword != null && !keyword.isBlank()) {
-            String value = "%" + keyword.trim() + "%";
-            sql.append(" AND a.doc_name LIKE ?");
-            args.add(value);
-        }
-    }
 
     private String resolveSystemCode(String granularity, Object rawSystemCode, long projectId, AuthUser user) {
         String systemCode = optionalText(rawSystemCode, null);
@@ -367,11 +279,7 @@ public class ReleaseDrillService {
     }
 
     private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c " +
-                "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ? AND c.enabled = 1",
-                Integer.class, user.tenantId(), projectId, systemCode);
-        if (count == null || count == 0) {
+        if (!repository.enabledComponent(user.tenantId(), projectId, systemCode)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "涉及物理子系统不存在或不属于当前项目");
         }
     }
@@ -393,7 +301,7 @@ public class ReleaseDrillService {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractFiles(Map<String, Object> body) {
-        List<Map<String, Object>> files = new ArrayList<>();
+        List<Map<String, Object>> files = new java.util.ArrayList<>();
         Object rawFiles = body.get("files");
         if (rawFiles instanceof Collection<?> c) {
             for (Object item : c) if (item instanceof Map) files.add((Map<String, Object>) item);
@@ -408,18 +316,11 @@ public class ReleaseDrillService {
     }
 
     private Map<String, Object> findRaw(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, project_id, granularity, material_type_code, drill_round, system_code, doc_code, doc_name, owner_id " +
-                "FROM dm_release_drill WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "投产及演练资料不存在");
-        return rows.get(0);
+        return repository.requireRaw(tenantId, id);
     }
 
     private long requireRecycleBinScope(long id, AuthUser user) {
-        List<Long> projects = jdbc.queryForList("SELECT project_id FROM dm_release_drill WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                Long.class, id, user.tenantId());
-        if (projects.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "投产及演练资料不存在于回收站");
-        long projectId = projects.get(0);
+        long projectId = repository.requireDeletedProject(user.tenantId(), id);
         permissions.requireStoredProject(projectId, user);
         return projectId;
     }
@@ -441,9 +342,7 @@ public class ReleaseDrillService {
     }
 
     private void audit(AuthUser user, String operation, long projectId, long id) {
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
-                "VALUES (?, ?, ?, ?, 'RELEASE_DRILL', ?)",
-                user.tenantId(), user.id(), projectId, operation, id);
+        repository.audit(user.tenantId(), user.id(), projectId, operation, id);
     }
 
     private int normalizePageSize(int size) {

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowAssigneeMapper">
+    <select id="usersForRoles" resultType="long">SELECT DISTINCT u.id FROM sys_user u JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id WHERE u.tenant_id = #{tenantId} AND u.deleted = 0 AND u.status = 1 AND r.deleted = 0 AND r.status = 1 AND ur.role_id IN <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id}</foreach> ORDER BY u.id</select>
+    <select id="activeUsers" resultType="map">SELECT id, display_name FROM sys_user WHERE tenant_id = #{tenantId} AND deleted = 0 AND status = 1 AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach> ORDER BY id</select>
+    <select id="organizationOwner" resultType="map">SELECT o.leader_id, u.display_name FROM sys_user starter JOIN sys_org o ON o.id = starter.org_id AND o.tenant_id = starter.tenant_id AND o.deleted = 0 JOIN sys_user u ON u.id = o.leader_id AND u.tenant_id = o.tenant_id AND u.deleted = 0 AND u.status = 1 WHERE starter.id = #{starterId} AND starter.tenant_id = #{tenantId} AND starter.deleted = 0</select>
+</mapper>

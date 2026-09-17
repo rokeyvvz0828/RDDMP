@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,14 +35,14 @@ public class MockDataInitializer implements ApplicationRunner {
     private static final Pattern SQL_IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
     private static final Map<String, Set<String>> ALLOWED_COLUMNS = allowedColumns();
 
-    private final JdbcTemplate jdbc;
+    private final MockDataRepository repository;
     private final ObjectMapper objectMapper;
     private final ResourceLoader resourceLoader;
     private final MockDataProperties properties;
 
-    public MockDataInitializer(JdbcTemplate jdbc, ObjectMapper objectMapper, ResourceLoader resourceLoader,
+    public MockDataInitializer(MockDataRepository repository, ObjectMapper objectMapper, ResourceLoader resourceLoader,
                                MockDataProperties properties) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.objectMapper = objectMapper;
         this.resourceLoader = resourceLoader;
         this.properties = properties;
@@ -63,12 +62,7 @@ public class MockDataInitializer implements ApplicationRunner {
             if (!database.isArray()) throw new IllegalStateException("mock database must be an array");
             for (JsonNode tableNode : database) rowCount += syncTable(tableNode, validatedArchitectureTenants);
         }
-        jdbc.update("""
-                INSERT INTO sys_mock_dataset_state (id, dataset_key, dataset_version, content_sha256, applied_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON DUPLICATE KEY UPDATE dataset_version = VALUES(dataset_version),
-                    content_sha256 = VALUES(content_sha256), applied_at = CURRENT_TIMESTAMP
-                """, STATE_ID, datasetKey, datasetVersion, checksum);
+        repository.saveDatasetState(STATE_ID, datasetKey, datasetVersion, checksum);
         System.out.printf("Mock data synchronized: dataset=%s version=%s rows=%d checksum=%s%n",
                 datasetKey, datasetVersion, rowCount, checksum);
     }
@@ -131,16 +125,11 @@ public class MockDataInitializer implements ApplicationRunner {
     }
 
     private void requireTenantRoot(long tenantId) {
-        Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_org WHERE tenant_id = ? AND parent_id = 0 AND status = 1 AND deleted = 0",
-                Long.class, tenantId);
-        if (count == null || count < 1) throw new IllegalStateException("mock tenant 不存在活动根组织: " + tenantId);
+        if (repository.activeTenantRootCount(tenantId) < 1) throw new IllegalStateException("mock tenant 不存在活动根组织: " + tenantId);
     }
 
     private String requireActiveOrganization(long tenantId, long organizationId, String label) {
-        String name = jdbc.queryForObject(
-                "SELECT MAX(org_name) FROM sys_org WHERE tenant_id = ? AND id = ? AND status = 1 AND deleted = 0",
-                String.class, tenantId, organizationId);
+        String name = repository.activeOrganizationName(tenantId, organizationId);
         if (name == null || name.isBlank()) {
             throw new IllegalStateException("mock " + label + "不是当前租户活动组织: tenant=" + tenantId + ", org=" + organizationId);
         }
@@ -148,15 +137,7 @@ public class MockDataInitializer implements ApplicationRunner {
     }
 
     private void requireActiveUser(long tenantId, long userId, String label) {
-        requireReference("SELECT COUNT(*) FROM sys_user WHERE tenant_id = ? AND id = ? AND status = 1 AND deleted = 0",
-                tenantId, userId, label);
-    }
-
-    private void requireReference(String sql, long tenantId, long referenceId, String label) {
-        Long count = jdbc.queryForObject(sql, Long.class, tenantId, referenceId);
-        if (count == null || count != 1) {
-            throw new IllegalStateException("mock " + label + "不是当前租户活动引用: tenant=" + tenantId + ", id=" + referenceId);
-        }
+        if (repository.activeUserCount(tenantId, userId) != 1) throw new IllegalStateException("mock " + label + "不是当前租户活动引用: tenant=" + tenantId + ", id=" + userId);
     }
 
     private void requireOptionalParameter(JsonNode row, long tenantId, String field, String categoryCode) {
@@ -165,13 +146,7 @@ public class MockDataInitializer implements ApplicationRunner {
         if (!value.isTextual() || value.textValue().isBlank()) {
             throw new IllegalStateException("mock parameter code must be nonblank text: " + field);
         }
-        Long count = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM sys_config c
-                JOIN sys_dict_type t ON t.id = c.category_id AND t.tenant_id = c.tenant_id
-                WHERE c.tenant_id = ? AND t.dict_code = ? AND c.config_key = ?
-                  AND t.status = 1 AND t.deleted = 0 AND c.status = 1 AND c.deleted = 0
-                """, Long.class, tenantId, categoryCode, value.textValue());
-        if (count == null || count != 1) {
+        if (repository.parameterCount(tenantId, categoryCode, value.textValue()) != 1) {
             throw new IllegalStateException("mock parameter 不是当前租户分类选项: " + categoryCode + "/" + value.textValue());
         }
     }
@@ -221,13 +196,11 @@ public class MockDataInitializer implements ApplicationRunner {
             } else values.add(jdbcValue(value));
         }
         String columnSql = columns.stream().map(this::quote).reduce((left, right) -> left + ", " + right).orElseThrow();
-        String placeholderSql = String.join(", ", Collections.nCopies(columns.size(), "?"));
         String updateSql = columns.stream().filter(column -> !keys.contains(column))
                 .map(column -> quote(column) + " = VALUES(" + quote(column) + ")")
                 .reduce((left, right) -> left + ", " + right)
                 .orElseGet(() -> quote(keys.get(0)) + " = " + quote(keys.get(0)));
-        return jdbc.update("INSERT INTO " + quote(table) + " (" + columnSql + ") VALUES (" + placeholderSql
-                + ") ON DUPLICATE KEY UPDATE " + updateSql, values.toArray());
+        return repository.upsert(quote(table), columnSql, values, updateSql);
     }
 
     private Object jdbcValue(JsonNode value) {

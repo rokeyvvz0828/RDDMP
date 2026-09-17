@@ -1,0 +1,25 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "WorkflowCursorPage and WorkflowCursorCodec", "purpose": "Bounded opaque timestamp/id cursor contract"},
+    {"path_or_resource": "WorkflowService and WorkflowController", "purpose": "Protected inbox/done seek routes while preserving page routes"},
+    {"path_or_resource": "WorkflowCursorPaginationTest", "purpose": "Cursor and inbox continuity coverage"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-workflow -am -Dtest=WorkflowCursorPaginationTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "4 tests passed"}
+  ],
+  "local_checks": [
+    {"check": "cursor encode/decode, malformed input, inbox continuity", "result": "pass", "evidence": "WorkflowCursorPaginationTest", "limitations": ["authenticated HTTP data pagination requires local credentials not available to this task"]}
+  ],
+  "diff_summary": ["Added opaque cursor page envelope and validation", "Added bounded inbox/done seek reads without OFFSET or COUNT"],
+  "invariants_checked": [
+    {"invariant": "legacy page routes remain separate", "result": "pass", "evidence": "new routes use /seek"},
+    {"invariant": "cursor contains no tenant/project/business fields", "result": "pass", "evidence": "round-trip test"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

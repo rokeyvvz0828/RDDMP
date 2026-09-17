@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WorkflowDefinitionLifecycleTest {
@@ -114,8 +116,29 @@ class WorkflowDefinitionLifecycleTest {
 
     private WorkflowService service(LifecycleJdbcTemplate jdbc) {
         ObjectMapper mapper = new ObjectMapper();
-        WorkflowService service = new WorkflowService(jdbc, mapper, null, null, null);
-        service.setDefinitionAuditService(new WorkflowAuditService(jdbc, mapper) {
+        WorkflowService service = new WorkflowService(mapper, null, null, null);
+        WorkflowDefinitionRepository definitions = mock(WorkflowDefinitionRepository.class);
+        when(definitions.detail(31L, 1L)).thenAnswer(invocation -> jdbc.deleted ? null : jdbc.definition());
+        when(definitions.detail(31L, 2L)).thenReturn(null);
+        when(definitions.versions(31L, 1L)).thenAnswer(invocation ->
+                jdbc.queryForList("SELECT version_no, status, model_schema_version, created_at", 31L, 1L));
+        when(definitions.version(31L, 1L, 4)).thenAnswer(invocation ->
+                jdbc.queryForList("SELECT version_no, status, model_schema_version, created_at, CAST", 31L, 1L, 4)
+                        .stream().findFirst().orElse(null));
+        when(definitions.events(31L, 1L)).thenAnswer(invocation ->
+                jdbc.queryForList("SELECT a.id FROM wf_audit_event WHERE a.instance_id IS NULL", 31L, 1L));
+        when(definitions.softDelete(org.mockito.ArgumentMatchers.anyMap())).thenAnswer(invocation ->
+                jdbc.update("UPDATE wf_definition SET deleted = 1", 31L, 1L));
+        when(definitions.archive(org.mockito.ArgumentMatchers.anyMap())).thenAnswer(invocation ->
+                jdbc.update("UPDATE wf_definition SET status = 'ARCHIVED'", 31L, 1L));
+        when(definitions.restore(org.mockito.ArgumentMatchers.anyMap())).thenAnswer(invocation ->
+                jdbc.update("UPDATE wf_definition SET status = 'PUBLISHED'", 31L, 1L));
+        when(definitions.enterprise(31L, 1L)).thenReturn(null);
+        when(definitions.countPublishedVersions(31L, 1L)).thenReturn(jdbc.publishedVersionCount);
+        when(definitions.countInstances(31L, 1L)).thenReturn(jdbc.instanceCount);
+        service.setDefinitionRepository(definitions);
+        service.setRuntimeRepository(mock(WorkflowRuntimeRepository.class));
+        service.setDefinitionAuditService(new WorkflowAuditService(mock(WorkflowAuditRepository.class), mapper) {
             @Override
             public void record(AuthUser operator, String eventType, Long definitionId, Integer versionNo,
                                Long instanceId, Long taskId, String reason, Map<String, Object> payload) {

@@ -9,7 +9,6 @@ import com.ccb.infrastructure.storage.MinioStorageProperties;
 import com.ccb.infrastructure.storage.MinioStorageService;
 import com.ccb.security.model.AuthUser;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.InputStream;
@@ -85,40 +84,34 @@ class AttachmentServiceTest {
                 new AttachmentAccessPolicyRegistry(List.of(allowRelease)), new AttachmentProperties());
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends AttachmentPersistenceRepository {
         private final Map<String, Object> row = new LinkedHashMap<>();
         private int bindingUpdates;
 
+        private StubJdbcTemplate() { super(null); }
+
         @Override
-        public int update(String sql, Object... args) {
-            if (sql.startsWith("INSERT INTO att_file")) {
-                row.put("id", args[0]);
-                row.put("tenant_id", args[1]);
-                row.put("file_name", args[2]);
-                row.put("content_type", args[3]);
-                row.put("file_size", args[4]);
-                row.put("object_key", args[5]);
-                row.put("file_extension", args[6]);
+        public int insertTemporaryFile(Map<String, Object> params) {
+                row.put("id", params.get("id"));
+                row.put("tenant_id", params.get("tenantId"));
+                row.put("file_name", params.get("fileName"));
+                row.put("content_type", params.get("contentType"));
+                row.put("file_size", params.get("fileSize"));
+                row.put("object_key", params.get("objectKey"));
+                row.put("file_extension", params.get("extension"));
                 row.put("status", "TEMP");
-                row.put("uploader_id", args[7]);
+                row.put("uploader_id", params.get("uploaderId"));
                 row.put("business_type", null);
                 row.put("business_key", null);
                 row.put("project_ref", null);
                 row.put("created_at", Timestamp.valueOf(LocalDateTime.of(2026, 8, 14, 9, 0)));
-            } else if (sql.startsWith("UPDATE att_file SET status = 'BOUND'")) {
-                bindingUpdates++;
-                row.put("status", "BOUND");
-                row.put("business_type", args[0]);
-                row.put("business_key", args[1]);
-                row.put("project_ref", args[2]);
-            }
             return 1;
         }
 
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            return row.isEmpty() ? List.of() : List.of(row);
-        }
+        public Map<String, Object> attachmentFile(Map<String, Object> params) { return row.isEmpty() ? null : row; }
+        @Override public int bindTemporaryFile(Map<String, Object> params) { bindingUpdates++; row.put("status", "BOUND"); row.put("business_type", params.get("businessType")); row.put("business_key", params.get("businessKey")); row.put("project_ref", params.get("projectRef")); return 1; }
+        @Override public int insertAttachmentOperation(Map<String, Object> params) { return 1; }
     }
 
     private static final class StubStorage extends MinioStorageService {

@@ -1,0 +1,27 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "WorkflowMonitorService", "purpose": "Instance history seek read retains existing filters and project scope"},
+    {"path_or_resource": "V204__workflow_seek_pagination_indexes.sql", "purpose": "Append-only indexes for the three seek paths"},
+    {"path_or_resource": "WorkflowCursorPaginationTest", "purpose": "Instance predicate and project-range coverage"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-workflow -am -Dtest=WorkflowCursorPaginationTest -Dsurefire.failIfNoSpecifiedTests=false test", "exit_code": 0, "salient_output": "4 tests passed"},
+    {"command": "temporary MySQL migration validation for V204 and V205", "exit_code": 0, "salient_output": "three V204 indexes present"}
+  ],
+  "local_checks": [
+    {"check": "instance seek SQL", "result": "pass", "evidence": "asserts timestamp/id predicate, project scope, LIMIT size+1 and no OFFSET/COUNT", "limitations": []},
+    {"check": "V204 MySQL syntax", "result": "pass", "evidence": "temporary mysql:8.4 applied V204", "limitations": ["validated against minimal prerequisite tables"]}
+  ],
+  "diff_summary": ["Added instance seek query with existing visibility gateway", "Added three additive MySQL indexes"],
+  "invariants_checked": [
+    {"invariant": "project visibility remains in service query", "result": "pass", "evidence": "project scope assertion"},
+    {"invariant": "migration is append-only", "result": "pass", "evidence": "new V204 only"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

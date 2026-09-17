@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashMap;
@@ -18,8 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -28,7 +25,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SystemServicePasswordResetTest {
-    @Mock private JdbcTemplate jdbc;
+    @Mock private SystemMapper mapper;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private MinioStorageService storage;
 
@@ -46,15 +43,12 @@ class SystemServicePasswordResetTest {
         service.update("users", 42L, input, admin);
 
         verify(passwordEncoder).encode("NewPassword123");
-        SqlUpdate update = userUpdate();
-        String assignments = update.sql().substring("UPDATE sys_user SET ".length(), update.sql().indexOf(" WHERE"));
-        String[] columns = assignments.replace(" = ?", "").split(", ");
-        int passwordIndex = java.util.Arrays.asList(columns).indexOf("password_hash");
-        int nameIndex = java.util.Arrays.asList(columns).indexOf("display_name");
-        assertEquals("new-bcrypt-hash", update.args()[passwordIndex]);
-        assertEquals("测试用户", update.args()[nameIndex]);
-        assertEquals(42L, update.args()[2]);
-        assertEquals(1L, update.args()[3]);
+        ArgumentCaptor<Map<String, Object>> update = ArgumentCaptor.forClass(Map.class);
+        verify(mapper).updateUser(update.capture());
+        assertEquals("new-bcrypt-hash", update.getValue().get("password_hash"));
+        assertEquals("测试用户", update.getValue().get("display_name"));
+        assertEquals(42L, update.getValue().get("id"));
+        assertEquals(1L, update.getValue().get("tenantId"));
     }
 
     @Test
@@ -68,41 +62,28 @@ class SystemServicePasswordResetTest {
         service.update("users", 42L, input, admin);
 
         verify(passwordEncoder, never()).encode(anyString());
-        SqlUpdate update = userUpdate();
-        assertFalse(update.sql().contains("password"));
-        assertEquals("测试用户", update.args()[0]);
-        assertEquals(42L, update.args()[1]);
-        assertEquals(1L, update.args()[2]);
+        ArgumentCaptor<Map<String, Object>> update = ArgumentCaptor.forClass(Map.class);
+        verify(mapper).updateUser(update.capture());
+        assertFalse(update.getValue().containsKey("password_hash"));
+        assertEquals("测试用户", update.getValue().get("display_name"));
+        assertEquals(42L, update.getValue().get("id"));
+        assertEquals(1L, update.getValue().get("tenantId"));
     }
 
     private SystemService serviceWithAccess() {
-        SystemService service = spy(new SystemService(jdbc, passwordEncoder, storage));
+        SystemService service = spy(new SystemService(new SystemRepository(mapper), passwordEncoder, storage));
         doNothing().when(service).requireAction("users", "update", admin);
         return service;
     }
 
     private void stubSuccessfulUpdate() {
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(mapper.updateUser(any())).thenReturn(1);
         Map<String, Object> user = new HashMap<>();
         user.put("id", 42L);
         user.put("username", "test-user");
         user.put("display_name", "测试用户");
         user.put("org_id", null);
         user.put("avatar_object_key", null);
-        when(jdbc.queryForMap(anyString(), eq(42L), eq(1L))).thenReturn(user);
+        when(mapper.selectUser(42L, 1L)).thenReturn(user);
     }
-
-    private SqlUpdate userUpdate() {
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
-        verify(jdbc, atLeastOnce()).update(sql.capture(), args.capture());
-        for (int index = 0; index < sql.getAllValues().size(); index++) {
-            if (sql.getAllValues().get(index).startsWith("UPDATE sys_user SET")) {
-                return new SqlUpdate(sql.getAllValues().get(index), args.getAllValues().get(index));
-            }
-        }
-        throw new AssertionError("User update SQL was not executed");
-    }
-
-    private record SqlUpdate(String sql, Object[] args) {}
 }

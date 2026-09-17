@@ -1,0 +1,15 @@
+{
+  "sample_label": "S2 outbox state and migration sampling",
+  "task_ids": ["T2"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "ProjectAttachmentCleanupOutboxServiceTest", "result": "pass", "raw_evidence": "success transition invokes storage then marks DONE", "limitation": ["same Codex context as implementation"]},
+    {"requirement_id": "R2", "sensor": "ProjectAttachmentCleanupOutboxServiceTest", "result": "pass", "raw_evidence": "failure becomes RETRY and expired PROCESSING lease claim predicate is asserted", "limitation": ["no concurrent database lock simulation"]},
+    {"requirement_id": "R5", "sensor": "disposable mysql:8.4", "result": "pass", "raw_evidence": "V205 created Outbox table with unique and claim indexes", "limitation": ["empty disposable database"]}
+  ],
+  "feedback": [],
+  "disturbances": [],
+  "coverage_gaps": ["Not independently observed by a separate Codex context or Owner"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

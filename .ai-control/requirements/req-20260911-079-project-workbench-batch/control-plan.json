@@ -1,0 +1,19 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {"id": "T1", "goal": "Replace workbench per-project decoration with batch owner and aggregate queries", "requirement_ids": ["R1", "R2", "R3"], "prerequisites": [], "input_facts": ["workbench calls decorateProject per row"], "write_scope": ["server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"], "invariants": ["response fields unchanged", "tenant scope retained"], "interface_contracts": ["ProjectService.workbench"], "non_goals": ["detail path"], "action_bounds": ["workbench read assembly only"], "acceptance_checks": ["one owner and one aggregate query"], "evidence_required": ["diff", "test"], "stop_conditions": ["scope SQL changes"], "escalation_conditions": ["schema change needed"], "rollback": "restore per-project decorator"},
+    {"id": "T2", "goal": "Add focused regression tests", "requirement_ids": ["R1", "R2", "R3"], "prerequisites": ["T1"], "input_facts": ["batch decorator implemented"], "write_scope": ["server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"], "invariants": ["empty list remains empty"], "interface_contracts": ["existing test fixture"], "non_goals": ["new API"], "action_bounds": ["tests only"], "acceptance_checks": ["field compatibility and query count assertions"], "evidence_required": ["test output"], "stop_conditions": ["behavior mismatch"], "escalation_conditions": ["contract change needed"], "rollback": "remove focused tests"},
+    {"id": "T3", "goal": "Run module regression and scope checks", "requirement_ids": ["R1", "R2", "R3"], "prerequisites": ["T1", "T2"], "input_facts": ["implementation and tests present"], "write_scope": [".ai-control/requirements/req-20260911-079-project-workbench-batch/*.json"], "invariants": ["scope adherence"], "interface_contracts": ["existing workbench response"], "non_goals": ["production verification"], "action_bounds": ["verification only"], "acceptance_checks": ["system tests and diff check pass"], "evidence_required": ["commands and outcomes"], "stop_conditions": ["regression"], "escalation_conditions": ["environment unavailable"], "rollback": "re-run after correction"}
+  ],
+  "dependency_edges": [{"from": "T1", "to": "T2"}, {"from": "T2", "to": "T3"}],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [{"after_tasks": ["T1", "T2"], "checks": ["ccb-system focused tests"]}],
+  "sampling_plan": [{"label": "S1", "task": "T1/T2", "sensor": "S1"}, {"label": "S2", "task": "T3", "sensor": "S2"}, {"label": "S3", "task": "T3", "sensor": "S3"}],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2"]},
+    {"requirement_id": "R3", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S2", "S3"]}
+  ],
+  "plan_status": "ready"
+}

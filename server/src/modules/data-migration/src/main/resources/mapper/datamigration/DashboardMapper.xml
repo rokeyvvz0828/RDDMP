@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.datamigration.service.DashboardMapper">
+  <select id="activeComponentCount" resultType="long">SELECT COUNT(*) FROM dm_component WHERE tenant_id = #{tenantId} AND project_id = #{projectId} AND enabled = 1</select>
+  <select id="assetsByType" resultType="map">SELECT type, total FROM (<include refid="typeCounts"/>) x WHERE total &gt; 0 ORDER BY total DESC</select>
+  <select id="components" resultType="map">SELECT c.system_code, COALESCE(s.short_name, s.name, c.system_code) AS system_name, COALESCE(agg.cnt, 0) AS asset_count FROM dm_component c LEFT JOIN arch_physical_subsystem s ON s.tenant_id = c.tenant_id AND s.code = c.system_code AND s.deleted = 0 LEFT JOIN (SELECT system_code, tenant_id, COUNT(*) AS cnt FROM (<include refid="systemCounts"/>) u WHERE system_code IS NOT NULL AND system_code &lt;&gt; '' GROUP BY system_code, tenant_id) agg ON agg.system_code = c.system_code AND agg.tenant_id = c.tenant_id WHERE c.tenant_id = #{tenantId} AND c.enabled = 1 AND c.project_id = #{projectId} GROUP BY c.system_code, s.short_name, s.name ORDER BY system_name</select>
+  <sql id="typeCounts">
+    SELECT 'PLAN' AS type, COUNT(*) AS total FROM dm_plan WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'MAPPING_DOC', COUNT(*) FROM dm_mapping_doc WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'DEPENDENCY', COUNT(*) FROM dm_dependency WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'SCRIPT', COUNT(*) FROM dm_script WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'TOPIC', COUNT(*) FROM dm_topic WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'RELEASE_DRILL', COUNT(*) FROM dm_release_drill WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'REPORT', COUNT(*) FROM dm_report WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'RULE', COUNT(*) FROM dm_rule WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT 'PARAMETER', COUNT(*) FROM dm_parameter WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0
+  </sql>
+  <sql id="systemCounts">
+    SELECT system_code, tenant_id FROM dm_plan WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_mapping_doc WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_dependency WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_script WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_topic WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_release_drill WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_report WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_rule WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0 UNION ALL
+    SELECT system_code, tenant_id FROM dm_parameter WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0
+  </sql>
+</mapper>

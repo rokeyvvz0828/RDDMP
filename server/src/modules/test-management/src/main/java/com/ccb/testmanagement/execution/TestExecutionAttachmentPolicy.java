@@ -11,14 +11,14 @@ package com.ccb.testmanagement.execution;
 import com.ccb.attachment.integration.AttachmentAccessPolicy;
 import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.ccb.testmanagement.persistence.TestAttachmentAccessMapper;
 import org.springframework.stereotype.Component;
 
 /** 执行证据附件仅向同租户且拥有对应执行阅读权限的用户开放。 */
 @Component
 public class TestExecutionAttachmentPolicy implements AttachmentAccessPolicy {
-    private final JdbcTemplate jdbc;
-    public TestExecutionAttachmentPolicy(JdbcTemplate jdbc){this.jdbc=jdbc;}
+    private final TestAttachmentAccessMapper mapper;
+    public TestExecutionAttachmentPolicy(TestAttachmentAccessMapper mapper){this.mapper=mapper;}
     @Override public String businessType(){return TestExecutionService.BUSINESS_TYPE;}
-    @Override public boolean canAccess(AuthUser user,String key,AttachmentOperation operation){try{long id=Long.parseLong(key);var rows=jdbc.queryForList("SELECT test_domain FROM tm_test_execution WHERE id=? AND tenant_id=? AND deleted=0",id,user.tenantId());if(!user.enabled()||rows.isEmpty())return false;String domain=String.valueOf(rows.get(0).get("test_domain"));var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();return auth!=null&&auth.getAuthorities().stream().anyMatch(a->("test-management:"+domain+":execution").equals(a.getAuthority()));}catch(Exception ignored){return false;}}
+    @Override public boolean canAccess(AuthUser user,String key,AttachmentOperation operation){try{long id=Long.parseLong(key);String domain=mapper.executionDomain(java.util.Map.of("id",id,"tenantId",user.tenantId()));if(!user.enabled()||domain==null)return false;var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();return auth!=null&&auth.getAuthorities().stream().anyMatch(a->("test-management:"+domain+":execution").equals(a.getAuthority()));}catch(Exception ignored){return false;}}
 }

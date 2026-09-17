@@ -18,6 +18,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class WorkflowProjectScopeTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "reviewer", "", "审批人", 1L, true);
@@ -47,7 +49,9 @@ class WorkflowProjectScopeTest {
 
     @Test
     void resolvesProjectRoleOnlyThroughProjectDirectory() throws Exception {
-        WorkflowAssigneeResolver resolver = new WorkflowAssigneeResolver(new AssigneeJdbcTemplate());
+        WorkflowAssigneeRepository repository = mock(WorkflowAssigneeRepository.class);
+        when(repository.activeUsers(1L, List.of(8L))).thenReturn(List.of(Map.of("id", 8L, "display_name", "项目审批人")));
+        WorkflowAssigneeResolver resolver = new WorkflowAssigneeResolver(repository);
         StubProjectAccess gateway = new StubProjectAccess();
         resolver.setProjectAccess(gateway);
         WorkflowNodeModel node = new WorkflowNodeModel("approve", "APPROVAL", "项目审批", null,
@@ -62,7 +66,11 @@ class WorkflowProjectScopeTest {
 
     @Test
     void rejectsDirectProjectWorkflowStartWithoutProjectContext() {
-        WorkflowService service = new WorkflowService(new ProjectStartJdbcTemplate(), objectMapper, null, null, null);
+        WorkflowService service = new WorkflowService(objectMapper, null, null, null);
+        WorkflowDefinitionRepository definitions = mock(WorkflowDefinitionRepository.class);
+        when(definitions.published(100L, 1L)).thenReturn(Map.of(
+                "id", 100L, "scope_type", "PROJECT", "project_id", 10L, "status", "PUBLISHED"));
+        service.setDefinitionRepository(definitions);
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.start(100L, "BUSINESS-1", Map.of(), USER));

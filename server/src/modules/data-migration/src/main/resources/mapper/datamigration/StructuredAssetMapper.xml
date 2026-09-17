@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.datamigration.service.StructuredAssetMapper">
+  <sql id="projection">id, project_id, system_code, #{assetType} AS asset_type, doc_code AS asset_code, doc_name AS asset_name, structured_data, owner_id, created_at, updated_at</sql>
+
+  <select id="list" resultType="map">
+    SELECT <include refid="projection"/> FROM ${table}
+    WHERE tenant_id = #{tenantId} AND project_id = #{projectId} AND deleted = 0
+      AND (doc_code LIKE CONCAT('%', #{keyword}, '%') OR doc_name LIKE CONCAT('%', #{keyword}, '%'))
+    ORDER BY updated_at DESC, id DESC
+  </select>
+  <insert id="insert">
+    INSERT INTO ${table} (id, tenant_id, project_id, system_code, doc_code, doc_name, structured_data, owner_id, created_by, updated_by)
+    VALUES (#{id}, #{tenantId}, #{projectId}, #{systemCode}, #{docCode}, #{docName}, #{structuredData}, #{ownerId}, #{createdBy}, #{updatedBy})
+  </insert>
+  <select id="find" resultType="map">
+    SELECT <include refid="projection"/> FROM ${table}
+    WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = #{deleted}
+  </select>
+  <update id="update">
+    UPDATE ${table} SET system_code = #{systemCode}, doc_name = #{docName}, structured_data = #{structuredData}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0
+  </update>
+  <update id="softDelete">
+    UPDATE ${table} SET deleted = 1, deleted_by = #{deletedBy}, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+    WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0
+  </update>
+  <select id="countDeleted" resultType="long">
+    SELECT COUNT(*) FROM ${table}
+    WHERE tenant_id = #{tenantId} AND project_id = #{projectId} AND deleted = 1
+    <if test="keyword != null and keyword != ''">AND (doc_code LIKE CONCAT('%', #{keyword}, '%') OR doc_name LIKE CONCAT('%', #{keyword}, '%'))</if>
+  </select>
+  <select id="listDeletedPage" resultType="map">
+    SELECT <include refid="projection"/>, deleted_by, deleted_at FROM ${table}
+    WHERE tenant_id = #{tenantId} AND project_id = #{projectId} AND deleted = 1
+    <if test="keyword != null and keyword != ''">AND (doc_code LIKE CONCAT('%', #{keyword}, '%') OR doc_name LIKE CONCAT('%', #{keyword}, '%'))</if>
+    ORDER BY (doc_code IS NULL OR doc_code = ''), doc_code ASC, deleted_at DESC, id ASC LIMIT #{limit}
+  </select>
+  <select id="findDeletedDetail" resultType="map">
+    SELECT <include refid="projection"/>, deleted_by, deleted_at FROM ${table}
+    WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 1
+  </select>
+  <update id="restore">
+    UPDATE ${table} SET deleted = 0, deleted_by = NULL, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
+    WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 1
+  </update>
+  <delete id="purge">DELETE FROM ${table} WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 1</delete>
+  <select id="relatedCounts" resultType="long">
+    SELECT COUNT(*) FROM dm_rule
+    WHERE tenant_id = #{tenantId} AND deleted = 0 AND id &lt;&gt; #{id}
+      AND (JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.tableStructureId')) = #{idText}
+        OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.intermediateTableId')) = #{idText}
+        OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.targetTableId')) = #{idText}
+        OR JSON_UNQUOTE(JSON_EXTRACT(structured_data, '$.sourceTableId')) = #{idText})
+  </select>
+  <select id="enabledComponentCount" resultType="int">
+    SELECT COUNT(*) FROM dm_component
+    WHERE system_code = #{systemCode} AND project_id = #{projectId} AND tenant_id = #{tenantId} AND enabled = 1
+  </select>
+  <insert id="insertAudit">
+    INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id)
+    VALUES (#{tenantId}, #{actorId}, #{projectId}, #{operation}, 'ASSET', #{entityId})
+  </insert>
+</mapper>

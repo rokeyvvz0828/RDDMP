@@ -11,21 +11,20 @@ package com.ccb.testmanagement.plan;
 import com.ccb.attachment.integration.AttachmentAccessPolicy;
 import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.ccb.testmanagement.persistence.TestAttachmentAccessMapper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Map;
 
 /** 附件必须属于当前租户中仍有效的方案版本，且调用人具备对应大类的方案阅读权限。 */
 @Component
 public class TestPlanAttachmentPolicy implements AttachmentAccessPolicy {
-    private final JdbcTemplate jdbc;
+    private final TestAttachmentAccessMapper mapper;
 
-    public TestPlanAttachmentPolicy(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public TestPlanAttachmentPolicy(TestAttachmentAccessMapper mapper) {
+        this.mapper = mapper;
     }
 
     @Override
@@ -47,15 +46,7 @@ public class TestPlanAttachmentPolicy implements AttachmentAccessPolicy {
         if (versionId <= 0) {
             return false;
         }
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT p.test_domain FROM tm_test_plan_version v "
-                        + "JOIN tm_test_plan p ON p.id=v.plan_id AND p.tenant_id=v.tenant_id AND p.deleted=0 "
-                        + "WHERE v.id=? AND v.tenant_id=? AND v.deleted=0",
-                versionId, user.tenantId());
-        if (rows.size() != 1) {
-            return false;
-        }
-        Object domain = rows.get(0).get("test_domain");
+        String domain = mapper.planDomain(Map.of("id", versionId, "tenantId", user.tenantId()));
         return domain != null && hasAuthority("test-management:" + domain + ":plans");
     }
 

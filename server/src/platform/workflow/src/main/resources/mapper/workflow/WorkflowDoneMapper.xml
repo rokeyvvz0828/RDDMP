@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowDoneMapper">
+    <sql id="from">FROM wf_task_action a JOIN wf_instance i ON i.id = a.instance_id AND i.tenant_id = a.tenant_id JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = a.tenant_id LEFT JOIN wf_task t ON t.id = a.task_id AND t.tenant_id = a.tenant_id</sql>
+    <sql id="where">WHERE a.tenant_id = #{tenantId} AND a.operator_id = #{userId} AND i.deleted = 0 <choose><when test="projectIds != null and projectIds.size() > 0">AND (i.project_id IS NULL OR i.project_id IN <foreach collection="projectIds" item="id" open="(" separator="," close=")">#{id}</foreach>)</when><otherwise>AND i.project_id IS NULL</otherwise></choose></sql>
+    <sql id="select">SELECT a.id, a.instance_id, a.task_id, a.action_code, a.comment, a.created_at, t.node_id, t.task_key, t.task_type, i.business_key, i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path, i.status AS instance_status, d.name AS definition_name</sql>
+    <select id="page" resultType="map"><include refid="select"/> <include refid="from"/> <include refid="where"/> ORDER BY a.created_at DESC, a.id DESC LIMIT #{offset}, #{size}</select>
+    <select id="count" resultType="long">SELECT COUNT(*) <include refid="from"/> <include refid="where"/></select>
+    <select id="seek" resultType="map"><include refid="select"/> <include refid="from"/> <include refid="where"/><if test="cursorCreatedAt != null">AND (a.created_at &lt; #{cursorCreatedAt} OR (a.created_at = #{cursorCreatedAt} AND a.id &lt; #{cursorId}))</if> ORDER BY a.created_at DESC, a.id DESC LIMIT #{size}</select>
+</mapper>

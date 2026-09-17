@@ -3,7 +3,6 @@ package com.ccb.workflow.service;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +32,14 @@ class WorkflowLifecycleDispatcherTest {
             assertEquals("event-1", event.eventId());
             if (calls.incrementAndGet() == 1) throw new IllegalStateException("temporary failure");
         });
-        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc, List.of(consumer));
+        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc.repository(), List.of(consumer));
 
         dispatcher.dispatchBatch(50);
         assertEquals("RETRY", jdbc.status);
         assertEquals(1, jdbc.attempts);
 
         dispatcher.dispatchBatch(50);
-        assertEquals("DELIVERED", jdbc.status, "consumer calls=" + calls.get() + ", last SQL=" + jdbc.lastSql);
+        assertEquals("DELIVERED", jdbc.status, "consumer calls=" + calls.get());
         assertEquals(2, jdbc.attempts);
         assertEquals(2, calls.get());
     }
@@ -48,7 +47,7 @@ class WorkflowLifecycleDispatcherTest {
     @Test
     void movesDeliveryToDeadAfterFifthFailure() {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(4);
-        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc,
+        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc.repository(),
                 List.of(consumer(event -> { throw new IllegalStateException("permanent failure"); })));
 
         dispatcher.dispatchBatch(1);
@@ -61,7 +60,7 @@ class WorkflowLifecycleDispatcherTest {
     void dispatchesOnlyTheRequestedEventAfterClaimingIt() {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(0);
         AtomicInteger calls = new AtomicInteger();
-        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc,
+        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc.repository(),
                 List.of(consumer(event -> calls.incrementAndGet())));
 
         assertEquals(1, dispatcher.dispatchEvent("event-1"));
@@ -76,7 +75,7 @@ class WorkflowLifecycleDispatcherTest {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(0);
         jdbc.claimAllowed = false;
         AtomicInteger calls = new AtomicInteger();
-        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc,
+        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc.repository(),
                 List.of(consumer(event -> calls.incrementAndGet())));
 
         assertEquals(0, dispatcher.dispatchEvent("event-1"));
@@ -88,7 +87,7 @@ class WorkflowLifecycleDispatcherTest {
     @Test
     void immediateFailureReturnsToPendingForScheduledCompensation() {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(0);
-        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc,
+        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc.repository(),
                 List.of(consumer(event -> { throw new IllegalStateException("temporary failure"); })));
 
         assertEquals(1, dispatcher.dispatchEvent("event-1"));
@@ -102,7 +101,7 @@ class WorkflowLifecycleDispatcherTest {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(1);
         jdbc.status = "DISPATCHING";
         AtomicInteger calls = new AtomicInteger();
-        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc,
+        WorkflowLifecycleDispatcher dispatcher = new WorkflowLifecycleDispatcher(jdbc.repository(),
                 List.of(consumer(event -> calls.incrementAndGet())));
 
         assertEquals(1, dispatcher.dispatchBatch(1));
@@ -120,7 +119,7 @@ class WorkflowLifecycleDispatcherTest {
         };
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends WorkflowLifecycleDispatcherRepository {
         private String status = "PENDING";
         private int attempts;
         private String lastSql;
@@ -129,19 +128,25 @@ class WorkflowLifecycleDispatcherTest {
         private int recoveredClaims;
 
         private StubJdbcTemplate(int attempts) {
+            super(null);
             this.attempts = attempts;
         }
 
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.contains("d.event_id = ?")) requestedEventId = String.valueOf(args[0]);
+        public List<Map<String, Object>> pending(int limit) {
             if (!status.equals("PENDING") && !status.equals("RETRY")) return List.of();
             return List.of(Map.of("id", 11L, "tenant_id", 1L, "event_id", "event-1",
                     "subscriber_key", "release", "attempt_count", attempts));
         }
 
         @Override
-        public Map<String, Object> queryForMap(String sql, Object... args) {
+        public List<Map<String, Object>> pendingEvent(String eventId) {
+            requestedEventId = eventId;
+            return pending(1);
+        }
+
+        @Override
+        public Map<String, Object> loadEvent(String eventId, long tenantId) {
             return Map.ofEntries(
                     Map.entry("event_id", "event-1"), Map.entry("tenant_id", 1L), Map.entry("instance_id", 21L),
                     Map.entry("event_type", "APPROVED"), Map.entry("business_type", "release"),
@@ -153,29 +158,48 @@ class WorkflowLifecycleDispatcherTest {
         }
 
         @Override
-        public int update(String sql, Object... args) {
-            lastSql = sql;
-            if (sql.startsWith("UPDATE wf_lifecycle_delivery SET status = 'RETRY'") && sql.contains("updated_at < ?")) {
+        public int recoverStale(Timestamp before) {
                 if (!"DISPATCHING".equals(status)) return 0;
                 status = "RETRY";
                 recoveredClaims++;
-            } else if (sql.startsWith("UPDATE wf_lifecycle_delivery SET status = 'DISPATCHING'")) {
-                if (!claimAllowed || (!"PENDING".equals(status) && !"RETRY".equals(status))) return 0;
-                status = "DISPATCHING";
-            } else if (sql.startsWith("UPDATE wf_lifecycle_delivery SET status = 'DELIVERED'")) {
-                status = "DELIVERED";
-                attempts = ((Number) args[0]).intValue();
-            } else if (sql.startsWith("UPDATE wf_lifecycle_delivery SET status = 'PENDING'")) {
-                status = "PENDING";
-                attempts = ((Number) args[0]).intValue();
-            } else if (sql.startsWith("UPDATE wf_lifecycle_delivery SET status = 'RETRY'")) {
-                status = "RETRY";
-                attempts = ((Number) args[0]).intValue();
-            } else if (sql.startsWith("UPDATE wf_lifecycle_delivery SET status = 'DEAD'")) {
-                status = "DEAD";
-                attempts = ((Number) args[0]).intValue();
-            }
             return 1;
         }
+
+        @Override
+        public int claim(long id) {
+                if (!claimAllowed || (!"PENDING".equals(status) && !"RETRY".equals(status))) return 0;
+                status = "DISPATCHING";
+            return 1;
+        }
+
+        @Override
+        public int markDelivered(long id, int attemptCount) {
+                status = "DELIVERED";
+                attempts = attemptCount;
+            return 1;
+        }
+
+        @Override
+        public int markPending(long id, int attemptCount, String message) {
+                status = "PENDING";
+                attempts = attemptCount;
+            return 1;
+        }
+
+        @Override
+        public int markRetry(long id, int attemptCount, String message, int backoffMinutes) {
+                status = "RETRY";
+                attempts = attemptCount;
+            return 1;
+        }
+
+        @Override
+        public int markDead(long id, int attemptCount, String message) {
+                status = "DEAD";
+                attempts = attemptCount;
+            return 1;
+        }
+
+        WorkflowLifecycleDispatcherRepository repository() { return this; }
     }
 }

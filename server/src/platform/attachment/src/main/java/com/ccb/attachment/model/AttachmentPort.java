@@ -32,4 +32,7 @@ public interface AttachmentPort {
     AttachmentLink download(long attachmentId, String businessType, long businessId, long tenantId);
 
     void delete(long attachmentId, String businessType, long businessId, long tenantId);
+
+    /** Records object cleanup intent and hides all attachments in the current transaction. */
+    void enqueueBusinessDeletion(String businessType, long businessId, long tenantId);
 }

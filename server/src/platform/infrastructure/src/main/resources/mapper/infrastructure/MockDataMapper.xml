@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.infrastructure.mock.MockDataMapper">
+  <insert id="upsert">INSERT INTO ${table} (${columns}) VALUES <foreach collection="values" item="value" open="(" separator="," close=")">#{value}</foreach> ON DUPLICATE KEY UPDATE ${updates}</insert>
+  <insert id="saveDatasetState">INSERT INTO sys_mock_dataset_state (id, dataset_key, dataset_version, content_sha256, applied_at) VALUES (#{id}, #{datasetKey}, #{datasetVersion}, #{checksum}, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE dataset_version = VALUES(dataset_version), content_sha256 = VALUES(content_sha256), applied_at = CURRENT_TIMESTAMP</insert>
+  <select id="activeTenantRootCount" resultType="long">SELECT COUNT(*) FROM sys_org WHERE tenant_id = #{tenantId} AND parent_id = 0 AND status = 1 AND deleted = 0</select>
+  <select id="activeOrganizationName" resultType="string">SELECT MAX(org_name) FROM sys_org WHERE tenant_id = #{tenantId} AND id = #{organizationId} AND status = 1 AND deleted = 0</select>
+  <select id="activeUserCount" resultType="long">SELECT COUNT(*) FROM sys_user WHERE tenant_id = #{tenantId} AND id = #{userId} AND status = 1 AND deleted = 0</select>
+  <select id="parameterCount" resultType="long">SELECT COUNT(*) FROM sys_config c JOIN sys_dict_type t ON t.id = c.category_id AND t.tenant_id = c.tenant_id WHERE c.tenant_id = #{tenantId} AND t.dict_code = #{categoryCode} AND c.config_key = #{configKey} AND t.status = 1 AND t.deleted = 0 AND c.status = 1 AND c.deleted = 0</select>
+</mapper>

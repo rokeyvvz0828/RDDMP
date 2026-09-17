@@ -2,12 +2,12 @@ package com.ccb.boot.integration;
 
 import com.ccb.system.notification.NotificationPublishCommand;
 import com.ccb.system.notification.SystemNotificationPublisher;
+import com.ccb.boot.persistence.BootWorkflowRepository;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import com.ccb.workflow.integration.WorkflowTaskAssignedEvent;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -85,16 +85,13 @@ class WorkflowSystemNotificationBridgeTest {
         }
     }
 
-    private static final class NotificationJdbcTemplate extends JdbcTemplate {
-        @Override
-        public List<Map<String, Object>> queryForList(String sql) {
-            return pendingTask();
-        }
+    private static final class NotificationJdbcTemplate extends BootWorkflowRepository {
+        private NotificationJdbcTemplate() { super(null); }
 
-        @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            return pendingTask();
-        }
+        @Override public List<Map<String, Object>> pendingTask(Map<String, Object> params) { return pendingTask(); }
+        @Override public List<Map<String, Object>> pendingTasks(Map<String, Object> params) { return pendingTask(); }
+        @Override public List<Map<String, Object>> missingPendingNotifications() { return pendingTask(); }
+        @Override public List<Long> instanceStarters(Map<String, Object> params) { return List.of(1L); }
 
         private List<Map<String, Object>> pendingTask() {
             return List.of(Map.ofEntries(
@@ -113,10 +110,5 @@ class WorkflowSystemNotificationBridgeTest {
                     Map.entry("action_path", "/release/applications/SQ-001")));
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            return (List<T>) List.of(1L);
-        }
     }
 }

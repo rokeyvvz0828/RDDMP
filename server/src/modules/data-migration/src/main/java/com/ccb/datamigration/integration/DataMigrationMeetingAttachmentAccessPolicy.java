@@ -5,17 +5,17 @@ import com.ccb.attachment.integration.AttachmentOperation;
 import com.ccb.datamigration.service.DataMigrationPermissionService;
 import com.ccb.datamigration.service.MeetingService;
 import com.ccb.security.model.AuthUser;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import java.util.Map;
 
 /** 附件平台访问策略：会议附件只能随所属会议的租户和生命周期访问。 */
 @Component
 public class DataMigrationMeetingAttachmentAccessPolicy implements AttachmentAccessPolicy {
-    private final JdbcTemplate jdbc;
+    private final DataMigrationAttachmentAccessMapper mapper;
     private final DataMigrationPermissionService permissions;
 
-    public DataMigrationMeetingAttachmentAccessPolicy(JdbcTemplate jdbc, DataMigrationPermissionService permissions) {
-        this.jdbc = jdbc;
+    public DataMigrationMeetingAttachmentAccessPolicy(DataMigrationAttachmentAccessMapper mapper, DataMigrationPermissionService permissions) {
+        this.mapper = mapper;
         this.permissions = permissions;
     }
 
@@ -33,11 +33,8 @@ public class DataMigrationMeetingAttachmentAccessPolicy implements AttachmentAcc
         } catch (NumberFormatException ex) {
             return false;
         }
-        var rows = jdbc.queryForList(
-                "SELECT created_by, deleted FROM dm_meeting WHERE meeting_id = ? AND tenant_id = ?",
-                meetingId, user.tenantId());
-        if (rows.isEmpty()) return false;
-        var row = rows.get(0);
+        var row = mapper.meeting(Map.of("id", meetingId, "tenantId", user.tenantId()));
+        if (row == null) return false;
         boolean deleted = ((Number) row.get("deleted")).intValue() != 0;
         if (operation != AttachmentOperation.DELETE && deleted) return false;
         return operation == AttachmentOperation.DELETE

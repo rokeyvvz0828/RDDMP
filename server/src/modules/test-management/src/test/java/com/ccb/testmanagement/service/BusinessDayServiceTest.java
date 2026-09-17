@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Map;
 
@@ -28,27 +27,27 @@ import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class BusinessDayServiceTest {
-    @Mock JdbcTemplate jdbc;
+    @Mock BusinessDayRepository repository;
     @Mock UserDirectoryPort users;
     private final AuthUser operator = new AuthUser(1, 1, "admin", "", "管理员", 1, true);
 
     @Test
     void rejectsUnsafeEnvironmentCodeBeforeDatabaseWrite() {
-        BusinessDayService service = new BusinessDayService(jdbc, new ObjectMapper(), users);
+        BusinessDayService service = new BusinessDayService(repository, new ObjectMapper(), users);
         assertThrows(BusinessException.class, () -> service.createEnvironment(
                 Map.of("env_code", "SIT 1;DROP", "env_name", "测试环境"), operator));
-        verify(jdbc, never()).update(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.<Object[]>any());
+        verify(repository, never()).insertEnvironment(org.mockito.ArgumentMatchers.anyMap());
     }
 
     @Test
     void rejectsInvalidOverviewMonth() {
-        BusinessDayService service = new BusinessDayService(jdbc, new ObjectMapper(), users);
+        BusinessDayService service = new BusinessDayService(repository, new ObjectMapper(), users);
         assertThrows(BusinessException.class, () -> service.overview("2026-13", null, operator));
     }
 
     @Test
     void clearsDependentFieldsWhenScheduleDoesNotRunBatch() {
-        BusinessDayService service = new BusinessDayService(jdbc, new ObjectMapper(), users);
+        BusinessDayService service = new BusinessDayService(repository, new ObjectMapper(), users);
 
         // 关键逻辑：关闭跑批后即使客户端残留旧值，服务端也必须统一清空，不能信任前端显隐状态。
         BusinessDayService.BatchFields fields = service.batchFields(Map.of(
@@ -66,7 +65,7 @@ class BusinessDayServiceTest {
 
     @Test
     void forcesRequirementBatchAndAllowsTurnoverWithoutDependentFields() {
-        BusinessDayService service = new BusinessDayService(jdbc, new ObjectMapper(), users);
+        BusinessDayService service = new BusinessDayService(repository, new ObjectMapper(), users);
 
         BusinessDayService.BatchFields fields = service.batchFields(Map.of("has_batch", false, "batch_type", "翻数"), true);
 
@@ -79,7 +78,7 @@ class BusinessDayServiceTest {
 
     @Test
     void validatesNonEmptyOptionalTurnoverFields() {
-        BusinessDayService service = new BusinessDayService(jdbc, new ObjectMapper(), users);
+        BusinessDayService service = new BusinessDayService(repository, new ObjectMapper(), users);
 
         assertThrows(BusinessException.class, () -> service.batchFields(Map.of(
                 "batch_type", "翻数", "batch_time", "25:00"), true));
@@ -87,7 +86,7 @@ class BusinessDayServiceTest {
 
     @Test
     void requiresAllDependentFieldsForNonTurnoverBatch() {
-        BusinessDayService service = new BusinessDayService(jdbc, new ObjectMapper(), users);
+        BusinessDayService service = new BusinessDayService(repository, new ObjectMapper(), users);
 
         assertThrows(BusinessException.class, () -> service.batchFields(Map.of(
                 "batch_type", "增量",

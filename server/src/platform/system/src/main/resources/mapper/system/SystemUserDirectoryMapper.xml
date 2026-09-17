@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.system.service.SystemUserDirectoryMapper">
+    <sql id="projection">u.id, u.username, u.display_name, u.org_id, COALESCE(o.org_name, '') AS org_name, COALESCE(u.mobile_phone, '') AS mobile_phone</sql>
+    <select id="selectActive" resultType="map">
+        SELECT <include refid="projection"/> FROM sys_user u
+        LEFT JOIN sys_org o ON o.id = u.org_id AND o.tenant_id = u.tenant_id AND o.deleted = 0
+        WHERE u.tenant_id = #{tenantId} AND u.deleted = 0 AND u.status = 1
+        <if test="keyword != null and keyword != ''">AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.display_name LIKE CONCAT('%', #{keyword}, '%') OR COALESCE(u.mobile_phone, '') LIKE CONCAT('%', #{keyword}, '%'))</if>
+        ORDER BY u.display_name, u.id LIMIT #{limit}
+    </select>
+    <select id="selectActiveById" resultType="map">
+        SELECT <include refid="projection"/> FROM sys_user u
+        LEFT JOIN sys_org o ON o.id = u.org_id AND o.tenant_id = u.tenant_id AND o.deleted = 0
+        WHERE u.tenant_id = #{tenantId} AND u.id = #{userId} AND u.deleted = 0 AND u.status = 1
+    </select>
+</mapper>

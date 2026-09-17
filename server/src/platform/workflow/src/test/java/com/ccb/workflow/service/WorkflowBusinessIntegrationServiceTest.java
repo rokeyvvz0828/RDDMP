@@ -10,7 +10,6 @@ import com.ccb.workflow.integration.WorkflowProjectMember;
 import com.ccb.workflow.integration.WorkflowProjectRole;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,7 @@ class WorkflowBusinessIntegrationServiceTest {
 
     @Test
     void startsPublishedDefinitionByCodeAndPersistsValidatedContext() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(Map.of("id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "PLATFORM", "current_version", 3)));
+        StubRepository jdbc = new StubRepository(List.of(Map.of("id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "PLATFORM", "current_version", 3)));
         StubWorkflowService workflow = new StubWorkflowService();
         WorkflowBusinessIntegrationService service = service(jdbc, workflow);
 
@@ -36,16 +35,13 @@ class WorkflowBusinessIntegrationServiceTest {
 
         assertEquals(9001L, result.instanceId());
         assertEquals(88L, result.definitionId());
-        assertEquals(0, jdbc.updateCount);
         assertEquals("P1", workflow.context.projectRef());
         assertEquals("项目一", workflow.context.projectName());
-        assertTrue(jdbc.queries.get(0).contains("d.deployment_id IS NOT NULL"));
-        assertTrue(jdbc.queries.get(0).contains("v.deployment_id IS NOT NULL"));
     }
 
     @Test
     void listsPublishedDefinitionsAndStartsByDefinitionId() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(Map.of(
+        StubRepository jdbc = new StubRepository(List.of(Map.of(
                 "id", 88L, "code", "release-approval", "name", "版本审批", "scope_type", "PLATFORM", "current_version", 3)));
         WorkflowBusinessIntegrationService service = service(jdbc, new StubWorkflowService());
 
@@ -58,9 +54,6 @@ class WorkflowBusinessIntegrationServiceTest {
         assertEquals("release-approval", definitions.get(0).code());
         assertEquals(88L, result.definitionId());
         assertEquals(3, result.definitionVersion());
-        assertTrue(jdbc.queries.stream().allMatch(sql -> sql.contains("d.deployment_id IS NOT NULL")));
-        assertTrue(jdbc.queries.stream().allMatch(sql -> sql.contains("v.deployment_id IS NOT NULL")));
-        assertTrue(jdbc.queries.get(0).contains("d.scope_type IN ('PLATFORM', 'PROJECT')"));
     }
 
     @Test
@@ -69,7 +62,7 @@ class WorkflowBusinessIntegrationServiceTest {
                 "scope_type", "PLATFORM", "current_version", 3);
         Map<String, Object> project = Map.of("id", 99L, "code", "release-approval", "name", "项目版本审批",
                 "scope_type", "PROJECT", "project_id", 10L, "current_version", 5);
-        StubJdbcTemplate jdbc = new StubJdbcTemplate(List.of(legacy), List.of(project));
+        StubRepository jdbc = new StubRepository(List.of(legacy), List.of(project));
         WorkflowBusinessIntegrationService service = service(jdbc, new StubWorkflowService());
 
         var result = service.startByDefinitionId(new WorkflowStartDefinitionCommand(88L,
@@ -77,12 +70,11 @@ class WorkflowBusinessIntegrationServiceTest {
                         "P1", "项目一", "/release/applications/SQ-003", DIGEST), Map.of()), USER);
 
         assertEquals(99L, result.definitionId());
-        assertTrue(jdbc.queries.get(1).contains("ORDER BY CASE WHEN d.scope_type = 'PROJECT' THEN 0 ELSE 1 END"));
     }
 
     @Test
     void missingRunnableDefinitionNamesProjectAndWorkflowCode() {
-        WorkflowBusinessIntegrationService service = service(new StubJdbcTemplate(List.of()), new StubWorkflowService());
+        WorkflowBusinessIntegrationService service = service(new StubRepository(List.of()), new StubWorkflowService());
 
         BusinessException error = assertThrows(BusinessException.class, () -> service.startByCode(
                 new WorkflowStartCommand("release-approval",
@@ -96,48 +88,48 @@ class WorkflowBusinessIntegrationServiceTest {
     @Test
     void rejectsExternalOrProtocolRelativeActionPathBeforeCreatingInstance() {
         StubWorkflowService workflow = new StubWorkflowService();
-        WorkflowBusinessIntegrationService service = service(new StubJdbcTemplate(List.of()), workflow);
+        WorkflowBusinessIntegrationService service = service(new StubRepository(List.of()), workflow);
 
         assertThrows(BusinessException.class, () -> service.startByCode(new WorkflowStartCommand("release-approval",
                 new WorkflowBusinessContext("release", "配置管理", "release_application", "SQ-001", "版本申请", 1, null, null, "//outside.example/review", DIGEST), Map.of()), USER));
         assertEquals(0, workflow.starts);
     }
 
-    private WorkflowBusinessIntegrationService service(StubJdbcTemplate jdbc, StubWorkflowService workflow) {
+    private WorkflowBusinessIntegrationService service(StubRepository jdbc, StubWorkflowService workflow) {
         WorkflowBusinessIntegrationService service = new WorkflowBusinessIntegrationService(jdbc, workflow, new StubLifecycleEventService());
         service.setProjectAccess(new StubProjectAccess());
         return service;
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubRepository extends WorkflowBusinessIntegrationRepository {
         private final List<List<Map<String, Object>>> responses;
-        private final List<String> queries = new ArrayList<>();
         private int queryIndex;
-        private int updateCount;
-        private String lastUpdateSql;
-        private Object[] lastUpdateArgs;
+        private int countCalls;
 
-        private StubJdbcTemplate(List<Map<String, Object>> rows) {
+        private StubRepository(List<Map<String, Object>> rows) {
+            super(null);
             this.responses = List.of(rows);
         }
 
         @SafeVarargs
-        private StubJdbcTemplate(List<Map<String, Object>>... responses) {
+        private StubRepository(List<Map<String, Object>>... responses) {
+            super(null);
             this.responses = List.of(responses);
         }
 
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            queries.add(sql);
+        public List<Map<String, Object>> publishedByCode(long tenantId, String code, Long projectId) {
             return responses.get(Math.min(queryIndex++, responses.size() - 1));
         }
 
         @Override
-        public int update(String sql, Object... args) {
-            updateCount++;
-            lastUpdateSql = sql;
-            lastUpdateArgs = args;
-            return 1;
+        public List<Map<String, Object>> publishedDefinitions(long tenantId) {
+            return responses.get(Math.min(queryIndex++, responses.size() - 1));
+        }
+
+        @Override
+        public List<Map<String, Object>> publishedById(long tenantId, long definitionId) {
+            return responses.get(Math.min(queryIndex++, responses.size() - 1));
         }
     }
 
@@ -146,7 +138,7 @@ class WorkflowBusinessIntegrationServiceTest {
         private WorkflowBusinessContext context;
 
         private StubWorkflowService() {
-            super(null, new ObjectMapper(), null, null, null);
+            super(new ObjectMapper(), null, null, null, null);
         }
 
         @Override

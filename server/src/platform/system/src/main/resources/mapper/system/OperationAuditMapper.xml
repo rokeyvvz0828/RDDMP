@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.system.audit.OperationAuditMapper">
+    <sql id="manageableProject">AND (p.owner_id = #{actorId} OR EXISTS (SELECT 1 FROM pm_project_member m JOIN pm_project_member_role mr ON mr.member_id = m.id AND mr.tenant_id = m.tenant_id JOIN pm_project_role r ON r.id = mr.role_id AND r.tenant_id = mr.tenant_id WHERE m.project_id = p.id AND m.tenant_id = p.tenant_id AND m.user_id = #{actorId} AND m.status = 1 AND m.deleted = 0 AND r.project_id = p.id AND r.role_code = 'PM' AND r.deleted = 0))</sql>
+    <sql id="operationFilter">WHERE l.tenant_id = #{tenantId} AND l.created_at &gt;= #{start} AND l.created_at &lt; #{endExclusive}<if test="superAdmin == false"> AND EXISTS (SELECT 1 FROM pm_project p WHERE p.id = l.project_id AND p.tenant_id = l.tenant_id AND p.deleted = 0 <include refid="manageableProject"/>)</if><if test="projectId != null and projectId &gt; 0"> AND l.project_id = #{projectId}</if><if test="moduleCode != null"> AND l.module_code = #{moduleCode}</if><if test="operationType != null"> AND l.operation_type = #{operationType}</if><if test="success != null"> AND l.success = #{success}</if><if test="keyword != null"> AND (l.operator_name LIKE #{keyword} OR l.operation_code LIKE #{keyword} OR l.request_path LIKE #{keyword} OR l.target_id LIKE #{keyword} OR l.project_name LIKE #{keyword})</if></sql>
+    <select id="countOperations" resultType="long">SELECT COUNT(*) FROM sys_operation_log l <include refid="operationFilter"/></select>
+    <select id="operations" resultType="map">SELECT l.id, l.operator_id, l.operator_name, l.operation_code, l.module_code, l.module_name, l.operation_type, l.target_type, l.target_id, l.project_id, l.project_name, l.request_method, l.request_path, l.success, l.http_status, l.duration_ms, l.error_message, l.client_ip, l.user_agent, l.changed_fields, l.trace_id, l.created_at FROM sys_operation_log l <include refid="operationFilter"/> ORDER BY l.created_at DESC, l.id DESC LIMIT #{size} OFFSET #{offset}</select>
+    <sql id="loginFilter">WHERE l.tenant_id = #{tenantId} AND l.created_at &gt;= #{start} AND l.created_at &lt; #{endExclusive}<if test="success != null"> AND l.success = #{success}</if><if test="keyword != null"> AND (l.username LIKE #{keyword} OR l.client_ip LIKE #{keyword})</if></sql>
+    <select id="countLogins" resultType="long">SELECT COUNT(*) FROM sys_login_log l <include refid="loginFilter"/></select>
+    <select id="logins" resultType="map">SELECT l.id, l.username, l.success, l.failure_reason, l.client_ip, l.user_agent, l.created_at FROM sys_login_log l <include refid="loginFilter"/> ORDER BY l.created_at DESC, l.id DESC LIMIT #{size} OFFSET #{offset}</select>
+    <select id="auditProjects" resultType="map">SELECT p.id, p.project_code, p.project_name FROM pm_project p WHERE p.tenant_id = #{tenantId} AND p.deleted = 0 <if test="superAdmin == false"><include refid="manageableProject"/></if> ORDER BY p.project_name, p.id</select>
+    <select id="manageableProjectCount" resultType="int">SELECT COUNT(*) FROM pm_project p WHERE p.tenant_id = #{tenantId} AND p.deleted = 0 <include refid="manageableProject"/></select>
+    <select id="superAdminCount" resultType="int">SELECT COUNT(*) FROM sys_user_role ur JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id WHERE ur.user_id = #{actorId} AND ur.tenant_id = #{tenantId} AND r.role_code = 'SUPER_ADMIN' AND r.status = 1 AND r.deleted = 0</select>
+    <select id="findProjectById" resultType="map">
+        SELECT id, project_name FROM pm_project WHERE tenant_id = #{tenantId} AND id = #{projectId} AND deleted = 0
+    </select>
+    <select id="findProjectByCode" resultType="map">
+        SELECT id, project_name FROM pm_project WHERE tenant_id = #{tenantId} AND project_code = #{projectCode} AND deleted = 0
+    </select>
+    <insert id="insertLog">
+        INSERT INTO sys_operation_log
+            (id, tenant_id, operator_id, operator_name, operation_code, module_code, module_name, operation_type, target_type,
+             target_id, project_id, project_name, request_method, request_path, success, http_status, duration_ms, error_message,
+             client_ip, user_agent, changed_fields, trace_id)
+        VALUES
+            (#{id}, #{tenantId}, #{operatorId}, #{operatorName}, #{operationCode}, #{moduleCode}, #{moduleName}, #{operationType}, #{targetType},
+             #{targetId}, #{projectId}, #{projectName}, #{requestMethod}, #{requestPath}, #{success}, #{httpStatus}, #{durationMs}, #{errorMessage},
+             #{clientIp}, #{userAgent}, #{changedFields}, #{traceId})
+    </insert>
+</mapper>

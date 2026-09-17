@@ -10,19 +10,17 @@ import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.filepreview.model.FilePreviewUrlProvider;
 import com.ccb.infrastructure.storage.MinioStorageService;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -37,13 +35,13 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
             "png", "jpg", "jpeg", "gif", "zip", "rar"
     );
 
-    private final JdbcTemplate jdbc;
+    private final AttachmentPersistenceRepository repository;
     private final MinioStorageService storage;
     private final FilePreviewUrlProvider previewUrlProvider;
 
-    public ProjectAttachmentPortAdapter(JdbcTemplate jdbc, MinioStorageService storage,
+    public ProjectAttachmentPortAdapter(AttachmentPersistenceRepository repository, MinioStorageService storage,
                                         FilePreviewUrlProvider previewUrlProvider) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.storage = storage;
         this.previewUrlProvider = previewUrlProvider;
     }
@@ -60,9 +58,9 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
         try {
             storage.put(objectKey, file.getInputStream(), file.getSize(), fileData.contentType());
             long id = nextId();
-            jdbc.update("INSERT INTO sys_attachment (id, tenant_id, business_type, business_id, category_id, file_name, content_type, file_size, object_key, uploader_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, tenantId, businessType, businessId, normalizedCategoryId, fileData.fileName(),
-                    fileData.contentType(), file.getSize(), objectKey, uploaderId);
+            repository.insertProjectAttachment(params("id", id, "tenantId", tenantId, "businessType", businessType,
+                    "businessId", businessId, "categoryId", normalizedCategoryId, "fileName", fileData.fileName(),
+                    "contentType", fileData.contentType(), "fileSize", file.getSize(), "objectKey", objectKey, "uploaderId", uploaderId));
             return findRequired(id, businessType, businessId, tenantId);
         } catch (IOException exception) {
             deleteQuietly(objectKey);
@@ -76,12 +74,9 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
     @Override
     public List<AttachmentCategory> listCategories(String businessType, long businessId, long tenantId) {
         validateBusinessScope(businessType, businessId, tenantId);
-        return jdbc.query(
-                "SELECT id, category_name, sort_no FROM sys_attachment_category"
-                        + " WHERE business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0"
-                        + " ORDER BY sort_no, id",
-                (rs, rowNum) -> new AttachmentCategory(rs.getLong("id"), rs.getString("category_name"),
-                        rs.getInt("sort_no")), businessType, businessId, tenantId);
+        return repository.attachmentCategories(params("businessType", businessType, "businessId", businessId, "tenantId", tenantId))
+                .stream().map(row -> new AttachmentCategory(((Number) row.get("id")).longValue(),
+                        String.valueOf(row.get("category_name")), ((Number) row.get("sort_no")).intValue())).toList();
     }
 
     @Override
@@ -90,20 +85,15 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
                                              long tenantId, long creatorId) {
         validateScope(businessType, businessId, tenantId, creatorId);
         String normalizedName = normalizeCategoryName(name);
-        Integer existing = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_attachment_category WHERE business_type = ? AND business_id = ?"
-                        + " AND tenant_id = ? AND category_name = ? AND deleted = 0",
-                Integer.class, businessType, businessId, tenantId, normalizedName);
+        Integer existing = repository.countAttachmentCategoryByName(params("businessType", businessType,
+                "businessId", businessId, "tenantId", tenantId, "categoryName", normalizedName));
         if (existing != null && existing > 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "该附件分类已存在");
         }
         long id = nextId();
-        Integer maxSortNo = jdbc.queryForObject(
-                "SELECT COALESCE(MAX(sort_no), 0) FROM sys_attachment_category"
-                        + " WHERE business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                Integer.class, businessType, businessId, tenantId);
-        jdbc.update("INSERT INTO sys_attachment_category (id, tenant_id, business_type, business_id, category_name, sort_no, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                id, tenantId, businessType, businessId, normalizedName, (maxSortNo == null ? 0 : maxSortNo) + 1, creatorId);
+        Integer maxSortNo = repository.maxAttachmentCategorySort(params("businessType", businessType, "businessId", businessId, "tenantId", tenantId));
+        repository.insertAttachmentCategory(params("id", id, "tenantId", tenantId, "businessType", businessType,
+                "businessId", businessId, "categoryName", normalizedName, "sortNo", (maxSortNo == null ? 0 : maxSortNo) + 1, "creatorId", creatorId));
         return new AttachmentCategory(id, normalizedName, (maxSortNo == null ? 0 : maxSortNo) + 1);
     }
 
@@ -114,9 +104,8 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
         validateBusinessScope(businessType, businessId, tenantId);
         Long normalizedCategoryId = validateCategory(categoryId, businessType, businessId, tenantId);
         findRow(attachmentId, businessType, businessId, tenantId);
-        int changed = jdbc.update("UPDATE sys_attachment SET category_id = ?, updated_at = CURRENT_TIMESTAMP"
-                        + " WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                normalizedCategoryId, attachmentId, businessType, businessId, tenantId);
+        int changed = repository.updateProjectAttachmentCategory(params("categoryId", normalizedCategoryId, "id", attachmentId,
+                "businessType", businessType, "businessId", businessId, "tenantId", tenantId));
         if (changed == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
         return findRequired(attachmentId, businessType, businessId, tenantId);
     }
@@ -127,37 +116,17 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
         validateBusinessScope(businessType, businessId, tenantId);
         PageQuery query = pageQuery == null ? new PageQuery(1, 20) : pageQuery;
         String normalizedKeyword = normalizeKeyword(keyword);
-        StringBuilder where = new StringBuilder(
-                " WHERE a.business_type = ? AND a.business_id = ? AND a.tenant_id = ? AND a.deleted = 0");
-        List<Object> arguments = new ArrayList<>(List.of(businessType, businessId, tenantId));
-        if (!normalizedKeyword.isBlank()) {
-            where.append(" AND a.file_name LIKE ?");
-            arguments.add("%" + normalizedKeyword + "%");
-        }
+        Long normalizedCategoryId = categoryId;
         if (categoryId != null) {
-            if (categoryId == 0) {
-                where.append(" AND a.category_id IS NULL");
-            } else {
+            if (categoryId != 0) {
                 validateCategory(categoryId, businessType, businessId, tenantId);
-                where.append(" AND a.category_id = ?");
-                arguments.add(categoryId);
             }
         }
-
-        Long total = jdbc.queryForObject("SELECT COUNT(*) FROM sys_attachment a" + where,
-                Long.class, arguments.toArray());
         long offset = Math.max(0L, (query.page() - 1L) * query.size());
-        List<Object> pageArguments = new ArrayList<>(arguments);
-        pageArguments.add(query.size());
-        pageArguments.add(offset);
-        List<AttachmentItem> records = jdbc.query(
-                "SELECT a.id, a.file_name, a.content_type, a.file_size, a.uploader_id, a.created_at,"
-                        + " a.category_id, COALESCE(c.category_name, '未分类') AS category_name FROM sys_attachment a"
-                        + " LEFT JOIN sys_attachment_category c ON c.id = a.category_id"
-                        + " AND c.tenant_id = a.tenant_id AND c.business_type = a.business_type"
-                        + " AND c.business_id = a.business_id AND c.deleted = 0"
-                        + where + " ORDER BY a.created_at DESC, a.id DESC LIMIT ? OFFSET ?",
-                this::mapItem, pageArguments.toArray());
+        Map<String, Object> params = params("businessType", businessType, "businessId", businessId, "tenantId", tenantId,
+                "keyword", normalizedKeyword, "categoryId", normalizedCategoryId, "size", query.size(), "offset", offset);
+        Long total = repository.countProjectAttachments(params);
+        List<AttachmentItem> records = repository.projectAttachments(params).stream().map(this::item).toList();
         return new PageResult<>(records, total == null ? 0L : total, query.page(), query.size());
     }
 
@@ -179,36 +148,32 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
     public void delete(long attachmentId, String businessType, long businessId, long tenantId) {
         AttachmentRow row = findRow(attachmentId, businessType, businessId, tenantId);
         storage.delete(row.objectKey());
-        jdbc.update("UPDATE sys_attachment SET deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                attachmentId, businessType, businessId, tenantId);
+        repository.deleteProjectAttachment(params("id", attachmentId, "businessType", businessType, "businessId", businessId, "tenantId", tenantId));
+    }
+
+    @Override
+    @Transactional
+    public void enqueueBusinessDeletion(String businessType, long businessId, long tenantId) {
+        validateBusinessScope(businessType, businessId, tenantId);
+        Map<String, Object> params = params("businessType", businessType, "businessId", businessId, "tenantId", tenantId);
+        repository.enqueueProjectAttachmentDeletion(params);
+        repository.deleteProjectAttachments(params);
     }
 
     private AttachmentItem findRequired(long id, String businessType, long businessId, long tenantId) {
-        AttachmentItem item = jdbc.query(
-                "SELECT a.id, a.file_name, a.content_type, a.file_size, a.uploader_id, a.created_at,"
-                        + " a.category_id, COALESCE(c.category_name, '未分类') AS category_name FROM sys_attachment a"
-                        + " LEFT JOIN sys_attachment_category c ON c.id = a.category_id"
-                        + " AND c.tenant_id = a.tenant_id AND c.business_type = a.business_type"
-                        + " AND c.business_id = a.business_id AND c.deleted = 0"
-                        + " WHERE a.id = ? AND a.business_type = ? AND a.business_id = ? AND a.tenant_id = ? AND a.deleted = 0",
-                rs -> rs.next() ? new AttachmentItem(rs.getLong("id"), rs.getString("file_name"),
-                        rs.getString("content_type"), rs.getLong("file_size"), rs.getLong("uploader_id"),
-                        null, formatTimestamp(rs.getTimestamp("created_at")), nullableLong(rs, "category_id"),
-                        rs.getString("category_name")) : null,
-                id, businessType, businessId, tenantId);
+        Map<String, Object> row = repository.projectAttachment(params("id", id, "businessType", businessType,
+                "businessId", businessId, "tenantId", tenantId));
+        AttachmentItem item = row == null ? null : item(row);
         if (item == null) throw new BusinessException(ErrorCode.INTERNAL_ERROR, "附件元数据保存失败");
         return item;
     }
 
     private AttachmentRow findRow(long id, String businessType, long businessId, long tenantId) {
         validateBusinessScope(businessType, businessId, tenantId);
-        AttachmentRow row = jdbc.query(
-                "SELECT id, file_name, object_key FROM sys_attachment WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                rs -> rs.next() ? new AttachmentRow(rs.getLong("id"), rs.getString("file_name"),
-                        rs.getString("object_key")) : null,
-                id, businessType, businessId, tenantId);
+        Map<String, Object> row = repository.projectAttachment(params("id", id, "businessType", businessType,
+                "businessId", businessId, "tenantId", tenantId));
         if (row == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件不存在");
-        return row;
+        return new AttachmentRow(((Number) row.get("id")).longValue(), String.valueOf(row.get("file_name")), String.valueOf(row.get("object_key")));
     }
 
     private FileData validateFile(MultipartFile file) {
@@ -248,19 +213,21 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
         return value.length() > 100 ? value.substring(0, 100) : value;
     }
 
-    private AttachmentItem mapItem(ResultSet rs, int rowNum) throws SQLException {
-        return new AttachmentItem(rs.getLong("id"), rs.getString("file_name"), rs.getString("content_type"),
-                rs.getLong("file_size"), rs.getLong("uploader_id"), null,
-                formatTimestamp(rs.getTimestamp("created_at")), nullableLong(rs, "category_id"),
-                rs.getString("category_name"));
+    private AttachmentItem item(Map<String, Object> row) {
+        Object category = row.get("category_id");
+        Object created = row.get("created_at");
+        return new AttachmentItem(((Number) row.get("id")).longValue(), String.valueOf(row.get("file_name")),
+                String.valueOf(row.get("content_type")), ((Number) row.get("file_size")).longValue(),
+                ((Number) row.get("uploader_id")).longValue(), null,
+                created instanceof Timestamp timestamp ? formatTimestamp(timestamp) : null,
+                category instanceof Number number ? number.longValue() : null, String.valueOf(row.get("category_name")));
     }
 
     private Long validateCategory(Long categoryId, String businessType, long businessId, long tenantId) {
         if (categoryId == null) return null;
         if (categoryId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件分类编号无效");
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM sys_attachment_category"
-                        + " WHERE id = ? AND business_type = ? AND business_id = ? AND tenant_id = ? AND deleted = 0",
-                Integer.class, categoryId, businessType, businessId, tenantId);
+        Integer count = repository.countAttachmentCategory(params("categoryId", categoryId, "businessType", businessType,
+                "businessId", businessId, "tenantId", tenantId));
         if (count == null || count == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "附件分类不存在");
         return categoryId;
     }
@@ -274,11 +241,6 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "未分类为系统保留分类");
         }
         return value;
-    }
-
-    private Long nullableLong(ResultSet rs, String column) throws SQLException {
-        long value = rs.getLong(column);
-        return rs.wasNull() ? null : value;
     }
 
     private void validateScope(String businessType, long businessId, long tenantId, long userId) {
@@ -309,6 +271,12 @@ public class ProjectAttachmentPortAdapter implements AttachmentPort {
         } catch (RuntimeException ignored) {
             // Preserve the original upload failure if cleanup also fails.
         }
+    }
+
+    private Map<String, Object> params(Object... values) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        for (int index = 0; index < values.length; index += 2) params.put(String.valueOf(values[index]), values[index + 1]);
+        return params;
     }
 
     private record FileData(String fileName, String extension, String contentType) {

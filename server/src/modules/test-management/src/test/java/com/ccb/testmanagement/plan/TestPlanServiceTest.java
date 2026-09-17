@@ -8,45 +8,42 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TestPlanServiceTest {
-    @Mock JdbcTemplate jdbc;
+    @Mock TestPlanRepository repository;
     @Mock AttachmentGateway attachments;
     private final AuthUser operator = new AuthUser(1, 1, "admin", "", "管理员", 1, true);
 
     @Test
     void rejectsUnknownDomainBeforeReadingProjectOrAttachmentData() {
-        TestPlanService service = new TestPlanService(jdbc, attachments);
+        TestPlanService service = new TestPlanService(repository, attachments);
 
         assertThrows(BusinessException.class, () -> service.tree("unsafe-domain", 1, operator));
 
-        verifyNoInteractions(jdbc, attachments);
+        verifyNoInteractions(repository, attachments);
     }
 
     @Test
     void rejectsDuplicateSpecialNodeInSameProject() {
-        TestPlanService service = new TestPlanService(jdbc, attachments);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
+        TestPlanService service = new TestPlanService(repository, attachments);
+        when(repository.projectExists(org.mockito.ArgumentMatchers.anyMap())).thenReturn(true);
+        when(repository.specialNameCount(org.mockito.ArgumentMatchers.anyMap())).thenReturn(1L);
 
         assertThrows(BusinessException.class, () -> service.createSpecial("application-assembly", 1, Map.of("node_name", "批量交易专项"), operator));
     }
 
     @Test
     void rejectsLegacyDocumentFormatBeforeAnyPlanOrVersionWrite() {
-        TestPlanService service = new TestPlanService(jdbc, attachments);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
+        TestPlanService service = new TestPlanService(repository, attachments);
+        when(repository.projectExists(org.mockito.ArgumentMatchers.anyMap())).thenReturn(true);
         when(attachments.get(91L, operator)).thenReturn(new AttachmentItem(
                 91L, "测试方案.doc", "application/msword", 1024L, "doc", "TEMP",
                 null, null, null, operator.id(), null));

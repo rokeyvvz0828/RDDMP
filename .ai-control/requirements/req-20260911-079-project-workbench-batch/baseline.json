@@ -1,0 +1,20 @@
+{
+  "objective": "Batch project workbench owner and statistics queries while preserving response and authorization behavior.",
+  "requirements": [
+    {"id": "R1", "statement": "N projects use one owner query and one statistics query after the main project query", "acceptance": ["one owner query", "one aggregate query", "no per-project query"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["five queries per project"]},
+    {"id": "R2", "statement": "Existing workbench fields and empty-list behavior remain equivalent", "acceptance": ["owner and aggregate fields preserved", "empty list has no batch query"], "priority": "must", "source": "repository compatibility", "counterexample": ["missing field or extra empty-list query"]},
+    {"id": "R3", "statement": "Tenant and project visibility conditions remain enforced", "acceptance": ["tenant-bound owner and aggregate queries", "existing projectScope retained"], "priority": "must", "source": "repository governance", "counterexample": ["cross-tenant aggregate"]}
+  ],
+  "invariants": ["No REST response change", "No authorization bypass", "No schema change"],
+  "constraints": ["Only REQ-079 writable paths", "Java package names unchanged", "No production access"],
+  "non_goals": ["project detail decoration", "other JdbcTemplate migrations", "caching or schema changes"],
+  "assumptions": [{"text": "correlated aggregate subqueries preserve per-project counts", "basis": "each subquery is correlated by tenant and project id", "falsifier": "focused response equivalence test fails"}],
+  "unknowns": [{"question": "whether local data has null owner ids", "impact": "owner_name fallback", "owner": "system owner", "blocking": false}],
+  "decisions": [{"id": "D1", "decision": "batch only workbench path; retain detail decorator", "reason": "minimize compatibility surface", "source": "automatic continuation authorization"}],
+  "measurement_intents": [
+    {"requirement_id": "R1", "signal": "JdbcTemplate query count", "method": "ProjectServiceTest"},
+    {"requirement_id": "R2", "signal": "field values and empty-list behavior", "method": "ProjectServiceTest"},
+    {"requirement_id": "R3", "signal": "tenant/scope SQL", "method": "source assertion and existing regression"}
+  ],
+  "baseline_status": "ready"
+}

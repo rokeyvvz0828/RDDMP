@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowTaskQueryMapper">
+    <select id="pendingTasks" resultType="long">SELECT COUNT(*) FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.tenant_id = #{tenantId} AND i.project_id = #{projectId} AND t.assignee_id = #{userId} AND t.status = 'PENDING' AND i.deleted = 0</select>
+    <select id="instanceProject" resultType="map">SELECT project_id FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <select id="variables" resultType="map">SELECT variables_json FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId}</select>
+    <select id="latestDraftVersion" resultType="long">SELECT MAX(version_no) FROM wf_version WHERE definition_id = #{definitionId} AND tenant_id = #{tenantId} AND status = 'DRAFT'</select>
+    <select id="taskContext" resultType="map">SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status AS task_status, t.assignee_id, i.definition_id, i.version_no, i.business_key, i.business_type, i.business_title, i.business_round, i.project_id, i.project_ref, i.project_name, i.action_path, i.status AS instance_status, CAST(v.definition_json AS CHAR) AS definition_json FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id JOIN wf_version v ON v.definition_id = i.definition_id AND v.version_no = i.version_no AND v.tenant_id = i.tenant_id WHERE t.id = #{taskId} AND t.tenant_id = #{tenantId} AND i.deleted = 0</select>
+    <select id="currentTask" resultType="map">SELECT t.id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.tenant_id = #{tenantId} AND t.assignee_id = #{userId} AND i.deleted = 0 AND i.business_type = #{businessType} AND i.business_key = #{businessKey} AND i.status = 'RUNNING' AND t.status = 'PENDING' AND t.task_type &lt;&gt; 'CC' ORDER BY i.business_round DESC, t.id DESC LIMIT 1</select>
+    <select id="flowableTaskCount" resultType="int">SELECT COUNT(*) FROM wf_task WHERE id = #{taskId} AND tenant_id = #{tenantId} AND flowable_task_id IS NOT NULL</select>
+    <select id="versionJson" resultType="map">SELECT definition_json FROM wf_version WHERE definition_id = #{definitionId} AND version_no = #{versionNo} AND tenant_id = #{tenantId}</select>
+    <select id="instanceStatus" resultType="string">SELECT status FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId}</select>
+</mapper>

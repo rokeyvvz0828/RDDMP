@@ -1,0 +1,103 @@
+{
+  "objective": "Keep the existing project-member and workflow-definition list APIs compatible while bounding their database work and making their performance observable.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Project member roles are queried in one tenant-bound batch after the member query.",
+      "acceptance": ["A member-list request performs one member query and one role batch query", "Ordering, role contents, avatar URLs, authorization results, and empty-list behavior remain unchanged"],
+      "priority": "must",
+      "source": "User-approved REQ-20260911-076 design",
+      "counterexample": ["A role query is issued for each returned member"]
+    },
+    {
+      "id": "R2",
+      "statement": "Workflow definition lists use stored summaries without selecting definition_json.",
+      "acceptance": ["The definition-list Mapper SQL does not select definition_json", "The existing requires_configuration response value reflects the latest version summary"],
+      "priority": "must",
+      "source": "User-approved REQ-20260911-076 design",
+      "counterexample": ["The list query fetches definition_json and removes it from the response"]
+    },
+    {
+      "id": "R3",
+      "statement": "Workflow definition summaries are backfilled and remain synchronized with all affected version write paths in the same transaction.",
+      "acceptance": ["Migration backfill matches the latest version projection", "Create, edit, copy, and publish write paths refresh latest_version_no and requires_configuration"],
+      "priority": "must",
+      "source": "User-approved REQ-20260911-076 design",
+      "counterexample": ["A copied or edited draft exposes a stale summary"]
+    },
+    {
+      "id": "R4",
+      "statement": "Both read paths publish timing metrics using only fixed low-cardinality tags.",
+      "acceptance": ["Actuator exposes ccb.project.members.query and ccb.workflow.definitions.query", "Tags contain only operation, scope_type, and outcome values and contain no business identifiers"],
+      "priority": "must",
+      "source": "User-approved REQ-20260911-076 design",
+      "counterexample": ["A tenant, user, project, definition, request, or JSON value is a metric tag"]
+    },
+    {
+      "id": "R5",
+      "statement": "Tenant isolation, service-layer authorization, pagination, auditing, public API contracts, and current_version semantics remain unchanged.",
+      "acceptance": ["Every Mapper read is tenant-bound", "Regression checks retain authorized and denied behavior and existing response fields"],
+      "priority": "must",
+      "source": "Repository governance and user-approved design",
+      "counterexample": ["A Mapper bypasses service authorization or reads records across tenants"]
+    }
+  ],
+  "invariants": [
+    "No public REST API or frontend response-shape change",
+    "Service layer retains authentication, RBAC, project access, pagination response assembly, and audit responsibilities",
+    "current_version retains its published-version meaning",
+    "Flyway migrations are append-only and target MySQL 8.4",
+    "Metric tags do not contain high-cardinality or sensitive identifiers"
+  ],
+  "constraints": [
+    "Only files authorized by REQ-20260911-076 codex-task-scope.yaml may be changed",
+    "The change spans approved platform/system, platform/workflow, platform/infrastructure, and boot configuration surfaces",
+    "No production access or sensitive data",
+    "Module and package names remain unchanged"
+  ],
+  "non_goals": [
+    "Full JdbcTemplate migration",
+    "Service/package split",
+    "Caching, Redis, cursor pagination, Outbox, or attachment cleanup changes",
+    "REST API, JWT, RBAC, or frontend changes"
+  ],
+  "assumptions": [
+    {
+      "text": "Module-local MyBatis-Plus starter dependencies can discover annotated Mapper interfaces and classpath mapper XML resources.",
+      "basis": "Root POM manages MyBatis-Plus 3.5.12 and application-local.yml already configures mapper-locations.",
+      "falsifier": "Focused Maven startup or Mapper tests fail resource discovery."
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "Whether legacy definition JSON contains placeholder variants outside the current Java projection logic.",
+      "impact": "A SQL-only migration backfill might disagree with application behavior.",
+      "owner": "platform/workflow owner",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "question": "Should the latest workflow-version summary reuse current_version?",
+      "options": ["Use current_version", "Maintain a separate latest_version_no summary"],
+      "selected": "Maintain a separate latest_version_no summary",
+      "blocking": false,
+      "source": "User-approved design D1"
+    },
+    {
+      "question": "Should the data-access migration cover all services?",
+      "options": ["Migrate all JdbcTemplate access", "Migrate only the two approved read clusters"],
+      "selected": "Migrate only the two approved read clusters",
+      "blocking": false,
+      "source": "User-approved design D2"
+    }
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "Mapper delegation, a single batch role lookup, and member response equivalence", "candidate_sensor": "System service/Mapper tests and local API probe"},
+    {"requirement_id": "R2", "observable": "Definition-list XML excludes definition_json and returns summary values", "candidate_sensor": "Workflow tests and XML inspection"},
+    {"requirement_id": "R3", "observable": "Migration and each version writer produce matching summaries", "candidate_sensor": "MySQL Flyway integration and lifecycle tests"},
+    {"requirement_id": "R4", "observable": "Both timers and their bounded tag keys are visible through Actuator", "candidate_sensor": "Metric tests and Actuator probe"},
+    {"requirement_id": "R5", "observable": "Tenant-bound Mapper predicates and service authorization behavior remain intact", "candidate_sensor": "Regression tests and targeted API authorization checks"}
+  ],
+  "baseline_status": "ready"
+}

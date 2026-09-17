@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowDefinitionMapper">
+    <sql id="definitionScope">
+        WHERE tenant_id = #{tenantId} AND deleted = 0
+        <choose>
+            <when test="requestedScope == null">
+                <choose>
+                    <when test="projectId == null">
+                        AND scope_type = 'TEMPLATE'
+                    </when>
+                    <otherwise>
+                        AND (scope_type = 'TEMPLATE' OR (scope_type = 'PROJECT' AND project_id = #{projectId}))
+                    </otherwise>
+                </choose>
+            </when>
+            <when test="requestedScope == 'PROJECT'">
+                AND scope_type = 'PROJECT' AND project_id = #{projectId}
+            </when>
+            <otherwise>
+                AND scope_type = #{requestedScope}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="selectDefinitionSummaries" resultType="map">
+        SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version,
+               latest_version_no, requires_configuration, created_at
+        FROM wf_definition
+        <include refid="definitionScope" />
+        ORDER BY id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countDefinitionSummaries" resultType="long">
+        SELECT COUNT(*)
+        FROM wf_definition
+        <include refid="definitionScope" />
+    </select>
+    <select id="status" resultType="map">SELECT status FROM wf_definition WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <select id="versions" resultType="map">SELECT version_no, status, model_schema_version, created_at FROM wf_version WHERE definition_id = #{definitionId} AND tenant_id = #{tenantId} ORDER BY version_no DESC</select>
+    <select id="events" resultType="map">SELECT a.id, a.event_type, a.version_no, a.operator_id, u.display_name AS operator_name, a.reason, CAST(a.payload_json AS CHAR) AS payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.definition_id = #{definitionId} AND a.tenant_id = #{tenantId} AND a.instance_id IS NULL ORDER BY a.created_at DESC, a.id DESC</select>
+    <select id="published" resultType="map">SELECT id, code, name, scope_type, project_id, status, current_version FROM wf_definition WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND status = 'PUBLISHED' AND deleted = 0</select>
+    <update id="updateDraft">UPDATE wf_definition SET code = #{code}, name = #{name} WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND deleted = 0 AND status = 'DRAFT'</update>
+    <update id="softDelete">UPDATE wf_definition SET deleted = 1 WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND deleted = 0 AND status = 'DRAFT'</update>
+    <update id="archive">UPDATE wf_definition SET status = 'ARCHIVED' WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND deleted = 0 AND status = 'PUBLISHED'</update>
+    <update id="restore">UPDATE wf_definition SET status = 'PUBLISHED' WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND deleted = 0 AND status = 'ARCHIVED'</update>
+    <insert id="insertDefinition">INSERT INTO wf_definition (id, tenant_id, code, name, scope_type, project_id, status, current_version, deleted) VALUES (#{id}, #{tenantId}, #{code}, #{name}, #{scope}, #{projectId}, 'DRAFT', 0, 0)</insert>
+    <select id="definitionSummary" resultType="map">SELECT id, code, name, scope_type, project_id, status, current_version FROM wf_definition WHERE id = #{definitionId} AND tenant_id = #{tenantId}</select>
+    <update id="publishVersion">UPDATE wf_version SET status = 'PUBLISHED' WHERE definition_id = #{definitionId} AND tenant_id = #{tenantId} AND version_no = #{versionNo}</update>
+    <update id="publishDefinition">UPDATE wf_definition SET status = 'PUBLISHED', current_version = #{versionNo} WHERE id = #{definitionId} AND tenant_id = #{tenantId}</update>
+    <select id="nextVersion" resultType="long">SELECT COALESCE(MAX(version_no), 0) + 1 FROM wf_version WHERE definition_id = #{definitionId} AND tenant_id = #{tenantId}</select>
+    <update id="unpublish">UPDATE wf_definition SET status = 'DRAFT', current_version = #{versionNo} WHERE id = #{definitionId} AND tenant_id = #{tenantId} AND deleted = 0</update>
+</mapper>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowLifecycleEventMapper">
+    <select id="instanceContext" resultType="map">
+        SELECT tenant_id, business_module_code, business_module_name, business_type, business_key,
+               business_title, business_round, project_ref, project_name, action_path, data_digest
+        FROM wf_instance
+        WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND deleted = 0
+    </select>
+
+    <insert id="insertEvent">
+        INSERT INTO wf_lifecycle_event
+            (id, event_id, tenant_id, instance_id, event_type, business_module_code, business_module_name,
+             business_type, business_key, business_round, business_title, project_ref, project_name,
+             action_path, data_digest, operator_id)
+        VALUES
+            (#{id}, #{eventId}, #{tenantId}, #{instanceId}, #{eventType}, #{businessModuleCode},
+             #{businessModuleName}, #{businessType}, #{businessKey}, #{businessRound}, #{businessTitle},
+             #{projectRef}, #{projectName}, #{actionPath}, #{dataDigest}, #{operatorId})
+    </insert>
+
+    <insert id="insertDelivery">
+        INSERT INTO wf_lifecycle_delivery
+            (id, tenant_id, event_id, subscriber_key, status, next_attempt_at)
+        VALUES (#{id}, #{tenantId}, #{eventId}, #{subscriberKey}, 'PENDING', CURRENT_TIMESTAMP)
+    </insert>
+</mapper>

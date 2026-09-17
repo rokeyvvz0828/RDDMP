@@ -28,9 +28,9 @@ class RequirementBaselineServiceTest {
                 sql -> sql.contains("requirement:admin") ? 1L : counts.apply(sql),
                 differences,
                 project);
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementBaselineService service = new RequirementBaselineService(jdbc, changeLog, security, new ObjectMapper());
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementBaselineService service = new RequirementBaselineService(new RequirementBaselineRepository(jdbc), changeLog, security, new ObjectMapper());
         return new Fixture(jdbc, service);
     }
 
@@ -50,9 +50,9 @@ class RequirementBaselineServiceTest {
         difference.put("review_status", "已评审");
         Fixture fixture = fixture(sql -> sql.contains("review_status <> '已评审'") ? 0L : 0L, List.of(difference));
         fixture.service().create(1L, "测试基线", ADMIN);
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_baseline`")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_baseline_item`")));
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("UPDATE req_difference SET baseline_id")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("baseline insert")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("baseline item insert")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("difference baseline")));
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
     }
 

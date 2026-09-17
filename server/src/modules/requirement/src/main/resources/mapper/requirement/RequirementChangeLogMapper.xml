@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementChangeLogMapper">
+  <insert id="insert">INSERT INTO req_change_log (id,tenant_id,biz_type,biz_id,field_name,old_value,new_value,change_type,operator_id,operator_name,source,trace_id,deleted) VALUES (#{id},#{tenantId},#{bizType},#{bizId},#{field},#{oldValue},#{newValue},#{changeType},#{operatorId},#{operatorName},#{source},#{traceId},0)</insert>
+  <select id="list" resultType="map">SELECT field_name,old_value,new_value,change_type,operator_id,operator_name,source,trace_id,created_at FROM req_change_log WHERE tenant_id=#{tenantId} AND biz_type=#{bizType} AND biz_id=#{bizId} AND deleted=0 ORDER BY created_at DESC,id DESC</select>
+</mapper>

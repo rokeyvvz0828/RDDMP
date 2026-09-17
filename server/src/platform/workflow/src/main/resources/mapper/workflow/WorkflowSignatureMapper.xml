@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.workflow.service.WorkflowSignatureMapper">
+    <select id="signatures" resultType="map">
+        SELECT id, instance_id, task_id, business_round, action_code, comment_text, data_digest,
+               signer_id, signer_username, signer_display_name, signed_at
+        FROM wf_signature
+        WHERE instance_id = #{instanceId} AND tenant_id = #{tenantId}
+        ORDER BY signed_at, id
+    </select>
+</mapper>

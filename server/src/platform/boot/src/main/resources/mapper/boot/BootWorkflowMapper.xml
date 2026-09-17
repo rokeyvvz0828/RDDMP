@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.boot.persistence.BootWorkflowMapper">
+    <sql id="pendingProjection">SELECT t.id AS task_id, t.assignee_id, t.task_type, t.task_key, i.tenant_id, i.business_module_code, i.business_module_name, i.business_type, i.business_key, i.business_title, i.project_ref, i.project_name, i.action_path FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id</sql>
+    <select id="pendingTask" resultType="map"><include refid="pendingProjection"/> WHERE t.tenant_id = #{tenantId} AND t.instance_id = #{instanceId} AND t.id = #{taskId} AND t.assignee_id = #{assigneeId} AND t.status = 'PENDING' AND i.deleted = 0 AND i.business_type IS NOT NULL</select>
+    <select id="pendingTasks" resultType="map"><include refid="pendingProjection"/> WHERE t.tenant_id = #{tenantId} AND t.instance_id = #{instanceId} AND t.status = 'PENDING' AND i.deleted = 0 AND i.business_type IS NOT NULL ORDER BY t.id</select>
+    <select id="missingPendingNotifications" resultType="map"><include refid="pendingProjection"/> LEFT JOIN sys_notification n ON n.tenant_id = t.tenant_id AND n.business_type = i.business_type AND n.event_id = CONCAT('workflow-task:', t.id, ':assignee:', t.assignee_id) WHERE t.status = 'PENDING' AND t.assignee_id IS NOT NULL AND i.deleted = 0 AND i.business_type IS NOT NULL AND n.id IS NULL ORDER BY t.created_at, t.id LIMIT 200</select>
+    <select id="instanceStarters" resultType="long">SELECT starter_id FROM wf_instance WHERE id = #{instanceId} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <select id="activeOperator" resultType="map">SELECT id, username, display_name, org_id FROM sys_user WHERE tenant_id = #{tenantId} AND id = #{operatorUserId} AND deleted = 0 AND status = 1</select>
+    <select id="seededDefinitions" resultType="map">SELECT id, code, status FROM wf_definition WHERE tenant_id = #{tenantId} AND deleted = 0 AND code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach></select>
+</mapper>

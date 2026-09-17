@@ -1,0 +1,1366 @@
+{
+  "schema_version": 5,
+  "revision": 27,
+  "created_at": "2026-09-11T11:47:45+00:00",
+  "updated_at": "2026-09-11T12:00:06+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化 full 工作流",
+      "recorded_at": "2026-09-11T11:47:45+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline fields and measurable requirements are complete",
+      "recorded_at": "2026-09-11T11:49:25+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Model defines bounded batch actions and per-requirement sensors",
+      "recorded_at": "2026-09-11T11:51:50+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Plan has three bounded tasks with coverage, rollback and checks",
+      "recorded_at": "2026-09-11T11:53:03+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "All implementation tasks have executable evidence",
+      "recorded_at": "2026-09-11T11:58:47+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "Three complete observations and all tasks verified",
+      "recorded_at": "2026-09-11T11:59:31+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Verification gate passed: all requirements and tasks verified",
+      "recorded_at": "2026-09-11T12:00:06+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "REQ-079 ready requirement and authorized scope recorded",
+        "recorded_at": "2026-09-11T11:49:17+00:00",
+        "data": {
+          "objective": "Batch project workbench owner and statistics queries while preserving response and authorization behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "N projects use one owner query and one statistics query after the main project query",
+              "acceptance": [
+                "one owner query",
+                "one aggregate query",
+                "no per-project query"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "five queries per project"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Existing workbench fields and empty-list behavior remain equivalent",
+              "acceptance": [
+                "owner and aggregate fields preserved",
+                "empty list has no batch query"
+              ],
+              "priority": "must",
+              "source": "repository compatibility",
+              "counterexample": [
+                "missing field or extra empty-list query"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Tenant and project visibility conditions remain enforced",
+              "acceptance": [
+                "tenant-bound owner and aggregate queries",
+                "existing projectScope retained"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "cross-tenant aggregate"
+              ]
+            }
+          ],
+          "invariants": [
+            "No REST response change",
+            "No authorization bypass",
+            "No schema change"
+          ],
+          "constraints": [
+            "Only REQ-079 writable paths",
+            "Java package names unchanged",
+            "No production access"
+          ],
+          "non_goals": [
+            "project detail decoration",
+            "other JdbcTemplate migrations",
+            "caching or schema changes"
+          ],
+          "assumptions": [
+            {
+              "text": "correlated aggregate subqueries preserve per-project counts",
+              "basis": "each subquery is correlated by tenant and project id",
+              "falsifier": "focused response equivalence test fails"
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "whether local data has null owner ids",
+              "impact": "owner_name fallback",
+              "owner": "system owner",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "batch only workbench path; retain detail decorator",
+              "reason": "minimize compatibility surface",
+              "source": "automatic continuation authorization"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "signal": "JdbcTemplate query count",
+              "method": "ProjectServiceTest"
+            },
+            {
+              "requirement_id": "R2",
+              "signal": "field values and empty-list behavior",
+              "method": "ProjectServiceTest"
+            },
+            {
+              "requirement_id": "R3",
+              "signal": "tenant/scope SQL",
+              "method": "source assertion and existing regression"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Model maps each must requirement to query-count, response and scope sensors",
+        "recorded_at": "2026-09-11T11:50:52+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant": "ProjectService.workbench and JdbcTemplate read path",
+          "plant_boundary": {
+            "inside": [
+              "workbench main query",
+              "batch owner query",
+              "batch aggregate query"
+            ],
+            "outside": [
+              "project detail",
+              "REST controller",
+              "database schema"
+            ]
+          },
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "cause": "per-project decoration",
+              "action": "batch owner and aggregate reads",
+              "sensor": "S1"
+            },
+            {
+              "requirement_id": "R2",
+              "cause": "response assembly",
+              "action": "map fields by project id",
+              "sensor": "S1"
+            },
+            {
+              "requirement_id": "R3",
+              "cause": "scope SQL",
+              "action": "retain tenant and project predicates",
+              "sensor": "S3"
+            }
+          ],
+          "state_variables": [
+            "project rows",
+            "owner names",
+            "member/plan aggregates"
+          ],
+          "interfaces": [
+            "ProjectService.workbench(AuthUser)"
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "method": "ProjectServiceTest query verification",
+              "target": "query count and fields",
+              "independence": "automated test"
+            },
+            {
+              "id": "S2",
+              "method": "ccb-system regression",
+              "target": "authorization and compatibility",
+              "independence": "module regression"
+            },
+            {
+              "id": "S3",
+              "method": "diff and SQL inspection",
+              "target": "tenant/scope invariants",
+              "independence": "static check"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "action": "batch owner query",
+              "rollback": "restore decorator loop"
+            },
+            {
+              "id": "A2",
+              "action": "batch aggregate query",
+              "rollback": "restore decorator loop"
+            }
+          ],
+          "disturbances": [
+            "empty project list",
+            "multiple owners",
+            "projects with no plans",
+            "non-super-admin scope"
+          ],
+          "delays": [
+            "single request round-trip per batch query"
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 with S1."
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A2 with S1/S2."
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Preserve scope SQL and verify with S2/S3."
+            }
+          ],
+          "assumptions": [
+            "correlated aggregate subqueries preserve per-project counts without join multiplication"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1/R2/R3",
+              "sensor": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "model_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Model revised with one measurement binding per must requirement",
+        "recorded_at": "2026-09-11T11:51:22+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant": "ProjectService.workbench and JdbcTemplate read path",
+          "plant_boundary": {
+            "inside": [
+              "workbench main query",
+              "batch owner query",
+              "batch aggregate query"
+            ],
+            "outside": [
+              "project detail",
+              "REST controller",
+              "database schema"
+            ]
+          },
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "cause": "per-project decoration",
+              "action": "batch owner and aggregate reads",
+              "sensor": "S1"
+            },
+            {
+              "requirement_id": "R2",
+              "cause": "response assembly",
+              "action": "map fields by project id",
+              "sensor": "S1"
+            },
+            {
+              "requirement_id": "R3",
+              "cause": "scope SQL",
+              "action": "retain tenant and project predicates",
+              "sensor": "S3"
+            }
+          ],
+          "state_variables": [
+            "project rows",
+            "owner names",
+            "member/plan aggregates"
+          ],
+          "interfaces": [
+            "ProjectService.workbench(AuthUser)"
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "method": "ProjectServiceTest query verification",
+              "target": "query count and fields",
+              "independence": "automated test"
+            },
+            {
+              "id": "S2",
+              "method": "ccb-system regression",
+              "target": "authorization and compatibility",
+              "independence": "module regression"
+            },
+            {
+              "id": "S3",
+              "method": "diff and SQL inspection",
+              "target": "tenant/scope invariants",
+              "independence": "static check"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "action": "batch owner query",
+              "rollback": "restore decorator loop"
+            },
+            {
+              "id": "A2",
+              "action": "batch aggregate query",
+              "rollback": "restore decorator loop"
+            }
+          ],
+          "disturbances": [
+            "empty project list",
+            "multiple owners",
+            "projects with no plans",
+            "non-super-admin scope"
+          ],
+          "delays": [
+            "single request round-trip per batch query"
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A1/A2 with S1."
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Use A2 with S1/S2."
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Preserve scope SQL and verify with S2/S3."
+            }
+          ],
+          "assumptions": [
+            "correlated aggregate subqueries preserve per-project counts without join multiplication"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Plan covers batch implementation, focused regression and module verification",
+        "recorded_at": "2026-09-11T11:52:55+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Replace workbench per-project decoration with batch owner and aggregate queries",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "workbench calls decorateProject per row"
+              ],
+              "write_scope": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+              ],
+              "invariants": [
+                "response fields unchanged",
+                "tenant scope retained"
+              ],
+              "interface_contracts": [
+                "ProjectService.workbench"
+              ],
+              "non_goals": [
+                "detail path"
+              ],
+              "action_bounds": [
+                "workbench read assembly only"
+              ],
+              "acceptance_checks": [
+                "one owner and one aggregate query"
+              ],
+              "evidence_required": [
+                "diff",
+                "test"
+              ],
+              "stop_conditions": [
+                "scope SQL changes"
+              ],
+              "escalation_conditions": [
+                "schema change needed"
+              ],
+              "rollback": "restore per-project decorator"
+            },
+            {
+              "id": "T2",
+              "goal": "Add focused regression tests",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "batch decorator implemented"
+              ],
+              "write_scope": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ],
+              "invariants": [
+                "empty list remains empty"
+              ],
+              "interface_contracts": [
+                "existing test fixture"
+              ],
+              "non_goals": [
+                "new API"
+              ],
+              "action_bounds": [
+                "tests only"
+              ],
+              "acceptance_checks": [
+                "field compatibility and query count assertions"
+              ],
+              "evidence_required": [
+                "test output"
+              ],
+              "stop_conditions": [
+                "behavior mismatch"
+              ],
+              "escalation_conditions": [
+                "contract change needed"
+              ],
+              "rollback": "remove focused tests"
+            },
+            {
+              "id": "T3",
+              "goal": "Run module regression and scope checks",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "implementation and tests present"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260911-079-project-workbench-batch/*.json"
+              ],
+              "invariants": [
+                "scope adherence"
+              ],
+              "interface_contracts": [
+                "existing workbench response"
+              ],
+              "non_goals": [
+                "production verification"
+              ],
+              "action_bounds": [
+                "verification only"
+              ],
+              "acceptance_checks": [
+                "system tests and diff check pass"
+              ],
+              "evidence_required": [
+                "commands and outcomes"
+              ],
+              "stop_conditions": [
+                "regression"
+              ],
+              "escalation_conditions": [
+                "environment unavailable"
+              ],
+              "rollback": "re-run after correction"
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2"
+            },
+            {
+              "from": "T2",
+              "to": "T3"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "ccb-system focused tests"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "S1",
+              "task": "T1/T2",
+              "sensor": "S1"
+            },
+            {
+              "label": "S2",
+              "task": "T3",
+              "sensor": "S2"
+            },
+            {
+              "label": "S3",
+              "task": "T3",
+              "sensor": "S3"
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 implementation evidence",
+        "recorded_at": "2026-09-11T11:58:42+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "Batch workbench owner and aggregate reads while retaining detail decoration."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am '-Dtest=ProjectServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+              "exit_code": 0,
+              "salient_output": "ProjectServiceTest 48/48 passed."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Batch query assembly",
+              "result": "pass",
+              "evidence": "Focused test verifies three queryForList calls for multiple projects."
+            }
+          ],
+          "diff_summary": [
+            "workbench now performs one owner query and one aggregate query after the main project query"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "tenant and project scope retained",
+              "result": "pass",
+              "evidence": "Owner and aggregate SQL bind tenant_id; main query retains projectScope."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 focused test evidence",
+        "recorded_at": "2026-09-11T11:58:44+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "purpose": "Cover batch query count, field compatibility and empty-plan defaults."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am '-Dtest=ProjectServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+              "exit_code": 0,
+              "salient_output": "ProjectServiceTest 48/48 passed."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Focused regression",
+              "result": "pass",
+              "evidence": "Multiple-project owner/statistics values and rounded progress verified."
+            }
+          ],
+          "diff_summary": [
+            "corrected progress assertion to match two-decimal service rounding"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "empty and no-plan behavior preserved",
+              "result": "pass",
+              "evidence": "Test verifies zero counts and null progress default."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 regression evidence",
+        "recorded_at": "2026-09-11T11:58:45+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "All reactor tests passed; system module 99/99."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "System module regression and scope check",
+              "result": "pass",
+              "evidence": "All 99 system tests passed and diff check clean."
+            }
+          ],
+          "diff_summary": [
+            "Verification only; no product source changes."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "authorized source scope",
+              "result": "pass",
+              "evidence": "Product changes are limited to ProjectService and ProjectServiceTest for REQ-079."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Focused query and response observation",
+        "recorded_at": "2026-09-11T11:59:17+00:00",
+        "data": {
+          "sample_label": "S1-focused",
+          "task_ids": [
+            "T1",
+            "T2"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "observed": "3 queryForList calls for two projects: main, owner batch, aggregate batch",
+              "expected": "one owner and one aggregate query after main",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R2",
+              "observed": "owner/count/progress fields assembled; no-plan progress is 0",
+              "expected": "existing fields and defaults preserved",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "System regression observation",
+        "recorded_at": "2026-09-11T11:59:18+00:00",
+        "data": {
+          "sample_label": "S2-system-regression",
+          "task_ids": [
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "observed": "ProjectServiceTest 48/48 passed",
+              "expected": "response compatibility",
+              "result": "pass"
+            },
+            {
+              "requirement_id": "R3",
+              "observed": "existing authorization regression included in passing suite",
+              "expected": "scope enforcement retained",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "Static scope observation",
+        "recorded_at": "2026-09-11T11:59:20+00:00",
+        "data": {
+          "sample_label": "S3-static-scope",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-1",
+          "measurements": [
+            {
+              "requirement_id": "R3",
+              "observed": "git diff --check passed; owner and aggregate SQL bind tenant_id; main projectScope unchanged",
+              "expected": "tenant and visibility predicates retained",
+              "result": "pass"
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Requirements, tasks, regression and scope verification",
+        "recorded_at": "2026-09-11T12:00:03+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Focused test verifies three queries for multiple projects and no per-project decoration query."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "evidence": [
+                "Focused and system regression suites pass; fields and no-plan defaults preserved."
+              ],
+              "limitations": []
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "Tenant predicates and unchanged projectScope inspected; system regression passes."
+              ],
+              "limitations": []
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "execution-T1 and observation-T1"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "execution-T2 and observation-T2"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "execution-T3 and observation-T3"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "ProjectService focused tests",
+              "result": "pass",
+              "evidence": "48/48 passed"
+            },
+            {
+              "check": "ccb-system module regression",
+              "result": "pass",
+              "evidence": "99/99 system tests passed; all reactor modules succeeded"
+            },
+            {
+              "check": "Whitespace",
+              "result": "pass",
+              "evidence": "git diff --check exited 0"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "No response or authorization contract change",
+              "result": "pass",
+              "evidence": "Only workbench decoration path changed; projectScope and tenant predicates retained."
+            },
+            {
+              "invariant": "No schema change",
+              "result": "pass",
+              "evidence": "No migration files changed for REQ-079."
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "empty project list and projects without plans",
+              "result": "pass",
+              "evidence": "Focused tests verify empty/no-plan defaults."
+            }
+          ],
+          "residual_risks": [
+            "No live production query count was performed; rollout monitoring should confirm query latency and counts."
+          ],
+          "gate_result": "pass",
+          "route_reason": "All must requirements map to verified tasks, three zero-error samples, passing focused/module regressions and clean scope audit."
+        }
+      }
+    ]
+  },
+  "objective": "Batch project workbench owner and statistics queries while preserving response and authorization behavior.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "N projects use one owner query and one statistics query after the main project query",
+      "acceptance": [
+        "one owner query",
+        "one aggregate query",
+        "no per-project query"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "five queries per project"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Existing workbench fields and empty-list behavior remain equivalent",
+      "acceptance": [
+        "owner and aggregate fields preserved",
+        "empty list has no batch query"
+      ],
+      "priority": "must",
+      "source": "repository compatibility",
+      "counterexample": [
+        "missing field or extra empty-list query"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Tenant and project visibility conditions remain enforced",
+      "acceptance": [
+        "tenant-bound owner and aggregate queries",
+        "existing projectScope retained"
+      ],
+      "priority": "must",
+      "source": "repository governance",
+      "counterexample": [
+        "cross-tenant aggregate"
+      ]
+    }
+  ],
+  "invariants": [
+    "No REST response change",
+    "No authorization bypass",
+    "No schema change"
+  ],
+  "constraints": [
+    "Only REQ-079 writable paths",
+    "Java package names unchanged",
+    "No production access"
+  ],
+  "non_goals": [
+    "project detail decoration",
+    "other JdbcTemplate migrations",
+    "caching or schema changes"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "{\"inside\": [\"workbench main query\", \"batch owner query\", \"batch aggregate query\"], \"outside\": [\"project detail\", \"REST controller\", \"database schema\"]}",
+    "sensors": [
+      "{\"id\": \"S1\", \"independence\": \"automated test\", \"method\": \"ProjectServiceTest query verification\", \"target\": \"query count and fields\"}",
+      "{\"id\": \"S2\", \"independence\": \"module regression\", \"method\": \"ccb-system regression\", \"target\": \"authorization and compatibility\"}",
+      "{\"id\": \"S3\", \"independence\": \"static check\", \"method\": \"diff and SQL inspection\", \"target\": \"tenant/scope invariants\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"batch owner query\", \"id\": \"A1\", \"rollback\": \"restore decorator loop\"}",
+      "{\"action\": \"batch aggregate query\", \"id\": \"A2\", \"rollback\": \"restore decorator loop\"}"
+    ],
+    "disturbances": [
+      "empty project list",
+      "multiple owners",
+      "projects with no plans",
+      "non-super-admin scope"
+    ],
+    "assumptions": [
+      "correlated aggregate subqueries preserve per-project counts without join multiplication"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Replace workbench per-project decoration with batch owner and aggregate queries",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "workbench calls decorateProject per row"
+      ],
+      "write_scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+      ],
+      "invariants": [
+        "response fields unchanged",
+        "tenant scope retained"
+      ],
+      "interface_contracts": [
+        "ProjectService.workbench"
+      ],
+      "non_goals": [
+        "detail path"
+      ],
+      "action_bounds": [
+        "workbench read assembly only"
+      ],
+      "acceptance": [
+        "one owner and one aggregate query"
+      ],
+      "evidence_required": [
+        "diff",
+        "test"
+      ],
+      "rollback": "restore per-project decorator",
+      "stop_conditions": [
+        "scope SQL changes"
+      ],
+      "escalation_conditions": [
+        "schema change needed"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T11:58:38+00:00",
+          "text": "Implementation completed; beginning observation"
+        },
+        {
+          "recorded_at": "2026-09-11T11:59:26+00:00",
+          "text": "S1 observation passed"
+        }
+      ],
+      "updated_at": "2026-09-11T11:59:26+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Add focused regression tests",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "batch decorator implemented"
+      ],
+      "write_scope": [
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+      ],
+      "invariants": [
+        "empty list remains empty"
+      ],
+      "interface_contracts": [
+        "existing test fixture"
+      ],
+      "non_goals": [
+        "new API"
+      ],
+      "action_bounds": [
+        "tests only"
+      ],
+      "acceptance": [
+        "field compatibility and query count assertions"
+      ],
+      "evidence_required": [
+        "test output"
+      ],
+      "rollback": "remove focused tests",
+      "stop_conditions": [
+        "behavior mismatch"
+      ],
+      "escalation_conditions": [
+        "contract change needed"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T11:58:39+00:00",
+          "text": "Focused regression completed"
+        },
+        {
+          "recorded_at": "2026-09-11T11:59:28+00:00",
+          "text": "S1/S2 observations passed"
+        }
+      ],
+      "updated_at": "2026-09-11T11:59:28+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Run module regression and scope checks",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "implementation and tests present"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-079-project-workbench-batch/*.json"
+      ],
+      "invariants": [
+        "scope adherence"
+      ],
+      "interface_contracts": [
+        "existing workbench response"
+      ],
+      "non_goals": [
+        "production verification"
+      ],
+      "action_bounds": [
+        "verification only"
+      ],
+      "acceptance": [
+        "system tests and diff check pass"
+      ],
+      "evidence_required": [
+        "commands and outcomes"
+      ],
+      "rollback": "re-run after correction",
+      "stop_conditions": [
+        "regression"
+      ],
+      "escalation_conditions": [
+        "environment unavailable"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T11:58:40+00:00",
+          "text": "Module regression and diff check completed"
+        },
+        {
+          "recorded_at": "2026-09-11T11:59:30+00:00",
+          "text": "S2/S3 observations passed"
+        }
+      ],
+      "updated_at": "2026-09-11T11:59:30+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S1-focused",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "ProjectServiceTest 48/48; query count and fields pass",
+      "recorded_at": "2026-09-11T11:59:21+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S2-system",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "ccb-system reactor tests pass: system 99/99",
+      "recorded_at": "2026-09-11T11:59:23+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S3-static",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "git diff --check and tenant SQL inspection pass",
+      "recorded_at": "2026-09-11T11:59:24+00:00"
+    }
+  ]
+}

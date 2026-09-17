@@ -45,7 +45,7 @@ class RuleServiceTest {
     void setUp() {
         jdbc = new StubJdbcTemplate();
         permissions = mock(DataMigrationPermissionService.class);
-        service = new RuleService(jdbc, permissions, null, codeValues());
+        service = new RuleService(new RuleRepository(jdbc), permissions, null, codeValues());
 
         when(permissions.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(permissions.requireProject(any(), any())).thenAnswer(invocation -> {
@@ -83,7 +83,7 @@ class RuleServiceTest {
         DataMigrationPermissionService rejecting = mock(DataMigrationPermissionService.class);
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该规则操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        RuleService rejectingService = new RuleService(jdbc, rejecting, null, codeValues());
+        RuleService rejectingService = new RuleService(new RuleRepository(jdbc), rejecting, null, codeValues());
 
         jdbc.putRule(50L, PROJECT, OTHER.id());
         assertThrows(BusinessException.class, () -> rejectingService.delete(List.of(50L), USER));
@@ -187,7 +187,7 @@ class RuleServiceTest {
         assertTrue(error.getMessage().contains(messageContains), error.getMessage());
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends JdbcTemplate implements RuleMapper {
         private final Map<Long, Map<String, Object>> rules = new LinkedHashMap<>();
         private final List<String> audits = new ArrayList<>();
         private String existingRuleCode;
@@ -316,5 +316,34 @@ class RuleServiceTest {
             }
             return requiredType.cast(0);
         }
+
+        @Override public Long count(Map<String, Object> p) {
+            int deleted = ((Number) p.get("deleted")).intValue();
+            return rules.values().stream().filter(row -> ((Number) row.getOrDefault("deleted", 0)).intValue() == deleted).count();
+        }
+        @Override public List<Map<String, Object>> list(Map<String, Object> p) {
+            int deleted = ((Number) p.get("deleted")).intValue();
+            return rules.values().stream().filter(row -> ((Number) row.getOrDefault("deleted", 0)).intValue() == deleted).<Map<String, Object>>map(row -> new LinkedHashMap<>(row)).toList();
+        }
+        @Override public List<Map<String, Object>> find(long tenantId, long id) { return active(id); }
+        @Override public List<Map<String, Object>> findDeleted(long tenantId, long id) { return deleted(id); }
+        @Override public List<Map<String, Object>> findRaw(long tenantId, long id) { return active(id); }
+        @Override public int insert(Map<String, Object> p) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", p.get("id")); row.put("project_id", p.get("projectId")); row.put("system_code", p.get("systemCode"));
+            row.put("check_target_type", p.get("checkTargetType")); row.put("rule_category", p.get("ruleCategory")); row.put("rule_code", p.get("ruleCode"));
+            row.put("rule_code_desc", p.get("ruleCodeDesc")); row.put("rule_description", p.get("ruleDescription")); row.put("table_name_en", p.get("tableNameEn")); row.put("table_name_cn", p.get("tableNameCn"));
+            row.put("field_name_en", p.get("fieldNameEn")); row.put("field_name_cn", p.get("fieldNameCn")); row.put("owner_id", p.get("ownerId")); row.put("deleted", 0); rules.put(((Number) p.get("id")).longValue(), row); return 1;
+        }
+        @Override public int update(Map<String, Object> p) { Map<String, Object> row = rules.get(((Number) p.get("id")).longValue()); if (row == null) return 0; row.put("check_target_type", p.get("checkTargetType")); row.put("rule_category", p.get("ruleCategory")); row.put("system_code", p.get("systemCode")); row.put("rule_code", p.get("ruleCode")); return 1; }
+        @Override public int softDelete(long tenantId, long id, long actorId) { Map<String, Object> row = rules.get(id); if (row == null) return 0; row.put("deleted", 1); return 1; }
+        @Override public int restore(long tenantId, long id) { if (restoreUpdateCount == 0) return 0; Map<String, Object> row = rules.get(id); if (row == null) return 0; row.put("deleted", 0); return 1; }
+        @Override public int purge(long tenantId, long id) { return rules.remove(id) == null ? 0 : 1; }
+        @Override public Integer enabledComponentCount(long tenantId, long projectId, String systemCode) { return 1; }
+        @Override public Integer ruleCodeCount(long tenantId, String ruleCode, Long excludeId) { return ruleCode.equals(existingRuleCode) ? 1 : 0; }
+        @Override public List<Long> deletedProjectIds(long tenantId, long id) { return deleted(id).stream().map(row -> ((Number) row.get("project_id")).longValue()).toList(); }
+        @Override public int insertAudit(long tenantId, long actorId, long projectId, String operation, long entityId) { audits.add(operation); return 1; }
+        private List<Map<String, Object>> active(long id) { Map<String, Object> row = rules.get(id); return row == null || Integer.valueOf(1).equals(row.get("deleted")) ? List.of() : List.of(new LinkedHashMap<>(row)); }
+        private List<Map<String, Object>> deleted(long id) { Map<String, Object> row = rules.get(id); return row == null || !Integer.valueOf(1).equals(row.get("deleted")) ? List.of() : List.of(new LinkedHashMap<>(row)); }
     }
 }

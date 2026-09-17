@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.security.repository.AuthMapper">
+    <sql id="userColumns">u.id, u.tenant_id, u.username, u.password_hash, u.display_name, u.org_id, u.status, u.avatar_object_key, o.org_name</sql>
+
+    <select id="findByUsername" resultType="map">
+        SELECT <include refid="userColumns"/> FROM sys_user u
+        LEFT JOIN sys_org o ON o.id = u.org_id AND o.tenant_id = u.tenant_id AND o.deleted = 0
+        WHERE u.tenant_id = 1 AND u.username = #{username} AND u.deleted = 0
+    </select>
+    <select id="findById" resultType="map">
+        SELECT <include refid="userColumns"/> FROM sys_user u
+        LEFT JOIN sys_org o ON o.id = u.org_id AND o.tenant_id = u.tenant_id AND o.deleted = 0
+        WHERE u.id = #{id} AND u.tenant_id = #{tenantId} AND u.deleted = 0
+    </select>
+    <select id="findRoles" resultType="string">
+        SELECT r.role_code FROM sys_role r
+        JOIN sys_user_role ur ON ur.role_id = r.id AND ur.tenant_id = r.tenant_id
+        WHERE ur.user_id = #{userId} AND r.tenant_id = #{tenantId} AND r.status = 1 ORDER BY r.id
+    </select>
+    <select id="findSystemPermissions" resultType="string">
+        SELECT DISTINCT p.permission_code FROM sys_menu_permission p
+        JOIN sys_role_permission rp ON rp.permission_id = p.id AND rp.tenant_id = p.tenant_id
+        JOIN sys_user_role ur ON ur.role_id = rp.role_id AND ur.tenant_id = rp.tenant_id
+        JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id
+        WHERE ur.user_id = #{userId} AND p.tenant_id = #{tenantId} AND p.status = 1
+          AND r.status = 1 AND r.deleted = 0 AND p.permission_code LIKE 'system:%'
+    </select>
+    <select id="findProjectPermissions" resultType="string">
+        SELECT DISTINCT permission.permission_code FROM sys_menu_permission permission
+        WHERE permission.tenant_id = #{tenantId} AND permission.status = 1
+          AND permission.permission_code NOT LIKE 'system:%'
+          AND (
+            EXISTS (SELECT 1 FROM pm_project project WHERE project.id = #{projectId} AND project.tenant_id = #{tenantId}
+                AND project.deleted = 0 AND project.owner_id = #{userId})
+            OR EXISTS (
+              SELECT 1 FROM pm_project_member member
+              JOIN pm_project_member_role mr ON mr.member_id = member.id AND mr.tenant_id = member.tenant_id
+              JOIN pm_project_role role ON role.id = mr.role_id AND role.project_id = member.project_id
+                AND role.tenant_id = member.tenant_id AND role.deleted = 0
+              LEFT JOIN pm_project_role_permission rp ON rp.project_id = role.project_id
+                AND rp.role_id = role.id AND rp.tenant_id = role.tenant_id
+              WHERE member.project_id = #{projectId} AND member.tenant_id = #{tenantId} AND member.user_id = #{userId}
+                AND member.status = 1 AND member.deleted = 0 AND (role.role_code = 'PM' OR rp.permission_id = permission.id)
+            )
+            OR EXISTS (
+              SELECT 1 FROM sys_user_role ur JOIN sys_role system_role ON system_role.id = ur.role_id
+                AND system_role.tenant_id = ur.tenant_id
+              WHERE ur.user_id = #{userId} AND ur.tenant_id = #{tenantId} AND system_role.role_code = 'SUPER_ADMIN'
+                AND system_role.status = 1 AND system_role.deleted = 0
+            )
+          )
+    </select>
+    <select id="countProjectManagementPermissions" resultType="int">
+        SELECT COUNT(*) FROM pm_project project
+        WHERE project.tenant_id = #{tenantId} AND project.deleted = 0
+          AND (
+            project.owner_id = #{userId}
+            OR EXISTS (
+              SELECT 1 FROM pm_project_member member
+              JOIN pm_project_member_role mr ON mr.member_id = member.id AND mr.tenant_id = member.tenant_id
+              JOIN pm_project_role role ON role.id = mr.role_id AND role.project_id = member.project_id
+                AND role.tenant_id = member.tenant_id AND role.deleted = 0
+              LEFT JOIN pm_project_role_permission rp ON rp.project_id = role.project_id
+                AND rp.role_id = role.id AND rp.tenant_id = role.tenant_id
+              LEFT JOIN sys_menu_permission permission ON permission.id = rp.permission_id
+                AND permission.tenant_id = rp.tenant_id AND permission.status = 1
+              WHERE member.project_id = project.id AND member.tenant_id = project.tenant_id
+                AND member.user_id = #{userId} AND member.status = 1 AND member.deleted = 0
+                AND (role.role_code = 'PM' OR permission.permission_code = 'project:project:list')
+            )
+            OR EXISTS (
+              SELECT 1 FROM sys_user_role ur JOIN sys_role system_role ON system_role.id = ur.role_id
+                AND system_role.tenant_id = ur.tenant_id
+              WHERE ur.user_id = #{userId} AND ur.tenant_id = #{tenantId} AND system_role.role_code = 'SUPER_ADMIN'
+                AND system_role.status = 1 AND system_role.deleted = 0
+            )
+          )
+    </select>
+    <select id="countProjectAccess" resultType="int">
+        SELECT COUNT(*) FROM pm_project project
+        WHERE project.id = #{projectId} AND project.tenant_id = #{tenantId} AND project.deleted = 0
+          AND (
+            project.owner_id = #{userId}
+            OR EXISTS (SELECT 1 FROM pm_project_member member WHERE member.project_id = project.id
+                AND member.tenant_id = project.tenant_id AND member.user_id = #{userId}
+                AND member.status = 1 AND member.deleted = 0)
+            OR EXISTS (
+              SELECT 1 FROM sys_user_role ur JOIN sys_role role ON role.id = ur.role_id AND role.tenant_id = ur.tenant_id
+              WHERE ur.user_id = #{userId} AND ur.tenant_id = #{tenantId} AND role.role_code = 'SUPER_ADMIN'
+                AND role.status = 1 AND role.deleted = 0
+            )
+          )
+    </select>
+    <select id="findRoutes" resultType="map">
+        SELECT id, parent_id, menu_type, menu_name, route_name, route_path, component_path, permission_code, icon, sort_no
+        FROM sys_menu WHERE tenant_id = #{tenantId} AND status = 1 AND visible = 1 AND deleted = 0
+        ORDER BY parent_id, sort_no, id
+    </select>
+    <insert id="recordLogin">
+        INSERT INTO sys_login_log (id, tenant_id, username, success, failure_reason, client_ip, user_agent)
+        VALUES (#{id}, 1, #{username}, #{success}, #{reason}, #{clientIp}, #{userAgent})
+    </insert>
+    <update id="updateLastLogin">UPDATE sys_user SET last_login_at = #{updatedAt} WHERE id = #{userId} AND tenant_id = 1</update>
+    <update id="updatePassword">UPDATE sys_user SET password_hash = #{passwordHash}, updated_at = #{updatedAt} WHERE id = #{userId} AND tenant_id = #{tenantId} AND deleted = 0</update>
+    <select id="findAvatarObjectKey" resultType="string">SELECT avatar_object_key FROM sys_user WHERE id = #{userId} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <update id="updateAvatarObjectKey">UPDATE sys_user SET avatar_object_key = #{objectKey}, updated_at = #{updatedAt} WHERE id = #{userId} AND tenant_id = #{tenantId} AND deleted = 0</update>
+</mapper>

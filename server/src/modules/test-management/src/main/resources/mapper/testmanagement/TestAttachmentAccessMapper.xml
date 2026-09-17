@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.testmanagement.persistence.TestAttachmentAccessMapper">
+  <select id="defectDomain" resultType="string">SELECT test_domain FROM tm_test_defect WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=0</select>
+  <select id="caseDomain" resultType="string">SELECT test_domain FROM tm_test_case WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=0</select>
+  <select id="announcementCount" resultType="long">SELECT COUNT(*) FROM tm_test_announcement WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=0</select>
+  <select id="planDomain" resultType="string">SELECT p.test_domain FROM tm_test_plan_version v JOIN tm_test_plan p ON p.id=v.plan_id AND p.tenant_id=v.tenant_id AND p.deleted=0 WHERE v.id=#{id} AND v.tenant_id=#{tenantId} AND v.deleted=0</select>
+  <select id="executionDomain" resultType="string">SELECT test_domain FROM tm_test_execution WHERE id=#{id} AND tenant_id=#{tenantId} AND deleted=0</select>
+</mapper>

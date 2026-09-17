@@ -1,0 +1,18 @@
+{
+  "objective": "Persist project attachment deletion intent with the project transaction and perform object cleanup asynchronously with retry and recovery.",
+  "requirements": [
+    {"id": "R1", "statement": "Project deletion must enqueue all project attachment cleanup intents and soft-delete metadata without invoking object storage.", "acceptance": ["ProjectService calls batch enqueue once", "no storage deletion occurs in project deletion path"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["project deletion loops over synchronous AttachmentPort.delete"]},
+    {"id": "R2", "statement": "A post-commit worker must mark successful object deletion DONE and persist a retryable failure state.", "acceptance": ["success test writes DONE", "failure test writes RETRY and increments attempts"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["storage exception loses the event"]},
+    {"id": "R3", "statement": "Outbox registration and processing must avoid duplicate active work and reclaim expired leases.", "acceptance": ["unique tenant/attachment event", "expired PROCESSING claim succeeds"], "priority": "must", "source": "user-confirmed optimization", "counterexample": ["same attachment has two pending events"]},
+    {"id": "R4", "statement": "Existing project authorization, audit and related data cleanup remain unchanged.", "acceptance": ["ProjectService permission tests pass", "existing audit call remains"], "priority": "must", "source": "repository governance", "counterexample": ["new path bypasses entity authorization"]},
+    {"id": "R5", "statement": "The Outbox schema is append-only and pending events survive an application rollback.", "acceptance": ["V205 only creates table/indexes", "pending rows remain recoverable"], "priority": "must", "source": "repository governance", "counterexample": ["migration modifies released attachment tables"]}
+  ],
+  "invariants": ["No storage credentials or contents in Outbox", "no network delete inside project transaction", "tenant and attachment IDs on every event", "Flyway append-only"],
+  "constraints": ["Java 17", "Spring scheduler", "MySQL 8.4", "no broker", "no production access"],
+  "non_goals": ["att_file behavior", "single attachment delete", "outbox UI", "external queue"],
+  "assumptions": [{"text": "storage delete may be retried for one object key.", "basis": "existing attachment cleanup service retries failure", "falsifier": "storage adapter reports absent object as unrecoverable."}],
+  "unknowns": [],
+  "decisions": [{"question": "How to recover after process loss", "options": ["after-commit callback", "Outbox lease worker"], "selected": "Outbox lease worker", "blocking": false, "source": "approved design"}],
+  "measurement_intents": [{"requirement_id": "R1", "observable": "project service invokes enqueue rather than storage deletion", "candidate_sensor": "ProjectServiceTest"}, {"requirement_id": "R2", "observable": "DONE and RETRY transitions", "candidate_sensor": "ProjectAttachmentCleanupOutboxServiceTest"}, {"requirement_id": "R3", "observable": "unique event and lease reclaim SQL", "candidate_sensor": "worker state tests"}, {"requirement_id": "R4", "observable": "existing deletion permission/audit tests", "candidate_sensor": "ProjectServiceTest"}, {"requirement_id": "R5", "observable": "V205 applies additively", "candidate_sensor": "local Flyway migration"}],
+  "baseline_status": "ready"
+}

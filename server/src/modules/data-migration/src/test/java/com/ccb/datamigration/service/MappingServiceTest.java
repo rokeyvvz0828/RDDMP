@@ -49,7 +49,7 @@ class MappingServiceTest {
         attachments = mock(ContentAttachmentService.class);
         fileAssets = mock(ContentFileAssetService.class);
         permissions = mock(DataMigrationPermissionService.class);
-        service = new MappingService(jdbc, attachments, fileAssets, permissions, null,
+        service = new MappingService(new MappingRepository(jdbc), attachments, fileAssets, permissions, null,
                 new ContentDocCodeGenerator(), codeValues());
 
         when(permissions.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
@@ -138,7 +138,7 @@ class MappingServiceTest {
         when(rejecting.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该映射文件操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        MappingService rejectingService = new MappingService(jdbc, attachments, fileAssets, rejecting, null,
+        MappingService rejectingService = new MappingService(new MappingRepository(jdbc), attachments, fileAssets, rejecting, null,
                 new ContentDocCodeGenerator(), codeValues());
         jdbc.putMapping(50L, PROJECT, OTHER.id(), false);
         assertThrows(BusinessException.class, () -> rejectingService.update(50L, singleMappingPatch(), USER));
@@ -188,7 +188,7 @@ class MappingServiceTest {
         when(rejecting.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该映射文件操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        MappingService rejectingService = new MappingService(jdbc, attachments, fileAssets, rejecting, null,
+        MappingService rejectingService = new MappingService(new MappingRepository(jdbc), attachments, fileAssets, rejecting, null,
                 new ContentDocCodeGenerator(), codeValues());
 
         jdbc.putMapping(50L, PROJECT, OTHER.id(), false);
@@ -311,7 +311,7 @@ class MappingServiceTest {
         assertTrue(error.getMessage().contains(messageContains), error.getMessage());
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends JdbcTemplate implements MappingMapper {
         private final Map<Long, Map<String, Object>> mappings = new LinkedHashMap<>();
         private final List<String> audits = new ArrayList<>();
         private int restoreUpdateCount = 1;
@@ -457,5 +457,23 @@ class MappingServiceTest {
             }
             return 1;
         }
+
+        @Override public Long count(long t,long p,String type,String system,String keyword){return 0L;}
+        @Override public List<Map<String,Object>> page(long t,long p,String type,String system,String keyword,int limit,long offset){return List.of();}
+        @Override public List<Map<String,Object>> find(long t,long id){return queryForList("FROM dm_mapping_doc a", t,id);}
+        @Override public void insert(Map<String,Object> p){update("INSERT INTO dm_mapping",p.get("id"),p.get("tenantId"),p.get("projectId"),p.get("systemCode"),p.get("docCode"),p.get("docName"),p.get("mappingType"),p.get("ownerId"),p.get("createdBy"),p.get("updatedBy"));}
+        @Override public int update(Map<String,Object> p){return update("UPDATE dm_mapping_doc SET doc_name",p.get("docName"),p.get("mappingType"),p.get("systemCode"),p.get("updatedBy"),p.get("id"),p.get("tenantId"));}
+        @Override public int softDelete(long t,long id,long by){return update("UPDATE dm_mapping SET deleted = 1",by,id,t);}
+        @Override public List<Long> attachmentIds(long t,long id){return queryForList("SELECT m.attachment_id",Long.class,t,id);}
+        @Override public Long recycleCount(long t,long p,String k){return 0L;}
+        @Override public List<Map<String,Object>> recyclePage(long t,long p,String k,int limit){return List.of();}
+        @Override public List<Map<String,Object>> findDeleted(long t,long id){Map<String,Object> row=mappings.get(id);return row!=null&&Integer.valueOf(1).equals(row.get("deleted"))?List.of(new LinkedHashMap<>(row)):List.of();}
+        @Override public int restore(long t,long id){return update("UPDATE dm_mapping SET deleted = 0",id,t);}
+        @Override public int purge(long t,long id){return update("DELETE FROM dm_mapping",id,t);}
+        @Override public Integer enabledComponentCount(long t,long p,String c){return c.equals(foreignSystem)?1:0;}
+        @Override public List<Long> boundAttachmentIds(long t,long id){return List.of(101L,102L);}
+        @Override public List<Map<String,Object>> findRaw(long t,long id){return find(t,id);}
+        @Override public List<Long> deletedProjectIds(long t,long id){return queryForList("SELECT project_id FROM dm_mapping deleted = 1",Long.class,id,t);}
+        @Override public int insertAudit(long t,long actor,long project,String op,long id){return update("INSERT INTO dm_operation_log",t,actor,project,op,id);}
     }
 }

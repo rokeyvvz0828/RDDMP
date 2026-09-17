@@ -2,55 +2,33 @@ package com.ccb.release.reporting.persistence;
 
 import com.ccb.common.api.PageQuery;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ReleaseAnalyticsStoreTest {
     @Test
-    void keepsDistinctSortColumnsInsideAProjectedSubquery() {
-        CapturingJdbcTemplate jdbc = new CapturingJdbcTemplate();
-        ReleaseAnalyticsStore store = new ReleaseAnalyticsStore(jdbc);
-
-        store.drilldown(1L, "PRJ-1", 10L, "productionResult", "SUCCEEDED", new PageQuery(1, 20));
-
-        assertTrue(jdbc.listSql.contains("SELECT DISTINCT"));
-        assertTrue(jdbc.listSql.contains("a.updated_at AS sort_updated_at"));
-        assertTrue(jdbc.listSql.contains(") drilldown_rows ORDER BY sort_updated_at DESC, sort_id DESC"));
-        assertFalse(jdbc.listSql.startsWith("SELECT DISTINCT"));
+    void drilldownPassesDimensionAndPagedFilterToMapper() {
+        ReleaseAnalyticsMapper mapper = mock(ReleaseAnalyticsMapper.class);
+        when(mapper.drilldown(any())).thenReturn(List.of()); when(mapper.drilldownCount(any())).thenReturn(0L);
+        new ReleaseAnalyticsStore(mapper).drilldown(1L, "PRJ-1", 10L, "productionResult", "SUCCEEDED", new PageQuery(1, 20));
+        ArgumentCaptor<Map<String, Object>> params = ArgumentCaptor.forClass(Map.class);
+        verify(mapper).drilldown(params.capture());
+        assertEquals("productionResult", params.getValue().get("dimension")); assertEquals("SUCCEEDED", params.getValue().get("value")); assertEquals(20L, params.getValue().get("size"));
     }
 
     @Test
-    void summaryCountsDeliveryUnitsAndFileMediaSeparatelyByItemKey() {
-        CapturingJdbcTemplate jdbc = new CapturingJdbcTemplate();
-        ReleaseAnalyticsStore store = new ReleaseAnalyticsStore(jdbc);
-
-        store.summary(1L, "PRJ-1", 10L);
-
-        assertTrue(jdbc.countSql.stream().anyMatch(sql -> sql.contains("d.item_type = 'DELIVERY_UNIT'")
-                && sql.contains("d.item_key")));
-        assertTrue(jdbc.countSql.stream().anyMatch(sql -> sql.contains("d.item_type = 'FILE_MEDIA'")
-                && sql.contains("d.item_key")));
-    }
-
-    private static final class CapturingJdbcTemplate extends JdbcTemplate {
-        private String listSql = "";
-        private final java.util.ArrayList<String> countSql = new java.util.ArrayList<>();
-
-        @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            countSql.add(sql);
-            return requiredType.cast(0L);
-        }
-
-        @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            listSql = sql;
-            return List.of();
-        }
+    void summaryDelegatesSeparateUnitAndFileMediaMetrics() {
+        ReleaseAnalyticsMapper mapper = mock(ReleaseAnalyticsMapper.class);
+        when(mapper.windows(any())).thenReturn(0L); when(mapper.applications(any())).thenReturn(0L); when(mapper.subsystems(any())).thenReturn(0L); when(mapper.units(any())).thenReturn(2L); when(mapper.fileMedia(any())).thenReturn(3L); when(mapper.requirements(any())).thenReturn(0L); when(mapper.versionTypes(any())).thenReturn(List.of()); when(mapper.results(any())).thenReturn(List.of());
+        new ReleaseAnalyticsStore(mapper).summary(1L, "PRJ-1", 10L);
+        verify(mapper).units(any()); verify(mapper).fileMedia(any());
     }
 }

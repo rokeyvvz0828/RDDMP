@@ -6,6 +6,7 @@ import com.ccb.common.api.PageResult;
 import com.ccb.common.trace.TraceId;
 import com.ccb.security.model.AuthUser;
 import com.ccb.workflow.service.WorkflowService;
+import com.ccb.workflow.model.WorkflowCursorPage;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -164,12 +165,37 @@ public class WorkflowController {
         return ApiResponse.success(service.inbox(new PageQuery(page, size), user), TraceId.getOrCreate());
     }
 
+    @GetMapping("/instances/seek")
+    public ApiResponse<WorkflowCursorPage<Map<String, Object>>> instancesSeek(
+            @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String businessKey, @RequestParam(required = false) String definitionKeyword,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String starterKeyword,
+            @RequestParam(required = false) String createdFrom, @RequestParam(required = false) String createdTo,
+            @RequestParam(required = false) String projectRef, @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.instancesSeek(cursor, size, businessKey, definitionKeyword, status,
+                starterKeyword, createdFrom, createdTo, projectRef, user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/inbox/seek")
+    public ApiResponse<WorkflowCursorPage<Map<String, Object>>> inboxSeek(
+            @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.inboxSeek(cursor, size, user), TraceId.getOrCreate());
+    }
+
     @GetMapping("/done")
     public ApiResponse<PageResult<Map<String, Object>>> done(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(service.done(new PageQuery(page, size), user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/done/seek")
+    public ApiResponse<WorkflowCursorPage<Map<String, Object>>> doneSeek(
+            @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.doneSeek(cursor, size, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/submitted")

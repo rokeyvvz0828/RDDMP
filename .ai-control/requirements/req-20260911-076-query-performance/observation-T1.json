@@ -1,0 +1,17 @@
+{
+  "sample_label": "S1-T1 Mapper resource observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 Mapper XML and packaged-resource inspection", "result": "pass", "raw_evidence": "ProjectMemberMapper.xml has one tenant-bound member select and one tenant-bound foreach member-ID role select; the XML is present in system target/classes.", "limitation": ["ProjectService has not yet been switched to invoke the Mapper; fixed query count is not established until T2."]},
+    {"requirement_id": "R2", "sensor": "S2 Workflow summary XML inspection", "result": "pass", "raw_evidence": "WorkflowDefinitionMapper.xml list select contains only wf_definition summary columns and no definition_json token; the XML is present in workflow target/classes.", "limitation": ["WorkflowService has not yet been switched to invoke the Mapper; response behavior is not established until T3."]},
+    {"requirement_id": "R5", "sensor": "S5 Maven Surefire and SQL predicate audit", "result": "pass", "raw_evidence": "30 current system/workflow Surefire XML reports have zero failures/errors, and each new Mapper select binds tenantId.", "limitation": ["This is a non-independent observation in the same Codex context; final API/tenant runtime probing remains required."]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "The Maven -D property requires quoting in PowerShell.", "impact": "The rerun command was used for the valid test result; it does not alter product behavior."}
+  ],
+  "coverage_gaps": ["Application-context Mapper bean scanning", "Member and definition API behavior after service integration", "MySQL execution-plan and migration validation"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

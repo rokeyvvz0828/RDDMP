@@ -1,0 +1,14 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [{"path_or_resource":"server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java","purpose":"Batch workbench owner and aggregate reads while retaining detail decoration."}],
+  "requirements_addressed": ["R1","R2","R3"],
+  "commands": [{"command":"mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am '-Dtest=ProjectServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test","exit_code":0,"salient_output":"ProjectServiceTest 48/48 passed."}],
+  "local_checks": [{"check":"Batch query assembly","result":"pass","evidence":"Focused test verifies three queryForList calls for multiple projects."}],
+  "diff_summary": ["workbench now performs one owner query and one aggregate query after the main project query"],
+  "invariants_checked": [{"invariant":"tenant and project scope retained","result":"pass","evidence":"Owner and aggregate SQL bind tenant_id; main query retains projectScope."}],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": [],
+  "recommended_next": "observe"
+}

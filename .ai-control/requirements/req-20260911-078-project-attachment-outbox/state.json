@@ -1,0 +1,2516 @@
+{
+  "schema_version": 5,
+  "revision": 29,
+  "created_at": "2026-09-11T08:42:59+00:00",
+  "updated_at": "2026-09-11T09:52:35+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed this remaining optimization and authorized all subsequent confirmations.；计划确认=User authorized automatic subsequent confirmations.",
+      "recorded_at": "2026-09-11T08:42:59+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "All five must requirements are measurable and have no blocking unknowns",
+      "recorded_at": "2026-09-11T08:44:14+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All requirements have concrete sensors and authorized actuators",
+      "recorded_at": "2026-09-11T08:45:35+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Authorized controlled plan is ready",
+      "recorded_at": "2026-09-11T08:46:48+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1-T3 execution reports recorded and outputs are measurable",
+      "recorded_at": "2026-09-11T09:48:22+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "All T1-T3 observations, three samples and verified task evidence are recorded",
+      "recorded_at": "2026-09-11T09:50:42+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "Gate passed with three zero-severity samples and all tasks verified",
+      "recorded_at": "2026-09-11T09:52:35+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed this remaining optimization and authorized all subsequent confirmations.；计划确认=User authorized automatic subsequent confirmations.",
+        "recorded_at": "2026-09-11T08:42:59+00:00",
+        "data": {
+          "objective": "Commit project and attachment metadata deletion before asynchronously and recoverably removing the associated object storage objects.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Project deletion must record all project attachment deletion intents in its database transaction and must not call object storage deletion.",
+              "acceptance": [
+                "project test has one enqueue call",
+                "storage delete has no transaction interaction"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "ProjectService loops and deletes objects"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "A post-commit worker must complete successful object cleanup and persist a retryable failure state for unsuccessful deletion.",
+              "acceptance": [
+                "success becomes DONE",
+                "exception becomes RETRY with attempt count"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "exception loses cleanup intent"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "The outbox must prevent duplicate active attachment cleanup events and recover abandoned processing leases.",
+              "acceptance": [
+                "unique event key",
+                "expired lease is claimable"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "two project deletions create duplicate cleanup work"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Project deletion authorization, audit and related-data cleanup behavior must remain intact.",
+              "acceptance": [
+                "ProjectService regression passes",
+                "no attachment project can be deleted outside scope"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "new path bypasses requireProjectAccess"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "The schema must be append-only and recoverable after an application rollback.",
+              "acceptance": [
+                "V205 only adds table/indexes",
+                "pending events remain processable"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "migration alters released tables"
+              ]
+            }
+          ],
+          "invariants": [
+            "No object storage credentials are stored or logged",
+            "No synchronous storage delete in project transaction",
+            "Every event has tenant and attachment scope",
+            "Flyway is append-only"
+          ],
+          "constraints": [
+            "Java 17",
+            "Spring scheduling",
+            "MySQL 8.4",
+            "No message broker",
+            "No production access"
+          ],
+          "non_goals": [
+            "Change att_file cleanup",
+            "Change single attachment deletion",
+            "Add manual outbox UI",
+            "Add external queue"
+          ],
+          "assumptions": [
+            {
+              "text": "MinIO delete may be safely retried for the same object key.",
+              "basis": "existing cleanup retry behavior",
+              "falsifier": "storage adapter treats absent object as unrecoverable."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Use unique tenant/attachment outbox event and expired lease recovery",
+              "reason": "enforces idempotent enqueue and restart safety",
+              "source": "approved design"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ],
+              "signal": "project service interaction",
+              "method": "System unit tests"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "signal": "state transitions",
+              "method": "Attachment worker tests"
+            },
+            {
+              "requirement_ids": [
+                "R5"
+              ],
+              "signal": "V205 migration",
+              "method": "local Flyway migration"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved attachment-outbox baseline reviewed against project and attachment paths",
+        "recorded_at": "2026-09-11T08:44:13+00:00",
+        "data": {
+          "objective": "Persist project attachment deletion intent with the project transaction and perform object cleanup asynchronously with retry and recovery.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Project deletion must enqueue all project attachment cleanup intents and soft-delete metadata without invoking object storage.",
+              "acceptance": [
+                "ProjectService calls batch enqueue once",
+                "no storage deletion occurs in project deletion path"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "project deletion loops over synchronous AttachmentPort.delete"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "A post-commit worker must mark successful object deletion DONE and persist a retryable failure state.",
+              "acceptance": [
+                "success test writes DONE",
+                "failure test writes RETRY and increments attempts"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "storage exception loses the event"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Outbox registration and processing must avoid duplicate active work and reclaim expired leases.",
+              "acceptance": [
+                "unique tenant/attachment event",
+                "expired PROCESSING claim succeeds"
+              ],
+              "priority": "must",
+              "source": "user-confirmed optimization",
+              "counterexample": [
+                "same attachment has two pending events"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Existing project authorization, audit and related data cleanup remain unchanged.",
+              "acceptance": [
+                "ProjectService permission tests pass",
+                "existing audit call remains"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "new path bypasses entity authorization"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "The Outbox schema is append-only and pending events survive an application rollback.",
+              "acceptance": [
+                "V205 only creates table/indexes",
+                "pending rows remain recoverable"
+              ],
+              "priority": "must",
+              "source": "repository governance",
+              "counterexample": [
+                "migration modifies released attachment tables"
+              ]
+            }
+          ],
+          "invariants": [
+            "No storage credentials or contents in Outbox",
+            "no network delete inside project transaction",
+            "tenant and attachment IDs on every event",
+            "Flyway append-only"
+          ],
+          "constraints": [
+            "Java 17",
+            "Spring scheduler",
+            "MySQL 8.4",
+            "no broker",
+            "no production access"
+          ],
+          "non_goals": [
+            "att_file behavior",
+            "single attachment delete",
+            "outbox UI",
+            "external queue"
+          ],
+          "assumptions": [
+            {
+              "text": "storage delete may be retried for one object key.",
+              "basis": "existing attachment cleanup service retries failure",
+              "falsifier": "storage adapter reports absent object as unrecoverable."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "How to recover after process loss",
+              "options": [
+                "after-commit callback",
+                "Outbox lease worker"
+              ],
+              "selected": "Outbox lease worker",
+              "blocking": false,
+              "source": "approved design"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "project service invokes enqueue rather than storage deletion",
+              "candidate_sensor": "ProjectServiceTest"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "DONE and RETRY transitions",
+              "candidate_sensor": "ProjectAttachmentCleanupOutboxServiceTest"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "unique event and lease reclaim SQL",
+              "candidate_sensor": "worker state tests"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "existing deletion permission/audit tests",
+              "candidate_sensor": "ProjectServiceTest"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "V205 applies additively",
+              "candidate_sensor": "local Flyway migration"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Attachment outbox model grounded in current project delete loop, sys_attachment and cleanup services",
+        "recorded_at": "2026-09-11T08:45:35+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "ProjectService.delete",
+              "AttachmentPort",
+              "ProjectAttachmentPortAdapter",
+              "outbox worker",
+              "attachment MySQL schema"
+            ],
+            "environment": [
+              "authenticated project admin",
+              "MySQL 8.4",
+              "MinIO"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "attachment_deleted",
+              "owner": "sys_attachment",
+              "valid_values": [
+                "visible",
+                "soft-deleted"
+              ]
+            },
+            {
+              "name": "outbox_status",
+              "owner": "outbox worker",
+              "valid_values": [
+                "PENDING",
+                "PROCESSING",
+                "DONE",
+                "RETRY"
+              ]
+            },
+            {
+              "name": "lease",
+              "owner": "outbox worker",
+              "valid_values": [
+                "none",
+                "active",
+                "expired"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "authorized project delete",
+              "transitions": [
+                "existing permission checks",
+                "outbox insert-select",
+                "attachment soft-delete",
+                "project transaction commit"
+              ],
+              "outputs": [
+                "pending cleanup intent"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "scheduled worker",
+              "transitions": [
+                "conditional claim",
+                "storage delete outside DB transaction",
+                "finish or retry update"
+              ],
+              "outputs": [
+                "DONE or RETRY"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "repeat delete or expired lease",
+              "transitions": [
+                "unique event key",
+                "conditional claim condition"
+              ],
+              "outputs": [
+                "one active processing event or reclaim"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "project delete",
+              "transitions": [
+                "existing action/access checks and audit",
+                "new enqueue call"
+              ],
+              "outputs": [
+                "authorized audit-preserving removal"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "V205",
+              "transitions": [
+                "create Outbox table/indexes"
+              ],
+              "outputs": [
+                "recoverable rows"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "AttachmentPort.enqueueBusinessDeletion",
+              "producers": [
+                "ProjectAttachmentPortAdapter"
+              ],
+              "consumers": [
+                "ProjectService"
+              ],
+              "invariant": "only metadata and intent writes"
+            },
+            {
+              "name": "MinioStorageService.delete",
+              "producers": [
+                "infrastructure"
+              ],
+              "consumers": [
+                "outbox worker"
+              ],
+              "invariant": "called only after successful claim"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "project transaction path",
+              "method": "ProjectServiceTest interaction assertions",
+              "blind_spots": [
+                "live transaction binding"
+              ],
+              "independence": "port interaction check"
+            },
+            {
+              "id": "S2",
+              "target": "worker state transitions",
+              "method": "outbox worker unit tests with stub JDBC/storage",
+              "blind_spots": [
+                "database locking plan"
+              ],
+              "independence": "storage behavior stubbed independently"
+            },
+            {
+              "id": "S3",
+              "target": "schema migration",
+              "method": "local Flyway boot",
+              "blind_spots": [
+                "production workload"
+              ],
+              "independence": "Flyway runtime"
+            },
+            {
+              "id": "S4",
+              "target": "end-to-end commit then cleanup",
+              "method": "local API and worker sample",
+              "blind_spots": [
+                "multi-node deployment"
+              ],
+              "independence": "HTTP/database/storage integration"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "project delete loop",
+              "action": "replace with attachment batch enqueue",
+              "authority": "REQ-078 writable paths",
+              "impact_radius": "project delete",
+              "rollback": "restore loop"
+            },
+            {
+              "id": "A2",
+              "target": "metadata intent persistence",
+              "action": "add port adapter transactional insert-select",
+              "authority": "REQ-078 writable paths",
+              "impact_radius": "project attachment scope",
+              "rollback": "revert adapter method"
+            },
+            {
+              "id": "A3",
+              "target": "asynchronous storage cleanup",
+              "action": "add V205 and lease worker",
+              "authority": "REQ-078 writable paths",
+              "impact_radius": "new table/scheduler",
+              "rollback": "revert worker and retain table"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "storage failure",
+              "effect": "RETRY needed",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "process termination after claim",
+              "effect": "stale PROCESSING",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "concurrent scheduler",
+              "effect": "duplicate deletion",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "transaction commit",
+              "consequence": "worker must not act before commit",
+              "sampling_rule": "scheduled worker runs after committed event"
+            },
+            {
+              "source": "lease expiry",
+              "consequence": "crash recovery waits bounded interval",
+              "sampling_rule": "claim accepts expired lease"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "object deletion is idempotent enough for retry.",
+              "evidence": "existing attachment cleanup retries delete",
+              "falsifier": "adapter reports absent object fatal"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1,A2"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A2,A3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A1"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "A3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Outbox tasks have bounded transaction, worker and observation scopes",
+        "recorded_at": "2026-09-11T08:46:48+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Enqueue and soft-delete project attachments transactionally.",
+              "requirement_ids": [
+                "R1",
+                "R3",
+                "R4"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "ProjectService loops attachment delete"
+              ],
+              "write_scope": [
+                "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentPort.java",
+                "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/ProjectAttachmentPortAdapter.java",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ],
+              "invariants": [
+                "permission/audit unchanged",
+                "no storage I/O"
+              ],
+              "interface_contracts": [
+                "AttachmentPort batch enqueue"
+              ],
+              "non_goals": [
+                "single attachment delete"
+              ],
+              "action_bounds": [
+                "project attachment scope only"
+              ],
+              "acceptance_checks": [
+                "project service test"
+              ],
+              "evidence_required": [
+                "diff",
+                "test result"
+              ],
+              "rollback": "revert code and retain outbox rows",
+              "stop_conditions": [
+                "transaction separation"
+              ],
+              "escalation_conditions": [
+                "other attachment owner change"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Add V205 and a lease worker.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "existing att_file worker uses a different table"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V205__project_attachment_cleanup_outbox.sql",
+                "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/ProjectAttachmentCleanupOutboxService.java",
+                "server/src/platform/attachment/src/test/java/com/ccb/attachment/service/ProjectAttachmentCleanupOutboxServiceTest.java"
+              ],
+              "invariants": [
+                "network I/O after claim",
+                "errors bounded"
+              ],
+              "interface_contracts": [
+                "Outbox state transitions"
+              ],
+              "non_goals": [
+                "broker"
+              ],
+              "action_bounds": [
+                "new table and worker"
+              ],
+              "acceptance_checks": [
+                "success/retry/lease tests"
+              ],
+              "evidence_required": [
+                "diff",
+                "test/migration result"
+              ],
+              "rollback": "revert worker retain V205",
+              "stop_conditions": [
+                "atomic claim unavailable"
+              ],
+              "escalation_conditions": [
+                "broker required"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Observe integration behavior.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "outbox code exists"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260911-078-project-attachment-outbox/*.json"
+              ],
+              "invariants": [
+                "scope adherence"
+              ],
+              "interface_contracts": [
+                "project deletion behavior"
+              ],
+              "non_goals": [
+                "new UI"
+              ],
+              "action_bounds": [
+                "verification only"
+              ],
+              "acceptance_checks": [
+                "module/full tests/runtime sample"
+              ],
+              "evidence_required": [
+                "commands",
+                "outcomes"
+              ],
+              "rollback": "T1/T2 rollback",
+              "stop_conditions": [
+                "duplicate/unrecoverable event"
+              ],
+              "escalation_conditions": [
+                "storage unavailable"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "worker needs events"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "delete sample"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "worker sample"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "mvn -pl :ccb-system,:ccb-attachment -am test"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "S1",
+              "trigger": "T1",
+              "observer": "system test",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R4"
+              ]
+            },
+            {
+              "label": "S2",
+              "trigger": "T2",
+              "observer": "worker test and migration",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R5"
+              ]
+            },
+            {
+              "label": "S3",
+              "trigger": "T3",
+              "observer": "runtime probe",
+              "sensors": [
+                "S4"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S3",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 transactional project attachment outbox implementation evidence",
+        "recorded_at": "2026-09-11T09:47:41+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "AttachmentPort and ProjectAttachmentPortAdapter",
+              "purpose": "Transactionally enqueue business attachment cleanup and soft delete metadata"
+            },
+            {
+              "path_or_resource": "ProjectService",
+              "purpose": "Replace synchronous paged attachment deletion loop with one batch enqueue"
+            },
+            {
+              "path_or_resource": "ProjectServiceTest",
+              "purpose": "Preserve project deletion behavior and prohibit per-attachment storage deletion"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "98 tests passed including 47 ProjectService tests"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "project deletion interaction",
+              "result": "pass",
+              "evidence": "ProjectServiceTest verifies enqueueBusinessDeletion and no list/delete loop",
+              "limitations": [
+                "object storage is intentionally stubbed in transaction test"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Moved project attachment object deletion intent into batch Outbox enqueue"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "existing project delete permission/audit flow remains",
+              "result": "pass",
+              "evidence": "existing ProjectService regression suite"
+            },
+            {
+              "invariant": "no storage I/O inside project delete transaction",
+              "result": "pass",
+              "evidence": "interaction test"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 lease worker and V205 migration implementation evidence",
+        "recorded_at": "2026-09-11T09:47:44+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "ProjectAttachmentCleanupOutboxService",
+              "purpose": "Lease-based asynchronous storage cleanup and retry state transition"
+            },
+            {
+              "path_or_resource": "V205__project_attachment_cleanup_outbox.sql",
+              "purpose": "Outbox table, uniqueness and claim index"
+            },
+            {
+              "path_or_resource": "ProjectAttachmentCleanupOutboxServiceTest",
+              "purpose": "success, retry and expired lease claim coverage"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-attachment -am -Dtest=ProjectAttachmentCleanupOutboxServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "3 tests passed"
+            },
+            {
+              "command": "temporary MySQL migration validation for V204 and V205",
+              "exit_code": 0,
+              "salient_output": "Outbox table and unique/claim indexes present"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "outbox success/retry/expired lease",
+              "result": "pass",
+              "evidence": "3 focused worker tests",
+              "limitations": [
+                "SQL stub validates state transition query shape rather than concurrent database locking"
+              ]
+            },
+            {
+              "check": "V205 MySQL syntax",
+              "result": "pass",
+              "evidence": "temporary mysql:8.4 applied V205",
+              "limitations": [
+                "validated against an empty disposable database"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added lease worker with DONE/RETRY transitions",
+            "Added append-only project attachment Outbox table"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "only a claimed row calls storage",
+              "result": "pass",
+              "evidence": "worker test stub"
+            },
+            {
+              "invariant": "errors are bounded",
+              "result": "pass",
+              "evidence": "worker truncates stored error to 1000 characters"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 regression and local runtime sample evidence",
+        "recorded_at": "2026-09-11T09:47:47+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "local runtime and task ledger",
+              "purpose": "Regression and runtime boundary sampling"
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test",
+              "exit_code": 0,
+              "salient_output": "98 tests passed"
+            },
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-attachment -am test",
+              "exit_code": 0,
+              "salient_output": "attachment suite passed as part of system reactor"
+            },
+            {
+              "command": "mvn -Dnet.bytebuddy.experimental=true test",
+              "exit_code": 1,
+              "salient_output": "stopped after existing NetworkWorkOrderMySqlTest hung in Flyway socket read"
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "local application health",
+              "result": "pass",
+              "evidence": "existing 8080 actuator health returned UP",
+              "limitations": [
+                "a separate secure 8081 process could not start without JWT_SECRET"
+              ]
+            },
+            {
+              "check": "full reactor regression",
+              "result": "inconclusive",
+              "evidence": "thread dump located pre-existing architecture migration socket wait",
+              "limitations": [
+                "full suite was terminated after prolonged wait"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Recorded integration and environment evidence"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "local service remains reachable",
+              "result": "pass",
+              "evidence": "8080 health response"
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "full reactor architecture migration test retained a dead socket after its temporary MySQL container exited",
+              "impact": "full suite outcome unavailable"
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Authorized project delete plus actual MinIO asynchronous cleanup needs a permitted local test identity and fixture"
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "S1 non-independent transaction observation recorded",
+        "recorded_at": "2026-09-11T09:49:43+00:00",
+        "data": {
+          "sample_label": "S1 project transaction sampling",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "ProjectServiceTest",
+              "result": "pass",
+              "raw_evidence": "47 ProjectService tests passed; delete invokes batch enqueue and not attachment list/delete",
+              "limitation": [
+                "same Codex context as implementation"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "ProjectServiceTest",
+              "result": "pass",
+              "raw_evidence": "delete regression keeps existing project flow",
+              "limitation": [
+                "storage behavior is stubbed"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "system module regression",
+              "result": "pass",
+              "raw_evidence": "98 system-reactor tests passed",
+              "limitation": [
+                "no authenticated HTTP fixture"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Not independently observed by a separate Codex context or Owner"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "S2 non-independent worker and migration observation recorded",
+        "recorded_at": "2026-09-11T09:49:45+00:00",
+        "data": {
+          "sample_label": "S2 outbox state and migration sampling",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "ProjectAttachmentCleanupOutboxServiceTest",
+              "result": "pass",
+              "raw_evidence": "success transition invokes storage then marks DONE",
+              "limitation": [
+                "same Codex context as implementation"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "ProjectAttachmentCleanupOutboxServiceTest",
+              "result": "pass",
+              "raw_evidence": "failure becomes RETRY and expired PROCESSING lease claim predicate is asserted",
+              "limitation": [
+                "no concurrent database lock simulation"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "disposable mysql:8.4",
+              "result": "pass",
+              "raw_evidence": "V205 created Outbox table with unique and claim indexes",
+              "limitation": [
+                "empty disposable database"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Not independently observed by a separate Codex context or Owner"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "S3 non-independent runtime and regression observation recorded",
+        "recorded_at": "2026-09-11T09:49:48+00:00",
+        "data": {
+          "sample_label": "S3 runtime and regression sampling",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R3",
+              "sensor": "local health probe",
+              "result": "pass",
+              "raw_evidence": "existing local application actuator health returned UP",
+              "limitation": [
+                "no credential access for authorized deletion"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "system module regression",
+              "result": "pass",
+              "raw_evidence": "ProjectServiceTest suite passed",
+              "limitation": [
+                "no live delete fixture"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "diff check",
+              "result": "pass",
+              "raw_evidence": "git diff --check exited successfully with CRLF warnings only",
+              "limitation": [
+                "worktree also contains REQ-076 changes"
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "full reactor was stopped after a non-task architecture MySQL migration test retained a dead socket",
+              "classification": "disturbance",
+              "impact": "full regression conclusion unavailable"
+            }
+          ],
+          "coverage_gaps": [
+            "Actual authenticated project delete and MinIO cleanup require a permitted local test identity and fixture",
+            "Full reactor did not complete because NetworkWorkOrderMySqlTest blocked",
+            "Not independently observed by a separate Codex context or Owner"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "Final requirement, task, sample, scope and residual-risk audit recorded",
+        "recorded_at": "2026-09-11T09:52:07+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "id": "R1",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "ProjectServiceTest: 47 passed",
+                "worker success test marks DONE"
+              ],
+              "limitations": [
+                "actual MinIO call is stubbed"
+              ]
+            },
+            {
+              "id": "R2",
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "focused worker success and failure tests: 3 passed"
+              ],
+              "limitations": [
+                "no live object fixture"
+              ]
+            },
+            {
+              "id": "R3",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T2"
+              ],
+              "evidence": [
+                "V205 unique key",
+                "expired PROCESSING lease claim assertion"
+              ],
+              "limitations": [
+                "no concurrent database scheduler run"
+              ]
+            },
+            {
+              "id": "R4",
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "evidence": [
+                "system reactor: 98 tests passed including ProjectServiceTest"
+              ],
+              "limitations": [
+                "authorized local delete fixture unavailable"
+              ]
+            },
+            {
+              "id": "R5",
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "disposable mysql:8.4 applied V205 and found table, unique key and claim index"
+              ],
+              "limitations": [
+                "empty disposable database"
+              ]
+            }
+          ],
+          "task_results": [
+            {
+              "id": "T1",
+              "status": "verified",
+              "evidence": [
+                "execution-T1.json",
+                "observation-T1.json"
+              ]
+            },
+            {
+              "id": "T2",
+              "status": "verified",
+              "evidence": [
+                "execution-T2.json",
+                "observation-T2.json"
+              ]
+            },
+            {
+              "id": "T3",
+              "status": "verified",
+              "evidence": [
+                "execution-T3.json",
+                "observation-T3.json"
+              ]
+            }
+          ],
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {
+              "P2": 0,
+              "P3": 0
+            }
+          },
+          "sample_trend": [
+            {
+              "sample_id": "S-0001",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0002",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            },
+            {
+              "sample_id": "S-0003",
+              "P0": 0,
+              "P1": 0,
+              "P2": 0,
+              "P3": 0,
+              "score": 0
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "ProjectAttachmentCleanupOutboxServiceTest",
+              "result": "pass",
+              "evidence": "3 tests passed"
+            },
+            {
+              "check": "system module regression",
+              "result": "pass",
+              "evidence": "98 tests passed"
+            },
+            {
+              "check": "full reactor",
+              "result": "inconclusive",
+              "evidence": "NetworkWorkOrderMySqlTest Flyway socket wait after temporary MySQL exit"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "project transaction performs no synchronous attachment deletion loop",
+              "result": "pass",
+              "evidence": "ProjectService interaction test"
+            },
+            {
+              "invariant": "new schema is append-only",
+              "result": "pass",
+              "evidence": "V205 creates a new table/indexes only"
+            },
+            {
+              "invariant": "authorized file scope",
+              "result": "pass",
+              "evidence": "task-specific diff review; unrelated REQ-076 changes preserved"
+            }
+          ],
+          "scope_audit": {
+            "within_scope": true,
+            "unexpected_changes": []
+          },
+          "disturbance_resilience": [
+            {
+              "disturbance": "storage exception",
+              "result": "pass",
+              "evidence": "worker test writes RETRY and increments attempt count"
+            },
+            {
+              "disturbance": "abandoned claim",
+              "result": "pass",
+              "evidence": "expired lease predicate is covered by focused test"
+            }
+          ],
+          "residual_risks": [
+            "Full reactor completion is blocked by an unrelated architecture migration test environment failure",
+            "Live authorized project deletion and actual MinIO cleanup remain release follow-ups",
+            "Owner independent review is still required for platform/database changes"
+          ],
+          "gate_result": "pass",
+          "route_reason": "All must requirements have verified task, system, worker or MySQL migration evidence; non-task environment limits are disclosed."
+        }
+      }
+    ]
+  },
+  "objective": "Persist project attachment deletion intent with the project transaction and perform object cleanup asynchronously with retry and recovery.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Project deletion must enqueue all project attachment cleanup intents and soft-delete metadata without invoking object storage.",
+      "acceptance": [
+        "ProjectService calls batch enqueue once",
+        "no storage deletion occurs in project deletion path"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "project deletion loops over synchronous AttachmentPort.delete"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "A post-commit worker must mark successful object deletion DONE and persist a retryable failure state.",
+      "acceptance": [
+        "success test writes DONE",
+        "failure test writes RETRY and increments attempts"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "storage exception loses the event"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Outbox registration and processing must avoid duplicate active work and reclaim expired leases.",
+      "acceptance": [
+        "unique tenant/attachment event",
+        "expired PROCESSING claim succeeds"
+      ],
+      "priority": "must",
+      "source": "user-confirmed optimization",
+      "counterexample": [
+        "same attachment has two pending events"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Existing project authorization, audit and related data cleanup remain unchanged.",
+      "acceptance": [
+        "ProjectService permission tests pass",
+        "existing audit call remains"
+      ],
+      "priority": "must",
+      "source": "repository governance",
+      "counterexample": [
+        "new path bypasses entity authorization"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "The Outbox schema is append-only and pending events survive an application rollback.",
+      "acceptance": [
+        "V205 only creates table/indexes",
+        "pending rows remain recoverable"
+      ],
+      "priority": "must",
+      "source": "repository governance",
+      "counterexample": [
+        "migration modifies released attachment tables"
+      ]
+    }
+  ],
+  "invariants": [
+    "No storage credentials or contents in Outbox",
+    "no network delete inside project transaction",
+    "tenant and attachment IDs on every event",
+    "Flyway append-only"
+  ],
+  "constraints": [
+    "Java 17",
+    "Spring scheduler",
+    "MySQL 8.4",
+    "no broker",
+    "no production access"
+  ],
+  "non_goals": [
+    "att_file behavior",
+    "single attachment delete",
+    "outbox UI",
+    "external queue"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260911-078-project-attachment-outbox\\handoff.json",
+    "imported_at": "2026-09-11T08:42:59+00:00",
+    "topic": "project-attachment-outbox",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "project-attachment-outbox",
+      "handoff_status": "approved",
+      "created_at": "2026-09-11T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "project-attachment-outbox",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-11-project-attachment-outbox-design.md",
+        "objective": "Commit project and attachment metadata deletion before asynchronously and recoverably removing the associated object storage objects.",
+        "users": [
+          "项目管理员",
+          "平台运维人员"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Project deletion must record all project attachment deletion intents in its database transaction and must not call object storage deletion.",
+            "acceptance": [
+              "project test has one enqueue call",
+              "storage delete has no transaction interaction"
+            ],
+            "priority": "must",
+            "source": "user-confirmed optimization",
+            "counterexample": [
+              "ProjectService loops and deletes objects"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "A post-commit worker must complete successful object cleanup and persist a retryable failure state for unsuccessful deletion.",
+            "acceptance": [
+              "success becomes DONE",
+              "exception becomes RETRY with attempt count"
+            ],
+            "priority": "must",
+            "source": "user-confirmed optimization",
+            "counterexample": [
+              "exception loses cleanup intent"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "The outbox must prevent duplicate active attachment cleanup events and recover abandoned processing leases.",
+            "acceptance": [
+              "unique event key",
+              "expired lease is claimable"
+            ],
+            "priority": "must",
+            "source": "user-confirmed optimization",
+            "counterexample": [
+              "two project deletions create duplicate cleanup work"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Project deletion authorization, audit and related-data cleanup behavior must remain intact.",
+            "acceptance": [
+              "ProjectService regression passes",
+              "no attachment project can be deleted outside scope"
+            ],
+            "priority": "must",
+            "source": "repository governance",
+            "counterexample": [
+              "new path bypasses requireProjectAccess"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "The schema must be append-only and recoverable after an application rollback.",
+            "acceptance": [
+              "V205 only adds table/indexes",
+              "pending events remain processable"
+            ],
+            "priority": "must",
+            "source": "repository governance",
+            "counterexample": [
+              "migration alters released tables"
+            ]
+          }
+        ],
+        "invariants": [
+          "No object storage credentials are stored or logged",
+          "No synchronous storage delete in project transaction",
+          "Every event has tenant and attachment scope",
+          "Flyway is append-only"
+        ],
+        "constraints": [
+          "Java 17",
+          "Spring scheduling",
+          "MySQL 8.4",
+          "No message broker",
+          "No production access"
+        ],
+        "non_goals": [
+          "Change att_file cleanup",
+          "Change single attachment deletion",
+          "Add manual outbox UI",
+          "Add external queue"
+        ],
+        "selected_approach": {
+          "name": "Transactional outbox with scheduled lease worker",
+          "reason": "Keeps the database transaction short and makes storage failures visible and retryable without a new broker.",
+          "alternatives": [
+            {
+              "name": "afterCommit callback",
+              "rejected_because": "process crash loses intent."
+            },
+            {
+              "name": "external message queue",
+              "rejected_because": "unnecessary new dependency for current deployment."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "AttachmentPort",
+              "ProjectAttachmentPortAdapter",
+              "ProjectService",
+              "outbox worker",
+              "V205"
+            ],
+            "outside": [
+              "upload/download/preview",
+              "att_file cleanup",
+              "REST contracts"
+            ]
+          },
+          "components": [
+            {
+              "name": "ProjectAttachmentCleanupOutboxService",
+              "responsibility": "claim, call storage after transaction, finish or retry",
+              "depends_on": [
+                "MinioStorageService"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "AttachmentPort.enqueueBusinessDeletion",
+              "producer": "attachment module",
+              "consumers": [
+                "ProjectService"
+              ],
+              "contract": "transactional project attachment intent registration"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "authorized project delete",
+              "transitions": [
+                "outbox insert",
+                "attachment soft delete",
+                "commit",
+                "lease claim",
+                "storage delete"
+              ],
+              "output": "DONE or RETRY event"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "storage delete fails",
+            "behavior": "RETRY plus bounded error",
+            "recovery": "next scheduler run"
+          },
+          {
+            "condition": "worker dies after claim",
+            "behavior": "lease expires",
+            "recovery": "future run reclaims"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "existing project authorization retained",
+            "no storage secrets in event"
+          ],
+          "performance": [
+            "no network I/O in project transaction"
+          ],
+          "compatibility": [
+            "no REST change"
+          ],
+          "operations": [
+            "event states and attempts observable in DB"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R4"
+            ],
+            "signal": "project service interaction",
+            "method": "System unit tests"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "signal": "state transitions",
+            "method": "Attachment worker tests"
+          },
+          {
+            "requirement_ids": [
+              "R5"
+            ],
+            "signal": "V205 migration",
+            "method": "local Flyway migration"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "MinIO delete may be safely retried for the same object key.",
+            "basis": "existing cleanup retry behavior",
+            "falsifier": "storage adapter treats absent object as unrecoverable."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Use unique tenant/attachment outbox event and expired lease recovery",
+            "reason": "enforces idempotent enqueue and restart safety",
+            "source": "approved design"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "processing event remains leased after process loss",
+            "impact": "delayed deletion",
+            "mitigation": "lease expiry claim condition"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed this remaining optimization and authorized all subsequent confirmations.",
+          "confirmed_at": "2026-09-11T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-11-project-attachment-outbox-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "No network delete in project transaction",
+          "existing authorization and audit stay",
+          "only V205 added",
+          "no REST or broker changes"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "project deletion orchestration",
+            "evidence": "current delete loop inspection"
+          },
+          {
+            "path": "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/ProjectAttachmentPortAdapter.java",
+            "status": "existing",
+            "responsibility": "project attachment persistence",
+            "evidence": "current synchronous delete inspection"
+          },
+          {
+            "path": "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/ProjectAttachmentCleanupOutboxService.java",
+            "status": "candidate-new",
+            "responsibility": "lease and retry worker",
+            "evidence": "approved design D1"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Atomically enqueue and soft-delete project attachments from project deletion.",
+            "requirement_ids": [
+              "R1",
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ProjectService currently loops AttachmentPort.delete",
+              "sys_attachment has object keys and soft delete"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "AttachmentPort",
+                "ProjectAttachmentPortAdapter",
+                "ProjectService",
+                "ProjectServiceTest"
+              ],
+              "test": [
+                "ProjectServiceTest"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "project ID",
+                "tenant ID"
+              ],
+              "produces": [
+                "enqueueBusinessDeletion"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add project delete interaction test",
+                "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "new test covers one enqueue path",
+                "evidence": "Surefire result"
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement transactional port registration and replace delete loop",
+                "command": null,
+                "expected": "metadata write only during project transaction",
+                "evidence": "source diff"
+              }
+            ],
+            "acceptance_checks": [
+              "no list/delete loop",
+              "idempotent enqueue SQL",
+              "authorization remains before call"
+            ],
+            "risks": [
+              "transaction divergence"
+            ],
+            "rollback": "revert T1 code without deleting events",
+            "stop_conditions": [
+              "outbox and soft delete cannot share transaction"
+            ],
+            "escalation_conditions": [
+              "other business attachment owner needs same change"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Create V205 and a lease-based post-commit cleanup worker.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Attachment module already schedules separate cleanup",
+              "sys_attachment is a different model from att_file"
+            ],
+            "files": {
+              "create": [
+                "V205__project_attachment_cleanup_outbox.sql",
+                "ProjectAttachmentCleanupOutboxService",
+                "ProjectAttachmentCleanupOutboxServiceTest"
+              ],
+              "modify": [],
+              "test": [
+                "ProjectAttachmentCleanupOutboxServiceTest"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "outbox rows",
+                "MinioStorageService"
+              ],
+              "produces": [
+                "DONE/RETRY state and lease reclaim"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Add table and state transition tests",
+                "command": "mvn -pl :ccb-attachment -am -Dtest=ProjectAttachmentCleanupOutboxServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "success, retry and expired lease cases pass",
+                "evidence": "Surefire result"
+              },
+              {
+                "id": "T2-S2",
+                "action": "Implement short claim/update database operations and network delete outside transaction",
+                "command": null,
+                "expected": "only claimed events call storage",
+                "evidence": "source diff"
+              }
+            ],
+            "acceptance_checks": [
+              "unique active event",
+              "expired PROCESSING reclaimed",
+              "failure errors bounded"
+            ],
+            "risks": [
+              "concurrent scheduler claim"
+            ],
+            "rollback": "revert worker code and retain V205",
+            "stop_conditions": [
+              "claim cannot be atomic"
+            ],
+            "escalation_conditions": [
+              "needs broker or distributed scheduler"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Verify migration, module regressions, runtime behavior and scope.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "Application and migration changes are present"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "task ledger JSON"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1/T2 output"
+              ],
+              "produces": [
+                "execution, observation and convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Run system, attachment, full tests and scope audit",
+                "command": "mvn test",
+                "expected": "all runnable tests pass",
+                "evidence": "exit results and limitations"
+              },
+              {
+                "id": "T3-S2",
+                "action": "Run local transaction/worker sample",
+                "command": "local project deletion plus outbox worker verification",
+                "expected": "commit intent precedes delete and retry is persisted",
+                "evidence": "redacted outcome"
+              }
+            ],
+            "acceptance_checks": [
+              "no synchronous storage delete",
+              "runtime worker sees pending event"
+            ],
+            "risks": [
+              "local object storage availability"
+            ],
+            "rollback": "apply T1/T2 rollback",
+            "stop_conditions": [
+              "worker causes duplicate or unrecoverable processing"
+            ],
+            "escalation_conditions": [
+              "local environment cannot create an attachment sample"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "worker needs outbox events"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "T3 tests delete transaction"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 tests worker state transitions"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2"
+            ],
+            "command": "mvn -pl :ccb-system,:ccb-attachment -am test",
+            "expected": "zero target module failures"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "git diff --check",
+            "expected": "no whitespace errors"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User authorized automatic subsequent confirmations.",
+          "confirmed_at": "2026-09-11T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "project transaction",
+          "AttachmentPort adapter",
+          "Outbox worker",
+          "MinIO"
+        ],
+        "state_variable_candidates": [
+          "attachment deleted",
+          "outbox state",
+          "attempt count",
+          "lease expiry"
+        ],
+        "interface_candidates": [
+          "AttachmentPort.enqueueBusinessDeletion"
+        ],
+        "sensor_candidates": [
+          "ProjectService interaction test",
+          "worker state test",
+          "Flyway local migration",
+          "local runtime sample"
+        ],
+        "actuator_candidates": [
+          "transactional insert-select",
+          "conditional claim update",
+          "scheduled worker"
+        ],
+        "disturbance_candidates": [
+          "storage failure",
+          "process crash after claim",
+          "repeated project delete",
+          "concurrent scheduler"
+        ],
+        "delay_candidates": [
+          "transaction commit",
+          "scheduler interval",
+          "lease expiry"
+        ],
+        "assumptions": [
+          {
+            "text": "object deletion is safe to retry.",
+            "basis": "existing attachment cleanup retry implementation",
+            "falsifier": "MinIO adapter returns permanent absent-object error."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"authenticated project admin\", \"MySQL 8.4\", \"MinIO\"], \"inside\": [\"ProjectService.delete\", \"AttachmentPort\", \"ProjectAttachmentPortAdapter\", \"outbox worker\", \"attachment MySQL schema\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"live transaction binding\"], \"id\": \"S1\", \"independence\": \"port interaction check\", \"method\": \"ProjectServiceTest interaction assertions\", \"target\": \"project transaction path\"}",
+      "{\"blind_spots\": [\"database locking plan\"], \"id\": \"S2\", \"independence\": \"storage behavior stubbed independently\", \"method\": \"outbox worker unit tests with stub JDBC/storage\", \"target\": \"worker state transitions\"}",
+      "{\"blind_spots\": [\"production workload\"], \"id\": \"S3\", \"independence\": \"Flyway runtime\", \"method\": \"local Flyway boot\", \"target\": \"schema migration\"}",
+      "{\"blind_spots\": [\"multi-node deployment\"], \"id\": \"S4\", \"independence\": \"HTTP/database/storage integration\", \"method\": \"local API and worker sample\", \"target\": \"end-to-end commit then cleanup\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"replace with attachment batch enqueue\", \"authority\": \"REQ-078 writable paths\", \"id\": \"A1\", \"impact_radius\": \"project delete\", \"rollback\": \"restore loop\", \"target\": \"project delete loop\"}",
+      "{\"action\": \"add port adapter transactional insert-select\", \"authority\": \"REQ-078 writable paths\", \"id\": \"A2\", \"impact_radius\": \"project attachment scope\", \"rollback\": \"revert adapter method\", \"target\": \"metadata intent persistence\"}",
+      "{\"action\": \"add V205 and lease worker\", \"authority\": \"REQ-078 writable paths\", \"id\": \"A3\", \"impact_radius\": \"new table/scheduler\", \"rollback\": \"revert worker and retain table\", \"target\": \"asynchronous storage cleanup\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"RETRY needed\", \"source\": \"storage failure\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"stale PROCESSING\", \"source\": \"process termination after claim\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"duplicate deletion\", \"source\": \"concurrent scheduler\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"existing attachment cleanup retries delete\", \"falsifier\": \"adapter reports absent object fatal\", \"text\": \"object deletion is idempotent enough for retry.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Enqueue and soft-delete project attachments transactionally.",
+      "requirements": [
+        "R1",
+        "R3",
+        "R4"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "ProjectService loops attachment delete"
+      ],
+      "write_scope": [
+        "server/src/platform/attachment/src/main/java/com/ccb/attachment/model/AttachmentPort.java",
+        "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/ProjectAttachmentPortAdapter.java",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+      ],
+      "invariants": [
+        "permission/audit unchanged",
+        "no storage I/O"
+      ],
+      "interface_contracts": [
+        "AttachmentPort batch enqueue"
+      ],
+      "non_goals": [
+        "single attachment delete"
+      ],
+      "action_bounds": [
+        "project attachment scope only"
+      ],
+      "acceptance": [
+        "project service test"
+      ],
+      "evidence_required": [
+        "diff",
+        "test result"
+      ],
+      "rollback": "revert code and retain outbox rows",
+      "stop_conditions": [
+        "transaction separation"
+      ],
+      "escalation_conditions": [
+        "other attachment owner change"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T09:47:13+00:00",
+          "text": "Execution evidence prepared from actual changes and commands"
+        },
+        {
+          "recorded_at": "2026-09-11T09:48:06+00:00",
+          "text": "Implementation outputs are ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-11T09:50:20+00:00",
+          "text": "Observed with recorded automated, migration and runtime evidence; limitations are documented"
+        }
+      ],
+      "updated_at": "2026-09-11T09:50:20+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Add V205 and a lease worker.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "existing att_file worker uses a different table"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V205__project_attachment_cleanup_outbox.sql",
+        "server/src/platform/attachment/src/main/java/com/ccb/attachment/service/ProjectAttachmentCleanupOutboxService.java",
+        "server/src/platform/attachment/src/test/java/com/ccb/attachment/service/ProjectAttachmentCleanupOutboxServiceTest.java"
+      ],
+      "invariants": [
+        "network I/O after claim",
+        "errors bounded"
+      ],
+      "interface_contracts": [
+        "Outbox state transitions"
+      ],
+      "non_goals": [
+        "broker"
+      ],
+      "action_bounds": [
+        "new table and worker"
+      ],
+      "acceptance": [
+        "success/retry/lease tests"
+      ],
+      "evidence_required": [
+        "diff",
+        "test/migration result"
+      ],
+      "rollback": "revert worker retain V205",
+      "stop_conditions": [
+        "atomic claim unavailable"
+      ],
+      "escalation_conditions": [
+        "broker required"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T09:47:16+00:00",
+          "text": "Execution evidence prepared from actual changes and commands"
+        },
+        {
+          "recorded_at": "2026-09-11T09:48:10+00:00",
+          "text": "Implementation outputs are ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-11T09:50:23+00:00",
+          "text": "Observed with recorded automated, migration and runtime evidence; limitations are documented"
+        }
+      ],
+      "updated_at": "2026-09-11T09:50:23+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Observe integration behavior.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "outbox code exists"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260911-078-project-attachment-outbox/*.json"
+      ],
+      "invariants": [
+        "scope adherence"
+      ],
+      "interface_contracts": [
+        "project deletion behavior"
+      ],
+      "non_goals": [
+        "new UI"
+      ],
+      "action_bounds": [
+        "verification only"
+      ],
+      "acceptance": [
+        "module/full tests/runtime sample"
+      ],
+      "evidence_required": [
+        "commands",
+        "outcomes"
+      ],
+      "rollback": "T1/T2 rollback",
+      "stop_conditions": [
+        "duplicate/unrecoverable event"
+      ],
+      "escalation_conditions": [
+        "storage unavailable"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-11T09:47:18+00:00",
+          "text": "Execution evidence prepared from actual changes and commands"
+        },
+        {
+          "recorded_at": "2026-09-11T09:48:10+00:00",
+          "text": "Implementation outputs are ready for observation"
+        },
+        {
+          "recorded_at": "2026-09-11T09:50:27+00:00",
+          "text": "Observed with recorded automated, migration and runtime evidence; limitations are documented"
+        }
+      ],
+      "updated_at": "2026-09-11T09:50:27+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "S1",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "S1 ProjectService delete regression passed",
+      "recorded_at": "2026-09-11T09:50:05+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "S2",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "S2 worker focused tests and V205 temporary MySQL migration passed",
+      "recorded_at": "2026-09-11T09:50:07+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "S3",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "S3 local health and system regression passed",
+      "recorded_at": "2026-09-11T09:50:09+00:00"
+    }
+  ]
+}

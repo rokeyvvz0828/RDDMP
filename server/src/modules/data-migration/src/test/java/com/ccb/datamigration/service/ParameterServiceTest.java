@@ -45,7 +45,7 @@ class ParameterServiceTest {
     void setUp() {
         jdbc = new StubJdbcTemplate();
         permissions = mock(DataMigrationPermissionService.class);
-        service = new ParameterService(jdbc, permissions, null, codeValues());
+        service = new ParameterService(new ParameterRepository(jdbc), permissions, null, codeValues());
 
         when(permissions.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(permissions.requireProject(any(), any())).thenAnswer(invocation -> {
@@ -92,7 +92,7 @@ class ParameterServiceTest {
         DataMigrationPermissionService rejecting = mock(DataMigrationPermissionService.class);
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该参数操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        ParameterService rejectingService = new ParameterService(jdbc, rejecting, null, codeValues());
+        ParameterService rejectingService = new ParameterService(new ParameterRepository(jdbc), rejecting, null, codeValues());
 
         jdbc.putParameter(50L, PROJECT, OTHER.id());
         assertThrows(BusinessException.class, () -> rejectingService.delete(List.of(50L), USER));
@@ -195,7 +195,7 @@ class ParameterServiceTest {
         assertTrue(error.getMessage().contains(messageContains), error.getMessage());
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends JdbcTemplate implements ParameterMapper {
         private final Map<Long, Map<String, Object>> parameters = new LinkedHashMap<>();
         private final List<String> audits = new ArrayList<>();
         private String existingName;
@@ -343,5 +343,17 @@ class ParameterServiceTest {
         private long number(Object value) {
             return value instanceof Number n ? n.longValue() : Long.parseLong(String.valueOf(value));
         }
+
+        @Override public Long count(Map<String, Object> p) { int deleted = ((Number) p.get("deleted")).intValue(); return parameters.values().stream().filter(row -> ((Number) row.getOrDefault("deleted", 0)).intValue() == deleted).count(); }
+        @Override public List<Map<String, Object>> list(Map<String, Object> p) { int deleted = ((Number) p.get("deleted")).intValue(); return parameters.values().stream().filter(row -> ((Number) row.getOrDefault("deleted", 0)).intValue() == deleted).<Map<String,Object>>map(row -> new LinkedHashMap<>(row)).toList(); }
+        @Override public List<Map<String, Object>> find(long tenantId, long id) { return active(id); }
+        @Override public List<Map<String, Object>> findDeleted(long tenantId, long id) { return deleted(id); }
+        @Override public List<Map<String, Object>> findRaw(long tenantId, long id, int deleted) { return deleted == 1 ? deleted(id) : active(id); }
+        @Override public int insert(Map<String, Object> p) { Map<String,Object> row=baseRow(); row.put("id",p.get("id"));row.put("project_id",p.get("projectId"));row.put("system_code",p.get("systemCode"));row.put("parameter_type",p.get("parameterType"));row.put("parameter_scope",p.get("parameterScope"));row.put("parameter_name",p.get("parameterName"));row.put("parameter_description",p.get("parameterDescription"));row.put("owner_id",p.get("ownerId"));row.put("deleted",0);parameters.put(number(p.get("id")),row);return 1; }
+        @Override public int update(Map<String, Object> p) { Map<String,Object> row=parameters.get(number(p.get("id")));if(row==null)return 0;row.put("parameter_type",p.get("parameterType"));row.put("parameter_scope",p.get("parameterScope"));row.put("system_code",p.get("systemCode"));row.put("parameter_name",p.get("parameterName"));row.put("parameter_description",p.get("parameterDescription"));return 1; }
+        @Override public int softDelete(long tenantId,long id,long actorId){Map<String,Object> row=parameters.get(id);if(row==null)return 0;row.put("deleted",1);return 1;} @Override public int restore(long tenantId,long id){Map<String,Object> row=parameters.get(id);if(row==null)return 0;row.put("deleted",0);return 1;} @Override public int purge(long tenantId,long id){return parameters.remove(id)==null?0:1;}
+        @Override public Integer nameCount(long tenantId,long projectId,String systemCode,String parameterName,Long excludeId,boolean activeOnly){if(parameterName.equals(existingName))return 1;return parameters.values().stream().filter(row->number(row.get("project_id"))==projectId&&systemCode.equals(row.get("system_code"))&&parameterName.equals(row.get("parameter_name"))&&(!activeOnly||Integer.valueOf(0).equals(row.get("deleted")))&&(excludeId==null||number(row.get("id"))!=excludeId)).mapToInt(row->1).sum();}
+        @Override public Integer enabledComponentCount(long tenantId,long projectId,String systemCode){return 1;} @Override public List<Long> deletedProjectIds(long tenantId,long id){return deleted(id).stream().map(row->number(row.get("project_id"))).toList();} @Override public int insertAudit(long tenantId,long actorId,long projectId,String operation,long entityId){audits.add(operation);return 1;}
+        private List<Map<String,Object>> active(long id){Map<String,Object> row=parameters.get(id);return row==null||Integer.valueOf(1).equals(row.get("deleted"))?List.of():List.of(new LinkedHashMap<>(row));} private List<Map<String,Object>> deleted(long id){Map<String,Object> row=parameters.get(id);return row==null||!Integer.valueOf(1).equals(row.get("deleted"))?List.of():List.of(new LinkedHashMap<>(row));}
     }
 }

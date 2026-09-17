@@ -1,0 +1,27 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "local runtime and task ledger", "purpose": "Regression and runtime boundary sampling"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test", "exit_code": 0, "salient_output": "98 tests passed"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-attachment -am test", "exit_code": 0, "salient_output": "attachment suite passed as part of system reactor"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true test", "exit_code": 1, "salient_output": "stopped after existing NetworkWorkOrderMySqlTest hung in Flyway socket read"}
+  ],
+  "local_checks": [
+    {"check": "local application health", "result": "pass", "evidence": "existing 8080 actuator health returned UP", "limitations": ["a separate secure 8081 process could not start without JWT_SECRET"]},
+    {"check": "full reactor regression", "result": "inconclusive", "evidence": "thread dump located pre-existing architecture migration socket wait", "limitations": ["full suite was terminated after prolonged wait"]}
+  ],
+  "diff_summary": ["Recorded integration and environment evidence"],
+  "invariants_checked": [
+    {"invariant": "local service remains reachable", "result": "pass", "evidence": "8080 health response"}
+  ],
+  "disturbances": [
+    {"event": "full reactor architecture migration test retained a dead socket after its temporary MySQL container exited", "impact": "full suite outcome unavailable"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Authorized project delete plus actual MinIO asynchronous cleanup needs a permitted local test identity and fixture"],
+  "recommended_next": "observe"
+}

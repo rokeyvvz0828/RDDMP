@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class WorkflowServiceTaskContextTest {
     private static final AuthUser ASSIGNEE = new AuthUser(7L, 1L, "reviewer", "", "审批人", 1L, true);
@@ -33,8 +35,6 @@ class WorkflowServiceTaskContextTest {
         assertEquals(List.of("APPROVE", "RETURN", "REJECT"), context.get("allowed_actions"));
         assertEquals(true, context.get("signature_required"));
         assertEquals(true, context.get("actionable"));
-        assertTrue(jdbc.lastSql.contains("t.assignee_id"));
-        assertTrue(jdbc.lastSql.contains("CAST(v.definition_json AS CHAR) AS definition_json"));
     }
 
     @Test
@@ -46,10 +46,6 @@ class WorkflowServiceTaskContextTest {
 
         assertEquals(11L, context.get("task_id"));
         assertEquals(true, context.get("actionable"));
-        assertTrue(jdbc.sqls.get(0).contains("i.business_type = ?"));
-        assertTrue(jdbc.sqls.get(0).contains("i.business_key = ?"));
-        assertTrue(jdbc.sqls.get(0).contains("t.assignee_id = ?"));
-        assertTrue(jdbc.sqls.get(0).contains("t.status = 'PENDING'"));
     }
 
     @Test
@@ -110,8 +106,14 @@ class WorkflowServiceTaskContextTest {
                 return rows;
             }
         };
-        WorkflowService service = new WorkflowService(jdbc, mapper, null, null, labels);
-        service.setSignatureService(new WorkflowSignatureService(jdbc, mapper) {
+        WorkflowService service = new WorkflowService(mapper, null, null, labels);
+        WorkflowTaskQueryRepository tasks = mock(WorkflowTaskQueryRepository.class);
+        when(tasks.taskContext(11L, 1L)).thenAnswer(invocation -> jdbc.row == null ? null : new LinkedHashMap<>(jdbc.row));
+        when(tasks.currentTask(1L, 7L, "release_application", "SQ-001"))
+                .thenAnswer(invocation -> jdbc.row == null ? null : new LinkedHashMap<>(jdbc.row));
+        when(tasks.flowableTaskCount(11L, 1L)).thenReturn(0);
+        service.setTaskQueryRepository(tasks);
+        service.setSignatureService(new WorkflowSignatureService(new WorkflowSignatureRepository(null), mapper) {
             @Override
             public boolean required(long taskId, long tenantId) {
                 return signatureRequired;

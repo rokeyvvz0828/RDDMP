@@ -3,6 +3,7 @@ package com.ccb.boot.integration;
 import com.ccb.system.notification.NotificationLevel;
 import com.ccb.system.notification.NotificationPublishCommand;
 import com.ccb.system.notification.SystemNotificationPublisher;
+import com.ccb.boot.persistence.BootWorkflowRepository;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
@@ -10,7 +11,6 @@ import com.ccb.workflow.integration.WorkflowTaskAssignedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,11 +26,11 @@ public class WorkflowSystemNotificationBridge implements WorkflowLifecycleConsum
     private static final String SOURCE_NAME = "审批中心";
     private static final Pattern MODULE_CODE = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
 
-    private final JdbcTemplate jdbc;
+    private final BootWorkflowRepository repository;
     private final SystemNotificationPublisher notifications;
 
-    public WorkflowSystemNotificationBridge(JdbcTemplate jdbc, SystemNotificationPublisher notifications) {
-        this.jdbc = jdbc;
+    public WorkflowSystemNotificationBridge(BootWorkflowRepository repository, SystemNotificationPublisher notifications) {
+        this.repository = repository;
         this.notifications = notifications;
     }
 
@@ -73,33 +73,15 @@ public class WorkflowSystemNotificationBridge implements WorkflowLifecycleConsum
     }
 
     private List<Map<String, Object>> pendingTask(long tenantId, long instanceId, long taskId, long assigneeId) {
-        return jdbc.queryForList(pendingProjection()
-                        + " WHERE t.tenant_id = ? AND t.instance_id = ? AND t.id = ? AND t.assignee_id = ?"
-                        + " AND t.status = 'PENDING' AND i.deleted = 0 AND i.business_type IS NOT NULL",
-                tenantId, instanceId, taskId, assigneeId);
+        return repository.pendingTask(Map.of("tenantId", tenantId, "instanceId", instanceId, "taskId", taskId, "assigneeId", assigneeId));
     }
 
     private List<Map<String, Object>> pendingTasks(long tenantId, long instanceId) {
-        return jdbc.queryForList(pendingProjection()
-                        + " WHERE t.tenant_id = ? AND t.instance_id = ? AND t.status = 'PENDING'"
-                        + " AND i.deleted = 0 AND i.business_type IS NOT NULL ORDER BY t.id",
-                tenantId, instanceId);
+        return repository.pendingTasks(Map.of("tenantId", tenantId, "instanceId", instanceId));
     }
 
     private List<Map<String, Object>> missingPendingNotifications() {
-        return jdbc.queryForList(pendingProjection()
-                + " LEFT JOIN sys_notification n ON n.tenant_id = t.tenant_id"
-                + " AND n.business_type = i.business_type"
-                + " AND n.event_id = CONCAT('workflow-task:', t.id, ':assignee:', t.assignee_id)"
-                + " WHERE t.status = 'PENDING' AND t.assignee_id IS NOT NULL AND i.deleted = 0"
-                + " AND i.business_type IS NOT NULL AND n.id IS NULL ORDER BY t.created_at, t.id LIMIT 200");
-    }
-
-    private String pendingProjection() {
-        return "SELECT t.id AS task_id, t.assignee_id, t.task_type, t.task_key,"
-                + " i.tenant_id, i.business_module_code, i.business_module_name, i.business_type, i.business_key, i.business_title,"
-                + " i.project_ref, i.project_name, i.action_path"
-                + " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id";
+        return repository.missingPendingNotifications();
     }
 
     private void publishPending(Map<String, Object> task) {
@@ -126,9 +108,7 @@ public class WorkflowSystemNotificationBridge implements WorkflowLifecycleConsum
 
     private void publishResult(WorkflowLifecycleEvent event) {
         ResultMeta meta = resultMeta(event.eventType());
-        List<Long> starters = jdbc.queryForList(
-                "SELECT starter_id FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                Long.class, event.instanceId(), event.tenantId());
+        List<Long> starters = repository.instanceStarters(Map.of("instanceId", event.instanceId(), "tenantId", event.tenantId()));
         if (starters.isEmpty() || starters.get(0) == null || starters.get(0) <= 0) return;
         notifications.publish(new NotificationPublishCommand(
                 event.tenantId(),

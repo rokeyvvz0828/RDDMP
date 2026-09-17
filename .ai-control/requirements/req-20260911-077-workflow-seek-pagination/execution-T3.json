@@ -1,0 +1,27 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "local runtime and task ledger", "purpose": "Regression, migration and protected-route sampling"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {"command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-workflow -am test", "exit_code": 0, "salient_output": "completed before final test-only additions; workflow focused test was rerun after additions"},
+    {"command": "GET /api/workflows/{inbox,done,instances}/seek without credentials", "exit_code": 0, "salient_output": "all routes returned HTTP 401"},
+    {"command": "mvn -Dnet.bytebuddy.experimental=true test", "exit_code": 1, "salient_output": "stopped after existing NetworkWorkOrderMySqlTest hung in Flyway socket read"}
+  ],
+  "local_checks": [
+    {"check": "protected seek route probe", "result": "pass", "evidence": "three routes returned 401", "limitations": ["no authorized local account credentials were read"]},
+    {"check": "full reactor regression", "result": "inconclusive", "evidence": "thread dump identified architecture NetworkWorkOrderMySqlTest Flyway socket wait", "limitations": ["not caused by V204/V205; full suite was terminated after prolonged wait"]}
+  ],
+  "diff_summary": ["Recorded runtime and regression evidence"],
+  "invariants_checked": [
+    {"invariant": "new routes require authentication", "result": "pass", "evidence": "HTTP 401 probes"}
+  ],
+  "disturbances": [
+    {"event": "full reactor architecture migration test retained a dead socket after its temporary MySQL container exited", "impact": "full suite outcome unavailable"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Authorized sequential-page HTTP probe requires a separately supplied local test identity"],
+  "recommended_next": "observe"
+}

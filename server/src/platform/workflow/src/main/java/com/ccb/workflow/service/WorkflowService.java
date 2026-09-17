@@ -9,6 +9,7 @@ import com.ccb.common.audit.OperationAuditContext;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import com.ccb.workflow.integration.WorkflowPendingTaskQuery;
 import com.ccb.workflow.integration.WorkflowProjectAccessGateway;
+import com.ccb.workflow.model.WorkflowCursorPage;
 import com.ccb.workflow.integration.WorkflowProjectMember;
 import com.ccb.workflow.integration.WorkflowProjectRole;
 import com.ccb.workflow.integration.WorkflowBusinessContext;
@@ -20,10 +21,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 import com.ccb.workflow.event.WorkflowInstanceCompletedEvent;
 
@@ -47,7 +49,6 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     private static final String CC = "CC";
     private static final Set<String> DECISION_ACTIONS = Set.of(APPROVE, REJECT, RETURN, ADD_SIGN, CC, "TRANSFER", "DELEGATE");
 
-    private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final WorkflowDefinitionValidator validator;
     private final FlowableWorkflowService flowableWorkflowService;
@@ -59,18 +60,26 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     private WorkflowTaskAssignmentPublisher taskAssignments;
     private List<WorkflowDefinitionReferenceProvider> definitionReferenceProviders = List.of();
     private WorkflowProjectAccessGateway projectAccess;
+    private WorkflowDefinitionMapper definitionMapper;
+    private WorkflowDefinitionRepository definitionRepository;
+    private WorkflowTaskQueryRepository taskQueryRepository;
+    private WorkflowInboxRepository inboxRepository;
+    private WorkflowDoneRepository doneRepository;
+    private WorkflowSubmittedRepository submittedRepository;
+    private WorkflowRuntimeRepository runtimeRepository;
+    private WorkflowDefinitionSummaryProjector definitionSummaryProjector;
+    private MeterRegistry meterRegistry;
     private final ApplicationEventPublisher eventPublisher;
 
-    public WorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
+    public WorkflowService(ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
                            WorkflowMonitorService workflowMonitorService, WorkflowNodeLabelResolver nodeLabelResolver) {
-        this(jdbc, objectMapper, flowableWorkflowService, workflowMonitorService, nodeLabelResolver, null);
+        this(objectMapper, flowableWorkflowService, workflowMonitorService, nodeLabelResolver, null);
     }
 
     @Autowired
-    public WorkflowService(JdbcTemplate jdbc, ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
+    public WorkflowService(ObjectMapper objectMapper, FlowableWorkflowService flowableWorkflowService,
                            WorkflowMonitorService workflowMonitorService, WorkflowNodeLabelResolver nodeLabelResolver,
                            ApplicationEventPublisher eventPublisher) {
-        this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.validator = new WorkflowDefinitionValidator(objectMapper);
         this.flowableWorkflowService = flowableWorkflowService;
@@ -109,6 +118,33 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         this.projectAccess = projectAccess;
     }
 
+    @Autowired(required = false)
+    void setDefinitionMapper(WorkflowDefinitionMapper definitionMapper) { this.definitionMapper = definitionMapper; }
+
+    @Autowired(required = false)
+    void setDefinitionRepository(WorkflowDefinitionRepository definitionRepository) { this.definitionRepository = definitionRepository; }
+
+    @Autowired(required = false)
+    void setTaskQueryRepository(WorkflowTaskQueryRepository taskQueryRepository) { this.taskQueryRepository = taskQueryRepository; }
+
+    @Autowired(required = false)
+    void setInboxRepository(WorkflowInboxRepository inboxRepository) { this.inboxRepository = inboxRepository; }
+
+    @Autowired(required = false)
+    void setDoneRepository(WorkflowDoneRepository doneRepository) { this.doneRepository = doneRepository; }
+
+    @Autowired(required = false)
+    void setSubmittedRepository(WorkflowSubmittedRepository submittedRepository) { this.submittedRepository = submittedRepository; }
+
+    @Autowired(required = false)
+    void setRuntimeRepository(WorkflowRuntimeRepository runtimeRepository) { this.runtimeRepository = runtimeRepository; }
+
+    @Autowired(required = false)
+    void setDefinitionSummaryProjector(WorkflowDefinitionSummaryProjector definitionSummaryProjector) { this.definitionSummaryProjector = definitionSummaryProjector; }
+
+    @Autowired(required = false)
+    void setMeterRegistry(MeterRegistry meterRegistry) { this.meterRegistry = meterRegistry; }
+
     public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, AuthUser user) {
         return definitions(pageQuery, null, null, user);
     }
@@ -118,44 +154,39 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     public PageResult<Map<String, Object>> definitions(PageQuery pageQuery, String projectRef, String scopeType, AuthUser user) {
-        String requestedScope = scopeType == null || scopeType.isBlank() ? null : normalizeManagementScope(scopeType);
-        Long projectId = projectRef == null || projectRef.isBlank() ? null : gateway().requireAccessible(projectRef, user).id();
+        long startedAt = System.nanoTime();
+        String requestedScope = null;
+        Long projectId = null;
+        try {
+        requestedScope = scopeType == null || scopeType.isBlank() ? null : normalizeManagementScope(scopeType);
+        projectId = projectRef == null || projectRef.isBlank() ? null : gateway().requireAccessible(projectRef, user).id();
         if ("PROJECT".equals(requestedScope) && projectId == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "查询项目流程时必须提供项目上下文");
         }
-        String where;
-        if (requestedScope == null) {
-            where = projectId == null
-                    ? " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type = 'TEMPLATE'"
-                    : " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND (scope_type = 'TEMPLATE' OR (scope_type = 'PROJECT' AND project_id = ?))";
-        } else if ("PROJECT".equals(requestedScope)) {
-            where = " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type = 'PROJECT' AND project_id = ?";
-        } else {
-            where = " FROM wf_definition WHERE tenant_id = ? AND deleted = 0 AND scope_type = ?";
+        List<Map<String, Object>> rows = definitionMapper.selectDefinitionSummaries(user.tenantId(), requestedScope, projectId,
+                offset(pageQuery), pageQuery.size()).stream().map(LinkedHashMap::new).map(row -> (Map<String, Object>) row).toList();
+        rows.forEach(row -> row.put("requires_configuration", booleanValue(row.get("requires_configuration"))));
+        PageResult<Map<String, Object>> result = new PageResult<>(rows,
+                definitionMapper.countDefinitionSummaries(user.tenantId(), requestedScope, projectId), pageQuery.page(), pageQuery.size());
+        recordDefinitionsQuery(requestedScope, projectId, "success", startedAt); return result;
+        } catch (RuntimeException exception) {
+            recordDefinitionsQuery(requestedScope == null && scopeType != null && !scopeType.isBlank() ? "INVALID" : requestedScope,
+                    projectId, "error", startedAt);
+            throw exception;
         }
-        List<Object> args = new ArrayList<>();
-        args.add(user.tenantId());
-        if ("PROJECT".equals(requestedScope) || requestedScope == null && projectId != null) args.add(projectId);
-        else if (requestedScope != null) args.add(requestedScope);
-        args.add(offset(pageQuery));
-        args.add(pageQuery.size());
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, code, name, scope_type, project_id, status, current_version, model_schema_version, created_at, "
-                        + "CAST((SELECT v.definition_json FROM wf_version v WHERE v.tenant_id = wf_definition.tenant_id AND v.definition_id = wf_definition.id ORDER BY v.version_no DESC LIMIT 1) AS CHAR) AS definition_json" + where
-                        + " ORDER BY id DESC LIMIT ?, ?",
-                args.toArray()).stream().map(LinkedHashMap::new).map(row -> (Map<String, Object>) row).toList();
-        rows.forEach(row -> {
-            addConfigurationState(row);
-            row.remove("definition_json");
-        });
-        long total = count(where, args.subList(0, args.size() - 2).toArray());
-        return new PageResult<>(rows, total, pageQuery.page(), pageQuery.size());
+    }
+
+    private void recordDefinitionsQuery(String requestedScope, Long projectId, String outcome, long startedAt) {
+        if (meterRegistry == null) return;
+        String scope = requestedScope == null ? (projectId == null ? "TEMPLATE" : "MIXED") : requestedScope;
+        Timer.builder("ccb.workflow.definitions.query").tags("operation", "definitions", "scope_type", scope, "outcome", outcome)
+                .register(meterRegistry).record(System.nanoTime() - startedAt, java.util.concurrent.TimeUnit.NANOSECONDS);
     }
 
     public Map<String, Object> definition(long definitionId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.code, d.name, d.scope_type, d.project_id, d.status, d.current_version, d.model_schema_version, d.created_at, v.version_no, CAST(v.definition_json AS CHAR) AS definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (SELECT MAX(v2.version_no) FROM wf_version v2 WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id)) WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0", definitionId, user.tenantId());
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
-        Map<String, Object> result = new LinkedHashMap<>(rows.get(0));
+        Map<String, Object> detail = definitionRepository.detail(definitionId, user.tenantId());
+        if (detail == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
+        Map<String, Object> result = new LinkedHashMap<>(detail);
         requireDefinitionAccessible(result, user, false);
         addConfigurationState(result);
         return result;
@@ -171,10 +202,14 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             return;
         }
         validator.parse(definitionJson);
-        Map<String, Object> definition = jdbc.queryForMap("SELECT status FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, user.tenantId());
+        Map<String, Object> definition = definitionRepository.status(definitionId, user.tenantId());
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) throw new BusinessException(ErrorCode.CONFLICT, "已发布流程不能编辑，请复制后创建新版本");
-        jdbc.update("UPDATE wf_definition SET code = ?, name = ? WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'DRAFT'", requireText(code, "流程编码"), requireText(name, "流程名称"), definitionId, user.tenantId());
-        jdbc.update("UPDATE wf_version SET definition_json = ? WHERE definition_id = ? AND tenant_id = ? AND status = 'DRAFT'", definitionJson, definitionId, user.tenantId());
+        Map<String, Object> updateParams = new LinkedHashMap<>();
+        updateParams.put("code", requireText(code, "流程编码")); updateParams.put("name", requireText(name, "流程名称")); updateParams.put("definitionId", definitionId); updateParams.put("tenantId", user.tenantId());
+        definitionRepository.updateDraft(updateParams);
+        Map<String, Object> versionParams = new LinkedHashMap<>(updateParams); versionParams.put("definitionJson", definitionJson);
+        definitionRepository.updateDraftVersion(versionParams);
+        refreshDefinitionSummary(definitionId, user.tenantId(), String.valueOf(scopedDefinition.get("scope_type")), latestDraftVersion(definitionId, user.tenantId()), definitionJson);
         audit(user, "workflow.definition.update");
     }
 
@@ -185,20 +220,15 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有草稿流程可以删除");
         }
-        Integer publishedVersions = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND status = 'PUBLISHED'",
-                Integer.class, definitionId, user.tenantId());
-        if (publishedVersions != null && publishedVersions > 0) {
+        if (definitionRepository.countPublishedVersions(definitionId, user.tenantId()) > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "流程存在已发布历史，不能删除");
         }
-        Integer instances = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM wf_instance WHERE definition_id = ? AND tenant_id = ?",
-                Integer.class, definitionId, user.tenantId());
-        if (instances != null && instances > 0) {
+        if (definitionRepository.countInstances(definitionId, user.tenantId()) > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "流程存在实例历史，不能删除");
         }
         rejectActiveReferences(definitionId, user.tenantId(), "删除");
-        int updated = jdbc.update("UPDATE wf_definition SET deleted = 1 WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'DRAFT'", definitionId, user.tenantId());
+        Map<String, Object> deleteParams = new LinkedHashMap<>(); deleteParams.put("definitionId", definitionId); deleteParams.put("tenantId", user.tenantId());
+        int updated = definitionRepository.softDelete(deleteParams);
         if (updated != 1) throw new BusinessException(ErrorCode.CONFLICT, "流程定义状态已变化，请刷新后重试");
         recordDefinitionEvent(user, "DEFINITION_DELETED", definitionId, versionNo(definition), "删除草稿流程", Map.of());
         audit(user, "workflow.definition.delete");
@@ -214,7 +244,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             throw new BusinessException(ErrorCode.CONFLICT, "只有已发布流程可以归档");
         }
         rejectActiveReferences(definitionId, user.tenantId(), "归档");
-        int updated = jdbc.update("UPDATE wf_definition SET status = 'ARCHIVED' WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'PUBLISHED'", definitionId, user.tenantId());
+        Map<String, Object> archiveParams = new LinkedHashMap<>(); archiveParams.put("definitionId", definitionId); archiveParams.put("tenantId", user.tenantId());
+        int updated = definitionRepository.archive(archiveParams);
         if (updated != 1) throw new BusinessException(ErrorCode.CONFLICT, "流程定义状态已变化，请刷新后重试");
         recordDefinitionEvent(user, "DEFINITION_ARCHIVED", definitionId, versionNo(definition), normalizedReason, Map.of());
         audit(user, "workflow.definition.archive");
@@ -229,7 +260,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         if (!"ARCHIVED".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有已归档流程可以恢复发布");
         }
-        int updated = jdbc.update("UPDATE wf_definition SET status = 'PUBLISHED' WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 'ARCHIVED'", definitionId, user.tenantId());
+        Map<String, Object> restoreParams = new LinkedHashMap<>(); restoreParams.put("definitionId", definitionId); restoreParams.put("tenantId", user.tenantId());
+        int updated = definitionRepository.restore(restoreParams);
         if (updated != 1) throw new BusinessException(ErrorCode.CONFLICT, "流程定义状态已变化，请刷新后重试");
         recordDefinitionEvent(user, "DEFINITION_RESTORED", definitionId, versionNo(definition), normalizedReason, Map.of());
         audit(user, "workflow.definition.restore");
@@ -250,19 +282,19 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
 
     public List<Map<String, Object>> definitionVersions(long definitionId, AuthUser user) {
         requireDefinitionAccessible(requireDefinition(definitionId, user.tenantId()), user, false);
-        return jdbc.queryForList("SELECT version_no, status, model_schema_version, created_at FROM wf_version WHERE definition_id = ? AND tenant_id = ? ORDER BY version_no DESC", definitionId, user.tenantId());
+        return definitionRepository.versions(definitionId, user.tenantId());
     }
 
     public Map<String, Object> definitionVersion(long definitionId, int versionNo, AuthUser user) {
         requireDefinitionAccessible(requireDefinition(definitionId, user.tenantId()), user, false);
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT version_no, status, model_schema_version, created_at, CAST(definition_json AS CHAR) AS definition_json FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND version_no = ?", definitionId, user.tenantId(), versionNo);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程版本不存在");
-        return rows.get(0);
+        Map<String, Object> version = definitionRepository.version(definitionId, user.tenantId(), versionNo);
+        if (version == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程版本不存在");
+        return version;
     }
 
     public List<Map<String, Object>> definitionEvents(long definitionId, AuthUser user) {
         requireDefinitionAccessible(requireDefinition(definitionId, user.tenantId()), user, false);
-        return jdbc.queryForList("SELECT a.id, a.event_type, a.version_no, a.operator_id, u.display_name AS operator_name, a.reason, CAST(a.payload_json AS CHAR) AS payload_json, a.created_at FROM wf_audit_event a LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id WHERE a.definition_id = ? AND a.tenant_id = ? AND a.instance_id IS NULL ORDER BY a.created_at DESC, a.id DESC", definitionId, user.tenantId());
+        return definitionRepository.events(definitionId, user.tenantId());
     }
 
     @Transactional
@@ -286,10 +318,13 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         }
         validator.parse(definitionJson);
         long id = nextId();
-        jdbc.update("INSERT INTO wf_definition (id, tenant_id, code, name, scope_type, project_id, status, current_version, deleted) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', 0, 0)", id, user.tenantId(), requireText(code, "流程编码"), requireText(name, "流程名称"), scope, projectId);
-        jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, status) VALUES (?, ?, ?, 1, ?, 'DRAFT')", nextId(), user.tenantId(), id, definitionJson);
+        Map<String, Object> createParams = new LinkedHashMap<>(); createParams.put("id", id); createParams.put("tenantId", user.tenantId()); createParams.put("code", requireText(code, "流程编码")); createParams.put("name", requireText(name, "流程名称")); createParams.put("scope", scope); createParams.put("projectId", projectId);
+        Map<String, Object> versionParams = new LinkedHashMap<>(); versionParams.put("id", nextId()); versionParams.put("tenantId", user.tenantId()); versionParams.put("definitionId", id); versionParams.put("definitionJson", definitionJson);
+        definitionRepository.insertDefinition(createParams);
+        definitionRepository.insertVersion(versionParams);
+        refreshDefinitionSummary(id, user.tenantId(), scope, 1, definitionJson);
         audit(user, "workflow.definition.create");
-        return jdbc.queryForMap("SELECT id, code, name, scope_type, project_id, status, current_version FROM wf_definition WHERE id = ? AND tenant_id = ?", id, user.tenantId());
+        return definitionRepository.definitionSummary(id, user.tenantId());
     }
 
     @Transactional
@@ -300,14 +335,16 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         if (!"DRAFT".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有草稿流程可以发布");
         }
-        Map<String, Object> version = jdbc.queryForMap("SELECT version_no, definition_json FROM wf_version WHERE definition_id = ? AND tenant_id = ? ORDER BY version_no DESC LIMIT 1", definitionId, user.tenantId());
+        Map<String, Object> version = definitionRepository.latestVersion(definitionId, user.tenantId());
         validateScopeAssignments(String.valueOf(definition.get("scope_type")), number(definition.get("project_id")),
                 String.valueOf(version.get("definition_json")), user, true);
         if (enterpriseDefinition(definitionId, user.tenantId())) { flowableWorkflowService.publish(definitionId, user); return; }
         validator.parse(String.valueOf(version.get("definition_json")));
         int versionNo = ((Number) version.get("version_no")).intValue();
-        jdbc.update("UPDATE wf_version SET status = 'PUBLISHED' WHERE definition_id = ? AND tenant_id = ? AND version_no = ?", definitionId, user.tenantId(), versionNo);
-        jdbc.update("UPDATE wf_definition SET status = 'PUBLISHED', current_version = ? WHERE id = ? AND tenant_id = ?", versionNo, definitionId, user.tenantId());
+        Map<String, Object> publishParams = new LinkedHashMap<>(); publishParams.put("definitionId", definitionId); publishParams.put("tenantId", user.tenantId()); publishParams.put("versionNo", versionNo);
+        definitionRepository.publishVersion(publishParams);
+        definitionRepository.publishDefinition(publishParams);
+        refreshDefinitionSummary(definitionId, user.tenantId(), String.valueOf(definition.get("scope_type")), versionNo, String.valueOf(version.get("definition_json")));
         audit(user, "workflow.definition.publish");
     }
 
@@ -320,18 +357,19 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             flowableWorkflowService.unpublish(definitionId, user);
             return;
         }
-        Map<String, Object> definition = jdbc.queryForMap("SELECT status, current_version, model_schema_version FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, user.tenantId());
+        Map<String, Object> definition = definitionRepository.detail(definitionId, user.tenantId());
         if (!"PUBLISHED".equals(String.valueOf(definition.get("status")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "只有已发布流程才能取消发布");
         }
         int currentVersion = ((Number) definition.get("current_version")).intValue();
-        Map<String, Object> version = jdbc.queryForMap("SELECT definition_json, model_schema_version FROM wf_version WHERE definition_id = ? AND tenant_id = ? AND version_no = ? AND status = 'PUBLISHED'", definitionId, user.tenantId(), currentVersion);
-        Integer nextVersion = jdbc.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM wf_version WHERE definition_id = ? AND tenant_id = ?", Integer.class, definitionId, user.tenantId());
-        int draftVersion = nextVersion == null ? currentVersion + 1 : nextVersion;
-        jdbc.update("INSERT INTO wf_version (id, tenant_id, definition_id, version_no, definition_json, model_schema_version, status) VALUES (?, ?, ?, ?, ?, ?, 'DRAFT')",
-                nextId(), user.tenantId(), definitionId, draftVersion, version.get("definition_json"), version.get("model_schema_version"));
-        jdbc.update("UPDATE wf_definition SET status = 'DRAFT', current_version = ? WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                draftVersion, definitionId, user.tenantId());
+        Map<String, Object> version = definitionRepository.version(definitionId, user.tenantId(), currentVersion);
+        Long nextVersion = definitionRepository.nextVersion(definitionId, user.tenantId());
+        int draftVersion = nextVersion == null ? currentVersion + 1 : nextVersion.intValue();
+        Map<String, Object> draftParams = new LinkedHashMap<>(); draftParams.put("id", nextId()); draftParams.put("tenantId", user.tenantId()); draftParams.put("definitionId", definitionId); draftParams.put("versionNo", draftVersion); draftParams.put("definitionJson", version.get("definition_json")); draftParams.put("modelSchemaVersion", version.get("model_schema_version"));
+        Map<String, Object> unpublishParams = new LinkedHashMap<>(); unpublishParams.put("versionNo", draftVersion); unpublishParams.put("definitionId", definitionId); unpublishParams.put("tenantId", user.tenantId());
+        definitionRepository.insertDraftVersion(draftParams);
+        definitionRepository.unpublish(unpublishParams);
+        refreshDefinitionSummary(definitionId, user.tenantId(), String.valueOf(scopedDefinition.get("scope_type")), draftVersion, String.valueOf(version.get("definition_json")));
         audit(user, "workflow.definition.unpublish");
     }
     @Transactional
@@ -347,21 +385,24 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         if (enterpriseDefinition(definitionId, user.tenantId())) {
             return flowableWorkflowService.start(definitionId, businessKey, variables, startScope.context(), startScope.projectId(), user);
         }
-        Map<String, Object> definition = jdbc.queryForMap("SELECT d.current_version, v.definition_json FROM wf_definition d JOIN wf_version v ON v.definition_id = d.id AND v.tenant_id = d.tenant_id AND v.version_no = d.current_version WHERE d.id = ? AND d.tenant_id = ? AND d.status = 'PUBLISHED' AND d.deleted = 0 AND v.status = 'PUBLISHED'", definitionId, user.tenantId());
+        Map<String, Object> definition = definitionRepository.publishedVersion(definitionId, user.tenantId());
         WorkflowDefinitionValidator.WorkflowGraph graph = validator.parse(String.valueOf(definition.get("definition_json")));
         long instanceId = nextId();
         String variablesJson = serializeVariables(variables);
         WorkflowBusinessContext context = startScope.context();
-        jdbc.update("INSERT INTO wf_instance (id, tenant_id, definition_id, version_no, business_key, business_module_code, business_module_name, business_type, business_title, business_round, project_id, project_ref, project_name, action_path, data_digest, status, starter_id, variables_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RUNNING', ?, ?)",
-                instanceId, user.tenantId(), definitionId, definition.get("current_version"), requireText(businessKey, "业务单号"),
-                contextValue(context, WorkflowBusinessContext::moduleCode), contextValue(context, WorkflowBusinessContext::moduleName),
-                contextValue(context, WorkflowBusinessContext::businessType), contextValue(context, WorkflowBusinessContext::businessTitle),
-                context == null ? null : context.businessRound(), startScope.projectId(), contextValue(context, WorkflowBusinessContext::projectRef),
-                contextValue(context, WorkflowBusinessContext::projectName), contextValue(context, WorkflowBusinessContext::actionPath),
-                contextValue(context, WorkflowBusinessContext::dataDigest), user.id(), variablesJson);
+        Map<String, Object> instanceParams = new LinkedHashMap<>();
+        instanceParams.put("id", instanceId); instanceParams.put("tenantId", user.tenantId()); instanceParams.put("definitionId", definitionId);
+        instanceParams.put("versionNo", definition.get("current_version")); instanceParams.put("businessKey", requireText(businessKey, "业务单号"));
+        instanceParams.put("businessModuleCode", contextValue(context, WorkflowBusinessContext::moduleCode)); instanceParams.put("businessModuleName", contextValue(context, WorkflowBusinessContext::moduleName));
+        instanceParams.put("businessType", contextValue(context, WorkflowBusinessContext::businessType)); instanceParams.put("businessTitle", contextValue(context, WorkflowBusinessContext::businessTitle));
+        instanceParams.put("businessRound", context == null ? null : context.businessRound()); instanceParams.put("projectId", startScope.projectId());
+        instanceParams.put("projectRef", contextValue(context, WorkflowBusinessContext::projectRef)); instanceParams.put("projectName", contextValue(context, WorkflowBusinessContext::projectName));
+        instanceParams.put("actionPath", contextValue(context, WorkflowBusinessContext::actionPath)); instanceParams.put("dataDigest", contextValue(context, WorkflowBusinessContext::dataDigest));
+        instanceParams.put("starterId", user.id()); instanceParams.put("variablesJson", variablesJson);
+        runtimeRepository.insertInstance(instanceParams);
         advanceFromNode(instanceId, user.tenantId(), user.id(), graph, "start", user);
         audit(user, "workflow.instance.start");
-        return jdbc.queryForMap("SELECT id, definition_id, version_no, business_key, status FROM wf_instance WHERE id = ? AND tenant_id = ?", instanceId, user.tenantId());
+        return runtimeRepository.instanceSummary(Map.of("instanceId", instanceId, "tenantId", user.tenantId()));
     }
 
     /** 把启动变量序列化成 JSON；null 或空 map 返回 NULL，便于回写时 publishCompletedEvent 解析。 */
@@ -376,11 +417,10 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
 
     /** 读取流程实例的启动变量；解析失败返回空节点，不阻断审批人解析。 */
     private JsonNode loadInstanceVariables(long instanceId, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT variables_json FROM wf_instance WHERE id = ? AND tenant_id = ?", instanceId, tenantId);
-        if (rows.isEmpty() || rows.get(0).get("variables_json") == null) return objectMapper.nullNode();
+        Map<String, Object> row = taskQueryRepository.variables(instanceId, tenantId);
+        if (row == null || row.get("variables_json") == null) return objectMapper.nullNode();
         try {
-            return objectMapper.readTree(String.valueOf(rows.get(0).get("variables_json")));
+            return objectMapper.readTree(String.valueOf(row.get("variables_json")));
         } catch (JsonProcessingException ignored) {
             return objectMapper.nullNode();
         }
@@ -416,41 +456,58 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     public PageResult<Map<String, Object>> done(PageQuery pageQuery, AuthUser user) {
-        InstanceVisibility visibility = instanceVisibility(user);
-        String where = " FROM wf_task_action a JOIN wf_instance i ON i.id = a.instance_id AND i.tenant_id = a.tenant_id"
-                + " JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = a.tenant_id"
-                + " LEFT JOIN wf_task t ON t.id = a.task_id AND t.tenant_id = a.tenant_id"
-                + " WHERE a.tenant_id = ? AND a.operator_id = ? AND i.deleted = 0" + visibility.sql();
-        List<Object> args = new ArrayList<>(List.of(user.tenantId(), user.id()));
-        args.addAll(visibility.args());
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT a.id, a.instance_id, a.task_id, a.action_code, a.comment, a.created_at, t.node_id, t.task_key,"
-                        + " t.task_type, i.business_key, i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path,"
-                        + " i.status AS instance_status, d.name AS definition_name" + where
-                        + " ORDER BY a.created_at DESC, a.id DESC LIMIT ?, ?",
-                withPage(args, pageQuery));
-        long total = count(where, args.toArray());
-        return new PageResult<>(nodeLabelResolver.decorateTasks(rows, user.tenantId()), total, pageQuery.page(), pageQuery.size());
+        Map<String, Object> params = visibleTaskParams(user);
+        params.put("offset", offset(pageQuery)); params.put("size", pageQuery.size());
+        List<Map<String, Object>> rows = doneRepository.page(params);
+        return new PageResult<>(nodeLabelResolver.decorateTasks(rows, user.tenantId()), doneRepository.count(params), pageQuery.page(), pageQuery.size());
+    }
+
+    public WorkflowCursorPage<Map<String, Object>> instancesSeek(String cursor, int size, String businessKey,
+                                                                   String definitionKeyword, String status, String starterKeyword,
+                                                                   String createdFrom, String createdTo, String projectRef, AuthUser user) {
+        return workflowMonitorService.instancesSeek(cursor, size, businessKey, definitionKeyword, status, starterKeyword,
+                createdFrom, createdTo, projectRef, user);
+    }
+
+    public WorkflowCursorPage<Map<String, Object>> doneSeek(String cursor, int size, AuthUser user) {
+        int requestedSize = Math.max(1, Math.min(size, 100));
+        WorkflowCursorCodec codec = new WorkflowCursorCodec();
+        WorkflowCursorCodec.Position position = codec.decode(cursor);
+        Map<String, Object> params = visibleTaskParams(user);
+        params.put("size", requestedSize + 1);
+        if (position != null) { params.put("cursorCreatedAt", position.createdAt()); params.put("cursorId", position.id()); }
+        List<Map<String, Object>> rows = new ArrayList<>(doneRepository.seek(params));
+        boolean hasMore = rows.size() > requestedSize;
+        if (hasMore) rows.remove(rows.size() - 1);
+        List<Map<String, Object>> records = nodeLabelResolver.decorateTasks(rows, user.tenantId());
+        String nextCursor = hasMore && !records.isEmpty() ? codec.encode(records.get(records.size() - 1).get("created_at"), ((Number) records.get(records.size() - 1).get("id")).longValue()) : null;
+        return new WorkflowCursorPage<>(records, nextCursor, hasMore);
     }
 
     public PageResult<Map<String, Object>> inbox(PageQuery pageQuery, AuthUser user) {
-        InstanceVisibility visibility = instanceVisibility(user);
-        String where = " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
-                + " LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id"
-                + " LEFT JOIN sys_user starter ON starter.id = i.starter_id AND starter.tenant_id = i.tenant_id"
-                + " WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0 AND t.status IN ('PENDING', 'SENT')" + visibility.sql();
-        List<Object> args = new ArrayList<>(List.of(user.tenantId(), user.id()));
-        args.addAll(visibility.args());
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.status,"
-                        + " COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.created_at, i.business_key,"
-                        + " i.business_type, i.business_title, i.business_round, i.project_ref, i.project_name, i.action_path,"
-                        + " starter.display_name AS starter_name, i.status AS instance_status" + where + " ORDER BY t.id DESC LIMIT ?, ?",
-                withPage(args, pageQuery));
-        long total = count(where, args.toArray());
+        Map<String, Object> params = inboxParams(user);
+        params.put("offset", offset(pageQuery)); params.put("size", pageQuery.size());
+        List<Map<String, Object>> rows = inboxRepository.page(params);
+        long total = inboxRepository.count(params);
         List<Map<String, Object>> decorated = nodeLabelResolver.decorateTasks(rows, user.tenantId());
         if (signatureService != null) decorated.forEach(row -> row.put("signature_required", signatureService.required(((Number) row.get("id")).longValue(), user.tenantId())));
         return new PageResult<>(decorated, total, pageQuery.page(), pageQuery.size());
+    }
+
+    public WorkflowCursorPage<Map<String, Object>> inboxSeek(String cursor, int size, AuthUser user) {
+        int requestedSize = Math.max(1, Math.min(size, 100));
+        WorkflowCursorCodec codec = new WorkflowCursorCodec();
+        WorkflowCursorCodec.Position position = codec.decode(cursor);
+        Map<String, Object> params = inboxParams(user);
+        params.put("size", requestedSize + 1);
+        if (position != null) { params.put("cursorCreatedAt", position.createdAt()); params.put("cursorId", position.id()); }
+        List<Map<String, Object>> rows = new ArrayList<>(inboxRepository.seek(params));
+        boolean hasMore = rows.size() > requestedSize;
+        if (hasMore) rows.remove(rows.size() - 1);
+        List<Map<String, Object>> decorated = nodeLabelResolver.decorateTasks(rows, user.tenantId());
+        if (signatureService != null) decorated.forEach(row -> row.put("signature_required", signatureService.required(((Number) row.get("id")).longValue(), user.tenantId())));
+        String nextCursor = hasMore && !decorated.isEmpty() ? codec.encode(decorated.get(decorated.size() - 1).get("created_at"), ((Number) decorated.get(decorated.size() - 1).get("id")).longValue()) : null;
+        return new WorkflowCursorPage<>(decorated, nextCursor, hasMore);
     }
 
     /**
@@ -459,82 +516,24 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
      * 返回字段尽量对齐 inbox，避免前端额外适配。
      */
     public PageResult<Map<String, Object>> submitted(PageQuery pageQuery, AuthUser user) {
-        InstanceVisibility visibility = instanceVisibility(user);
-        String where = " FROM wf_instance i"
-                + " LEFT JOIN wf_definition d ON d.id = i.definition_id AND d.tenant_id = i.tenant_id"
-                + " LEFT JOIN sys_user starter ON starter.id = i.starter_id AND starter.tenant_id = i.tenant_id"
-                + " WHERE i.tenant_id = ? AND i.starter_id = ? AND i.deleted = 0" + visibility.sql();
-        List<Object> args = new ArrayList<>(List.of(user.tenantId(), user.id()));
-        args.addAll(visibility.args());
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT i.id AS instance_id, i.business_key, i.business_type, i.business_title, i.business_round,"
-                        + " i.project_ref, i.project_name, i.action_path, i.status AS instance_status, i.created_at,"
-                        + " starter.display_name AS starter_name, d.name AS definition_name"
-                        + where + " ORDER BY i.id DESC LIMIT ?, ?",
-                withPage(args, pageQuery));
-        long total = count(where, args.toArray());
+        Map<String, Object> params = visibleTaskParams(user);
+        params.put("offset", offset(pageQuery)); params.put("size", pageQuery.size());
+        List<Map<String, Object>> rows = submittedRepository.page(params);
+        long total = submittedRepository.count(params);
         if (rows.isEmpty()) return new PageResult<>(List.of(), total, pageQuery.page(), pageQuery.size());
         List<Long> instanceIds = rows.stream().map(r -> ((Number) r.get("instance_id")).longValue()).toList();
-        // 批量查：每个实例当前活跃审批人（PENDING/SENT）+ 当前节点名
-        List<Map<String, Object>> assigneeRows = jdbc.queryForList(
-                "SELECT t.instance_id, t.id AS id, t.task_key, t.node_id, t.task_type, t.status,"
-                        + " COALESCE(t.assignee_name, u.display_name) AS assignee_name, t.assignee_id"
-                        + " FROM wf_task t LEFT JOIN sys_user u ON u.id = t.assignee_id AND u.tenant_id = t.tenant_id"
-                        + " WHERE t.tenant_id = ? AND t.status IN ('PENDING','SENT') AND t.instance_id IN ("
-                        + instanceIds.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("0") + ")",
-                user.tenantId());
-        Map<Long, List<Map<String, Object>>> byInstance = assigneeRows.stream()
-                .collect(java.util.stream.Collectors.groupingBy(r -> ((Number) r.get("instance_id")).longValue()));
-        List<Map<String, Object>> merged = new java.util.ArrayList<>(rows.size());
-        for (Map<String, Object> r : rows) {
-            Map<String, Object> row = new LinkedHashMap<>(r);
-            List<Map<String, Object>> tasks = byInstance.getOrDefault(((Number) r.get("instance_id")).longValue(), List.of());
-            String instanceStatus = String.valueOf(row.get("instance_status"));
-            // 行状态：复用 inbox 的 PENDING/SENT/DONE 语义，便于前端 pendingStatus() 复用标签
-            if ("RUNNING".equalsIgnoreCase(instanceStatus)) {
-                if (!tasks.isEmpty()) {
-                    Map<String, Object> first = tasks.get(0);
-                    row.put("id", first.get("id"));  // task id（前端 action_path 跳业务详情要带 taskId=task.id）
-                    row.put("task_key", first.get("task_key"));
-                    row.put("node_id", first.get("node_id"));
-                    row.put("task_type", first.get("task_type"));
-                    row.put("status", first.get("status"));
-                } else {
-                    // RUNNING 但没有 PENDING task → 通常在流转中间；显示 DRAFT（无UiStatusTag对应色即可）
-                    row.put("status", "PENDING");
-                }
-            } else {
-                row.put("status", "COMPLETED");  // 终态统一显示为"已办结"
-            }
-            // 活跃审批人名单（逗号分隔：最多前5人 + "等N人"）
-            List<String> names = tasks.stream()
-                    .map(t -> t.get("assignee_name") == null ? String.valueOf(t.get("assignee_id")) : String.valueOf(t.get("assignee_name")))
-                    .distinct().toList();
-            if (names.size() > 5) {
-                row.put("current_assignees", names.subList(0, 5).stream().reduce((a, b) -> a + "、" + b).get() + " 等" + names.size() + "人");
-            } else {
-                row.put("current_assignees", names.stream().reduce((a, b) -> a + "、" + b).orElse(""));
-            }
-            row.put("task_count", tasks.size());
-            merged.add(row);
-        }
-        return new PageResult<>(nodeLabelResolver != null ? nodeLabelResolver.decorateTasks(merged, user.tenantId()) : merged,
-                total, pageQuery.page(), pageQuery.size());
+        params.put("instanceIds", instanceIds);
+        List<Map<String, Object>> assigneeRows = submittedRepository.activeTasks(params);
+        Map<Long, List<Map<String, Object>>> byInstance = assigneeRows.stream().collect(Collectors.groupingBy(r -> ((Number) r.get("instance_id")).longValue()));
+        List<Map<String, Object>> merged = mergeSubmittedRows(rows, byInstance);
+        return new PageResult<>(nodeLabelResolver != null ? nodeLabelResolver.decorateTasks(merged, user.tenantId()) : merged, total, pageQuery.page(), pageQuery.size());
     }
 
     public Map<String, Object> taskContext(long taskId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status AS task_status, t.assignee_id,"
-                        + " i.definition_id, i.version_no, i.business_key, i.business_type, i.business_title, i.business_round,"
-                        + " i.project_id, i.project_ref, i.project_name, i.action_path, i.status AS instance_status,"
-                        + " CAST(v.definition_json AS CHAR) AS definition_json"
-                        + " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
-                        + " JOIN wf_version v ON v.definition_id = i.definition_id AND v.version_no = i.version_no AND v.tenant_id = i.tenant_id"
-                        + " WHERE t.id = ? AND t.tenant_id = ? AND i.deleted = 0",
-                taskId, user.tenantId());
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.CONFLICT, "审批任务不存在或业务上下文不可用");
+        Map<String, Object> context = taskQueryRepository.taskContext(taskId, user.tenantId());
+        if (context == null) throw new BusinessException(ErrorCode.CONFLICT, "审批任务不存在或业务上下文不可用");
 
-        Map<String, Object> row = new LinkedHashMap<>(rows.get(0));
+        Map<String, Object> row = new LinkedHashMap<>(context);
         requireProjectAccessible(row.get("project_id"), user);
         if (((Number) row.get("assignee_id")).longValue() != user.id()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "当前用户没有该流程任务的审批权限");
@@ -560,40 +559,48 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     public Map<String, Object> currentTaskContext(String businessType, String businessKey, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT t.id FROM wf_task t"
-                        + " JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
-                        + " WHERE t.tenant_id = ? AND t.assignee_id = ? AND i.deleted = 0"
-                        + " AND i.business_type = ? AND i.business_key = ?"
-                        + " AND i.status = 'RUNNING' AND t.status = 'PENDING' AND t.task_type <> 'CC'"
-                        + " ORDER BY i.business_round DESC, t.id DESC LIMIT 1",
-                user.tenantId(), user.id(), requireText(businessType, "业务类型"), requireText(businessKey, "业务单号"));
-        if (rows.isEmpty()) return null;
-        return taskContext(((Number) rows.get(0).get("id")).longValue(), user);
+        String normalizedType = requireText(businessType, "业务类型");
+        String normalizedKey = requireText(businessKey, "业务单号");
+        Map<String, Object> row = taskQueryRepository.currentTask(user.tenantId(), user.id(), normalizedType, normalizedKey);
+        if (row == null) return null;
+        return taskContext(((Number) row.get("id")).longValue(), user);
     }
 
     private long offset(PageQuery pageQuery) {
         return (pageQuery.page() - 1) * pageQuery.size();
     }
 
-    private long count(String fromAndWhere, Object... args) {
-        Long total = jdbc.queryForObject("SELECT COUNT(*)" + fromAndWhere, Long.class, args);
-        return total == null ? 0 : total;
+    private List<Map<String, Object>> mergeSubmittedRows(List<Map<String, Object>> rows, Map<Long, List<Map<String, Object>>> byInstance) {
+        List<Map<String, Object>> merged = new ArrayList<>(rows.size());
+        for (Map<String, Object> source : rows) {
+            Map<String, Object> row = new LinkedHashMap<>(source);
+            List<Map<String, Object>> tasks = byInstance.getOrDefault(((Number) row.get("instance_id")).longValue(), List.of());
+            if ("RUNNING".equalsIgnoreCase(String.valueOf(row.get("instance_status")))) {
+                if (!tasks.isEmpty()) {
+                    Map<String, Object> first = tasks.get(0);
+                    row.put("id", first.get("id")); row.put("task_key", first.get("task_key")); row.put("node_id", first.get("node_id"));
+                    row.put("task_type", first.get("task_type")); row.put("status", first.get("status"));
+                } else row.put("status", "PENDING");
+            } else row.put("status", "COMPLETED");
+            List<String> names = tasks.stream().map(t -> t.get("assignee_name") == null ? String.valueOf(t.get("assignee_id")) : String.valueOf(t.get("assignee_name"))).distinct().toList();
+            row.put("current_assignees", names.size() > 5 ? names.subList(0, 5).stream().reduce((a, b) -> a + "、" + b).orElse("") + " 等" + names.size() + "人" : names.stream().reduce((a, b) -> a + "、" + b).orElse(""));
+            row.put("task_count", tasks.size()); merged.add(row);
+        }
+        return merged;
     }
 
-    private Object[] withPage(List<Object> args, PageQuery pageQuery) {
-        List<Object> result = new ArrayList<>(args);
-        result.add(offset(pageQuery));
-        result.add(pageQuery.size());
-        return result.toArray();
+    private Map<String, Object> inboxParams(AuthUser user) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("tenantId", user.tenantId()); params.put("userId", user.id());
+        params.put("projectIds", projectAccess == null ? List.of() : gateway().accessibleProjectIds(user));
+        return params;
     }
 
-    private InstanceVisibility instanceVisibility(AuthUser user) {
-        if (projectAccess == null) return new InstanceVisibility(" AND i.project_id IS NULL", List.of());
-        List<Long> projectIds = gateway().accessibleProjectIds(user);
-        if (projectIds.isEmpty()) return new InstanceVisibility(" AND i.project_id IS NULL", List.of());
-        String placeholders = String.join(",", java.util.Collections.nCopies(projectIds.size(), "?"));
-        return new InstanceVisibility(" AND (i.project_id IS NULL OR i.project_id IN (" + placeholders + "))", new ArrayList<>(projectIds));
+    private Map<String, Object> visibleTaskParams(AuthUser user) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("tenantId", user.tenantId()); params.put("userId", user.id());
+        params.put("projectIds", projectAccess == null ? List.of() : gateway().accessibleProjectIds(user));
+        return params;
     }
 
     private record InstanceVisibility(String sql, List<Object> args) {
@@ -613,7 +620,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         @SuppressWarnings("unchecked")
         List<String> allowedActions = (List<String>) context.get("allowed_actions");
         if (!allowedActions.contains(normalizedAction)) throw new BusinessException(ErrorCode.BAD_REQUEST, "当前节点不允许审批动作：" + normalizedAction);
-        Integer flowableTask = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE id = ? AND tenant_id = ? AND flowable_task_id IS NOT NULL", Integer.class, taskId, user.tenantId());
+        Integer flowableTask = taskQueryRepository.flowableTaskCount(taskId, user.tenantId());
         if (flowableTask != null && flowableTask > 0) { flowableWorkflowService.decide(taskId, normalizedAction, comment, targetUserId, ccUserIds, signatureConfirmed, user); return; }
         if (!DECISION_ACTIONS.contains(normalizedAction)) throw new BusinessException(ErrorCode.BAD_REQUEST, "不支持的审批动作：" + normalizedAction);
         Map<String, Object> task = findPendingTask(taskId, user);
@@ -637,7 +644,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             Assignee target = findActiveUser(targetUserId, user.tenantId());
             if (target.id() == user.id()) throw new BusinessException(ErrorCode.BAD_REQUEST, "加签人员不能是当前审批人");
             long addSignTaskId = nextId();
-            jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, parent_task_id, assignee_type, assignee_name, assignee_id, status) VALUES (?, ?, ?, ?, ?, 'ADD_SIGN', ?, ?, 'USER', ?, ?, 'PENDING')", addSignTaskId, user.tenantId(), task.get("instance_id"), task.get("task_key"), task.get("node_id"), UUID.randomUUID().toString(), task.get("id"), target.name(), target.id());
+            runtimeRepository.insertAddSignTask(runtimeParams("taskId", addSignTaskId, "tenantId", user.tenantId(), "instanceId", task.get("instance_id"),
+                    "taskKey", task.get("task_key"), "nodeId", task.get("node_id"), "taskGroupKey", UUID.randomUUID().toString(),
+                    "parentTaskId", task.get("id"), "assigneeName", target.name(), "assigneeId", target.id()));
             assigned(user.tenantId(), ((Number) task.get("instance_id")).longValue(), addSignTaskId, target.id(), user.id());
             recordAction(task, normalizedAction, user, target.id(), comment, Map.of("targetUserId", target.id()));
             audit(user, "workflow.task.add-sign");
@@ -645,7 +654,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         }
 
         String status = APPROVE.equals(normalizedAction) ? APPROVE : RETURN.equals(normalizedAction) ? "RETURNED" : REJECT;
-        int changed = jdbc.update("UPDATE wf_task SET status = ?, comment = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND assignee_id = ? AND status = 'PENDING'", status, comment, taskId, user.tenantId(), user.id());
+        int changed = runtimeRepository.completeTask(runtimeParams("status", status, "comment", comment, "taskId", taskId,
+                "tenantId", user.tenantId(), "userId", user.id()));
         if (changed == 0) throw new BusinessException(ErrorCode.CONFLICT, "任务已处理或已不属于当前账号");
         recordAction(task, normalizedAction, user, null, comment, Map.of());
 
@@ -653,7 +663,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         if (REJECT.equals(normalizedAction) || RETURN.equals(normalizedAction)) {
             cancelPendingInstanceTasks(instanceId, user.tenantId(), taskId);
             String instanceStatus = REJECT.equals(normalizedAction) ? "REJECTED" : "RETURNED";
-            jdbc.update("UPDATE wf_instance SET status = ? WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceStatus, instanceId, user.tenantId());
+            runtimeRepository.updateRunningInstanceStatus(runtimeParams("status", instanceStatus, "instanceId", instanceId, "tenantId", user.tenantId()));
             publishCompletedEvent(instanceId, user.tenantId(), instanceStatus);
             emit(instanceId, REJECT.equals(normalizedAction) ? WorkflowLifecycleEventType.REJECTED : WorkflowLifecycleEventType.RETURNED, user);
             audit(user, REJECT.equals(normalizedAction) ? "workflow.task.reject" : "workflow.task.return");
@@ -672,7 +682,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         String mode = currentNode == null ? "ANY" : currentNode.config().path("mode").asText("ANY").toUpperCase();
         if ("ANY".equals(mode)) cancelSiblingTasks(task, user.tenantId(), taskId);
         if ("ALL".equals(mode) && hasPendingGroup(groupKey, user.tenantId())) {
-            jdbc.update("UPDATE wf_instance SET status = 'RUNNING' WHERE id = ? AND tenant_id = ?", instanceId, user.tenantId());
+            runtimeRepository.updateRunningInstanceStatus(runtimeParams("status", "RUNNING", "instanceId", instanceId, "tenantId", user.tenantId()));
             audit(user, "workflow.task.approve");
             return;
         }
@@ -682,9 +692,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     private Map<String, Object> findPendingTask(long taskId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT t.id, t.tenant_id, t.instance_id, t.task_key, t.node_id, t.task_type, t.task_group_key, t.parent_task_id, t.assignee_id, i.definition_id, i.version_no, i.starter_id FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.id = ? AND t.tenant_id = ? AND i.deleted = 0 AND t.assignee_id = ? AND t.status = 'PENDING'", taskId, user.tenantId(), user.id());
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.CONFLICT, "任务已处理或已不属于当前账号");
-        return rows.get(0);
+        Map<String, Object> task = runtimeRepository.pendingTask(runtimeParams("taskId", taskId, "tenantId", user.tenantId(), "userId", user.id()));
+        if (task == null) throw new BusinessException(ErrorCode.CONFLICT, "任务已处理或已不属于当前账号");
+        return task;
     }
 
     private List<String> allowedActions(Map<String, Object> task) {
@@ -719,7 +729,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     private WorkflowDefinitionValidator.WorkflowGraph loadGraph(Map<String, Object> task) {
-        Map<String, Object> version = jdbc.queryForMap("SELECT definition_json FROM wf_version WHERE definition_id = ? AND version_no = ? AND tenant_id = ?", task.get("definition_id"), task.get("version_no"), task.get("tenant_id"));
+        Map<String, Object> version = runtimeRepository.versionJson(runtimeParams("definitionId", task.get("definition_id"),
+                "versionNo", task.get("version_no"), "tenantId", task.get("tenant_id")));
         return validator.parse(String.valueOf(version.get("definition_json")));
     }
 
@@ -732,7 +743,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             WorkflowDefinitionValidator.WorkflowNode next = graph.node(edge.target());
             if (next == null) throw new BusinessException(ErrorCode.CONFLICT, "流程下一节点不存在");
             if ("END".equals(next.type())) {
-                jdbc.update("UPDATE wf_instance SET status = 'APPROVED' WHERE id = ? AND tenant_id = ? AND status = 'RUNNING'", instanceId, tenantId);
+                runtimeRepository.updateRunningInstanceStatus(runtimeParams("status", "APPROVED", "instanceId", instanceId, "tenantId", tenantId));
                 publishCompletedEvent(instanceId, tenantId, "APPROVED");
                 return;
             }
@@ -745,7 +756,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             }
             if ("APPROVAL".equals(next.type())) {
                 createApprovalTasks(instanceId, tenantId, starterId, next, operator);
-                jdbc.update("UPDATE wf_instance SET status = 'RUNNING' WHERE id = ? AND tenant_id = ?", instanceId, tenantId);
+                runtimeRepository.updateRunningInstanceStatus(runtimeParams("status", "RUNNING", "instanceId", instanceId, "tenantId", tenantId));
                 return;
             }
             throw new BusinessException(ErrorCode.CONFLICT, "流程存在不支持的运行节点：" + next.type());
@@ -761,7 +772,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         String assigneeType = node.config().path("assigneeType").asText("USER").toUpperCase();
         for (Assignee assignee : assignees) {
             long taskId = nextId();
-            jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, assignee_type, assignee_name, assignee_id, status) VALUES (?, ?, ?, ?, ?, 'APPROVAL', ?, ?, ?, ?, 'PENDING')", taskId, tenantId, instanceId, node.id(), node.id(), groupKey, assigneeType, assignee.name(), assignee.id());
+            runtimeRepository.insertApprovalTask(runtimeParams("taskId", taskId, "tenantId", tenantId, "instanceId", instanceId,
+                    "taskKey", node.id(), "nodeId", node.id(), "taskGroupKey", groupKey, "assigneeType", assigneeType,
+                    "assigneeName", assignee.name(), "assigneeId", assignee.id()));
             assigned(tenantId, instanceId, taskId, assignee.id(), operator.id());
         }
     }
@@ -772,9 +785,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
 
     /** 流程实例进入终态时发布事件，业务模块可监听并回写业务字段。 */
     private void publishCompletedEvent(long instanceId, long tenantId, String status) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT business_key, variables_json FROM wf_instance WHERE tenant_id = ? AND id = ?",
-                tenantId, instanceId);
+        List<Map<String, Object>> rows = runtimeRepository.instanceCompletionContext(
+                runtimeParams("tenantId", tenantId, "instanceId", instanceId));
         if (rows.isEmpty()) return;
         Map<String, Object> row = rows.get(0);
         String businessKey = String.valueOf(row.get("business_key"));
@@ -813,31 +825,21 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
             String variableName = config.path("assigneeVariable").asText("approverIds");
             List<Long> ids = ids(variables == null ? objectMapper.nullNode() : variables.path(variableName));
             if (ids.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "未指定审批人，变量缺失：" + variableName);
-            String placeholders = placeholders(ids.size());
-            List<Object> args = new ArrayList<>();
-            args.add(tenantId);
-            args.addAll(ids);
-            String sql = "SELECT u.id, u.display_name FROM sys_user u WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1 AND u.id IN (" + placeholders + ") ORDER BY u.id";
-            List<Assignee> result = jdbc.query(sql, args.toArray(), (rs, rowNum) -> new Assignee(rs.getLong("id"), rs.getString("display_name")));
+            List<Assignee> result = assignees(runtimeRepository.activeUsersByIds(runtimeParams("tenantId", tenantId, "ids", ids)));
             if (result.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "审批人不存在或已停用");
             if (result.size() != new HashSet<>(ids).size()) throw new BusinessException(ErrorCode.BAD_REQUEST, "部分审批人不存在或已停用");
             return result;
         }
         List<Long> ids = ids(config.path("assigneeIds"));
         if (ids.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "审批节点未配置审批人");
-        String placeholders = placeholders(ids.size());
-        String sql;
-        List<Object> args = new ArrayList<>();
-        args.add(tenantId);
-        args.addAll(ids);
+        List<Assignee> result;
         if ("ROLE".equals(type)) {
-            sql = "SELECT DISTINCT u.id, u.display_name FROM sys_user u JOIN sys_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id JOIN sys_role r ON r.id = ur.role_id AND r.tenant_id = ur.tenant_id WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1 AND r.deleted = 0 AND ur.role_id IN (" + placeholders + ") ORDER BY u.id";
+            result = assignees(runtimeRepository.activeUsersByRoles(runtimeParams("tenantId", tenantId, "ids", ids)));
         } else if ("USER".equals(type)) {
-            sql = "SELECT u.id, u.display_name FROM sys_user u WHERE u.tenant_id = ? AND u.deleted = 0 AND u.status = 1 AND u.id IN (" + placeholders + ") ORDER BY u.id";
+            result = assignees(runtimeRepository.activeUsersByIds(runtimeParams("tenantId", tenantId, "ids", ids)));
         } else {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "审批人类型不支持：" + type);
         }
-        List<Assignee> result = jdbc.query(sql, args.toArray(), (rs, rowNum) -> new Assignee(rs.getLong("id"), rs.getString("display_name")));
         if (result.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "审批人不存在或已停用");
         if ("USER".equals(type) && result.size() != new HashSet<>(ids).size()) throw new BusinessException(ErrorCode.BAD_REQUEST, "部分审批人不存在或已停用");
         return result;
@@ -848,23 +850,27 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         List<Assignee> recipients = userIds.stream().distinct().map(id -> findActiveUser(id, tenantId)).toList();
         for (Assignee recipient : recipients) {
             long taskId = nextId();
-            jdbc.update("INSERT INTO wf_task (id, tenant_id, instance_id, task_key, node_id, task_type, task_group_key, assignee_type, assignee_name, assignee_id, status, comment, completed_at) VALUES (?, ?, ?, ?, ?, 'CC', ?, 'USER', ?, ?, 'SENT', ?, CURRENT_TIMESTAMP)", taskId, tenantId, instanceId, taskKey, taskKey, UUID.randomUUID().toString(), recipient.name(), recipient.id(), comment);
-            jdbc.update("INSERT INTO wf_task_action (id, tenant_id, instance_id, task_id, action_code, operator_id, target_user_id, comment) VALUES (?, ?, ?, ?, 'CC', ?, ?, ?)", nextId(), tenantId, instanceId, taskId, operatorId, recipient.id(), comment);
+            runtimeRepository.insertCcTask(runtimeParams("taskId", taskId, "tenantId", tenantId, "instanceId", instanceId,
+                    "taskKey", taskKey, "taskGroupKey", UUID.randomUUID().toString(), "assigneeName", recipient.name(),
+                    "assigneeId", recipient.id(), "comment", comment));
+            runtimeRepository.insertTaskAction(runtimeParams("id", nextId(), "tenantId", tenantId, "instanceId", instanceId,
+                    "taskId", taskId, "actionCode", CC, "operatorId", operatorId, "targetUserId", recipient.id(),
+                    "comment", comment, "payloadJson", null));
         }
     }
 
     private Assignee findActiveUser(long userId, long tenantId) {
-        List<Assignee> rows = jdbc.query("SELECT id, display_name FROM sys_user WHERE id = ? AND tenant_id = ? AND deleted = 0 AND status = 1", (rs, rowNum) -> new Assignee(rs.getLong("id"), rs.getString("display_name")), userId, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标用户不存在或已停用");
-        return rows.get(0);
+        Map<String, Object> user = runtimeRepository.activeUser(runtimeParams("userId", userId, "tenantId", tenantId));
+        if (user == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "目标用户不存在或已停用");
+        return new Assignee(((Number) user.get("id")).longValue(), String.valueOf(user.get("display_name")));
     }
 
     private void cancelPendingInstanceTasks(long instanceId, long tenantId, long currentTaskId) {
-        jdbc.update("UPDATE wf_task SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND instance_id = ? AND id <> ? AND status = 'PENDING'", tenantId, instanceId, currentTaskId);
+        runtimeRepository.cancelPendingTasks(runtimeParams("tenantId", tenantId, "instanceId", instanceId, "taskId", currentTaskId));
     }
 
     private void emitTerminalIfNeeded(long instanceId, AuthUser user) {
-        String state = jdbc.queryForObject("SELECT status FROM wf_instance WHERE id = ? AND tenant_id = ?", String.class, instanceId, user.tenantId());
+        String state = runtimeRepository.instanceStatus(runtimeParams("instanceId", instanceId, "tenantId", user.tenantId()));
         if ("APPROVED".equals(state)) emit(instanceId, WorkflowLifecycleEventType.APPROVED, user);
     }
 
@@ -874,11 +880,12 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     private void cancelSiblingTasks(Map<String, Object> task, long tenantId, long currentTaskId) {
         Object group = task.get("task_group_key");
         if (group == null || "null".equals(String.valueOf(group))) return;
-        jdbc.update("UPDATE wf_task SET status = 'CANCELLED', completed_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND instance_id = ? AND task_group_key = ? AND id <> ? AND status = 'PENDING'", tenantId, task.get("instance_id"), group, currentTaskId);
+        runtimeRepository.cancelSiblingTasks(runtimeParams("tenantId", tenantId, "instanceId", task.get("instance_id"),
+                "taskGroupKey", group, "taskId", currentTaskId));
     }
 
     private boolean hasPendingGroup(String groupKey, long tenantId) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task WHERE tenant_id = ? AND task_group_key = ? AND status = 'PENDING'", Integer.class, tenantId, groupKey);
+        Integer count = runtimeRepository.countPendingGroup(runtimeParams("tenantId", tenantId, "taskGroupKey", groupKey));
         return count != null && count > 0;
     }
 
@@ -889,7 +896,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         } catch (JsonProcessingException exception) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "审批动作记录失败");
         }
-        jdbc.update("INSERT INTO wf_task_action (id, tenant_id, instance_id, task_id, action_code, operator_id, target_user_id, comment, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", nextId(), user.tenantId(), task.get("instance_id"), task.get("id"), action, user.id(), targetUserId, comment, payloadJson);
+        runtimeRepository.insertTaskAction(runtimeParams("id", nextId(), "tenantId", user.tenantId(), "instanceId", task.get("instance_id"),
+                "taskId", task.get("id"), "actionCode", action, "operatorId", user.id(), "targetUserId", targetUserId,
+                "comment", comment, "payloadJson", payloadJson));
     }
 
     private List<Long> ids(JsonNode node) {
@@ -902,10 +911,6 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         return result;
     }
 
-    private String placeholders(int size) {
-        return String.join(",", java.util.Collections.nCopies(size, "?"));
-    }
-
     private String requireText(String value, String field) {
         if (value == null || value.isBlank()) throw new BusinessException(ErrorCode.BAD_REQUEST, field + "不能为空");
         return value.trim();
@@ -915,13 +920,14 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         String[] segments = code.split("\\.", 4);
         String targetType = segments.length > 1 ? segments[1] : "workflow";
         if (OperationAuditContext.capture(code, targetType, null, null)) return;
-        jdbc.update("INSERT INTO sys_operation_log (id, tenant_id, operator_id, operation_code, request_method, request_path, success) VALUES (?, ?, ?, ?, 'SERVICE', ?, 1)", nextId(), user.tenantId(), user.id(), code, "/api/workflows");
+        runtimeRepository.insertOperationAudit(runtimeParams("id", nextId(), "tenantId", user.tenantId(), "operatorId", user.id(),
+                "operationCode", code, "requestPath", "/api/workflows"));
     }
 
     private Map<String, Object> requireDefinition(long definitionId, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, status, current_version, model_schema_version, deployment_id, scope_type, project_id FROM wf_definition WHERE id = ? AND tenant_id = ? AND deleted = 0", definitionId, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
-        return rows.get(0);
+        Map<String, Object> definition = definitionRepository.detail(definitionId, tenantId);
+        if (definition == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程定义不存在");
+        return definition;
     }
 
     public Map<String, Object> projectOptions(String projectRef, AuthUser user) {
@@ -937,8 +943,7 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
 
     @Override
     public long pendingTasks(long tenantId, long projectId, long userId) {
-        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id WHERE t.tenant_id = ? AND i.project_id = ? AND t.assignee_id = ? AND t.status = 'PENDING' AND i.deleted = 0", Long.class, tenantId, projectId, userId);
-        return count == null ? 0 : count;
+        return taskQueryRepository.pendingTasks(tenantId, projectId, userId);
     }
 
     private void requireDefinitionAccessible(Map<String, Object> definition, AuthUser user, boolean manage) {
@@ -953,9 +958,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     void requireInstanceAccessible(long instanceId, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ? AND deleted = 0", instanceId, user.tenantId());
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
-        requireProjectAccessible(rows.get(0).get("project_id"), user);
+        Map<String, Object> row = taskQueryRepository.instanceProject(instanceId, user.tenantId());
+        if (row == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程实例不存在");
+        requireProjectAccessible(row.get("project_id"), user);
     }
 
     private void requireProjectAccessible(Object projectIdValue, AuthUser user) {
@@ -964,9 +969,9 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     private Map<String, Object> requirePublishedDefinition(long definitionId, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, code, name, scope_type, project_id, status, current_version FROM wf_definition WHERE id = ? AND tenant_id = ? AND status = 'PUBLISHED' AND deleted = 0", definitionId, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程尚未发布或不存在");
-        return rows.get(0);
+        Map<String, Object> definition = definitionRepository.published(definitionId, tenantId);
+        if (definition == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "流程尚未发布或不存在");
+        return definition;
     }
 
     private StartScope resolveStartScope(Map<String, Object> definition, WorkflowBusinessContext context, AuthUser user) {
@@ -994,9 +999,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     private Long projectId(long instanceId, long tenantId) {
-        return jdbc.query("SELECT project_id FROM wf_instance WHERE id = ? AND tenant_id = ?",
-                rs -> rs.next() && rs.getObject(1) != null ? ((Number) rs.getObject(1)).longValue() : null,
-                instanceId, tenantId);
+        Map<String, Object> row = taskQueryRepository.instanceProject(instanceId, tenantId);
+        return row == null || row.get("project_id") == null ? null : ((Number) row.get("project_id")).longValue();
     }
 
     private void requireProjectTargets(long instanceId, List<Long> userIds, AuthUser actor) {
@@ -1102,6 +1106,17 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         }
     }
 
+    private int latestDraftVersion(long definitionId, long tenantId) {
+        Long version = taskQueryRepository.latestDraftVersion(definitionId, tenantId);
+        return version == null ? 0 : version.intValue();
+    }
+
+    private void refreshDefinitionSummary(long definitionId, long tenantId, String scopeType, int versionNo, String definitionJson) {
+        if (definitionSummaryProjector != null) definitionSummaryProjector.refresh(definitionId, tenantId, scopeType, versionNo, definitionJson);
+    }
+
+    private boolean booleanValue(Object value) { return value instanceof Boolean bool ? bool : value instanceof Number number && number.intValue() != 0; }
+
     private void rejectTemplateExecution(Map<String, Object> definition, String action) {
         if ("TEMPLATE".equals(String.valueOf(definition.get("scope_type")))) {
             throw new BusinessException(ErrorCode.CONFLICT, "全局模板不能" + action + "，请先创建项目流程");
@@ -1130,23 +1145,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
     }
 
     private boolean enterpriseDefinition(long definitionId, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT d.model_schema_version AS definition_schema_version,
-                       v.model_schema_version AS version_schema_version,
-                       v.definition_json
-                FROM wf_definition d
-                JOIN wf_version v ON v.definition_id = d.id
-                    AND v.tenant_id = d.tenant_id
-                    AND v.version_no = COALESCE(NULLIF(d.current_version, 0), (
-                        SELECT MAX(v2.version_no)
-                        FROM wf_version v2
-                        WHERE v2.definition_id = d.id AND v2.tenant_id = d.tenant_id
-                    ))
-                WHERE d.id = ? AND d.tenant_id = ? AND d.deleted = 0
-                """, definitionId, tenantId);
-        if (rows.isEmpty()) return false;
-
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = definitionRepository.enterprise(definitionId, tenantId);
+        if (row == null) return false;
         String definitionJson = String.valueOf(row.get("definition_json"));
         try {
             // The JSON model is authoritative for legacy rows whose metadata defaulted to version 1.
@@ -1164,6 +1164,17 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         } catch (NumberFormatException ignored) {
             return 0;
         }
+    }
+
+    private Map<String, Object> runtimeParams(Object... entries) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        for (int index = 0; index < entries.length; index += 2) params.put(String.valueOf(entries[index]), entries[index + 1]);
+        return params;
+    }
+
+    private List<Assignee> assignees(List<Map<String, Object>> rows) {
+        return rows.stream().map(row -> new Assignee(((Number) row.get("id")).longValue(),
+                String.valueOf(row.get("display_name")))).toList();
     }
 
     private long nextId() {

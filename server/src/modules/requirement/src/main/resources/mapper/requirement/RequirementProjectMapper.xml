@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementProjectMapper">
+  <sql id="projectColumns">p.id,p.project_code,p.project_name,p.project_type,p.start_time,p.status,p.description,p.created_at,p.updated_at,(SELECT COUNT(*) FROM req_difference d WHERE d.project_id=p.id AND d.tenant_id=p.tenant_id AND d.deleted=0) difference_count,(SELECT COUNT(*) FROM req_difference d WHERE d.project_id=p.id AND d.tenant_id=p.tenant_id AND d.deleted=0 AND d.review_status='已评审') reviewed_count</sql>
+  <select id="list" resultType="map">SELECT <include refid="projectColumns"/> FROM req_project p WHERE p.tenant_id=#{tenantId} AND p.deleted=0 <if test="keyword != null and keyword != ''">AND (p.project_code LIKE CONCAT('%',#{keyword},'%') OR p.project_name LIKE CONCAT('%',#{keyword},'%'))</if> ORDER BY p.created_at DESC,p.id DESC</select>
+  <select id="findProject" resultType="map">SELECT <include refid="projectColumns"/> FROM req_project p WHERE p.tenant_id=#{tenantId} AND p.id=#{id} AND p.deleted=0</select>
+  <select id="projectCodeCount" resultType="int">SELECT COUNT(*) FROM req_project WHERE tenant_id=#{tenantId} AND project_code=#{code} AND deleted=0</select>
+  <select id="differenceCount" resultType="int">SELECT COUNT(*) FROM req_difference WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND deleted=0</select>
+  <insert id="insertProject">INSERT INTO req_project (id,tenant_id,project_code,project_name,project_type,start_time,status,description,created_by,deleted) VALUES (#{p.id},#{p.tenant_id},#{p.project_code},#{p.project_name},#{p.project_type},#{p.start_time},#{p.status},#{p.description},#{p.created_by},#{p.deleted})</insert>
+  <update id="updateProject">UPDATE req_project <set><if test="p.project_name != null">project_name=#{p.project_name},</if><if test="p.project_type != null">project_type=#{p.project_type},</if><if test="p.start_time != null">start_time=#{p.start_time},</if><if test="p.status != null">status=#{p.status},</if><if test="p.description != null">description=#{p.description},</if>updated_by=#{p.updated_by}</set> WHERE tenant_id=#{p.tenant_id} AND id=#{p.id}</update>
+  <update id="softDeleteProject">UPDATE req_project SET deleted=1,updated_by=#{operatorId} WHERE tenant_id=#{tenantId} AND id=#{id}</update>
+  <select id="members" resultType="map">SELECT pm.id,pm.project_id,pm.user_id,pm.member_role,u.username,u.display_name FROM req_project_member pm LEFT JOIN sys_user u ON u.id=pm.user_id AND u.tenant_id=pm.tenant_id WHERE pm.tenant_id=#{tenantId} AND pm.project_id=#{projectId} AND pm.deleted=0 ORDER BY pm.created_at,pm.id</select>
+  <select id="userCount" resultType="int">SELECT COUNT(*) FROM sys_user WHERE tenant_id=#{tenantId} AND id=#{userId} AND deleted=0</select>
+  <select id="memberCount" resultType="int">SELECT COUNT(*) FROM req_project_member WHERE tenant_id=#{tenantId} AND project_id=#{projectId} AND user_id=#{userId} AND deleted=0</select>
+  <insert id="insertMember">INSERT INTO req_project_member (id,tenant_id,project_id,user_id,member_role,created_by,deleted) VALUES (#{p.id},#{p.tenant_id},#{p.project_id},#{p.user_id},#{p.member_role},#{p.created_by},#{p.deleted})</insert>
+  <select id="findMember" resultType="map">SELECT pm.id,pm.project_id,pm.user_id,pm.member_role,u.username,u.display_name FROM req_project_member pm LEFT JOIN sys_user u ON u.id=pm.user_id AND u.tenant_id=pm.tenant_id WHERE pm.tenant_id=#{tenantId} AND pm.id=#{id}</select>
+  <update id="softDeleteMember">UPDATE req_project_member SET deleted=1 WHERE tenant_id=#{tenantId} AND id=#{id}</update>
+</mapper>

@@ -2,7 +2,6 @@ package com.ccb.workflow.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -12,11 +11,11 @@ import java.util.Map;
 /** Resolves persisted node ids to the user-facing labels from the instance version. */
 @Component
 public class WorkflowNodeLabelResolver {
-    private final JdbcTemplate jdbc;
+    private final WorkflowNodeLabelRepository repository;
     private final ObjectMapper objectMapper;
 
-    public WorkflowNodeLabelResolver(JdbcTemplate jdbc, ObjectMapper objectMapper) {
-        this.jdbc = jdbc;
+    public WorkflowNodeLabelResolver(WorkflowNodeLabelRepository repository, ObjectMapper objectMapper) {
+        this.repository = repository;
         this.objectMapper = objectMapper;
     }
 
@@ -53,13 +52,7 @@ public class WorkflowNodeLabelResolver {
     }
 
     private Map<String, String> loadLabels(long instanceId, long tenantId) {
-        List<String> definitions = jdbc.query("""
-                SELECT CAST(v.definition_json AS CHAR)
-                FROM wf_instance i
-                JOIN wf_version v ON v.definition_id = i.definition_id
-                    AND v.tenant_id = i.tenant_id AND v.version_no = i.version_no
-                WHERE i.id = ? AND i.tenant_id = ?
-                """, (rs, rowNum) -> rs.getString(1), instanceId, tenantId);
+        List<String> definitions = repository.definitionJson(instanceId, tenantId);
         if (definitions.isEmpty()) return Map.of();
         try {
             JsonNode root = objectMapper.readTree(definitions.get(0));

@@ -11,8 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 
 import java.util.List;
 
@@ -23,14 +21,14 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SystemUserDirectoryTest {
-    @Mock JdbcTemplate jdbc;
+    @Mock SystemUserDirectoryRepository repository;
 
     @Test
     void listsOnlyThroughTheTenantScopedActiveUserQuery() {
         UserDirectoryItem expected = new UserDirectoryItem(7, "tester", "测试员", 2, "测试部", "13800000000");
-        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of(expected));
+        when(repository.listActive(9, "测试", 999)).thenReturn(List.of(expected));
 
-        List<UserDirectoryItem> result = new SystemUserDirectory(jdbc).listActive(9, "测试", 999);
+        List<UserDirectoryItem> result = new SystemUserDirectory(repository).listActive(9, "测试", 999);
 
         assertEquals(List.of(expected), result);
     }

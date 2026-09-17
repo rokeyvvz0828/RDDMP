@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.requirement.service.RequirementWorkflowMapper">
+  <select id="findActiveDifference" resultType="map">
+    SELECT review_status, review_report_name
+    FROM req_difference
+    WHERE tenant_id = #{tenantId} AND id = #{differenceId} AND deleted = 0
+  </select>
+
+  <update id="updateReviewStatus">
+    UPDATE req_difference
+    SET review_status = #{reviewStatus}, review_comment = NULL, updated_by = #{operatorId}
+    WHERE tenant_id = #{tenantId} AND id = #{differenceId}
+  </update>
+
+  <select id="findLatestWorkflowAction" resultType="map">
+    SELECT a.operator_id, u.display_name AS operator_name, a.comment, a.created_at
+    FROM wf_task_action a
+    LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id
+    WHERE a.tenant_id = #{tenantId} AND a.instance_id = #{instanceId}
+    ORDER BY a.id DESC LIMIT 1
+  </select>
+
+  <insert id="insertReviewRecord">
+    INSERT INTO req_review_record (id, tenant_id, biz_type, biz_id, reviewer_id, reviewer_name,
+      review_time, conclusion, comment, report_doc_name, created_by, deleted)
+    VALUES (#{id}, #{tenantId}, 'DIFFERENCE', #{differenceId}, #{reviewerId}, #{reviewerName},
+      #{reviewTime}, #{conclusion}, #{comment}, #{reportDocName}, #{createdBy}, 0)
+  </insert>
+</mapper>

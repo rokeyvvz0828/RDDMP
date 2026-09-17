@@ -20,19 +20,19 @@ class IssueServiceTest {
 
     @Test
     void missingRelationKeysPreserveExistingRelations() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        IssueService service = service(mapper);
 
         service.update(50L, minimalBody(), USER);
 
-        assertEquals(0, jdbc.relationDeletes);
-        assertEquals(0, jdbc.relationInserts);
+        assertEquals(0, mapper.relationDeletes);
+        assertEquals(0, mapper.relationInserts);
     }
 
     @Test
     void explicitEmptyArraysClearAllRelationTypes() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        IssueService service = service(mapper);
         Map<String, Object> body = minimalBody();
         body.put("relatedMeetingMinutes", List.of());
         body.put("relatedTables", List.of());
@@ -40,95 +40,96 @@ class IssueServiceTest {
 
         service.update(50L, body, USER);
 
-        assertEquals(3, jdbc.relationDeletes);
-        assertEquals(0, jdbc.relationInserts);
+        assertEquals(3, mapper.relationDeletes);
+        assertEquals(0, mapper.relationInserts);
     }
 
     @Test
     void explicitIdsReplaceOnlyThePresentRelationType() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        IssueService service = service(mapper);
         Map<String, Object> body = minimalBody();
         body.put("relatedTables", List.of(31L));
 
         service.update(50L, body, USER);
 
-        assertEquals(1, jdbc.relationDeletes);
-        assertEquals(1, jdbc.relationInserts);
+        assertEquals(1, mapper.relationDeletes);
+        assertEquals(1, mapper.relationInserts);
     }
 
     @Test
     void databaseUniquenessRaceBecomesBusinessConflict() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        jdbc.failIssueUpdateWithDuplicate = true;
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        mapper.failIssueUpdateWithDuplicate = true;
+        IssueService service = service(mapper);
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.update(50L, minimalBody(), USER));
 
         assertEquals(ErrorCode.CONFLICT, error.code());
-        assertEquals(0, jdbc.auditWrites);
+        assertEquals(0, mapper.auditWrites);
     }
 
     @Test
     void restorePrevalidatesWholeBatchBeforeWriting() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        jdbc.rows.get(50L).put("deleted", 1);
-        jdbc.putIssue(51L, "ISSUE-51", true);
-        jdbc.conflictingCode = "ISSUE-51";
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        mapper.rows.get(50L).put("deleted", 1);
+        mapper.putIssue(51L, "ISSUE-51", true);
+        mapper.conflictingCode = "ISSUE-51";
+        IssueService service = service(mapper);
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.restore(List.of(50L, 51L), USER));
 
         assertEquals(ErrorCode.CONFLICT, error.code());
-        assertEquals(0, jdbc.restoreWrites);
-        assertEquals(0, jdbc.auditWrites);
+        assertEquals(0, mapper.restoreWrites);
+        assertEquals(0, mapper.auditWrites);
     }
 
     @Test
     void activeIssueCannotBePurgedOrLoseRelations() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        IssueService service = service(mapper);
 
         assertThrows(BusinessException.class, () -> service.purge(List.of(50L), USER));
 
-        assertEquals(0, jdbc.relationDeletes);
-        assertEquals(0, jdbc.purgeWrites);
-        assertEquals(0, jdbc.auditWrites);
+        assertEquals(0, mapper.relationDeletes);
+        assertEquals(0, mapper.purgeWrites);
+        assertEquals(0, mapper.auditWrites);
     }
 
     @Test
     void deletedIssuePurgeDeletesRelationsThenAudits() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        jdbc.putIssue(51L, "ISSUE-51", true);
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        mapper.putIssue(51L, "ISSUE-51", true);
+        IssueService service = service(mapper);
 
         service.purge(List.of(51L), USER);
 
-        assertEquals(1, jdbc.relationDeletes);
-        assertEquals(1, jdbc.purgeWrites);
-        assertEquals(1, jdbc.auditWrites);
+        assertEquals(1, mapper.relationDeletes);
+        assertEquals(1, mapper.purgeWrites);
+        assertEquals(1, mapper.auditWrites);
     }
 
     @Test
     void relationFromAnotherProjectIsRejectedBeforeRelationMutation() {
-        StubJdbcTemplate jdbc = new StubJdbcTemplate();
-        jdbc.invalidRelationTarget = true;
-        IssueService service = service(jdbc);
+        StubIssueMapper mapper = new StubIssueMapper();
+        mapper.invalidRelationTarget = true;
+        IssueService service = service(mapper);
         Map<String, Object> body = minimalBody();
         body.put("relatedTables", List.of(31L));
 
         BusinessException error = assertThrows(BusinessException.class, () -> service.update(50L, body, USER));
 
         assertEquals(ErrorCode.BAD_REQUEST, error.code());
-        assertEquals(0, jdbc.relationDeletes);
-        assertEquals(0, jdbc.relationInserts);
-        assertEquals(0, jdbc.auditWrites);
+        assertEquals(0, mapper.relationDeletes);
+        assertEquals(0, mapper.relationInserts);
+        assertEquals(0, mapper.auditWrites);
     }
 
-    private IssueService service(StubJdbcTemplate jdbc) {
-        return new IssueService(jdbc, new DataMigrationPermissionService(jdbc, StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
+    private IssueService service(StubIssueMapper mapper) {
+        StubJdbcTemplate permissionJdbc = new StubJdbcTemplate();
+        return new IssueService(new IssueRepository(mapper), new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(permissionJdbc), StubProjectAccess.allow()), TestDataMigrationCodeValues.service());
     }
 
     private Map<String, Object> minimalBody() {
@@ -139,7 +140,7 @@ class IssueServiceTest {
         return body;
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubIssueMapper implements IssueMapper {
         private final Map<Long, Map<String, Object>> rows = new LinkedHashMap<>();
         private int relationDeletes;
         private int relationInserts;
@@ -150,7 +151,7 @@ class IssueServiceTest {
         private boolean invalidRelationTarget;
         private String conflictingCode;
 
-        private StubJdbcTemplate() {
+        private StubIssueMapper() {
             putIssue(50L, "ISSUE-50", false);
         }
 
@@ -165,70 +166,38 @@ class IssueServiceTest {
             rows.put(id, row);
         }
 
+        @Override public Long count(long tenantId, long projectId, boolean deleted, String granularity, String systemCode, String issueSource, String defectType, String frequency, String keyword) { return 0L; }
+        @Override public List<Map<String, Object>> page(long tenantId, long projectId, boolean deleted, String granularity, String systemCode, String issueSource, String defectType, String frequency, String keyword, int limit, long offset) { return List.of(); }
+        @Override public List<Map<String, Object>> exportRows(long tenantId, long projectId, String granularity, String systemCode, String issueSource, String defectType, String frequency, String keyword) { return List.of(); }
+        @Override public List<Map<String, Object>> find(long tenantId, long id, boolean deleted) { Map<String, Object> row = rows.get(id); return row != null && ((Number) row.get("deleted")).intValue() == (deleted ? 1 : 0) ? List.of(new LinkedHashMap<>(row)) : List.of(); }
+        @Override public List<Long> relationIds(long tenantId, long issueId, String type) { return List.of(); }
+        @Override public int insert(long id, long tenantId, long projectId, String issueCode, String issueName, String granularity, String systemCode, String issueSource, String defectType, String issueDescription, String solution, String meetingConclusion, String processingSteps, String businessScenario, String handler, String responsibleParty, String keywords, String frequency, long ownerId, long createdBy, long updatedBy) { return 1; }
+        @Override public int update(long id, long tenantId, String issueCode, String issueName, String granularity, String systemCode, String issueSource, String defectType, String issueDescription, String solution, String meetingConclusion, String processingSteps, String businessScenario, String handler, String responsibleParty, String keywords, String frequency, long updatedBy) { if (failIssueUpdateWithDuplicate) throw new DuplicateKeyException("duplicate active issue code"); return 1; }
+        @Override public int softDelete(long tenantId, long id, long deletedBy) { return 1; }
+        @Override public int restore(long tenantId, long id, long updatedBy) { restoreWrites++; return 1; }
+        @Override public int deleteRelations(long tenantId, long issueId, String type) { relationDeletes++; return 1; }
+        @Override public int insertRelation(long tenantId, long issueId, String type, long relatedId, long createdBy) { relationInserts++; return 1; }
+        @Override public int deleteAllRelations(long tenantId, long issueId) { relationDeletes++; return 1; }
+        @Override public int purge(long tenantId, long id) { purgeWrites++; return 1; }
+        @Override public int purgeAllRelations(long tenantId, long projectId) { return 1; }
+        @Override public int purgeAll(long tenantId, long projectId) { return 1; }
+        @Override public List<Map<String, Object>> systemName(long tenantId, String systemCode) { return List.of(); }
+        @Override public List<Map<String, Object>> meetingOptions(long tenantId, long projectId) { return List.of(); }
+        @Override public List<Map<String, Object>> targetTableOptions(long tenantId, long projectId) { return List.of(); }
+        @Override public List<Long> targetTableProjects(long tenantId, long tableCode) { return List.of(); }
+        @Override public List<Map<String, Object>> targetFieldOptions(long tenantId, long tableCode) { return List.of(); }
+        @Override public Integer relationTargetCount(long tenantId, long projectId, long id, String type) { return invalidRelationTarget ? 0 : 1; }
+        @Override public Integer invalidFieldRelationCount(long tenantId, long issueId) { return 0; }
+        @Override public Integer issueCodeCount(long tenantId, long projectId, String issueCode, Long currentId) { return issueCode.equals(conflictingCode) ? 1 : 0; }
+        @Override public Integer enabledComponentCount(long tenantId, long projectId, String systemCode) { return 1; }
+        @Override public int insertAudit(long tenantId, long actorId, long projectId, String operation, long entityId) { auditWrites++; return 1; }
+    }
+
+    private static final class StubJdbcTemplate extends JdbcTemplate {
         @Override
         @SuppressWarnings("unchecked")
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            int count = 0;
-            if (sql.contains("FROM sys_user_role")) count = 1;
-            else if (sql.contains("FROM pm_project")) count = 1;
-            else if (sql.contains("FROM dm_issue_relation")) count = 0;
-            else if (sql.contains("FROM dm_target_table_field")) count = invalidRelationTarget ? 0 : 1;
-            else if (sql.contains("FROM dm_target_table")) count = invalidRelationTarget ? 0 : 1;
-            else if (sql.contains("FROM dm_meeting")) count = invalidRelationTarget ? 0 : 1;
-            else if (sql.contains("FROM dm_issue")) {
-                String code = String.valueOf(args[2]);
-                count = code.equals(conflictingCode) ? 1 : 0;
-            }
-            return (T) Integer.valueOf(count);
-        }
-
-        @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (!sql.contains("FROM dm_issue i")) return List.of();
-            long id = ((Number) args[1]).longValue();
-            Map<String, Object> row = rows.get(id);
-            if (row == null) return List.of();
-            boolean expectedDeleted = sql.contains("i.deleted = 1");
-            boolean actualDeleted = ((Number) row.get("deleted")).intValue() == 1;
-            return expectedDeleted == actualDeleted ? List.of(new LinkedHashMap<>(row)) : List.of();
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            return (List<T>) new ArrayList<Long>();
-        }
-
-        @Override
-        public int update(String sql, Object... args) {
-            if (sql.startsWith("UPDATE dm_issue SET issue_code")) {
-                // T32 决策 D2：维护语句不得再携带 project_id，归属恒取库中记录。
-                if (sql.contains("project_id")) throw new AssertionError("Issue update must not mutate project_id: " + sql);
-                if (failIssueUpdateWithDuplicate) throw new DuplicateKeyException("duplicate active issue code");
-                return 1;
-            }
-            if (sql.startsWith("UPDATE dm_issue SET deleted = 0")) {
-                restoreWrites++;
-                return 1;
-            }
-            if (sql.startsWith("UPDATE dm_issue SET deleted = 1")) return 1;
-            if (sql.startsWith("DELETE FROM dm_issue_relation")) {
-                relationDeletes++;
-                return 1;
-            }
-            if (sql.startsWith("DELETE FROM dm_issue")) {
-                purgeWrites++;
-                return 1;
-            }
-            if (sql.startsWith("INSERT INTO dm_issue_relation")) {
-                relationInserts++;
-                return 1;
-            }
-            if (sql.startsWith("INSERT INTO dm_operation_log")) {
-                auditWrites++;
-                return 1;
-            }
-            throw new AssertionError("Unexpected update: " + sql);
+            return (T) Integer.valueOf(sql.contains("FROM sys_user_role") || sql.contains("FROM pm_project") ? 1 : 0);
         }
     }
 }

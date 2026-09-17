@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.datamigration.service.DashboardSnapshotMapper">
+  <delete id="deleteByDate">DELETE FROM dm_dashboard_snapshot WHERE snapshot_date = #{date}</delete>
+  <insert id="insertProjectTotals">INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, metric_code, metric_value) SELECT tenant_id, #{date}, 'PROJECT_TOTAL', COUNT(*) FROM pm_project WHERE deleted = 0 GROUP BY tenant_id</insert>
+  <insert id="insertComponentTotals">INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, metric_code, metric_value) SELECT tenant_id, #{date}, 'COMPONENT_TOTAL', COUNT(*) FROM dm_component WHERE enabled = 1 GROUP BY tenant_id</insert>
+  <insert id="insertAssetTotals">INSERT INTO dm_dashboard_snapshot (tenant_id, snapshot_date, project_id, metric_code, metric_value) SELECT tenant_id, #{date}, project_id, 'ASSET_TOTAL', SUM(cnt) FROM (<include refid="tenantProjectCounts"/>) x GROUP BY tenant_id, project_id</insert>
+  <sql id="tenantProjectCounts">
+    SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_plan WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_mapping_doc WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_dependency WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_script WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_topic WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_release_drill WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_report WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_rule WHERE deleted = 0 GROUP BY tenant_id, project_id
+    UNION ALL SELECT tenant_id, project_id, COUNT(*) AS cnt FROM dm_parameter WHERE deleted = 0 GROUP BY tenant_id, project_id
+  </sql>
+</mapper>

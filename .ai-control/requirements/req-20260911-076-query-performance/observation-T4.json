@@ -1,0 +1,15 @@
+{
+  "sample_label": "S4-T4 metric and actuator observation",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "Focused MeterRegistry assertions", "result": "pass", "raw_evidence": "ProjectServiceTest and WorkflowServiceTest register ccb.project.members.query and ccb.workflow.definitions.query with fixed tags.", "limitation": ["Same-context observation."]},
+    {"requirement_id": "R4", "sensor": "Local unauthenticated actuator probe", "result": "pass", "raw_evidence": "http://127.0.0.1:8080/actuator/metrics returned the application JSON 401 Authentication required response, proving the endpoint is reachable and protected.", "limitation": ["Metric payload could not be read without authorized credentials; .env was not read."]},
+    {"requirement_id": "R5", "sensor": "Configuration diff inspection", "result": "pass", "raw_evidence": "Only metrics was appended to existing exposed endpoints.", "limitation": []}
+  ],
+  "feedback": [],
+  "disturbances": [{"event": "Actuator endpoint is protected by local application authentication.", "impact": "Metric names cannot be listed without credentials."}],
+  "coverage_gaps": ["Authenticated metrics payload"],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

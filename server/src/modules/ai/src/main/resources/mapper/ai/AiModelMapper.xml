@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.ai.repository.AiModelMapper">
+    <select id="providers" resultType="map">SELECT id, provider_code, provider_name, endpoint, status, created_at FROM ai_provider WHERE tenant_id = #{tenantId} AND deleted = 0 ORDER BY id DESC</select>
+    <insert id="insertProvider">INSERT INTO ai_provider (id, tenant_id, provider_code, provider_name, endpoint, status, deleted) VALUES (#{id}, #{tenantId}, #{providerCode}, #{providerName}, #{endpoint}, 1, 0)</insert>
+    <select id="provider" resultType="map">SELECT id, provider_code, provider_name, endpoint, status, created_at FROM ai_provider WHERE id = #{id} AND tenant_id = #{tenantId}</select>
+    <select id="models" resultType="map">SELECT id, provider_id, model_code, model_name, capabilities, status, created_at FROM ai_model WHERE tenant_id = #{tenantId} AND deleted = 0 ORDER BY id DESC</select>
+    <select id="routes" resultType="map">SELECT id, capability, model_id, priority, status FROM ai_route WHERE tenant_id = #{tenantId} AND deleted = 0 ORDER BY priority, id</select>
+    <select id="providerCount" resultType="int">SELECT COUNT(*) FROM ai_provider WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <insert id="insertModel">INSERT INTO ai_model (id, tenant_id, provider_id, model_code, model_name, capabilities, credential_secret, status, deleted) VALUES (#{id}, #{tenantId}, #{providerId}, #{modelCode}, #{modelName}, #{capabilities}, #{credentialSecret}, 1, 0)</insert>
+    <select id="model" resultType="map">SELECT id, provider_id, model_code, model_name, capabilities, status FROM ai_model WHERE id = #{id} AND tenant_id = #{tenantId}</select>
+    <select id="modelCount" resultType="int">SELECT COUNT(*) FROM ai_model WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 0</select>
+    <insert id="insertRoute">INSERT INTO ai_route (id, tenant_id, capability, model_id, priority, status, deleted) VALUES (#{id}, #{tenantId}, #{capability}, #{modelId}, #{priority}, 1, 0)</insert>
+    <select id="route" resultType="map">SELECT id, capability, model_id, priority, status FROM ai_route WHERE id = #{id} AND tenant_id = #{tenantId}</select>
+    <select id="activeRoutes" resultType="map">SELECT r.id, r.model_id, m.model_code FROM ai_route r JOIN ai_model m ON m.id = r.model_id AND m.tenant_id = r.tenant_id WHERE r.tenant_id = #{tenantId} AND r.capability = #{capability} AND r.status = 1 AND m.status = 1 ORDER BY r.priority, r.id LIMIT 1</select>
+    <insert id="insertExecution">INSERT INTO ai_execution (id, tenant_id, operator_id, capability, model_id, input_summary, status) VALUES (#{id}, #{tenantId}, #{operatorId}, #{capability}, #{modelId}, #{inputSummary}, 'ACCEPTED')</insert>
+</mapper>

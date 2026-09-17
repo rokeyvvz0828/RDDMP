@@ -3,11 +3,9 @@ package com.ccb.requirement.service;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Map;
 
 import com.ccb.requirement.support.RequirementIds;
@@ -25,11 +23,11 @@ import com.ccb.requirement.support.RequirementIds;
 public class RequirementWorkflowListener implements WorkflowLifecycleConsumer {
     private static final String DIFF_PREFIX = "req-diff:";
 
-    private final JdbcTemplate jdbc;
+    private final RequirementWorkflowRepository repository;
     private final RequirementChangeLogService changeLog;
 
-    public RequirementWorkflowListener(JdbcTemplate jdbc, RequirementChangeLogService changeLog) {
-        this.jdbc = jdbc;
+    public RequirementWorkflowListener(RequirementWorkflowRepository repository, RequirementChangeLogService changeLog) {
+        this.repository = repository;
         this.changeLog = changeLog;
     }
 
@@ -59,17 +57,13 @@ public class RequirementWorkflowListener implements WorkflowLifecycleConsumer {
     }
 
     private void handleDiffReview(WorkflowLifecycleEvent event, long diffId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT review_status, review_report_name FROM req_difference WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                event.tenantId(), diffId);
-        if (rows.isEmpty()) return;
-        Map<String, Object> diff = rows.get(0);
+        Map<String, Object> diff = repository.findActiveDifference(event.tenantId(), diffId);
+        if (diff == null) return;
         String current = String.valueOf(diff.get("review_status"));
         if (!"评审中".equals(current)) return;  // 幂等：可能已被手工处理
         String newStatus = event.eventType() == WorkflowLifecycleEventType.APPROVED ? "已评审" : "已退回";
         long operatorId = submitterId(event);
-        jdbc.update("UPDATE req_difference SET review_status = ?, review_comment = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
-                newStatus, null, operatorId, event.tenantId(), diffId);
+        repository.updateReviewStatus(event.tenantId(), diffId, newStatus, operatorId);
         writeDiffReviewRecord(event, diffId, newStatus,
                 diff.get("review_report_name") == null ? null : String.valueOf(diff.get("review_report_name")));
         // 锁定/解锁差异：已评审 → 不可修改；已退回 → 可再编辑
@@ -81,29 +75,17 @@ public class RequirementWorkflowListener implements WorkflowLifecycleConsumer {
     /** 差异评审完成时回写评审记录（评审人/时间/结论/意见/评审报告文档名称）。 */
     private void writeDiffReviewRecord(WorkflowLifecycleEvent event, long diffId, String newStatus,
                                        String reportDocName) {
-        List<Map<String, Object>> actions = jdbc.queryForList("""
-                SELECT a.operator_id, u.display_name AS operator_name, a.comment, a.created_at
-                FROM wf_task_action a
-                LEFT JOIN sys_user u ON u.id = a.operator_id AND u.tenant_id = a.tenant_id
-                WHERE a.tenant_id = ? AND a.instance_id = ?
-                ORDER BY a.id DESC LIMIT 1
-                """, event.tenantId(), event.instanceId());
-        if (actions.isEmpty()) {
+        Map<String, Object> action = repository.findLatestWorkflowAction(event.tenantId(), event.instanceId());
+        if (action == null) {
             return;
         }
-        Map<String, Object> action = actions.get(0);
         long recordId = RequirementIds.next();
-        jdbc.update("""
-                INSERT INTO req_review_record (id, tenant_id, biz_type, biz_id, reviewer_id, reviewer_name,
-                    review_time, conclusion, comment, report_doc_name, created_by, deleted)
-                VALUES (?, ?, 'DIFFERENCE', ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                """, recordId, event.tenantId(), diffId,
+        repository.insertReviewRecord(recordId, event.tenantId(), diffId,
                 ((Number) action.get("operator_id")).longValue(),
                 action.get("operator_name") == null ? "" : String.valueOf(action.get("operator_name")),
-                action.get("created_at"),
+                (java.time.LocalDateTime) action.get("created_at"),
                 "已评审".equals(newStatus) ? "通过" : "退回",
-                action.get("comment") == null ? null : String.valueOf(action.get("comment")),
-                reportDocName, event.tenantId());
+                action.get("comment") == null ? null : String.valueOf(action.get("comment")), reportDocName, event.tenantId());
     }
 
     private long submitterId(WorkflowLifecycleEvent event) {

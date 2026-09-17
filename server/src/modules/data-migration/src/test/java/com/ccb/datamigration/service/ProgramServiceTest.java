@@ -49,7 +49,7 @@ class ProgramServiceTest {
         attachments = mock(ContentAttachmentService.class);
         fileAssets = mock(ContentFileAssetService.class);
         permissions = mock(DataMigrationPermissionService.class);
-        service = new ProgramService(jdbc, attachments, fileAssets, permissions, null,
+        service = new ProgramService(new ProgramRepository(jdbc), attachments, fileAssets, permissions, null,
                 new ContentDocCodeGenerator(), codeValues());
 
         when(permissions.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
@@ -109,7 +109,7 @@ class ProgramServiceTest {
         when(rejecting.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该程序包操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        ProgramService rejectingService = new ProgramService(jdbc, attachments, fileAssets, rejecting, null,
+        ProgramService rejectingService = new ProgramService(new ProgramRepository(jdbc), attachments, fileAssets, rejecting, null,
                 new ContentDocCodeGenerator(), codeValues());
         jdbc.putScript(50L, PROJECT, OTHER.id(), false);
         assertThrows(BusinessException.class, () -> rejectingService.update(50L, singleProgramPatch(), USER));
@@ -142,7 +142,7 @@ class ProgramServiceTest {
         when(rejecting.requireAccessible(anyLong(), any())).thenAnswer(invocation -> invocation.getArgument(0, Long.class));
         when(rejecting.requireStoredProject(any(), any())).thenAnswer(invocation -> ((Number) invocation.getArgument(0)).longValue());
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "无该程序包操作权限")).when(rejecting).requireWrite(any(), anyLong());
-        ProgramService rejectingService = new ProgramService(jdbc, attachments, fileAssets, rejecting, null,
+        ProgramService rejectingService = new ProgramService(new ProgramRepository(jdbc), attachments, fileAssets, rejecting, null,
                 new ContentDocCodeGenerator(), codeValues());
 
         jdbc.putScript(50L, PROJECT, OTHER.id(), false);
@@ -256,7 +256,7 @@ class ProgramServiceTest {
         assertTrue(error.getMessage().contains(messageContains), error.getMessage());
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends JdbcTemplate implements ProgramMapper {
         private final Map<Long, Map<String, Object>> scripts = new LinkedHashMap<>();
         private final List<String> audits = new ArrayList<>();
         private int restoreUpdateCount = 1;
@@ -403,5 +403,23 @@ class ProgramServiceTest {
             }
             return 1;
         }
+
+        @Override public Long count(long tenantId, long projectId, String programType, String systemCode, String keyword) { return 0L; }
+        @Override public List<Map<String, Object>> page(long tenantId, long projectId, String programType, String systemCode, String keyword, int limit, long offset) { return List.of(); }
+        @Override public List<Map<String, Object>> find(long tenantId, long id) { return active(id); }
+        @Override public int insert(Map<String, Object> p) { long id=((Number)p.get("id")).longValue(); Map<String,Object> row=prepareRow(id,((Number)p.get("projectId")).longValue(),((Number)p.get("ownerId")).longValue()); row.put("system_code",p.get("systemCode"));row.put("doc_code",p.get("docCode"));row.put("asset_code",p.get("docCode"));row.put("doc_name",p.get("docName"));row.put("asset_name",p.get("docName"));row.put("program_type",p.get("programType"));row.put("program_description",p.get("programDescription"));scripts.put(id,row);return 1; }
+        @Override public int update(Map<String, Object> p) { Map<String,Object> row=scripts.get(((Number)p.get("id")).longValue());if(row==null||Integer.valueOf(1).equals(row.get("deleted")))return 0;row.put("doc_name",p.get("docName"));row.put("asset_name",p.get("docName"));row.put("program_type",p.get("programType"));row.put("system_code",p.get("systemCode"));row.put("program_description",p.get("programDescription"));return 1; }
+        @Override public int softDelete(long tenantId,long id,long deletedBy){Map<String,Object> row=scripts.get(id);if(row==null||Integer.valueOf(1).equals(row.get("deleted")))return 0;row.put("deleted",1);return 1;}
+        @Override public List<Long> attachmentIds(long tenantId,long id){return List.of(101L,102L);}
+        @Override public Long recycleCount(long tenantId,long projectId,String keyword){return scripts.values().stream().filter(row->Integer.valueOf(1).equals(row.get("deleted"))).count();}
+        @Override public List<Map<String,Object>> recyclePage(long tenantId,long projectId,String keyword,int limit){return scripts.values().stream().filter(row->Integer.valueOf(1).equals(row.get("deleted"))).<Map<String,Object>>map(LinkedHashMap::new).toList();}
+        @Override public List<Map<String,Object>> findDeleted(long tenantId,long id){Map<String,Object> row=scripts.get(id);return row!=null&&Integer.valueOf(1).equals(row.get("deleted"))?List.of(new LinkedHashMap<>(row)):List.of();}
+        @Override public int restore(long tenantId,long id){if(restoreUpdateCount==0)return 0;Map<String,Object> row=scripts.get(id);if(row==null||!Integer.valueOf(1).equals(row.get("deleted")))return 0;row.put("deleted",0);return 1;}
+        @Override public int purge(long tenantId,long id){return scripts.remove(id)==null?0:1;}
+        @Override public Integer enabledComponentCount(long tenantId,long projectId,String systemCode){return systemCode.equals(foreignSystem)?1:0;}
+        @Override public List<Map<String,Object>> findRaw(long tenantId,long id){return active(id);}
+        @Override public List<Long> deletedProjectIds(long tenantId,long id){Map<String,Object> row=scripts.get(id);return row!=null&&Integer.valueOf(1).equals(row.get("deleted"))?List.of(((Number)row.get("project_id")).longValue()):List.of();}
+        @Override public int insertAudit(long tenantId,long actorId,long projectId,String operation,long entityId){audits.add(operation);return 1;}
+        private List<Map<String,Object>> active(long id){Map<String,Object> row=scripts.getOrDefault(id,prepareRow(id,PROJECT,USER.id()));return Integer.valueOf(0).equals(row.get("deleted"))?List.of(new LinkedHashMap<>(row)):List.of();}
     }
 }

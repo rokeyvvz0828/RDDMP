@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -15,20 +18,29 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class ContentFileAssetDocCodeGovernanceTest {
     private static final AuthUser USER = new AuthUser(7L, 1L, "developer", "", "研发人员", 11L, true);
 
     @Test
     void postCreatesGeneratedCodeAndPutReplacementPreservesIt() {
-        RecordingJdbc jdbc = new RecordingJdbc();
+        ContentFileAssetRepository repository = mock(ContentFileAssetRepository.class);
+        Map<String, Object> row = new LinkedHashMap<>();
+        doAnswer(invocation -> {
+            Map<String, Object> values = invocation.getArgument(1);
+            row.put("id", values.get("id")); row.put("project_id", values.get("projectId"));
+            row.put("system_code", values.get("systemCode")); row.put("asset_code", values.get("docCode"));
+            row.put("asset_name", values.get("docName")); row.put("owner_id", values.get("ownerId"));
+            return null;
+        }).when(repository).insert(anyString(), anyMap());
+        doAnswer(invocation -> { Map<String, Object> values = invocation.getArgument(1); row.put("system_code", values.get("systemCode")); row.put("asset_name", values.get("docName")); return 1; }).when(repository).update(anyString(), anyMap());
+        when(repository.active(anyString(), anyLong(), anyLong())).thenAnswer(invocation -> row.isEmpty() ? null : new LinkedHashMap<>(row));
         AttachmentGateway gateway = mock(AttachmentGateway.class);
         when(gateway.get(anyLong(), any(AuthUser.class))).thenAnswer(invocation -> temporary(invocation.getArgument(0)));
         DataMigrationPermissionService permissions = mock(DataMigrationPermissionService.class);
         when(permissions.requireStoredProject(any(), any(AuthUser.class))).thenReturn(10L);
         ContentFileAssetService service = new ContentFileAssetService(
-                jdbc, gateway, mock(ContentAttachmentService.class), permissions, null,
+                repository, gateway, mock(ContentAttachmentService.class), permissions, null,
                 new ContentDocCodeGenerator());
 
         Map<String, Object> created = service.create(
@@ -49,41 +61,4 @@ class ContentFileAssetDocCodeGovernanceTest {
                 "pdf", "TEMP", null, null, null, USER.id(), LocalDateTime.of(2026, 9, 4, 9, 0));
     }
 
-    private static final class RecordingJdbc extends JdbcTemplate {
-        private final Map<String, Object> row = new LinkedHashMap<>();
-
-        @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.startsWith("SELECT project_id, system_code, owner_id FROM dm_dependency")) {
-                return row.isEmpty() ? List.of() : List.of(row);
-            }
-            return List.of();
-        }
-
-        @Override
-        public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            return List.of();
-        }
-
-        @Override
-        public Map<String, Object> queryForMap(String sql, Object... args) {
-            return new LinkedHashMap<>(row);
-        }
-
-        @Override
-        public int update(String sql, Object... args) {
-            if (sql.startsWith("INSERT INTO dm_dependency")) {
-                row.put("id", args[0]);
-                row.put("project_id", args[2]);
-                row.put("system_code", args[3]);
-                row.put("asset_code", args[4]);
-                row.put("asset_name", args[5]);
-                row.put("owner_id", args[6]);
-            } else if (sql.startsWith("UPDATE dm_dependency SET system_code")) {
-                row.put("system_code", args[0]);
-                row.put("asset_name", args[1]);
-            }
-            return 1;
-        }
-    }
 }

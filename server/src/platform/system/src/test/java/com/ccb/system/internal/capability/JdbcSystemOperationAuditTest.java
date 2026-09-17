@@ -8,7 +8,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,20 +16,21 @@ import java.lang.reflect.Method;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class JdbcSystemOperationAuditTest {
     @Mock
-    private JdbcTemplate jdbc;
+    private SystemOperationAuditRepository repository;
 
     private JdbcSystemOperationAudit audit;
     private final AuthUser actor = new AuthUser(7L, 9L, "tester", "", "测试用户", 1L, true);
 
     @BeforeEach
     void setUp() {
-        audit = new JdbcSystemOperationAudit(jdbc);
+        audit = new JdbcSystemOperationAudit(repository);
     }
 
     @Test
@@ -38,16 +38,7 @@ class JdbcSystemOperationAuditTest {
         audit.recordSuccess(new SystemOperationAuditCommand(
                 actor, "architecture:logical:create", "POST", "/api/architecture/logical-subsystems/12", null, "trace-001"));
 
-        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
-        verify(jdbc).update(contains("trace_id"), args.capture());
-        assertEquals(9L, args.getValue()[1]);
-        assertEquals(7L, args.getValue()[2]);
-        assertEquals("architecture:logical:create", args.getValue()[3]);
-        assertEquals("POST", args.getValue()[4]);
-        assertEquals("/api/architecture/logical-subsystems/12", args.getValue()[5]);
-        assertEquals(1, args.getValue()[6]);
-        assertNull(args.getValue()[7]);
-        assertEquals("trace-001", args.getValue()[8]);
+        verify(repository).insert(any(Long.class), eq(9L), eq(7L), eq("architecture:logical:create"), eq("POST"), eq("/api/architecture/logical-subsystems/12"), eq(1), eq(null), eq("trace-001"));
     }
 
     @Test
@@ -55,11 +46,7 @@ class JdbcSystemOperationAuditTest {
         audit.recordFailure(new SystemOperationAuditCommand(
                 actor, "architecture:physical:update", "PUT", "/api/architecture/physical-subsystems/22", "错".repeat(400), " "));
 
-        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
-        verify(jdbc).update(contains("trace_id"), args.capture());
-        assertEquals(0, args.getValue()[6]);
-        assertEquals("Business operation failed", args.getValue()[7]);
-        assertNull(args.getValue()[8]);
+        verify(repository).insert(any(Long.class), eq(9L), eq(7L), eq("architecture:physical:update"), eq("PUT"), eq("/api/architecture/physical-subsystems/22"), eq(0), eq("Business operation failed"), eq(null));
 
         Method success = JdbcSystemOperationAudit.class.getMethod("recordSuccess", SystemOperationAuditCommand.class);
         Method failure = JdbcSystemOperationAudit.class.getMethod("recordFailure", SystemOperationAuditCommand.class);

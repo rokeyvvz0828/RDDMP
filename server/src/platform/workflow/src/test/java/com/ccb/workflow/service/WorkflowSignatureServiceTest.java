@@ -3,7 +3,6 @@ package com.ccb.workflow.service;
 import com.ccb.security.model.AuthUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -39,25 +38,17 @@ class WorkflowSignatureServiceTest {
         assertEquals(1, jdbc.signatureQueries);
     }
 
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends WorkflowSignatureRepository {
         private int inserts;
         private int taskContextQueries;
         private int signatureQueries;
 
-        @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.contains("FROM wf_signature")) {
-                signatureQueries++;
-                return List.of(Map.of("id", 91L, "instance_id", 21L, "task_id", 11L));
-            }
-            taskContextQueries++;
-            return List.of();
-        }
+        private StubJdbcTemplate() { super(null); }
 
         @Override
-        public int update(String sql, Object... args) {
-            inserts++;
-            return 1;
+        public List<Map<String, Object>> signatures(long instanceId, long tenantId) {
+            signatureQueries++;
+            return List.of(Map.of("id", 91L, "instance_id", 21L, "task_id", 11L));
         }
     }
 }

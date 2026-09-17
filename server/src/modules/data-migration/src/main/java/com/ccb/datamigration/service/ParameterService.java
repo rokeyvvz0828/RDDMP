@@ -12,7 +12,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,28 +51,14 @@ public class ParameterService {
             "参数类型", "参数范围分类", "系统编号", "参数名称", "参数说明"
     };
 
-    private static final String SYSTEM_JOIN =
-            " LEFT JOIN dm_component c ON c.tenant_id = a.tenant_id AND c.project_id = a.project_id AND c.system_code = a.system_code " +
-            " LEFT JOIN arch_physical_subsystem sys ON sys.tenant_id = c.tenant_id AND sys.code = c.system_code AND sys.deleted = 0 ";
-    private static final String SELECT_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, a.parameter_type, a.parameter_scope, a.system_code, " +
-            "sys.short_name AS system_short_name, sys.name AS system_name, " +
-            "a.parameter_name, a.parameter_description, " +
-            "a.owner_id, a.created_by, a.created_at, a.updated_by, a.updated_at ";
-    private static final String RECYCLE_COLUMNS =
-            "SELECT a.id, a.project_id, p.project_name, 'PARAMETER' AS asset_type, " +
-            "a.parameter_name AS asset_code, a.parameter_name AS asset_name, " +
-            "a.parameter_type, a.parameter_scope, a.system_code, sys.name AS system_name, a.parameter_description, " +
-            "a.owner_id, a.created_at, a.updated_at, a.deleted_by, a.deleted_at ";
-
-    private final JdbcTemplate jdbc;
+    private final ParameterRepository repository;
     private final DataMigrationPermissionService permissions;
     private final UserDirectoryPort userDirectory;
     private final DataMigrationCodeValueService codeValues;
 
-    public ParameterService(JdbcTemplate jdbc, DataMigrationPermissionService permissions,
+    public ParameterService(ParameterRepository repository, DataMigrationPermissionService permissions,
                             UserDirectoryPort userDirectory, DataMigrationCodeValueService codeValues) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.permissions = permissions;
         this.userDirectory = userDirectory;
         this.codeValues = codeValues;
@@ -84,39 +69,23 @@ public class ParameterService {
                                                 String systemCode, String keyword,
                                                 int page, int size, AuthUser user) {
         long scope = permissions.requireProject(projectId, user);
-        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM dm_parameter a WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> countArgs = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(countSql, countArgs, scope, parameterType, parameterScope, systemCode, keyword);
-        Long total = jdbc.queryForObject(countSql.toString(), Long.class, countArgs.toArray());
-
         int safePage = Math.max(1, page);
         int safeSize = normalizePageSize(size);
-        StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                .append("FROM dm_parameter a ").append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendFilters(sql, args, scope, parameterType, parameterScope, systemCode, keyword);
-        sql.append(" ORDER BY a.updated_at DESC, a.id DESC LIMIT ? OFFSET ?");
-        args.add(safeSize);
-        args.add((long) (safePage - 1) * safeSize);
-        List<Map<String, Object>> records = jdbc.queryForList(sql.toString(), args.toArray());
+        Map<String, Object> filters = filters(user.tenantId(), scope, parameterType, parameterScope, systemCode, keyword, 0);
+        long total = repository.count(filters);
+        filters.put("limit", safeSize); filters.put("offset", (long) (safePage - 1) * safeSize);
+        List<Map<String, Object>> records = repository.list(filters);
         decorateCodeLabels(records, user);
         decorateUsers(records, user.tenantId());
-        return new PageResult<>(records, total == null ? 0L : total, safePage, safeSize);
+        return new PageResult<>(records, total, safePage, safeSize);
     }
 
     /** 详情：单条完整信息。 */
     public Map<String, Object> detail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                SELECT_COLUMNS + "FROM dm_parameter a " + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND p.tenant_id = a.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 0", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移参数不存在");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.require(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateCodeLabels(rows, user);
-        decorateUsers(rows, user.tenantId());
+        decorateCodeLabels(List.of(row), user);
+        decorateUsers(List.of(row), user.tenantId());
         return row;
     }
 
@@ -137,11 +106,8 @@ public class ParameterService {
         }
         long id = nextId();
         try {
-            jdbc.update("INSERT INTO dm_parameter (id, tenant_id, project_id, system_code, parameter_type, parameter_scope, " +
-                            "parameter_name, parameter_description, owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, user.tenantId(), projectId, systemCode.trim(), parameterType, parameterScope,
-                    parameterName, optionalText(body.get("parameterDescription")),
-                    user.id(), user.id(), user.id());
+            repository.insert(values(id, user.tenantId(), projectId, systemCode.trim(), parameterType, parameterScope,
+                    parameterName, optionalText(body.get("parameterDescription")), user.id()));
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.CONFLICT, "参数名称在同一项目同一系统下已存在");
         }
@@ -172,12 +138,8 @@ public class ParameterService {
             throw new BusinessException(ErrorCode.CONFLICT, "参数名称在同一项目同一系统下已存在");
         }
         try {
-            jdbc.update("UPDATE dm_parameter SET parameter_type = ?, parameter_scope = ?, system_code = ?, parameter_name = ?, " +
-                            "parameter_description = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP " +
-                            "WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                    parameterType, parameterScope, systemCode, parameterName,
-                    optionalTextOrDefault(body, existing.get("parameter_description"), "parameterDescription"),
-                    user.id(), id, user.tenantId());
+            repository.update(values(id, user.tenantId(), projectId, systemCode, parameterType, parameterScope,
+                    parameterName, optionalTextOrDefault(body, existing.get("parameter_description"), "parameterDescription"), user.id()));
         } catch (DataIntegrityViolationException ex) {
             throw new BusinessException(ErrorCode.CONFLICT, "参数名称在同一项目同一系统下已存在");
         }
@@ -192,9 +154,7 @@ public class ParameterService {
             Map<String, Object> existing = findRaw(id, user.tenantId());
             permissions.requireWrite(user, ((Number) existing.get("owner_id")).longValue());
             long projectId = permissions.requireStoredProject(existing.get("project_id"), user);
-            int changed = jdbc.update("UPDATE dm_parameter SET deleted = 1, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP, " +
-                            "updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                    user.id(), user.id(), id, user.tenantId());
+            int changed = repository.softDelete(user.tenantId(), id, user.id());
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移参数状态已变化，请刷新后重试");
             audit(user, "PARAMETER_DELETE", projectId, id);
         }
@@ -222,14 +182,7 @@ public class ParameterService {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("迁移参数");
             writeHeaderRow(sheet, LIST_COLUMNS);
-            StringBuilder sql = new StringBuilder(SELECT_COLUMNS)
-                    .append("FROM dm_parameter a ").append(SYSTEM_JOIN)
-                    .append("LEFT JOIN pm_project p ON a.project_id = p.id AND a.tenant_id = p.tenant_id AND p.deleted = 0 ")
-                    .append("WHERE a.tenant_id = ? AND a.deleted = 0");
-            List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-            appendFilters(sql, args, scope, parameterType, parameterScope, systemCode, keyword);
-            sql.append(" ORDER BY a.updated_at DESC, a.id DESC");
-            List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+            List<Map<String, Object>> rows = repository.list(filters(user.tenantId(), scope, parameterType, parameterScope, systemCode, keyword, 0));
             decorateCodeLabels(rows, user);
             int index = 1;
             for (Map<String, Object> data : rows) {
@@ -300,11 +253,8 @@ public class ParameterService {
                     }
                     long id = nextId();
                     try {
-                        jdbc.update("INSERT INTO dm_parameter (id, tenant_id, project_id, system_code, parameter_type, parameter_scope, " +
-                                        "parameter_name, parameter_description, owner_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                                id, user.tenantId(), scope, systemCode.trim(), parameterType, parameterScope,
-                                parameterName, blankAsNull(parameterDescription),
-                                user.id(), user.id(), user.id());
+                        repository.insert(values(id, user.tenantId(), scope, systemCode.trim(), parameterType, parameterScope,
+                                parameterName, blankAsNull(parameterDescription), user.id()));
                     } catch (DataIntegrityViolationException ex) {
                         throw new IllegalArgumentException("参数名称在同一项目同一系统下已存在");
                     }
@@ -325,39 +275,23 @@ public class ParameterService {
     public long countRecycleBin(long projectId, String keyword, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM dm_parameter a WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        Long total = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
-        return total == null ? 0L : total;
+        return repository.count(filters(user.tenantId(), projectId, null, null, null, keyword, 1));
     }
 
     public List<Map<String, Object>> fetchRecycleBinPage(long projectId, String keyword, int limit, AuthUser user) {
         permissions.requireAdmin(user);
         permissions.requireAccessible(projectId, user);
         if (limit <= 0) return List.of();
-        StringBuilder sql = new StringBuilder(RECYCLE_COLUMNS)
-                .append("FROM dm_parameter a ").append(SYSTEM_JOIN)
-                .append("LEFT JOIN pm_project p ON a.project_id = p.id AND a.tenant_id = p.tenant_id AND p.deleted = 0 ")
-                .append("WHERE a.tenant_id = ? AND a.deleted = 1");
-        List<Object> args = new ArrayList<>(List.of(user.tenantId()));
-        appendRecycleFilters(sql, args, projectId, keyword);
-        sql.append(" ORDER BY a.parameter_name ASC, a.id ASC LIMIT ?");
-        args.add(limit);
-        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        Map<String, Object> filters = filters(user.tenantId(), projectId, null, null, null, keyword, 1); filters.put("limit", limit);
+        List<Map<String, Object>> rows = repository.list(filters);
         decorateUsers(rows, user.tenantId());
         return rows;
     }
 
     public Map<String, Object> findRecycleBinDetail(long id, AuthUser user) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                RECYCLE_COLUMNS + "FROM dm_parameter a " + SYSTEM_JOIN +
-                "LEFT JOIN pm_project p ON a.project_id = p.id AND a.tenant_id = p.tenant_id AND p.deleted = 0 " +
-                "WHERE a.tenant_id = ? AND a.id = ? AND a.deleted = 1", user.tenantId(), id);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移参数不存在于回收站");
-        Map<String, Object> row = rows.get(0);
+        Map<String, Object> row = repository.requireDeleted(user.tenantId(), id);
         permissions.requireStoredProject(row.get("project_id"), user);
-        decorateUsers(rows, user.tenantId());
+        decorateUsers(List.of(row), user.tenantId());
         return row;
     }
 
@@ -375,9 +309,7 @@ public class ParameterService {
                 }
             }
             try {
-                int changed = jdbc.update("UPDATE dm_parameter SET deleted = 0, deleted_by = NULL, deleted_at = NULL, " +
-                                "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                        id, user.tenantId());
+                int changed = repository.restore(user.tenantId(), id);
                 if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移参数状态已变化，请刷新后重试");
             } catch (DataIntegrityViolationException ex) {
                 throw new BusinessException(ErrorCode.CONFLICT, "参数名称已存在活动记录，无法恢复");
@@ -391,8 +323,7 @@ public class ParameterService {
         permissions.requireAdmin(user);
         for (Long id : normalizeIds(ids)) {
             long projectId = requireRecycleBinScope(id, user);
-            int changed = jdbc.update("DELETE FROM dm_parameter WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                    id, user.tenantId());
+            int changed = repository.purge(user.tenantId(), id);
             if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "迁移参数状态已变化，请刷新后重试");
             audit(user, "PARAMETER_PURGE", projectId, id);
         }
@@ -400,82 +331,46 @@ public class ParameterService {
 
     // ============ 私有辅助 ============
 
-    private void appendFilters(StringBuilder sql, List<Object> args, long projectId, String parameterType,
-                               String parameterScope, String systemCode, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (parameterType != null && !parameterType.isBlank()) {
-            sql.append(" AND a.parameter_type = ?");
-            args.add(parameterType.trim());
-        }
-        if (parameterScope != null && !parameterScope.isBlank()) {
-            sql.append(" AND a.parameter_scope = ?");
-            args.add(parameterScope.trim());
-        }
-        if (systemCode != null && !systemCode.isBlank()) {
-            sql.append(" AND a.system_code = ?");
-            args.add(systemCode.trim());
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            String k = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.parameter_name LIKE ? OR a.parameter_description LIKE ?)");
-            args.add(k);
-            args.add(k);
-        }
+    private Map<String, Object> filters(long tenantId, long projectId, String parameterType, String parameterScope,
+                                        String systemCode, String keyword, int deleted) {
+        Map<String, Object> values = new LinkedHashMap<>(); values.put("tenantId", tenantId); values.put("projectId", projectId);
+        values.put("parameterType", optionalText(parameterType)); values.put("parameterScope", optionalText(parameterScope));
+        values.put("systemCode", optionalText(systemCode)); values.put("keyword", optionalText(keyword)); values.put("deleted", deleted);
+        return values;
     }
 
-    private void appendRecycleFilters(StringBuilder sql, List<Object> args, long projectId, String keyword) {
-        sql.append(" AND a.project_id = ?");
-        args.add(projectId);
-        if (keyword != null && !keyword.isBlank()) {
-            String k = "%" + keyword.trim() + "%";
-            sql.append(" AND (a.parameter_name LIKE ? OR a.parameter_description LIKE ?)");
-            args.add(k);
-            args.add(k);
-        }
+    private Map<String, Object> values(long id, long tenantId, long projectId, String systemCode, String parameterType,
+                                       String parameterScope, String parameterName, String parameterDescription, long actorId) {
+        Map<String, Object> values = new LinkedHashMap<>(); values.put("id", id); values.put("tenantId", tenantId); values.put("projectId", projectId);
+        values.put("systemCode", systemCode); values.put("parameterType", parameterType); values.put("parameterScope", parameterScope);
+        values.put("parameterName", parameterName); values.put("parameterDescription", parameterDescription); values.put("ownerId", actorId); values.put("createdBy", actorId); values.put("updatedBy", actorId);
+        return values;
     }
 
     private Map<String, Object> findRaw(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, tenant_id, project_id, system_code, parameter_type, parameter_scope, parameter_name, parameter_description, owner_id " +
-                "FROM dm_parameter WHERE id = ? AND tenant_id = ? AND deleted = 0", id, tenantId);
-        if (rows.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移参数不存在");
-        return rows.get(0);
+        return repository.requireRaw(tenantId, id);
     }
 
     private Map<String, Object> findRawIncludingDeleted(long id, long tenantId) {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, project_id, system_code, parameter_name FROM dm_parameter WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                id, tenantId);
-        return rows.isEmpty() ? null : rows.get(0);
+        return repository.findRawDeleted(tenantId, id);
     }
 
     private long requireRecycleBinScope(long id, AuthUser user) {
-        List<Long> projects = jdbc.queryForList(
-                "SELECT project_id FROM dm_parameter WHERE id = ? AND tenant_id = ? AND deleted = 1",
-                Long.class, id, user.tenantId());
-        if (projects.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "迁移参数不存在于回收站");
-        long projectId = projects.get(0);
+        long projectId = repository.requireDeletedProject(user.tenantId(), id);
         permissions.requireStoredProject(projectId, user);
         return projectId;
     }
 
     private boolean nameExists(long projectId, String systemCode, String parameterName, long tenantId, Long excludeId) {
-        return exists("SELECT COUNT(*) FROM dm_parameter WHERE tenant_id = ? AND project_id = ? AND system_code = ? AND parameter_name = ? AND id <> ?",
-                tenantId, projectId, systemCode, parameterName, excludeId == null ? -1L : excludeId);
+        return repository.nameExists(tenantId, projectId, systemCode, parameterName, excludeId, false);
     }
 
     private boolean activeNameExists(long projectId, String systemCode, String parameterName, long tenantId, Long excludeId) {
-        return exists("SELECT COUNT(*) FROM dm_parameter WHERE tenant_id = ? AND project_id = ? AND system_code = ? AND parameter_name = ? AND deleted = 0 AND id <> ?",
-                tenantId, projectId, systemCode, parameterName, excludeId == null ? -1L : excludeId);
+        return repository.nameExists(tenantId, projectId, systemCode, parameterName, excludeId, true);
     }
 
     private void ensureSystemBelongsToProject(String systemCode, long projectId, AuthUser user) {
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM dm_component c " +
-                "WHERE c.tenant_id = ? AND c.project_id = ? AND c.system_code = ? AND c.enabled = 1",
-                Integer.class, user.tenantId(), projectId, systemCode);
-        if (count == null || count == 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "关联系统不存在或不属于当前项目");
+        if (!repository.enabledComponent(user.tenantId(), projectId, systemCode)) throw new BusinessException(ErrorCode.BAD_REQUEST, "关联系统不存在或不属于当前项目");
     }
 
     private Map<String, String> optionLabelToCode(String category, AuthUser user) {
@@ -530,8 +425,7 @@ public class ParameterService {
     }
 
     private void audit(AuthUser user, String operation, long projectId, long id) {
-        jdbc.update("INSERT INTO dm_operation_log (tenant_id, actor_id, project_id, operation_code, entity_type, entity_id) " +
-                "VALUES (?, ?, ?, ?, 'PARAMETER', ?)", user.tenantId(), user.id(), projectId, operation, id);
+        repository.audit(user.tenantId(), user.id(), projectId, operation, id);
     }
 
     private int normalizePageSize(int size) {
@@ -554,11 +448,6 @@ public class ParameterService {
 
     private static String blankAsNull(String value) {
         return value == null || value.isBlank() ? null : value;
-    }
-
-    private boolean exists(String sql, Object... args) {
-        Integer count = jdbc.queryForObject(sql, Integer.class, args);
-        return count != null && count > 0;
     }
 
     private long nextId() {

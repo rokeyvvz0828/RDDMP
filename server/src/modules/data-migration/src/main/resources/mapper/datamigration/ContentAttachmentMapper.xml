@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ccb.datamigration.service.ContentAttachmentMapper">
+  <select id="listActive" resultType="map">SELECT id, attachment_id, file_name, sort_order, created_by, created_at FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId} AND deleted = 0 ORDER BY sort_order ASC, created_at ASC</select>
+  <select id="listDeleted" resultType="map">SELECT id, attachment_id, file_name, sort_order, deleted_by, deleted_at FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId} AND deleted = 1 ORDER BY deleted_at DESC</select>
+  <select id="activeAttachmentIds" resultType="long">SELECT attachment_id FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId} AND deleted = 0</select>
+  <select id="deletedAttachmentIds" resultType="long">SELECT attachment_id FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId} AND deleted = 1</select>
+  <update id="updateSort">UPDATE dm_content_attachment SET sort_order = #{sortOrder} WHERE business_id = #{businessId} AND attachment_id = #{attachmentId} AND tenant_id = #{tenantId} AND business_type = #{businessType} AND deleted = 0</update>
+  <update id="restoreAttachment">UPDATE dm_content_attachment SET deleted = 0, deleted_by = NULL, deleted_at = NULL, file_name = #{fileName}, sort_order = #{sortOrder} WHERE business_id = #{businessId} AND attachment_id = #{attachmentId} AND tenant_id = #{tenantId} AND business_type = #{businessType} AND deleted = 1</update>
+  <insert id="insert">INSERT INTO dm_content_attachment (id, tenant_id, business_type, business_id, attachment_id, file_name, sort_order, created_by) VALUES (#{id}, #{tenantId}, #{businessType}, #{businessId}, #{attachmentId}, #{fileName}, #{sortOrder}, #{createdBy})</insert>
+  <update id="softDeleteAttachment">UPDATE dm_content_attachment SET deleted = 1, deleted_by = #{deletedBy}, deleted_at = CURRENT_TIMESTAMP WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId} AND attachment_id = #{attachmentId} AND deleted = 0</update>
+  <update id="restoreById">UPDATE dm_content_attachment SET deleted = 0, deleted_by = NULL, deleted_at = NULL WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 1</update>
+  <delete id="purgeById">DELETE FROM dm_content_attachment WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 1</delete>
+  <select id="attachmentIds" resultType="long">SELECT DISTINCT attachment_id FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId}</select>
+  <delete id="deleteAll">DELETE FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND business_type = #{businessType} AND business_id = #{businessId}</delete>
+  <select id="softDeletedRows" resultType="map">SELECT id, business_id FROM dm_content_attachment WHERE tenant_id = #{tenantId} AND deleted = 1 AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></select>
+  <select id="softDeletedBusinessIds" resultType="long">SELECT business_id FROM dm_content_attachment WHERE id = #{id} AND tenant_id = #{tenantId} AND deleted = 1</select>
+</mapper>

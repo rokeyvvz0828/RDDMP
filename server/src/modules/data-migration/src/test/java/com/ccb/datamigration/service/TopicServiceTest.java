@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * 专题材料专属服务行为测试（对标 PlanService/ReportService 桩模式）：必填校验、颗粒度与参数类型联动、
@@ -274,10 +275,10 @@ class TopicServiceTest {
     }
 
     private TopicService service(StubJdbcTemplate jdbc, AttachmentGateway attachments, SystemReferenceQuery params) {
-        DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
-        ContentAttachmentService contentAttachments = new ContentAttachmentService(jdbc, attachments);
-        ContentFileAssetService fileAssets = new ContentFileAssetService(jdbc, attachments, contentAttachments, permissions);
-        return new TopicService(jdbc, contentAttachments, fileAssets, permissions, null,
+        DataMigrationPermissionService permissions = new DataMigrationPermissionService(DataMigrationPermissionTestSupport.repository(jdbc), StubProjectAccess.allow());
+        ContentAttachmentService contentAttachments = ContentAttachmentTestSupport.service(jdbc, attachments);
+        ContentFileAssetService fileAssets = new ContentFileAssetService(mock(ContentFileAssetRepository.class), attachments, contentAttachments, permissions, null, new ContentDocCodeGenerator());
+        return new TopicService(new TopicRepository(jdbc), contentAttachments, fileAssets, permissions, null,
                 new ContentDocCodeGenerator(), params, new DataMigrationCodeValueService(params));
     }
 
@@ -311,7 +312,7 @@ class TopicServiceTest {
     }
 
     /** 模拟 dm_topic / dm_topic_system / dm_content_attachment 的最小 JDBC 桩。 */
-    private static final class StubJdbcTemplate extends JdbcTemplate {
+    private static final class StubJdbcTemplate extends JdbcTemplate implements TopicMapper {
         private final Map<Long, Map<String, Object>> topics = new LinkedHashMap<>();
         private final Map<Long, List<String>> systemRelations = new LinkedHashMap<>();
         private final Map<String, Long> dmComponentProjects = new LinkedHashMap<>(Map.of("SYS_A", 10L, "SYS_B", 10L));
@@ -497,5 +498,13 @@ class TopicServiceTest {
             }
             throw new AssertionError("Unexpected update: " + sql);
         }
+
+        @Override public Long count(Map<String,Object> p){int deleted=((Number)p.get("deleted")).intValue();return topics.values().stream().filter(row->((Number)row.get("deleted")).intValue()==deleted).count();}
+        @Override public List<Map<String,Object>> list(Map<String,Object> p){int deleted=((Number)p.get("deleted")).intValue();return topics.values().stream().filter(row->((Number)row.get("deleted")).intValue()==deleted).<Map<String,Object>>map(this::rowFor).toList();}
+        @Override public List<Map<String,Object>> find(long tenantId,long id){return active(id);}@Override public List<Map<String,Object>> findDeleted(long tenantId,long id){return deleted(id);}@Override public List<Map<String,Object>> findRaw(long tenantId,long id){return active(id);}
+        @Override public int insert(Map<String,Object> p){Map<String,Object> row=new LinkedHashMap<>();row.put("id",p.get("id"));row.put("project_id",p.get("projectId"));row.put("project_name","示例项目");row.put("granularity",p.get("granularity"));row.put("topic_type_code",p.get("topicTypeCode"));row.put("doc_code",p.get("docCode"));row.put("doc_name",p.get("docName"));row.put("topic_summary",p.get("topicSummary"));row.put("owner_id",p.get("actorId"));row.put("created_by",p.get("actorId"));row.put("updated_by",p.get("actorId"));row.put("deleted",0);topics.put(((Number)p.get("id")).longValue(),row);return 1;}
+        @Override public int update(Map<String,Object> p){Map<String,Object> row=topics.get(((Number)p.get("id")).longValue());if(row==null)return 0;row.put("doc_name",p.get("docName"));row.put("granularity",p.get("granularity"));row.put("topic_type_code",p.get("topicTypeCode"));row.put("topic_summary",p.get("topicSummary"));return 1;}@Override public int softDelete(long t,long id,long actor){Map<String,Object> row=topics.get(id);if(row==null)return 0;row.put("deleted",1);return 1;}@Override public int restore(long t,long id,long actor){if(restoreUpdateCount==0)return 0;Map<String,Object> row=topics.get(id);if(row==null)return 0;row.put("deleted",0);return 1;}@Override public int purge(long t,long id){return topics.remove(id)==null?0:1;}
+        @Override public int deleteSystemRelations(long t,long topicId){systemRelations.computeIfAbsent(topicId,k->new ArrayList<>()).clear();return 1;}@Override public int insertSystemRelation(Map<String,Object> p){systemRelations.computeIfAbsent(((Number)p.get("topicId")).longValue(),k->new ArrayList<>()).add(String.valueOf(p.get("systemCode")));return 1;}@Override public List<String> systemCodes(long t,long topicId){return new ArrayList<>(systemRelations.getOrDefault(topicId,List.of()));}@Override public Integer enabledComponentCount(long t,long p,String code){return dmComponentProjects.getOrDefault(code,-1L)==p?1:0;}@Override public List<Long> boundAttachmentIds(long t,long topicId){return new ArrayList<>(attachmentBindings.getOrDefault(topicId,List.of()));}@Override public List<Long> mainAttachmentIds(long t,long topicId){List<Long> b=attachmentBindings.getOrDefault(topicId,List.of());return b.isEmpty()?List.of(101L):b;}@Override public List<Long> deletedProjectIds(long t,long id){return deleted(id).stream().map(row->((Number)row.get("project_id")).longValue()).toList();}@Override public int insertAudit(long t,long a,long p,String op,long id){audits.add(op);return 1;}
+        private List<Map<String,Object>> active(long id){Map<String,Object> row=topics.get(id);return row==null||((Number)row.get("deleted")).intValue()==1?List.of():List.of(rowFor(row));}private List<Map<String,Object>> deleted(long id){Map<String,Object> row=topics.get(id);return row==null||((Number)row.get("deleted")).intValue()!=1?List.of():List.of(rowFor(row));}
     }
 }

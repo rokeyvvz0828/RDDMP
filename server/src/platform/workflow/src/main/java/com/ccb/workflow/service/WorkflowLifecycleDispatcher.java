@@ -6,7 +6,6 @@ import com.ccb.workflow.integration.WorkflowBusinessContext;
 import com.ccb.workflow.integration.WorkflowLifecycleConsumer;
 import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -23,13 +22,13 @@ import java.util.Collections;
 @Service
 public class WorkflowLifecycleDispatcher {
     private static final int MAX_ATTEMPTS = 5;
-    private final JdbcTemplate jdbc;
+    private final WorkflowLifecycleDispatcherRepository repository;
     private final Map<String, WorkflowLifecycleConsumer> consumers;
     @Value("${ccb.workflow.lifecycle-dispatch-stale-seconds:60}")
     private long staleClaimSeconds = 60;
 
-    public WorkflowLifecycleDispatcher(JdbcTemplate jdbc, List<WorkflowLifecycleConsumer> consumers) {
-        this.jdbc = jdbc;
+    public WorkflowLifecycleDispatcher(WorkflowLifecycleDispatcherRepository repository, List<WorkflowLifecycleConsumer> consumers) {
+        this.repository = repository;
         List<WorkflowLifecycleConsumer> registered = consumers == null ? List.of() : consumers;
         Map<String, WorkflowLifecycleConsumer> indexed = new LinkedHashMap<>();
         for (WorkflowLifecycleConsumer consumer : registered) {
@@ -48,21 +47,20 @@ public class WorkflowLifecycleDispatcher {
     public int dispatchBatch(int limit) {
         recoverStaleClaims();
         int bounded = Math.max(1, Math.min(limit, 200));
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.tenant_id, d.event_id, d.subscriber_key, d.attempt_count FROM wf_lifecycle_delivery d WHERE d.status IN ('PENDING','RETRY') AND (d.next_attempt_at IS NULL OR d.next_attempt_at <= CURRENT_TIMESTAMP) ORDER BY d.id LIMIT ?", bounded);
+        List<Map<String, Object>> rows = repository.pending(bounded);
         return dispatchRows(rows, false);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int dispatchEvent(String eventId) {
         if (eventId == null || eventId.isBlank()) return 0;
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT d.id, d.tenant_id, d.event_id, d.subscriber_key, d.attempt_count FROM wf_lifecycle_delivery d WHERE d.event_id = ? AND d.status IN ('PENDING','RETRY') AND (d.next_attempt_at IS NULL OR d.next_attempt_at <= CURRENT_TIMESTAMP) ORDER BY d.id", eventId.trim());
+        List<Map<String, Object>> rows = repository.pendingEvent(eventId.trim());
         return dispatchRows(rows, true);
     }
 
     @Transactional
     public void retry(String eventId, String subscriberKey, long tenantId) {
-        int changed = jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'RETRY', attempt_count = 0, last_error = NULL, next_attempt_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND event_id = ? AND subscriber_key = ? AND status = 'DEAD'",
-                tenantId, eventId, subscriberKey);
+        int changed = repository.retryDead(tenantId, eventId, subscriberKey);
         if (changed != 1) throw new BusinessException(ErrorCode.CONFLICT, "未找到可重试的失败事件投递");
     }
 
@@ -86,7 +84,7 @@ public class WorkflowLifecycleDispatcher {
         }
         try {
             consumer.consume(loadEvent(String.valueOf(delivery.get("event_id")), ((Number) delivery.get("tenant_id")).longValue()));
-            jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'DELIVERED', attempt_count = ?, delivered_at = CURRENT_TIMESTAMP, next_attempt_at = NULL, last_error = NULL WHERE id = ? AND status = 'DISPATCHING'", attempts, id);
+            repository.markDelivered(id, attempts);
         } catch (RuntimeException exception) {
             fail(id, attempts, safeMessage(exception), immediate);
         }
@@ -94,17 +92,16 @@ public class WorkflowLifecycleDispatcher {
     }
 
     private boolean claim(long id) {
-        return jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'DISPATCHING' WHERE id = ? AND status IN ('PENDING','RETRY') AND (next_attempt_at IS NULL OR next_attempt_at <= CURRENT_TIMESTAMP)", id) == 1;
+        return repository.claim(id) == 1;
     }
 
     private void recoverStaleClaims() {
         long boundedSeconds = Math.max(10, Math.min(staleClaimSeconds, 3600));
-        jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'RETRY', next_attempt_at = CURRENT_TIMESTAMP, last_error = COALESCE(last_error, 'Recovered stale dispatch claim') WHERE status = 'DISPATCHING' AND updated_at < ?",
-                Timestamp.valueOf(LocalDateTime.now().minusSeconds(boundedSeconds)));
+        repository.recoverStale(Timestamp.valueOf(LocalDateTime.now().minusSeconds(boundedSeconds)));
     }
 
     private WorkflowLifecycleEvent loadEvent(String eventId, long tenantId) {
-        Map<String, Object> row = jdbc.queryForMap("SELECT event_id, tenant_id, instance_id, event_type, business_module_code, business_module_name, business_type, business_key, business_title, business_round, project_ref, project_name, action_path, data_digest, operator_id, occurred_at FROM wf_lifecycle_event WHERE event_id = ? AND tenant_id = ?", eventId, tenantId);
+        Map<String, Object> row = repository.loadEvent(eventId, tenantId);
         WorkflowBusinessContext context = new WorkflowBusinessContext(value(row.get("business_module_code")), value(row.get("business_module_name")), String.valueOf(row.get("business_type")), String.valueOf(row.get("business_key")),
                 String.valueOf(row.get("business_title")), ((Number) row.get("business_round")).intValue(), value(row.get("project_ref")), value(row.get("project_name")),
                 String.valueOf(row.get("action_path")), String.valueOf(row.get("data_digest")));
@@ -117,18 +114,15 @@ public class WorkflowLifecycleDispatcher {
 
     private void fail(long id, int attempts, String message, boolean immediate) {
         if (attempts >= MAX_ATTEMPTS) {
-            jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'DEAD', attempt_count = ?, last_error = ?, next_attempt_at = NULL WHERE id = ? AND status = 'DISPATCHING'",
-                    attempts, message, id);
+            repository.markDead(id, attempts, message);
             return;
         }
         if (immediate) {
-            jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'PENDING', attempt_count = ?, last_error = ?, next_attempt_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'DISPATCHING'",
-                    attempts, message, id);
+            repository.markPending(id, attempts, message);
             return;
         }
         int backoffMinutes = Math.min(60, 1 << Math.min(attempts - 1, 5));
-        jdbc.update("UPDATE wf_lifecycle_delivery SET status = 'RETRY', attempt_count = ?, last_error = ?, next_attempt_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? MINUTE) WHERE id = ? AND status = 'DISPATCHING'",
-                attempts, message, backoffMinutes, id);
+        repository.markRetry(id, attempts, message, backoffMinutes);
     }
 
     private String safeMessage(RuntimeException exception) {

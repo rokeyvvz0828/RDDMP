@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "requirement": {"id": "REQ-20260911-079", "status": "ready", "document": "docs/requirements/REQ-20260911-079-project-workbench-batch/requirement.md", "codex_allowed": true},
+  "assignment": {"developer": "Codex", "module": "platform/system", "module_owner": "rokeyvvz0828", "branch": "feat/REQ-20260911-076-query-performance", "worktree": "D:/ai_project/ccb_rd"},
+  "codex": {"production_access": false, "contains_confidential_information": false, "allowed_tools": ["local-shell", "codex"]},
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260911-079-project-workbench-batch/**",
+      "docs/engineering-control/designs/2026-09-11-project-workbench-batch-design.md",
+      "docs/engineering-control/plans/2026-09-11-project-workbench-batch-implementation-plan.md",
+      ".ai-control/requirements/req-20260911-079-project-workbench-batch/*.json",
+      "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+      "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+    ],
+    "read_only_paths": ["server/src/platform/system/**", "server/src/shared/common/**", "docs/governance/**", "governance/modules.yaml", ".ai-control/original/state.json"],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**", "server/src/modules/**", "web/src/**"]
+  },
+  "public_capability_change": {"required": false, "issue": "REQ-20260911-079", "owner_approved": true, "old_behavior_preserved": true, "regression_tests": ["workbench fields", "empty workbench", "project authorization"]},
+  "database": {"changed": false, "migration_files": [], "compatibility_and_rollback": "No schema change; revert service query assembly."},
+  "external_access": {"changed": false, "systems": [], "data_classification": "local-development-only"},
+  "required_tests": [{"name": "system", "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test"}, {"name": "focused", "command": "run ProjectServiceTest workbench batch assertions"}],
+  "risk": {"level": "important", "items": ["statistics equivalence", "tenant filtering", "mock/query compatibility"]},
+  "completion": {"control_mode": "full", "control_prefix": "req-20260911-079-project-workbench-batch", "acceptance_evidence": [".ai-control/requirements/req-20260911-079-project-workbench-batch/convergence.json"], "rollback": "Revert ProjectService batch decorator changes."}
+}

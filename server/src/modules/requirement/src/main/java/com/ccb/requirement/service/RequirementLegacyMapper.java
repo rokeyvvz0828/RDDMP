@@ -1,0 +1,18 @@
+package com.ccb.requirement.service;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+public interface RequirementLegacyMapper {
+    long count(@Param("p") Map<String,Object> p); List<Map<String,Object>> page(@Param("p") Map<String,Object> p); Map<String,Object> find(@Param("tenantId") long tenantId,@Param("id") long id);
+    int insertLegacy(@Param("p") Map<String,Object> p); int updateLegacy(@Param("p") Map<String,Object> p); int softDeleteLegacy(@Param("tenantId") long tenantId,@Param("id") long id,@Param("operatorId") long operatorId);
+    int deleteSystemItems(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteSystemMembers(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteFlowLogs(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteLegacyMembers(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteVersions(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteWorkloads(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteSoftDocs(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int deleteCoordinations(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId);
+    int transitionStage(@Param("p") Map<String,Object> p); int insertStageLog(@Param("p") Map<String,Object> p); List<Map<String,Object>> stageLogs(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId);
+    List<Map<String,Object>> members(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int userCount(@Param("tenantId") long tenantId,@Param("userId") long userId); int legacyMemberCount(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId,@Param("userId") long userId); String userName(@Param("tenantId") long tenantId,@Param("userId") long userId); int insertMember(@Param("p") Map<String,Object> p); Map<String,Object> member(@Param("tenantId") long tenantId,@Param("id") long id); int deleteMember(@Param("tenantId") long tenantId,@Param("id") long id);
+    List<Map<String,Object>> systemItems(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); List<Map<String,Object>> systemItemsForRequirements(@Param("tenantId") long tenantId,@Param("ids") List<Long> ids); List<Map<String,Object>> systemMembersForItems(@Param("tenantId") long tenantId,@Param("ids") List<Long> ids); int insertSystemItem(@Param("p") Map<String,Object> p); int upsertSystemMember(@Param("p") Map<String,Object> p);
+    List<Map<String,Object>> flowLogs(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); Map<String,Object> activeUser(@Param("tenantId") long tenantId,@Param("userId") long userId); int updateFlow(@Param("tenantId") long tenantId,@Param("id") long id,@Param("toUserId") Long toUserId,@Param("toUserName") String toUserName,@Param("operatorId") long operatorId); Map<String,Object> latestSender(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int insertFlowLog(@Param("p") Map<String,Object> p);
+    List<Map<String,Object>> versions(@Param("tenantId") long tenantId,@Param("requirementId") long requirementId); int updateVersion(@Param("tenantId") long tenantId,@Param("id") long id,@Param("versionNo") String versionNo,@Param("operatorId") long operatorId); int upsertVersion(@Param("p") Map<String,Object> p); int exists(@Param("tenantId") long tenantId,@Param("id") long id);
+}

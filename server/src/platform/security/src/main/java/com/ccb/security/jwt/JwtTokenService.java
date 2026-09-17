@@ -2,13 +2,13 @@ package com.ccb.security.jwt;
 
 import com.ccb.security.model.AuthUser;
 import com.ccb.security.model.TokenPair;
+import com.ccb.security.repository.JwtConfigRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -24,7 +24,7 @@ public class JwtTokenService {
     private final SecretKey key;
     private final long accessTtlMillis;
     private final long refreshTtlMillis;
-    private final JdbcTemplate jdbc;
+    private final JwtConfigRepository configRepository;
     private final Set<String> revokedRefreshTokens = ConcurrentHashMap.newKeySet();
 
     public JwtTokenService(String secret, long accessTtlMillis, long refreshTtlMillis) {
@@ -35,14 +35,14 @@ public class JwtTokenService {
     public JwtTokenService(@Value("${ccb.security.jwt.secret}") String secret,
                            @Value("${ccb.security.jwt.access-ttl-millis:900000}") long accessTtlMillis,
                            @Value("${ccb.security.jwt.refresh-ttl-millis:604800000}") long refreshTtlMillis,
-                           JdbcTemplate jdbc) {
+                           JwtConfigRepository configRepository) {
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalArgumentException("JWT secret must contain at least 32 bytes");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTtlMillis = accessTtlMillis;
         this.refreshTtlMillis = refreshTtlMillis;
-        this.jdbc = jdbc;
+        this.configRepository = configRepository;
     }
 
     public TokenPair issue(AuthUser user) {
@@ -80,10 +80,9 @@ public class JwtTokenService {
     }
 
     private long ttl(String key, long fallback) {
-        if (jdbc == null) return fallback;
+        if (configRepository == null) return fallback;
         try {
-            String value = jdbc.query("SELECT config_value FROM sys_config WHERE tenant_id = 1 AND config_key = ? AND deleted = 0",
-                    rs -> rs.next() ? rs.getString("config_value") : null, key);
+            String value = configRepository.findValue(key);
             long parsed = value == null ? fallback : Long.parseLong(value);
             return parsed > 0 ? parsed : fallback;
         } catch (RuntimeException exception) {

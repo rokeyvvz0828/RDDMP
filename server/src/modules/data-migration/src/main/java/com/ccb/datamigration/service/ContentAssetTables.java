@@ -51,36 +51,4 @@ public final class ContentAssetTables {
         };
     }
 
-    /** 跨内容表的活动行计数 UNION；占位符为每个表一组 args。 */
-    public static String activeCountUnionSql(String wherePerTable, List<String> tables) {
-        StringBuilder sql = new StringBuilder();
-        for (String table : tables) {
-            if (sql.length() > 0) sql.append(" UNION ALL ");
-            sql.append("SELECT COUNT(*) AS cnt FROM ").append(table).append(" WHERE ").append(wherePerTable);
-        }
-        return sql.toString();
-    }
-
-    /** 跨内容表按类型分组计数 UNION，列为 type/total；占位符为每个表一组 args。 */
-    public static String typeCountUnionSql(String wherePerTable, List<String> tables) {
-        StringBuilder sql = new StringBuilder();
-        for (String table : tables) {
-            if (sql.length() > 0) sql.append(" UNION ALL ");
-            sql.append("SELECT '").append(typeFor(table)).append("' AS type, COUNT(*) AS total FROM ")
-               .append(table).append(" WHERE ").append(wherePerTable);
-        }
-        return sql.toString();
-    }
-
-    /** 跨内容表按 (tenant_id, project_id) 分组的活动行计数 UNION，列为 tenant_id/project_id/cnt。 */
-    public static String tenantProjectCountUnionSql(List<String> tables) {
-        StringBuilder sql = new StringBuilder();
-        for (String table : tables) {
-            if (sql.length() > 0) sql.append(" UNION ALL ");
-            sql.append("SELECT tenant_id, project_id, COUNT(*) AS cnt FROM ").append(table)
-               .append(" WHERE deleted = 0 GROUP BY tenant_id, project_id");
-        }
-        return sql.toString();
-    }
-
 }

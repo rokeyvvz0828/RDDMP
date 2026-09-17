@@ -10,7 +10,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
@@ -22,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
@@ -33,7 +32,7 @@ import static org.mockito.Mockito.when;
 class MockDataInitializerTest {
     @Test
     void upsertsAllowlistedRowsAndRecordsDatasetState() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        MockDataRepository repository = mock(MockDataRepository.class);
         ResourceLoader resources = mock(ResourceLoader.class);
         Resource resource = mock(Resource.class);
         when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
@@ -48,19 +47,20 @@ class MockDataInitializerTest {
                   }]
                 }
                 """.getBytes(StandardCharsets.UTF_8)));
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(repository.upsert(any(), any(), any(), any())).thenReturn(1);
 
         MockDataProperties properties = new MockDataProperties();
         properties.setEnabled(true);
         properties.setResource("classpath:mock/mock-data.json");
-        new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
+        new MockDataInitializer(repository, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
 
-        verify(jdbc, atLeast(2)).update(anyString(), any(Object[].class));
+        verify(repository).upsert(any(), any(), any(), any());
+        verify(repository).saveDatasetState(anyLong(), eq("test"), eq("1"), any());
     }
 
     @Test
     void rejectsTablesOutsideTheAllowlist() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        MockDataRepository repository = mock(MockDataRepository.class);
         ResourceLoader resources = mock(ResourceLoader.class);
         Resource resource = mock(Resource.class);
         when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
@@ -70,14 +70,14 @@ class MockDataInitializerTest {
 
         MockDataProperties properties = new MockDataProperties();
         properties.setResource("classpath:mock/mock-data.json");
-        MockDataInitializer initializer = new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties);
+        MockDataInitializer initializer = new MockDataInitializer(repository, new ObjectMapper(), resources, properties);
 
         assertThrows(IllegalStateException.class, () -> initializer.run(new DefaultApplicationArguments()));
     }
 
     @Test
     void upsertsBusinessFormMetadataRows() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        MockDataRepository repository = mock(MockDataRepository.class);
         ResourceLoader resources = mock(ResourceLoader.class);
         Resource resource = mock(Resource.class);
         when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
@@ -92,18 +92,19 @@ class MockDataInitializerTest {
                   }]
                 }
                 """.getBytes(StandardCharsets.UTF_8)));
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(repository.upsert(any(), any(), any(), any())).thenReturn(1);
 
         MockDataProperties properties = new MockDataProperties();
         properties.setResource("classpath:mock/mock-data.json");
-        new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
+        new MockDataInitializer(repository, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
 
-        verify(jdbc, atLeast(2)).update(anyString(), any(Object[].class));
+        verify(repository).upsert(any(), any(), any(), any());
+        verify(repository).saveDatasetState(anyLong(), eq("test"), eq("1"), any());
     }
 
     @Test
     void preservesWorkflowDefinitionSchemaVersionDuringMockSync() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        MockDataRepository repository = mock(MockDataRepository.class);
         ResourceLoader resources = mock(ResourceLoader.class);
         Resource resource = mock(Resource.class);
         when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
@@ -118,23 +119,19 @@ class MockDataInitializerTest {
                   }]
                 }
                 """.getBytes(StandardCharsets.UTF_8)));
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(repository.upsert(any(), any(), any(), any())).thenReturn(1);
 
         MockDataProperties properties = new MockDataProperties();
         properties.setResource("classpath:mock/mock-data.json");
-        new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
+        new MockDataInitializer(repository, new ObjectMapper(), resources, properties).run(new DefaultApplicationArguments());
 
-        verify(jdbc).update(contains("`model_schema_version`"), any(Object[].class));
+        verify(repository).upsert(eq("`wf_definition`"), contains("`model_schema_version`"), any(), any());
     }
 
     @Test
     void validatesAndUpsertsTrustedArchitectureRows() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
-        when(jdbc.queryForObject(contains("SELECT MAX(org_name)"), eq(String.class), any(Object[].class)))
-                .thenReturn("研发工程中心");
-        MockDataInitializer initializer = initializer(jdbc, """
+        MockDataRepository repository = validArchitectureRepository();
+        MockDataInitializer initializer = initializer(repository, """
                 {"datasetKey":"test","datasetVersion":"1","database":[
                   {"table":"arch_physical_subsystem","keyColumns":["id"],"rows":[
                     {"id":9201,"tenant_id":1,"code":"PHYSICAL_DEMO","short_name":"物理演示","name":"物理演示系统","logical_subsystem_name":"逻辑演示系统","business_component_code":"architecture.business-component.employee-portal","responsible_team_org_id":910000000000002,"responsible_team_name_snapshot":"研发工程中心","owner_user_id":910000000000002,"deleted":0,"created_by":1,"updated_by":1}
@@ -145,12 +142,12 @@ class MockDataInitializerTest {
         initializer.run(new DefaultApplicationArguments());
         initializer.run(new DefaultApplicationArguments());
 
-        verify(jdbc, atLeast(4)).update(anyString(), any(Object[].class));
+        verify(repository, atLeast(2)).upsert(any(), any(), any(), any());
     }
 
     @Test
     void rejectsArchitectureRowWithoutExplicitPositiveTenant() throws Exception {
-        MockDataInitializer initializer = initializer(mock(JdbcTemplate.class), """
+        MockDataInitializer initializer = initializer(mock(MockDataRepository.class), """
                 {"datasetKey":"test","datasetVersion":"1","database":[{
                   "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{"id":9101}]
                 }]}
@@ -163,9 +160,9 @@ class MockDataInitializerTest {
 
     @Test
     void rejectsArchitectureTenantWithoutRootOrganization() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(0L);
-        MockDataInitializer initializer = initializer(jdbc, physicalRow("研发工程中心"));
+        MockDataRepository repository = validArchitectureRepository();
+        when(repository.activeTenantRootCount(1L)).thenReturn(0L);
+        MockDataInitializer initializer = initializer(repository, physicalRow("研发工程中心"));
 
         IllegalStateException error = assertThrows(IllegalStateException.class,
                 () -> initializer.run(new DefaultApplicationArguments()));
@@ -174,10 +171,9 @@ class MockDataInitializerTest {
 
     @Test
     void rejectsBusinessComponentOutsideTenantCategory() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject(contains("parent_id = 0"), eq(Long.class), any(Object[].class))).thenReturn(1L);
-        when(jdbc.queryForObject(contains("sys_config c"), eq(Long.class), any(Object[].class))).thenReturn(0L);
-        MockDataInitializer initializer = initializer(jdbc, """
+        MockDataRepository repository = validArchitectureRepository();
+        when(repository.parameterCount(anyLong(), any(), any())).thenReturn(0L);
+        MockDataInitializer initializer = initializer(repository, """
                 {"datasetKey":"test","datasetVersion":"1","database":[{
                   "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{
                     "id":9201,"tenant_id":1,"logical_subsystem_name":"逻辑演示系统",
@@ -195,11 +191,8 @@ class MockDataInitializerTest {
 
     @Test
     void rejectsResponsibleTeamSnapshotMismatch() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
-        when(jdbc.queryForObject(contains("SELECT MAX(org_name)"), eq(String.class), any(Object[].class)))
-                .thenReturn("研发工程中心");
-        MockDataInitializer initializer = initializer(jdbc, physicalRow("错误团队"));
+        MockDataRepository repository = validArchitectureRepository();
+        MockDataInitializer initializer = initializer(repository, physicalRow("错误团队"));
 
         IllegalStateException error = assertThrows(IllegalStateException.class,
                 () -> initializer.run(new DefaultApplicationArguments()));
@@ -208,12 +201,10 @@ class MockDataInitializerTest {
 
     @Test
     void rejectsParameterOutsideTenantCategory() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
-        when(jdbc.queryForObject(contains("sys_config c"), eq(Long.class), any(Object[].class))).thenReturn(0L);
-        when(jdbc.queryForObject(contains("SELECT MAX(org_name)"), eq(String.class), any(Object[].class)))
-                .thenReturn("产品交付中心");
-        MockDataInitializer initializer = initializer(jdbc, """
+        MockDataRepository repository = validArchitectureRepository();
+        when(repository.parameterCount(anyLong(), any(), any())).thenReturn(0L);
+        when(repository.activeOrganizationName(anyLong(), anyLong())).thenReturn("产品交付中心");
+        MockDataInitializer initializer = initializer(repository, """
                 {"datasetKey":"test","datasetVersion":"1","database":[{
                   "table":"arch_physical_subsystem","keyColumns":["id"],"rows":[{
                     "id":9201,"tenant_id":1,"logical_subsystem_name":"逻辑演示系统",
@@ -259,28 +250,36 @@ class MockDataInitializerTest {
             assertEquals("虚构演示数据", row.path("remark").asText());
         });
 
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class))).thenReturn(1L);
-        when(jdbc.queryForObject(contains("SELECT MAX(org_name)"), eq(String.class), any(Object[].class)))
+        MockDataRepository repository = validArchitectureRepository();
+        when(repository.activeOrganizationName(anyLong(), anyLong()))
                 .thenReturn("研发工程中心", "研发工程中心", "质量保障中心");
+        when(repository.upsert(any(), any(), any(), any())).thenReturn(1);
         MockDataProperties properties = new MockDataProperties();
         properties.setResource("classpath:mock/mock-data.json");
-        new MockDataInitializer(jdbc, objectMapper, new DefaultResourceLoader(), properties)
+        new MockDataInitializer(repository, objectMapper, new DefaultResourceLoader(), properties)
                 .run(new DefaultApplicationArguments());
-        verify(jdbc, atLeast(1)).update(anyString(), any(Object[].class));
+        verify(repository, atLeast(1)).upsert(any(), any(), any(), any());
     }
 
-    private MockDataInitializer initializer(JdbcTemplate jdbc, String json) throws Exception {
+    private MockDataInitializer initializer(MockDataRepository repository, String json) throws Exception {
         ResourceLoader resources = mock(ResourceLoader.class);
         Resource resource = mock(Resource.class);
         when(resources.getResource("classpath:mock/mock-data.json")).thenReturn(resource);
         when(resource.getInputStream()).thenAnswer(ignored ->
                 new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
-        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(repository.upsert(any(), any(), any(), any())).thenReturn(1);
         MockDataProperties properties = new MockDataProperties();
         properties.setResource("classpath:mock/mock-data.json");
-        return new MockDataInitializer(jdbc, new ObjectMapper(), resources, properties);
+        return new MockDataInitializer(repository, new ObjectMapper(), resources, properties);
+    }
+
+    private MockDataRepository validArchitectureRepository() {
+        MockDataRepository repository = mock(MockDataRepository.class);
+        when(repository.activeTenantRootCount(anyLong())).thenReturn(1L);
+        when(repository.activeOrganizationName(anyLong(), anyLong())).thenReturn("研发工程中心");
+        when(repository.activeUserCount(anyLong(), anyLong())).thenReturn(1L);
+        when(repository.parameterCount(anyLong(), any(), any())).thenReturn(1L);
+        return repository;
     }
 
     private String physicalRow(String snapshot) {

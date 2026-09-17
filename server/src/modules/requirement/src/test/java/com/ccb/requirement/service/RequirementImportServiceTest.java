@@ -25,15 +25,15 @@ class RequirementImportServiceTest {
     void previewReportsValidAndInvalidRows() throws Exception {
         byte[] content = workbookBytes();
         StubJdbcTemplate jdbc = adminJdbc();
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementSystemService systemService = new RequirementSystemService(new RequirementSystemRepository(jdbc), changeLog) {
             @Override
             public long resolveSystemId(String systemCode, AuthUser user) {
                 return "W01812".equals(systemCode) ? 10L : 0L;
             }
         };
-        RequirementImportService service = new RequirementImportService(jdbc, security, systemService, changeLog, new ObjectMapper());
+        RequirementImportService service = new RequirementImportService(new RequirementImportRepository(jdbc), security, systemService, changeLog, new ObjectMapper());
         MockMultipartFile file = new MockMultipartFile("file", "diff.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", content);
 
@@ -49,15 +49,15 @@ class RequirementImportServiceTest {
     @Test
     void confirmPersistsRowsAndImportBatch() throws Exception {
         StubJdbcTemplate jdbc = adminJdbc();
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementSystemService systemService = new RequirementSystemService(new RequirementSystemRepository(jdbc), changeLog) {
             @Override
             public long resolveSystemId(String systemCode, AuthUser user) {
                 return "W01812".equals(systemCode) ? 10L : 0L;
             }
         };
-        RequirementImportService service = new RequirementImportService(jdbc, security, systemService, changeLog, new ObjectMapper());
+        RequirementImportService service = new RequirementImportService(new RequirementImportRepository(jdbc), security, systemService, changeLog, new ObjectMapper());
         Map<String, Object> row = new LinkedHashMap<>(Map.of(
                 "name", "导入差异", "business_group", "零售一组", "requirement_no", "W01812-001",
                 "category", "功能", "difference_type", "无差异", "system_code", "W01812"));
@@ -65,8 +65,8 @@ class RequirementImportServiceTest {
         Map<String, Object> result = service.confirm("DIFF", 1L, "diff.xlsx", List.of(row), ADMIN);
 
         assertEquals(1, result.get("successRows"));
-        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_difference`")));
-        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_import_batch`")));
+        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("import difference insert")));
+        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("import batch insert")));
     }
 
     @Test
@@ -79,15 +79,15 @@ class RequirementImportServiceTest {
         };
         byte[] content = workbookBytes(legacyHeaders);
         StubJdbcTemplate jdbc = adminJdbc();
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementSystemService systemService = new RequirementSystemService(new RequirementSystemRepository(jdbc), changeLog) {
             @Override
             public long resolveSystemId(String systemCode, AuthUser user) {
                 return "W01812".equals(systemCode) ? 10L : 0L;
             }
         };
-        RequirementImportService service = new RequirementImportService(jdbc, security, systemService, changeLog, new ObjectMapper());
+        RequirementImportService service = new RequirementImportService(new RequirementImportRepository(jdbc), security, systemService, changeLog, new ObjectMapper());
         MockMultipartFile file = new MockMultipartFile("file", "diff-legacy.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", content);
 

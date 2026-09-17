@@ -22,11 +22,13 @@ class RequirementDifferenceServiceTest {
     private Fixture fixture(Function<String, Long> counts, Map<String, Object> row) {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(counts, List.of(row), Map.of(
                 "id", 1L, "project_code", "P001", "project_name", "测试项目"));
-        RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
-        RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog);
+        RequirementChangeLogService changeLog = RequirementChangeLogTestSupport.service(jdbc);
+        RequirementSecurityService security = new RequirementSecurityService(new RequirementSecurityRepository(jdbc));
+        RequirementSystemService systemService = new RequirementSystemService(new RequirementSystemRepository(jdbc), changeLog);
         StubWorkflowService workflow = new StubWorkflowService();
-        RequirementDifferenceService service = new RequirementDifferenceService(jdbc, changeLog, security, systemService, workflow);
+        RequirementDifferenceService service = new RequirementDifferenceService(
+                new RequirementDifferenceRepository(new RequirementSqlMigrationTestMapper(jdbc)),
+                changeLog, security, systemService, workflow);
         return new Fixture(jdbc, workflow, service);
     }
 

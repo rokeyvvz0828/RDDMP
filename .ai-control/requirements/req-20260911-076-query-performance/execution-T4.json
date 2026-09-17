@@ -1,0 +1,24 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "requirements_addressed": ["R4", "R5"],
+  "changed_surfaces": [
+    {"path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java", "purpose": "Publish member-query timer with fixed tags."},
+    {"path": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "Publish definition-query timer with fixed tags."},
+    {"path": "server/src/platform/boot/src/main/resources/application.yml", "purpose": "Expose metrics alongside health and info."}
+  ],
+  "commands": [
+    {"command": "mvn '-Dnet.bytebuddy.experimental=true' '-Dsurefire.failIfNoSpecifiedTests=false' -pl :ccb-system,:ccb-workflow -am '-Dtest=ProjectServiceTest,WorkflowServiceTest,WorkflowPlatformRetirementTest' test", "exit_code": 0}
+  ],
+  "invariants_checked": [
+    {"invariant": "Metric tag keys and values are low-cardinality", "result": "pass", "evidence": "Only operation, scope_type, and outcome tags are registered; invalid scope is fixed to INVALID."},
+    {"invariant": "Existing errors are rethrown", "result": "pass", "evidence": "Timing catch blocks record error then rethrow the original RuntimeException."},
+    {"invariant": "No management endpoint beyond metrics was added", "result": "pass", "evidence": "Exposure changed from health,info to health,info,metrics."}
+  ],
+  "local_checks": [{"check": "Metric registration", "result": "pass", "evidence": "Focused meter assertions passed.", "limitations": ["No authorized runtime metric payload."]}],
+  "diff_summary": ["Added only two timers and exposed only the metrics management endpoint."],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["The local actuator endpoint requires authentication, so metric-name discovery was not readable without credentials."],
+  "recommended_next": "observe"
+}

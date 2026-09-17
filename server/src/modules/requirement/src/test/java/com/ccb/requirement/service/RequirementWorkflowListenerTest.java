@@ -5,10 +5,8 @@ import com.ccb.workflow.integration.WorkflowLifecycleEvent;
 import com.ccb.workflow.integration.WorkflowLifecycleEventType;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -36,16 +34,10 @@ class RequirementWorkflowListenerTest {
 
         listener.consume(event(WorkflowLifecycleEventType.APPROVED));
 
-        assertTrue(jdbc.updates.stream().anyMatch(update ->
-                update.sql().contains("UPDATE req_difference SET review_status")
-                        && update.args().contains("已评审")
-                        && update.args().contains(9L)));
-        assertTrue(jdbc.updates.stream().anyMatch(update ->
-                update.sql().contains("INSERT INTO req_review_record")
-                        && update.args().contains("通过")));
-        assertTrue(jdbc.updates.stream().anyMatch(update ->
-                update.sql().contains("INSERT INTO req_change_log")
-                        && update.args().contains(9L)));
+        assertTrue(jdbc.updates.contains("status:已评审:9"));
+        assertTrue(jdbc.updates.contains("record:通过:9"));
+        assertTrue(jdbc.jdbcUpdates.stream().anyMatch(update ->
+                update.contains("INSERT INTO req_change_log") && update.contains("9")));
     }
 
     @Test
@@ -57,32 +49,31 @@ class RequirementWorkflowListenerTest {
 
             listener.consume(event(type));
 
-            assertTrue(jdbc.updates.stream().anyMatch(update ->
-                    update.sql().contains("UPDATE req_difference SET review_status")
-                            && update.args().contains("已退回")));
-            assertTrue(jdbc.updates.stream().anyMatch(update ->
-                    update.sql().contains("INSERT INTO req_review_record")
-                            && update.args().contains("退回")));
+            assertTrue(jdbc.updates.contains("status:已退回:9"));
+            assertTrue(jdbc.updates.contains("record:退回:9"));
         }
     }
 
     @Test
     void databaseFailurePropagatesForLifecycleRetry() {
-        JdbcTemplate failingJdbc = new JdbcTemplate() {
+        RequirementWorkflowMapper failingMapper = new RequirementWorkflowMapper() {
             @Override
-            public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            public Map<String, Object> findActiveDifference(long tenantId, long differenceId) {
                 throw new IllegalStateException("database unavailable");
             }
+            @Override public int updateReviewStatus(long tenantId, long differenceId, String reviewStatus, long operatorId) { return 0; }
+            @Override public Map<String, Object> findLatestWorkflowAction(long tenantId, long instanceId) { return null; }
+            @Override public int insertReviewRecord(long id, long tenantId, long differenceId, long reviewerId, String reviewerName, LocalDateTime reviewTime, String conclusion, String comment, String reportDocName, long createdBy) { return 0; }
         };
         RequirementWorkflowListener listener = new RequirementWorkflowListener(
-                failingJdbc, new RequirementChangeLogService(failingJdbc));
+                new RequirementWorkflowRepository(failingMapper), RequirementChangeLogTestSupport.service(new com.ccb.requirement.support.StubJdbcTemplate()));
 
         assertThrows(IllegalStateException.class,
                 () -> listener.consume(event(WorkflowLifecycleEventType.APPROVED)));
     }
 
     private RequirementWorkflowListener listener(RecordingJdbcTemplate jdbc) {
-        return new RequirementWorkflowListener(jdbc, new RequirementChangeLogService(jdbc));
+        return new RequirementWorkflowListener(new RequirementWorkflowRepository(jdbc), RequirementChangeLogTestSupport.service(jdbc));
     }
 
     private WorkflowLifecycleEvent event(WorkflowLifecycleEventType type) {
@@ -93,33 +84,41 @@ class RequirementWorkflowListenerTest {
                 LocalDateTime.of(2026, 9, 8, 12, 0));
     }
 
-    private static final class RecordingJdbcTemplate extends JdbcTemplate {
-        private final List<UpdateCall> updates = new ArrayList<>();
+    private static final class RecordingJdbcTemplate extends JdbcTemplate implements RequirementWorkflowMapper {
+        private final List<String> updates = new ArrayList<>();
+        private final List<String> jdbcUpdates = new ArrayList<>();
         private int queryCount;
 
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+        public Map<String, Object> findActiveDifference(long tenantId, long differenceId) {
             queryCount++;
-            if (sql.contains("FROM req_difference")) {
-                return List.of(Map.of("review_status", "评审中", "review_report_name", "评审报告.docx"));
-            }
-            if (sql.contains("FROM wf_task_action")) {
-                return List.of(Map.of(
-                        "operator_id", 9L,
-                        "operator_name", "审核人",
-                        "comment", "同意",
-                        "created_at", LocalDateTime.of(2026, 9, 8, 11, 59)));
-            }
-            return List.of();
+            return Map.of("review_status", "评审中", "review_report_name", "评审报告.docx");
+        }
+
+        @Override
+        public int updateReviewStatus(long tenantId, long differenceId, String reviewStatus, long operatorId) {
+            updates.add("status:" + reviewStatus + ":" + operatorId);
+            return 1;
+        }
+
+        @Override
+        public Map<String, Object> findLatestWorkflowAction(long tenantId, long instanceId) {
+            return Map.of("operator_id", 9L, "operator_name", "审核人", "comment", "同意",
+                    "created_at", LocalDateTime.of(2026, 9, 8, 11, 59));
+        }
+
+        @Override
+        public int insertReviewRecord(long id, long tenantId, long differenceId, long reviewerId, String reviewerName,
+                                      LocalDateTime reviewTime, String conclusion, String comment, String reportDocName,
+                                      long createdBy) {
+            updates.add("record:" + conclusion + ":" + reviewerId);
+            return 1;
         }
 
         @Override
         public int update(String sql, Object... args) {
-            updates.add(new UpdateCall(sql, Arrays.asList(args)));
+            jdbcUpdates.add(sql + " " + java.util.Arrays.toString(args));
             return 1;
         }
-    }
-
-    private record UpdateCall(String sql, List<Object> args) {
     }
 }
