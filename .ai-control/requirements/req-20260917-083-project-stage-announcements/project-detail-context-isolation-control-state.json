@@ -1,0 +1,1929 @@
+{
+  "schema_version": 4,
+  "revision": 30,
+  "created_at": "2026-09-18T07:27:15+00:00",
+  "updated_at": "2026-09-18T07:46:24+00:00",
+  "mode": "high-assurance",
+  "phase": "observing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the design on 2026-09-18.；计划确认=User confirmed the implementation plan on 2026-09-18.",
+      "recorded_at": "2026-09-18T07:27:15+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline artifact meets R7 measurement intent",
+      "recorded_at": "2026-09-18T07:28:39+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Model maps R7 to bounded client actuators and four sensors",
+      "recorded_at": "2026-09-18T07:30:55+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Approved control plan covers R7 with bounded client-only tasks",
+      "recorded_at": "2026-09-18T07:32:33+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 execution report recorded",
+      "recorded_at": "2026-09-18T07:36:11+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 observation found no deviation; proceed to bounded attachment API task",
+      "recorded_at": "2026-09-18T07:39:56+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution report recorded",
+      "recorded_at": "2026-09-18T07:42:19+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 observation found no deviation; proceed to runtime integration observation",
+      "recorded_at": "2026-09-18T07:43:18+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 partial execution report recorded",
+      "recorded_at": "2026-09-18T07:45:22+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the design on 2026-09-18.；计划确认=User confirmed the implementation plan on 2026-09-18.",
+        "recorded_at": "2026-09-18T07:27:15+00:00",
+        "data": {
+          "objective": "Project detail requests use their route project ID without changing the global project selector.",
+          "requirements": [
+            {
+              "id": "R7",
+              "statement": "Keep a project-detail route target independent from the global project selector.",
+              "acceptance": [
+                "Every /api/project/{projectId} request sends that path ID as X-Project-Id.",
+                "Opening or editing a project detail does not change the stored global selector.",
+                "The server path/header consistency check remains enforced."
+              ],
+              "priority": "must",
+              "source": "User confirmation",
+              "counterexample": [
+                "A basic-information save uses the global selector project ID.",
+                "Entering a detail route changes the selector."
+              ]
+            }
+          ],
+          "invariants": [
+            "The global selector changes only through an explicit selector action.",
+            "Server-side path/header, authorization, tenant, entity, audit and lock checks remain intact."
+          ],
+          "constraints": [
+            "Only current task writable paths may change.",
+            "Do not modify http.ts, project-context store, backend security, database or API payloads.",
+            "No production access or secrets."
+          ],
+          "non_goals": [
+            "Changing the global selector behavior.",
+            "Relaxing server security validation.",
+            "Database or backend changes."
+          ],
+          "assumptions": [
+            {
+              "text": "withProjectContext takes precedence over stored global context.",
+              "basis": "Existing HTTP interceptor checks explicit projectContext before local storage.",
+              "falsifier": "Browser request header remains the global selector ID."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D8",
+              "decision": "Use route project ID for every project-detail API request without selector synchronization.",
+              "reason": "Fix stale global context rejection while preserving security.",
+              "source": "User confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R7"
+              ],
+              "signal": "Header and route IDs match while selector remains different",
+              "method": "Vite build, static API inspection and local browser A/B scenario."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "User-approved route-target isolation baseline reviewed",
+        "recorded_at": "2026-09-18T07:28:24+00:00",
+        "data": {
+          "objective": "A user can edit the project opened in a detail route even when the global project selector points to a different accessible project, without changing that selector.",
+          "requirements": [
+            {
+              "id": "R7",
+              "statement": "For every project-detail request addressed as /api/project/{projectId}, the client must send the same projectId as request context; opening or editing that detail must not change the persisted global project selection.",
+              "acceptance": [
+                "With global selector project A and detail route project B, basic information, plan, and attachment requests use URL project B and X-Project-Id B.",
+                "Those requests no longer return the path/context mismatch error.",
+                "The global selector remains project A until the user explicitly switches it."
+              ],
+              "priority": "must",
+              "source": "User-confirmed design and implementation plan on 2026-09-18",
+              "counterexample": [
+                "A request to /api/project/B sends X-Project-Id A.",
+                "Opening or saving B changes the persisted global selector to B.",
+                "The server accepts a missing or mismatched project context."
+              ]
+            }
+          ],
+          "invariants": [
+            "The global selector changes only through an explicit selector action.",
+            "The server continues enforcing matching project path and X-Project-Id plus existing authorization, tenant, entity, audit, and lock behavior.",
+            "Existing API paths, HTTP methods, request bodies, response types, database data, and routes remain compatible."
+          ],
+          "constraints": [
+            "Modify only web/src/api/project.ts, web/src/api/attachments.ts, and the current task's authorized evidence files.",
+            "Do not modify http.ts, project-context store, server security, services, database, or .env files.",
+            "Use local services and synthetic local test data only."
+          ],
+          "non_goals": [
+            "Relaxing the server project-context check.",
+            "Changing global project-switch confirmation or persistence behavior.",
+            "Adding an HTTP interceptor inference rule.",
+            "Changing API payloads, migrations, permissions, or audit behavior."
+          ],
+          "assumptions": [
+            {
+              "text": "The existing withProjectContext(id) request configuration overrides the stored global project context.",
+              "basis": "http.ts request interceptor selects explicit projectContext before local storage.",
+              "falsifier": "A browser request for detail project B sends X-Project-Id A after the scoped client update."
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "The local account may expose fewer than two projects, preventing a full A/B browser scenario.",
+              "impact": "Browser evidence may be limited to static and single-project request checks.",
+              "owner": "observing",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "Which project identity controls a project-detail request?",
+              "options": [
+                "Global selector",
+                "Route project ID"
+              ],
+              "selected": "Route project ID",
+              "blocking": false,
+              "source": "User confirmation"
+            },
+            {
+              "question": "Should server project path/context validation be changed?",
+              "options": [
+                "Preserve validation",
+                "Relax validation"
+              ],
+              "selected": "Preserve validation",
+              "blocking": false,
+              "source": "Approved design"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R7",
+              "observable": "Source request configuration binds each project route ID explicitly and a route B request carries header B while stored selection remains A.",
+              "candidate_sensor": "Static API audit, Vite build, browser network headers, browser local-storage state"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Context precedence and server path guard verified by source inspection",
+        "recorded_at": "2026-09-18T07:30:45+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "web/src/api/project.ts project-scoped request configurations",
+              "web/src/api/attachments.ts project attachment request configurations",
+              "web/src/api/http.ts explicit-versus-stored project context precedence",
+              "JwtAuthenticationFilter project path/header validation"
+            ],
+            "environment": [
+              "Vue route /projects/:projectId",
+              "Persisted global selector local-storage keys",
+              "Authenticated local browser session",
+              "Existing dirty worktree changes outside this task"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "route_project_id",
+              "owner": "Vue Router",
+              "valid_values": [
+                "positive project ID",
+                "absent on workbench"
+              ]
+            },
+            {
+              "name": "stored_global_project_id",
+              "owner": "project-context store",
+              "valid_values": [
+                "positive accessible project ID",
+                "absent"
+              ]
+            },
+            {
+              "name": "request_project_context",
+              "owner": "Axios request configuration",
+              "valid_values": [
+                "explicit route project ID",
+                "undefined fallback"
+              ]
+            },
+            {
+              "name": "request_header_project_id",
+              "owner": "HTTP request interceptor",
+              "valid_values": [
+                "positive project ID",
+                "absent"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R7",
+              "input": "User opens route project B while the persisted global selector is project A, then invokes a project detail action.",
+              "transitions": [
+                "A project API method currently omits projectContext for many project paths.",
+                "http.ts falls back from undefined projectContext to stored project A and emits X-Project-Id A.",
+                "JwtAuthenticationFilter compares path project B with header A and rejects the request.",
+                "Passing withProjectContext(B) makes the interceptor emit B without altering stored selector A.",
+                "The filter accepts the matching path/header pair and existing permission evaluation uses B."
+              ],
+              "outputs": [
+                "Project B request completes without path/context mismatch.",
+                "Global selector remains A."
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "withProjectContext(projectId)",
+              "producers": [
+                "web/src/api/http.ts"
+              ],
+              "consumers": [
+                "web/src/api/project.ts",
+                "web/src/api/attachments.ts"
+              ],
+              "invariant": "A positive explicit project ID takes precedence over the persisted global selector."
+            },
+            {
+              "name": "X-Project-Id",
+              "producers": [
+                "Axios request interceptor"
+              ],
+              "consumers": [
+                "JwtAuthenticationFilter",
+                "AuthService permission resolution"
+              ],
+              "invariant": "For /api/project/{projectId}, the header is present and equal to the path ID."
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Explicit context precedence and path guard contract",
+              "method": "Read-only source inspection of http.ts and JwtAuthenticationFilter",
+              "blind_spots": [
+                "A future Axios call may omit the explicit configuration."
+              ],
+              "independence": "Examines client context injection and server validation independently from the Vue page."
+            },
+            {
+              "id": "S2",
+              "target": "All project API call sites use the explicit context",
+              "method": "Static enumeration of project.ts and attachments.ts request configurations",
+              "blind_spots": [
+                "Does not prove browser header transmission."
+              ],
+              "independence": "Directly checks the changed API client surface."
+            },
+            {
+              "id": "S3",
+              "target": "Client type integration",
+              "method": "npm --prefix web run build",
+              "blind_spots": [
+                "Does not prove authenticated A/B behavior."
+              ],
+              "independence": "Vite and TypeScript compilation is independent from request inspection."
+            },
+            {
+              "id": "S4",
+              "target": "A/B route request header and selector persistence",
+              "method": "Local browser network and local-storage observation",
+              "blind_spots": [
+                "Requires two accessible local projects and a valid session."
+              ],
+              "independence": "Observes runtime behavior after HTTP interception and server response."
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Project detail API methods without explicit context",
+              "action": "Add withProjectContext(id), merging it with existing request params when applicable.",
+              "authority": "REQ-083 writable web/src/api/project.ts",
+              "impact_radius": "Project detail requests only",
+              "rollback": "Revert the scoped project.ts request configuration diff."
+            },
+            {
+              "id": "A2",
+              "target": "Project attachment and category API methods without explicit context",
+              "action": "Merge withProjectContext(projectId) with existing params, headers, and timeout.",
+              "authority": "REQ-083 writable web/src/api/attachments.ts",
+              "impact_radius": "Project attachment requests only",
+              "rollback": "Revert the scoped attachments.ts request configuration diff."
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R7",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Existing dirty worktree",
+              "effect": "Repository-wide scope and diff checks may report unrelated files",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Local project access data",
+              "effect": "May prevent the A/B runtime scenario",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Expired local authentication",
+              "effect": "Browser requests can redirect before exercising path validation",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite production compilation",
+              "consequence": "Type errors are observable only after build completion",
+              "sampling_rule": "Run after each API client task and again at integration."
+            },
+            {
+              "source": "HTTP request lifecycle",
+              "consequence": "Header and response must be sampled after request completion",
+              "sampling_rule": "Inspect each selected browser request after its completion."
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Explicit projectContext overrides stored global context.",
+              "evidence": "http.ts uses request.projectContext === undefined ? storedProjectId : request.projectContext.",
+              "falsifier": "A request given withProjectContext(B) emits X-Project-Id A."
+            },
+            {
+              "text": "ProjectView does not synchronize route project B into the global selector for existing project edits.",
+              "evidence": "Source inspection finds projectContext.select only in the creation branch; route watcher calls syncProjectFromRoute.",
+              "falsifier": "Opening an existing B detail changes ccb.current_project_id or ccb.current_project_ref."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R7",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "Plan bounded API-client configuration edits, then sample static, build, and browser sensors."
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T3 have non-overlapping bounded write scopes and R7 sensor coverage",
+        "recorded_at": "2026-09-18T07:32:18+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "All project.ts detail resource requests use the path project ID as explicit request context.",
+              "requirement_ids": [
+                "R7"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "http.ts prioritizes explicit projectContext over the stored global project ID.",
+                "JwtAuthenticationFilter rejects a /api/project/{id} path whose header differs from id.",
+                "Release-calendar and announcement calls in project.ts already demonstrate withProjectContext(id)."
+              ],
+              "write_scope": [
+                "web/src/api/project.ts",
+                ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+              ],
+              "invariants": [
+                "Do not change request paths, methods, payloads, return types, global selector state, or server-side validation."
+              ],
+              "interface_contracts": [
+                "Every /api/project/${id} request emits X-Project-Id=id via withProjectContext(id).",
+                "Query parameter requests preserve existing params while adding explicit context."
+              ],
+              "non_goals": [
+                "Changing http.ts, project-context store, ProjectView route behavior, server code, or database."
+              ],
+              "action_bounds": [
+                "Modify only Axios configuration arguments in project.ts and run targeted static/build sensors."
+              ],
+              "acceptance_checks": [
+                "Enumeration confirms every id-scoped project.ts request includes withProjectContext(id).",
+                "npm --prefix web run build exits 0."
+              ],
+              "evidence_required": [
+                "Scoped diff",
+                "API method enumeration",
+                "Build command and exit code",
+                "Any unexpected consumer or type disturbance"
+              ],
+              "rollback": "Revert only the project.ts configuration additions from this task.",
+              "stop_conditions": [
+                "A required call cannot take an Axios configuration without a contract change."
+              ],
+              "escalation_conditions": [
+                "Correctness requires changing http.ts, the store, router, backend, or a path/payload contract."
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "All project attachment and category requests use the path project ID as explicit request context.",
+              "requirement_ids": [
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "Project attachment paths are under /api/project/{projectId} and receive the same security path guard.",
+                "Existing upload requests carry multipart headers and a 60-second timeout that must be preserved."
+              ],
+              "write_scope": [
+                "web/src/api/attachments.ts",
+                ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+              ],
+              "invariants": [
+                "Do not change non-project attachment endpoints, multipart headers, upload timeout, query parameters, global selector state, or backend behavior."
+              ],
+              "interface_contracts": [
+                "Every project attachment/category call emits X-Project-Id=projectId via withProjectContext(projectId).",
+                "Params, multipart headers, and timeout are merged rather than replaced."
+              ],
+              "non_goals": [
+                "Changing attachment service contracts, storage behavior, http.ts, store, backend, or database."
+              ],
+              "action_bounds": [
+                "Modify only project-scoped Axios configuration arguments in attachments.ts and run targeted static/build sensors."
+              ],
+              "acceptance_checks": [
+                "Enumeration confirms list, category, upload, classification, preview, download, and delete project calls include withProjectContext(projectId).",
+                "npm --prefix web run build exits 0."
+              ],
+              "evidence_required": [
+                "Scoped diff",
+                "Attachment API enumeration",
+                "Build command and exit code",
+                "Confirmation that upload options remain present"
+              ],
+              "rollback": "Revert only the attachments.ts configuration additions from this task.",
+              "stop_conditions": [
+                "Configuration merge would remove an existing upload header, timeout, or parameter."
+              ],
+              "escalation_conditions": [
+                "A project attachment request needs a backend or common HTTP client change."
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Independently observe that global project A and detail route project B remain isolated at runtime.",
+              "requirement_ids": [
+                "R7"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "The runtime filter rejects mismatched path/header requests.",
+                "ProjectView source only selects a global project on creation, not when opening an existing route."
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+              ],
+              "invariants": [
+                "Do not alter product code while observing; record environmental limits rather than fabricating runtime evidence."
+              ],
+              "interface_contracts": [
+                "With selector A and route B, checked requests must use URL B and header B while stored selector remains A."
+              ],
+              "non_goals": [
+                "Creating or changing project data solely to force a test, relaxing authorization, or touching unrelated dirty changes."
+              ],
+              "action_bounds": [
+                "Use local browser, local service probes, source/static checks, and approved evidence files only."
+              ],
+              "acceptance_checks": [
+                "Static and build sensors pass.",
+                "When two projects are available, browser network/local storage samples show A/B isolation for basic data, a plan operation, and attachment read or operation."
+              ],
+              "evidence_required": [
+                "Browser route, stored selector, request URL/header, response and console observations",
+                "Diff and scope command results",
+                "Known measurement blind spots"
+              ],
+              "rollback": "No product changes occur in T3; revert T1/T2 if observation finds a regression.",
+              "stop_conditions": [
+                "Local services are unavailable or only one accessible project prevents A/B observation."
+              ],
+              "escalation_conditions": [
+                "Header B still fails the server path guard, or any validated request mutates selector A to B."
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Use the verified project API configuration pattern before applying it to multipart attachment configurations."
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "T3 checks project detail requests."
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 checks attachment requests."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2"
+              ],
+              "checks": [
+                "npm --prefix web run build",
+                "git diff --check",
+                "Static enumeration of all project and project-attachment paths"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "checks": [
+                "Local browser A/B route and selector observation",
+                "Current task scope check"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "P0 baseline",
+              "trigger": "Before code modification",
+              "observer": "Controller",
+              "sensors": [
+                "S1",
+                "S2"
+              ],
+              "requirement_ids": [
+                "R7"
+              ]
+            },
+            {
+              "label": "P1 project API",
+              "trigger": "T1 execution complete",
+              "observer": "Independent observation step",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R7"
+              ]
+            },
+            {
+              "label": "P2 attachment API",
+              "trigger": "T2 execution complete",
+              "observer": "Independent observation step",
+              "sensors": [
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R7"
+              ]
+            },
+            {
+              "label": "P3 runtime",
+              "trigger": "T3 integration check",
+              "observer": "Independent browser observation",
+              "sensors": [
+                "S1",
+                "S3",
+                "S4"
+              ],
+              "requirement_ids": [
+                "R7"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R7",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 project API client context binding implemented with static and build evidence",
+        "recorded_at": "2026-09-18T07:35:57+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/project.ts",
+              "purpose": "Bind all path-scoped project detail API calls to withProjectContext(id)."
+            }
+          ],
+          "requirements_addressed": [
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "node -e \"... enumerate lines containing `/project/${id}` and require withProjectContext(id) ...\"",
+              "exit_code": 0,
+              "salient_output": "all project path calls bind explicit context"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit and vite build completed without a TypeScript or Vite failure"
+            },
+            {
+              "command": "git diff --check -- web/src/api/project.ts",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; Git emitted only CRLF conversion warnings."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Project path call enumeration",
+              "result": "pass",
+              "evidence": "Every project.ts line containing `/project/${id}` includes withProjectContext(id).",
+              "limitations": [
+                "Static check does not inspect runtime headers."
+              ]
+            },
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "npm --prefix web run build exited 0.",
+              "limitations": [
+                "Attachment API and A/B browser behavior remain outside T1."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Added explicit context to basic project update and settings requests.",
+            "Added explicit context to stages, plans, plan groups, risks, comments, members, organizations, roles, permissions, and project deletion.",
+            "Preserved endpoint paths, payloads, response types, and existing release-calendar/announcement context bindings."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Existing API paths, methods, payloads, and response types remain compatible",
+              "result": "pass",
+              "evidence": "The scoped diff adds only Axios request configuration arguments."
+            },
+            {
+              "invariant": "Global selector state is not mutated",
+              "result": "pass",
+              "evidence": "Only web/src/api/project.ts changed; it has no project-context store or local-storage write."
+            },
+            {
+              "invariant": "Server project path/header validation remains unchanged",
+              "result": "pass",
+              "evidence": "No server file was changed."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Git reported CRLF conversion warnings",
+              "impact": "No diff-check failure; line-ending conversion remains a repository setting observation."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "T2 must bind project attachment calls while preserving multipart options.",
+            "Runtime A/B request-header observation remains required."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 attachment API context binding implemented with static and build evidence",
+        "recorded_at": "2026-09-18T07:42:19+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/attachments.ts",
+              "purpose": "Bind project attachment and category API calls to withProjectContext(projectId)."
+            }
+          ],
+          "requirements_addressed": [
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "node -e '... enumerate /project/${projectId} paths and assert context plus upload options ...'",
+              "exit_code": 0,
+              "salient_output": "verified 8 project attachment path calls and upload options"
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit and vite build completed without a TypeScript or Vite failure"
+            },
+            {
+              "command": "git diff --check -- web/src/api/attachments.ts",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; Git emitted only CRLF conversion warnings."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Attachment path and upload option enumeration",
+              "result": "pass",
+              "evidence": "All 8 project attachment/category paths bind explicit context; upload still contains multipart/form-data and timeout 60_000.",
+              "limitations": [
+                "Static check does not inspect runtime headers."
+              ]
+            },
+            {
+              "check": "Frontend production build",
+              "result": "pass",
+              "evidence": "npm --prefix web run build exited 0.",
+              "limitations": [
+                "A/B browser behavior remains outside T2."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "Imported withProjectContext from the existing HTTP client module.",
+            "Bound project attachment list, category, upload, category-update, preview, download, and delete calls to projectId.",
+            "Merged context with query params and retained multipart header and 60-second upload timeout."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Non-project temporary attachment calls remain unchanged",
+              "result": "pass",
+              "evidence": "Only /project/${projectId} calls were changed."
+            },
+            {
+              "invariant": "Upload configuration remains compatible",
+              "result": "pass",
+              "evidence": "Static check confirms multipart header and timeout 60_000 remain in uploadProjectAttachment."
+            },
+            {
+              "invariant": "Global selector and backend validation remain unchanged",
+              "result": "pass",
+              "evidence": "Only attachments.ts changed."
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Runtime A/B request-header and selector-state observation remains required."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 runtime sampling blocked by stopped local services and unavailable browser automation",
+        "recorded_at": "2026-09-18T07:45:22+00:00",
+        "data": {
+          "task_id": "T3",
+          "status": "partial",
+          "changed_surfaces": [],
+          "requirements_addressed": [
+            "R7"
+          ],
+          "commands": [
+            {
+              "command": "Invoke-WebRequest http://127.0.0.1:5173",
+              "exit_code": 1,
+              "salient_output": "Connection actively refused."
+            },
+            {
+              "command": "Invoke-WebRequest http://127.0.0.1:8080/actuator/health",
+              "exit_code": 1,
+              "salient_output": "Connection actively refused."
+            },
+            {
+              "command": "git diff --check -- web/src/api/project.ts web/src/api/attachments.ts",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors; only CRLF conversion warnings."
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-083-project-stage-announcements/codex-task-scope.yaml --working-tree",
+              "exit_code": 1,
+              "salient_output": "Reports pre-existing unrelated dirty files from REQ-081, REQ-082, and REQ-084 plus release/architecture work; scoped API files are authorized."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "Local frontend and backend reachability",
+              "result": "blocked",
+              "evidence": "Both local endpoints actively refused connections.",
+              "limitations": [
+                "No live A/B request or selector observation can be made."
+              ]
+            },
+            {
+              "check": "Browser automation availability",
+              "result": "blocked",
+              "evidence": "CUA surface discovery failed with unsupported Codex auth method: apikey.",
+              "limitations": [
+                "No browser network/local-storage sample can be captured."
+              ]
+            },
+            {
+              "check": "Scoped code quality",
+              "result": "pass",
+              "evidence": "Targeted diff check passed.",
+              "limitations": [
+                "Repository-wide scope check is noisy due to unrelated existing changes."
+              ]
+            }
+          ],
+          "diff_summary": [
+            "No product code changed during T3."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "No product code is modified while observing",
+              "result": "pass",
+              "evidence": "T3 made evidence-only changes."
+            },
+            {
+              "invariant": "Unrelated dirty worktree changes are preserved",
+              "result": "pass",
+              "evidence": "Scope output was recorded without reverting or modifying reported files."
+            }
+          ],
+          "disturbances": [
+            {
+              "event": "Local frontend and backend are stopped",
+              "impact": "A/B runtime verification is unavailable."
+            },
+            {
+              "event": "Browser automation authentication incompatibility",
+              "impact": "Cannot inspect live request headers or local storage through automation."
+            },
+            {
+              "event": "Existing multi-task dirty worktree",
+              "impact": "Repository-wide scope check fails outside this task's modified API files."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Start authorized local services and verify global selector A with detail route B for basic information, plan, and attachment requests."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "P1 independent static and build observations found no R7 deviation",
+        "recorded_at": "2026-09-18T07:39:11+00:00",
+        "data": {
+          "sample_label": "P1 project API independent observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R7",
+              "sensor": "S2 static project API enumeration",
+              "result": "pass",
+              "raw_evidence": "Independent line enumeration found 42 /project/${id} path calls in project.ts and every one includes withProjectContext(id).",
+              "limitation": [
+                "The enumeration is source-level and does not inspect an emitted browser request header."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S3 frontend production build",
+              "result": "pass",
+              "raw_evidence": "npm --prefix web run build ran vue-tsc --noEmit and vite build without reported error.",
+              "limitation": [
+                "Build cannot demonstrate global selector persistence or server path validation at runtime."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 source contract inspection",
+              "result": "pass",
+              "raw_evidence": "http.ts selects explicit projectContext before the stored project ID; JwtAuthenticationFilter rejects a missing or mismatched header for /api/project/{id}.",
+              "limitation": [
+                "This confirms the contract, not a live request."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Initial independent Node regex command had an escaping syntax error",
+              "impact": "Sensor command was rerun using literal line enumeration; no product behavior or source was changed."
+            }
+          ],
+          "coverage_gaps": [
+            "Runtime A/B selector-versus-detail request observation is deferred to T3.",
+            "Attachment routes are outside T1 and deferred to T2."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "P2 independent attachment API observation found no R7 deviation",
+        "recorded_at": "2026-09-18T07:43:16+00:00",
+        "data": {
+          "sample_label": "P2 attachment API independent observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R7",
+              "sensor": "S2 static attachment API enumeration",
+              "result": "pass",
+              "raw_evidence": "All 8 /project/${projectId} attachment/category paths have nearby withProjectContext(projectId); the upload configuration retains multipart/form-data and timeout 60_000.",
+              "limitation": [
+                "Static source does not prove browser header transmission."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S3 frontend production build",
+              "result": "pass",
+              "raw_evidence": "npm --prefix web run build ran vue-tsc --noEmit and vite build without reported error.",
+              "limitation": [
+                "Build cannot demonstrate global selector persistence."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S1 path guard contract inspection",
+              "result": "pass",
+              "raw_evidence": "JwtAuthenticationFilter validates every /api/project/{id} path against X-Project-Id, which the explicit request configuration now supplies.",
+              "limitation": [
+                "No live request sampled in this task."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Runtime A/B selector-versus-detail request observation is deferred to T3."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "P3 runtime sensor unavailable; static and build evidence remains passing",
+        "recorded_at": "2026-09-18T07:46:20+00:00",
+        "data": {
+          "sample_label": "P3 runtime integration observation",
+          "task_ids": [
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R7",
+              "sensor": "S4 browser A/B route, request-header, and local-storage observation",
+              "result": "unobservable",
+              "raw_evidence": "Both http://127.0.0.1:5173 and http://127.0.0.1:8080/actuator/health actively refused connections; browser automation surface discovery failed with unsupported Codex auth method: apikey.",
+              "limitation": [
+                "No authenticated local browser session or running services are available."
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "sensor": "S2/S3 scoped static and build evidence",
+              "result": "pass",
+              "raw_evidence": "42 project.ts and 8 attachment path calls explicitly bind route context; frontend production build passed.",
+              "limitation": [
+                "Cannot substitute for A/B runtime header and selector persistence evidence."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "event": "Stopped local services",
+              "impact": "Runtime sensor S4 cannot sample the required A/B behavior."
+            },
+            {
+              "event": "Browser automation auth incompatibility",
+              "impact": "No alternate UI sensor is available in this session."
+            },
+            {
+              "event": "Unrelated dirty worktree",
+              "impact": "Repository-wide scope checker produces unrelated violations; targeted diff check passes."
+            }
+          ],
+          "coverage_gaps": [
+            "Selector A/detail B request headers and selector persistence are not runtime-verified.",
+            "Attachment runtime request path is not browser-verified."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "incomplete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "A user can edit the project opened in a detail route even when the global project selector points to a different accessible project, without changing that selector.",
+  "requirements": [
+    {
+      "id": "R7",
+      "statement": "For every project-detail request addressed as /api/project/{projectId}, the client must send the same projectId as request context; opening or editing that detail must not change the persisted global project selection.",
+      "acceptance": [
+        "With global selector project A and detail route project B, basic information, plan, and attachment requests use URL project B and X-Project-Id B.",
+        "Those requests no longer return the path/context mismatch error.",
+        "The global selector remains project A until the user explicitly switches it."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and implementation plan on 2026-09-18",
+      "counterexample": [
+        "A request to /api/project/B sends X-Project-Id A.",
+        "Opening or saving B changes the persisted global selector to B.",
+        "The server accepts a missing or mismatched project context."
+      ]
+    }
+  ],
+  "invariants": [
+    "The global selector changes only through an explicit selector action.",
+    "The server continues enforcing matching project path and X-Project-Id plus existing authorization, tenant, entity, audit, and lock behavior.",
+    "Existing API paths, HTTP methods, request bodies, response types, database data, and routes remain compatible."
+  ],
+  "constraints": [
+    "Modify only web/src/api/project.ts, web/src/api/attachments.ts, and the current task's authorized evidence files.",
+    "Do not modify http.ts, project-context store, server security, services, database, or .env files.",
+    "Use local services and synthetic local test data only."
+  ],
+  "non_goals": [
+    "Relaxing the server project-context check.",
+    "Changing global project-switch confirmation or persistence behavior.",
+    "Adding an HTTP interceptor inference rule.",
+    "Changing API payloads, migrations, permissions, or audit behavior."
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260917-083-project-stage-announcements\\project-detail-context-isolation-handoff.json",
+    "imported_at": "2026-09-18T07:27:15+00:00",
+    "topic": "req-20260917-083-project-detail-context-isolation",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260917-083-project-detail-context-isolation",
+      "handoff_status": "approved",
+      "created_at": "2026-09-18T14:50:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260917-083-project-detail-context-isolation",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-18-project-detail-context-isolation-design.md",
+        "objective": "Project detail requests use their route project ID without changing the global project selector.",
+        "users": [
+          "Project members opening a detail project while the global selector targets another accessible project."
+        ],
+        "requirements": [
+          {
+            "id": "R7",
+            "statement": "Keep a project-detail route target independent from the global project selector.",
+            "acceptance": [
+              "Every /api/project/{projectId} request sends that path ID as X-Project-Id.",
+              "Opening or editing a project detail does not change the stored global selector.",
+              "The server path/header consistency check remains enforced."
+            ],
+            "priority": "must",
+            "source": "User confirmation",
+            "counterexample": [
+              "A basic-information save uses the global selector project ID.",
+              "Entering a detail route changes the selector."
+            ]
+          }
+        ],
+        "invariants": [
+          "The global selector changes only through an explicit selector action.",
+          "Server-side path/header, authorization, tenant, entity, audit and lock checks remain intact."
+        ],
+        "constraints": [
+          "Only current task writable paths may change.",
+          "Do not modify http.ts, project-context store, backend security, database or API payloads.",
+          "No production access or secrets."
+        ],
+        "non_goals": [
+          "Changing the global selector behavior.",
+          "Relaxing server security validation.",
+          "Database or backend changes."
+        ],
+        "selected_approach": {
+          "name": "Explicit per-request project context",
+          "reason": "It reuses the existing request configuration and limits change to project detail API clients.",
+          "alternatives": [
+            {
+              "name": "Relax server validation",
+              "rejected_because": "Weakens a security boundary."
+            },
+            {
+              "name": "Infer context in the common HTTP interceptor",
+              "rejected_because": "Expands impact to a global public client."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "project.ts",
+              "attachments.ts",
+              "route project ID"
+            ],
+            "outside": [
+              "http.ts",
+              "project-context store",
+              "JwtAuthenticationFilter",
+              "database"
+            ]
+          },
+          "components": [
+            {
+              "name": "Project API clients",
+              "responsibility": "Bind project request context to the path project ID",
+              "depends_on": [
+                "withProjectContext"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "X-Project-Id",
+              "producer": "Project API clients",
+              "consumers": [
+                "JwtAuthenticationFilter"
+              ],
+              "contract": "Header equals /api/project/{projectId}."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Global selector A and detail route B",
+              "transitions": [
+                "API client passes B",
+                "interceptor sends B",
+                "server validates B against route"
+              ],
+              "output": "B is editable and A persists globally."
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Missing or mismatched project context",
+            "behavior": "Server continues rejecting request",
+            "recovery": "Client uses route project ID."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Preserve server path/header guard"
+          ],
+          "performance": [
+            "No additional requests"
+          ],
+          "compatibility": [
+            "Preserve paths, methods, bodies and global selector state"
+          ],
+          "operations": [
+            "No migration or deployment configuration change"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R7"
+            ],
+            "signal": "Header and route IDs match while selector remains different",
+            "method": "Vite build, static API inspection and local browser A/B scenario."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "withProjectContext takes precedence over stored global context.",
+            "basis": "Existing HTTP interceptor checks explicit projectContext before local storage.",
+            "falsifier": "Browser request header remains the global selector ID."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D8",
+            "decision": "Use route project ID for every project-detail API request without selector synchronization.",
+            "reason": "Fix stale global context rejection while preserving security.",
+            "source": "User confirmation"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "A project endpoint is omitted",
+            "impact": "That action still fails with stale global selection",
+            "mitigation": "Audit all project path API functions and validate A/B browser paths."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the design on 2026-09-18.",
+          "confirmed_at": "2026-09-18T14:45:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-18-project-detail-context-isolation-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Keep the server path/header guard.",
+          "Do not mutate global project selection.",
+          "Do not modify common HTTP, store, backend or database files."
+        ],
+        "file_map": [
+          {
+            "path": "web/src/api/project.ts",
+            "status": "existing",
+            "responsibility": "Project detail API context binding",
+            "evidence": "Current calendar and announcement methods already use withProjectContext(id)."
+          },
+          {
+            "path": "web/src/api/attachments.ts",
+            "status": "existing",
+            "responsibility": "Project attachment API context binding",
+            "evidence": "All project attachment calls use a path projectId."
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Bind all project.ts project-detail calls to the route project ID.",
+            "requirement_ids": [
+              "R7"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "HTTP interceptor uses explicit projectContext before stored selector ID."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/project.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "withProjectContext(id)"
+              ],
+              "produces": [
+                "Path-matching X-Project-Id for project detail APIs"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Audit existing project path calls.",
+                "command": "rg -n \\\"^export function .*\\\\(id: number\\\" web/src/api/project.ts",
+                "expected": "All route-scoped functions are enumerated.",
+                "evidence": "Search output."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Add explicit request context without changing paths or bodies.",
+                "command": null,
+                "expected": "Each /project/${id} request passes withProjectContext(id).",
+                "evidence": "Scoped diff."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Compile client integration.",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0.",
+                "evidence": "Build output."
+              }
+            ],
+            "acceptance_checks": [
+              "Basic project update, settings, plans, risks, members, organizations, roles, stages, announcements and calendar calls use path context."
+            ],
+            "risks": [
+              "One request is omitted."
+            ],
+            "rollback": "Revert only project.ts request configuration changes.",
+            "stop_conditions": [
+              "A path call cannot accept an Axios request config."
+            ],
+            "escalation_conditions": [
+              "Fix requires http.ts, store, router or server changes."
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Bind all project attachment calls to the route project ID.",
+            "requirement_ids": [
+              "R7"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Project attachment paths are matched by the same server project-path guard."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/attachments.ts"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "withProjectContext(projectId)"
+              ],
+              "produces": [
+                "Path-matching X-Project-Id for attachment and category APIs"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Audit project attachment path calls.",
+                "command": "rg -n \\\"/project/\\\\$\\\\{projectId\\\\}/(attachments|attachment-categories)\\\" web/src/api/attachments.ts",
+                "expected": "All attachment and category operations are enumerated.",
+                "evidence": "Search output."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Merge explicit context with parameters, multipart headers and timeout.",
+                "command": null,
+                "expected": "Existing upload headers and timeout remain present.",
+                "evidence": "Scoped diff."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Compile client integration.",
+                "command": "npm --prefix web run build",
+                "expected": "Exit code 0.",
+                "evidence": "Build output."
+              }
+            ],
+            "acceptance_checks": [
+              "Read, upload, category, preview, download and delete attachment calls use path context."
+            ],
+            "risks": [
+              "Merged config could overwrite upload options."
+            ],
+            "rollback": "Revert only attachments.ts project request configuration changes.",
+            "stop_conditions": [
+              "Multipart headers or timeout cannot be preserved."
+            ],
+            "escalation_conditions": [
+              "Attachment route requires a backend contract change."
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Verify a global project A and detail project B remain isolated.",
+            "requirement_ids": [
+              "R7"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "The server rejects missing or mismatched project path context."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1/T2 request context"
+              ],
+              "produces": [
+                "Browser request and selector-state evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Set selector to A and open detail B.",
+                "command": null,
+                "expected": "Stored selector remains A.",
+                "evidence": "Browser local-storage and UI state."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Edit B basic information and a plan, then inspect request headers.",
+                "command": null,
+                "expected": "Path and X-Project-Id equal B; no mismatch error.",
+                "evidence": "Browser network observations."
+              },
+              {
+                "id": "T3-S3",
+                "action": "Read or operate B attachments and inspect request headers.",
+                "command": null,
+                "expected": "Path and X-Project-Id equal B.",
+                "evidence": "Browser network observations."
+              },
+              {
+                "id": "T3-S4",
+                "action": "Run quality and scope checks.",
+                "command": "git diff --check; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-083-project-stage-announcements/codex-task-scope.yaml --working-tree",
+                "expected": "No new whitespace failure; scope results are assessed against existing dirty worktree.",
+                "evidence": "Command output."
+              }
+            ],
+            "acceptance_checks": [
+              "Global selector remains A and every checked detail request uses B."
+            ],
+            "risks": [
+              "Only one accessible project may prevent A/B test."
+            ],
+            "rollback": "Revert T1/T2 client configuration changes.",
+            "stop_conditions": [
+              "No two accessible projects or local services are unavailable."
+            ],
+            "escalation_conditions": [
+              "Correct header B is still rejected by server."
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "T3 verifies project resource requests."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "T3 verifies attachment requests."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1",
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "npm --prefix web run build; git diff --check",
+            "expected": "Build succeeds and no whitespace errors are introduced."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the implementation plan on 2026-09-18.",
+          "confirmed_at": "2026-09-18T14:55:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Project and attachment API client request configuration."
+        ],
+        "state_variable_candidates": [
+          "Route projectId",
+          "Stored global project ID",
+          "Request X-Project-Id"
+        ],
+        "interface_candidates": [
+          "withProjectContext(id)",
+          "X-Project-Id",
+          "/api/project/{projectId}"
+        ],
+        "sensor_candidates": [
+          "Static source audit",
+          "Vite build",
+          "Browser network inspection",
+          "Local-storage inspection"
+        ],
+        "actuator_candidates": [
+          "Scoped API client request configuration"
+        ],
+        "disturbance_candidates": [
+          "Dirty worktree",
+          "Only one accessible project",
+          "Expired session",
+          "Unavailable local server"
+        ],
+        "delay_candidates": [
+          "Vite build and browser request completion"
+        ],
+        "assumptions": [
+          {
+            "text": "Explicit withProjectContext overrides stored global context.",
+            "basis": "HTTP interceptor source inspection.",
+            "falsifier": "A detail B request sends header A."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Vue route /projects/:projectId\", \"Persisted global selector local-storage keys\", \"Authenticated local browser session\", \"Existing dirty worktree changes outside this task\"], \"inside\": [\"web/src/api/project.ts project-scoped request configurations\", \"web/src/api/attachments.ts project attachment request configurations\", \"web/src/api/http.ts explicit-versus-stored project context precedence\", \"JwtAuthenticationFilter project path/header validation\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"A future Axios call may omit the explicit configuration.\"], \"id\": \"S1\", \"independence\": \"Examines client context injection and server validation independently from the Vue page.\", \"method\": \"Read-only source inspection of http.ts and JwtAuthenticationFilter\", \"target\": \"Explicit context precedence and path guard contract\"}",
+      "{\"blind_spots\": [\"Does not prove browser header transmission.\"], \"id\": \"S2\", \"independence\": \"Directly checks the changed API client surface.\", \"method\": \"Static enumeration of project.ts and attachments.ts request configurations\", \"target\": \"All project API call sites use the explicit context\"}",
+      "{\"blind_spots\": [\"Does not prove authenticated A/B behavior.\"], \"id\": \"S3\", \"independence\": \"Vite and TypeScript compilation is independent from request inspection.\", \"method\": \"npm --prefix web run build\", \"target\": \"Client type integration\"}",
+      "{\"blind_spots\": [\"Requires two accessible local projects and a valid session.\"], \"id\": \"S4\", \"independence\": \"Observes runtime behavior after HTTP interception and server response.\", \"method\": \"Local browser network and local-storage observation\", \"target\": \"A/B route request header and selector persistence\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Add withProjectContext(id), merging it with existing request params when applicable.\", \"authority\": \"REQ-083 writable web/src/api/project.ts\", \"id\": \"A1\", \"impact_radius\": \"Project detail requests only\", \"rollback\": \"Revert the scoped project.ts request configuration diff.\", \"target\": \"Project detail API methods without explicit context\"}",
+      "{\"action\": \"Merge withProjectContext(projectId) with existing params, headers, and timeout.\", \"authority\": \"REQ-083 writable web/src/api/attachments.ts\", \"id\": \"A2\", \"impact_radius\": \"Project attachment requests only\", \"rollback\": \"Revert the scoped attachments.ts request configuration diff.\", \"target\": \"Project attachment and category API methods without explicit context\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Repository-wide scope and diff checks may report unrelated files\", \"source\": \"Existing dirty worktree\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"May prevent the A/B runtime scenario\", \"source\": \"Local project access data\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Browser requests can redirect before exercising path validation\", \"source\": \"Expired local authentication\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"http.ts uses request.projectContext === undefined ? storedProjectId : request.projectContext.\", \"falsifier\": \"A request given withProjectContext(B) emits X-Project-Id A.\", \"text\": \"Explicit projectContext overrides stored global context.\"}",
+      "{\"evidence\": \"Source inspection finds projectContext.select only in the creation branch; route watcher calls syncProjectFromRoute.\", \"falsifier\": \"Opening an existing B detail changes ccb.current_project_id or ccb.current_project_ref.\", \"text\": \"ProjectView does not synchronize route project B into the global selector for existing project edits.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R7",
+        "sensor": "[\"S1\", \"S2\", \"S3\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "All project.ts detail resource requests use the path project ID as explicit request context.",
+      "requirements": [
+        "R7"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "http.ts prioritizes explicit projectContext over the stored global project ID.",
+        "JwtAuthenticationFilter rejects a /api/project/{id} path whose header differs from id.",
+        "Release-calendar and announcement calls in project.ts already demonstrate withProjectContext(id)."
+      ],
+      "write_scope": [
+        "web/src/api/project.ts",
+        ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+      ],
+      "invariants": [
+        "Do not change request paths, methods, payloads, return types, global selector state, or server-side validation."
+      ],
+      "interface_contracts": [
+        "Every /api/project/${id} request emits X-Project-Id=id via withProjectContext(id).",
+        "Query parameter requests preserve existing params while adding explicit context."
+      ],
+      "non_goals": [
+        "Changing http.ts, project-context store, ProjectView route behavior, server code, or database."
+      ],
+      "action_bounds": [
+        "Modify only Axios configuration arguments in project.ts and run targeted static/build sensors."
+      ],
+      "acceptance": [
+        "Enumeration confirms every id-scoped project.ts request includes withProjectContext(id).",
+        "npm --prefix web run build exits 0."
+      ],
+      "evidence_required": [
+        "Scoped diff",
+        "API method enumeration",
+        "Build command and exit code",
+        "Any unexpected consumer or type disturbance"
+      ],
+      "rollback": "Revert only the project.ts configuration additions from this task.",
+      "stop_conditions": [
+        "A required call cannot take an Axios configuration without a contract change."
+      ],
+      "escalation_conditions": [
+        "Correctness requires changing http.ts, the store, router, backend, or a path/payload contract."
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-18T07:33:16+00:00",
+          "text": "Pre-execution source sample confirms omitted project context on legacy project.ts detail calls"
+        },
+        {
+          "recorded_at": "2026-09-18T07:36:10+00:00",
+          "text": "T1 implementation is ready for static and build observation"
+        },
+        {
+          "recorded_at": "2026-09-18T07:38:21+00:00",
+          "text": "Independent static enumeration verified 42 path calls; production build completed without errors"
+        }
+      ],
+      "updated_at": "2026-09-18T07:38:21+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "All project attachment and category requests use the path project ID as explicit request context.",
+      "requirements": [
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Project attachment paths are under /api/project/{projectId} and receive the same security path guard.",
+        "Existing upload requests carry multipart headers and a 60-second timeout that must be preserved."
+      ],
+      "write_scope": [
+        "web/src/api/attachments.ts",
+        ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+      ],
+      "invariants": [
+        "Do not change non-project attachment endpoints, multipart headers, upload timeout, query parameters, global selector state, or backend behavior."
+      ],
+      "interface_contracts": [
+        "Every project attachment/category call emits X-Project-Id=projectId via withProjectContext(projectId).",
+        "Params, multipart headers, and timeout are merged rather than replaced."
+      ],
+      "non_goals": [
+        "Changing attachment service contracts, storage behavior, http.ts, store, backend, or database."
+      ],
+      "action_bounds": [
+        "Modify only project-scoped Axios configuration arguments in attachments.ts and run targeted static/build sensors."
+      ],
+      "acceptance": [
+        "Enumeration confirms list, category, upload, classification, preview, download, and delete project calls include withProjectContext(projectId).",
+        "npm --prefix web run build exits 0."
+      ],
+      "evidence_required": [
+        "Scoped diff",
+        "Attachment API enumeration",
+        "Build command and exit code",
+        "Confirmation that upload options remain present"
+      ],
+      "rollback": "Revert only the attachments.ts configuration additions from this task.",
+      "stop_conditions": [
+        "Configuration merge would remove an existing upload header, timeout, or parameter."
+      ],
+      "escalation_conditions": [
+        "A project attachment request needs a backend or common HTTP client change."
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-18T07:39:56+00:00",
+          "text": "T1 verified and attachment API baseline is ready"
+        },
+        {
+          "recorded_at": "2026-09-18T07:42:19+00:00",
+          "text": "T2 is ready for independent observation"
+        },
+        {
+          "recorded_at": "2026-09-18T07:43:18+00:00",
+          "text": "Independent attachment enumeration and build completed without deviation"
+        }
+      ],
+      "updated_at": "2026-09-18T07:43:18+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Independently observe that global project A and detail route project B remain isolated at runtime.",
+      "requirements": [
+        "R7"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "The runtime filter rejects mismatched path/header requests.",
+        "ProjectView source only selects a global project on creation, not when opening an existing route."
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+      ],
+      "invariants": [
+        "Do not alter product code while observing; record environmental limits rather than fabricating runtime evidence."
+      ],
+      "interface_contracts": [
+        "With selector A and route B, checked requests must use URL B and header B while stored selector remains A."
+      ],
+      "non_goals": [
+        "Creating or changing project data solely to force a test, relaxing authorization, or touching unrelated dirty changes."
+      ],
+      "action_bounds": [
+        "Use local browser, local service probes, source/static checks, and approved evidence files only."
+      ],
+      "acceptance": [
+        "Static and build sensors pass.",
+        "When two projects are available, browser network/local storage samples show A/B isolation for basic data, a plan operation, and attachment read or operation."
+      ],
+      "evidence_required": [
+        "Browser route, stored selector, request URL/header, response and console observations",
+        "Diff and scope command results",
+        "Known measurement blind spots"
+      ],
+      "rollback": "No product changes occur in T3; revert T1/T2 if observation finds a regression.",
+      "stop_conditions": [
+        "Local services are unavailable or only one accessible project prevents A/B observation."
+      ],
+      "escalation_conditions": [
+        "Header B still fails the server path guard, or any validated request mutates selector A to B."
+      ],
+      "status": "blocked",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-18T07:43:18+00:00",
+          "text": "T1 and T2 verified; runtime integration sampling begins"
+        },
+        {
+          "recorded_at": "2026-09-18T07:45:22+00:00",
+          "text": "Partial runtime execution is ready for documented observation"
+        },
+        {
+          "recorded_at": "2026-09-18T07:46:24+00:00",
+          "text": "Runtime acceptance remains unobservable until authorized local services and browser become available"
+        }
+      ],
+      "updated_at": "2026-09-18T07:46:24+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "P1 project API independent observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "42 project.ts path calls explicitly bind context; build passed; no deviations",
+      "recorded_at": "2026-09-18T07:39:12+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "P2 attachment API independent observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "8 attachment paths bind context; upload options and build passed; no deviations",
+      "recorded_at": "2026-09-18T07:43:17+00:00"
+    },
+    {
+      "id": "S-0003",
+      "label": "P3 runtime integration observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "Runtime A/B sample unavailable because local services and browser automation are unavailable; static/build evidence passes",
+      "recorded_at": "2026-09-18T07:46:24+00:00"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "baseline_revision": "baseline-2",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "All project.ts detail resource requests use the path project ID as explicit request context.",
+      "requirement_ids": ["R7"],
+      "prerequisites": [],
+      "input_facts": ["http.ts prioritizes explicit projectContext over the stored global project ID.", "JwtAuthenticationFilter rejects a /api/project/{id} path whose header differs from id.", "Release-calendar and announcement calls in project.ts already demonstrate withProjectContext(id)."],
+      "write_scope": ["web/src/api/project.ts", ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"],
+      "invariants": ["Do not change request paths, methods, payloads, return types, global selector state, or server-side validation."],
+      "interface_contracts": ["Every /api/project/${id} request emits X-Project-Id=id via withProjectContext(id).", "Query parameter requests preserve existing params while adding explicit context."],
+      "non_goals": ["Changing http.ts, project-context store, ProjectView route behavior, server code, or database."],
+      "action_bounds": ["Modify only Axios configuration arguments in project.ts and run targeted static/build sensors."],
+      "acceptance_checks": ["Enumeration confirms every id-scoped project.ts request includes withProjectContext(id).", "npm --prefix web run build exits 0."],
+      "evidence_required": ["Scoped diff", "API method enumeration", "Build command and exit code", "Any unexpected consumer or type disturbance"],
+      "rollback": "Revert only the project.ts configuration additions from this task.",
+      "stop_conditions": ["A required call cannot take an Axios configuration without a contract change."],
+      "escalation_conditions": ["Correctness requires changing http.ts, the store, router, backend, or a path/payload contract."]
+    },
+    {
+      "id": "T2",
+      "goal": "All project attachment and category requests use the path project ID as explicit request context.",
+      "requirement_ids": ["R7"],
+      "prerequisites": ["T1"],
+      "input_facts": ["Project attachment paths are under /api/project/{projectId} and receive the same security path guard.", "Existing upload requests carry multipart headers and a 60-second timeout that must be preserved."],
+      "write_scope": ["web/src/api/attachments.ts", ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"],
+      "invariants": ["Do not change non-project attachment endpoints, multipart headers, upload timeout, query parameters, global selector state, or backend behavior."],
+      "interface_contracts": ["Every project attachment/category call emits X-Project-Id=projectId via withProjectContext(projectId).", "Params, multipart headers, and timeout are merged rather than replaced."],
+      "non_goals": ["Changing attachment service contracts, storage behavior, http.ts, store, backend, or database."],
+      "action_bounds": ["Modify only project-scoped Axios configuration arguments in attachments.ts and run targeted static/build sensors."],
+      "acceptance_checks": ["Enumeration confirms list, category, upload, classification, preview, download, and delete project calls include withProjectContext(projectId).", "npm --prefix web run build exits 0."],
+      "evidence_required": ["Scoped diff", "Attachment API enumeration", "Build command and exit code", "Confirmation that upload options remain present"],
+      "rollback": "Revert only the attachments.ts configuration additions from this task.",
+      "stop_conditions": ["Configuration merge would remove an existing upload header, timeout, or parameter."],
+      "escalation_conditions": ["A project attachment request needs a backend or common HTTP client change."]
+    },
+    {
+      "id": "T3",
+      "goal": "Independently observe that global project A and detail route project B remain isolated at runtime.",
+      "requirement_ids": ["R7"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["The runtime filter rejects mismatched path/header requests.", "ProjectView source only selects a global project on creation, not when opening an existing route."],
+      "write_scope": [".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"],
+      "invariants": ["Do not alter product code while observing; record environmental limits rather than fabricating runtime evidence."],
+      "interface_contracts": ["With selector A and route B, checked requests must use URL B and header B while stored selector remains A."],
+      "non_goals": ["Creating or changing project data solely to force a test, relaxing authorization, or touching unrelated dirty changes."],
+      "action_bounds": ["Use local browser, local service probes, source/static checks, and approved evidence files only."],
+      "acceptance_checks": ["Static and build sensors pass.", "When two projects are available, browser network/local storage samples show A/B isolation for basic data, a plan operation, and attachment read or operation."],
+      "evidence_required": ["Browser route, stored selector, request URL/header, response and console observations", "Diff and scope command results", "Known measurement blind spots"],
+      "rollback": "No product changes occur in T3; revert T1/T2 if observation finds a regression.",
+      "stop_conditions": ["Local services are unavailable or only one accessible project prevents A/B observation."],
+      "escalation_conditions": ["Header B still fails the server path guard, or any validated request mutates selector A to B."]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "Use the verified project API configuration pattern before applying it to multipart attachment configurations."},
+    {"from": "T1", "to": "T3", "reason": "T3 checks project detail requests."},
+    {"from": "T2", "to": "T3", "reason": "T3 checks attachment requests."}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1", "T2"], "checks": ["npm --prefix web run build", "git diff --check", "Static enumeration of all project and project-attachment paths"]},
+    {"after_tasks": ["T3"], "checks": ["Local browser A/B route and selector observation", "Current task scope check"]}
+  ],
+  "sampling_plan": [
+    {"label": "P0 baseline", "trigger": "Before code modification", "observer": "Controller", "sensors": ["S1", "S2"], "requirement_ids": ["R7"]},
+    {"label": "P1 project API", "trigger": "T1 execution complete", "observer": "Independent observation step", "sensors": ["S2", "S3"], "requirement_ids": ["R7"]},
+    {"label": "P2 attachment API", "trigger": "T2 execution complete", "observer": "Independent observation step", "sensors": ["S2", "S3"], "requirement_ids": ["R7"]},
+    {"label": "P3 runtime", "trigger": "T3 integration check", "observer": "Independent browser observation", "sensors": ["S1", "S3", "S4"], "requirement_ids": ["R7"]}
+  ],
+  "coverage": [{"requirement_id": "R7", "task_ids": ["T1", "T2", "T3"], "sensor_ids": ["S1", "S2", "S3", "S4"]}],
+  "plan_status": "ready"
+}
