@@ -22,9 +22,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +45,7 @@ public class ProjectService {
     private static final Set<String> PLAN_PARTY_TYPES = Set.of("LEAD", "COOPERATING");
     private static final Set<String> PLAN_GROUP_COLOR_TOKENS = Set.of("brand", "accent", "success", "warning", "danger", "muted");
     private static final String DEFAULT_PLAN_GROUP_COLOR_TOKEN = "brand";
+    private static final Set<String> RELEASE_CALENDAR_THEME_KEYS = Set.of("tone-1", "tone-2", "tone-3", "tone-4", "tone-5", "system", "ocean", "emerald", "sunset", "graphite", "tech-blue", "violet", "amber", "primary", "success", "warning", "danger", "info");
     private static final String DEFAULT_PLAN_NUMBER_RULE = "{PROJECT_CODE}-P{SEQ:3}";
     private static final String DEFAULT_CHILD_PLAN_NUMBER_RULE = "{PARENT_CODE}-S{SEQ:3}";
     private static final String DEFAULT_RISK_NUMBER_RULE = "{PROJECT_CODE}-R{SEQ:3}";
@@ -1087,6 +1090,140 @@ public class ProjectService {
         result.put("risk_problem_levels", phaseOptions("RISK_PROBLEM_LEVEL", "当前问题级别", user.tenantId()));
         result.put("organizations", jdbc.queryForList("SELECT id, parent_id, org_name, status FROM sys_org WHERE tenant_id = ? AND status = 1 AND deleted = 0 ORDER BY sort_no, id", user.tenantId()));
         return result;
+    }
+
+    public List<Map<String, Object>> releaseCalendar(long projectId, String month, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        YearMonth targetMonth = releaseCalendarMonth(month);
+        return jdbc.queryForList("SELECT id, project_id, title, release_date, remark, theme_key, row_version, created_by, updated_by, created_at, updated_at FROM pm_project_release_calendar WHERE project_id = ? AND tenant_id = ? AND release_date >= ? AND release_date < ? AND deleted = 0 ORDER BY release_date, id",
+                projectId, user.tenantId(), Date.valueOf(targetMonth.atDay(1)), Date.valueOf(targetMonth.plusMonths(1).atDay(1)));
+    }
+
+    @Transactional
+    public Map<String, Object> createReleaseCalendar(long projectId, Map<String, Object> input, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        Map<String, Object> payload = input == null ? Map.of() : input;
+        String title = required(payload, "title", "投产标题", 128);
+        Date releaseDate = requiredReleaseDate(payload.get("release_date"));
+        String remark = optional(payload, "remark", null);
+        String themeKey = releaseCalendarThemeKey(payload.get("theme_key"));
+        if (remark != null && remark.length() > 1000) throw badRequest("备注不能超过1000个字符");
+        long id = nextId();
+        jdbc.update("INSERT INTO pm_project_release_calendar (id, tenant_id, project_id, title, release_date, remark, theme_key, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, title, releaseDate, remark, themeKey, user.id(), user.id());
+        audit(user, "project:release-calendar:create", id);
+        return releaseCalendarEntry(projectId, id, user.tenantId());
+    }
+
+    @Transactional
+    public Map<String, Object> updateReleaseCalendar(long projectId, long calendarId, Map<String, Object> input, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        Map<String, Object> payload = input == null ? Map.of() : input;
+        long rowVersion = longValue(payload.get("row_version"), 0);
+        if (rowVersion <= 0) throw badRequest("日历版本号无效");
+        String title = required(payload, "title", "投产标题", 128);
+        Date releaseDate = requiredReleaseDate(payload.get("release_date"));
+        String remark = optional(payload, "remark", null);
+        String themeKey = releaseCalendarThemeKey(payload.get("theme_key"));
+        if (remark != null && remark.length() > 1000) throw badRequest("备注不能超过1000个字符");
+        int updated = jdbc.update("UPDATE pm_project_release_calendar SET title = ?, release_date = ?, remark = ?, theme_key = ?, updated_by = ?, row_version = row_version + 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND row_version = ? AND deleted = 0", title, releaseDate, remark, themeKey, user.id(), calendarId, projectId, user.tenantId(), rowVersion);
+        if (updated == 0) throw new BusinessException(ErrorCode.CONFLICT, "投产日历已被更新或不存在，请刷新后重试");
+        audit(user, "project:release-calendar:update", calendarId);
+        return releaseCalendarEntry(projectId, calendarId, user.tenantId());
+    }
+
+    @Transactional
+    public void deleteReleaseCalendar(long projectId, long calendarId, long rowVersion, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        if (rowVersion <= 0) throw badRequest("日历版本号无效");
+        int updated = jdbc.update("UPDATE pm_project_release_calendar SET deleted = 1, updated_by = ?, row_version = row_version + 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND row_version = ? AND deleted = 0", user.id(), calendarId, projectId, user.tenantId(), rowVersion);
+        if (updated == 0) throw new BusinessException(ErrorCode.CONFLICT, "投产日历已被更新或不存在，请刷新后重试");
+        audit(user, "project:release-calendar:delete", calendarId);
+    }
+
+    public List<Map<String, Object>> announcements(long projectId, String stageCode, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        if (stageCode != null && !stageCode.isBlank()) validateProjectStage(projectId, stageCode, user.tenantId(), true);
+        String stageClause = stageCode == null || stageCode.isBlank() ? "" : " AND a.stage_code = ?";
+        List<Object> args = new ArrayList<>(List.of(projectId, user.tenantId()));
+        if (!stageClause.isEmpty()) args.add(stageCode);
+        return jdbc.queryForList("SELECT a.id, a.project_id, a.stage_code, s.stage_name, a.title, a.content_html, a.pinned, a.row_version, a.created_by, u.display_name AS creator_name, a.created_at, a.updated_at FROM pm_project_announcement a LEFT JOIN pm_project_stage s ON s.project_id = a.project_id AND s.tenant_id = a.tenant_id AND s.stage_code = a.stage_code LEFT JOIN sys_user u ON u.id = a.created_by AND u.tenant_id = a.tenant_id WHERE a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0" + stageClause + " ORDER BY a.pinned DESC, s.sort_no, a.created_at DESC, a.id DESC", args.toArray());
+    }
+
+    public List<Map<String, Object>> currentAnnouncements(long projectId, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        Date today = Date.valueOf(LocalDate.now());
+        return jdbc.queryForList("SELECT a.id, a.project_id, a.stage_code, s.stage_name, s.sort_no, a.title, a.content_html, a.pinned, a.row_version, a.created_by, u.display_name AS creator_name, a.created_at, a.updated_at FROM pm_project_announcement a JOIN (SELECT DISTINCT phase FROM pm_project_plan WHERE project_id = ? AND tenant_id = ? AND parent_id = 0 AND deleted = 0 AND planned_start_date <= ? AND planned_end_date >= ? AND phase IS NOT NULL) active ON active.phase = a.stage_code LEFT JOIN pm_project_stage s ON s.project_id = a.project_id AND s.tenant_id = a.tenant_id AND s.stage_code = a.stage_code LEFT JOIN sys_user u ON u.id = a.created_by AND u.tenant_id = a.tenant_id WHERE a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0 ORDER BY a.pinned DESC, s.sort_no, a.created_at DESC, a.id DESC", projectId, user.tenantId(), today, today, projectId, user.tenantId());
+    }
+
+    @Transactional
+    public Map<String, Object> createAnnouncement(long projectId, Map<String, Object> input, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        Map<String, Object> payload = input == null ? Map.of() : input;
+        String stageCode = required(payload, "stage_code", "项目阶段", 64);
+        validateProjectStage(projectId, stageCode, user.tenantId(), true);
+        String title = required(payload, "title", "公告标题", 128);
+        String content = requiredAnnouncementHtml(payload.get("content_html"));
+        boolean pinned = Boolean.TRUE.equals(payload.get("pinned"));
+        long id = nextId();
+        jdbc.update("INSERT INTO pm_project_announcement (id, tenant_id, project_id, stage_code, title, content_html, pinned, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, stageCode, title, content, pinned ? 1 : 0, user.id(), user.id());
+        audit(user, "project:announcement:create", id);
+        return announcementEntry(projectId, id, user.tenantId());
+    }
+
+    @Transactional
+    public Map<String, Object> updateAnnouncement(long projectId, long announcementId, Map<String, Object> input, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        Map<String, Object> payload = input == null ? Map.of() : input;
+        long rowVersion = longValue(payload.get("row_version"), 0);
+        if (rowVersion <= 0) throw badRequest("公告版本号无效");
+        String stageCode = required(payload, "stage_code", "项目阶段", 64);
+        validateProjectStage(projectId, stageCode, user.tenantId(), true);
+        String title = required(payload, "title", "公告标题", 128);
+        String content = requiredAnnouncementHtml(payload.get("content_html"));
+        boolean pinned = Boolean.TRUE.equals(payload.get("pinned"));
+        int updated = jdbc.update("UPDATE pm_project_announcement SET stage_code = ?, title = ?, content_html = ?, pinned = ?, updated_by = ?, row_version = row_version + 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND row_version = ? AND deleted = 0", stageCode, title, content, pinned ? 1 : 0, user.id(), announcementId, projectId, user.tenantId(), rowVersion);
+        if (updated == 0) throw new BusinessException(ErrorCode.CONFLICT, "公告已被更新或不存在，请刷新后重试");
+        audit(user, "project:announcement:update", announcementId);
+        return announcementEntry(projectId, announcementId, user.tenantId());
+    }
+
+    @Transactional
+    public void deleteAnnouncement(long projectId, long announcementId, long rowVersion, AuthUser user) {
+        requireProjectAccess(projectId, user, false);
+        if (rowVersion <= 0) throw badRequest("公告版本号无效");
+        int updated = jdbc.update("UPDATE pm_project_announcement SET deleted = 1, updated_by = ?, row_version = row_version + 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND row_version = ? AND deleted = 0", user.id(), announcementId, projectId, user.tenantId(), rowVersion);
+        if (updated == 0) throw new BusinessException(ErrorCode.CONFLICT, "公告已被更新或不存在，请刷新后重试");
+        audit(user, "project:announcement:delete", announcementId);
+    }
+
+    private String requiredAnnouncementHtml(Object value) {
+        String content = value == null ? "" : String.valueOf(value).trim();
+        if (content.isBlank() || content.length() > 20000) throw badRequest("公告正文不能为空且不能超过20000个字符");
+        String lowered = content.toLowerCase(Locale.ROOT);
+        if (lowered.contains("<script") || lowered.matches("(?s).*\\son[a-z]+\\s*=.*") || lowered.contains("javascript:")) throw badRequest("公告正文包含不安全内容");
+        return content;
+    }
+
+    private Map<String, Object> announcementEntry(long projectId, long announcementId, long tenantId) {
+        try { return jdbc.queryForMap("SELECT a.id, a.project_id, a.stage_code, s.stage_name, a.title, a.content_html, a.pinned, a.row_version, a.created_by, a.created_at, a.updated_at FROM pm_project_announcement a LEFT JOIN pm_project_stage s ON s.project_id = a.project_id AND s.tenant_id = a.tenant_id AND s.stage_code = a.stage_code WHERE a.id = ? AND a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0", announcementId, projectId, tenantId); }
+        catch (EmptyResultDataAccessException exception) { throw badRequest("公告不存在"); }
+    }
+
+    private YearMonth releaseCalendarMonth(String month) {
+        try { return YearMonth.parse(month); }
+        catch (RuntimeException exception) { throw badRequest("月份必须为YYYY-MM格式"); }
+    }
+
+    private Date requiredReleaseDate(Object value) {
+        Date result = date(value);
+        if (result == null) throw badRequest("投产日期不能为空");
+        return result;
+    }
+    private String releaseCalendarThemeKey(Object value) { String key = value == null || String.valueOf(value).isBlank() ? "tone-1" : String.valueOf(value).trim(); if (!RELEASE_CALENDAR_THEME_KEYS.contains(key)) throw badRequest("投产日历主题色系无效"); return key; }
+
+    private Map<String, Object> releaseCalendarEntry(long projectId, long calendarId, long tenantId) {
+        try { return jdbc.queryForMap("SELECT id, project_id, title, release_date, remark, theme_key, row_version, created_by, updated_by, created_at, updated_at FROM pm_project_release_calendar WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", calendarId, projectId, tenantId); }
+        catch (EmptyResultDataAccessException exception) { throw badRequest("投产日历条目不存在"); }
     }
 
     private String projectScope(AuthUser user) { return isSuperAdmin(user) ? "1 = 1" : "EXISTS (SELECT 1 FROM pm_project_member pm WHERE pm.project_id = pm_project.id AND pm.tenant_id = pm_project.tenant_id AND pm.user_id = " + user.id() + " AND pm.status = 1 AND pm.deleted = 0)"; }

@@ -1,0 +1,27 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [],
+  "requirements_addressed": ["R1", "R2", "R3", "R4"],
+  "commands": [
+    {"command": "node --test scripts/check-codex-scope.test.mjs", "exit_code": 0, "salient_output": "2 passed, 0 failed."},
+    {"command": "node scripts/check-all-governance.mjs", "exit_code": 1, "salient_output": "Module governance, repository Skill, and development entry checks passed; AI-control layout check reported pre-existing historical errors plus REQ-082 design/handoff topic mismatches."},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-082-licon-branch-exception/codex-task-scope.yaml --base HEAD --head HEAD", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260917-082; 0 changed file(s)."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; line-ending warnings only."},
+    {"command": "Node JSON parse over current REQ-082 ledger", "exit_code": 0, "salient_output": "current ledger JSON passed."}
+  ],
+  "local_checks": [
+    {"check": "Branch test suite", "result": "pass", "evidence": "2 passing Node tests.", "limitations": []},
+    {"check": "Governance gate", "result": "partial", "evidence": "Core governance checks passed; AI-control layout reported local and historical topic/layout errors.", "limitations": ["Historical task ledgers are outside REQ-082 writable paths."]},
+    {"check": "Current ledger JSON", "result": "pass", "evidence": "All current prefix JSON files parse.", "limitations": ["Parsing does not enforce topic naming."]}
+  ],
+  "diff_summary": ["No T3 production-code change; verification exposed a local ledger metadata defect and external historical ledger defects."],
+  "invariants_checked": [
+    {"invariant": "Only exact licon is accepted as an exception", "result": "pass", "evidence": "Node negative and positive branch tests passed."},
+    {"invariant": "Existing structural admission checks remain active", "result": "pass", "evidence": "Current licon scope passed the actual structural validator."}
+  ],
+  "disturbances": [{"event": "Repository contains historical AI-control layout violations", "impact": "Global governance check cannot reach exit code 0 within REQ-082 scope."}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Correct REQ-082 topic metadata; external historical layout violations require separate owner-scoped work."],
+  "recommended_next": "observe"
+}

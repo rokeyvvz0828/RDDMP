@@ -1,0 +1,33 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "scripts/check-codex-scope.mjs", "purpose": "Export one exact branch predicate and use it in the existing CLI branch gate."},
+    {"path_or_resource": "scripts/check-codex-scope.test.mjs", "purpose": "Cover exact licon acceptance, compliant branches, and rejected branch values."}
+  ],
+  "requirements_addressed": ["R2", "R3", "R4"],
+  "commands": [
+    {"command": "node --check scripts/check-codex-scope.mjs", "exit_code": 0, "salient_output": "No syntax output or error."},
+    {"command": "node --test scripts/check-codex-scope.test.mjs", "exit_code": 0, "salient_output": "2 tests passed: allowed exact licon/compliant branches and rejected main, empty, Licon, custom-branch, and licon/extra."},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-082-licon-branch-exception/codex-task-scope.yaml --base HEAD --head HEAD", "exit_code": 0, "salient_output": "Codex scope check passed for REQ-20260917-082; 0 changed file(s)."},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-082-licon-branch-exception/codex-task-scope.yaml --working-tree", "exit_code": 1, "salient_output": "No branch-format failure; validation reached writable-path enforcement and reported unrelated REQ-063 and REQ-081 working-tree files."}
+  ],
+  "local_checks": [
+    {"check": "Node branch regression", "result": "pass", "evidence": "2 passed, 0 failed.", "limitations": ["Tests exercise the exported predicate, not Git working-tree discovery."]},
+    {"check": "Scope CLI with an empty Git range", "result": "pass", "evidence": "The actual licon scope passed all structural admission gates.", "limitations": ["Does not perform changed-path enforcement."]},
+    {"check": "Scope CLI with the current working tree", "result": "environment-blocked", "evidence": "Branch gate accepted licon, then unrelated changed files were correctly rejected as outside this task scope.", "limitations": ["The existing unrelated worktree changes cannot be changed by REQ-082."]}
+  ],
+  "diff_summary": ["The branch gate now calls a pure exported predicate.", "The predicate allows only the existing requirement format or exact lowercase licon.", "The CLI body remains gated and continues existing validation after the branch test."],
+  "invariants_checked": [
+    {"invariant": "licon is exact and case-sensitive", "result": "pass", "evidence": "Licon and licon/extra are negative test cases."},
+    {"invariant": "Default requirement branches remain valid", "result": "pass", "evidence": "feat and docs example branches are positive test cases."},
+    {"invariant": "Later admission checks remain active", "result": "pass", "evidence": "Working-tree invocation passed the branch gate and reached path enforcement."}
+  ],
+  "disturbances": [
+    {"event": "Restricted sandbox prevented Node from spawning the test runner and Git", "impact": "Commands were rerun with user-authorized local execution."},
+    {"event": "Unrelated REQ-063 and REQ-081 uncommitted files are present", "impact": "The current working-tree scope check correctly fails at path enforcement after the licon branch gate."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Final governance run and negative test confirmation remain for T3."],
+  "recommended_next": "observe"
+}

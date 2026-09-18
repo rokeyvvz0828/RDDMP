@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-081-project-release-calendar",
+  "task_id": "T3",
+  "status": "implemented",
+  "recorded_at": "2026-09-17T14:13:27+08:00",
+  "objective": "Restore the local development runtime so the project release calendar migration and API can run.",
+  "changed_surfaces": [
+    {
+      "resource": "rddmp-dev local database",
+      "purpose": "Insert the one RDDMP-PLATFORM development project required by published V209 and remove only its failed local Flyway history entry."
+    },
+    {
+      "resource": "generated Maven target and local artifact outputs",
+      "purpose": "Remove stale classes and mapper XML resources with a clean reactor build."
+    }
+  ],
+  "commands": [
+    {
+      "command": "mvn clean install -DskipTests",
+      "exit_code": 0,
+      "result": "All 16 Maven reactor modules rebuilt and installed from current sources."
+    },
+    {
+      "command": "node scripts/dev.mjs",
+      "exit_code": 0,
+      "result": "Local Flyway applied V209 through V214 and the backend started on port 8080."
+    }
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "Published Flyway migration source remains unchanged.",
+      "result": "passed"
+    },
+    {
+      "invariant": "Only the local rddmp-dev failed V209 history entry was removed.",
+      "result": "passed"
+    }
+  ],
+  "unresolved_items": [
+    "The published V209 migration depends on a default project that is absent from a clean local seed; the local data compensation must be repeated after recreating the development database volume.",
+    "Browser acceptance at the required desktop and mobile viewports was not run because browser automation was unavailable."
+  ],
+  "recommended_next": "observe"
+}

@@ -1,0 +1,2017 @@
+{
+  "schema_version": 5,
+  "revision": 8,
+  "created_at": "2026-09-17T09:41:47+00:00",
+  "updated_at": "2026-09-17T09:46:33+00:00",
+  "mode": "high-assurance",
+  "workflow": "full",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=4, plan_revision=4；设计确认=User confirmed design revision 4.；计划确认=User reviewed and approved implementation plan revision 4.",
+      "recorded_at": "2026-09-17T09:41:47+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Requirement baseline contract satisfied",
+      "recorded_at": "2026-09-17T09:42:57+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Engineering system model ready with sensors, actuators and disturbance controls",
+      "recorded_at": "2026-09-17T09:44:29+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Control plan covers R1-R6 with no concurrent write conflict",
+      "recorded_at": "2026-09-17T09:45:48+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=4, plan_revision=4；设计确认=User confirmed design revision 4.；计划确认=User reviewed and approved implementation plan revision 4.",
+        "recorded_at": "2026-09-17T09:41:47+00:00",
+        "data": {
+          "objective": "Maintain project-stage announcements and theme-responsive release-calendar color families within the project boundary.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Keep project-detail announcement management tab routing.",
+              "acceptance": [
+                "tab=announcements opens the management view without affecting existing tabs."
+              ],
+              "priority": "must",
+              "source": "Approved requirement",
+              "counterexample": [
+                "Existing tab navigation changes."
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Persist project-owned stage announcements with title, rich text and pinning.",
+              "acceptance": [
+                "Member CRUD persists after refresh."
+              ],
+              "priority": "must",
+              "source": "Approved requirement",
+              "counterexample": [
+                "Reuse unrelated announcement data."
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Authorize announcement operations server-side for project members.",
+              "acceptance": [
+                "Non-members, cross-tenant calls and invalid stages are rejected."
+              ],
+              "priority": "must",
+              "source": "Approved requirement",
+              "counterexample": [
+                "Frontend-only authorization."
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Show only announcements for the date-active top-level project stages.",
+              "acceptance": [
+                "Parallel-stage notices are ordered with pinned entries first."
+              ],
+              "priority": "must",
+              "source": "Approved requirement",
+              "counterexample": [
+                "Historical or future notices appear as current."
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Render overview announcements safely and responsively.",
+              "acceptance": [
+                "Unsafe markup cannot execute and the required viewports have no page-level horizontal overflow."
+              ],
+              "priority": "must",
+              "source": "Approved requirement",
+              "counterexample": [
+                "Raw unsafe HTML or desktop-only layout."
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Store release-calendar theme-internal color-family keys and render them from active global theme tokens.",
+              "acceptance": [
+                "New entries offer five swatch-led internal color families.",
+                "Saved entries refresh with the same color-family key.",
+                "Both new and historical entries update when global palette or light/dark appearance changes."
+              ],
+              "priority": "must",
+              "source": "User confirmation on 2026-09-17",
+              "counterexample": [
+                "Selecting ocean or tech-blue as a record color.",
+                "Hard-coded date-box colors that do not change with the active theme."
+              ]
+            }
+          ],
+          "invariants": [
+            "Announcements remain project-owned.",
+            "Server-side membership, tenant, entity, stage, lock and audit controls remain enforced.",
+            "No global theme module or published migration is modified."
+          ],
+          "constraints": [
+            "Only REQ-083 writable paths may change.",
+            "Reuse Vue, Element Plus and active CSS theme variables.",
+            "Do not read secrets or access production systems."
+          ],
+          "non_goals": [
+            "Notifications",
+            "email",
+            "cross-project aggregation",
+            "new global theme palettes",
+            "fixed per-record colors"
+          ],
+          "assumptions": [
+            {
+              "text": "The active theme always supplies brand, success, accent, warning and danger variables.",
+              "basis": "Existing global theme stylesheet defines them for every palette and appearance.",
+              "falsifier": "A selectable global theme lacks one of these variables."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D7",
+              "decision": "Use tone-1 through tone-5 as stable keys and show them as swatch-led theme-internal color families.",
+              "reason": "User rejected global palette and semantic-color selections.",
+              "source": "User confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R6"
+              ],
+              "signal": "Allowed values, persistence and theme response are observable.",
+              "method": "Focused service test, frontend build, local health and browser checks in two palettes and both appearances."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "Approved design revision 4 re-baselined with observable R1-R6 and no blocking unknowns",
+        "recorded_at": "2026-09-17T09:42:57+00:00",
+        "data": {
+          "objective": "Project members can safely maintain stage announcements and see theme-responsive release-calendar dates without changing global theme behavior.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Project detail retains its announcement-management tab and existing tab routes.",
+              "acceptance": [
+                "The announcement tab opens through tab=announcements and existing tabs remain available."
+              ],
+              "priority": "must",
+              "source": "Approved REQ-083 design",
+              "counterexample": [
+                "An existing tab route changes or the announcement tab is unavailable."
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Project members can persist project-owned stage announcements with title, safe rich text and pinning.",
+              "acceptance": [
+                "Member create, edit, pin and delete operations survive refresh."
+              ],
+              "priority": "must",
+              "source": "Approved REQ-083 design",
+              "counterexample": [
+                "Announcement data is lost or reused from another module."
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Announcement reads and writes enforce server-side project membership, tenant, stage and lock boundaries.",
+              "acceptance": [
+                "Non-members, cross-tenant callers, invalid stages and stale writes are rejected."
+              ],
+              "priority": "must",
+              "source": "Approved REQ-083 design",
+              "counterexample": [
+                "A frontend-visible control allows an unauthorized write."
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "The overview shows only announcements for top-level plan stages active on the current date, with pinned items first.",
+              "acceptance": [
+                "Parallel active stages are included and absent stages show an explicit empty result."
+              ],
+              "priority": "must",
+              "source": "Approved REQ-083 design",
+              "counterexample": [
+                "Historical or future-stage notices appear as current."
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Announcement and overview experiences remain safely rendered and responsive.",
+              "acceptance": [
+                "Unsafe markup does not execute and desktop plus required mobile viewports have no page-level horizontal overflow."
+              ],
+              "priority": "must",
+              "source": "Approved REQ-083 design",
+              "counterexample": [
+                "A script executes from announcement content or the page overflows horizontally."
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "Release-calendar maintenance offers five internal color families whose saved date boxes follow the active global palette and appearance.",
+              "acceptance": [
+                "Only five swatch-led internal families appear for new writes.",
+                "Saved tone keys refresh correctly.",
+                "Changing global palette or light/dark appearance recolors existing boxes without resaving."
+              ],
+              "priority": "must",
+              "source": "User confirmation",
+              "counterexample": [
+                "Global palette names are selectable for a release entry.",
+                "Date-box colors stay fixed after theme changes."
+              ]
+            }
+          ],
+          "invariants": [
+            "Project API paths, theme_key column, authorization and audit behavior remain compatible.",
+            "No global theme module, migration or unrelated working-tree change is modified.",
+            "Legacy theme_key values remain readable."
+          ],
+          "constraints": [
+            "Writes are limited to REQ-083 scope.",
+            "Use existing Vue/Element Plus and active CSS variables.",
+            "Do not read .env or access production data."
+          ],
+          "non_goals": [
+            "New global theme palettes",
+            "fixed per-record colors",
+            "notifications",
+            "attachments",
+            "approval flows"
+          ],
+          "assumptions": [
+            {
+              "text": "Every selectable global theme defines brand, success, accent, warning and danger variables in both appearances.",
+              "basis": "Read-only inspection of web/src/styles.css.",
+              "falsifier": "Computed values are missing or unreadable for a supported palette/appearance."
+            }
+          ],
+          "unknowns": [
+            {
+              "question": "Browser automation may be unavailable in this Codex session.",
+              "impact": "Rendered viewport evidence may need manual local verification.",
+              "owner": "observing",
+              "blocking": false
+            }
+          ],
+          "decisions": [
+            {
+              "question": "Which persisted release-calendar choices are permitted for new writes?",
+              "options": [
+                "Global palette keys",
+                "Five stable internal tone keys",
+                "Fixed colors"
+              ],
+              "selected": "Five stable internal tone keys",
+              "blocking": false,
+              "source": "User-approved design revision 4"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Tab route source and navigation behavior",
+              "candidate_sensor": "ProjectView source plus browser route check"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Announcement CRUD persistence",
+              "candidate_sensor": "ProjectService focused tests"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Denied invalid and unauthorized operations",
+              "candidate_sensor": "ProjectService focused tests"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Current-stage filtered and pinned order",
+              "candidate_sensor": "ProjectService focused tests and overview check"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "Safe rendering and viewport width",
+              "candidate_sensor": "Frontend build and browser inspection"
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "Allowed keys and computed date-box colors after theme changes",
+              "candidate_sensor": "Focused service test, frontend build and browser inspection"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Scoped model identifies ProjectService, project contract and ProjectView as controllable R6 boundary; existing announcement behavior retained as regression boundary",
+        "recorded_at": "2026-09-17T09:44:29+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "ProjectController and ProjectService announcement/release-calendar operations",
+              "ProjectReleaseCalendar theme_key persistence",
+              "ProjectView tab, maintenance form and overview date-box rendering",
+              "project.ts and types/project.ts request contract"
+            ],
+            "environment": [
+              "Local MySQL/Flyway data",
+              "active document data-palette and data-theme attributes",
+              "existing global CSS variables",
+              "project member browser session"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "announcement_record",
+              "owner": "ProjectService and pm_project_announcement",
+              "valid_values": [
+                "active",
+                "logically-deleted"
+              ]
+            },
+            {
+              "name": "current_stage_set",
+              "owner": "ProjectService",
+              "valid_values": [
+                "empty",
+                "one active stage",
+                "parallel active stages"
+              ]
+            },
+            {
+              "name": "release_calendar_theme_key",
+              "owner": "ProjectService and pm_project_release_calendar",
+              "valid_values": [
+                "tone-1",
+                "tone-2",
+                "tone-3",
+                "tone-4",
+                "tone-5",
+                "legacy-compatible"
+              ]
+            },
+            {
+              "name": "active_theme_tokens",
+              "owner": "global theme stylesheet",
+              "valid_values": [
+                "light palette values",
+                "dark palette values"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "Project route includes tab=announcements",
+              "transitions": [
+                "ProjectView normalizes the tab",
+                "Element tab renders announcement management"
+              ],
+              "outputs": [
+                "Announcement management UI is reachable without changing other tab routes"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "Project member submits announcement data",
+              "transitions": [
+                "ProjectController adapts request",
+                "ProjectService validates and persists with audit/lock",
+                "ProjectView reloads list"
+              ],
+              "outputs": [
+                "Persisted project-owned announcement reflects after refresh"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Read or write announcement request",
+              "transitions": [
+                "ProjectService resolves tenant/project/member/stage",
+                "Service permits or rejects before persistence"
+              ],
+              "outputs": [
+                "Authorized response or denied business error"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "Overview requests current announcements",
+              "transitions": [
+                "ProjectService finds date-active top-level plans",
+                "Service orders their announcement rows",
+                "ProjectView renders response"
+              ],
+              "outputs": [
+                "Pinned active-stage announcements or explicit empty state"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "Announcement content and responsive viewport",
+              "transitions": [
+                "ProjectView sanitizes/plain-text renders detail",
+                "CSS grid applies desktop/mobile layout"
+              ],
+              "outputs": [
+                "Non-executable content and no page-level horizontal overflow"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "input": "Member selects a release-calendar color family or a legacy row is read",
+              "transitions": [
+                "ProjectService validates theme_key",
+                "ProjectView normalizes stored key to a tone class",
+                "CSS resolves tone class through active variables"
+              ],
+              "outputs": [
+                "Persisted tone and date box recolored after global palette or appearance changes"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "project announcement REST routes",
+              "producers": [
+                "ProjectController/ProjectService"
+              ],
+              "consumers": [
+                "ProjectView"
+              ],
+              "invariant": "Project route, server authorization and optimistic-lock behavior remain compatible."
+            },
+            {
+              "name": "release-calendar theme_key",
+              "producers": [
+                "ProjectService"
+              ],
+              "consumers": [
+                "project.ts",
+                "ProjectView"
+              ],
+              "invariant": "Field name and HTTP paths stay unchanged; new writes use tone-1 through tone-5 and legacy reads remain accepted."
+            },
+            {
+              "name": "global color variables",
+              "producers": [
+                "web/src/styles.css"
+              ],
+              "consumers": [
+                "ProjectView date-box CSS"
+              ],
+              "invariant": "ProjectView reads rather than writes --brand, --success, --accent, --warning and --danger."
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "Project service behavior for R2-R4 and R6",
+              "method": "Focused ProjectServiceTest under Java 17",
+              "blind_spots": [
+                "Browser layout",
+                "global CSS computed values"
+              ],
+              "independence": "JVM tests execute service logic separately from Vue rendering"
+            },
+            {
+              "id": "S2",
+              "target": "R1, R5 and R6 frontend integration",
+              "method": "Vite production build",
+              "blind_spots": [
+                "Runtime interaction and actual CSS computed color"
+              ],
+              "independence": "TypeScript/Vite compilation is independent from service tests"
+            },
+            {
+              "id": "S3",
+              "target": "R1, R4-R6 local runtime availability",
+              "method": "Backend health endpoint and frontend HTTP availability",
+              "blind_spots": [
+                "Authenticated user behavior"
+              ],
+              "independence": "Running process probe"
+            },
+            {
+              "id": "S4",
+              "target": "R5-R6 rendered behavior",
+              "method": "Browser viewport, selector and computed-style inspection",
+              "blind_spots": [
+                "Server-side authorization branches"
+              ],
+              "independence": "Rendered application observation"
+            },
+            {
+              "id": "S5",
+              "target": "Scope and accidental formatting regressions",
+              "method": "Scope checker and git diff --check",
+              "blind_spots": [
+                "Functional correctness"
+              ],
+              "independence": "Repository structural checks"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "Release-calendar key validation",
+              "action": "Modify only ProjectService allowed key set/default and focused tests",
+              "authority": "REQ-083 writable server files",
+              "impact_radius": "Project release-calendar requests",
+              "rollback": "Revert scoped Java diff while retaining readable stored values"
+            },
+            {
+              "id": "A2",
+              "target": "Release-calendar frontend contract",
+              "action": "Modify only project.ts types and API payload signatures",
+              "authority": "REQ-083 writable frontend contract files",
+              "impact_radius": "Project release-calendar compile-time callers",
+              "rollback": "Revert scoped TypeScript diff"
+            },
+            {
+              "id": "A3",
+              "target": "Maintenance option and date-box rendering",
+              "action": "Modify only ProjectView option normalization and local CSS classes",
+              "authority": "REQ-083 writable ProjectView",
+              "impact_radius": "Project management release calendar",
+              "rollback": "Revert scoped Vue diff"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ],
+              "observable": "partial"
+            },
+            {
+              "requirement_id": "R6",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ],
+              "observable": "partial"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "Existing dirty worktree from REQ-081/082 and other user work",
+              "effect": "Scope checker can report unrelated paths",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Java 25 runtime selection",
+              "effect": "Mockito/Byte Buddy tests can fail before assertions",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "Browser automation authentication limitation",
+              "effect": "Rendered acceptance sensor unavailable",
+              "detectable": true,
+              "controllable": false
+            },
+            {
+              "source": "Old release-calendar values saved by rejected palette implementation",
+              "effect": "Unnormalized visual classes could lose color",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "delays": [
+            {
+              "source": "Vite hot reload and production build",
+              "consequence": "Immediate browser check can observe stale UI",
+              "sampling_rule": "Wait for build completion or reload after source save."
+            },
+            {
+              "source": "Backend restart",
+              "consequence": "Old service process can reject newly accepted tone keys",
+              "sampling_rule": "Probe health after a fresh process startup before API verification."
+            },
+            {
+              "source": "Theme transition",
+              "consequence": "Computed colors can change after a short animation",
+              "sampling_rule": "Sample computed styles after the transition completes."
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Existing ProjectServiceTest covers or can directly cover release-calendar request validation.",
+              "evidence": "Current test file and prior focused test result in this task context.",
+              "falsifier": "No test seam reaches releaseCalendarThemeKey validation."
+            },
+            {
+              "text": "The current local CSS defines all five chosen variables for every palette and appearance.",
+              "evidence": "Read-only stylesheet inspection.",
+              "falsifier": "Computed style check finds a missing/invalid variable."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "partial",
+              "action": "Preserve source and sample route after the scoped change."
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "partial",
+              "action": "Run regression sensor without changing announcement behavior."
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "partial",
+              "action": "Run authorization regression sensor without changing authorization."
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "partial",
+              "action": "Run current-stage regression sensor without changing calculation."
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "partial",
+              "controllable": "partial",
+              "action": "Compile and perform browser inspection if the local sensor is available."
+            },
+            {
+              "requirement_id": "R6",
+              "observable": "partial",
+              "controllable": "yes",
+              "action": "Apply A1-A3 and sample tests, build and rendered styles."
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Two bounded serial tasks: protected announcement regression then scoped color-family correction with three planned samples",
+        "recorded_at": "2026-09-17T09:45:47+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Establish regression evidence that announcement routes, authorization, current-stage behavior and responsive project overview remain intact before the color-family correction.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Existing dirty changes include REQ-083 announcement source and tests.",
+                "No R1-R5 behavior is changed by this correction."
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+              ],
+              "invariants": [
+                "No announcement source, endpoint, authorization, migration or global theme file is changed."
+              ],
+              "interface_contracts": [
+                "Announcement routes and tab query contract remain compatible.",
+                "Project membership and optimistic locking remain server-side."
+              ],
+              "non_goals": [
+                "Do not refactor announcement behavior.",
+                "Do not change any source file for R1-R5 unless an observed regression demands replanning."
+              ],
+              "action_bounds": [
+                "Run focused service checks, frontend build and static route inspection only.",
+                "Record tool limitations rather than fabricating browser observations."
+              ],
+              "acceptance_checks": [
+                "Focused service tests execute their announcement assertions or report a pre-existing environment limitation.",
+                "Frontend build compiles the announcement and overview source.",
+                "No scoped diff changes announcement behavior during T1."
+              ],
+              "evidence_required": [
+                "Exact commands and exit codes.",
+                "Source-inspection results.",
+                "Scoped diff summary."
+              ],
+              "rollback": "T1 writes only task evidence files and can be removed without application effect.",
+              "stop_conditions": [
+                "Announcement route, membership or safe-rendering behavior fails a sensor."
+              ],
+              "escalation_conditions": [
+                "Correction would require scope expansion to a shared component, router or global theme module."
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Replace release-calendar global-palette choices with five theme-internal color families while preserving API and legacy read compatibility.",
+              "requirement_ids": [
+                "R6"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "ProjectService currently accepts global palette keys and legacy semantic values.",
+                "ProjectView currently builds choices from paletteOptions and has fixed per-palette date-box CSS.",
+                "Global CSS exposes brand, success, accent, warning and danger variables for supported palettes and appearances."
+              ],
+              "write_scope": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+                "web/src/types/project.ts",
+                "web/src/api/project.ts",
+                "web/src/views/ProjectView.vue",
+                ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+              ],
+              "invariants": [
+                "HTTP path and field name theme_key do not change.",
+                "No migration, global stylesheet, theme store, authorization or audit behavior changes.",
+                "Old stored values remain accepted for reads and normalize to tone-1 in the UI."
+              ],
+              "interface_contracts": [
+                "New create/update payloads accept only tone-1 through tone-5.",
+                "Response types retain all legacy stored values.",
+                "Date-box classes derive color only from active global variables."
+              ],
+              "non_goals": [
+                "Do not add a palette selector, new CSS theme palette or fixed record color."
+              ],
+              "action_bounds": [
+                "Modify only allowed Java, TypeScript and Vue paths.",
+                "Add focused validation tests before/with service change.",
+                "Use existing Element Plus form/select patterns and local CSS only."
+              ],
+              "acceptance_checks": [
+                "Five and only five swatch-led choices are rendered for new/edit maintenance.",
+                "Server accepts five tone keys and rejects invalid keys while retaining legacy reads.",
+                "Existing date boxes change after palette or light/dark changes without persistence writes.",
+                "Frontend build and focused backend test pass under the supported local Java runtime."
+              ],
+              "evidence_required": [
+                "Actual source diff.",
+                "Focused test command and result.",
+                "Frontend build result.",
+                "Theme computed-style or browser observation evidence.",
+                "Detected disturbances and unresolved risks."
+              ],
+              "rollback": "Revert only T2 scoped source edits; retain database values and no migration change.",
+              "stop_conditions": [
+                "The correction requires web/src/styles.css, theme store or a schema change.",
+                "A supported active theme lacks a color variable needed for readable rendering."
+              ],
+              "escalation_conditions": [
+                "User requests a fixed color or new global palette capability.",
+                "A legacy API consumer requires global-palette values for new writes."
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Regression evidence defines the protected R1-R5 baseline before T2 changes shared ProjectView and ProjectService files."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "Focused ProjectService test",
+                "frontend build",
+                "announcement/tab source inspection"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "Focused ProjectService test under Java 17",
+                "frontend build",
+                "diff check",
+                "local health probes",
+                "theme observation in two palettes and two appearances when available"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "SMP-1 protected behavior",
+              "trigger": "T1 observation",
+              "observer": "independent observation phase",
+              "sensors": [
+                "S1",
+                "S2",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "SMP-2 implementation behavior",
+              "trigger": "T2 observation",
+              "observer": "independent observation phase",
+              "sensors": [
+                "S1",
+                "S2",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R6"
+              ]
+            },
+            {
+              "label": "SMP-3 runtime/theme integration",
+              "trigger": "post-restart convergence observation",
+              "observer": "independent observation phase",
+              "sensors": [
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R5",
+                "R6"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1"
+              ],
+              "sensor_ids": [
+                "S2",
+                "S4"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "task_ids": [
+                "T2"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S4"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Project members can safely maintain stage announcements and see theme-responsive release-calendar dates without changing global theme behavior.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Project detail retains its announcement-management tab and existing tab routes.",
+      "acceptance": [
+        "The announcement tab opens through tab=announcements and existing tabs remain available."
+      ],
+      "priority": "must",
+      "source": "Approved REQ-083 design",
+      "counterexample": [
+        "An existing tab route changes or the announcement tab is unavailable."
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Project members can persist project-owned stage announcements with title, safe rich text and pinning.",
+      "acceptance": [
+        "Member create, edit, pin and delete operations survive refresh."
+      ],
+      "priority": "must",
+      "source": "Approved REQ-083 design",
+      "counterexample": [
+        "Announcement data is lost or reused from another module."
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Announcement reads and writes enforce server-side project membership, tenant, stage and lock boundaries.",
+      "acceptance": [
+        "Non-members, cross-tenant callers, invalid stages and stale writes are rejected."
+      ],
+      "priority": "must",
+      "source": "Approved REQ-083 design",
+      "counterexample": [
+        "A frontend-visible control allows an unauthorized write."
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "The overview shows only announcements for top-level plan stages active on the current date, with pinned items first.",
+      "acceptance": [
+        "Parallel active stages are included and absent stages show an explicit empty result."
+      ],
+      "priority": "must",
+      "source": "Approved REQ-083 design",
+      "counterexample": [
+        "Historical or future-stage notices appear as current."
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Announcement and overview experiences remain safely rendered and responsive.",
+      "acceptance": [
+        "Unsafe markup does not execute and desktop plus required mobile viewports have no page-level horizontal overflow."
+      ],
+      "priority": "must",
+      "source": "Approved REQ-083 design",
+      "counterexample": [
+        "A script executes from announcement content or the page overflows horizontally."
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "Release-calendar maintenance offers five internal color families whose saved date boxes follow the active global palette and appearance.",
+      "acceptance": [
+        "Only five swatch-led internal families appear for new writes.",
+        "Saved tone keys refresh correctly.",
+        "Changing global palette or light/dark appearance recolors existing boxes without resaving."
+      ],
+      "priority": "must",
+      "source": "User confirmation",
+      "counterexample": [
+        "Global palette names are selectable for a release entry.",
+        "Date-box colors stay fixed after theme changes."
+      ]
+    }
+  ],
+  "invariants": [
+    "Project API paths, theme_key column, authorization and audit behavior remain compatible.",
+    "No global theme module, migration or unrelated working-tree change is modified.",
+    "Legacy theme_key values remain readable."
+  ],
+  "constraints": [
+    "Writes are limited to REQ-083 scope.",
+    "Use existing Vue/Element Plus and active CSS variables.",
+    "Do not read .env or access production data."
+  ],
+  "non_goals": [
+    "New global theme palettes",
+    "fixed per-record colors",
+    "notifications",
+    "attachments",
+    "approval flows"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260917-083-project-stage-announcements\\handoff.json",
+    "imported_at": "2026-09-17T09:41:47+00:00",
+    "topic": "req-20260917-083-project-stage-announcements",
+    "design_revision": 4,
+    "plan_revision": 4,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260917-083-project-stage-announcements",
+      "handoff_status": "approved",
+      "created_at": "2026-09-17T17:40:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260917-083-project-stage-announcements",
+        "design_revision": 4,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-17-project-stage-announcements-design.md",
+        "objective": "Maintain project-stage announcements and theme-responsive release-calendar color families within the project boundary.",
+        "users": [
+          "Project members reading and maintaining stage announcements and release-calendar entries."
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Keep project-detail announcement management tab routing.",
+            "acceptance": [
+              "tab=announcements opens the management view without affecting existing tabs."
+            ],
+            "priority": "must",
+            "source": "Approved requirement",
+            "counterexample": [
+              "Existing tab navigation changes."
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Persist project-owned stage announcements with title, rich text and pinning.",
+            "acceptance": [
+              "Member CRUD persists after refresh."
+            ],
+            "priority": "must",
+            "source": "Approved requirement",
+            "counterexample": [
+              "Reuse unrelated announcement data."
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Authorize announcement operations server-side for project members.",
+            "acceptance": [
+              "Non-members, cross-tenant calls and invalid stages are rejected."
+            ],
+            "priority": "must",
+            "source": "Approved requirement",
+            "counterexample": [
+              "Frontend-only authorization."
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Show only announcements for the date-active top-level project stages.",
+            "acceptance": [
+              "Parallel-stage notices are ordered with pinned entries first."
+            ],
+            "priority": "must",
+            "source": "Approved requirement",
+            "counterexample": [
+              "Historical or future notices appear as current."
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Render overview announcements safely and responsively.",
+            "acceptance": [
+              "Unsafe markup cannot execute and the required viewports have no page-level horizontal overflow."
+            ],
+            "priority": "must",
+            "source": "Approved requirement",
+            "counterexample": [
+              "Raw unsafe HTML or desktop-only layout."
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "Store release-calendar theme-internal color-family keys and render them from active global theme tokens.",
+            "acceptance": [
+              "New entries offer five swatch-led internal color families.",
+              "Saved entries refresh with the same color-family key.",
+              "Both new and historical entries update when global palette or light/dark appearance changes."
+            ],
+            "priority": "must",
+            "source": "User confirmation on 2026-09-17",
+            "counterexample": [
+              "Selecting ocean or tech-blue as a record color.",
+              "Hard-coded date-box colors that do not change with the active theme."
+            ]
+          }
+        ],
+        "invariants": [
+          "Announcements remain project-owned.",
+          "Server-side membership, tenant, entity, stage, lock and audit controls remain enforced.",
+          "No global theme module or published migration is modified."
+        ],
+        "constraints": [
+          "Only REQ-083 writable paths may change.",
+          "Reuse Vue, Element Plus and active CSS theme variables.",
+          "Do not read secrets or access production systems."
+        ],
+        "non_goals": [
+          "Notifications",
+          "email",
+          "cross-project aggregation",
+          "new global theme palettes",
+          "fixed per-record colors"
+        ],
+        "selected_approach": {
+          "name": "Stable tone keys backed by active CSS variables",
+          "reason": "It separates persisted color intent from global theme appearance and avoids duplicate theme definitions.",
+          "alternatives": [
+            {
+              "name": "Store global palette key",
+              "rejected_because": "It prevents a record from following the current global theme."
+            },
+            {
+              "name": "Store fixed CSS colors",
+              "rejected_because": "It cannot respond to theme changes."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "ProjectService release-calendar validation",
+              "Project API/type contract",
+              "ProjectView calendar selector and date-box styling"
+            ],
+            "outside": [
+              "web/src/styles.css",
+              "theme store",
+              "global palette definitions"
+            ]
+          },
+          "components": [
+            {
+              "name": "ProjectService",
+              "responsibility": "Accept current tone keys and retain legacy read compatibility.",
+              "depends_on": [
+                "existing release-calendar persistence"
+              ]
+            },
+            {
+              "name": "ProjectView",
+              "responsibility": "Render swatch-led choices and map stored values to active theme variables.",
+              "depends_on": [
+                "existing project API",
+                "global CSS tokens"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "release-calendar theme_key",
+              "producer": "ProjectService",
+              "consumers": [
+                "ProjectView"
+              ],
+              "contract": "New writes use tone-1 through tone-5; legacy values are read-compatible and normalize to tone-1 for display."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "A member selects a color family",
+              "transitions": [
+                "Persist a stable tone key",
+                "Resolve the tone class to a CSS variable",
+                "Recalculate through CSS after global theme changes"
+              ],
+              "output": "A theme-responsive release date box."
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Invalid new tone key",
+            "behavior": "Reject with a validation error",
+            "recovery": "Choose one of the five supplied color families."
+          },
+          {
+            "condition": "Legacy stored key",
+            "behavior": "Render and edit as tone-1",
+            "recovery": "Save to normalize the key."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "No authorization behavior changes."
+          ],
+          "performance": [
+            "No additional requests or recalculation loops."
+          ],
+          "compatibility": [
+            "Keep HTTP path, field name, column and legacy reads."
+          ],
+          "operations": [
+            "No Flyway migration or global-style change."
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R6"
+            ],
+            "signal": "Allowed values, persistence and theme response are observable.",
+            "method": "Focused service test, frontend build, local health and browser checks in two palettes and both appearances."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "The active theme always supplies brand, success, accent, warning and danger variables.",
+            "basis": "Existing global theme stylesheet defines them for every palette and appearance.",
+            "falsifier": "A selectable global theme lacks one of these variables."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D7",
+            "decision": "Use tone-1 through tone-5 as stable keys and show them as swatch-led theme-internal color families.",
+            "reason": "User rejected global palette and semantic-color selections.",
+            "source": "User confirmation"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Legacy values may exist from the rejected palette implementation.",
+            "impact": "An entry could otherwise render without a color.",
+            "mitigation": "Map every previous key to tone-1 at read/render time and retain server acceptance."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed design revision 4.",
+          "confirmed_at": "2026-09-17T17:35:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 4,
+        "human_document": "docs/engineering-control/plans/2026-09-17-project-stage-announcements-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Keep project API paths, theme_key column, authorization and audit behavior unchanged.",
+          "Do not edit global CSS/theme modules or migrations.",
+          "Restrict writes to the REQ-083 scope."
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "Validate new tone keys and read legacy keys.",
+            "evidence": "Existing release-calendar service."
+          },
+          {
+            "path": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+            "status": "existing",
+            "responsibility": "Exercise accepted and rejected theme keys.",
+            "evidence": "Existing service test suite."
+          },
+          {
+            "path": "web/src/types/project.ts",
+            "status": "existing",
+            "responsibility": "Separate new write keys from legacy read keys.",
+            "evidence": "Existing project DTO types."
+          },
+          {
+            "path": "web/src/api/project.ts",
+            "status": "existing",
+            "responsibility": "Type create and update requests with new tone keys.",
+            "evidence": "Existing project API wrapper."
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "existing",
+            "responsibility": "Offer swatches, normalize legacy values and render active-theme date boxes.",
+            "evidence": "Existing release-calendar UI."
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Verify the existing project-stage announcement persistence and tab contract.",
+            "requirement_ids": [
+              "R1",
+              "R2"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "Existing REQ-083 source already contains project announcement routes, persistence and tab UI."
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Existing project announcement API and tab route"
+              ],
+              "produces": [
+                "Regression evidence for tab and persisted member CRUD"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Run focused project service tests that exercise existing announcement CRUD.",
+                "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "Announcement persistence assertions pass without changing the contract.",
+                "evidence": "Surefire result."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Inspect the existing ProjectView tab route and announcement API types.",
+                "command": "rg -n 'announcements|tab=announcements' web/src/views/ProjectView.vue web/src/api/project.ts",
+                "expected": "The route and API wrapper remain present.",
+                "evidence": "Source inspection output."
+              }
+            ],
+            "acceptance_checks": [
+              "The announcement tab contract remains available.",
+              "Existing announcement records remain project-scoped."
+            ],
+            "risks": [
+              "Existing dirty changes may obscure baseline ownership."
+            ],
+            "rollback": "No source changes are made by this verification task.",
+            "stop_conditions": [
+              "Announcement source is missing or contract behavior regresses."
+            ],
+            "escalation_conditions": [
+              "Restoring the feature would require files outside the task scope."
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Verify existing member authorization, stage calculation and overview announcement behavior.",
+            "requirement_ids": [
+              "R3",
+              "R4"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Existing ProjectService contains member checks, announcement validation and current-stage lookup."
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Existing ProjectService announcement operations"
+              ],
+              "produces": [
+                "Authorization and active-stage regression evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Run focused service authorization and current-stage test cases.",
+                "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "Membership, invalid-stage, optimistic-lock and current-stage assertions pass.",
+                "evidence": "Surefire result and assertion names."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Inspect current-stage announcement loading in the project overview.",
+                "command": "rg -n 'getCurrentProjectAnnouncements|currentAnnouncements' web/src/views/ProjectView.vue web/src/api/project.ts",
+                "expected": "Overview reads the project-scoped current-stage endpoint.",
+                "evidence": "Source inspection output."
+              }
+            ],
+            "acceptance_checks": [
+              "Server membership behavior is not weakened.",
+              "Only date-active stages feed the overview."
+            ],
+            "risks": [
+              "A local test runtime may have unrelated JDK compatibility failures."
+            ],
+            "rollback": "No source changes are made by this verification task.",
+            "stop_conditions": [
+              "Focused authorization tests fail."
+            ],
+            "escalation_conditions": [
+              "A failure indicates a cross-module security regression."
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Verify existing announcement safe rendering and responsive build behavior.",
+            "requirement_ids": [
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "ProjectView contains announcement overview and detail rendering; the project uses a Vue production build."
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                "web/src/views/ProjectView.vue"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Existing announcement rendering"
+              ],
+              "produces": [
+                "Frontend build and rendering regression evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Build the existing frontend production bundle.",
+                "command": "npm --prefix web run build",
+                "expected": "Vite completes successfully.",
+                "evidence": "Build exit code."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Perform browser checks at desktop and required mobile viewports when automation is available.",
+                "command": "Verify project overview and announcement management at 1280x800, 375x812, 390x844 and 430x932.",
+                "expected": "No page-level horizontal overflow or unsafe announcement rendering.",
+                "evidence": "Recorded browser observations or an explicit tool limitation."
+              }
+            ],
+            "acceptance_checks": [
+              "Announcement views compile and preserve responsive constraints.",
+              "Unsafe content is not rendered as executable markup."
+            ],
+            "risks": [
+              "Browser automation may be unavailable in the local Codex session."
+            ],
+            "rollback": "No source changes are made by this verification task.",
+            "stop_conditions": [
+              "A browser observation shows executable markup or page overflow."
+            ],
+            "escalation_conditions": [
+              "Fix requires a shared editor, router or UI component change."
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "Verify the existing overview layout and release-calendar month boundary behavior.",
+            "requirement_ids": [
+              "R5"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "ProjectView already contains the three-panel overview and current-year release calendar."
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                "web/src/views/ProjectView.vue"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Existing release-calendar month endpoint"
+              ],
+              "produces": [
+                "Overview layout regression evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "Inspect month navigation boundaries and overview calendar classes.",
+                "command": "rg -n 'releaseCalendarMonth|releaseCalendarCan|project-overview__release-calendar' web/src/views/ProjectView.vue",
+                "expected": "Navigation stays within the current year and date boxes retain tooltips.",
+                "evidence": "Source inspection output."
+              },
+              {
+                "id": "T4-S2",
+                "action": "Build the frontend after the T5 change.",
+                "command": "npm --prefix web run build",
+                "expected": "The overview layout continues to compile.",
+                "evidence": "Build exit code."
+              }
+            ],
+            "acceptance_checks": [
+              "Project plan remains on its own overview row.",
+              "Release calendar navigation cannot cross the current year."
+            ],
+            "risks": [
+              "A visual issue may require browser evidence."
+            ],
+            "rollback": "No source changes are made by this verification task.",
+            "stop_conditions": [
+              "The overview layout or year boundary behavior regresses."
+            ],
+            "escalation_conditions": [
+              "Correction requires a global layout or theme module edit."
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "Replace global-palette selection with five active-theme color families while preserving legacy reads.",
+            "requirement_ids": [
+              "R6"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "theme_key is VARCHAR(16)",
+              "ProjectView currently uses global palette selections",
+              "the global stylesheet exposes five variable families"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+                "web/src/types/project.ts",
+                "web/src/api/project.ts",
+                "web/src/views/ProjectView.vue"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "theme_key request field",
+                "--brand",
+                "--success",
+                "--accent",
+                "--warning",
+                "--danger"
+              ],
+              "produces": [
+                "tone-1 through tone-5 write contract",
+                "legacy-to-tone-1 rendering normalization"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "Add focused service assertions for five accepted tone keys, legacy values and an invalid key.",
+                "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "The new assertions initially expose missing allowed keys, then pass after the service update.",
+                "evidence": "Surefire result and assertion names."
+              },
+              {
+                "id": "T5-S2",
+                "action": "Restrict new write types and API payloads to tone-1 through tone-5 while retaining legacy response typing.",
+                "command": "npm --prefix web run build",
+                "expected": "TypeScript compiles without a PaletteKey dependency in project DTOs.",
+                "evidence": "Vite build exit code."
+              },
+              {
+                "id": "T5-S3",
+                "action": "Replace maintenance options and date-box class mapping with swatch-led tone classes that only use active CSS variables.",
+                "command": "npm --prefix web run build",
+                "expected": "The production bundle compiles and contains no global-palette release-calendar choices.",
+                "evidence": "Vite build exit code and source inspection."
+              },
+              {
+                "id": "T5-S4",
+                "action": "Run focused checks and local user-path verification in light and dark modes across two global palettes.",
+                "command": "git diff --check",
+                "expected": "No whitespace errors; all five tone choices persist and existing boxes change with the theme.",
+                "evidence": "Command output, health probes and browser observations."
+              }
+            ],
+            "acceptance_checks": [
+              "Five and only five swatch-led options appear for new or edited records.",
+              "A saved tone key refreshes as the selected option.",
+              "Switching global palette or appearance changes an existing date box without saving.",
+              "Legacy stored keys remain readable and render as tone-1."
+            ],
+            "risks": [
+              "A missing theme variable could reduce contrast."
+            ],
+            "rollback": "Revert only the T5 scoped source changes; retain stored keys and legacy acceptance.",
+            "stop_conditions": [
+              "Implementing the behavior requires editing web/src/styles.css or a theme store.",
+              "Any active global palette lacks a required color variable."
+            ],
+            "escalation_conditions": [
+              "User requests fixed colors or changes to global theme definitions."
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Authorization and active-stage regression assumes announcement persistence remains intact."
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "Safe rendering verification consumes the existing announcement UI contract."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Overview rendering verification consumes current-stage loading behavior."
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "Layout regression is sampled after the overview rendering build passes."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4",
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4",
+              "T5"
+            ],
+            "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest -Dsurefire.failIfNoSpecifiedTests=false test; npm --prefix web run build; git diff --check",
+            "expected": "Focused backend tests, frontend production build and whitespace check pass."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User reviewed and approved implementation plan revision 4.",
+          "confirmed_at": "2026-09-17T17:45:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "ProjectService release-calendar validation and ProjectView date-box rendering."
+        ],
+        "state_variable_candidates": [
+          "Stored theme_key",
+          "active data-palette",
+          "active data-theme"
+        ],
+        "interface_candidates": [
+          "release-calendar theme_key",
+          "five global color CSS variables"
+        ],
+        "sensor_candidates": [
+          "ProjectServiceTest",
+          "frontend build",
+          "diff check",
+          "health endpoint",
+          "browser rendering"
+        ],
+        "actuator_candidates": [
+          "Scoped Java service/test edits",
+          "scoped project API/type/view edits"
+        ],
+        "disturbance_candidates": [
+          "Legacy palette keys",
+          "dirty worktree",
+          "unavailable browser automation"
+        ],
+        "delay_candidates": [
+          "Maven test duration",
+          "Vite rebuild",
+          "theme transition"
+        ],
+        "assumptions": [
+          {
+            "text": "The active theme variables resolve dynamically after data-palette or data-theme changes.",
+            "basis": "Existing CSS selector definitions.",
+            "falsifier": "Computed date-box colors remain unchanged after a supported theme switch."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"Local MySQL/Flyway data\", \"active document data-palette and data-theme attributes\", \"existing global CSS variables\", \"project member browser session\"], \"inside\": [\"ProjectController and ProjectService announcement/release-calendar operations\", \"ProjectReleaseCalendar theme_key persistence\", \"ProjectView tab, maintenance form and overview date-box rendering\", \"project.ts and types/project.ts request contract\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"Browser layout\", \"global CSS computed values\"], \"id\": \"S1\", \"independence\": \"JVM tests execute service logic separately from Vue rendering\", \"method\": \"Focused ProjectServiceTest under Java 17\", \"target\": \"Project service behavior for R2-R4 and R6\"}",
+      "{\"blind_spots\": [\"Runtime interaction and actual CSS computed color\"], \"id\": \"S2\", \"independence\": \"TypeScript/Vite compilation is independent from service tests\", \"method\": \"Vite production build\", \"target\": \"R1, R5 and R6 frontend integration\"}",
+      "{\"blind_spots\": [\"Authenticated user behavior\"], \"id\": \"S3\", \"independence\": \"Running process probe\", \"method\": \"Backend health endpoint and frontend HTTP availability\", \"target\": \"R1, R4-R6 local runtime availability\"}",
+      "{\"blind_spots\": [\"Server-side authorization branches\"], \"id\": \"S4\", \"independence\": \"Rendered application observation\", \"method\": \"Browser viewport, selector and computed-style inspection\", \"target\": \"R5-R6 rendered behavior\"}",
+      "{\"blind_spots\": [\"Functional correctness\"], \"id\": \"S5\", \"independence\": \"Repository structural checks\", \"method\": \"Scope checker and git diff --check\", \"target\": \"Scope and accidental formatting regressions\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Modify only ProjectService allowed key set/default and focused tests\", \"authority\": \"REQ-083 writable server files\", \"id\": \"A1\", \"impact_radius\": \"Project release-calendar requests\", \"rollback\": \"Revert scoped Java diff while retaining readable stored values\", \"target\": \"Release-calendar key validation\"}",
+      "{\"action\": \"Modify only project.ts types and API payload signatures\", \"authority\": \"REQ-083 writable frontend contract files\", \"id\": \"A2\", \"impact_radius\": \"Project release-calendar compile-time callers\", \"rollback\": \"Revert scoped TypeScript diff\", \"target\": \"Release-calendar frontend contract\"}",
+      "{\"action\": \"Modify only ProjectView option normalization and local CSS classes\", \"authority\": \"REQ-083 writable ProjectView\", \"id\": \"A3\", \"impact_radius\": \"Project management release calendar\", \"rollback\": \"Revert scoped Vue diff\", \"target\": \"Maintenance option and date-box rendering\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Scope checker can report unrelated paths\", \"source\": \"Existing dirty worktree from REQ-081/082 and other user work\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Mockito/Byte Buddy tests can fail before assertions\", \"source\": \"Java 25 runtime selection\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"Rendered acceptance sensor unavailable\", \"source\": \"Browser automation authentication limitation\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"Unnormalized visual classes could lose color\", \"source\": \"Old release-calendar values saved by rejected palette implementation\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"Current test file and prior focused test result in this task context.\", \"falsifier\": \"No test seam reaches releaseCalendarThemeKey validation.\", \"text\": \"Existing ProjectServiceTest covers or can directly cover release-calendar request validation.\"}",
+      "{\"evidence\": \"Read-only stylesheet inspection.\", \"falsifier\": \"Computed style check finds a missing/invalid variable.\", \"text\": \"The current local CSS defines all five chosen variables for every palette and appearance.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\", \"S4\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S2\", \"S4\"]"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "[\"S1\", \"S2\", \"S4\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Establish regression evidence that announcement routes, authorization, current-stage behavior and responsive project overview remain intact before the color-family correction.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Existing dirty changes include REQ-083 announcement source and tests.",
+        "No R1-R5 behavior is changed by this correction."
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+      ],
+      "invariants": [
+        "No announcement source, endpoint, authorization, migration or global theme file is changed."
+      ],
+      "interface_contracts": [
+        "Announcement routes and tab query contract remain compatible.",
+        "Project membership and optimistic locking remain server-side."
+      ],
+      "non_goals": [
+        "Do not refactor announcement behavior.",
+        "Do not change any source file for R1-R5 unless an observed regression demands replanning."
+      ],
+      "action_bounds": [
+        "Run focused service checks, frontend build and static route inspection only.",
+        "Record tool limitations rather than fabricating browser observations."
+      ],
+      "acceptance": [
+        "Focused service tests execute their announcement assertions or report a pre-existing environment limitation.",
+        "Frontend build compiles the announcement and overview source.",
+        "No scoped diff changes announcement behavior during T1."
+      ],
+      "evidence_required": [
+        "Exact commands and exit codes.",
+        "Source-inspection results.",
+        "Scoped diff summary."
+      ],
+      "rollback": "T1 writes only task evidence files and can be removed without application effect.",
+      "stop_conditions": [
+        "Announcement route, membership or safe-rendering behavior fails a sensor."
+      ],
+      "escalation_conditions": [
+        "Correction would require scope expansion to a shared component, router or global theme module."
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-17T09:46:33+00:00",
+          "text": "Starting protected R1-R5 regression sampling before color-family changes"
+        }
+      ],
+      "updated_at": "2026-09-17T09:46:33+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Replace release-calendar global-palette choices with five theme-internal color families while preserving API and legacy read compatibility.",
+      "requirements": [
+        "R6"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ProjectService currently accepts global palette keys and legacy semantic values.",
+        "ProjectView currently builds choices from paletteOptions and has fixed per-palette date-box CSS.",
+        "Global CSS exposes brand, success, accent, warning and danger variables for supported palettes and appearances."
+      ],
+      "write_scope": [
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+        "web/src/types/project.ts",
+        "web/src/api/project.ts",
+        "web/src/views/ProjectView.vue",
+        ".ai-control/requirements/req-20260917-083-project-stage-announcements/*.json"
+      ],
+      "invariants": [
+        "HTTP path and field name theme_key do not change.",
+        "No migration, global stylesheet, theme store, authorization or audit behavior changes.",
+        "Old stored values remain accepted for reads and normalize to tone-1 in the UI."
+      ],
+      "interface_contracts": [
+        "New create/update payloads accept only tone-1 through tone-5.",
+        "Response types retain all legacy stored values.",
+        "Date-box classes derive color only from active global variables."
+      ],
+      "non_goals": [
+        "Do not add a palette selector, new CSS theme palette or fixed record color."
+      ],
+      "action_bounds": [
+        "Modify only allowed Java, TypeScript and Vue paths.",
+        "Add focused validation tests before/with service change.",
+        "Use existing Element Plus form/select patterns and local CSS only."
+      ],
+      "acceptance": [
+        "Five and only five swatch-led choices are rendered for new/edit maintenance.",
+        "Server accepts five tone keys and rejects invalid keys while retaining legacy reads.",
+        "Existing date boxes change after palette or light/dark changes without persistence writes.",
+        "Frontend build and focused backend test pass under the supported local Java runtime."
+      ],
+      "evidence_required": [
+        "Actual source diff.",
+        "Focused test command and result.",
+        "Frontend build result.",
+        "Theme computed-style or browser observation evidence.",
+        "Detected disturbances and unresolved risks."
+      ],
+      "rollback": "Revert only T2 scoped source edits; retain database values and no migration change.",
+      "stop_conditions": [
+        "The correction requires web/src/styles.css, theme store or a schema change.",
+        "A supported active theme lacks a color variable needed for readable rendering."
+      ],
+      "escalation_conditions": [
+        "User requests a fixed color or new global palette capability.",
+        "A legacy API consumer requires global-palette values for new writes."
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-17T09:45:47+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

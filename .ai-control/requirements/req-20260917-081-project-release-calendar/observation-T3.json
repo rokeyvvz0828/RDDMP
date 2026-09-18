@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-081-project-release-calendar",
+  "task_id": "T3",
+  "observation_status": "complete-with-coverage-gap",
+  "recorded_at": "2026-09-17T14:14:00+08:00",
+  "measurements": [
+    {
+      "requirement_ids": ["R2", "R3"],
+      "sensor": "authenticated local HTTP request",
+      "result": "passed",
+      "evidence": "POST /api/auth/login returned code 0 and GET /api/project/940001/release-calendar?month=2026-09 returned HTTP 200 with the returned bearer token."
+    },
+    {
+      "requirement_ids": ["R2"],
+      "sensor": "Flyway history and schema query",
+      "result": "passed",
+      "evidence": "V209 and V214 both have success=1; pm_project_release_calendar exists."
+    },
+    {
+      "requirement_ids": ["R1", "R4", "R5"],
+      "sensor": "runtime probes",
+      "result": "partial",
+      "evidence": "Backend /actuator/health and frontend root both returned HTTP 200."
+    }
+  ],
+  "feedback": [],
+  "coverage_gaps": [
+    "No real-browser desktop or mobile viewport inspection was possible because the available browser automation surface failed to initialize.",
+    "No create, edit, delete, optimistic-lock, or non-member browser flow was rerun during this recovery observation."
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  }
+}

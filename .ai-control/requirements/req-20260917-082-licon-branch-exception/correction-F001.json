@@ -1,0 +1,10 @@
+{
+  "feedback_id": "F-001",
+  "decision": "accept",
+  "decision_reason": "The repository's layout checker reproducibly identifies two current-prefix topic mismatches, and both affected files are within REQ-082 writable paths.",
+  "dynamic_pattern": "local",
+  "causal_assessment": {"hypothesis": "The topic value must equal the req-prefixed directory name.", "supporting_evidence": ["check-ai-control-layout.mjs line 68 compares topic to entry.name."], "falsifier": "The same checker still reports a REQ-082 mismatch after all current-prefix topic fields equal the directory name."},
+  "control_action": {"gain": "low", "target": "Current REQ-082 topic metadata", "write_scope": [".ai-control/requirements/req-20260917-082-licon-branch-exception/design.json", ".ai-control/requirements/req-20260917-082-licon-branch-exception/handoff.json"], "invariants": ["Do not modify product or policy requirements", "Keep only current prefix files in scope"], "impact_limit": "Three topic string values in two current task files", "rollback": "Restore the prior display-topic strings if the layout rule is disproven", "correction_check": ["Run check-ai-control-layout.mjs and confirm no REQ-082 topic mismatch", "Parse current ledger JSON"], "route": "executing"},
+  "resolution": "verified",
+  "residual_risk": ["Unrelated historical layout defects remain outside this task scope."]
+}

@@ -1,0 +1,49 @@
+{
+  "topic": "req-20260917-081-project-release-calendar",
+  "observed_at": "2026-09-17T12:53:00+08:00",
+  "results": [
+    {
+      "sensor": "focused-project-tests",
+      "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system '-Dtest=ProjectServiceTest,ProjectReleaseCalendarMigrationTest' test",
+      "status": "passed",
+      "evidence": "51 tests passed. The compatibility property is necessary only because the host JDK is 25 while the bundled Byte Buddy version formally supports through Java 24."
+    },
+    {
+      "sensor": "backend-compile",
+      "command": "mvn -pl :ccb-system -DskipTests compile",
+      "status": "passed"
+    },
+    {
+      "sensor": "flyway-static-check",
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "status": "passed",
+      "evidence": "212 migrations accepted."
+    },
+    {
+      "sensor": "frontend-production-build",
+      "command": "npm --prefix web run build",
+      "status": "artifact-observed",
+      "evidence": "vue-tsc and Vite transforming stages reported no source error; the build subprocess ended and web/dist/index.html was regenerated at 2026-09-17T12:57:02+08:00. The command wrapper did not return Vite's final exit summary."
+    },
+    {
+      "sensor": "scope-static-check",
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-081-project-release-calendar/codex-task-scope.yaml --base HEAD --head HEAD",
+      "status": "passed"
+    },
+    {
+      "sensor": "development-entry",
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "status": "passed"
+    },
+    {
+      "sensor": "diff-check",
+      "command": "git diff --check",
+      "status": "passed"
+    }
+  ],
+  "unavailable_sensors": [
+    "Live MySQL migration/API test: no rddmp-dev container is running.",
+    "Browser viewport check: Codex browser surface cannot initialize with the current API-key authentication method.",
+    "Working-tree scope check: unrelated historical REQ-063, REQ-082 and governance changes are already present outside REQ-081 scope."
+  ]
+}

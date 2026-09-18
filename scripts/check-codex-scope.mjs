@@ -1,7 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { matches, moduleForFile, normalize, readJsonYaml, root } from './governance-utils.mjs';
+
+const requirementBranchPattern = /^(feat|fix|hotfix|docs|chore)\/REQ-\d{8}-\d{3}-[a-z0-9-]+$/;
+
+export function isAllowedAssignmentBranch(branch) {
+  return branch === 'licon' || requirementBranchPattern.test(branch || '');
+}
 
 const args = process.argv.slice(2);
 const option = (name) => {
@@ -22,6 +29,7 @@ function changedFiles() {
   return [...new Set([...committed, ...working])];
 }
 
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const changed = changedFiles();
 let scopeFile = option('--scope');
 if (args.includes('--discover')) {
@@ -49,8 +57,8 @@ const targetDefinition = manifest.modules?.[scope.assignment.module];
 if (!targetDefinition) throw new Error(`Unknown assignment module: ${scope.assignment.module}`);
 if (!scope.assignment.developer || scope.assignment.developer === 'UNASSIGNED') throw new Error('Developer must be assigned');
 if (scope.assignment.module_owner !== targetDefinition.owners?.primary) throw new Error('module_owner must match modules.yaml');
-if (!/^(feat|fix|hotfix|docs|chore)\/REQ-\d{8}-\d{3}-[a-z0-9-]+$/.test(scope.assignment.branch || '')) {
-  throw new Error('Branch must follow <type>/REQ-YYYYMMDD-NNN-short-name');
+if (!isAllowedAssignmentBranch(scope.assignment.branch)) {
+  throw new Error('Branch must follow <type>/REQ-YYYYMMDD-NNN-short-name or be exact licon');
 }
 
 const requirementFile = path.join(root, scope.requirement.document || '');
@@ -117,3 +125,4 @@ if (violations.length) {
   process.exit(1);
 }
 console.log(`Codex scope check passed for ${scope.requirement.id}; ${changed.length} changed file(s).`);
+}

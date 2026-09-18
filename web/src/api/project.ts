@@ -1,12 +1,21 @@
 import http, { withProjectContext } from './http'
 import type { ApiResponse } from '../types/auth'
-import type { Project, ProjectMember, ProjectOptions, ProjectPlan, ProjectPlanGroup, ProjectPlanGroupPayload, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectUserOption, ProjectOrganization, ProjectStage } from '../types/project'
+import type { Project, ProjectMember, ProjectOptions, ProjectPlan, ProjectPlanGroup, ProjectPlanGroupPayload, ProjectRisk, ProjectRiskComment, ProjectRole, ProjectUserOption, ProjectOrganization, ProjectStage, ProjectReleaseCalendar, ProjectAnnouncement, ProjectReleaseCalendarToneKey } from '../types/project'
 
 export function getProjectWorkbench() { return http.get<ApiResponse<Project[]>>('/project/workbench', withProjectContext(null)) }
 export function getProject(id: number) { return http.get<ApiResponse<Project>>(`/project/${id}`, withProjectContext(id)) }
 export function createProject(payload: Record<string, unknown>) { return http.post<ApiResponse<Project>>('/project', payload) }
 export function updateProject(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}`, payload) }
 export function updateProjectSettings(id: number, payload: Record<string, unknown>) { return http.put<ApiResponse<Project>>(`/project/${id}/settings`, payload) }
+export function getProjectReleaseCalendar(id: number, month: string) { return http.get<ApiResponse<ProjectReleaseCalendar[]>>(`/project/${id}/release-calendar`, { ...withProjectContext(id), params: { month } }) }
+export function createProjectReleaseCalendar(id: number, payload: { title: string; release_date: string; remark?: string; theme_key: ProjectReleaseCalendarToneKey }) { return http.post<ApiResponse<ProjectReleaseCalendar>>(`/project/${id}/release-calendar`, payload, withProjectContext(id)) }
+export function updateProjectReleaseCalendar(id: number, calendarId: number, payload: { title: string; release_date: string; remark?: string; theme_key: ProjectReleaseCalendarToneKey; row_version: number }) { return http.put<ApiResponse<ProjectReleaseCalendar>>(`/project/${id}/release-calendar/${calendarId}`, payload, withProjectContext(id)) }
+export function deleteProjectReleaseCalendar(id: number, calendarId: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/project/${id}/release-calendar/${calendarId}`, { ...withProjectContext(id), params: { rowVersion } }) }
+export function getProjectAnnouncements(id: number, stageCode?: string) { return http.get<ApiResponse<ProjectAnnouncement[]>>(`/project/${id}/announcements`, { ...withProjectContext(id), params: stageCode ? { stageCode } : undefined }) }
+export function getCurrentProjectAnnouncements(id: number) { return http.get<ApiResponse<ProjectAnnouncement[]>>(`/project/${id}/announcements/current`, withProjectContext(id)) }
+export function createProjectAnnouncement(id: number, payload: { stage_code: string; title: string; content_html: string; pinned: boolean }) { return http.post<ApiResponse<ProjectAnnouncement>>(`/project/${id}/announcements`, payload, withProjectContext(id)) }
+export function updateProjectAnnouncement(id: number, announcementId: number, payload: { stage_code: string; title: string; content_html: string; pinned: boolean; row_version: number }) { return http.put<ApiResponse<ProjectAnnouncement>>(`/project/${id}/announcements/${announcementId}`, payload, withProjectContext(id)) }
+export function deleteProjectAnnouncement(id: number, announcementId: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/project/${id}/announcements/${announcementId}`, { ...withProjectContext(id), params: { rowVersion } }) }
 export function getProjectStages(id: number) { return http.get<ApiResponse<ProjectStage[]>>(`/project/${id}/stages`) }
 export function createProjectStage(id: number, payload: { stage_name: string; sort_no?: number }) { return http.post<ApiResponse<ProjectStage>>(`/project/${id}/stages`, payload) }
 export function updateProjectStage(id: number, stageId: number, payload: Record<string, unknown>) { return http.put<ApiResponse<ProjectStage>>(`/project/${id}/stages/${stageId}`, payload) }

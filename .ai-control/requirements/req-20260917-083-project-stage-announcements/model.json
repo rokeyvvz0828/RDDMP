@@ -1,0 +1,64 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {"inside": ["ProjectController and ProjectService announcement/release-calendar operations", "ProjectReleaseCalendar theme_key persistence", "ProjectView tab, maintenance form and overview date-box rendering", "project.ts and types/project.ts request contract"], "environment": ["Local MySQL/Flyway data", "active document data-palette and data-theme attributes", "existing global CSS variables", "project member browser session"]},
+  "state_variables": [
+    {"name": "announcement_record", "owner": "ProjectService and pm_project_announcement", "valid_values": ["active", "logically-deleted"]},
+    {"name": "current_stage_set", "owner": "ProjectService", "valid_values": ["empty", "one active stage", "parallel active stages"]},
+    {"name": "release_calendar_theme_key", "owner": "ProjectService and pm_project_release_calendar", "valid_values": ["tone-1", "tone-2", "tone-3", "tone-4", "tone-5", "legacy-compatible"]},
+    {"name": "active_theme_tokens", "owner": "global theme stylesheet", "valid_values": ["light palette values", "dark palette values"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Project route includes tab=announcements", "transitions": ["ProjectView normalizes the tab", "Element tab renders announcement management"], "outputs": ["Announcement management UI is reachable without changing other tab routes"]},
+    {"requirement_id": "R2", "input": "Project member submits announcement data", "transitions": ["ProjectController adapts request", "ProjectService validates and persists with audit/lock", "ProjectView reloads list"], "outputs": ["Persisted project-owned announcement reflects after refresh"]},
+    {"requirement_id": "R3", "input": "Read or write announcement request", "transitions": ["ProjectService resolves tenant/project/member/stage", "Service permits or rejects before persistence"], "outputs": ["Authorized response or denied business error"]},
+    {"requirement_id": "R4", "input": "Overview requests current announcements", "transitions": ["ProjectService finds date-active top-level plans", "Service orders their announcement rows", "ProjectView renders response"], "outputs": ["Pinned active-stage announcements or explicit empty state"]},
+    {"requirement_id": "R5", "input": "Announcement content and responsive viewport", "transitions": ["ProjectView sanitizes/plain-text renders detail", "CSS grid applies desktop/mobile layout"], "outputs": ["Non-executable content and no page-level horizontal overflow"]},
+    {"requirement_id": "R6", "input": "Member selects a release-calendar color family or a legacy row is read", "transitions": ["ProjectService validates theme_key", "ProjectView normalizes stored key to a tone class", "CSS resolves tone class through active variables"], "outputs": ["Persisted tone and date box recolored after global palette or appearance changes"]}
+  ],
+  "interfaces": [
+    {"name": "project announcement REST routes", "producers": ["ProjectController/ProjectService"], "consumers": ["ProjectView"], "invariant": "Project route, server authorization and optimistic-lock behavior remain compatible."},
+    {"name": "release-calendar theme_key", "producers": ["ProjectService"], "consumers": ["project.ts", "ProjectView"], "invariant": "Field name and HTTP paths stay unchanged; new writes use tone-1 through tone-5 and legacy reads remain accepted."},
+    {"name": "global color variables", "producers": ["web/src/styles.css"], "consumers": ["ProjectView date-box CSS"], "invariant": "ProjectView reads rather than writes --brand, --success, --accent, --warning and --danger."}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "Project service behavior for R2-R4 and R6", "method": "Focused ProjectServiceTest under Java 17", "blind_spots": ["Browser layout", "global CSS computed values"], "independence": "JVM tests execute service logic separately from Vue rendering"},
+    {"id": "S2", "target": "R1, R5 and R6 frontend integration", "method": "Vite production build", "blind_spots": ["Runtime interaction and actual CSS computed color"], "independence": "TypeScript/Vite compilation is independent from service tests"},
+    {"id": "S3", "target": "R1, R4-R6 local runtime availability", "method": "Backend health endpoint and frontend HTTP availability", "blind_spots": ["Authenticated user behavior"], "independence": "Running process probe"},
+    {"id": "S4", "target": "R5-R6 rendered behavior", "method": "Browser viewport, selector and computed-style inspection", "blind_spots": ["Server-side authorization branches"], "independence": "Rendered application observation"},
+    {"id": "S5", "target": "Scope and accidental formatting regressions", "method": "Scope checker and git diff --check", "blind_spots": ["Functional correctness"], "independence": "Repository structural checks"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Release-calendar key validation", "action": "Modify only ProjectService allowed key set/default and focused tests", "authority": "REQ-083 writable server files", "impact_radius": "Project release-calendar requests", "rollback": "Revert scoped Java diff while retaining readable stored values"},
+    {"id": "A2", "target": "Release-calendar frontend contract", "action": "Modify only project.ts types and API payload signatures", "authority": "REQ-083 writable frontend contract files", "impact_radius": "Project release-calendar compile-time callers", "rollback": "Revert scoped TypeScript diff"},
+    {"id": "A3", "target": "Maintenance option and date-box rendering", "action": "Modify only ProjectView option normalization and local CSS classes", "authority": "REQ-083 writable ProjectView", "impact_radius": "Project management release calendar", "rollback": "Revert scoped Vue diff"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S2", "S4"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S1", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S1", "S4"], "observable": "yes"},
+    {"requirement_id": "R5", "sensor_ids": ["S2", "S4"], "observable": "partial"},
+    {"requirement_id": "R6", "sensor_ids": ["S1", "S2", "S4"], "observable": "partial"}
+  ],
+  "disturbances": [
+    {"source": "Existing dirty worktree from REQ-081/082 and other user work", "effect": "Scope checker can report unrelated paths", "detectable": true, "controllable": false},
+    {"source": "Java 25 runtime selection", "effect": "Mockito/Byte Buddy tests can fail before assertions", "detectable": true, "controllable": true},
+    {"source": "Browser automation authentication limitation", "effect": "Rendered acceptance sensor unavailable", "detectable": true, "controllable": false},
+    {"source": "Old release-calendar values saved by rejected palette implementation", "effect": "Unnormalized visual classes could lose color", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Vite hot reload and production build", "consequence": "Immediate browser check can observe stale UI", "sampling_rule": "Wait for build completion or reload after source save."},
+    {"source": "Backend restart", "consequence": "Old service process can reject newly accepted tone keys", "sampling_rule": "Probe health after a fresh process startup before API verification."},
+    {"source": "Theme transition", "consequence": "Computed colors can change after a short animation", "sampling_rule": "Sample computed styles after the transition completes."}
+  ],
+  "assumptions": [{"text": "Existing ProjectServiceTest covers or can directly cover release-calendar request validation.", "evidence": "Current test file and prior focused test result in this task context.", "falsifier": "No test seam reaches releaseCalendarThemeKey validation."}, {"text": "The current local CSS defines all five chosen variables for every palette and appearance.", "evidence": "Read-only stylesheet inspection.", "falsifier": "Computed style check finds a missing/invalid variable."}],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "partial", "action": "Preserve source and sample route after the scoped change."},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "partial", "action": "Run regression sensor without changing announcement behavior."},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "partial", "action": "Run authorization regression sensor without changing authorization."},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "partial", "action": "Run current-stage regression sensor without changing calculation."},
+    {"requirement_id": "R5", "observable": "partial", "controllable": "partial", "action": "Compile and perform browser inspection if the local sensor is available."},
+    {"requirement_id": "R6", "observable": "partial", "controllable": "yes", "action": "Apply A1-A3 and sample tests, build and rendered styles."}
+  ],
+  "model_status": "ready"
+}

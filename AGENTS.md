@@ -76,6 +76,7 @@ git diff --check
 - 受保护接口必须执行服务端认证、RBAC、数据范围和实体授权；写操作应保留审计。前端权限不能替代后端校验。
 - Flyway 迁移只追加，不修改已发布脚本；生产数据库不得手工改表。
 - 不绕过自动化测试、CODEOWNERS、Required Checks 或分支保护；Codex 不得自行批准、合并或发布。
+- 任务分支默认必须为 `feat|fix|hotfix|docs|chore/REQ-YYYYMMDD-NNN-short-name`；仅当任务范围显式填写精确小写 `licon` 时可使用该既有协作分支例外，其他分支规则仍以 `docs/governance/GITHUB-RULES.md` 为准。
 - 不覆盖或回退其他人员的未关联改动，不用批量格式化扩大变更范围。
 
 ## 实施与完成

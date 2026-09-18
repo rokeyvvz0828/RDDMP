@@ -1,0 +1,74 @@
+{
+  "objective": "Allow a task explicitly assigned to the existing licon branch to pass scope validation without weakening the default requirement-branch policy or any other admission gate.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Formal governance must document licon as the sole existing-branch exception while retaining the default requirement-branch format.",
+      "acceptance": ["The formal rule and summaries state both the default format and the exact licon exception."],
+      "priority": "must",
+      "source": "User-confirmed design",
+      "counterexample": ["A script-only exception or an exception that permits other branch names."]
+    },
+    {
+      "id": "R2",
+      "statement": "Scope validation must accept an assignment.branch value exactly equal to licon.",
+      "acceptance": ["The current ready REQ-20260917-082 scope passes the validator while checked out on licon."],
+      "priority": "must",
+      "source": "User-confirmed design",
+      "counterexample": ["Rejecting licon or requiring an additional branch prefix."]
+    },
+    {
+      "id": "R3",
+      "statement": "Scope validation must continue to reject main, an empty branch, case variants, and arbitrary nonconforming branch names.",
+      "acceptance": ["Node regression tests reject main, empty string, Licon, and custom-branch."],
+      "priority": "must",
+      "source": "Governance invariant",
+      "counterexample": ["Accepting any branch other than main."]
+    },
+    {
+      "id": "R4",
+      "statement": "Branch acceptance must not bypass ready-requirement, owner, writable-path, or other existing task-admission checks.",
+      "acceptance": ["The valid current scope still undergoes the existing validator and governance checks pass."],
+      "priority": "must",
+      "source": "Repository governance",
+      "counterexample": ["Returning success immediately after the branch condition matches."]
+    }
+  ],
+  "invariants": [
+    "licon is an exact lowercase single exception.",
+    "The default feat|fix|hotfix|docs|chore/REQ-YYYYMMDD-NNN-short-name policy remains valid.",
+    "main, PR, approval, Required Checks, and branch-protection rules are unchanged."
+  ],
+  "constraints": [
+    "GITHUB-RULES.md remains the formal policy source.",
+    "Only REQ-20260917-082 writable paths may change.",
+    "No business code, database, API, or external-access change is permitted."
+  ],
+  "non_goals": ["Allowing arbitrary branch names", "Allowing main", "Changing PR or CI policy"],
+  "assumptions": [
+    {
+      "text": "The Node scope validator is the local and CI enforcement point for assignment.branch.",
+      "basis": "The current script rejects the current licon assignment at its branch regex.",
+      "falsifier": "A separate enforced validator applies a divergent branch rule."
+    }
+  ],
+  "unknowns": [],
+  "decisions": [
+    {
+      "question": "Which existing branch may be exempted?",
+      "options": ["Exact lowercase licon only", "A broader existing-branch policy"],
+      "selected": "Exact lowercase licon only",
+      "blocking": false,
+      "source": "User confirmation"
+    }
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "Synchronized formal and summary policy wording", "candidate_sensor": "Targeted policy text check"},
+    {"requirement_id": "R2", "observable": "Current licon scope exits successfully", "candidate_sensor": "Scope-validator CLI"},
+    {"requirement_id": "R3", "observable": "Only licon and compliant requirement branches are accepted", "candidate_sensor": "Node branch-unit tests"},
+    {"requirement_id": "R4", "observable": "Existing governance and scope validation completes without bypass", "candidate_sensor": "Governance and scope-validator CLI"}
+  ],
+  "baseline_status": "ready",
+  "recorded_at": "2026-09-17T11:21:10.3053489+08:00",
+  "evidence": "User approved the design and implementation plan in this conversation; the current validator rejects licon before implementation."
+}

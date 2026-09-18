@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-081-project-release-calendar",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-17-project-release-calendar-design.md",
+  "objective": "Provide a project-scoped, independently maintained release calendar with member-authorized CRUD and responsive month presentation.",
+  "users": ["Project members viewing and maintaining their project's release arrangements."],
+  "requirements": [
+    {"id": "R1", "statement": "Add a project-detail release-calendar tab while preserving existing tab routes.", "acceptance": ["Direct and interactive tab navigation load the calendar."], "priority": "must", "source": "User-confirmed design", "counterexample": ["Changing existing tabs' route behavior."]},
+    {"id": "R2", "statement": "Persist independent entries containing only title, release date, and remark.", "acceptance": ["CRUD survives refresh and does not alter release-window data."], "priority": "must", "source": "User-confirmed field scope", "counterexample": ["Reading or writing configuration-management release windows."]},
+    {"id": "R3", "statement": "Authorize project members on the server for calendar reads and writes.", "acceptance": ["Non-members and cross-tenant callers are denied."], "priority": "must", "source": "User-confirmed project-member editing", "counterexample": ["Frontend-only authorization."]},
+    {"id": "R4", "statement": "Use a desktop month calendar and a mobile date-grouped list.", "acceptance": ["The specified mobile and desktop viewports have no page-level horizontal overflow."], "priority": "must", "source": "design-h5.md", "counterexample": ["A desktop grid squeezed into the phone viewport."]},
+    {"id": "R5", "statement": "Restyle project tabs after the configuration-management release-window navigation.", "acceptance": ["Existing tabs remain usable and theme-readable."], "priority": "must", "source": "User request", "counterexample": ["Replacing the navigation with unrelated styling."]}
+  ],
+  "invariants": ["Release-window data remains independent.", "Server-side tenant, membership, entity, optimistic-lock, and audit controls apply.", "Flyway changes are additive only."],
+  "constraints": ["Vue 3 and existing Element Plus/UI patterns.", "Project system module owns the API and data.", "No production data or secrets."],
+  "non_goals": ["Time ranges", "statuses", "recurrence", "reminders", "attachments", "approval", "cross-project aggregation", "external calendar synchronization"],
+  "selected_approach": {"name": "Project-detail independent calendar tab", "reason": "Retains project context while separating release scheduling from project plans and configuration-management windows.", "alternatives": [{"name": "Embed in project plans", "rejected_because": "Mixes two distinct scheduling concerns."}, {"name": "Global cross-project calendar", "rejected_because": "Expands permission and navigation scope."}]},
+  "architecture": {
+    "boundary": {"inside": ["Project tab UI", "Project calendar API/service", "Additive project calendar table"], "outside": ["Release management windows", "Project plans", "Workflow and notifications"]},
+    "components": [{"name": "ProjectView", "responsibility": "Tab routing and responsive calendar interaction", "depends_on": ["project API", "UI components"]}, {"name": "ProjectService", "responsibility": "Project-scoped CRUD, membership authorization, audit", "depends_on": ["project persistence"]}, {"name": "Flyway migration", "responsibility": "Calendar storage and month-query index", "depends_on": ["pm_project"]}],
+    "interfaces": [{"name": "Project release calendar REST API", "producer": "ProjectController", "consumers": ["ProjectView"], "contract": "Month listing plus optimistic-lock CRUD within a project scope."}],
+    "data_flows": [{"input": "Project member selects project tab and month", "transitions": ["Server validates project membership and tenant", "Service queries that project's month", "UI renders calendar or mobile list"], "output": "Authorized project-scoped entries."}]
+  },
+  "error_handling": [{"condition": "Initial/list request failure", "behavior": "Show retryable failure state", "recovery": "Retry current month."}, {"condition": "No entries", "behavior": "Show empty state", "recovery": "Allow create."}, {"condition": "Forbidden or cross-project access", "behavior": "Deny on server and show no-permission state", "recovery": "Return to authorized project context."}, {"condition": "Optimistic-lock conflict", "behavior": "Return conflict without overwrite", "recovery": "Reload entry and retry."}],
+  "quality_attributes": {"security": ["Server-side membership, tenant and entity checks", "Audit all writes"], "performance": ["Index project/month queries", "Load one month at a time"], "compatibility": ["Preserve existing project tabs and release-window behavior"], "operations": ["Additive migration and retained records on rollback"]},
+  "verification_strategy": [{"requirement_ids": ["R1", "R5"], "signal": "Existing and new tabs navigate correctly", "method": "Browser regression at desktop and mobile."}, {"requirement_ids": ["R2", "R3"], "signal": "Persisted CRUD and denied unauthorized writes", "method": "Focused service/API and MySQL tests."}, {"requirement_ids": ["R4"], "signal": "No mobile overflow", "method": "Browser checks at 375x812, 390x844, 430x932 and desktop."}],
+  "assumptions": [{"text": "Project member relationship grants calendar maintenance authority.", "basis": "User stated all project people can edit.", "falsifier": "Owner requires an additional role or permission boundary."}],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "Use independently maintained project calendar data.", "reason": "User confirmation", "source": "Conversation"}, {"id": "D2", "decision": "Store a single date with title and remark only.", "reason": "User confirmation", "source": "Conversation"}, {"id": "D3", "decision": "Project members can edit.", "reason": "User confirmation", "source": "Conversation"}],
+  "risks": [{"risk": "Membership authorization gap", "impact": "Unauthorized access", "mitigation": "Server-side permission and cross-tenant tests."}, {"risk": "Project tab regression", "impact": "Navigation disruption", "mitigation": "Preserve query-tab contract and browser regression."}],
+  "approval": {"status": "approved", "evidence": "User confirmed the written design revision in this conversation.", "confirmed_at": "2026-09-17T10:38:38.9045868+08:00"}
+}
