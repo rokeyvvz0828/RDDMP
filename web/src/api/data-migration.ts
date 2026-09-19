@@ -3,12 +3,25 @@ import type { ApiResponse } from '../types/auth'
 import { getAttachmentDownload } from './attachments'
 
 export interface DataMigrationMenu { id: number; name: string; routePath: string }
+export interface ComponentPerson {
+  user_id: number
+  display_name: string
+  person_role: string
+  person_role_label?: string
+}
+export interface ComponentMemberOption {
+  user_id: number
+  display_name: string
+  username: string
+}
 export interface DataMigrationComponent {
   project_id: number
   project_code: string
   project_name: string
   system_code: string
   enabled: number
+  persons?: ComponentPerson[]
+  person_count?: number
   business_group_name?: string
   system_short_name?: string
   system_name?: string
@@ -35,11 +48,12 @@ export interface PhysicalSubsystemLite {
 /**
  * 物理子系统主数据一次性加载：架构主数据系统数量约 500 条以内，全量拉取到前端，
  * 由 el-select 本地随输随筛（默认按 label 大小写不敏感正则匹配，编号/名称均可命中）。
+ * 架构模块按项目隔离：必须携带当前项目 projectRef，缺失时后端返回 500/400。
  */
-export async function listAllPhysicalSubsystems(): Promise<PhysicalSubsystemLite[]> {
+export async function listAllPhysicalSubsystems(projectRef: string): Promise<PhysicalSubsystemLite[]> {
   const { data } = await http.get<ApiResponse<DataMigrationPage<PhysicalSubsystemLite>>>(
     '/architecture/physical-subsystems',
-    { params: { page: 1, size: 1000 } }
+    { params: { page: 1, size: 1000, projectRef } }
   )
   return data.data?.records ?? []
 }
@@ -74,6 +88,21 @@ export function deleteDataMigrationComponent(projectId: number, systemCode: stri
 
 export function setDataMigrationComponentEnabled(projectId: number, systemCode: string, enabled: boolean) {
   return http.put<ApiResponse<DataMigrationComponent>>('/data-migration/components/enabled', null, { params: { projectId, systemCode, enabled } })
+}
+
+/** 查询某一系统的关联人员（含职责中文标签），供查看/抽屉管理展示。 */
+export function getComponentPersons(projectId: number, systemCode: string) {
+  return http.get<ApiResponse<ComponentPerson[]>>('/data-migration/components/persons', { params: { projectId, systemCode } })
+}
+
+/** 项目成员选项：仅当前项目未删除且启用的成员，用于关联人员选择。 */
+export function getComponentMemberOptions(projectId: number) {
+  return http.get<ApiResponse<ComponentMemberOption[]>>('/data-migration/components/member-options', { params: { projectId } })
+}
+
+/** 全量替换保存某系统的关联人员（一人一角色一条），写权限由服务端校验并审计。 */
+export function saveComponentPersons(projectId: number, systemCode: string, persons: Array<{ userId: number; personRole: string }>) {
+  return http.put<ApiResponse<null>>('/data-migration/components/persons', { projectId, systemCode, persons })
 }
 
 export interface DataMigrationContentRecycleRow {
@@ -621,6 +650,7 @@ export const DM_CODE_CATEGORIES = {
   parameterType: 'DM_PARAMETER_TYPE',
   parameterScope: 'DM_PARAMETER_SCOPE',
   parameterFieldType: 'DM_PARAMETER_FIELD_TYPE',
+  componentPersonRole: 'DM_COMPONENT_PERSON_ROLE',
 } as const
 
 /** 数据迁移模块参数管理选项。 */

@@ -1,0 +1,3153 @@
+{
+  "schema_version": 5,
+  "revision": 19,
+  "created_at": "2026-09-19T03:03:03+00:00",
+  "updated_at": "2026-09-19T07:46:06+00:00",
+  "mode": "standard",
+  "workflow": "compact",
+  "phase": "converged",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "defining",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=用户确认设计：人员来源=当前项目成员、含职责/角色字段、一人一角色、角色字典采用参数管理 DM_COMPONENT_PERSON_ROLE；计划确认=用户确认按 T1-T5 计划进入开发",
+      "recorded_at": "2026-09-19T03:03:03+00:00"
+    },
+    {
+      "from": "defining",
+      "to": "planning",
+      "evidence": "ControlDefinition definition-1 已记录：10 条需求（must 9/should 1）均有 measurements 与 action_bounds 绑定；unknowns 无阻塞项；status=ready",
+      "recorded_at": "2026-09-19T03:06:15+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "controlling",
+      "evidence": "ControlPlan 已记录：T1-T5 全覆盖 must 需求，任务含写入范围/检查/证据/回滚/停止/升级条件；status=ready；控制种子来自 handoff.control_seed",
+      "recorded_at": "2026-09-19T03:06:45+00:00"
+    },
+    {
+      "from": "controlling",
+      "to": "verifying",
+      "evidence": "controlling 出口：I1-I5 全部 verified（迁移/查询/写路径/前端/浏览器 52-52），open_feedback 空，进入收敛验收",
+      "recorded_at": "2026-09-19T04:05:58+00:00"
+    },
+    {
+      "from": "verifying",
+      "to": "converged",
+      "evidence": "收敛门禁 PASS：10/10 需求 pass、任务 I1-I5 全 verified、open_feedback 空、3 项不变量均有通过证据；残余风险已披露（并发全量替换、审计 entity_id 惯例、历史脏数据、既有缺陷类失败、本地验收账号依赖）",
+      "recorded_at": "2026-09-19T04:07:34+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "defining": [
+      {
+        "revision": 1,
+        "evidence": "合并已确认设计(R1-R10)与 compact 系统模型：边界/传感器/执行器/扰动/时延来自 handoff.control_seed；measurements 与 action_bounds 绑定全部 10 条需求；assumptions A1-A3、unknowns U1 非阻塞",
+        "recorded_at": "2026-09-19T03:06:12+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "objective": "在系统/组件清单中按项目维护每个系统与当前项目成员的关联及职责角色，列表可查看、浮层可看详情、抽屉可管理，写操作经服务端权限校验并审计。",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "新增 dm_component_person 表，主键 (tenant_id, project_id, system_code, user_id)，每条关系带 person_role，无软删",
+              "acceptance": [
+                "全新库与存量库迁移成功",
+                "同一系统同一人员重复保存被拒绝",
+                "一个系统可关联多个成员"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "同系统同人员出现两条记录",
+                "迁移不可重复执行"
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "components 列表与 export 返回每个系统的关联人员（user_id、display_name、person_role）与 person_count",
+              "acceptance": [
+                "按项目数据范围返回",
+                "无关系时 persons 为空数组且 person_count=0"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "返回其他项目人员",
+                "行内缺失 persons 字段"
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "成员选项接口仅返回当前项目未删除且启用的成员（pm_project_member JOIN sys_user）",
+              "acceptance": [
+                "非项目成员不出现在选项中",
+                "无项目数据权限返回明确错误"
+              ],
+              "priority": "must",
+              "source": "用户决策 B：人员来源=当前项目成员",
+              "counterexample": [
+                "非项目成员可选",
+                "停用成员可选"
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "全量替换保存接口（写权限 data-migration:manage/system:admin）服务端校验组件存在、成员归属与启用，并写 dm_operation_log",
+              "acceptance": [
+                "合法保存事务成功并审计",
+                "无权限返回 403",
+                "组件不存在或成员不属于项目被拒绝"
+              ],
+              "priority": "must",
+              "source": "工程规约：受保护接口服务端校验与审计",
+              "counterexample": [
+                "前端可绕过权限直接保存",
+                "保存不写审计"
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "桌面表格与移动卡片新增‘关联人员’列，成员姓名复用 UiUserIdentity，悬浮/点击显示人员详情浮层",
+              "acceptance": [
+                "375/390/430 与桌面视口无横向溢出",
+                "人数多时折叠为前 2 个 +N 且浮层完整可看"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "页面出现横向滚动条",
+                "浮层在手机端不可触达"
+              ]
+            },
+            {
+              "id": "R6",
+              "statement": "查看抽屉新增‘关联人员’区块：有写权限可增删、选角色并保存；只读仅展示",
+              "acceptance": [
+                "覆盖加载/空/失败/无权限/提交中状态",
+                "重复点击不产生重复请求或重复数据"
+              ],
+              "priority": "must",
+              "source": "用户确认",
+              "counterexample": [
+                "保存中可重复提交",
+                "只读用户出现编辑控件"
+              ]
+            },
+            {
+              "id": "R7",
+              "statement": "Excel 导出增加‘关联人员（角色）’列，按‘姓名（角色）’逗号分隔",
+              "acceptance": [
+                "空关系显示 -",
+                "列名与内容与列表一致"
+              ],
+              "priority": "should",
+              "source": "设计建议",
+              "counterexample": [
+                "导出缺少关联人员列"
+              ]
+            },
+            {
+              "id": "R8",
+              "statement": "person_role 为参数管理类别 DM_COMPONENT_PERSON_ROLE 的受控字典值，迁移幂等种子默认选项",
+              "acceptance": [
+                "下拉选项来自字典",
+                "类别缺失时提示配置且不阻塞列表展示"
+              ],
+              "priority": "must",
+              "source": "用户确认默认项",
+              "counterexample": [
+                "角色为自由文本输入",
+                "类别缺失时保存仍允许任意值"
+              ]
+            },
+            {
+              "id": "R9",
+              "statement": "组件物理删除时按 (tenant_id, project_id, system_code) 级联删除关系",
+              "acceptance": [
+                "删除组件后该组件关系不再出现",
+                "其他组件关系不受影响"
+              ],
+              "priority": "must",
+              "source": "工程事实：组件无软删、关系须一致",
+              "counterexample": [
+                "删除组件后残留孤立关系"
+              ]
+            },
+            {
+              "id": "R10",
+              "statement": "加载、空、失败、无权限、提交中、重复提交状态齐全，深浅主题可读",
+              "acceptance": [
+                "按 design-h5.md 视口清单浏览器验收并记录证据"
+              ],
+              "priority": "must",
+              "source": "前端交付规约",
+              "counterexample": [
+                "移动端隐藏错误态或按钮不可达"
+              ]
+            }
+          ],
+          "boundary": {
+            "inside": [
+              "business/data-migration 组件清单的关系读写与展示链路（ProjectComponentService/Controller、ComponentsPage.vue）",
+              "dm_component_person 为唯一关系事实源",
+              "V214__data_migration_component_person.sql 迁移与 DM_COMPONENT_PERSON_ROLE 参数类别种子"
+            ],
+            "environment": [
+              "platform/system 参数管理（sys_dict_type/sys_config）与人员档案 user-profiles 只读",
+              "platform/security RBAC、requireProject 数据范围",
+              "pm_project_member JOIN sys_user 成员口径（读）",
+              "UiUserIdentity / person-directory 人员档案能力（只读复用）"
+            ]
+          },
+          "invariants": [
+            "数据范围恒等于当前项目（顶部项目切换器），跨租户数据不可见",
+            "dm_component 自然键不变，不修改主表结构与启停逻辑",
+            "一个系统可关联多成员，成员按一人一角色一关系存储（主键唯一约束）"
+          ],
+          "constraints": [
+            "Flyway 只追加，不修改已发布脚本；V214 文件名与描述满足 check-flyway-migrations 规则",
+            "只写 codex-task-scope.yaml 的 writable_paths；platform/system、person-directory、web/src/components/ui 只读复用",
+            "写接口在服务端执行 RBAC、项目数据范围、成员归属与实体存在校验，写 dm_operation_log 审计",
+            "前端复用 web/src/components/ui 与交付示范中心设计，不新增样式体系",
+            "保持既有 Java 包名 com.ccb.datamigration、既有路由与 ApiResponse 结构"
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "node scripts/check-flyway-migrations.mjs && 聚焦迁移测试 ComponentPersonMigrationMySqlTest（Testcontainers clean+migrate 全新库）",
+              "expected": "V214 通过命名/唯一性检查；全新库迁移成功；同一系统同一人员重复插入被唯一键拒绝；一个系统可插入多名成员",
+              "blind_spots": [
+                "测试未覆盖生产存量库脏数据形态"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "ComponentPersonQueryMySqlTest 断言 components 列表 persons/person_count 与 export 列内容",
+              "expected": "persons 按项目范围返回、无关系时空数组与 0、export 含‘关联人员（角色）’列",
+              "blind_spots": [
+                "大数据量分页下的批查性能未实测"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "ComponentPersonQueryMySqlTest 断言 member-options 排除非成员与停用成员；无权限调用 403",
+              "expected": "选项仅含当前项目未删除且启用成员；无权访问返回明确错误",
+              "blind_spots": [
+                "多租户隔离只验证单租户语义"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "ComponentPersonWriteMySqlTest + ComponentPersonControllerSecurityTest 断言保存/校验/审计/权限",
+              "expected": "合法保存事务成功且 dm_operation_log 出现 COMPONENT_PERSON_SAVE；无权限 403；组件不存在或非项目成员被拒",
+              "blind_spots": [
+                "审计行内容仅按操作码断言，未逐字段核对"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "真实浏览器在 375x812/390x844/430x932/1280x800 检查列表列、折叠前2+N与 UiUserIdentity 浮层",
+              "expected": "无横向溢出（scrollWidth 不超视口）；浮层 hover/点击可达且完整展示",
+              "blind_spots": [
+                "无法覆盖所有机型触控差异"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "sensor": "真实浏览器以管理员与只读角色操作抽屉；前端构建与页面状态审查",
+              "expected": "canManage 可增删选角色保存且按钮提交中禁用；只读无编辑控件；加载/空/失败/无权限态齐全",
+              "blind_spots": [
+                "并发双击的请求级去重依赖按钮 loading"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "sensor": "聚焦测试断言角色选项来自 DM_COMPONENT_PERSON_ROLE（getDataMigrationParamOptions 通路）；前端下拉复用同一端点",
+              "expected": "迁移种子返回负责人/对接人/业务人员/实施人员 4 项；类别缺失时列表展示不阻塞并提供配置提示",
+              "blind_spots": [
+                "运行期字典被删改的后置影响仅靠人工回归"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "sensor": "ComponentPersonWriteMySqlTest 断言删除组件后关系消失且他组关系不受影响",
+              "expected": "deleteComponent 同事务级联删除 dm_component_person",
+              "blind_spots": [
+                "未覆盖删除回滚路径"
+              ]
+            },
+            {
+              "requirement_id": "R10",
+              "sensor": "真实浏览器按 design-h5.md 视口清单验收列表、抽屉、浮层、导出与深浅主题；npm --prefix web run build",
+              "expected": "全状态可读、无控制台错误、构建成功",
+              "blind_spots": [
+                "自动化无法完全替代人工视觉验收"
+              ]
+            }
+          ],
+          "action_bounds": [
+            {
+              "requirement_ids": [
+                "R1"
+              ],
+              "target": "V214 迁移脚本与 dm_component_person 表结构/种子",
+              "authority": "新增幂等迁移（CREATE TABLE IF NOT EXISTS / INSERT IGNORE / information_schema 判断）",
+              "impact_limit": "仅新增表与 DM_COMPONENT_PERSON_ROLE 类别种子，不改既有表与迁移",
+              "rollback": "删除/保留新表（功能停用），不执行反向迁移；早期环境可重建数据库"
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R7"
+              ],
+              "target": "ProjectComponentService/Controller 查询与导出路径",
+              "authority": "在既有方法内扩展 persons 批查、member-options 与导出列",
+              "impact_limit": "不改既有字段与接口语义，仅追加字段与端点",
+              "rollback": "git revert 本任务提交；新增字段不影响旧调用点"
+            },
+            {
+              "requirement_ids": [
+                "R4",
+                "R8",
+                "R9"
+              ],
+              "target": "ProjectComponentService/Controller 写路径与删除级联",
+              "authority": "新增 persons GET/PUT 与 deleteComponent 级联清理，写权限+审计",
+              "impact_limit": "仅影响 data-migration 组件列表相关接口与关系表",
+              "rollback": "git revert 本任务提交；关系接口下线，新表保留无副作用"
+            },
+            {
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R10"
+              ],
+              "target": "web/src/api/data-migration.ts 与 ComponentsPage.vue",
+              "authority": "新增 persons 类型/封装、关联人员列、抽屉管理区块、导出列",
+              "impact_limit": "仅 data-migration 组件清单页面，复用 UiUserIdentity 不新增样式",
+              "rollback": "git revert 本任务提交；页面退回无关联人员展示"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "项目内关系总量小，批查与全量替换可接受",
+              "basis": "组件/成员规模有限",
+              "falsifier": "单项目关系数异常放大"
+            },
+            {
+              "text": "pm_project_member 与 sys_user 的 deleted=0/status=1 语义与既有 SQL 惯例一致",
+              "basis": "既有 SQL 惯例（ProjectView 等）",
+              "falsifier": "字段语义不同导致过滤错误"
+            },
+            {
+              "text": "人员档案接口 user-profiles/query 能按 sys_user.id 返回浮层所需字段",
+              "basis": "person-directory 现有实现",
+              "falsifier": "接口返回缺失导致浮层字段不全"
+            }
+          ],
+          "unknowns": [
+            {
+              "text": "DM_COMPONENT_PERSON_ROLE 默认 4 项（负责人/对接人/业务人员/实施人员）是否完全覆盖业务口径",
+              "blocking": false,
+              "handling": "非阻塞；参数管理可随时增改选项，需求 U1 记录"
+            }
+          ],
+          "status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1-T5 串行计划：写入范围/检查/证据/回滚/停止/升级条件齐全，覆盖全部 must 需求；依赖图与集成检查与已批准实现计划一致",
+        "recorded_at": "2026-09-19T03:06:41+00:00",
+        "data": {
+          "definition_revision": "definition-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "新增 dm_component_person 关系表（主键 tenant_id,project_id,system_code,user_id，含 person_role）并幂等种子参数类别 DM_COMPONENT_PERSON_ROLE 四个默认选项；全新库与存量库均可迁移",
+              "requirement_ids": [
+                "R1",
+                "R8"
+              ],
+              "prerequisites": [],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/migration/ComponentPersonMigrationMySqlTest.java"
+              ],
+              "checks": [
+                {
+                  "command": "node scripts/check-flyway-migrations.mjs",
+                  "expected": "通过：V214 存在且唯一、文件名小写描述"
+                },
+                {
+                  "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonMigrationMySqlTest test",
+                  "expected": "测试通过：全新库迁移、唯一键拒绝重复、多成员可插入"
+                }
+              ],
+              "evidence_required": [
+                "迁移检查输出",
+                "聚焦迁移测试摘要（退出码与断言结果）"
+              ],
+              "rollback": "回退本任务提交；新表与种子保留无副作用，必要时早期环境重建，不执行反向迁移",
+              "stop_conditions": [
+                "迁移命名/唯一性检查不通过",
+                "全新库迁移执行失败"
+              ],
+              "escalation_conditions": [
+                "需要修改已发布历史迁移或改变 dm_component 主表结构"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "components 列表/导出返回每系统关联人员（persons/person_count）与‘关联人员（角色）’导出列；新增成员选项接口仅返回当前项目启用成员",
+              "requirement_ids": [
+                "R2",
+                "R3",
+                "R7"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonQueryMySqlTest.java"
+              ],
+              "checks": [
+                {
+                  "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonQueryMySqlTest test",
+                  "expected": "测试通过：persons/person_count、导出列、member-options 范围（排除非成员/停用）与无权限 403"
+                }
+              ],
+              "evidence_required": [
+                "聚焦查询测试摘要"
+              ],
+              "rollback": "git revert 本任务提交；列表/导出退回原字段（新增字段不影响旧调用点）",
+              "stop_conditions": [
+                "pm_project_member 成员过滤语义与既有 ProjectView 口径不一致"
+              ],
+              "escalation_conditions": [
+                "批量带出导致列表性能恶化（单页关系量异常放大）",
+                "破坏既有组件查询其它未登记调用点"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "新增 persons GET/PUT（全量替换，写权限校验、成员归属与角色字典校验、dm_operation_log 审计）；组件删除同事务级联清理关系",
+              "requirement_ids": [
+                "R4",
+                "R8",
+                "R9"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "write_scope": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonWriteMySqlTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ComponentPersonControllerSecurityTest.java"
+              ],
+              "checks": [
+                {
+                  "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonWriteMySqlTest test",
+                  "expected": "测试通过：全量替换/非成员拒绝/停用拒绝/非法角色拒绝/审计行/删除级联"
+                },
+                {
+                  "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonControllerSecurityTest test",
+                  "expected": "测试通过：无写权限 403、有写权限 200"
+                },
+                {
+                  "command": "mvn -pl :ccb-boot -am test",
+                  "expected": "后端全量测试通过，0 失败"
+                }
+              ],
+              "evidence_required": [
+                "写路径聚焦测试摘要",
+                "安全测试摘要",
+                "后端全量测试摘要"
+              ],
+              "rollback": "git revert 本任务提交；关系接口下线，新表保留无副作用",
+              "stop_conditions": [
+                "审计/操作码命名与既有任务账本冲突"
+              ],
+              "escalation_conditions": [
+                "同 (system, user) 唯一键并发覆盖需要产品决策",
+                "deleteComponent 既有调用点行为必须调整"
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "前端 API 封装新增 persons 类型与三个请求函数；组件清单列表/移动卡片新增‘关联人员’列（UiUserIdentity+折叠）、查看抽屉管理区块（canManage 增删/选角色/全量保存，只读仅展示）、导出列",
+              "requirement_ids": [
+                "R5",
+                "R6",
+                "R8",
+                "R10"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "write_scope": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/base/ComponentsPage.vue"
+              ],
+              "checks": [
+                {
+                  "command": "npm --prefix web run build",
+                  "expected": "构建成功、类型检查通过"
+                },
+                {
+                  "command": "git diff --check",
+                  "expected": "无空白错误"
+                }
+              ],
+              "evidence_required": [
+                "前端构建输出",
+                "git diff --check 输出"
+              ],
+              "rollback": "git revert 本任务提交；页面退回无关联人员展示",
+              "stop_conditions": [
+                "UiUserIdentity/person-directory 在列表列形态异常（先回归既有调用页面）"
+              ],
+              "escalation_conditions": [
+                "角色多选与‘一人一角色’约束交互冲突需产品决策",
+                "移动端抽屉溢出无法按期修完"
+              ]
+            },
+            {
+              "id": "T5",
+              "goal": "集成验收：治理与迁移检查、后端全量测试、前端构建、真实浏览器按 design-h5.md 视口清单验收列表/浮层/抽屉/导出/深浅主题/全状态并记录证据",
+              "requirement_ids": [
+                "R10"
+              ],
+              "prerequisites": [
+                "T4"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260919-076-dm-component-person/execution-T1.json",
+                ".ai-control/requirements/req-20260919-076-dm-component-person/observation-T1.json"
+              ],
+              "checks": [
+                {
+                  "command": "node scripts/check-all-governance.mjs",
+                  "expected": "本需求无告警"
+                },
+                {
+                  "command": "node scripts/check-flyway-migrations.mjs",
+                  "expected": "通过"
+                },
+                {
+                  "command": "git diff --check",
+                  "expected": "无空白错误"
+                },
+                {
+                  "command": "mvn -pl :ccb-boot -am test",
+                  "expected": "全部通过"
+                },
+                {
+                  "command": "npm --prefix web run build",
+                  "expected": "构建成功"
+                },
+                {
+                  "command": "真实浏览器 375x812/390x844/430x932/1280x800 验收",
+                  "expected": "无横向溢出、浮层可达、只读无编辑控件、导出列正确、深浅主题可读、控制台无错误"
+                }
+              ],
+              "evidence_required": [
+                "治理/迁移/空白检查输出",
+                "后端全量测试摘要",
+                "前端构建输出",
+                "浏览器验收记录（视口/操作/接口结果/控制台）"
+              ],
+              "rollback": "分任务提交逐个 git revert；数据库按保留表停用或早期环境重建",
+              "stop_conditions": [
+                "任一集成检查失败且无法当场修正"
+              ],
+              "escalation_conditions": [
+                "浏览器验收暴露设计缺口（角色管理交互/移动端层级）需回到设计修订"
+              ]
+            }
+          ],
+          "dependencies": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "T2 查询依赖 T1 的表与字典种子"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "T3 消费 T2 的 member-options 契约且共享 ProjectComponentService.java 需串行"
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "前端消费 T2/T3 REST 契约，需实现稳定后开发"
+            },
+            {
+              "from": "T4",
+              "to": "T5",
+              "reason": "集成验收需要全部实现完成"
+            }
+          ],
+          "integration_checks": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "check": "node scripts/check-flyway-migrations.mjs"
+            },
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "check": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonMigrationMySqlTest test"
+            },
+            {
+              "after_tasks": [
+                "T3"
+              ],
+              "check": "mvn -pl :ccb-boot -am test"
+            },
+            {
+              "after_tasks": [
+                "T4"
+              ],
+              "check": "npm --prefix web run build"
+            },
+            {
+              "after_tasks": [
+                "T5"
+              ],
+              "check": "node scripts/check-all-governance.mjs"
+            }
+          ],
+          "status": "ready"
+        }
+      }
+    ],
+    "controlling": [
+      {
+        "revision": 1,
+        "evidence": "T1 实施 + 独立观测：迁移文件与迁移测试已落盘；check-flyway 通过；Testcontainers 测试 1 run 0 fail；本地库验证种子幂等",
+        "recorded_at": "2026-09-19T03:11:33+00:00",
+        "data": {
+          "iteration_id": "I1",
+          "task_id": "T1",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql",
+              "purpose": "新建 dm_component_person 关系表（主键 tenant_id,project_id,system_code,user_id，person_role 列，无软删）并幂等种子 DM_COMPONENT_PERSON_ROLE 类别 5824 与 4 个默认选项（负责人/对接人/业务人员/实施人员）"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonMigrationMySqlTest.java",
+              "purpose": "Testcontainers 全新库执行 V214：建表、唯一键拒绝同系统同人员重复、多成员共存、字典种子与幂等重跑"
+            }
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "salient_output": "Flyway migration check passed for 212 migration(s), 1 approved callback(s), and 1 approved legacy migration(s)"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonMigrationMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 (ComponentPersonMigrationMySqlTest)"
+            },
+            {
+              "command": "docker exec ccb-platform-mysql mysql ccb_platform: SHOW CREATE TABLE dm_component_person + 种子查询",
+              "exit_code": 0,
+              "salient_output": "表结构与主键符合设计；DM_COMPONENT_PERSON_ROLE 类别 5824 + config 58240-58243 均落库且重跑不重复"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R1",
+              "result": "pass",
+              "evidence": "迁移检查通过；ComponentPersonMigrationMySqlTest 断言全新库建表、同系统同人员重复插入抛 SQLException、3 条多成员关系共存；本地库 SHOW CREATE 确认主键与索引",
+              "limitations": [
+                "测试未覆盖生产存量库脏数据形态"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "迁移测试断言 1 个类别 + 4 个 config（config_key 均带 DM_COMPONENT_PERSON_ROLE. 前缀）且重跑幂等；本地库查询确认 4 项默认选项",
+              "limitations": [
+                "运行期字典增删改的后置影响将在 T3/T4 覆盖"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 实施 + 独立观测：查询/导出/成员选项实现落盘；ComponentPersonQueryMySqlTest 5 run 0 fail",
+        "recorded_at": "2026-09-19T03:14:58+00:00",
+        "data": {
+          "iteration_id": "I2",
+          "task_id": "T2",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+              "purpose": "components 列表批查 persons/person_count；exportComponents 追加‘关联人员（角色）’列（姓名（角色）逗号拼接，空=-）；新增 getMemberOptions 仅返回当前项目未删除且启用的成员（pm_project_member JOIN sys_user）"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+              "purpose": "新增 GET /api/data-migration/components/member-options（读权限沿用类级集合注解）"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+              "purpose": "登记 DM_COMPONENT_PERSON_ROLE 常量并加入 ALLOWED_CATEGORIES，使 /options/DM_COMPONENT_PERSON_ROLE 通路可用（R8 前置）"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonQueryMySqlTest.java",
+              "purpose": "Testcontainers：列表 persons 按项目范围、空关系空数组+0、导出列内容、member-options 排除非成员/停用用户/停用成员、无项目权限 FORBIDDEN"
+            }
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonQueryMySqlTest -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 5, Failures: 0, Errors: 0, Skipped: 0"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "ComponentPersonQueryMySqlTest 断言：列表仅含项目 91 组件、SYS-A 带 2 人（张三负责人/李四对接人+label）、SYS-B 1 人、无关系组件 persons 空数组且 person_count=0；项目中项目 92 组件不出现",
+              "limitations": [
+                "大数据量分页批查性能未实测（项目内关系量小的假设 A3）"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "memberOptionsExcludeDisabledAndNonProjectMembers 断言：选项含启用成员 7/9，排除停用用户 8、其他项目成员 10、停用成员关系 11；无项目权限时 BusinessException(FORBIDDEN)",
+              "limitations": [
+                "多租户隔离仅按单租户语义验证"
+              ]
+            },
+            {
+              "requirement_id": "R7",
+              "result": "pass",
+              "evidence": "exportAddsPersonsRoleColumnAndUsesDashForEmpty 断言：末尾列头‘关联人员（角色）’、SYS-A=张三（负责人）, 李四（对接人）、SYS-B 单值、无关系 SYS-D='-'",
+              "limitations": []
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 实施 + 独立观测：写路径/权限/审计/级联实现；14 个新增用例 0 失败；全量测试仅剩 3 个既有缺陷类（基线 stash 对照）；live API 全链路与审计验证通过",
+        "recorded_at": "2026-09-19T03:32:27+00:00",
+        "data": {
+          "iteration_id": "I3",
+          "task_id": "T3",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+              "purpose": "新增 getPersons（requireProject+组件存在校验）、savePersons（全量替换：requireAdmin 复核、角色字典 requireActive、成员归属/启用校验、事务删除后插入、COMPONENT_PERSON_SAVE 审计）；deleteComponent 同事务先删关系再删组件"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+              "purpose": "新增 GET /components/persons 与 PUT /components/persons（写权限 data-migration:manage/system:admin 注解）"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonWriteMySqlTest.java",
+              "purpose": "Testcontainers：全量替换+审计、非成员/停用用户/停用成员/非法角色/空角色/重复人员/组件不存在拒绝、角色选项种子、删除级联"
+            },
+            {
+              "path_or_resource": "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ComponentPersonControllerSecurityTest.java",
+              "purpose": "控制器权限声明：savePersons 方法级 manage/system:admin；读端点沿用类级集合权限"
+            }
+          ],
+          "commands": [
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest='ComponentPersonWriteMySqlTest,ComponentPersonControllerSecurityTest,ComponentPersonQueryMySqlTest,ComponentPersonMigrationMySqlTest' -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Write 7 run 0 fail；Security 1 run 0 fail；Query 5 run 0 fail；Migration 1 run 0 fail"
+            },
+            {
+              "command": "mvn -pl :ccb-boot -am test",
+              "exit_code": 1,
+              "salient_output": "Tests run: 225, Failures: 6, Errors: 9 —— 全部集中在 DataMigrationModuleRegistrationTest(缺 V157/V161 等迁移文件)、DataMigrationGovernanceRemediationMySqlTest、IssueMigrationMySqlTest 三个既有缺陷类；经 git stash 基线对照确认本改动未引入新失败"
+            },
+            {
+              "command": "后端重启后 live API：登录→options 4 项→create SYS-K→PUT persons→GET persons→components 列表 persons/person_count→export 含'关联人员（角色）'列",
+              "exit_code": 0,
+              "salient_output": "API 全链路 0 OK；列表返回 persons=[{user_id:1,display_name:'管理员',person_role:'OWNER',person_role_label:'负责人'}] count=1；审计 COMPONENT_PERSON_SAVE detail_json 含 personCount"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R4",
+              "result": "pass",
+              "evidence": "savePersonsReplacesRelationsAndWritesAudit 断言事务替换+审计行；savePersonsRejectsNonActiveMembers/InvalidRole/UnknownComponent 断言各类拒绝；ComponentPersonControllerSecurityTest 断言方法级 manage/system:admin；live PUT 成功写 dm_operation_log",
+              "limitations": [
+                "审计 entity_id 为 NULL、systemCode 与 personCount 放入 detail_json（dm_operation_log.entity_id 为 BIGINT，存 system_code 类型不兼容，沿用既有 COMPONENT 审计惯例）"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "roleOptionsReturnSeededDefaults 断言 4 项 value/label；live /options/DM_COMPONENT_PERSON_ROLE 返回负责人/对接人/业务人员/实施人员；savePersons 以 requireActive 拒绝非法角色",
+              "limitations": [
+                "运行期字典被删改的后置影响依赖 T4 下拉与 T5 浏览器验收"
+              ]
+            },
+            {
+              "requirement_id": "R9",
+              "result": "pass",
+              "evidence": "deleteComponentCascadesRelationsAndKeepsOthers 断言 SYS-A 关系清零、SYS-B 保留、COMPONENT_DELETE 审计仍在",
+              "limitations": [
+                "未覆盖删除回滚路径"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 4,
+        "evidence": "T4 实施 + 独立观测：前端 API 与页面实现；npm build 通过；git diff --check 干净",
+        "recorded_at": "2026-09-19T03:36:07+00:00",
+        "data": {
+          "iteration_id": "I4",
+          "task_id": "T4",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/api/data-migration.ts",
+              "purpose": "新增 ComponentPerson/ComponentMemberOption 类型、DataMigrationComponent.persons/person_count 字段、getComponentPersons/getComponentMemberOptions/saveComponentPersons 封装、DM_CODE_CATEGORIES.componentPersonRole"
+            },
+            {
+              "path_or_resource": "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+              "purpose": "PersonChips 组件（前2成员 UiUserIdentity+角色标签、+N 浮层、无关系 -）；桌面表格与移动卡片新增‘关联人员’列；查看弹窗新增‘关联人员’区块（canManage 增删/选角色/全量保存+加载/空/失败/无权限/提交中状态；只读仅展示）；弹窗宽度改 min(600px, calc(100vw - 24px)) 防移动溢出"
+            }
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc --noEmit && vite build 成功；仅既存 chunk>500kB 警告"
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "无空白错误"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R5",
+              "result": "pass",
+              "evidence": "列表列/移动卡片由 PersonChips 渲染：UiUserIdentity(:user-id+:fallback-name) 前 2 名折叠 +N 浮层（el-popover 完整列表），复用 UiUserIdentity 自带 hover/点击人员详情浮层；无关系显示 -",
+              "limitations": [
+                "视口无溢出与浮层可达性待 T5 真实浏览器验收"
+              ]
+            },
+            {
+              "requirement_id": "R6",
+              "result": "pass",
+              "evidence": "canManage 分支才渲染增删/选角色/保存控件与加载/空/失败/无权限/提交中态；只读 v-else 仅 PersonChips 展示；personsSaving 禁用重复提交",
+              "limitations": [
+                "重复点击请求级去重依赖按钮 loading"
+              ]
+            },
+            {
+              "requirement_id": "R8",
+              "result": "pass",
+              "evidence": "角色下拉来自 getDataMigrationParamOptions(DM_COMPONENT_PERSON_ROLE)；选项缺失时 el-alert 提示‘请先在系统管理/参数管理配置类别 DM_COMPONENT_PERSON_ROLE’且列表展示不阻塞",
+              "limitations": []
+            },
+            {
+              "requirement_id": "R10",
+              "result": "pass",
+              "evidence": "前端构建通过（类型检查+生产构建）；状态覆盖：加载(skeleton)/空(暂无)/失败(error alert+重试)/无权限(forbidden alert)/提交中(保存按钮 loading 禁用)；深浅主题由既有语义变量继承",
+              "limitations": [
+                "浏览器视口验收证据在 T5"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "controlling"
+        }
+      },
+      {
+        "revision": 5,
+        "evidence": "T5 真实浏览器验收 52/52 通过（playwright chromium-1234，4 视口 x 管理员/只读 + R10 状态注入）；聚焦后端测试 14 run 0 fail；Flyway 212 迁移检查通过；git diff --check 通过；证据 /tmp/dm-control/evidence/",
+        "recorded_at": "2026-09-19T04:05:17+00:00",
+        "data": {
+          "iteration_id": "I5",
+          "task_id": "T5",
+          "status": "verified",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "local-验收数据(不入库文件)",
+              "purpose": "本地库 940003：重建真实组件 PAY-CORE/ORDER-SVC 并各关联 2-4 名成员(不同角色)；创建只读验收账号 dm_ro_accept(仅 data-migration:base:components 读权限+组件清单只读项目角色)；清理虚拟组件 SYS-K(顺带复验 T9 服务端级联删除)"
+            },
+            {
+              "path_or_resource": "http://localhost:5173 + :8080",
+              "purpose": "真实浏览器验收（playwright/chromium-1234）：4 视口 x 管理员/只读账号 + R10 状态注入"
+            }
+          ],
+          "commands": [
+            {
+              "command": "node /tmp/dm-control/browser-acceptance.mjs",
+              "exit_code": 0,
+              "salient_output": "52/52 通过：关联人员列(表+移动卡片)、前2人折叠+2人浮层、姓名悬浮/触屏点按人员详情浮层、查看弹窗管理(增删/选角色/保存/提交中禁用)、只读账号无管理控件、导出 Excel 含‘关联人员（角色）’列、空/失败/无权限态、深浅主题无横向溢出、无控制台错误；证据 /tmp/dm-control/evidence/（acceptance-results.json + 12 张截图 + export-admin.xlsx）"
+            },
+            {
+              "command": "python3 校验 export-admin.xlsx",
+              "exit_code": 0,
+              "salient_output": "表头‘关联人员（角色）’存在；ORDER-SVC=张统筹（负责人）, 钱 retail2 BA（业务人员）；PAY-CORE=张统筹（负责人）, 李 retail1 BA（业务人员）, 王 retail1 架构（实施人员）, 赵 retail1 PM（对接人）"
+            },
+            {
+              "command": "API 复验 components/persons",
+              "exit_code": 0,
+              "salient_output": "PAY-CORE person_count=4（OWNER/BUSINESS/IMPLEMENTER/LIAISON），ORDER-SVC person_count=2；只读账号读接口 200、写 persons 40300 Forbidden"
+            },
+            {
+              "command": "mvn -pl :ccb-data-migration -am -Dtest='ComponentPersonMigrationMySqlTest,ComponentPersonQueryMySqlTest,ComponentPersonWriteMySqlTest,ComponentPersonControllerSecurityTest' -Dsurefire.failIfNoSpecifiedTests=false test",
+              "exit_code": 0,
+              "salient_output": "Tests run: 14, Failures: 0, Errors: 0; BUILD SUCCESS"
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs && git diff --check",
+              "exit_code": 0,
+              "salient_output": "Flyway migration check passed for 212 migration(s)；git diff --check 无空白错误"
+            }
+          ],
+          "checks": [
+            {
+              "requirement_id": "R10",
+              "result": "pass",
+              "evidence": "真实浏览器覆盖全部状态：空态‘暂无组件数据’、失败态‘组件清单加载失败’+重新加载、无权限态‘暂无组件清单查看权限’、提交中保存按钮 is-loading 禁用、成功提示；375x812/390x844/430x932/1280x800 深浅主题均 scrollWidth==clientWidth 无横向溢出；控制台无应用错误（注入的 500/403 除外）。同轮浏览器还复验了 R5（桌面表格+移动卡片‘关联人员’列、前端2人+角色标签折叠、+2 浮层完整4人、姓名悬浮/触屏点按 UiUserIdentity 人员详情浮层）、R6（管理员弹窗增删/选角色/全量保存，添加-保存-移除-保存链路成功且列表同步，只读账号仅 PersonChips 展示无管理控件）、R7（导出 Excel 表头与‘姓名（角色）’逗号分隔内容正确）、R9（删除 SYS-K 时关联关系级联清理无残留）；只读账号(dm_ro_accept)读接口 200、写接口 40300 Forbidden",
+              "limitations": [
+                "无权限/失败态为注入的 500/403 响应模拟",
+                "超长人员名单极端场景未覆盖"
+              ]
+            }
+          ],
+          "feedback": [],
+          "correction": null,
+          "next": "verifying"
+        }
+      }
+    ],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "收敛检查：10/10 需求 pass（R1-R10）、任务 I1-I5 全 verified、open_feedback 空、集成检查（flyway/governance/聚焦测试 14-0/前端构建/浏览器 52-52）通过；残余风险已披露",
+        "recorded_at": "2026-09-19T04:07:11+00:00",
+        "data": {
+          "artifact": "ConvergenceReport",
+          "schema_version": 1,
+          "definition_revision": "definition-1",
+          "control_prefix": "req-20260919-076-dm-component-person",
+          "requirement_results": [
+            {
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "V214 迁移 Testcontainers 新建库/存量库幂等执行（1 run 0 fail）",
+                "主键 (tenant_id,project_id,system_code,user_id)+person_role 无软删，同系统同人员重复插入被唯一键拒绝",
+                "本地库 SHOW CREATE 核对；check-flyway 212 迁移通过"
+              ],
+              "limitations": [
+                "测试未覆盖生产存量库脏数据形态"
+              ],
+              "requirement_id": "R1"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "ComponentPersonQueryMySqlTest 5/5：列表/导出返回 persons(user_id,display_name,person_role)+person_count 且按项目数据范围",
+                "空关系 persons=[] 且 person_count=0",
+                "live API 复验 PAY-CORE 4 人/ORDER-SVC 2 人"
+              ],
+              "limitations": [
+                "大数据量分页批查性能未实测（项目内关系量小的假设 A3）"
+              ],
+              "requirement_id": "R2"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "member-options 仅返回 pm_project_member 未删除+启用 且 sys_user 未删除+启用成员（单测排除非成员/停用用户/停用成员）",
+                "无项目权限返回 FORBIDDEN",
+                "live API 返回 7 名启用成员"
+              ],
+              "limitations": [
+                "多租户隔离仅按单租户语义验证"
+              ],
+              "requirement_id": "R3"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T3"
+              ],
+              "evidence": [
+                "ComponentPersonWriteMySqlTest 7/7：全量替换事务成功并写 dm_operation_log(COMPONENT_PERSON_SAVE)",
+                "ComponentPersonControllerSecurityTest 1/1：无 data-migration:manage/system:admin 403",
+                "组件不存在/成员非项目成员/非法角色被拒；live API 全链路复验"
+              ],
+              "limitations": [],
+              "requirement_id": "R4"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "桌面表格与移动卡片‘关联人员’列（PersonChips：前端 2 人+角色标签、+N 浮层、无关系 -）",
+                "浏览器 1280/375/390/430：PAY-CORE 折叠 2 人 + +2 浮层完整 4 人；姓名悬浮/触屏点按 UiUserIdentity 详情浮层（姓名/电话/组织/角色）"
+              ],
+              "limitations": [],
+              "requirement_id": "R5"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "查看弹窗‘关联人员’区块：管理员增删/选角色/全量保存（添加-保存 5 人-移除-恢复 4 人链路成功且列表同步）",
+                "只读账号 dm_ro_accept 仅 PersonChips 展示、无任何管理控件",
+                "提交中保存按钮 loading 禁用防重复"
+              ],
+              "limitations": [],
+              "requirement_id": "R6"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T5"
+              ],
+              "evidence": [
+                "单测断言导出列头‘关联人员（角色）’与‘姓名（角色）’逗号拼接、空关系 -",
+                "浏览器下载 export-admin.xlsx 解析复核：‘张统筹（负责人）, 李 retail1 BA（业务人员）, 王 retail1 架构（实施人员）, 赵 retail1 PM（对接人）’"
+              ],
+              "limitations": [],
+              "requirement_id": "R7"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "迁移幂等种子类别 5824 DM_COMPONENT_PERSON_ROLE + 四默认选项 58240-58243",
+                "服务端 requireActive 校验非法角色；DataMigrationCodeValueService 登记 ALLOWED_CATEGORIES 使 /options 通路可用",
+                "前端角色下拉取自该类别，选项缺失有配置提示"
+              ],
+              "limitations": [],
+              "requirement_id": "R8"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "deleteComponent 同事务级联删除 dm_component_person（单测断言）",
+                "T5 live 删除 SYS-K 时其关联关系级联清理无残留"
+              ],
+              "limitations": [],
+              "requirement_id": "R9"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "真实浏览器状态覆盖：空态/加载失败+重试/无权限(403 注入)/提交中 loading 禁用+成功提示",
+                "375x812/390x844/430x932/1280x800 深浅主题均无横向溢出、控制台无应用错误",
+                "代码侧覆盖 loading skeleton、失败 alert、只读无权限提示"
+              ],
+              "limitations": [
+                "无权限/失败态为注入的 500/403 响应模拟",
+                "超长人员名单极端场景未覆盖"
+              ],
+              "requirement_id": "R10"
+            }
+          ],
+          "task_results": [
+            {
+              "evidence": [
+                "迁移实现+观测 1 run 0 fail",
+                "本地库核对种子幂等"
+              ],
+              "task_id": "T1",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "查询/导出/成员选项 5 run 0 fail"
+              ],
+              "task_id": "T2",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "写路径 7+1 run 0 fail",
+                "live API 全链路"
+              ],
+              "task_id": "T3",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "前端生产构建通过",
+                "git diff --check 无空白错误"
+              ],
+              "task_id": "T4",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "真实浏览器 52/52（证据 /tmp/dm-control/evidence/）",
+                "聚焦后端测试 14 run 0 fail",
+                "flyway 212 迁移与空白检查通过"
+              ],
+              "task_id": "T5",
+              "result": "verified"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "数据范围恒等于当前项目，跨租户数据不可见",
+              "result": "pass",
+              "evidence": [
+                "requireProject/requireAccessible 单测与 live API 复验：非项目成员/无项目权限 403",
+                "跨项目 systemCode 以组件不存在拒绝"
+              ]
+            },
+            {
+              "invariant": "dm_component 自然键不变，不修改主表结构与启停逻辑",
+              "result": "pass",
+              "evidence": [
+                "仅新增 dm_component_person 表与读扩展字段，未改动 dm_component 结构/启停/既有接口签名"
+              ]
+            },
+            {
+              "invariant": "一人一角色一关系（主键唯一约束）",
+              "result": "pass",
+              "evidence": [
+                "迁移唯一键 + validatePersons 重复拒绝 + 前端可用成员过滤已选"
+              ]
+            }
+          ],
+          "gate_result": "pass",
+          "route_reason": "10 条需求全部 pass（must 9/should 1）均绑定 measurement 与 action_bound；任务 I1-I5 全部 verified；open_feedback 为空；集成检查（Flyway/governance/聚焦测试 14-0/前端构建/浏览器 52-52）通过；残余风险已披露且不阻断交付，route_reason=converged",
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {}
+          },
+          "sample_trend": [],
+          "regression_checks": [
+            {
+              "check": "node scripts/check-flyway-migrations.mjs",
+              "result": "pass",
+              "evidence": "212 migrations, 1 callback, 1 legacy"
+            },
+            {
+              "check": "node scripts/check-all-governance.mjs",
+              "result": "pass",
+              "evidence": "历史任务账本告警与本需求无关；本需求账本零告警"
+            },
+            {
+              "check": "mvn 聚焦测试 ComponentPerson*",
+              "result": "pass",
+              "evidence": "14 run 0 fail BUILD SUCCESS"
+            },
+            {
+              "check": "npm --prefix web run build && git diff --check",
+              "result": "pass",
+              "evidence": "生产构建成功；无空白错误"
+            },
+            {
+              "check": "真实浏览器验收",
+              "result": "pass",
+              "evidence": "52/52；/tmp/dm-control/evidence/（acceptance-results.json、12 张截图、export-admin.xlsx）"
+            }
+          ],
+          "residual_risks": [
+            {
+              "risk": "全量替换并发：同一系统并发编辑后提交覆盖先提交",
+              "mitigation": "需求确认最后提交生效；前端提交中禁用+保存后重载"
+            },
+            {
+              "risk": "审计 COMPONENT_PERSON_SAVE 沿用 entity_id=NULL、详情在 detail_json（dm_operation_log.entity_id 为 BIGINT，COMPONENT 既有操作均 NULL）",
+              "mitigation": "与既有 COMPONENT 审计一致，记录 personCount 可追溯"
+            },
+            {
+              "risk": "本地库 pm_project.project_name(940003) 等存在历史双重编码脏数据",
+              "mitigation": "已知基线问题与本需求无关；验收账号展示名已 utf8mb4 修复"
+            },
+            {
+              "risk": "后端全量测试存在 3 个既有缺陷类失败（干净基线可复现，与本需求无关）",
+              "mitigation": "聚焦测试 14/14 通过；缺陷类不涉及本需求文件"
+            },
+            {
+              "risk": "只读验收账号依赖本地新增菜单权限 7499 与项目只读角色 99（仅本地验收数据）",
+              "mitigation": "不入版本库；生产只读口径由既有 RBAC 体系按权限分配"
+            }
+          ],
+          "summary": "10 条需求全部 pass（must 9/should 1），任务 I1-I5 全部 verified，open_feedback 为空，集成检查通过，残余风险已披露且不阻断交付",
+          "verdict": "converged",
+          "open_feedback": []
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "收敛检查 v2：不变量标识修正为与状态账本一致；10/10 需求 pass、任务 I1-I5 全 verified、open_feedback 空",
+        "recorded_at": "2026-09-19T04:07:29+00:00",
+        "data": {
+          "artifact": "ConvergenceReport",
+          "schema_version": 1,
+          "definition_revision": "definition-1",
+          "control_prefix": "req-20260919-076-dm-component-person",
+          "requirement_results": [
+            {
+              "result": "pass",
+              "task_ids": [
+                "T1"
+              ],
+              "evidence": [
+                "V214 迁移 Testcontainers 新建库/存量库幂等执行（1 run 0 fail）",
+                "主键 (tenant_id,project_id,system_code,user_id)+person_role 无软删，同系统同人员重复插入被唯一键拒绝",
+                "本地库 SHOW CREATE 核对；check-flyway 212 迁移通过"
+              ],
+              "limitations": [
+                "测试未覆盖生产存量库脏数据形态"
+              ],
+              "requirement_id": "R1"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "ComponentPersonQueryMySqlTest 5/5：列表/导出返回 persons(user_id,display_name,person_role)+person_count 且按项目数据范围",
+                "空关系 persons=[] 且 person_count=0",
+                "live API 复验 PAY-CORE 4 人/ORDER-SVC 2 人"
+              ],
+              "limitations": [
+                "大数据量分页批查性能未实测（项目内关系量小的假设 A3）"
+              ],
+              "requirement_id": "R2"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T2"
+              ],
+              "evidence": [
+                "member-options 仅返回 pm_project_member 未删除+启用 且 sys_user 未删除+启用成员（单测排除非成员/停用用户/停用成员）",
+                "无项目权限返回 FORBIDDEN",
+                "live API 返回 7 名启用成员"
+              ],
+              "limitations": [
+                "多租户隔离仅按单租户语义验证"
+              ],
+              "requirement_id": "R3"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T3"
+              ],
+              "evidence": [
+                "ComponentPersonWriteMySqlTest 7/7：全量替换事务成功并写 dm_operation_log(COMPONENT_PERSON_SAVE)",
+                "ComponentPersonControllerSecurityTest 1/1：无 data-migration:manage/system:admin 403",
+                "组件不存在/成员非项目成员/非法角色被拒；live API 全链路复验"
+              ],
+              "limitations": [],
+              "requirement_id": "R4"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "桌面表格与移动卡片‘关联人员’列（PersonChips：前端 2 人+角色标签、+N 浮层、无关系 -）",
+                "浏览器 1280/375/390/430：PAY-CORE 折叠 2 人 + +2 浮层完整 4 人；姓名悬浮/触屏点按 UiUserIdentity 详情浮层（姓名/电话/组织/角色）"
+              ],
+              "limitations": [],
+              "requirement_id": "R5"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "查看弹窗‘关联人员’区块：管理员增删/选角色/全量保存（添加-保存 5 人-移除-恢复 4 人链路成功且列表同步）",
+                "只读账号 dm_ro_accept 仅 PersonChips 展示、无任何管理控件",
+                "提交中保存按钮 loading 禁用防重复"
+              ],
+              "limitations": [],
+              "requirement_id": "R6"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T2",
+                "T5"
+              ],
+              "evidence": [
+                "单测断言导出列头‘关联人员（角色）’与‘姓名（角色）’逗号拼接、空关系 -",
+                "浏览器下载 export-admin.xlsx 解析复核：‘张统筹（负责人）, 李 retail1 BA（业务人员）, 王 retail1 架构（实施人员）, 赵 retail1 PM（对接人）’"
+              ],
+              "limitations": [],
+              "requirement_id": "R7"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T1",
+                "T3",
+                "T4"
+              ],
+              "evidence": [
+                "迁移幂等种子类别 5824 DM_COMPONENT_PERSON_ROLE + 四默认选项 58240-58243",
+                "服务端 requireActive 校验非法角色；DataMigrationCodeValueService 登记 ALLOWED_CATEGORIES 使 /options 通路可用",
+                "前端角色下拉取自该类别，选项缺失有配置提示"
+              ],
+              "limitations": [],
+              "requirement_id": "R8"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T3",
+                "T5"
+              ],
+              "evidence": [
+                "deleteComponent 同事务级联删除 dm_component_person（单测断言）",
+                "T5 live 删除 SYS-K 时其关联关系级联清理无残留"
+              ],
+              "limitations": [],
+              "requirement_id": "R9"
+            },
+            {
+              "result": "pass",
+              "task_ids": [
+                "T4",
+                "T5"
+              ],
+              "evidence": [
+                "真实浏览器状态覆盖：空态/加载失败+重试/无权限(403 注入)/提交中 loading 禁用+成功提示",
+                "375x812/390x844/430x932/1280x800 深浅主题均无横向溢出、控制台无应用错误",
+                "代码侧覆盖 loading skeleton、失败 alert、只读无权限提示"
+              ],
+              "limitations": [
+                "无权限/失败态为注入的 500/403 响应模拟",
+                "超长人员名单极端场景未覆盖"
+              ],
+              "requirement_id": "R10"
+            }
+          ],
+          "task_results": [
+            {
+              "evidence": [
+                "迁移实现+观测 1 run 0 fail",
+                "本地库核对种子幂等"
+              ],
+              "task_id": "T1",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "查询/导出/成员选项 5 run 0 fail"
+              ],
+              "task_id": "T2",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "写路径 7+1 run 0 fail",
+                "live API 全链路"
+              ],
+              "task_id": "T3",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "前端生产构建通过",
+                "git diff --check 无空白错误"
+              ],
+              "task_id": "T4",
+              "result": "verified"
+            },
+            {
+              "evidence": [
+                "真实浏览器 52/52（证据 /tmp/dm-control/evidence/）",
+                "聚焦后端测试 14 run 0 fail",
+                "flyway 212 迁移与空白检查通过"
+              ],
+              "task_id": "T5",
+              "result": "verified"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "数据范围恒等于当前项目（顶部项目切换器），跨租户数据不可见",
+              "result": "pass",
+              "evidence": [
+                "requireProject/requireAccessible 单测与 live API 复验：非项目成员/无项目权限 403",
+                "跨项目 systemCode 以组件不存在拒绝"
+              ]
+            },
+            {
+              "invariant": "dm_component 自然键不变，不修改主表结构与启停逻辑",
+              "result": "pass",
+              "evidence": [
+                "仅新增 dm_component_person 表与读扩展字段，未改动 dm_component 结构/启停/既有接口签名"
+              ]
+            },
+            {
+              "invariant": "一个系统可关联多成员，成员按一人一角色一关系存储（主键唯一约束）",
+              "result": "pass",
+              "evidence": [
+                "迁移唯一键 + validatePersons 重复拒绝 + 前端可用成员过滤已选"
+              ]
+            }
+          ],
+          "gate_result": "pass",
+          "route_reason": "10 条需求全部 pass（must 9/should 1）均绑定 measurement 与 action_bound；任务 I1-I5 全部 verified；open_feedback 为空；集成检查（Flyway/governance/聚焦测试 14-0/前端构建/浏览器 52-52）通过；残余风险已披露且不阻断交付，route_reason=converged",
+          "feedback_summary": {
+            "total": 0,
+            "accepted_open": 0,
+            "escalated": 0,
+            "deferred_by_severity": {}
+          },
+          "sample_trend": [],
+          "regression_checks": [
+            {
+              "check": "node scripts/check-flyway-migrations.mjs",
+              "result": "pass",
+              "evidence": "212 migrations, 1 callback, 1 legacy"
+            },
+            {
+              "check": "node scripts/check-all-governance.mjs",
+              "result": "pass",
+              "evidence": "历史任务账本告警与本需求无关；本需求账本零告警"
+            },
+            {
+              "check": "mvn 聚焦测试 ComponentPerson*",
+              "result": "pass",
+              "evidence": "14 run 0 fail BUILD SUCCESS"
+            },
+            {
+              "check": "npm --prefix web run build && git diff --check",
+              "result": "pass",
+              "evidence": "生产构建成功；无空白错误"
+            },
+            {
+              "check": "真实浏览器验收",
+              "result": "pass",
+              "evidence": "52/52；/tmp/dm-control/evidence/（acceptance-results.json、12 张截图、export-admin.xlsx）"
+            }
+          ],
+          "residual_risks": [
+            {
+              "risk": "全量替换并发：同一系统并发编辑后提交覆盖先提交",
+              "mitigation": "需求确认最后提交生效；前端提交中禁用+保存后重载"
+            },
+            {
+              "risk": "审计 COMPONENT_PERSON_SAVE 沿用 entity_id=NULL、详情在 detail_json（dm_operation_log.entity_id 为 BIGINT，COMPONENT 既有操作均 NULL）",
+              "mitigation": "与既有 COMPONENT 审计一致，记录 personCount 可追溯"
+            },
+            {
+              "risk": "本地库 pm_project.project_name(940003) 等存在历史双重编码脏数据",
+              "mitigation": "已知基线问题与本需求无关；验收账号展示名已 utf8mb4 修复"
+            },
+            {
+              "risk": "后端全量测试存在 3 个既有缺陷类失败（干净基线可复现，与本需求无关）",
+              "mitigation": "聚焦测试 14/14 通过；缺陷类不涉及本需求文件"
+            },
+            {
+              "risk": "只读验收账号依赖本地新增菜单权限 7499 与项目只读角色 99（仅本地验收数据）",
+              "mitigation": "不入版本库；生产只读口径由既有 RBAC 体系按权限分配"
+            }
+          ],
+          "summary": "10 条需求全部 pass（must 9/should 1），任务 I1-I5 全部 verified，open_feedback 为空，集成检查通过，残余风险已披露且不阻断交付",
+          "verdict": "converged",
+          "open_feedback": []
+        }
+      }
+    ]
+  },
+  "objective": "在系统/组件清单中按项目维护每个系统与当前项目成员的关联及职责角色，列表可查看、浮层可看详情、抽屉可管理，写操作经服务端权限校验并审计。",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "新增 dm_component_person 表，主键 (tenant_id, project_id, system_code, user_id)，每条关系带 person_role，无软删",
+      "acceptance": [
+        "全新库与存量库迁移成功",
+        "同一系统同一人员重复保存被拒绝",
+        "一个系统可关联多个成员"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "同系统同人员出现两条记录",
+        "迁移不可重复执行"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "components 列表与 export 返回每个系统的关联人员（user_id、display_name、person_role）与 person_count",
+      "acceptance": [
+        "按项目数据范围返回",
+        "无关系时 persons 为空数组且 person_count=0"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "返回其他项目人员",
+        "行内缺失 persons 字段"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "成员选项接口仅返回当前项目未删除且启用的成员（pm_project_member JOIN sys_user）",
+      "acceptance": [
+        "非项目成员不出现在选项中",
+        "无项目数据权限返回明确错误"
+      ],
+      "priority": "must",
+      "source": "用户决策 B：人员来源=当前项目成员",
+      "counterexample": [
+        "非项目成员可选",
+        "停用成员可选"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "全量替换保存接口（写权限 data-migration:manage/system:admin）服务端校验组件存在、成员归属与启用，并写 dm_operation_log",
+      "acceptance": [
+        "合法保存事务成功并审计",
+        "无权限返回 403",
+        "组件不存在或成员不属于项目被拒绝"
+      ],
+      "priority": "must",
+      "source": "工程规约：受保护接口服务端校验与审计",
+      "counterexample": [
+        "前端可绕过权限直接保存",
+        "保存不写审计"
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "桌面表格与移动卡片新增‘关联人员’列，成员姓名复用 UiUserIdentity，悬浮/点击显示人员详情浮层",
+      "acceptance": [
+        "375/390/430 与桌面视口无横向溢出",
+        "人数多时折叠为前 2 个 +N 且浮层完整可看"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "页面出现横向滚动条",
+        "浮层在手机端不可触达"
+      ]
+    },
+    {
+      "id": "R6",
+      "statement": "查看抽屉新增‘关联人员’区块：有写权限可增删、选角色并保存；只读仅展示",
+      "acceptance": [
+        "覆盖加载/空/失败/无权限/提交中状态",
+        "重复点击不产生重复请求或重复数据"
+      ],
+      "priority": "must",
+      "source": "用户确认",
+      "counterexample": [
+        "保存中可重复提交",
+        "只读用户出现编辑控件"
+      ]
+    },
+    {
+      "id": "R7",
+      "statement": "Excel 导出增加‘关联人员（角色）’列，按‘姓名（角色）’逗号分隔",
+      "acceptance": [
+        "空关系显示 -",
+        "列名与内容与列表一致"
+      ],
+      "priority": "should",
+      "source": "设计建议",
+      "counterexample": [
+        "导出缺少关联人员列"
+      ]
+    },
+    {
+      "id": "R8",
+      "statement": "person_role 为参数管理类别 DM_COMPONENT_PERSON_ROLE 的受控字典值，迁移幂等种子默认选项",
+      "acceptance": [
+        "下拉选项来自字典",
+        "类别缺失时提示配置且不阻塞列表展示"
+      ],
+      "priority": "must",
+      "source": "用户确认默认项",
+      "counterexample": [
+        "角色为自由文本输入",
+        "类别缺失时保存仍允许任意值"
+      ]
+    },
+    {
+      "id": "R9",
+      "statement": "组件物理删除时按 (tenant_id, project_id, system_code) 级联删除关系",
+      "acceptance": [
+        "删除组件后该组件关系不再出现",
+        "其他组件关系不受影响"
+      ],
+      "priority": "must",
+      "source": "工程事实：组件无软删、关系须一致",
+      "counterexample": [
+        "删除组件后残留孤立关系"
+      ]
+    },
+    {
+      "id": "R10",
+      "statement": "加载、空、失败、无权限、提交中、重复提交状态齐全，深浅主题可读",
+      "acceptance": [
+        "按 design-h5.md 视口清单浏览器验收并记录证据"
+      ],
+      "priority": "must",
+      "source": "前端交付规约",
+      "counterexample": [
+        "移动端隐藏错误态或按钮不可达"
+      ]
+    }
+  ],
+  "invariants": [
+    "数据范围恒等于当前项目（顶部项目切换器），跨租户数据不可见",
+    "dm_component 自然键不变，不修改主表结构与启停逻辑",
+    "一个系统可关联多成员，成员按一人一角色一关系存储（主键唯一约束）"
+  ],
+  "constraints": [
+    "Flyway 只追加，不修改已发布脚本；V214 文件名与描述满足 check-flyway-migrations 规则",
+    "只写 codex-task-scope.yaml 的 writable_paths；platform/system、person-directory、web/src/components/ui 只读复用",
+    "写接口在服务端执行 RBAC、项目数据范围、成员归属与实体存在校验，写 dm_operation_log 审计",
+    "前端复用 web/src/components/ui 与交付示范中心设计，不新增样式体系",
+    "保持既有 Java 包名 com.ccb.datamigration、既有路由与 ApiResponse 结构"
+  ],
+  "non_goals": [
+    "不新增菜单或独立页面",
+    "不修改 dm_component 主表结构与权限模型",
+    "不做审批流、历史存量回填、人员导入导出"
+  ],
+  "predevelopment": {
+    "source": ".ai-control/requirements/req-20260919-076-dm-component-person/handoff.json",
+    "imported_at": "2026-09-19T03:03:03+00:00",
+    "topic": "req-20260919-076-dm-component-person",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260919-076-dm-component-person",
+      "handoff_status": "approved",
+      "created_at": "2026-09-19T02:42:56.834Z",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260919-076-dm-component-person",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-19-dm-component-person-design.md",
+        "objective": "在系统/组件清单中按项目维护每个系统与当前项目成员的关联及职责角色，列表可查看、浮层可看详情、抽屉可管理，写操作经服务端权限校验并审计。",
+        "users": [
+          "数据迁移管理员维护系统与成员关系",
+          "项目成员与查看用户只读查看关联人员与详情"
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "新增 dm_component_person 表，主键 (tenant_id, project_id, system_code, user_id)，每条关系带 person_role，无软删",
+            "acceptance": [
+              "全新库与存量库迁移成功",
+              "同一系统同一人员重复保存被拒绝",
+              "一个系统可关联多个成员"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "同系统同人员出现两条记录",
+              "迁移不可重复执行"
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "components 列表与 export 返回每个系统的关联人员（user_id、display_name、person_role）与 person_count",
+            "acceptance": [
+              "按项目数据范围返回",
+              "无关系时 persons 为空数组且 person_count=0"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "返回其他项目人员",
+              "行内缺失 persons 字段"
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "成员选项接口仅返回当前项目未删除且启用的成员（pm_project_member JOIN sys_user）",
+            "acceptance": [
+              "非项目成员不出现在选项中",
+              "无项目数据权限返回明确错误"
+            ],
+            "priority": "must",
+            "source": "用户决策 B：人员来源=当前项目成员",
+            "counterexample": [
+              "非项目成员可选",
+              "停用成员可选"
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "全量替换保存接口（写权限 data-migration:manage/system:admin）服务端校验组件存在、成员归属与启用，并写 dm_operation_log",
+            "acceptance": [
+              "合法保存事务成功并审计",
+              "无权限返回 403",
+              "组件不存在或成员不属于项目被拒绝"
+            ],
+            "priority": "must",
+            "source": "工程规约：受保护接口服务端校验与审计",
+            "counterexample": [
+              "前端可绕过权限直接保存",
+              "保存不写审计"
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "桌面表格与移动卡片新增‘关联人员’列，成员姓名复用 UiUserIdentity，悬浮/点击显示人员详情浮层",
+            "acceptance": [
+              "375/390/430 与桌面视口无横向溢出",
+              "人数多时折叠为前 2 个 +N 且浮层完整可看"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "页面出现横向滚动条",
+              "浮层在手机端不可触达"
+            ]
+          },
+          {
+            "id": "R6",
+            "statement": "查看抽屉新增‘关联人员’区块：有写权限可增删、选角色并保存；只读仅展示",
+            "acceptance": [
+              "覆盖加载/空/失败/无权限/提交中状态",
+              "重复点击不产生重复请求或重复数据"
+            ],
+            "priority": "must",
+            "source": "用户确认",
+            "counterexample": [
+              "保存中可重复提交",
+              "只读用户出现编辑控件"
+            ]
+          },
+          {
+            "id": "R7",
+            "statement": "Excel 导出增加‘关联人员（角色）’列，按‘姓名（角色）’逗号分隔",
+            "acceptance": [
+              "空关系显示 -",
+              "列名与内容与列表一致"
+            ],
+            "priority": "should",
+            "source": "设计建议",
+            "counterexample": [
+              "导出缺少关联人员列"
+            ]
+          },
+          {
+            "id": "R8",
+            "statement": "person_role 为参数管理类别 DM_COMPONENT_PERSON_ROLE 的受控字典值，迁移幂等种子默认选项",
+            "acceptance": [
+              "下拉选项来自字典",
+              "类别缺失时提示配置且不阻塞列表展示"
+            ],
+            "priority": "must",
+            "source": "用户确认默认项",
+            "counterexample": [
+              "角色为自由文本输入",
+              "类别缺失时保存仍允许任意值"
+            ]
+          },
+          {
+            "id": "R9",
+            "statement": "组件物理删除时按 (tenant_id, project_id, system_code) 级联删除关系",
+            "acceptance": [
+              "删除组件后该组件关系不再出现",
+              "其他组件关系不受影响"
+            ],
+            "priority": "must",
+            "source": "工程事实：组件无软删、关系须一致",
+            "counterexample": [
+              "删除组件后残留孤立关系"
+            ]
+          },
+          {
+            "id": "R10",
+            "statement": "加载、空、失败、无权限、提交中、重复提交状态齐全，深浅主题可读",
+            "acceptance": [
+              "按 design-h5.md 视口清单浏览器验收并记录证据"
+            ],
+            "priority": "must",
+            "source": "前端交付规约",
+            "counterexample": [
+              "移动端隐藏错误态或按钮不可达"
+            ]
+          }
+        ],
+        "invariants": [
+          "数据范围恒等于当前项目且跨租户不可见",
+          "dm_component 自然键 (tenant_id, project_id, system_code) 不变",
+          "Flyway 只追加不改历史迁移"
+        ],
+        "constraints": [
+          "只写 codex-task-scope.yaml 的 writable_paths",
+          "写接口服务端 RBAC + 项目数据范围 + 实体与成员归属校验",
+          "参数管理与人员档案能力只读复用",
+          "复用 web/src/components/ui 与 person-directory，不新增样式体系"
+        ],
+        "non_goals": [
+          "不新增菜单或独立页面",
+          "不修改 dm_component 主表结构与权限模型",
+          "不做审批流、历史存量回填、人员导入导出"
+        ],
+        "selected_approach": {
+          "name": "全量替换 + 受控角色字典 + UiUserIdentity 复用",
+          "reason": "符合模块既有惯例（参数管理码值、无软删、JdbcTemplate 列表扩展），UI 复用已验证人员卡片能力，一人一角色模型简单直接",
+          "alternatives": [
+            {
+              "name": "同租户任意 sys_user 作为人员来源",
+              "rejected_because": "用户选定仅限当前项目成员，数据范围更收敛"
+            },
+            {
+              "name": "角色用代码常量枚举",
+              "rejected_because": "加角色需发版，与模块 DM_PROGRAM_TYPE 等参数管理惯例不一致"
+            },
+            {
+              "name": "逐条 POST/DELETE 维护关系",
+              "rejected_because": "抽屉式批量管理下全量替换更幂等、冲突少"
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "business/data-migration 模块的组件服务与接口",
+              "ComponentsPage.vue 与 api/data-migration.ts",
+              "dm_component_person 迁移"
+            ],
+            "outside": [
+              "platform/system 参数管理与人员档案",
+              "pm_project_member 数据 Owner",
+              "物理子系统主数据"
+            ]
+          },
+          "components": [
+            {
+              "name": "ProjectComponentService",
+              "responsibility": "扩展列表/导出 persons，提供成员选项与关系全量保存",
+              "depends_on": [
+                "DataMigrationPermissionService",
+                "JdbcTemplate"
+              ]
+            },
+            {
+              "name": "ProjectComponentController",
+              "responsibility": "暴露 persons/member-options 接口并执行 RBAC",
+              "depends_on": [
+                "ProjectComponentService"
+              ]
+            },
+            {
+              "name": "DataMigrationCodeValueService",
+              "responsibility": "读取 DM_COMPONENT_PERSON_ROLE 选项",
+              "depends_on": [
+                "JdbcTemplate"
+              ]
+            },
+            {
+              "name": "ComponentsPage.vue",
+              "responsibility": "列表列与查看抽屉的关联人员区块",
+              "depends_on": [
+                "api/data-migration.ts",
+                "UiUserIdentity",
+                "person-directory store"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "GET /api/data-migration/components",
+              "producer": "ProjectComponentController",
+              "consumers": [
+                "ComponentsPage.vue"
+              ],
+              "contract": "现有分页查询，行内新增 person_count 与 persons"
+            },
+            {
+              "name": "GET /api/data-migration/components/persons",
+              "producer": "ProjectComponentController",
+              "consumers": [
+                "ComponentsPage.vue"
+              ],
+              "contract": "返回某系统关联人员列表"
+            },
+            {
+              "name": "GET /api/data-migration/components/member-options",
+              "producer": "ProjectComponentController",
+              "consumers": [
+                "ComponentsPage.vue"
+              ],
+              "contract": "返回当前项目启用成员选项"
+            },
+            {
+              "name": "PUT /api/data-migration/components/persons",
+              "producer": "ProjectComponentController",
+              "consumers": [
+                "ComponentsPage.vue"
+              ],
+              "contract": "全量替换某系统关联人员，写权限 + 审计"
+            },
+            {
+              "name": "DM_COMPONENT_PERSON_ROLE options",
+              "producer": "DataMigrationCodeValueService",
+              "consumers": [
+                "ComponentsPage.vue"
+              ],
+              "contract": "返回参数管理码值选项"
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "列表分页查询",
+              "transitions": [
+                "components 查询",
+                "按 (project_id, system_code) 批查关系与姓名",
+                "行内组装 persons"
+              ],
+              "output": "带 persons 的分页记录"
+            },
+            {
+              "input": "抽屉保存",
+              "transitions": [
+                "收集成员+角色",
+                "PUT 全量保存",
+                "校验/事务替换/审计",
+                "返回最新 persons"
+              ],
+              "output": "刷新列表与抽屉"
+            },
+            {
+              "input": "组件删除",
+              "transitions": [
+                "现有删除流程",
+                "同事务清理关系"
+              ],
+              "output": "组件与关系一并删除"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "成员不属于项目或已停用",
+            "behavior": "服务端拒绝并指名具体成员",
+            "recovery": "前端提示后调整选项"
+          },
+          {
+            "condition": "组件不存在或已删除",
+            "behavior": "返回实体不存在错误",
+            "recovery": "前端刷新列表"
+          },
+          {
+            "condition": "角色类别未配置",
+            "behavior": "下拉为空并提示到参数管理配置",
+            "recovery": "列表展示不受影响，角色标签显示原文"
+          },
+          {
+            "condition": "重复提交",
+            "behavior": "全量替换幂等，按钮提交中禁用",
+            "recovery": "成功后刷新"
+          },
+          {
+            "condition": "接口失败",
+            "behavior": "沿用页面错误态与重试",
+            "recovery": "el-result + 重新加载"
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "写接口 RBAC",
+            "requireProject 项目数据范围",
+            "成员归属与启用校验",
+            "dm_operation_log 审计",
+            "不信任前端身份与权限"
+          ],
+          "performance": [
+            "关系数据量小，列表单次批查",
+            "成员选项按项目全量返回"
+          ],
+          "compatibility": [
+            "迁移追加幂等",
+            "既有字段与接口不变，persons 为新增字段",
+            "导出列追加末尾"
+          ],
+          "operations": [
+            "参数类别由迁移种子后由参数管理维护",
+            "回退保留表无副作用"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R9"
+            ],
+            "signal": "迁移检查与级联删除行为",
+            "method": "check-flyway-migrations.mjs + Testcontainers 聚焦测试"
+          },
+          {
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R4"
+            ],
+            "signal": "列表 persons、成员范围、保存校验/权限/审计",
+            "method": "后端聚焦测试"
+          },
+          {
+            "requirement_ids": [
+              "R5",
+              "R6",
+              "R7",
+              "R10"
+            ],
+            "signal": "页面列、抽屉、浮层、导出与状态",
+            "method": "npm build + 真实浏览器 375/390/430/桌面验收"
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8",
+              "R9",
+              "R10"
+            ],
+            "signal": "治理与全量构建",
+            "method": "check-all-governance.mjs / git diff --check / mvn -pl :ccb-boot -am test"
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "pm_project_member 与 sys_user 的 deleted=0 表示有效",
+            "basis": "模块既有 SQL 使用 m.deleted=0 的惯例",
+            "falsifier": "字段语义与该默认不一致"
+          },
+          {
+            "text": "user-profiles/query 能按 sys_user.id 返回浮层所需姓名/头像/电话/团队",
+            "basis": "person-directory 与 UiUserIdentity 现有实现",
+            "falsifier": "接口对部分场景返回缺失"
+          },
+          {
+            "text": "项目内关系总量小，批查与全量替换可接受",
+            "basis": "组件清单项目内系统量与成员量均有限",
+            "falsifier": "出现单项目数千关系且保存延迟不可接受"
+          }
+        ],
+        "unknowns": [
+          {
+            "question": "DM_COMPONENT_PERSON_ROLE 默认选项（负责人/对接人/业务人员/实施人员）是否完全覆盖业务口径",
+            "impact": "选项不足时需在参数管理补充",
+            "owner": "数据迁移管理员",
+            "blocking": false
+          }
+        ],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "人员来源=当前项目成员",
+            "reason": "用户选择方案 B",
+            "source": "用户确认"
+          },
+          {
+            "id": "D2",
+            "decision": "一人一角色一条",
+            "reason": "用户确认，模型简单",
+            "source": "用户确认"
+          },
+          {
+            "id": "D3",
+            "decision": "角色字典=参数管理 DM_COMPONENT_PERSON_ROLE",
+            "reason": "与模块既有码值惯例一致，加角色不发版",
+            "source": "用户确认默认项"
+          },
+          {
+            "id": "D4",
+            "decision": "保存采用全量替换",
+            "reason": "抽屉批量管理幂等简单",
+            "source": "设计建议"
+          },
+          {
+            "id": "D5",
+            "decision": "展示复用 UiUserIdentity 与人员档案浮层",
+            "reason": "复用已验证能力",
+            "source": "设计建议"
+          },
+          {
+            "id": "D6",
+            "decision": "需求编号 REQ-20260919-076，分支 feat/REQ-20260919-076-dm-component-person",
+            "reason": "按需求编号与分支规约",
+            "source": "工程规约"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "数据库新表与写接口变更",
+            "impact": "需要 Owner 复核与回归",
+            "mitigation": "迁移幂等、聚焦测试、高风险复核"
+          },
+          {
+            "risk": "并发编辑关系最后提交覆盖先提交",
+            "impact": "偶发覆盖",
+            "mitigation": "项目内低风险可接受，保存前提示"
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认设计：人员来源=当前项目成员、含职责/角色字段、一人一角色、角色字典采用参数管理 DM_COMPONENT_PERSON_ROLE",
+          "confirmed_at": "2026-09-19T09:53:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-19-dm-component-person-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "仅修改 REQ-20260919-076 codex-task-scope.yaml 的 writable paths",
+          "Flyway 只追加且 V214 幂等",
+          "写接口服务端 RBAC+项目范围+成员校验+dm_operation_log 审计",
+          "复用 web/src/components/ui 与 person-directory，不新增样式体系",
+          "遵守 design-h5.md 视口验收",
+          "不使用生产数据"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql",
+            "status": "candidate-new",
+            "responsibility": "关系表与角色字典种子，幂等",
+            "evidence": "V183/V186 迁移惯例"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+            "status": "existing",
+            "responsibility": "列表/导出 persons、成员选项、关系写、级联、审计",
+            "evidence": "现有 components/deleteComponent 实现"
+          },
+          {
+            "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+            "status": "existing",
+            "responsibility": "persons/member-options 路由与权限注解",
+            "evidence": "现有 controllers 模式"
+          },
+          {
+            "path": "web/src/api/data-migration.ts",
+            "status": "existing",
+            "responsibility": "类型与请求封装",
+            "evidence": "模块公开契约"
+          },
+          {
+            "path": "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+            "status": "existing",
+            "responsibility": "关联人员列、抽屉管理、导出",
+            "evidence": "现有页面结构"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "关系表 dm_component_person 与 DM_COMPONENT_PERSON_ROLE 字典种子迁移可执行且幂等",
+            "requirement_ids": [
+              "R1",
+              "R8"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "dm_component 自然键 (tenant_id,project_id,system_code)（V183 迁移）",
+              "sys_dict_type id 现有 5701/5801/5812/5814/5815/5821/5831，5824 空闲（V181-V198 迁移勘察）",
+              "迁移检查要求 V<number>__<lowercase> 命名（scripts/check-flyway-migrations.mjs）"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonMigrationMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [],
+              "produces": [
+                "dm_component_person 表",
+                "DM_COMPONENT_PERSON_ROLE 类别与 4 选项"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "确认 V214 未占用并编写幂等迁移",
+                "command": "ls server/src/platform/infrastructure/src/main/resources/db/migration/ | sort -V | tail -3",
+                "expected": "V213 为最大 legacy，V214 可新建",
+                "evidence": "命令输出"
+              },
+              {
+                "id": "T1-S2",
+                "action": "运行迁移静态检查",
+                "command": "node scripts/check-flyway-migrations.mjs",
+                "expected": "Flyway migration check passed",
+                "evidence": "退出码与输出"
+              },
+              {
+                "id": "T1-S3",
+                "action": "运行迁移聚焦测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonMigrationMySqlTest test",
+                "expected": "通过，0 失败",
+                "evidence": "退出码与测试摘要"
+              }
+            ],
+            "acceptance_checks": [
+              "全新库全量迁移成功",
+              "同 user_id 重复行被主键拒绝",
+              "一名成员多行（多成员）允许",
+              "字典类别与 4 选项存在"
+            ],
+            "risks": [],
+            "rollback": "未提交删除新文件；已提交 git revert（仅新增表与字典）",
+            "stop_conditions": [
+              "5824/58240-58243 id 冲突且无安全替代",
+              "全新库迁移在 V214 失败"
+            ],
+            "escalation_conditions": [
+              "旧库迁移出现非预期失败",
+              "字典文案需业务修订"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "组件列表/导出返回 persons，成员选项仅含当前项目启用成员",
+            "requirement_ids": [
+              "R2",
+              "R3",
+              "R7"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "components/export SQL 结构（ProjectComponentService.java）",
+              "pm_project_member/sys_user deleted 语义（V209 修复使用 m.deleted=0）"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonQueryMySqlTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "dm_component_person（T1）"
+              ],
+              "produces": [
+                "components 行内 persons/person_count",
+                "export 关联人员（角色）列",
+                "GET /components/member-options"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "确认当前编译基线",
+                "command": "mvn -pl :ccb-data-migration -am -DskipTests compile",
+                "expected": "编译成功",
+                "evidence": "退出码"
+              },
+              {
+                "id": "T2-S2",
+                "action": "实现列表批查与导出列、成员选项",
+                "command": null,
+                "expected": "persons/person_count/导出列/member-options 就位",
+                "evidence": "代码 diff"
+              },
+              {
+                "id": "T2-S3",
+                "action": "运行查询聚焦测试",
+                "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonQueryMySqlTest test",
+                "expected": "通过，0 失败",
+                "evidence": "退出码与测试摘要"
+              }
+            ],
+            "acceptance_checks": [
+              "列表按项目范围返回 persons",
+              "无关系为空数组且 person_count=0",
+              "member-options 排除非成员与停用成员",
+              "导出空关系写 -"
+            ],
+            "risks": [],
+            "rollback": "git revert 本任务提交",
+            "stop_conditions": [
+              "成员语义与既有口径不一致"
+            ],
+            "escalation_conditions": [
+              "批查性能异常",
+              "未登记调用点被破坏"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "关系查询/全量保存（校验+审计）与组件删除级联",
+            "requirement_ids": [
+              "R4",
+              "R8",
+              "R9"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "deleteComponent 现有实现（ProjectComponentService.java:194-202）",
+              "dm_operation_log 审计惯例（TopicService.audit）",
+              "options 通路 GET /api/data-migration/options/{category}（web/src/api/data-migration.ts:627）"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+                "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java"
+              ],
+              "test": [
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonWriteMySqlTest.java",
+                "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ComponentPersonControllerSecurityTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "member-options（T2）"
+              ],
+              "produces": [
+                "GET /components/persons",
+                "PUT /components/persons",
+                "COMPONENT_PERSON_SAVE 审计",
+                "级联删除"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "实现查询/保存/审计与级联删除",
+                "command": null,
+                "expected": "接口与审计就位",
+                "evidence": "代码 diff"
+              },
+              {
+                "id": "T3-S2",
+                "action": "全量回归",
+                "command": "mvn -pl :ccb-boot -am test",
+                "expected": "全部通过",
+                "evidence": "测试摘要"
+              }
+            ],
+            "acceptance_checks": [
+              "全量替换生效",
+              "非成员/停用成员/非法角色被拒绝",
+              "保存写 dm_operation_log",
+              "删除组件后关系消失",
+              "无写权限 403"
+            ],
+            "risks": [],
+            "rollback": "git revert 本任务提交",
+            "stop_conditions": [
+              "审计操作码与历史账本冲突"
+            ],
+            "escalation_conditions": [
+              "并发覆盖需产品决策",
+              "deleteComponent 调用点需调整"
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "前端 API 封装与组件清单列表列、查看抽屉管理、导出列",
+            "requirement_ids": [
+              "R5",
+              "R6",
+              "R7",
+              "R8",
+              "R10"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "ComponentsPage.vue 现有列/抽屉/权限模式",
+              "UiUserIdentity 支持 userId+fallbackName+浮层",
+              "getDataMigrationParamOptions 复用通路"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/api/data-migration.ts",
+                "web/src/modules/data-migration/views/base/ComponentsPage.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "列表 persons（T2）",
+                "persons GET/PUT 与 member-options（T2/T3）"
+              ],
+              "produces": [
+                "DataMigrationComponent.persons 类型",
+                "getComponentPersons/getComponentMemberOptions/saveComponentPersons"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "扩展 API 封装与页面列/抽屉/导出",
+                "command": null,
+                "expected": "前端功能就位",
+                "evidence": "代码 diff"
+              },
+              {
+                "id": "T4-S2",
+                "action": "前端构建与自检",
+                "command": "npm --prefix web run build && git diff --check",
+                "expected": "构建成功且无空白错误",
+                "evidence": "构建输出"
+              }
+            ],
+            "acceptance_checks": [
+              "桌面/移动列展示与 +N 折叠",
+              "浮层 hover/点击显示人员详情",
+              "抽屉可管理/只读仅展示",
+              "状态齐全、无横向溢出"
+            ],
+            "risks": [],
+            "rollback": "git revert 本任务提交",
+            "stop_conditions": [
+              "UiUserIdentity 在列形态异常且无法快速回归"
+            ],
+            "escalation_conditions": [
+              "一人一角色交互冲突需产品决策",
+              "移动端溢出无法按期修复"
+            ]
+          },
+          {
+            "id": "T5",
+            "goal": "集成验证与浏览器验收并记录证据",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5",
+              "R6",
+              "R7",
+              "R8",
+              "R9",
+              "R10"
+            ],
+            "prerequisites": [
+              "T4"
+            ],
+            "input_facts": [
+              "T1-T4 全部实现",
+              "本地 dev 环境已就绪"
+            ],
+            "files": {
+              "create": [
+                ".ai-control/requirements/req-20260919-076-dm-component-person/execution-T1.json",
+                ".ai-control/requirements/req-20260919-076-dm-component-person/observation-T1.json"
+              ],
+              "modify": [],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T4 全部产出"
+              ],
+              "produces": [
+                "execution-T1.json",
+                "observation-T1.json"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T5-S1",
+                "action": "治理/迁移/diff 检查",
+                "command": "node scripts/check-all-governance.mjs && node scripts/check-flyway-migrations.mjs && git diff --check",
+                "expected": "本需求无告警且通过",
+                "evidence": "三份输出"
+              },
+              {
+                "id": "T5-S2",
+                "action": "后端全量与前端构建",
+                "command": "mvn -pl :ccb-boot -am test && npm --prefix web run build",
+                "expected": "全部通过",
+                "evidence": "测试摘要与构建输出"
+              },
+              {
+                "id": "T5-S3",
+                "action": "浏览器 375/390/430/1280 验收",
+                "command": null,
+                "expected": "列表列/抽屉/浮层/导出/主题/状态无问题且无横向溢出",
+                "evidence": "视口、路径、操作、接口与控制台记录"
+              }
+            ],
+            "acceptance_checks": [
+              "R1-R10 验收项在开发库逐一可复现"
+            ],
+            "risks": [],
+            "rollback": "分任务 git revert；数据库保留表停止功能",
+            "stop_conditions": [
+              "任一集成验证失败且当轮无法修正"
+            ],
+            "escalation_conditions": [
+              "验收暴露设计缺口需回设计修订"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "关系表与字典种子的列/键契约是后续查询的前提"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "成员选项契约先于写路径，且共享 ProjectComponentService.java 需串行"
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "前端消费 T2/T3 REST 契约，需实现稳定后开发"
+          },
+          {
+            "from": "T4",
+            "to": "T5",
+            "reason": "集成验收需要全部实现完成"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ],
+          [
+            "T5"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1"
+            ],
+            "command": "node scripts/check-flyway-migrations.mjs",
+            "expected": "通过"
+          },
+          {
+            "after_tasks": [
+              "T3"
+            ],
+            "command": "mvn -pl :ccb-boot -am test",
+            "expected": "通过"
+          },
+          {
+            "after_tasks": [
+              "T4"
+            ],
+            "command": "npm --prefix web run build",
+            "expected": "构建成功"
+          },
+          {
+            "after_tasks": [
+              "T5"
+            ],
+            "command": "node scripts/check-all-governance.mjs",
+            "expected": "本需求无告警"
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T1"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R6",
+            "task_ids": [
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R7",
+            "task_ids": [
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R8",
+            "task_ids": [
+              "T1",
+              "T3",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R9",
+            "task_ids": [
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R10",
+            "task_ids": [
+              "T4",
+              "T5"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "用户确认按 T1-T5 计划进入开发",
+          "confirmed_at": "2026-09-19T03:02:49.851Z"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "business/data-migration 组件清单关系读写与展示链路",
+          "dm_component_person 为唯一关系事实源"
+        ],
+        "state_variable_candidates": [
+          "每系统关系集合",
+          "角色字典版本",
+          "当前项目上下文"
+        ],
+        "interface_candidates": [
+          "列表/导出 persons",
+          "member-options",
+          "persons GET/PUT",
+          "DM_COMPONENT_PERSON_ROLE options"
+        ],
+        "sensor_candidates": [
+          "聚焦测试断言",
+          "治理检查",
+          "前端构建",
+          "浏览器视口检查"
+        ],
+        "actuator_candidates": [
+          "savePersons 全量替换",
+          "deleteComponent 级联删除",
+          "抽屉保存按钮"
+        ],
+        "disturbance_candidates": [
+          "字典选项增删",
+          "成员启停/移除",
+          "组件启停/删除",
+          "并发编辑"
+        ],
+        "delay_candidates": [
+          "人员档案缓存 TTL 10 分钟",
+          "批查随关系量增长"
+        ],
+        "assumptions": [
+          {
+            "text": "项目内关系总量小，批查与全量替换可接受",
+            "basis": "组件/成员规模有限",
+            "falsifier": "单项目关系数异常放大"
+          },
+          {
+            "text": "pm_project_member/sys_user deleted=0 与 status=1 语义一致",
+            "basis": "既有 SQL 惯例",
+            "falsifier": "字段语义不同"
+          },
+          {
+            "text": "人员档案接口覆盖浮层所需字段",
+            "basis": "person-directory 现有实现",
+            "falsifier": "接口返回缺失"
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"platform/system 参数管理（sys_dict_type/sys_config）与人员档案 user-profiles 只读\", \"platform/security RBAC、requireProject 数据范围\", \"pm_project_member JOIN sys_user 成员口径（读）\", \"UiUserIdentity / person-directory 人员档案能力（只读复用）\"], \"inside\": [\"business/data-migration 组件清单的关系读写与展示链路（ProjectComponentService/Controller、ComponentsPage.vue）\", \"dm_component_person 为唯一关系事实源\", \"V214__data_migration_component_person.sql 迁移与 DM_COMPONENT_PERSON_ROLE 参数类别种子\"]}",
+    "sensors": [
+      "node scripts/check-flyway-migrations.mjs && 聚焦迁移测试 ComponentPersonMigrationMySqlTest（Testcontainers clean+migrate 全新库）",
+      "ComponentPersonQueryMySqlTest 断言 components 列表 persons/person_count 与 export 列内容",
+      "ComponentPersonQueryMySqlTest 断言 member-options 排除非成员与停用成员；无权限调用 403",
+      "ComponentPersonWriteMySqlTest + ComponentPersonControllerSecurityTest 断言保存/校验/审计/权限",
+      "真实浏览器在 375x812/390x844/430x932/1280x800 检查列表列、折叠前2+N与 UiUserIdentity 浮层",
+      "真实浏览器以管理员与只读角色操作抽屉；前端构建与页面状态审查",
+      "聚焦测试断言角色选项来自 DM_COMPONENT_PERSON_ROLE（getDataMigrationParamOptions 通路）；前端下拉复用同一端点",
+      "ComponentPersonWriteMySqlTest 断言删除组件后关系消失且他组关系不受影响",
+      "真实浏览器按 design-h5.md 视口清单验收列表、抽屉、浮层、导出与深浅主题；npm --prefix web run build"
+    ],
+    "actuators": [
+      "{\"authority\": \"新增幂等迁移（CREATE TABLE IF NOT EXISTS / INSERT IGNORE / information_schema 判断）\", \"impact_limit\": \"仅新增表与 DM_COMPONENT_PERSON_ROLE 类别种子，不改既有表与迁移\", \"requirement_ids\": [\"R1\"], \"rollback\": \"删除/保留新表（功能停用），不执行反向迁移；早期环境可重建数据库\", \"target\": \"V214 迁移脚本与 dm_component_person 表结构/种子\"}",
+      "{\"authority\": \"在既有方法内扩展 persons 批查、member-options 与导出列\", \"impact_limit\": \"不改既有字段与接口语义，仅追加字段与端点\", \"requirement_ids\": [\"R2\", \"R3\", \"R7\"], \"rollback\": \"git revert 本任务提交；新增字段不影响旧调用点\", \"target\": \"ProjectComponentService/Controller 查询与导出路径\"}",
+      "{\"authority\": \"新增 persons GET/PUT 与 deleteComponent 级联清理，写权限+审计\", \"impact_limit\": \"仅影响 data-migration 组件列表相关接口与关系表\", \"requirement_ids\": [\"R4\", \"R8\", \"R9\"], \"rollback\": \"git revert 本任务提交；关系接口下线，新表保留无副作用\", \"target\": \"ProjectComponentService/Controller 写路径与删除级联\"}",
+      "{\"authority\": \"新增 persons 类型/封装、关联人员列、抽屉管理区块、导出列\", \"impact_limit\": \"仅 data-migration 组件清单页面，复用 UiUserIdentity 不新增样式\", \"requirement_ids\": [\"R5\", \"R6\", \"R10\"], \"rollback\": \"git revert 本任务提交；页面退回无关联人员展示\", \"target\": \"web/src/api/data-migration.ts 与 ComponentsPage.vue\"}"
+    ],
+    "disturbances": [],
+    "assumptions": [
+      "{\"basis\": \"组件/成员规模有限\", \"falsifier\": \"单项目关系数异常放大\", \"text\": \"项目内关系总量小，批查与全量替换可接受\"}",
+      "{\"basis\": \"既有 SQL 惯例（ProjectView 等）\", \"falsifier\": \"字段语义不同导致过滤错误\", \"text\": \"pm_project_member 与 sys_user 的 deleted=0/status=1 语义与既有 SQL 惯例一致\"}",
+      "{\"basis\": \"person-directory 现有实现\", \"falsifier\": \"接口返回缺失导致浮层字段不全\", \"text\": \"人员档案接口 user-profiles/query 能按 sys_user.id 返回浮层所需字段\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "node scripts/check-flyway-migrations.mjs && 聚焦迁移测试 ComponentPersonMigrationMySqlTest（Testcontainers clean+migrate 全新库）"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "ComponentPersonQueryMySqlTest 断言 components 列表 persons/person_count 与 export 列内容"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "ComponentPersonQueryMySqlTest 断言 member-options 排除非成员与停用成员；无权限调用 403"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "ComponentPersonWriteMySqlTest + ComponentPersonControllerSecurityTest 断言保存/校验/审计/权限"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "真实浏览器在 375x812/390x844/430x932/1280x800 检查列表列、折叠前2+N与 UiUserIdentity 浮层"
+      },
+      {
+        "requirement": "R6",
+        "sensor": "真实浏览器以管理员与只读角色操作抽屉；前端构建与页面状态审查"
+      },
+      {
+        "requirement": "R8",
+        "sensor": "聚焦测试断言角色选项来自 DM_COMPONENT_PERSON_ROLE（getDataMigrationParamOptions 通路）；前端下拉复用同一端点"
+      },
+      {
+        "requirement": "R9",
+        "sensor": "ComponentPersonWriteMySqlTest 断言删除组件后关系消失且他组关系不受影响"
+      },
+      {
+        "requirement": "R10",
+        "sensor": "真实浏览器按 design-h5.md 视口清单验收列表、抽屉、浮层、导出与深浅主题；npm --prefix web run build"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "新增 dm_component_person 关系表（主键 tenant_id,project_id,system_code,user_id，含 person_role）并幂等种子参数类别 DM_COMPONENT_PERSON_ROLE 四个默认选项；全新库与存量库均可迁移",
+      "requirements": [
+        "R1",
+        "R8"
+      ],
+      "prerequisites": [],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/migration/ComponentPersonMigrationMySqlTest.java"
+      ],
+      "acceptance": [
+        {
+          "command": "node scripts/check-flyway-migrations.mjs",
+          "expected": "通过：V214 存在且唯一、文件名小写描述"
+        },
+        {
+          "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonMigrationMySqlTest test",
+          "expected": "测试通过：全新库迁移、唯一键拒绝重复、多成员可插入"
+        }
+      ],
+      "evidence_required": [
+        "迁移检查输出",
+        "聚焦迁移测试摘要（退出码与断言结果）"
+      ],
+      "rollback": "回退本任务提交；新表与种子保留无副作用，必要时早期环境重建，不执行反向迁移",
+      "stop_conditions": [
+        "迁移命名/唯一性检查不通过",
+        "全新库迁移执行失败"
+      ],
+      "escalation_conditions": [
+        "需要修改已发布历史迁移或改变 dm_component 主表结构"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-19T03:11:33+00:00",
+          "text": "ControlIteration I1: verified"
+        }
+      ],
+      "updated_at": "2026-09-19T03:11:33+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "components 列表/导出返回每系统关联人员（persons/person_count）与‘关联人员（角色）’导出列；新增成员选项接口仅返回当前项目启用成员",
+      "requirements": [
+        "R2",
+        "R3",
+        "R7"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonQueryMySqlTest.java"
+      ],
+      "acceptance": [
+        {
+          "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonQueryMySqlTest test",
+          "expected": "测试通过：persons/person_count、导出列、member-options 范围（排除非成员/停用）与无权限 403"
+        }
+      ],
+      "evidence_required": [
+        "聚焦查询测试摘要"
+      ],
+      "rollback": "git revert 本任务提交；列表/导出退回原字段（新增字段不影响旧调用点）",
+      "stop_conditions": [
+        "pm_project_member 成员过滤语义与既有 ProjectView 口径不一致"
+      ],
+      "escalation_conditions": [
+        "批量带出导致列表性能恶化（单页关系量异常放大）",
+        "破坏既有组件查询其它未登记调用点"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-19T03:14:58+00:00",
+          "text": "ControlIteration I2: verified"
+        }
+      ],
+      "updated_at": "2026-09-19T03:14:58+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "新增 persons GET/PUT（全量替换，写权限校验、成员归属与角色字典校验、dm_operation_log 审计）；组件删除同事务级联清理关系",
+      "requirements": [
+        "R4",
+        "R8",
+        "R9"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "write_scope": [
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+        "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonWriteMySqlTest.java",
+        "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ComponentPersonControllerSecurityTest.java"
+      ],
+      "acceptance": [
+        {
+          "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonWriteMySqlTest test",
+          "expected": "测试通过：全量替换/非成员拒绝/停用拒绝/非法角色拒绝/审计行/删除级联"
+        },
+        {
+          "command": "mvn -pl :ccb-data-migration -am -Dtest=ComponentPersonControllerSecurityTest test",
+          "expected": "测试通过：无写权限 403、有写权限 200"
+        },
+        {
+          "command": "mvn -pl :ccb-boot -am test",
+          "expected": "后端全量测试通过，0 失败"
+        }
+      ],
+      "evidence_required": [
+        "写路径聚焦测试摘要",
+        "安全测试摘要",
+        "后端全量测试摘要"
+      ],
+      "rollback": "git revert 本任务提交；关系接口下线，新表保留无副作用",
+      "stop_conditions": [
+        "审计/操作码命名与既有任务账本冲突"
+      ],
+      "escalation_conditions": [
+        "同 (system, user) 唯一键并发覆盖需要产品决策",
+        "deleteComponent 既有调用点行为必须调整"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-19T03:32:27+00:00",
+          "text": "ControlIteration I3: verified"
+        }
+      ],
+      "updated_at": "2026-09-19T03:32:27+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "前端 API 封装新增 persons 类型与三个请求函数；组件清单列表/移动卡片新增‘关联人员’列（UiUserIdentity+折叠）、查看抽屉管理区块（canManage 增删/选角色/全量保存，只读仅展示）、导出列",
+      "requirements": [
+        "R5",
+        "R6",
+        "R8",
+        "R10"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "write_scope": [
+        "web/src/api/data-migration.ts",
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue"
+      ],
+      "acceptance": [
+        {
+          "command": "npm --prefix web run build",
+          "expected": "构建成功、类型检查通过"
+        },
+        {
+          "command": "git diff --check",
+          "expected": "无空白错误"
+        }
+      ],
+      "evidence_required": [
+        "前端构建输出",
+        "git diff --check 输出"
+      ],
+      "rollback": "git revert 本任务提交；页面退回无关联人员展示",
+      "stop_conditions": [
+        "UiUserIdentity/person-directory 在列表列形态异常（先回归既有调用页面）"
+      ],
+      "escalation_conditions": [
+        "角色多选与‘一人一角色’约束交互冲突需产品决策",
+        "移动端抽屉溢出无法按期修完"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-19T03:36:07+00:00",
+          "text": "ControlIteration I4: verified"
+        }
+      ],
+      "updated_at": "2026-09-19T03:36:07+00:00"
+    },
+    {
+      "id": "T5",
+      "goal": "集成验收：治理与迁移检查、后端全量测试、前端构建、真实浏览器按 design-h5.md 视口清单验收列表/浮层/抽屉/导出/深浅主题/全状态并记录证据",
+      "requirements": [
+        "R10"
+      ],
+      "prerequisites": [
+        "T4"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260919-076-dm-component-person/execution-T1.json",
+        ".ai-control/requirements/req-20260919-076-dm-component-person/observation-T1.json"
+      ],
+      "acceptance": [
+        {
+          "command": "node scripts/check-all-governance.mjs",
+          "expected": "本需求无告警"
+        },
+        {
+          "command": "node scripts/check-flyway-migrations.mjs",
+          "expected": "通过"
+        },
+        {
+          "command": "git diff --check",
+          "expected": "无空白错误"
+        },
+        {
+          "command": "mvn -pl :ccb-boot -am test",
+          "expected": "全部通过"
+        },
+        {
+          "command": "npm --prefix web run build",
+          "expected": "构建成功"
+        },
+        {
+          "command": "真实浏览器 375x812/390x844/430x932/1280x800 验收",
+          "expected": "无横向溢出、浮层可达、只读无编辑控件、导出列正确、深浅主题可读、控制台无错误"
+        }
+      ],
+      "evidence_required": [
+        "治理/迁移/空白检查输出",
+        "后端全量测试摘要",
+        "前端构建输出",
+        "浏览器验收记录（视口/操作/接口结果/控制台）"
+      ],
+      "rollback": "分任务提交逐个 git revert；数据库按保留表停用或早期环境重建",
+      "stop_conditions": [
+        "任一集成检查失败且无法当场修正"
+      ],
+      "escalation_conditions": [
+        "浏览器验收暴露设计缺口（角色管理交互/移动端层级）需回到设计修订"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-19T04:05:17+00:00",
+          "text": "ControlIteration I5: verified"
+        },
+        {
+          "recorded_at": "2026-09-19T06:40:07+00:00",
+          "text": "F-0001 修正后由主 Agent 恢复 verified（compact 状态机 converged 为终态不支持回退）：批量新增抽屉物理子系统联动缺陷修复已验证——vue-tsc 0 错误、npm build 通过、浏览器批量新增 5/5（抽屉打开候选 2 系统、SYS-PAY 勾选新增落库、无横向溢出、无控制台错误），测试组件 SYS-PAY 已清理恢复 PAY-CORE/ORDER-SVC；反馈 F-0001 accepted+resolved"
+        }
+      ],
+      "updated_at": "2026-09-19T06:40:07+00:00"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "F-0001",
+      "task": "T5",
+      "source": "浏览器验收后用户反馈",
+      "requirement": "R6",
+      "expected": "点击批量新增组件打开抽屉时联动架构物理子系统正常加载",
+      "observed": "GET /api/architecture/physical-subsystems?page=1&size=1000 未携带 projectRef 返回 50000，抽屉候选列表加载失败",
+      "evidence": "复现：无 projectRef 500；带 projectRef=RDDMP-PLATFORM 200；前端 listAllPhysicalSubsystems 未传 projectRef（既有缺陷）",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": "data-migration 前端调用架构模块物理子系统接口未传项目标识，架构接口 projectRef 必填",
+      "correction_check": null,
+      "decision": "accept",
+      "decision_reason": "确认为既有前端缺陷，修复属本菜单功能范围：listAllPhysicalSubsystems 增加 projectRef（当前项目编码）并同步两个调用点；修复后验证抽屉全链路",
+      "created_at": "2026-09-19T06:38:52+00:00",
+      "resolved_at": "2026-09-19T06:38:58+00:00",
+      "resolution_evidence": "已修复并验证：web/src/api/data-migration.ts listAllPhysicalSubsystems(projectRef)；ComponentsPage.vue loadSubsystemOptions 传 scope.projectRef 且空 ref 短路；TargetTablesPage.vue 同步；vue-tsc 通过、npm build 通过；浏览器批量新增抽屉 5/5（候选 2 系统、勾选 SYS-PAY 确认新增落库、无横向溢出、无控制台错误）；测试组件 SYS-PAY 已清理",
+      "decided_at": "2026-09-19T06:38:58+00:00"
+    },
+    {
+      "id": "F-0002",
+      "task": "T5",
+      "source": "浏览器验收后用户反馈",
+      "requirement": "R6",
+      "expected": "查看/修改/新增三入口均应提供「关联人员」能力入口，入口可见性一致",
+      "observed": "查看弹窗有关联人员区块，新增（批量新增）与修改抽屉无关联人员入口",
+      "evidence": "浏览器复现：修改抽屉仅总分核对；新增抽屉仅系统勾选表格；查看弹窗含管理/只读区块",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": "初版设计仅把关系维护放在查看抽屉（R6），用户期望新增/修改时同样可见可用",
+      "correction_check": null,
+      "decision": "accept",
+      "decision_reason": "属本菜单功能范围：新增抽屉按系统预配置关联人员（确认新增后自动保存），修改抽屉复用查看区块管理关系；不改接口与迁移",
+      "created_at": "2026-09-19T07:09:46+00:00",
+      "resolved_at": "2026-09-19T07:09:46+00:00",
+      "resolution_evidence": "新增抽屉「关联人员」列+行下配置面板；修改抽屉「关联人员」区块；savePersons 兼容查看/修改；npm build 通过；桌面 11/11、移动端 4/4 浏览器验收通过；测试组件已清理",
+      "decided_at": "2026-09-19T07:09:46+00:00"
+    },
+    {
+      "id": "F-0003",
+      "task": "T5",
+      "source": "F-0002 修复后用户反馈",
+      "requirement": "R6",
+      "expected": "「查看」弹窗纯只读展示关联人员，不提供任何更新能力；维护入口仅存在于「新增」「修改」",
+      "observed": "查看弹窗仍包含关联人员管理区块（添加/移除/保存）",
+      "evidence": "浏览器复现：查看弹窗含 选择项目成员/职责角色/移除/保存关联人员",
+      "severity": "P2",
+      "confidence": "high",
+      "sensor_limit": null,
+      "causal_hypothesis": "F-0002 复用查看区块管理逻辑时未将查看弹窗降级为只读",
+      "correction_check": null,
+      "decision": "accept",
+      "decision_reason": "查看应只读：将查看弹窗区块替换为只读成员+角色列表，移除加载成员/角色选项与保存状态；修改抽屉与新增抽屉管理能力保持不变",
+      "created_at": "2026-09-19T07:46:06+00:00",
+      "resolved_at": "2026-09-19T07:46:06+00:00",
+      "resolution_evidence": "npm build 通过；浏览器桌面 6/6（查看无编辑控件且正确展示、修改保留管理）、移动端 390x844 无溢出无编辑控件；控制台零错误无 5xx",
+      "decided_at": "2026-09-19T07:46:06+00:00"
+    }
+  ],
+  "samples": []
+}

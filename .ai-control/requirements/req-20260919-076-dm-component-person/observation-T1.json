@@ -1,0 +1,49 @@
+{
+  "control_prefix": "req-20260919-076-dm-component-person",
+  "artifact": "observation-evidence",
+  "phase": "verifying",
+  "summary": "独立验证：迁移检查、治理检查、聚焦测试、前端构建与真实浏览器验收全部通过，收敛门禁 PASS",
+  "checks": [
+    {
+      "check": "node scripts/check-flyway-migrations.mjs",
+      "result": "pass",
+      "evidence": "212 migrations, 1 callback, 1 legacy"
+    },
+    {
+      "check": "node scripts/check-all-governance.mjs",
+      "result": "pass",
+      "evidence": "本需求账本零告警（历史任务告警与本需求无关）"
+    },
+    {
+      "check": "mvn -pl :ccb-data-migration -am -Dtest='ComponentPerson*' -Dsurefire.failIfNoSpecifiedTests=false test",
+      "result": "pass",
+      "evidence": "14 run 0 fail BUILD SUCCESS"
+    },
+    {
+      "check": "npm --prefix web run build && git diff --check",
+      "result": "pass",
+      "evidence": "生产构建成功；无空白错误"
+    },
+    {
+      "check": "真实浏览器验收 375x812/390x844/430x932/1280x800",
+      "result": "pass",
+      "evidence": "52/52：关联人员列/折叠浮层/人员详情浮层/抽屉管理/只读无编辑/导出列/空失败无权限提交中状态/深浅主题无溢出/控制台无错误（证据 /tmp/dm-control/evidence/）"
+    },
+    {
+      "check": "F-0002 修正后独立验证：npm --prefix web run build + 真实浏览器桌面 1280x860 与移动端 390x844",
+      "result": "pass",
+      "evidence": "构建成功；桌面 11/11（新增设置 2 人落库并展示、修改抽屉关联人员区块、查看回归、无控制台错误/无 5xx）；移动端 4/4（新增面板/修改/查看抽屉无横向溢出）；测试组件 SYS-NOTIFY 已清理恢复 ORDER-SVC/PAY-CORE"
+    },
+    {
+      "check": "F-0003 修正后独立验证：npm build + 真实浏览器桌面 1280x860 / 移动端 390x844 查看弹窗只读性",
+      "result": "pass",
+      "evidence": "构建成功；桌面 6/6：查看弹窗无 保存/移除/成员选择 控件、只读展示 张统筹(负责人)+钱(业务人员)、修改抽屉保留管理、控制台零错误无 5xx；移动端查看弹窗无编辑控件且无横向溢出"
+    }
+  ],
+  "live_api": {
+    "components_list": "PAY-CORE person_count=4、ORDER-SVC person_count=2、persons 含 user_id/display_name/person_role/person_role_label",
+    "member_options": "仅当前项目启用成员",
+    "readonly_account": "读接口 200，写接口 40300 Forbidden",
+    "audit": "COMPONENT_PERSON_SAVE 已写入 dm_operation_log"
+  }
+}

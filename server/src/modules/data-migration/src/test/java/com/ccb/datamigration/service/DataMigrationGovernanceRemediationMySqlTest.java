@@ -281,7 +281,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
         IssueService issueService = new IssueService(jdbc, permissions, TestDataMigrationCodeValues.service());
-        ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions);
+        ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
@@ -913,7 +913,7 @@ class DataMigrationGovernanceRemediationMySqlTest {
         DataMigrationPermissionService permissions = new DataMigrationPermissionService(jdbc, StubProjectAccess.allow());
         IssueService issueService = new IssueService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TargetTableService targetTableService = new TargetTableService(jdbc, permissions, TestDataMigrationCodeValues.service());
-        ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions);
+        ProjectComponentService componentService = new ProjectComponentService(jdbc, permissions, TestDataMigrationCodeValues.service());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 
         transaction.executeWithoutResult(status -> {

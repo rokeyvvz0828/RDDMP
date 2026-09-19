@@ -36,6 +36,11 @@ public class ProjectComponentController {
         return ApiResponse.success(service.components(user, projectId, businessGroupName, systemCode,
                 responsibleTeam, systemKeyword, totalCheck, keyword, new PageQuery(page, size)), TraceId.getOrCreate());
     }
+    @GetMapping("/components/member-options")
+    public ApiResponse<List<Map<String, Object>>> memberOptions(@RequestParam Long projectId,
+                                                                @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.getMemberOptions(projectId, user), TraceId.getOrCreate());
+    }
     @GetMapping("/components/export")
     public ResponseEntity<byte[]> exportComponents(@RequestParam(required = false) Long projectId,
                                                    @RequestParam(required = false) String businessGroupName,
@@ -55,5 +60,16 @@ public class ProjectComponentController {
     @PostMapping("/components") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> createComponent(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.createComponent(body, user), TraceId.getOrCreate()); }
     @PutMapping("/components") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> updateComponent(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.updateComponent(body, user), TraceId.getOrCreate()); }
     @DeleteMapping("/components") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Void> deleteComponent(@RequestParam long projectId, @RequestParam String systemCode, @AuthenticationPrincipal AuthUser user) { service.deleteComponent(projectId, systemCode, user); return ApiResponse.success(null, TraceId.getOrCreate()); }
+    @GetMapping("/components/persons")
+    public ApiResponse<List<Map<String, Object>>> persons(@RequestParam Long projectId,
+                                                          @RequestParam String systemCode,
+                                                          @AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(service.getPersons(projectId, systemCode, user), TraceId.getOrCreate());
+    }
+    @PutMapping("/components/persons") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')")
+    public ApiResponse<Void> savePersons(@RequestBody Map<String, Object> body, @AuthenticationPrincipal AuthUser user) {
+        service.savePersons(body, user);
+        return ApiResponse.success(null, TraceId.getOrCreate());
+    }
     @PutMapping("/components/enabled") @PreAuthorize("hasAnyAuthority('data-migration:manage','system:admin')") public ApiResponse<Map<String, Object>> setEnabled(@RequestParam long projectId, @RequestParam String systemCode, @RequestParam boolean enabled, @AuthenticationPrincipal AuthUser user) { return ApiResponse.success(service.setEnabled(projectId, systemCode, enabled, user), TraceId.getOrCreate()); }
 }

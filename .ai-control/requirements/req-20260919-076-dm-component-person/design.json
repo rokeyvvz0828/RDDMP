@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260919-076-dm-component-person",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-19-dm-component-person-design.md",
+  "objective": "在系统/组件清单中按项目维护每个系统与当前项目成员的关联及职责角色，列表可查看、浮层可看详情、抽屉可管理，写操作经服务端权限校验并审计。",
+  "users": ["数据迁移管理员维护系统与成员关系", "项目成员与查看用户只读查看关联人员与详情"],
+  "requirements": [
+    {"id": "R1", "statement": "新增 dm_component_person 表，主键 (tenant_id, project_id, system_code, user_id)，每条关系带 person_role，无软删", "acceptance": ["全新库与存量库迁移成功", "同一系统同一人员重复保存被拒绝", "一个系统可关联多个成员"], "priority": "must", "source": "用户确认", "counterexample": ["同系统同人员出现两条记录", "迁移不可重复执行"]},
+    {"id": "R2", "statement": "components 列表与 export 返回每个系统的关联人员（user_id、display_name、person_role）与 person_count", "acceptance": ["按项目数据范围返回", "无关系时 persons 为空数组且 person_count=0"], "priority": "must", "source": "用户确认", "counterexample": ["返回其他项目人员", "行内缺失 persons 字段"]},
+    {"id": "R3", "statement": "成员选项接口仅返回当前项目未删除且启用的成员（pm_project_member JOIN sys_user）", "acceptance": ["非项目成员不出现在选项中", "无项目数据权限返回明确错误"], "priority": "must", "source": "用户决策 B：人员来源=当前项目成员", "counterexample": ["非项目成员可选", "停用成员可选"]},
+    {"id": "R4", "statement": "全量替换保存接口（写权限 data-migration:manage/system:admin）服务端校验组件存在、成员归属与启用，并写 dm_operation_log", "acceptance": ["合法保存事务成功并审计", "无权限返回 403", "组件不存在或成员不属于项目被拒绝"], "priority": "must", "source": "工程规约：受保护接口服务端校验与审计", "counterexample": ["前端可绕过权限直接保存", "保存不写审计"]},
+    {"id": "R5", "statement": "桌面表格与移动卡片新增‘关联人员’列，成员姓名复用 UiUserIdentity，悬浮/点击显示人员详情浮层", "acceptance": ["375/390/430 与桌面视口无横向溢出", "人数多时折叠为前 2 个 +N 且浮层完整可看"], "priority": "must", "source": "用户确认", "counterexample": ["页面出现横向滚动条", "浮层在手机端不可触达"]},
+    {"id": "R6", "statement": "查看抽屉新增‘关联人员’区块：有写权限可增删、选角色并保存；只读仅展示", "acceptance": ["覆盖加载/空/失败/无权限/提交中状态", "重复点击不产生重复请求或重复数据"], "priority": "must", "source": "用户确认", "counterexample": ["保存中可重复提交", "只读用户出现编辑控件"]},
+    {"id": "R7", "statement": "Excel 导出增加‘关联人员（角色）’列，按‘姓名（角色）’逗号分隔", "acceptance": ["空关系显示 -", "列名与内容与列表一致"], "priority": "should", "source": "设计建议", "counterexample": ["导出缺少关联人员列"]},
+    {"id": "R8", "statement": "person_role 为参数管理类别 DM_COMPONENT_PERSON_ROLE 的受控字典值，迁移幂等种子默认选项", "acceptance": ["下拉选项来自字典", "类别缺失时提示配置且不阻塞列表展示"], "priority": "must", "source": "用户确认默认项", "counterexample": ["角色为自由文本输入", "类别缺失时保存仍允许任意值"]},
+    {"id": "R9", "statement": "组件物理删除时按 (tenant_id, project_id, system_code) 级联删除关系", "acceptance": ["删除组件后该组件关系不再出现", "其他组件关系不受影响"], "priority": "must", "source": "工程事实：组件无软删、关系须一致", "counterexample": ["删除组件后残留孤立关系"]},
+    {"id": "R10", "statement": "加载、空、失败、无权限、提交中、重复提交状态齐全，深浅主题可读", "acceptance": ["按 design-h5.md 视口清单浏览器验收并记录证据"], "priority": "must", "source": "前端交付规约", "counterexample": ["移动端隐藏错误态或按钮不可达"]}
+  ],
+  "invariants": ["数据范围恒等于当前项目且跨租户不可见", "dm_component 自然键 (tenant_id, project_id, system_code) 不变", "Flyway 只追加不改历史迁移"],
+  "constraints": ["只写 codex-task-scope.yaml 的 writable_paths", "写接口服务端 RBAC + 项目数据范围 + 实体与成员归属校验", "参数管理与人员档案能力只读复用", "复用 web/src/components/ui 与 person-directory，不新增样式体系"],
+  "non_goals": ["不新增菜单或独立页面", "不修改 dm_component 主表结构与权限模型", "不做审批流、历史存量回填、人员导入导出"], 
+  "selected_approach": {
+    "name": "全量替换 + 受控角色字典 + UiUserIdentity 复用",
+    "reason": "符合模块既有惯例（参数管理码值、无软删、JdbcTemplate 列表扩展），UI 复用已验证人员卡片能力，一人一角色模型简单直接",
+    "alternatives": [
+      {"name": "同租户任意 sys_user 作为人员来源", "rejected_because": "用户选定仅限当前项目成员，数据范围更收敛"},
+      {"name": "角色用代码常量枚举", "rejected_because": "加角色需发版，与模块 DM_PROGRAM_TYPE 等参数管理惯例不一致"},
+      {"name": "逐条 POST/DELETE 维护关系", "rejected_because": "抽屉式批量管理下全量替换更幂等、冲突少"}
+    ]
+  },
+  "architecture": {
+    "boundary": {"inside": ["business/data-migration 模块的组件服务与接口", "ComponentsPage.vue 与 api/data-migration.ts", "dm_component_person 迁移"], "outside": ["platform/system 参数管理与人员档案", "pm_project_member 数据 Owner", "物理子系统主数据"]},
+    "components": [
+      {"name": "ProjectComponentService", "responsibility": "扩展列表/导出 persons，提供成员选项与关系全量保存", "depends_on": ["DataMigrationPermissionService", "JdbcTemplate"]},
+      {"name": "ProjectComponentController", "responsibility": "暴露 persons/member-options 接口并执行 RBAC", "depends_on": ["ProjectComponentService"]},
+      {"name": "DataMigrationCodeValueService", "responsibility": "读取 DM_COMPONENT_PERSON_ROLE 选项", "depends_on": ["JdbcTemplate"]},
+      {"name": "ComponentsPage.vue", "responsibility": "列表列与查看抽屉的关联人员区块", "depends_on": ["api/data-migration.ts", "UiUserIdentity", "person-directory store"]}
+    ],
+    "interfaces": [
+      {"name": "GET /api/data-migration/components", "producer": "ProjectComponentController", "consumers": ["ComponentsPage.vue"], "contract": "现有分页查询，行内新增 person_count 与 persons"},
+      {"name": "GET /api/data-migration/components/persons", "producer": "ProjectComponentController", "consumers": ["ComponentsPage.vue"], "contract": "返回某系统关联人员列表"},
+      {"name": "GET /api/data-migration/components/member-options", "producer": "ProjectComponentController", "consumers": ["ComponentsPage.vue"], "contract": "返回当前项目启用成员选项"},
+      {"name": "PUT /api/data-migration/components/persons", "producer": "ProjectComponentController", "consumers": ["ComponentsPage.vue"], "contract": "全量替换某系统关联人员，写权限 + 审计"},
+      {"name": "DM_COMPONENT_PERSON_ROLE options", "producer": "DataMigrationCodeValueService", "consumers": ["ComponentsPage.vue"], "contract": "返回参数管理码值选项"}
+    ],
+    "data_flows": [
+      {"input": "列表分页查询", "transitions": ["components 查询", "按 (project_id, system_code) 批查关系与姓名", "行内组装 persons"], "output": "带 persons 的分页记录"},
+      {"input": "抽屉保存", "transitions": ["收集成员+角色", "PUT 全量保存", "校验/事务替换/审计", "返回最新 persons"], "output": "刷新列表与抽屉"},
+      {"input": "组件删除", "transitions": ["现有删除流程", "同事务清理关系"], "output": "组件与关系一并删除"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "成员不属于项目或已停用", "behavior": "服务端拒绝并指名具体成员", "recovery": "前端提示后调整选项"},
+    {"condition": "组件不存在或已删除", "behavior": "返回实体不存在错误", "recovery": "前端刷新列表"},
+    {"condition": "角色类别未配置", "behavior": "下拉为空并提示到参数管理配置", "recovery": "列表展示不受影响，角色标签显示原文"},
+    {"condition": "重复提交", "behavior": "全量替换幂等，按钮提交中禁用", "recovery": "成功后刷新"},
+    {"condition": "接口失败", "behavior": "沿用页面错误态与重试", "recovery": "el-result + 重新加载"}
+  ],
+  "quality_attributes": {
+    "security": ["写接口 RBAC", "requireProject 项目数据范围", "成员归属与启用校验", "dm_operation_log 审计", "不信任前端身份与权限"],
+    "performance": ["关系数据量小，列表单次批查", "成员选项按项目全量返回"],
+    "compatibility": ["迁移追加幂等", "既有字段与接口不变，persons 为新增字段", "导出列追加末尾"],
+    "operations": ["参数类别由迁移种子后由参数管理维护", "回退保留表无副作用"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1", "R9"], "signal": "迁移检查与级联删除行为", "method": "check-flyway-migrations.mjs + Testcontainers 聚焦测试"},
+    {"requirement_ids": ["R2", "R3", "R4"], "signal": "列表 persons、成员范围、保存校验/权限/审计", "method": "后端聚焦测试"},
+    {"requirement_ids": ["R5", "R6", "R7", "R10"], "signal": "页面列、抽屉、浮层、导出与状态", "method": "npm build + 真实浏览器 375/390/430/桌面验收"},
+    {"requirement_ids": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10"], "signal": "治理与全量构建", "method": "check-all-governance.mjs / git diff --check / mvn -pl :ccb-boot -am test"}
+  ],
+  "assumptions": [
+    {"text": "pm_project_member 与 sys_user 的 deleted=0 表示有效", "basis": "模块既有 SQL 使用 m.deleted=0 的惯例", "falsifier": "字段语义与该默认不一致"},
+    {"text": "user-profiles/query 能按 sys_user.id 返回浮层所需姓名/头像/电话/团队", "basis": "person-directory 与 UiUserIdentity 现有实现", "falsifier": "接口对部分场景返回缺失"},
+    {"text": "项目内关系总量小，批查与全量替换可接受", "basis": "组件清单项目内系统量与成员量均有限", "falsifier": "出现单项目数千关系且保存延迟不可接受"}
+  ],
+  "unknowns": [
+    {"question": "DM_COMPONENT_PERSON_ROLE 默认选项（负责人/对接人/业务人员/实施人员）是否完全覆盖业务口径", "impact": "选项不足时需在参数管理补充", "owner": "数据迁移管理员", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "人员来源=当前项目成员", "reason": "用户选择方案 B", "source": "用户确认"},
+    {"id": "D2", "decision": "一人一角色一条", "reason": "用户确认，模型简单", "source": "用户确认"},
+    {"id": "D3", "decision": "角色字典=参数管理 DM_COMPONENT_PERSON_ROLE", "reason": "与模块既有码值惯例一致，加角色不发版", "source": "用户确认默认项"},
+    {"id": "D4", "decision": "保存采用全量替换", "reason": "抽屉批量管理幂等简单", "source": "设计建议"},
+    {"id": "D5", "decision": "展示复用 UiUserIdentity 与人员档案浮层", "reason": "复用已验证能力", "source": "设计建议"},
+    {"id": "D6", "decision": "需求编号 REQ-20260919-076，分支 feat/REQ-20260919-076-dm-component-person", "reason": "按需求编号与分支规约", "source": "工程规约"}
+  ],
+  "risks": [
+    {"risk": "数据库新表与写接口变更", "impact": "需要 Owner 复核与回归", "mitigation": "迁移幂等、聚焦测试、高风险复核"},
+    {"risk": "并发编辑关系最后提交覆盖先提交", "impact": "偶发覆盖", "mitigation": "项目内低风险可接受，保存前提示"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户确认设计：人员来源=当前项目成员、含职责/角色字段、一人一角色、角色字典采用参数管理 DM_COMPONENT_PERSON_ROLE",
+    "confirmed_at": "2026-09-19T09:53:00+08:00"
+  }
+}

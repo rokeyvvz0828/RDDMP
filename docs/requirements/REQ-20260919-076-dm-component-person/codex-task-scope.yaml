@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260919-076",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260919-076-dm-component-person/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "codex",
+    "module": "business/data-migration",
+    "module_owner": "rokeyvvz0828",
+    "branch": "feat/REQ-20260919-076-dm-component-person",
+    "worktree": "/home/song/workspace/RDDMP"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex", "browser"]
+  },
+  "scope": {
+    "writable_paths": [
+      "server/src/modules/data-migration/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql",
+      "web/src/api/data-migration.ts",
+      "web/src/modules/data-migration/**",
+      "docs/engineering-control/designs/2026-09-19-dm-component-person-design.md",
+      "docs/requirements/REQ-20260919-076-dm-component-person/**",
+      ".ai-control/requirements/req-20260919-076-dm-component-person/*.json"
+    ],
+    "read_only_paths": [
+      "server/src/shared/common/**",
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "server/src/modules/architecture/**",
+      "web/src/components/ui/**",
+      "web/src/stores/person-directory.ts",
+      "web/src/api/user-profile.ts",
+      "docs/governance/**",
+      "governance/**"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "required": true,
+    "issue": "web/src/api/data-migration.ts 与 /api/data-migration/components/* 契约扩展：新增 persons/member-options 接口与行内 persons 字段，向后兼容",
+    "owner_approved": true,
+    "old_behavior_preserved": true,
+    "regression_tests": ["现有组件清单列表/导出接口回归", "既有调用点零改动"]
+  },
+  "database": {
+    "changed": true,
+    "migration_files": ["server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql"],
+    "compatibility_and_rollback": "新表追加、信息_schema 幂等执行，不影响存量组件；回退为停用功能保留表或早期环境重建，不执行反向 Flyway"
+  },
+  "external_access": {
+    "changed": false,
+    "systems": [],
+    "data_classification": "internal-test-only"
+  },
+  "required_tests": [
+    {"name": "flyway", "command": "node scripts/check-flyway-migrations.mjs", "expected": "V214 通过且无版本冲突"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "模块边界与任务范围检查通过"},
+    {"name": "backend-focused", "command": "mvn -pl :ccb-boot -am test", "expected": "列表 persons、成员选项、保存校验/权限/审计与迁移测试通过"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "生产构建成功、类型检查通过"},
+    {"name": "browser", "command": "真实浏览器验收 375x812/390x844/430x932/1280+", "expected": "列表列、抽屉管理、人员浮层、导出与全状态无溢出遮挡"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": ["数据库新表迁移需 Owner 复核", "关系写接口涉及权限、数据范围与审计", "并发编辑采用全量替换，最后提交覆盖先提交"]
+  },
+  "completion": {
+    "control_mode": "full",
+    "control_prefix": "req-20260919-076-dm-component-person",
+    "control_justification": "业务功能 + 数据库迁移 + 写接口权限审计，需要受控闭环",
+    "acceptance_evidence": [
+      ".ai-control/requirements/req-20260919-076-dm-component-person/execution-T1.json",
+      ".ai-control/requirements/req-20260919-076-dm-component-person/observation-T1.json",
+      ".ai-control/requirements/req-20260919-076-dm-component-person/convergence.json"
+    ],
+    "release_verification": [],
+    "rollback": "回退本需求提交即停用功能；新表保留无副作用；必要时按早期环境重建数据库；不执行反向 Flyway"
+  }
+}

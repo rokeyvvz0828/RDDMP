@@ -9,25 +9,33 @@
 -->
 <script setup lang="ts">
 import '../../data-migration.css'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Download, Edit, Plus, Refresh, Search, UploadFilled, View } from '@element-plus/icons-vue'
+import { computed, defineComponent, h, onMounted, reactive, ref, watch, type PropType } from 'vue'
+import { ElMessage, ElMessageBox, ElPopover, ElTag } from 'element-plus'
+import { Delete, Document, Download, Edit, Plus, Refresh, Search, UploadFilled } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
 import UiEmptyState from '../../../../components/ui/UiEmptyState.vue'
 import UiFormDrawer from '../../../../components/ui/UiFormDrawer.vue'
 import UiPageHeader from '../../../../components/ui/UiPageHeader.vue'
 import UiToolbar from '../../../../components/ui/UiToolbar.vue'
+import UiUserIdentity from '../../../../components/ui/UiUserIdentity.vue'
 import { apiErrorMessage } from '../../../../api/error'
 import { useAuthStore } from '../../../../stores/auth'
 import {
+  DM_CODE_CATEGORIES,
   createDataMigrationComponent,
   deleteDataMigrationComponent,
   exportDataMigrationComponents,
+  getComponentMemberOptions,
+  getComponentPersons,
+  getDataMigrationParamOptions,
   getSystemOptions,
   listDataMigrationComponents,
   listAllPhysicalSubsystems,
+  saveComponentPersons,
   setDataMigrationComponentEnabled,
   updateDataMigrationComponent,
+  type ComponentMemberOption,
+  type ComponentPerson,
   type DataMigrationComponent,
   type SelectOption
 } from '../../../../api/data-migration'
@@ -37,9 +45,43 @@ import { useProjectScope } from '../../composables/useProjectScope'
 const auth = useAuthStore()
 const canManage = computed(() => auth.hasPermission('data-migration:manage') || auth.hasPermission('system:admin'))
 
+/**
+ * 关联人员展示块：前 2 名成员（UiUserIdentity + 职责标签），超过 2 人折叠为 +N，
+ * 点击浮层查看看全部成员；无关系显示“-”。成员姓名悬浮/点击的人员详情浮层由
+ * UiUserIdentity 自带（hover 桌面 / 触屏 click 自动切换）。
+ */
+const PersonChips = defineComponent({
+  name: 'ComponentPersonChips',
+  props: {
+    persons: { type: Array as PropType<ComponentPerson[]>, default: () => [] }
+  },
+  setup(props) {
+    const chip = (person: ComponentPerson) =>
+      h('span', { class: 'dm-person-chip' }, [
+        // element-plus 2.14 起 ElAvatar.size 仅接受 ''/default/small/large 字符串枚举，数字会触发 prop 校验警告；24px 恰等于内置 small 档，改用枚举保持视觉不变。
+        h(UiUserIdentity, { userId: person.user_id, fallbackName: person.display_name, size: 'small', variant: 'compact' }),
+        h(ElTag, { size: 'small', effect: 'plain', type: 'info' }, () => person.person_role_label || person.person_role)
+      ])
+    return () => {
+      const list = props.persons
+      if (!list.length) return h('span', { class: 'dm-muted' }, '-')
+      const shown = list.slice(0, 2)
+      const extra = list.slice(2)
+      const more = extra.length
+        ? h(ElPopover, { width: 340, trigger: 'click', placement: 'bottom-start', popperClass: 'dm-person-popover' }, {
+            reference: () => h('span', { class: 'dm-person-more' }, `+${extra.length}`),
+            default: () => h('div', { class: 'dm-person-popover-list' }, list.map(chip))
+          })
+        : null
+      return h('span', { class: 'dm-person-chips' }, [...shown.map(chip), more])
+    }
+  }
+})
+
 const scope = useProjectScope()
 const scopeState = scope.state
 const scopeProjectId = scope.projectId
+const scopeProjectRef = scope.projectRef
 
 const loading = ref(false)
 const error = ref('')
@@ -265,10 +307,14 @@ function subsystemLabel(c: SubsystemCandidate) { return `${c.code} - ${c.shortNa
 // 架构主数据系统约 500 条以内：首次打开批量新增抽屉时一次性全量加载，之后复用缓存。
 async function loadSubsystemOptions(force = false) {
   if (subsystemLoaded.value && !force) return
+  if (!scopeProjectRef.value) {
+    subsystemCandidates.value = []
+    return
+  }
   subsystemSearching.value = true
   subsystemForbidden.value = false
   try {
-    const list = (await listAllPhysicalSubsystems()).map(r => ({
+    const list = (await listAllPhysicalSubsystems(scopeProjectRef.value)).map(r => ({
       code: r.code,
       shortName: r.shortName,
       name: r.name,
@@ -293,11 +339,95 @@ async function loadSubsystemOptions(force = false) {
 
 function openCreate() {
   selectedSystems.clear()
+  pendingPersons.clear()
+  setupSystem.value = null
+  personOptionsError.value = ''
   filterBusinessGroup.value = ''
   filterKeyword.value = ''
   subsystemForbidden.value = false
   void loadSubsystemOptions()
+  void ensurePersonOptions()
   createOpen.value = true
+}
+
+// 批量新增时按系统提前配置的关联人员（code -> persons），确认新增后自动保存到各系统
+const pendingPersons = reactive(new Map<string, ComponentPerson[]>())
+const setupSystem = ref<SubsystemCandidate | null>(null)
+const personOptionsLoading = ref(false)
+const personOptionsError = ref('')
+const setupNewMemberUserId = ref<number | null>(null)
+const setupNewMemberRole = ref<string>('')
+
+async function ensurePersonOptions() {
+  if (scopeProjectId.value == null) return
+  if (memberOptions.value.length || roleOptions.value.length) return
+  personOptionsLoading.value = true
+  personOptionsError.value = ''
+  try {
+    const [memberRes, roleRes] = await Promise.all([
+      getComponentMemberOptions(scopeProjectId.value),
+      getDataMigrationParamOptions(DM_CODE_CATEGORIES.componentPersonRole)
+    ])
+    memberOptions.value = memberRes.data.data ?? []
+    roleOptions.value = roleRes.data.data ?? []
+  } catch (e) {
+    personOptionsError.value = apiErrorMessage(e, '成员/角色选项加载失败')
+  } finally {
+    personOptionsLoading.value = false
+  }
+}
+
+function openPersonsSetup(system: SubsystemCandidate | null) {
+  setupSystem.value = system
+  setupNewMemberUserId.value = null
+  setupNewMemberRole.value = ''
+}
+
+const setupPersons = computed(() => {
+  const code = setupSystem.value?.code
+  return code ? (pendingPersons.get(code) ?? []) : []
+})
+
+const setupAvailableMembers = computed(() => {
+  const used = new Set(setupPersons.value.map(person => person.user_id))
+  return memberOptions.value.filter(member => !used.has(member.user_id))
+})
+
+function addSetupPerson() {
+  if (!setupSystem.value) return
+  if (setupNewMemberUserId.value == null || !setupNewMemberRole.value) return
+  const member = memberOptions.value.find(option => option.user_id === setupNewMemberUserId.value)
+  if (!member) return
+  const list = pendingPersons.get(setupSystem.value.code) ?? []
+  if (list.some(person => person.user_id === member.user_id)) {
+    ElMessage.warning('该成员已在此系统的关联人员中')
+    return
+  }
+  list.push({
+    user_id: member.user_id,
+    display_name: member.display_name,
+    person_role: setupNewMemberRole.value,
+    person_role_label: roleOptions.value.find(option => option.value === setupNewMemberRole.value)?.label
+  })
+  pendingPersons.set(setupSystem.value.code, list)
+  setupNewMemberUserId.value = null
+  setupNewMemberRole.value = ''
+}
+
+function removeSetupPerson(userId: number) {
+  if (!setupSystem.value) return
+  const list = pendingPersons.get(setupSystem.value.code) ?? []
+  pendingPersons.set(setupSystem.value.code, list.filter(person => person.user_id !== userId))
+}
+
+function updateSetupPersonRole(userId: number, role: string) {
+  if (!setupSystem.value) return
+  const list = pendingPersons.get(setupSystem.value.code) ?? []
+  const person = list.find(candidate => candidate.user_id === userId)
+  if (!person) return
+  person.person_role = role
+  person.person_role_label = roleOptions.value.find(option => option.value === role)?.label
+  pendingPersons.set(setupSystem.value.code, list)
 }
 
 async function submitCreate() {
@@ -307,6 +437,7 @@ async function submitCreate() {
   let successCount = 0
   let failCount = 0
   const errors: string[] = []
+  const createdCodes = new Set<string>()
   try {
     for (const [code, totalCheck] of selectedSystems) {
       try {
@@ -315,6 +446,7 @@ async function submitCreate() {
           systemCode: code,
           totalCheck
         })
+        createdCodes.add(code)
         successCount++
       } catch (e) {
         failCount++
@@ -322,11 +454,26 @@ async function submitCreate() {
         if (failCount >= 10) break
       }
     }
+    const personErrors: string[] = []
+    for (const [code, persons] of pendingPersons) {
+      if (!persons.length || !createdCodes.has(code)) continue
+      try {
+        await saveComponentPersons(scopeProjectId.value, code,
+          persons.map(person => ({ userId: person.user_id, personRole: person.person_role })))
+      } catch (e) {
+        personErrors.push(`${code}：${apiErrorMessage(e, '关联人员保存失败')}`)
+      }
+    }
     if (failCount === 0) {
-      ElMessage.success(`批量新增成功（${successCount} 个系统）`)
+      if (personErrors.length === 0) {
+        ElMessage.success(`批量新增成功（${successCount} 个系统）`)
+      } else {
+        ElMessage.warning(`新增成功（${successCount} 个系统），但 ${personErrors.length} 个系统的关联人员保存失败，请到修改中重试`)
+      }
       createOpen.value = false
     } else {
-      ElMessage.warning(`批量新增完成：成功 ${successCount} 个，失败 ${failCount} 个`)
+      const extra = personErrors.length ? `；另有 ${personErrors.length} 个系统的关联人员保存失败` : ''
+      ElMessage.warning(`批量新增完成：成功 ${successCount} 个，失败 ${failCount} 个${extra}`)
     }
     await load()
   } catch (e) {
@@ -346,6 +493,10 @@ function openEdit(row: DataMigrationComponent) {
   editing.value = row
   editTotalCheck.value = row.total_check
   editOpen.value = true
+  resetPersonsState()
+  if (scopeProjectId.value != null) {
+    void openViewPersons(scopeProjectId.value, row.system_code)
+  }
 }
 
 async function submitEdit() {
@@ -395,13 +546,105 @@ async function toggleEnabled(row: DataMigrationComponent) {
   }
 }
 
-/* ---------- 查看详情 ---------- */
+/* ---------- 查看详情：关联人员展示与管理 ---------- */
 const viewOpen = ref(false)
 const viewing = ref<DataMigrationComponent | null>(null)
+const viewPersons = ref<ComponentPerson[]>([])
+const viewPersonsLoading = ref(false)
+const viewPersonsError = ref('')
+const viewPersonsForbidden = ref(false)
+const memberOptions = ref<ComponentMemberOption[]>([])
+const roleOptions = ref<SelectOption[]>([])
+const newMemberUserId = ref<number | null>(null)
+const newMemberRole = ref<string>('')
+const personsSaving = ref(false)
+
+function resetPersonsState() {
+  viewPersons.value = []
+  viewPersonsLoading.value = false
+  viewPersonsError.value = ''
+  viewPersonsForbidden.value = false
+  memberOptions.value = []
+  roleOptions.value = []
+  newMemberUserId.value = null
+  newMemberRole.value = ''
+  personsSaving.value = false
+}
 
 function openView(row: DataMigrationComponent) {
   viewing.value = row
   viewOpen.value = true
+  resetPersonsState()
+}
+
+async function openViewPersons(projectId: number, systemCode: string) {
+  viewPersonsLoading.value = true
+  viewPersonsError.value = ''
+  viewPersonsForbidden.value = false
+  try {
+    const [personsRes, memberRes, roleRes] = await Promise.all([
+      getComponentPersons(projectId, systemCode),
+      getComponentMemberOptions(projectId),
+      getDataMigrationParamOptions(DM_CODE_CATEGORIES.componentPersonRole)
+    ])
+    viewPersons.value = personsRes.data.data ?? []
+    memberOptions.value = memberRes.data.data ?? []
+    roleOptions.value = roleRes.data.data ?? []
+  } catch (e) {
+    if (httpStatus(e) === 403) viewPersonsForbidden.value = true
+    else viewPersonsError.value = apiErrorMessage(e, '关联人员加载失败')
+  } finally {
+    viewPersonsLoading.value = false
+  }
+}
+
+const availableMemberOptions = computed(() => {
+  const used = new Set(viewPersons.value.map(person => person.user_id))
+  return memberOptions.value.filter(member => !used.has(member.user_id))
+})
+
+function addPersonRow() {
+  if (newMemberUserId.value == null || !newMemberRole.value) return
+  const member = memberOptions.value.find(option => option.user_id === newMemberUserId.value)
+  if (!member) return
+  viewPersons.value.push({
+    user_id: member.user_id,
+    display_name: member.display_name,
+    person_role: newMemberRole.value,
+    person_role_label: roleOptions.value.find(option => option.value === newMemberRole.value)?.label
+  })
+  newMemberUserId.value = null
+  newMemberRole.value = ''
+}
+
+function removePersonRow(userId: number) {
+  viewPersons.value = viewPersons.value.filter(person => person.user_id !== userId)
+}
+
+function updatePersonRole(userId: number, role: string) {
+  const person = viewPersons.value.find(candidate => candidate.user_id === userId)
+  if (!person) return
+  person.person_role = role
+  person.person_role_label = roleOptions.value.find(option => option.value === role)?.label
+}
+
+async function savePersons() {
+  if (scopeProjectId.value == null) return ElMessage.warning('当前项目不可用，请在顶部项目切换器中重新选择项目')
+  const systemCode = viewing.value?.system_code ?? editing.value?.system_code
+  if (!systemCode) return
+  personsSaving.value = true
+  try {
+    await saveComponentPersons(scopeProjectId.value, systemCode,
+      viewPersons.value.map(person => ({ userId: person.user_id, personRole: person.person_role })))
+    ElMessage.success('关联人员已保存')
+    await openViewPersons(scopeProjectId.value, systemCode)
+    await load()
+  } catch (e) {
+    if (httpStatus(e) === 403) ElMessage.error('没有关联人员保存权限')
+    else ElMessage.error(apiErrorMessage(e, '关联人员保存失败'))
+  } finally {
+    personsSaving.value = false
+  }
 }
 
 onMounted(() => { void scope.ensureLoaded() })
@@ -422,12 +665,25 @@ watch(scopeProjectId, () => {
   createOpen.value = false
   editOpen.value = false
   viewOpen.value = false
+  resetPersonsState()
+  pendingPersons.clear()
+  setupSystem.value = null
+  personOptionsError.value = ''
   error.value = ''
   forbidden.value = false
   filterSystemOpts.value = []
   void loadFilterSystemOptions()
   void load()
 }, { immediate: true })
+
+watch(createOpen, (open) => {
+  if (!open) {
+    pendingPersons.clear()
+    setupSystem.value = null
+    setupNewMemberUserId.value = null
+    setupNewMemberRole.value = ''
+  }
+})
 </script>
 
 <template>
@@ -479,11 +735,18 @@ watch(scopeProjectId, () => {
       <div v-if="rows.length || loading" class="components-desktop-table">
         <UiDataTable :data="rows" :loading="loading" row-key="system_code" border empty-text="暂无组件数据">
           <el-table-column prop="business_group_name" label="所属事业群" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="system_code" label="系统编号" min-width="140" show-overflow-tooltip />
+          <el-table-column label="系统编号" min-width="140">
+            <template #default="{ row }">
+              <button type="button" class="dm-code-link" :disabled="actionBusy" @click="openView(row)">{{ row.system_code }}</button>
+            </template>
+          </el-table-column>
           <el-table-column prop="system_short_name" label="系统简称" min-width="120" show-overflow-tooltip />
           <el-table-column prop="system_name" label="系统名称" min-width="170" show-overflow-tooltip />
           <el-table-column prop="system_description" label="系统描述" min-width="180" show-overflow-tooltip />
           <el-table-column prop="responsible_team_name" label="负责团队" min-width="130" show-overflow-tooltip />
+          <el-table-column label="关联人员" min-width="220">
+            <template #default="{ row }"><PersonChips :persons="row.persons || []" /></template>
+          </el-table-column>
           <el-table-column label="总分核对" width="100" align="center">
             <template #default="{ row }"><el-tag :type="row.total_check === 1 ? 'success' : 'info'" effect="plain" size="small">{{ row.total_check === 1 ? '是' : '否' }}</el-tag></template>
           </el-table-column>
@@ -497,7 +760,6 @@ watch(scopeProjectId, () => {
           <el-table-column label="操作" width="260" fixed="right" align="center">
             <template #default="{ row }">
               <div class="dm-table-actions">
-                <el-button link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
                 <el-button v-if="canManage" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
                 <el-button v-if="canManage" link :type="row.enabled === 1 ? 'warning' : 'success'" :disabled="actionBusy" @click="toggleEnabled(row)">{{ row.enabled === 1 ? '停用' : '启用' }}</el-button>
                 <el-button v-if="canManage" link type="danger" :disabled="actionBusy" @click="removeComponent(row)"><el-icon><Delete /></el-icon>删除</el-button>
@@ -517,7 +779,7 @@ watch(scopeProjectId, () => {
         <article v-for="row in rows" :key="row.system_code">
           <header>
             <div>
-              <strong>{{ row.system_code }}</strong>
+              <button type="button" class="dm-code-link" :disabled="actionBusy" @click="openView(row)">{{ row.system_code }}</button>
               <small>{{ row.system_short_name || row.system_name }}</small>
             </div>
             <el-tag :type="row.total_check === 1 ? 'success' : 'info'" effect="plain" size="small">总分核对：{{ row.total_check === 1 ? '是' : '否' }}</el-tag>
@@ -527,13 +789,13 @@ watch(scopeProjectId, () => {
             <div><dt>事业群</dt><dd>{{ row.business_group_name }}</dd></div>
             <div><dt>系统简称</dt><dd>{{ row.system_short_name }}</dd></div>
             <div><dt>负责团队</dt><dd>{{ row.responsible_team_name }}</dd></div>
+            <div><dt>关联人员</dt><dd><PersonChips :persons="row.persons || []" /></dd></div>
             <div><dt>创建时间</dt><dd>{{ row.created_at }}</dd></div>
             <div><dt>创建人</dt><dd>{{ row.created_by_name }}</dd></div>
             <div><dt>更新时间</dt><dd>{{ row.updated_at }}</dd></div>
             <div><dt>更新人</dt><dd>{{ row.updated_by_name }}</dd></div>
           </dl>
           <footer>
-            <el-button link type="primary" :disabled="actionBusy" @click="openView(row)"><el-icon><View /></el-icon>查看</el-button>
             <el-button v-if="canManage" link type="primary" :disabled="actionBusy" @click="openEdit(row)"><el-icon><Edit /></el-icon>修改</el-button>
             <el-button v-if="canManage" link :type="row.enabled === 1 ? 'warning' : 'success'" :disabled="actionBusy" @click="toggleEnabled(row)">{{ row.enabled === 1 ? '停用' : '启用' }}</el-button>
             <el-button v-if="canManage" link type="danger" :disabled="actionBusy" @click="removeComponent(row)"><el-icon><Delete /></el-icon>删除</el-button>
@@ -551,7 +813,7 @@ watch(scopeProjectId, () => {
     <UiFormDrawer v-model="createOpen" title="批量新增组件" width="min(900px, 92vw)" :loading="createSaving || subsystemSearching" confirm-text="确认新增" @submit="submitCreate">
       <el-alert type="info" :closable="false" show-icon
         :title="`当前项目可新增 ${availableSystems.length} 个系统，已选 ${selectedCount} 个`"
-        sub-title="勾选要新增的系统，每个系统可单独设置是否涉及总分核对；系统信息从架构主数据联动带出，仅展示、不保存。" />
+        sub-title="勾选要新增的系统，每个系统可单独设置是否涉及总分核对与关联人员；系统信息从架构主数据联动带出，仅展示、不保存。" />
 
       <div class="components-batch-filter">
         <el-select v-model="filterBusinessGroup" clearable placeholder="所属事业群" style="width: 200px">
@@ -612,7 +874,54 @@ watch(scopeProjectId, () => {
               </el-radio-group>
             </template>
           </el-table-column>
+          <el-table-column label="关联人员" min-width="180">
+            <template #default="{ row }">
+              <span v-if="!isSelected(row.code)" class="dm-muted">-</span>
+              <div v-else class="dm-person-cell">
+                <PersonChips v-if="(pendingPersons.get(row.code) || []).length" :persons="pendingPersons.get(row.code) || []" />
+                <el-button link type="primary" size="small" @click="openPersonsSetup(row)">
+                  {{ (pendingPersons.get(row.code) || []).length ? '编辑' : '设置关联人员' }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
         </el-table>
+      </div>
+
+      <div v-if="setupSystem" class="components-person-setup">
+        <div class="components-person-setup__head">
+          <strong>{{ setupSystem.code }} - {{ setupSystem.shortName || setupSystem.name }}：关联人员</strong>
+          <el-button link type="primary" @click="openPersonsSetup(null)">收起</el-button>
+        </div>
+        <el-alert v-if="personOptionsError" type="error" :closable="false" show-icon :title="personOptionsError">
+          <template #default>
+            <el-button link type="primary" @click="ensurePersonOptions">重试</el-button>
+          </template>
+        </el-alert>
+        <template v-else>
+          <div class="dm-person-manage__add">
+            <el-select v-model="setupNewMemberUserId" filterable clearable placeholder="选择项目成员" class="dm-person-manage__member" :loading="personOptionsLoading">
+              <el-option v-for="member in setupAvailableMembers" :key="member.user_id" :label="member.display_name" :value="member.user_id" />
+            </el-select>
+            <el-select v-model="setupNewMemberRole" clearable placeholder="职责/角色" class="dm-person-manage__role">
+              <el-option v-for="option in roleOptions" :key="option.value" :label="option.label" :value="option.value" />
+            </el-select>
+            <el-button type="primary" :disabled="setupNewMemberUserId == null || !setupNewMemberRole || personOptionsLoading" @click="addSetupPerson">添加</el-button>
+          </div>
+          <el-alert v-if="!roleOptions.length" type="warning" :closable="false" show-icon
+            title="角色选项缺失，请先在“系统管理/参数管理”配置类别 DM_COMPONENT_PERSON_ROLE" class="dm-person-manage__notice" />
+          <div v-if="!setupPersons.length" class="dm-person-empty">暂无关联人员</div>
+          <div v-else class="dm-person-rows">
+            <div v-for="person in setupPersons" :key="person.user_id" class="dm-person-row">
+              <UiUserIdentity :user-id="person.user_id" :fallback-name="person.display_name" size="default" />
+              <el-select :model-value="person.person_role" class="dm-person-row__role" size="small" @update:model-value="(role: string) => updateSetupPersonRole(person.user_id, role)">
+                <el-option v-for="option in roleOptions" :key="option.value" :label="option.label" :value="option.value" />
+              </el-select>
+              <el-button link type="danger" @click="removeSetupPerson(person.user_id)">移除</el-button>
+            </div>
+          </div>
+          <p class="dm-person-manage__hint">此处配置的关联人员将在确认新增后自动保存到对应系统；一人一个角色一条。</p>
+        </template>
       </div>
 
       <div class="components-batch-footer">
@@ -624,7 +933,7 @@ watch(scopeProjectId, () => {
       </div>
     </UiFormDrawer>
 
-    <UiFormDrawer v-model="editOpen" title="修改组件" width="560px" :loading="editSaving" confirm-text="保存" @submit="submitEdit">
+    <UiFormDrawer v-model="editOpen" title="修改组件" width="min(640px, 92vw)" :loading="editSaving" confirm-text="保存" @submit="submitEdit">
       <el-form label-width="96px" label-position="left">
         <el-form-item label="系统编号"><el-input :model-value="editing?.system_code" disabled /></el-form-item>
         <el-form-item label="所属事业群"><el-input :model-value="editing?.business_group_name || '-'" disabled /></el-form-item>
@@ -638,12 +947,50 @@ watch(scopeProjectId, () => {
             <el-radio :value="1">是</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-alert type="info" :closable="false" show-icon title="组件其他信息由系统编号联动物理子系统维护，仅允许修改「是否涉及总分核对」。" class="components-subsystem-alert" />
+        <el-form-item label="关联人员">
+          <div class="dm-person-manage">
+            <el-alert v-if="viewPersonsForbidden" type="error" :closable="false" show-icon title="没有关联人员访问权限" />
+            <el-alert v-else-if="viewPersonsError" type="error" :closable="false" show-icon :title="viewPersonsError">
+              <template #default>
+                <el-button link type="primary" @click="editing && scopeProjectId != null && openViewPersons(scopeProjectId, editing.system_code)">重试</el-button>
+              </template>
+            </el-alert>
+            <el-skeleton v-else-if="viewPersonsLoading" :rows="2" animated />
+            <div v-else class="dm-person-manage__body">
+              <div class="dm-person-manage__add">
+                <el-select v-model="newMemberUserId" filterable clearable placeholder="选择项目成员" class="dm-person-manage__member">
+                  <el-option v-for="member in availableMemberOptions" :key="member.user_id" :label="member.display_name" :value="member.user_id" />
+                </el-select>
+                <el-select v-model="newMemberRole" clearable placeholder="职责/角色" class="dm-person-manage__role">
+                  <el-option v-for="option in roleOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+                <el-button type="primary" :disabled="newMemberUserId == null || !newMemberRole || personsSaving" @click="addPersonRow">添加</el-button>
+              </div>
+              <el-alert v-if="!roleOptions.length" type="warning" :closable="false" show-icon
+                title="角色选项缺失，请先在“系统管理/参数管理”配置类别 DM_COMPONENT_PERSON_ROLE" class="dm-person-manage__notice" />
+              <div v-if="!viewPersons.length" class="dm-person-empty">暂无关联人员</div>
+              <div v-else class="dm-person-rows">
+                <div v-for="person in viewPersons" :key="person.user_id" class="dm-person-row">
+                  <UiUserIdentity :user-id="person.user_id" :fallback-name="person.display_name" size="default" />
+                  <el-select :model-value="person.person_role" class="dm-person-row__role" size="small" @update:model-value="(role: string) => updatePersonRole(person.user_id, role)">
+                    <el-option v-for="option in roleOptions" :key="option.value" :label="option.label" :value="option.value" />
+                  </el-select>
+                  <el-button link type="danger" :disabled="personsSaving" @click="removePersonRow(person.user_id)">移除</el-button>
+                </div>
+              </div>
+              <div class="dm-person-manage__actions">
+                <el-button type="primary" :loading="personsSaving" :disabled="personsSaving || viewPersonsLoading" @click="savePersons">保存关联人员</el-button>
+                <span class="dm-person-manage__hint">一人一个角色一条，保存为全量替换</span>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
+        <el-alert type="info" :closable="false" show-icon title="组件其他信息由系统编号联动物理子系统维护，仅允许修改总分核对与关联人员。" class="components-subsystem-alert" />
       </el-form>
     </UiFormDrawer>
 
     <!-- 查看详情弹窗 -->
-    <el-dialog v-model="viewOpen" title="组件详情" width="560px" :close-on-click-modal="true" align-center destroy-on-close>
+    <el-dialog v-model="viewOpen" title="组件详情" :width="'min(600px, calc(100vw - 24px))'" :close-on-click-modal="true" align-center destroy-on-close>
       <el-form label-width="96px" label-position="left">
         <el-form-item label="系统编号"><el-input :model-value="viewing?.system_code" disabled /></el-form-item>
         <el-form-item label="所属事业群"><el-input :model-value="viewing?.business_group_name || '-'" disabled /></el-form-item>
@@ -651,6 +998,17 @@ watch(scopeProjectId, () => {
         <el-form-item label="系统名称"><el-input :model-value="viewing?.system_name" disabled /></el-form-item>
         <el-form-item label="系统描述"><el-input :model-value="viewing?.system_description || '-'" type="textarea" :rows="2" disabled /></el-form-item>
         <el-form-item label="负责团队"><el-input :model-value="viewing?.responsible_team_name || '-'" disabled /></el-form-item>
+        <el-form-item label="关联人员">
+          <div class="dm-person-rows">
+            <template v-if="viewing && viewing.persons && viewing.persons.length">
+              <div v-for="person in viewing.persons" :key="person.user_id" class="dm-person-row">
+                <UiUserIdentity :user-id="person.user_id" :fallback-name="person.display_name" size="default" />
+                <el-tag size="small" effect="plain" type="info">{{ person.person_role_label || person.person_role }}</el-tag>
+              </div>
+            </template>
+            <span v-else class="dm-muted">暂无关联人员</span>
+          </div>
+        </el-form-item>
         <el-form-item label="总分核对">
           <el-tag :type="viewing?.total_check === 1 ? 'success' : 'info'" effect="plain" size="small">{{ viewing?.total_check === 1 ? '是' : '否' }}</el-tag>
         </el-form-item>
@@ -670,6 +1028,11 @@ watch(scopeProjectId, () => {
 .components-page .ui-toolbar { align-items: flex-start; }
 .components-page .ui-toolbar__filters, .components-page .ui-toolbar__actions { flex-wrap: wrap; }
 .components-page .dm-table-actions { flex-wrap: nowrap; }
+/* 系统编号点击查看详情（替代原“查看”按钮）；移动端保持与旧 strong 一致的块级换行布局（data-migration.css 的 .dm-mobile-list strong 规则已不再作用于该文本）。 */
+.dm-code-link { padding: 0; border: 0; background: none; font: inherit; color: var(--primary); cursor: pointer; font-weight: 600; line-height: inherit; }
+.dm-code-link:hover { text-decoration: underline; }
+.dm-code-link:disabled { color: var(--muted); cursor: not-allowed; text-decoration: none; }
+.dm-mobile-list .dm-code-link { display: block; max-width: 100%; overflow-wrap: anywhere; text-align: left; }
 .components-page .dm-state-panel { padding: 0; }
 .components-advanced-filter { margin: -6px 0 16px; padding: 14px 16px 0; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 6px; }
 .components-advanced-filter .el-form { display: flex; flex-wrap: wrap; gap: 0 14px; }
@@ -700,6 +1063,27 @@ watch(scopeProjectId, () => {
 }
 .components-batch-footer b { color: var(--primary); font-weight: 600; }
 .dm-system-code { font-family: var(--mono-font, monospace); font-size: 12px; color: var(--primary); background: var(--primary-light); padding: 2px 6px; border-radius: 4px; }
+.dm-muted { color: var(--muted); }
+.dm-person-chips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.dm-person-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.dm-person-more { cursor: pointer; color: var(--primary); font-weight: 600; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-muted); }
+.dm-person-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.components-person-setup { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-bg); }
+.components-person-setup__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+.dm-person-manage { width: 100%; min-width: 0; }
+.dm-person-manage__add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.dm-person-manage__member { flex: 1 1 160px; min-width: 130px; }
+.dm-person-manage__role { flex: 1 1 120px; min-width: 110px; }
+.dm-person-manage__notice { margin-bottom: 10px; }
+.dm-person-manage__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.dm-person-manage__hint { color: var(--muted); font-size: 12px; }
+.dm-person-empty { color: var(--muted); padding: 6px 0; }
+.dm-person-rows { display: flex; flex-direction: column; gap: 8px; }
+.dm-person-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-muted); }
+/* UiUserIdentity 的 size 仅接受 ''/default/small/large 枚举：默认档 40px 通过 --el-avatar-size 的 CSS 变量还原为 28px 原尺寸（与 element-plus 数字 size 的内联变量渲染等价）。 */
+.dm-person-row :deep(.el-avatar) { --el-avatar-size: 28px; }
+.dm-person-row__role { width: 140px; }
+.dm-person-readonly { width: 100%; min-width: 0; }
 
 @media (max-width: 760px) {
   .components-page .ui-toolbar__filters, .components-page .ui-toolbar__actions { width: 100%; }
@@ -710,4 +1094,10 @@ watch(scopeProjectId, () => {
   .components-page .ui-toolbar__filters > .el-button, .components-page .ui-toolbar__actions > .el-button { flex: 1; }
   .components-desktop-table { display: none; }
 }
+</style>
+
+<style>
+/* 关联人员 +N 浮层由 el-popover 挂载到 body，非 scoped 样式跟随 popperClass。 */
+.dm-person-popover .dm-person-popover-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.dm-person-popover .dm-person-chip { justify-content: flex-start; }
 </style>

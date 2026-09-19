@@ -1,0 +1,69 @@
+{
+  "control_prefix": "req-20260919-076-dm-component-person",
+  "phase": "converged",
+  "ledger_revision": 14,
+  "requirements": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "blocked": 0
+  },
+  "tasks": {
+    "T1": "verified",
+    "T2": "verified",
+    "T3": "verified",
+    "T4": "verified",
+    "T5": "verified"
+  },
+  "open_feedback": [],
+  "gate_result": "PASS",
+  "integration_evidence": {
+    "flyway": "212 migrations, 1 callback, 1 legacy（V214 新增迁移唯一且幂等）",
+    "governance": "本需求账本零告警（历史任务告警与本需求无关）",
+    "backend_focused": "ComponentPerson* 14 run 0 fail BUILD SUCCESS",
+    "frontend_build": "npm --prefix web run build 通过；git diff --check 无空白错误",
+    "browser": "52/52 通过（playwright chromium-1234；375x812/390x844/430x932/1280x800；管理员+只读账号；证据 /tmp/dm-control/evidence/acceptance-results.json 与 12 张截图）"
+  },
+  "residual_risks": [
+    "并发全量替换：同一系统并发编辑后提交覆盖先提交（需求确认最后提交生效，前端提交中禁用+保存后重载）",
+    "审计 COMPONENT_PERSON_SAVE 沿用既有 COMPONENT 惯例：entity_id=NULL、systemCode/personCount 在 detail_json",
+    "本地库 pm_project.project_name(940003) 等历史双重编码脏数据（基线问题，与本需求无关）",
+    "后端全量测试 3 个既有缺陷类失败（干净基线可复现，与本需求无关）",
+    "只读验收账号 dm_ro_accept 依赖本地新增菜单权限 7499 与项目只读角色 99（本地验收数据，不入版本库）"
+  ],
+  "rollback": "逐任务 git revert；新表 dm_component_person 保留无副作用或按早期环境重建，不执行反向 Flyway",
+  "post_convergence_fix": [
+    {
+      "feedback": "F-0001（accepted, resolved）",
+      "issue": "点击批量新增组件时 GET /api/architecture/physical-subsystems 未携带 projectRef 返回 500（既有前端缺陷：listAllPhysicalSubsystems 缺参）",
+      "fix": [
+        "web/src/api/data-migration.ts: listAllPhysicalSubsystems(projectRef: string)",
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue: loadSubsystemOptions 传 scope.projectRef，空 ref 短路",
+        "web/src/modules/data-migration/views/base/TargetTablesPage.vue: 同步传 scope.projectRef"
+      ],
+      "verification": "vue-tsc 0 错误；npm build 通过；浏览器批量新增 5/5（候选 2 系统、SYS-PAY 新增落库、无溢出、无控制台错误）；测试组件已清理，组件清单恢复 PAY-CORE/ORDER-SVC；本地库补充 arch_physical_subsystem 2 条验收数据（不入版本库）",
+      "gate": "PASS（verified=5，未关闭反馈=0）"
+    },
+    {
+      "feedback": "F-0002（accepted, resolved）",
+      "issue": "「系统/组件清单」新增（批量新增）与修改抽屉看不到关联人员入口，仅查看弹窗内有；用户反馈三入口不一致",
+      "fix": [
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue: 新增抽屉表格加「关联人员」列，选中系统后行内出现「设置/编辑关联人员」按钮，行下方展开配置面板（成员+职责/角色+移除/改角色），确认新增后自动按系统保存关系",
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue: 修改抽屉新增「关联人员」区块（复用查看抽屉管理逻辑，打开即加载现有关系，可增删改角色并保存，宽度放宽至 640px）",
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue: savePersons 兼容查看/修改两种场景；项目切换与抽屉关闭清理待保存配置"
+      ],
+      "verification": "npm --prefix web run build 通过；浏览器桌面 11/11（新增设置 2 人落库并展示、修改抽屉区块存在且可保存、查看回归）、移动端 390x844 4/4（新增面板/修改/查看无横向溢出、控制台零错误、无 5xx）；验收测试组件 SYS-NOTIFY 已清理，组件清单恢复 ORDER-SVC/PAY-CORE",
+      "gate": "PASS（verified=5，未关闭反馈=0）"
+    },
+    {
+      "feedback": "F-0003（accepted, resolved）",
+      "issue": "「查看」弹窗不应提供关联人员更新功能（增删/改角色/保存），应纯只读展示；维护仅保留在「新增」与「修改」",
+      "fix": [
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue: 查看弹窗关联人员区块改为只读列表（UiUserIdentity + 角色标签，无任何编辑控件）",
+        "web/src/modules/data-migration/views/base/ComponentsPage.vue: openView 不再加载成员/角色选项与保存状态；修改抽屉与新增抽屉的管理能力保留不变"
+      ],
+      "verification": "npm --prefix web run build 通过；浏览器桌面 6/6（查看弹窗无 保存/移除/成员选择 控件、只读展示 张统筹/负责人 + 钱/业务人员、修改抽屉保留管理、控制台零错误无 5xx），移动端 390x844 无横向溢出、同样无编辑控件",
+      "gate": "PASS（verified=5，未关闭反馈=0）"
+    }
+  ]
+}

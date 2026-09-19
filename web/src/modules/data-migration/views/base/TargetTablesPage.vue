@@ -48,6 +48,7 @@ const resolvedCategory = computed<TableCategory>(() => (props.category ?? (route
 const scope = useProjectScope()
 const scopeState = scope.state
 const scopeProjectId = scope.projectId
+const scopeProjectRef = scope.projectRef
 
 const auth = useAuthStore()
 const readCode = computed(() => resolvedCategory.value === 'TARGET' ? 'data-migration:base:table-fields-target' : 'data-migration:base:table-fields-intermediate')
@@ -348,7 +349,7 @@ async function loadCreateSubsystems() {
     return
   }
   try {
-    const subsystems = await listAllPhysicalSubsystems()
+    const subsystems = scopeProjectRef.value ? await listAllPhysicalSubsystems(scopeProjectRef.value) : []
     subsystemMeta.clear()
     for (const s of subsystems) subsystemMeta.set(s.code, { name: s.name, businessGroupName: s.businessGroupName ?? undefined })
     subsystemMetaLoaded.value = true

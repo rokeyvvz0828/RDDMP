@@ -1,0 +1,50 @@
+{
+  "control_prefix": "req-20260919-076-dm-component-person",
+  "artifact": "execution-evidence",
+  "phase": "controlling",
+  "summary": "按 ControlPlan T1-T5 受控执行完成，全部任务 verified（迁移/查询/写路径/前端/集成验收），无越界改动",
+  "implemented_files": [
+    {
+      "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V214__data_migration_component_person.sql",
+      "purpose": "dm_component_person 关系表 + DM_COMPONENT_PERSON_ROLE 字典幂等种子"
+    },
+    {
+      "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/ProjectComponentService.java",
+      "purpose": "列表/导出 persons 批查、member-options、persons GET/PUT 全量替换+校验+审计、删除级联"
+    },
+    {
+      "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/web/ProjectComponentController.java",
+      "purpose": "GET /components/member-options、GET/PUT /components/persons"
+    },
+    {
+      "path": "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/service/DataMigrationCodeValueService.java",
+      "purpose": "登记 DM_COMPONENT_PERSON_ROLE 进 ALLOWED_CATEGORIES"
+    },
+    {
+      "path": "web/src/api/data-migration.ts",
+      "purpose": "ComponentPerson/ComponentMemberOption 类型与三个请求函数封装"
+    },
+    {
+      "path": "web/src/modules/data-migration/views/base/ComponentsPage.vue",
+      "purpose": "关联人员列/PersonChips 折叠浮层/查看弹窗管理区块/只读展示/弹窗宽度适配"
+    }
+  ],
+  "test_files_added": [
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonMigrationMySqlTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonQueryMySqlTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/ComponentPersonWriteMySqlTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/web/ComponentPersonControllerSecurityTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/service/StubSystemReferenceQuery.java"
+  ],
+  "iterations": {
+    "I1": "verified",
+    "I2": "verified",
+    "I3": "verified",
+    "I4": "verified",
+    "I5": "verified",
+    "F-0002": "resolved（新增/修改抽屉补齐关联人员区块，详见 convergence.post_convergence_fix）",
+    "F-0003": "resolved（查看弹窗关联人员区块改为只读，详见 convergence.post_convergence_fix）",
+    "F-0004": "resolved（ElAvatar size prop 校验警告修复：UiUserIdentity 传参由数字 24/\"28\" 改为枚举 small/default，28px 用 scoped CSS --el-avatar-size 还原，前端构建通过）",
+    "F-0005": "resolved（用户调整：取消桌面/移动端\"查看\"按钮，改为点击系统编号字段打开详情弹窗；移除 View 图标 import，前端构建通过）"
+  }
+}
