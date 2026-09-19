@@ -1,0 +1,25 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementEnums.java", "purpose": "投产阶段候选值增加「待投产」并置于首位（默认值）；全局受控状态清单同步加入"},
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "前端投产阶段候选与注释同步为 待投产/已投产/需求终止"}
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "SFC parse none / template none / script compile ok"}
+  ],
+  "local_checks": [
+    {"check": "默认值口径", "result": "pass", "evidence": "RequirementEnums.defaultRequirementStatus('LAUNCH') 与 LEGACY_STAGE_ACTION_TO_REQ_STATUS['LAUNCH:*'] 均取候选首位，现为「待投产」；前端 legacyStageDefaultStatus('LAUNCH') 同口径", "limitations": ["未跑后端编译与测试"]},
+    {"check": "受控校验", "result": "pass", "evidence": "REQUIREMENT_STATUSES 已含「待投产」，requireOption 校验可通过", "limitations": []}
+  ],
+  "diff_summary": ["投产阶段需求状态：新增待投产并作为默认；后端全局清单与前端阶段候选各 1 处"],
+  "invariants_checked": [
+    {"invariant": "不改表结构", "result": "pass", "evidence": "requirement_status VARCHAR(32) 足够容纳「待投产」，未新增迁移"},
+    {"invariant": "前后端口径一致", "result": "pass", "evidence": "两侧 LAUNCH 候选均为 待投产/已投产/需求终止"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["已处于投产阶段的历史数据若状态为「已投产」不回溯改写（仍在合法候选内）"],
+  "recommended_next": "observe"
+}

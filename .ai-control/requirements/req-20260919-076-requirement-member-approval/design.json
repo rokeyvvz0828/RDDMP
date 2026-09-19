@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260919-076-requirement-member-approval",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-19-requirement-project-member-and-approval-flow-design.md",
+  "objective": "需求管理两个页面的流转人与审批人只能来自项目管理项目组织架构的有效成员，存量交付件评审接入平台审批流，审批与流转接入站内消息通知，阶段推进保持不接审批",
+  "users": [
+    "需求管理 PMO/管理员：发起流转与提交评审",
+    "项目组织架构成员：接收流转、作为审批人处理待办",
+    "项目负责人/项目成员：在项目管理中维护项目组织架构人员"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "新建项目页差异流转、差异提交评审与存量项目页需求流转、交付件提交评审的候选人只来自当前项目组织架构的有效成员",
+      "acceptance": ["四个下拉仅出现 pm_project_member 中 status=1 且用户启用的成员", "切换顶部项目后候选随项目变化"],
+      "priority": "must",
+      "source": "用户 2026-09-19 确认的硬约束",
+      "counterexample": ["下拉仍出现非项目成员的启用用户"]
+    },
+    {
+      "id": "R2",
+      "statement": "服务端在提交时强校验被选人员属于当前项目组织架构，非成员一律拒绝且不产生状态变更",
+      "acceptance": ["直接调用接口提交非项目成员返回 400", "失败后业务表、流转记录、流程实例与通知均无变化"],
+      "priority": "must",
+      "source": "用户 2026-09-19 确认的硬约束",
+      "counterexample": ["只在前端隐藏，接口仍可写入"]
+    },
+    {
+      "id": "R3",
+      "statement": "存量工作量表/软需文档提交评审后启动审批流，审批结论只由工作流任务产生并回写评审状态与评审记录",
+      "acceptance": ["提交后生成流程实例且状态为评审中", "待办通过→已评审、退回/驳回→已退回并写 req_review_record"],
+      "priority": "must",
+      "source": "用户 2026-09-19 确认“审批要接入审批流”",
+      "counterexample": ["业务接口仍可直接写评审结论"]
+    },
+    {
+      "id": "R4",
+      "statement": "审批结果与流转事件产生站内消息通知，板块为需求管理，点击可进入需求管理对应页面",
+      "acceptance": ["通知中心显示需求管理板块的审批与流转消息", "流转通知带 legacyId 可直接打开对应存量需求"],
+      "priority": "must",
+      "source": "用户 2026-09-19 确认“要接入消息通知”",
+      "counterexample": ["流转只改状态不产生任何提醒"]
+    },
+    {
+      "id": "R5",
+      "statement": "存量项目阶段推进保持直接状态流转，不新增审批任务",
+      "acceptance": ["阶段推进后不产生 wf_instance/wf_task", "req_stage_log 正常留痕"],
+      "priority": "must",
+      "source": "用户 2026-09-19 明确“阶段推进不需要审批”",
+      "counterexample": ["阶段推进被接入审批流而阻塞日常推进"]
+    }
+  ],
+  "invariants": [
+    "只追加 Flyway 迁移，不修改已发布脚本",
+    "不修改 platform 代码，只使用已登记公开包与契约",
+    "数据访问始终带 tenant_id",
+    "通知动作路径只允许站内绝对路由"
+  ],
+  "constraints": [
+    "只修改 codex-task-scope.yaml 的 writable_paths",
+    "保持现有 Java 包名、Maven artifact、前端路由与页面结构",
+    "流转/审批人员受控数据不得作为自由文本输入"
+  ],
+  "non_goals": [
+    "存量阶段推进接入审批",
+    "按项目角色或组织树选人",
+    "短信、邮件、企业微信、浏览器推送与通知订阅偏好",
+    "删除或迁移 req_project_member、req_legacy_member 历史数据"
+  ],
+  "selected_approach": {
+    "name": "A：需求模块声明 platform/system 依赖，使用 ProjectMemberReferenceQuery + ProjectAccessService + SystemNotificationPublisher",
+    "reason": "语义与官方契约一致，服务端可强校验；通知接入契约本身即要求声明该依赖",
+    "alternatives": [
+      {"name": "B：借用工作流 project-options 与 WorkflowProjectAccessGateway", "rejected_because": "该契约要求调用者是项目成员且语义属于流程节点解析，长期形成隐性耦合"},
+      {"name": "C：仅前端收敛下拉，后端只校验用户启用", "rejected_because": "可被直接调用接口绕过，不满足“只能”的强约束"}
+    ]
+  },
+  "architecture": {
+    "boundary": {
+      "inside": ["business/requirement 服务与接口", "前端需求页面选人入口", "追加迁移与流程定义"],
+      "outside": ["platform/system 实现", "platform/workflow 实现", "其他业务模块"]
+    },
+    "components": [
+      {"name": "RequirementProjectMemberService", "responsibility": "解析当前项目并返回有效成员、执行成员资格强校验", "depends_on": ["ProjectAccessService", "ProjectMemberReferenceQuery"]},
+      {"name": "RequirementReviewWorkflowSupport", "responsibility": "流程定义解析、残留实例终结与业务摘要", "depends_on": []},
+      {"name": "RequirementWorkflowListener", "responsibility": "差异与交付件评审终态回写", "depends_on": []},
+      {"name": "SystemNotificationPublisher", "responsibility": "发布流转与回传站内消息", "depends_on": ["platform/system"]}
+    ],
+    "interfaces": [
+      {"name": "GET /api/requirements/project-members", "producer": "business/requirement", "consumers": ["RequirementsView"], "contract": "返回 {id, username, display_name}，仅当前项目组织架构有效成员"},
+      {"name": "requirement.legacy.deliverable.review", "producer": "platform/workflow 定义", "consumers": ["business/requirement"], "contract": "动态审批人审批节点，任一同意，允许 APPROVE/REJECT/RETURN/ADD_SIGN/CC"}
+    ],
+    "data_flows": [
+      {"input": "提交评审（审批人 ID + 评审报告名）", "transitions": ["成员资格校验", "终结残留实例", "启动审批流", "写入评审中与 workflow_instance_id"], "output": "待办任务与通知"},
+      {"input": "工作流终态事件", "transitions": ["businessKey 解析", "评审状态回写", "评审记录写入", "改动记录"], "output": "已评审/已退回"},
+      {"input": "流转请求", "transitions": ["成员资格校验", "更新当前处理人", "写流转日志"], "output": "接收人站内通知"}
+    ]
+  },
+  "error_handling": [
+    {"condition": "被选人员不是当前项目有效成员", "behavior": "返回 400 并给出加入项目组织架构的提示", "recovery": "在项目管理中添加成员后重试"},
+    {"condition": "流程定义未发布", "behavior": "返回冲突错误并终止提交", "recovery": "执行迁移或发布流程定义"},
+    {"condition": "通知发布失败", "behavior": "记录告警日志，不阻塞业务提交", "recovery": "由通知补偿机制或人工重发"}
+  ],
+  "quality_attributes": {
+    "security": ["服务端二次校验，不信任前端传参", "租户隔离", "候选人不下发敏感字段"],
+    "performance": ["成员目录一次查询返回，避免逐行查询"],
+    "compatibility": ["req_project_member、req_legacy_member 保留，不影响历史数据", "存量在审交付件按幂等规则跳过回写"],
+    "operations": ["追加迁移只加列与流程定义，回退应用即可"]
+  },
+  "verification_strategy": [
+    {"requirement_ids": ["R1"], "signal": "候选列表内容", "method": "浏览器与接口检查"},
+    {"requirement_ids": ["R2"], "signal": "错误码与状态无变化", "method": "接口越权用例"},
+    {"requirement_ids": ["R3"], "signal": "流程实例与评审记录", "method": "待办审批后检查交付件状态"},
+    {"requirement_ids": ["R4"], "signal": "通知中心记录", "method": "消息列表与跳转"},
+    {"requirement_ids": ["R5"], "signal": "无新流程实例", "method": "阶段推进后查询流程表"}
+  ],
+  "assumptions": [
+    {"text": "需求页用户可通过顶部项目切换器访问目标项目", "basis": "getProjectWorkbench 按 pm_project_member 过滤", "falsifier": "出现非成员可切换项目的情况"}
+  ],
+  "unknowns": [
+    {"question": "存量处于评审中但没有流程实例的历史数据如何呈现", "impact": "审批按钮消失后只能查看评审记录", "owner": "用户", "blocking": false}
+  ],
+  "decisions": [
+    {"id": "D1", "decision": "阶段推进不接审批", "reason": "用户明确该操作保持高频直接流转", "source": "用户 2026-09-19 消息"},
+    {"id": "D2", "decision": "流转接入轻量定向站内通知，不产生待办", "reason": "接收人被动等候，无提醒容易漏办；不进待办可避免混淆流程语义", "source": "用户 2026-09-19 采纳推荐方案"},
+    {"id": "D3", "decision": "交付件评审删除业务直连评审接口，统一由工作流待办处理", "reason": "“审批要接入审批流”的硬约束", "source": "用户 2026-09-19 消息"}
+  ],
+  "risks": [
+    {"risk": "流转范围收窄挡住跨部门协作", "impact": "原可流转给非项目成员的操作被拒绝", "mitigation": "错误提示引导先加入项目组织架构，必要时由项目负责人维护成员"},
+    {"risk": "新增 platform/system 依赖属公共能力依赖声明变更", "impact": "影响模块边界审计", "mitigation": "在 modules.yaml 与任务范围中显式声明并请求 Owner 复核"},
+    {"risk": "存量在审交付件无流程实例", "impact": "回写分支不生效", "mitigation": "回写逻辑仅在评审中且业务存在时生效，历史数据保持原样"}
+  ],
+  "approval": {
+    "status": "approved",
+    "evidence": "用户 2026-09-19 回复“阶段推进 不需要审批 其他的按照你的推荐方案开发，你只开发代码，不用你测试 我来测试”",
+    "confirmed_at": "2026-09-19"
+  }
+}

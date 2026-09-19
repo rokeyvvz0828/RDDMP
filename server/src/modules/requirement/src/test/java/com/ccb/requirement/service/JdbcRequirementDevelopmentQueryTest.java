@@ -74,7 +74,7 @@ class JdbcRequirementDevelopmentQueryTest {
         assertTrue(jdbc.lastHeaderSql.contains("project_id = ?"));
         assertTrue(jdbc.lastHeaderSql.contains("deleted = 0"));
         assertTrue(jdbc.lastHeaderSql.contains("需求终止"));
-        assertTrue(jdbc.lastHeaderSql.contains("req_coordination_item"));
+        assertTrue(jdbc.lastHeaderSql.contains("req_requirement_system"));
         assertEquals(7L, jdbc.lastHeaderArgs[0]);
         assertEquals(3100L, jdbc.lastHeaderArgs[1]);
         assertTrue(List.of(jdbc.lastHeaderArgs).contains("SYS-A"));
@@ -133,7 +133,7 @@ class JdbcRequirementDevelopmentQueryTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             calls++;
-            if (sql.contains("FROM req_project")) {
+            if (sql.contains("FROM pm_project")) {
                 assertArrayEquals(new Object[]{7L, "PROJECT-A"}, args);
                 assertTrue(sql.contains("deleted = 0"));
                 return projectRows;
@@ -143,8 +143,7 @@ class JdbcRequirementDevelopmentQueryTest {
                 lastHeaderArgs = args;
                 return absent ? List.of() : List.of(header);
             }
-            assertTrue(sql.contains("req_legacy_system_item"));
-            assertTrue(sql.contains("req_coordination_item"));
+            assertTrue(sql.contains("req_requirement_system"));
             assertTrue(sql.contains("tenant_id = ?"));
             assertEquals(7L, args[0]);
             return List.copyOf(links);
@@ -154,7 +153,7 @@ class JdbcRequirementDevelopmentQueryTest {
         public <T> T queryForObject(String sql, Class<T> type, Object... args) {
             calls++;
             assertTrue(sql.contains("project_id = ?"));
-            assertTrue(sql.contains("req_coordination_item"));
+            assertTrue(sql.contains("req_requirement_system"));
             assertEquals(7L, args[0]);
             assertEquals(3100L, args[1]);
             return type.cast(1L);

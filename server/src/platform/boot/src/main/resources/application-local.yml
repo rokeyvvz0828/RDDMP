@@ -39,7 +39,10 @@ ccb:
     resource: ${MOCK_DATA_RESOURCE:classpath:mock/mock-data.json}
   workflow:
     seeded-definition-publisher:
-      enabled: ${WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED:false}
+      # 本地默认开启：把种子流程真正部署到 Flowable（deployment_id 为空时业务无法启动流程）
+      enabled: ${WORKFLOW_SEEDED_DEFINITION_PUBLISHER_ENABLED:true}
       tenant-id: ${WORKFLOW_SEEDED_DEFINITION_TENANT_ID:1}
       operator-user-id: ${WORKFLOW_SEEDED_DEFINITION_OPERATOR_USER_ID:1}
-      definition-codes: ${WORKFLOW_SEEDED_DEFINITION_CODES:architecture.subsystem.change,architecture.resource-request}
+      # 默认只发布需求相关种子流程（动态审批人已加入发布期校验白名单）；
+      # 如需一并发布架构等其它种子流程，用环境变量 WORKFLOW_SEEDED_DEFINITION_CODES 覆盖。
+      definition-codes: ${WORKFLOW_SEEDED_DEFINITION_CODES:requirement.diff.review,requirement.legacy.deliverable.review}

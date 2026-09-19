@@ -255,13 +255,13 @@ abstract class DevelopmentIntegrationSupport {
         jdbc.update("INSERT IGNORE INTO req_project(id,tenant_id,project_code,project_name,status,deleted) VALUES(91007110001,1,?,'虚构开发验收项目','ACTIVE',0)", PROJECT);
         for (int i = 0; i < 2; i++) {
             jdbc.update("INSERT INTO arch_physical_subsystem(id,tenant_id,project_id,code,short_name,name,responsible_team_org_id,responsible_team_name_snapshot,owner_user_id,status,row_version,created_by,updated_by,deleted) VALUES(?,1,91007100001,?,?,?,1,'虚构团队',91007101,'ACTIVE',0,1,1,0) ON DUPLICATE KEY UPDATE owner_user_id=91007101,status='ACTIVE'", SYSTEM_A + i, "DEV071-PHY-" + i, "虚构系统" + i, "虚构系统" + i);
-            jdbc.update("INSERT IGNORE INTO req_legacy_requirement(id,tenant_id,project_id,requirement_no,requirement_name,deleted) VALUES(?,1,91007110001,?,?,0)", 91007130001L + i, "DEV071-REQ-" + i, "虚构来源" + i);
+            jdbc.update("INSERT IGNORE INTO req_requirement(id,tenant_id,project_id,requirement_kind,requirement_no,name,source,created_by,deleted) VALUES(?,1,91007100001,'LEGACY',?,?,?,1,0)", 91007130001L + i, "DEV071-REQ-" + i, "虚构来源" + i, "ONLINE");
+            jdbc.update("INSERT INTO req_legacy_detail(requirement_id,tenant_id,project_stage_status,soft_stage_status) VALUES(?,1,'已完成','进行中') ON DUPLICATE KEY UPDATE project_stage_status='已完成',soft_stage_status='进行中'", 91007130001L + i);
             jdbc.update("INSERT INTO sys_config(id,tenant_id,category_id,config_key,config_value,config_type,status,deleted) VALUES(?,1,910712,?,?,'string',1,0) ON DUPLICATE KEY UPDATE config_value=VALUES(config_value),status=1,deleted=0", 9107121 + i, "DEV071-SOURCE-" + i, Long.toString(SYSTEM_A + i));
         }
-        jdbc.update("DELETE FROM req_legacy_system_item WHERE requirement_id IN (91007130001,91007130002)");
-        jdbc.update("DELETE FROM req_coordination_item WHERE requirement_id IN (91007130001,91007130002)");
-        for (int i = 0; i < 2; i++) jdbc.update("INSERT INTO req_legacy_system_item(id,tenant_id,requirement_id,system_role,system_code,system_name,owner_user_id,owner_user_name,created_by,deleted) VALUES(?,1,?,'主责','DEV071-SOURCE-0','虚构来源系统',91007102,'虚构建议负责人',1,0)", 91007140001L + i, 91007130001L + i);
-        jdbc.update("INSERT INTO req_coordination_item(id,tenant_id,requirement_id,item_type,system_code,system_name,owner_user_id,owner_user_name,created_by,deleted) VALUES(91007150001,1,91007130001,'测试','DEV071-SOURCE-1','虚构测试系统',91007103,'虚构执行人',1,0),(91007150002,1,91007130002,'测试','DEV071-SOURCE-0','虚构混合系统',91007103,'虚构执行人',1,0)");
+        jdbc.update("DELETE FROM req_requirement_system WHERE requirement_id IN (91007130001,91007130002)");
+        for (int i = 0; i < 2; i++) jdbc.update("INSERT INTO req_requirement_system(id,tenant_id,requirement_id,system_role,subsystem_code,subsystem_name,owner_user_id,owner_user_name,status,created_by,deleted) VALUES(?,1,?,'LEAD','DEV071-SOURCE-0','虚构来源系统',91007102,'虚构建议负责人','未开始',1,0)", 91007140001L + i, 91007130001L + i);
+        jdbc.update("INSERT INTO req_requirement_system(id,tenant_id,requirement_id,system_role,subsystem_code,subsystem_name,owner_user_id,owner_user_name,status,created_by,deleted) VALUES(91007150001,1,91007130001,'TEST','DEV071-SOURCE-1','虚构测试系统',91007103,'虚构执行人','未开始',1,0),(91007150002,1,91007130002,'TEST','DEV071-SOURCE-0','虚构混合系统',91007103,'虚构执行人','未开始',1,0)");
     }
 
     String token(String user) throws Exception {

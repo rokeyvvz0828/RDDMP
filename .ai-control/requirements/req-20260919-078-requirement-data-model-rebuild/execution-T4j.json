@@ -1,0 +1,26 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "修复审批弹窗只剩取消按钮的回归：业务信息状态改为始终为对象 + 模板取值统一可选链，避免异步回查前的渲染异常中断整块更新"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "PASS"}
+  ],
+  "local_checks": [
+    {"check": "空值安全", "result": "pass", "evidence": "approvalBusinessInfo 初始与重置均为 {}，模板统一 approvalBusinessInfo?.xxx", "limitations": ["静态检查无法覆盖运行期，需浏览器确认"]},
+    {"check": "渲染中断恢复", "result": "pass", "evidence": "去掉抛点后，上下文加载完成时弹窗可与页脚动作按钮一并更新", "limitations": []}
+  ],
+  "diff_summary": ["审批弹窗业务信息块空值安全修复（1 处状态定义 + 1 处重置 + 8 处模板取值）"],
+  "invariants_checked": [
+    {"invariant": "不改审批动作与后端", "result": "pass", "evidence": "仅前端空值处理"}
+  ],
+  "disturbances": [
+    {"event": "上一轮把两块描述表合并时移除了外层 v-if 守卫", "impact": "渲染抛异常导致弹窗内容更新中断，只剩页脚取消按钮"}
+  ],
+  "assumptions_falsified": ["误判合并模板后仍具备空值保护"],
+  "unresolved_items": ["浏览器端确认弹窗恢复（含同意/不通过按钮）"],
+  "recommended_next": "observe"
+}

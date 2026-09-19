@@ -23,9 +23,12 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class JdbcReleaseRequirementQuery implements ReleaseRequirementQuery {
     private static final String COLUMNS =
-            "SELECT r.id, r.requirement_no, r.requirement_name, r.requirement_status";
-    private static final String ACTIVE = " FROM req_legacy_requirement r WHERE r.tenant_id = ? AND r.project_id = ?"
-            + " AND r.deleted = 0 AND COALESCE(r.requirement_status, '') <> '需求终止'";
+            "SELECT r.id, r.requirement_no, r.name AS requirement_name, l.requirement_status";
+    private static final String ACTIVE = " FROM req_requirement r"
+            + " JOIN req_legacy_detail l ON l.requirement_id = r.id AND l.tenant_id = r.tenant_id"
+            + " WHERE r.tenant_id = ? AND r.project_id = ?"
+            + " AND r.deleted = 0 AND r.requirement_kind = 'LEGACY'"
+            + " AND COALESCE(l.requirement_status, '') <> '需求终止'";
     private static final int MAX_SELECTION = 100;
 
     private final JdbcTemplate jdbc;
@@ -43,7 +46,7 @@ public class JdbcReleaseRequirementQuery implements ReleaseRequirementQuery {
         List<Object> args = new ArrayList<>(List.of(actor.tenantId(), projectId));
         if (keyword != null && !keyword.isBlank()) {
             String value = "%" + escapeLike(keyword.trim()) + "%";
-            filter.append(" AND (r.requirement_no LIKE ? ESCAPE '\\\\' OR r.requirement_name LIKE ? ESCAPE '\\\\')");
+            filter.append(" AND (r.requirement_no LIKE ? ESCAPE '\\\\' OR r.name LIKE ? ESCAPE '\\\\')");
             args.add(value);
             args.add(value);
         }
@@ -86,7 +89,7 @@ public class JdbcReleaseRequirementQuery implements ReleaseRequirementQuery {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择项目");
         }
         List<Map<String, Object>> projects = jdbc.queryForList(
-                "SELECT id FROM req_project WHERE tenant_id = ? AND project_code = ? AND deleted = 0",
+                "SELECT id FROM pm_project WHERE tenant_id = ? AND project_code = ? AND deleted = 0",
                 actor.tenantId(), projectRef.trim());
         if (projects.size() != 1) {
             throw new BusinessException(ErrorCode.CONFLICT, "需求项目编码未匹配或存在歧义，请维护项目关联");

@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "requirement": {
+    "id": "REQ-20260919-077",
+    "status": "ready",
+    "document": "docs/requirements/REQ-20260919-077-requirement-permission-rebuild/requirement.md",
+    "codex_allowed": true
+  },
+  "assignment": {
+    "developer": "Codex",
+    "module": "business/requirement",
+    "module_owner": "rokeyvvz0828",
+    "branch": "zbx-0917",
+    "branch_note": "经用户确认，在当前分支继续开发；同一工作区内已有未提交改动（REQ-20260919-076 的代码、mock/mock-data.json、RequirementEnums.java 等），必须先保护再增量修改。"
+  },
+  "codex": {
+    "production_access": false,
+    "contains_confidential_information": false,
+    "allowed_tools": ["local-shell", "codex"]
+  },
+  "scope": {
+    "writable_paths": [
+      "docs/requirements/REQ-20260919-077-requirement-permission-rebuild/**",
+      ".ai-control/requirements/req-20260919-077-requirement-permission-rebuild/*.json",
+      "docs/engineering-control/designs/2026-09-19-requirement-permission-rebuild-design.md",
+      "docs/engineering-control/plans/2026-09-19-requirement-permission-rebuild-implementation-plan.md",
+      "server/src/modules/requirement/src/main/java/com/ccb/requirement/**",
+      "server/src/modules/requirement/src/test/java/com/ccb/requirement/**",
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919200000__requirement_permission_rebuild.sql",
+      "web/src/api/requirements.ts",
+      "web/src/views/RequirementsView.vue"
+    ],
+    "read_only_paths": [
+      "server/src/platform/security/**",
+      "server/src/platform/system/**",
+      "docs/governance/**",
+      "governance/**",
+      "mock/**"
+    ],
+    "forbidden_paths": [".env", "**/*.pem", "**/*.key", "**/target/**", "**/node_modules/**"]
+  },
+  "public_capability_change": {
+    "changed": true,
+    "items": [
+      "通过 platform/infrastructure 的追加迁移重建权限目录（sys_menu_permission）与项目角色模板（pm_project_role / pm_project_role_permission），属 platform/system 数据所有权范围内的种子数据变更，不改平台代码。"
+    ],
+    "contracts": [
+      "server/src/platform/system/src/main/java/com/ccb/system/capability/**",
+      "server/src/platform/security/src/main/java/com/ccb/security/repository/AuthRepository.java"
+    ],
+    "owner_approval": "用户（Owner rokeyvvz0828）于 2026-09-19 确认：三个角色、9 个权限码、不做存量数据迁移与兼容、接受项目负责人/PM 自动拥有需求全权限。"
+  },
+  "database": {
+    "changed": true,
+    "migration_files": [
+      "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919200000__requirement_permission_rebuild.sql"
+    ],
+    "compatibility_and_rollback": "用户确认当前全部为测试数据，不做数据迁移与兼容：旧权限码与绑定直接删除、按新角色模板重建；流转日志表只追加索引。回退需恢复旧种子与旧注解。"
+  },
+  "external_access": {"changed": false, "systems": [], "data_classification": "internal-test-only"},
+  "required_tests": [
+    {"name": "requirement-module", "command": "mvn -pl :ccb-requirement -am test", "expected": "需求模块测试通过"},
+    {"name": "full-backend", "command": "mvn test", "expected": "全量后端测试通过"},
+    {"name": "frontend-build", "command": "npm --prefix web run build", "expected": "前端生产构建通过"},
+    {"name": "governance", "command": "node scripts/check-all-governance.mjs", "expected": "治理规则检查通过（既有历史违规除外）"},
+    {"name": "diff-check", "command": "git diff --check", "expected": "无空白错误"}
+  ],
+  "risk": {
+    "level": "high",
+    "items": [
+      "重建权限目录与项目角色模板属平台级种子数据变更",
+      "58 处接口授权与数据范围重写，存在越权或全量 403 风险",
+      "不做兼容意味着旧权限绑定立即失效，必须与前端同版本上线",
+      "收回接口引入新的流转动作，需要覆盖多手流转与评审中边界"
+    ]
+  },
+  "completion": {
+    "control_mode": "standard",
+    "control_prefix": "req-20260919-077-requirement-permission-rebuild",
+    "acceptance_evidence": [],
+    "rollback": "回退代码与迁移；测试库重新执行权限重建迁移并重建演示数据。"
+  }
+}

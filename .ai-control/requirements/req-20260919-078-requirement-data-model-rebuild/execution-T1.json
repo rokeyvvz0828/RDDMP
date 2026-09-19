@@ -1,0 +1,29 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919210000__requirement_data_model_rebuild.sql", "purpose": "新建 req_requirement / req_requirement_system / req_difference_detail / req_legacy_detail / req_legacy_deliverable，扩展 req_flow_log，清空重建演示数据，删除无外部引用的过期表"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R7"],
+  "commands": [
+    {"command": "git status --short", "exit_code": 0, "salient_output": "确认既有未提交改动（076/077 与 mock 数据）在改动前已存在，未回退"},
+    {"command": "grep -rn \"CREATE TABLE.*req_|req_workload|req_soft_doc\" server/src/platform/infrastructure/src/main/resources/db/migration", "exit_code": 0, "salient_output": "确认旧表定义位置与外部引用情况"}
+  ],
+  "local_checks": [
+    {"check": "迁移列数与 SELECT 列数逐段对齐", "result": "pass", "evidence": "req_requirement 17 列、req_difference_detail 28 列、req_legacy_detail 37 列、req_requirement_system 12/16 列逐段核对", "limitations": ["未在真实 MySQL 执行"]},
+    {"check": "演示数据约束", "result": "pass", "evidence": "新建差异每需求 1 行 LEAD；存量 LEAD 1 + CHANGE/TEST 若干", "limitations": ["依赖 pm_project/arch_physical_subsystem 既有数据"]}
+  ],
+  "diff_summary": ["新增 1 个迁移脚本，约 430 行 DDL 与演示数据；删除 req_workload/req_soft_doc/req_legacy_member"],
+  "invariants_checked": [
+    {"invariant": "Flyway 只追加", "result": "pass", "evidence": "仅新增 V20260919210000，未改历史脚本"},
+    {"invariant": "不写其他模块负责的表", "result": "pass", "evidence": "迁移只 INSERT 需求侧表并读取 pm_project / arch_physical_subsystem"}
+  ],
+  "disturbances": [
+    {"event": "mock/mock-data.json、MockDataInitializer 允许清单与 2 个 boot 开发集成测试仍引用 req_difference / req_legacy_requirement / req_legacy_system_item / req_coordination_item / req_system / req_business_group_member", "impact": "这些表未在本次删除；它们已不再被需求服务读写"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "6 张被替换的旧表需与 mock/**、MockDataInitializer、platform/boot 开发集成测试同批清理后才能删除，超出本任务写入范围，待 Owner 授权"
+  ],
+  "recommended_next": "observe"
+}

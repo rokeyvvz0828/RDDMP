@@ -1,0 +1,29 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919210000__requirement_data_model_rebuild.sql", "purpose": "还原为本地库已执行版本（Flyway 校验和 1884520140），去掉后追加的删表语句与注释改动"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919211000__requirement_retire_legacy_tables.sql", "purpose": "新增迁移承接 7 张旧表的删除"},
+    {"path_or_resource": "docs/requirements/REQ-20260919-078-requirement-data-model-rebuild/codex-task-scope.yaml", "purpose": "migration_files 增补新迁移"}
+  ],
+  "requirements_addressed": ["R1", "R7"],
+  "commands": [
+    {"command": "java -cp flyway-core-10.20.1.jar FlywayCrc.java V20260919210000__....sql", "exit_code": 0, "salient_output": "1884520140（与数据库 flyway_schema_history 记录一致）"},
+    {"command": "java -cp flyway-core-10.20.1.jar FlywayCrc.java V20260919211000__....sql", "exit_code": 0, "salient_output": "-1022296021（新迁移，无历史记录冲突）"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "220 migration(s) 通过"}
+  ],
+  "local_checks": [
+    {"check": "迁移不可变性", "result": "pass", "evidence": "V20260919210000 内容与本地库已执行版本逐字节一致（校验和复算一致）", "limitations": ["未实际重启应用验证"]},
+    {"check": "删表动作落到新迁移", "result": "pass", "evidence": "V20260919211000 含 7 条 information_schema 守卫的 DROP TABLE", "limitations": ["未在 MySQL 执行"]}
+  ],
+  "diff_summary": ["还原已执行迁移 + 新增 V20260919211000 承接删表；范围文件补记新迁移"],
+  "invariants_checked": [
+    {"invariant": "Flyway 只追加，不修改已发布脚本", "result": "pass（纠正后）", "evidence": "已执行迁移还原为原内容，新增内容全部走新版本号"}
+  ],
+  "disturbances": [
+    {"event": "排查中发现本地库已应用旧版迁移，因文件被改动导致 checksum mismatch、应用启动失败", "impact": "已通过还原内容 + 新迁移纠正；本地库无需手工修复"}
+  ],
+  "assumptions_falsified": ["原先假设该迁移尚未在任何环境执行，因此可以直接追加删表语句"],
+  "unresolved_items": ["编译、测试、前端构建与浏览器验收仍未进行"],
+  "recommended_next": "observe"
+}

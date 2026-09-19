@@ -36,8 +36,8 @@ public class RequirementProjectService {
         String sql = """
                 SELECT p.id, p.project_code, p.project_name, p.project_type, p.start_time, p.status,
                        p.description, p.created_at, p.updated_at,
-                       (SELECT COUNT(*) FROM req_difference d WHERE d.project_id = p.id AND d.tenant_id = p.tenant_id AND d.deleted = 0) AS difference_count,
-                       (SELECT COUNT(*) FROM req_difference d WHERE d.project_id = p.id AND d.tenant_id = p.tenant_id AND d.deleted = 0 AND d.review_status = '已评审') AS reviewed_count
+                       (SELECT COUNT(*) FROM req_requirement r JOIN pm_project pm ON pm.project_code COLLATE utf8mb4_unicode_ci = p.project_code COLLATE utf8mb4_unicode_ci AND pm.tenant_id = p.tenant_id AND pm.deleted = 0 WHERE r.project_id = pm.id AND r.tenant_id = p.tenant_id AND r.deleted = 0 AND r.requirement_kind = 'NEW_PROJECT_DIFF') AS difference_count,
+                       (SELECT COUNT(*) FROM req_requirement r JOIN pm_project pm ON pm.project_code COLLATE utf8mb4_unicode_ci = p.project_code COLLATE utf8mb4_unicode_ci AND pm.tenant_id = p.tenant_id AND pm.deleted = 0 WHERE r.project_id = pm.id AND r.tenant_id = p.tenant_id AND r.deleted = 0 AND r.requirement_kind = 'NEW_PROJECT_DIFF' AND r.review_status = '已评审') AS reviewed_count
                 FROM req_project p
                 WHERE p.tenant_id = ? AND p.deleted = 0
                 """;
@@ -56,8 +56,8 @@ public class RequirementProjectService {
         Map<String, Object> row = jdbc.queryForMap("""
                 SELECT p.id, p.project_code, p.project_name, p.project_type, p.start_time, p.status,
                        p.description, p.created_at, p.updated_at,
-                       (SELECT COUNT(*) FROM req_difference d WHERE d.project_id = p.id AND d.tenant_id = p.tenant_id AND d.deleted = 0) AS difference_count,
-                       (SELECT COUNT(*) FROM req_difference d WHERE d.project_id = p.id AND d.tenant_id = p.tenant_id AND d.deleted = 0 AND d.review_status = '已评审') AS reviewed_count
+                       (SELECT COUNT(*) FROM req_requirement r JOIN pm_project pm ON pm.project_code COLLATE utf8mb4_unicode_ci = p.project_code COLLATE utf8mb4_unicode_ci AND pm.tenant_id = p.tenant_id AND pm.deleted = 0 WHERE r.project_id = pm.id AND r.tenant_id = p.tenant_id AND r.deleted = 0 AND r.requirement_kind = 'NEW_PROJECT_DIFF') AS difference_count,
+                       (SELECT COUNT(*) FROM req_requirement r JOIN pm_project pm ON pm.project_code COLLATE utf8mb4_unicode_ci = p.project_code COLLATE utf8mb4_unicode_ci AND pm.tenant_id = p.tenant_id AND pm.deleted = 0 WHERE r.project_id = pm.id AND r.tenant_id = p.tenant_id AND r.deleted = 0 AND r.requirement_kind = 'NEW_PROJECT_DIFF' AND r.review_status = '已评审') AS reviewed_count
                 FROM req_project p WHERE p.tenant_id = ? AND p.id = ? AND p.deleted = 0
                 """, user.tenantId(), id);
         if (row == null || row.isEmpty()) {
@@ -124,7 +124,8 @@ public class RequirementProjectService {
     public void delete(long id, AuthUser user) {
         Map<String, Object> row = get(id, user);
         Integer differenceCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM req_difference WHERE tenant_id = ? AND project_id = ? AND deleted = 0",
+                "SELECT COUNT(*) FROM req_requirement WHERE tenant_id = ? AND project_id = ? AND deleted = 0"
+                        + " AND requirement_kind = 'NEW_PROJECT_DIFF'",
                 Integer.class, user.tenantId(), id);
         if (differenceCount != null && differenceCount > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "项目下存在差异数据，不能删除");

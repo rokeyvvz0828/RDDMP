@@ -26,7 +26,10 @@ public final class WorkflowModelValidator {
             "START", "APPROVAL", "CC", "CONDITION", "PARALLEL_SPLIT", "PARALLEL_JOIN", "END"
     );
     private static final Set<String> ASSIGNEE_TYPES = Set.of(
-            "USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE", "TEMPLATE_PLACEHOLDER", "ORG_OWNER", "STARTER", "FORM_FIELD", "EXPRESSION"
+            // VARIABLE：由流程启动变量（如 approverIds）在运行时决定审批人，引擎 resolveAssignees 已支持；
+            // 业务模块（需求管理等）在提交时选定审批人依赖该类型，这里补齐发布期校验白名单。
+            "USER", "ROLE", "PROJECT_MEMBER", "PROJECT_ROLE", "TEMPLATE_PLACEHOLDER", "ORG_OWNER", "STARTER",
+            "FORM_FIELD", "EXPRESSION", "VARIABLE"
     );
     private static final Set<String> APPROVAL_MODES = Set.of("ANY", "ALL", "PERCENT");
     private static final Set<String> VARIABLE_TYPES = Set.of(

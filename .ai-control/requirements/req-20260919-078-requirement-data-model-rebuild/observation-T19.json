@@ -1,0 +1,20 @@
+{
+  "sample_label": "本地预览效果临时 mock（提交前必须删除）",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "S1", "result": "n/a", "raw_evidence": "为让 Owner 在未启动 MinIO/kkFileView 时查看评审报告预览效果，临时在前端把 mock 附件 1789900000000001 的预览地址指向仓库既有演示文件 web/public/demo-files/delivery-scope.pdf；本地库新增 att_file#1789900000000001（BOUND/REQUIREMENT_REVIEW/510402）并挂到交付件 1789830820685188", "limitation": ["仅为本地演示，非交付功能"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"source": "临时 mock（代码 + 本地数据）", "effect": "提交代码前必须删除，否则会把演示地址写进生产逻辑"}
+  ],
+  "coverage_gaps": [],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete",
+  "cleanup_before_commit": [
+    "web/src/views/RequirementsView.vue：删除 MOCK_PREVIEW_FILES 常量与 openAttachmentPreview 中命中 mock 的分支（带 TODO 临时 mock 标记）",
+    "本地库：UPDATE req_legacy_deliverable SET review_report_attachment_id = NULL, review_report_name = NULL WHERE id = 1789830820685188;",
+    "本地库：DELETE FROM att_file WHERE id = 1789900000000001;"
+  ]
+}

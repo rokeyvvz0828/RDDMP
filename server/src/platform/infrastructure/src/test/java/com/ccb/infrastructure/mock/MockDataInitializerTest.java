@@ -449,19 +449,25 @@ class MockDataInitializerTest {
     private String developmentSourceTables() {
         return """
                 [
-                  {"table":"req_legacy_requirement","keyColumns":["id"],"rows":[
-                    {"id":9501,"tenant_id":1,"project_id":9401,"requirement_no":"MOCK-REQ-001","requirement_name":"虚构来源需求",
+                  {"table":"req_requirement","keyColumns":["id"],"rows":[
+                    {"id":9501,"tenant_id":1,"project_id":9401,"requirement_kind":"LEGACY","requirement_no":"MOCK-REQ-001",
+                     "name":"虚构来源需求","current_stage":"SOFT","version_no":"1.0","source":"ONLINE",
                      "created_by":9701,"deleted":0}
                   ]},
-                  {"table":"req_legacy_system_item","keyColumns":["id"],"rows":[
-                    {"id":9502,"tenant_id":1,"requirement_id":9501,"system_role":"主责","system_code":"MOCK-SYSTEM",
-                     "system_name":"虚构系统","owner_user_id":9701,"owner_user_name":"虚构开发人员","remark":"虚构演示数据",
-                     "created_by":9701,"created_at":"2026-09-08 09:00:00","updated_by":9701,"updated_at":"2026-09-08 10:00:00","deleted":0}
+                  {"table":"req_legacy_detail","keyColumns":["requirement_id"],"rows":[
+                    {"requirement_id":9501,"tenant_id":1,"requirement_status":"软需编写","propose_stage_status":"已完成",
+                     "docking_stage_status":"已完成","workload_stage_status":"已完成","project_stage_status":"已完成",
+                     "soft_stage_status":"进行中","launch_stage_status":"未开始","remark":"虚构演示数据",
+                     "created_at":"2026-09-08 09:00:00","updated_at":"2026-09-08 10:00:00"}
                   ]},
-                  {"table":"req_coordination_item","keyColumns":["id"],"rows":[
-                    {"id":9503,"tenant_id":1,"requirement_id":9501,"system_item_id":9502,"item_type":"改造","system_code":"MOCK-SYSTEM",
-                     "system_name":"虚构系统","owner_user_id":9701,"owner_user_name":"虚构开发人员","start_date":"2026-09-08",
-                     "end_date":"2026-09-10","status":"未开始","description":"虚构演示数据","created_by":9701,
+                  {"table":"req_requirement_system","keyColumns":["id"],"rows":[
+                    {"id":9502,"tenant_id":1,"requirement_id":9501,"system_role":"LEAD","subsystem_code":"MOCK-SYSTEM",
+                     "subsystem_name":"虚构系统","owner_user_id":9701,"owner_user_name":"虚构开发人员","status":"未开始",
+                     "remark":"虚构演示数据","created_by":9701,"created_at":"2026-09-08 09:00:00",
+                     "updated_by":9701,"updated_at":"2026-09-08 10:00:00","deleted":0},
+                    {"id":9503,"tenant_id":1,"requirement_id":9501,"system_role":"CHANGE","subsystem_code":"MOCK-SYSTEM",
+                     "subsystem_name":"虚构系统","owner_user_id":9701,"owner_user_name":"虚构开发人员","status":"未开始",
+                     "start_date":"2026-09-08","end_date":"2026-09-10","description":"虚构演示数据","created_by":9701,
                      "created_at":"2026-09-08 09:00:00","updated_by":9701,"updated_at":"2026-09-08 10:00:00","deleted":0}
                   ]}
                 ]

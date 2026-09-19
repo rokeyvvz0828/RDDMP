@@ -1,0 +1,34 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919210000__requirement_data_model_rebuild.sql", "purpose": "第四节补齐 10 张被替换旧表的删除（含 req_difference_flow_log）"},
+    {"path_or_resource": "mock/mock-data.json", "purpose": "移除全部 req_* 演示数据（16 段）与需求模块表注册口径，需求演示数据改由迁移重建；datasetVersion 提升"},
+    {"path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentAuthorizationIntegrationTest.java", "purpose": "需求来源夹具迁移到 req_requirement + req_legacy_detail + req_requirement_system"},
+    {"path_or_resource": "server/src/platform/boot/src/test/java/com/ccb/boot/development/DevelopmentJourneyIntegrationTest.java", "purpose": "角色变更夹具迁移到 req_requirement_system"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R7"],
+  "commands": [
+    {"command": "rg -n \"req_difference_flow_log|req_difference\\b|req_legacy_requirement|...\" server/src --glob '*.java'", "exit_code": 0, "salient_output": "仅剩 MockDataInitializer.ALLOWED_COLUMNS 与 MockDataInitializerTest 内联数据集引用旧表（白名单超集，无运行影响）"},
+    {"command": "grep -o \"DROP TABLE req_[a-z_]*\" V20260919210000__requirement_data_model_rebuild.sql", "exit_code": 0, "salient_output": "10 张旧表删除语句齐备"},
+    {"command": "python3 -c 'json.load(mock-data.json / codex-task-scope.yaml)'", "exit_code": 0, "salient_output": "两个文件 JSON 结构合法；mock database 段落无 req_* 残留"}
+  ],
+  "local_checks": [
+    {"check": "mock 与旧表引用清理", "result": "pass", "evidence": "mock-data.json 中 req_* 行全部移除，仅剩需求模块表注册列表（已更新为新模型）", "limitations": ["未启动本地应用验证 mock 同步"]},
+    {"check": "开发管理夹具语义等价", "result": "partial", "evidence": "主责→LEAD、测试→TEST 角色映射保真，并补 req_legacy_detail 阶段状态使来源满足 active 口径", "limitations": ["需 testcontainers/MySQL，本轮无法运行"]}
+  ],
+  "diff_summary": ["迁移追加 7 条 DROP；mock 删除 16 段需求演示数据；2 个开发管理集成测试夹具改写到新表"],
+  "invariants_checked": [
+    {"invariant": "不改开发管理生产代码与表结构", "result": "pass", "evidence": "仅改其集成测试夹具，dev_task/dev_task_source_binding 表结构未动"},
+    {"invariant": "写入范围与 codex-task-scope.yaml 一致", "result": "pass", "evidence": "本次改动文件均已列入 writable_paths（mock/mock-data.json、boot development 测试 glob）"}
+  ],
+  "disturbances": [
+    {"event": "mock 内 dev_task 示例的来源需求引用随需求表清理失效", "impact": "dev_task 自身保存来源快照字段，列表展示不受影响；按来源再次建任务时该来源不再存在"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "MockDataInitializer.ALLOWED_COLUMNS 与 MockDataInitializerTest 内联数据集仍保留旧表名（白名单超集，无运行影响，属后续整洁项）",
+    "编译、模块测试、前端构建、迁移真实执行与浏览器验收仍未进行"
+  ],
+  "recommended_next": "observe"
+}

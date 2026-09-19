@@ -2,8 +2,10 @@ package com.ccb.requirement.service;
 
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.requirement.support.StubProjectDirectory;
 import com.ccb.requirement.support.StubJdbcTemplate;
 import com.ccb.security.model.AuthUser;
+import com.ccb.system.notification.SystemNotificationPublisher;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RequirementLegacyServiceTest {
     private static final AuthUser MEMBER = new AuthUser(9L, 1L, "mock.product", "", "演示产品经理", 1L, true);
+    private static final SystemNotificationPublisher NOOP_PUBLISHER = command -> 0L;
 
     private Map<String, Object> row(String stageStatus) {
         Map<String, Object> row = new LinkedHashMap<>();
@@ -47,7 +50,8 @@ class RequirementLegacyServiceTest {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(count -> 1L, List.of(row(stageStatus)), Map.of());
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementLegacyService service = new RequirementLegacyService(jdbc, changeLog, security);
+        RequirementLegacyService service = new RequirementLegacyService(jdbc, changeLog, security,
+                StubProjectDirectory.service(jdbc, List.of(9L)), new RequirementSystemService(), NOOP_PUBLISHER);
         return new Fixture(jdbc, service);
     }
 
@@ -116,7 +120,8 @@ class RequirementLegacyServiceTest {
         StubJdbcTemplate jdbc = new StubJdbcTemplate(count -> 1L, List.of(row), Map.of());
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementLegacyService service = new RequirementLegacyService(jdbc, changeLog, security);
+        RequirementLegacyService service = new RequirementLegacyService(jdbc, changeLog, security,
+                StubProjectDirectory.service(jdbc, List.of(9L)), new RequirementSystemService(), NOOP_PUBLISHER);
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> service.stageTransition(1L, "PROPOSE", "START", null, true, MEMBER));
         assertEquals(ErrorCode.BAD_REQUEST, exception.code());

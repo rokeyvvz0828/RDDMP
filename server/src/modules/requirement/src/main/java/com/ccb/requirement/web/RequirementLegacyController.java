@@ -40,7 +40,7 @@ public class RequirementLegacyController {
     }
 
     @GetMapping("/legacy")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<Object> legacyList(@RequestParam(required = false) Long projectId,
                                           @RequestParam(required = false) String businessGroup,
                                           @RequestParam(required = false) String stage,
@@ -53,34 +53,34 @@ public class RequirementLegacyController {
     }
 
     @PostMapping("/legacy")
-    @PreAuthorize("hasAuthority('requirement:legacy:create')")
+    @PreAuthorize("hasAuthority('requirement:propose')")
     public ApiResponse<Map<String, Object>> createLegacy(@RequestBody Map<String, Object> body,
                                                          @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.create(body, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/legacy/{id}")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<Map<String, Object>> legacy(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.get(id, user), TraceId.getOrCreate());
     }
 
     @PutMapping("/legacy/{id}")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> updateLegacy(@PathVariable long id, @RequestBody Map<String, Object> body,
                                                          @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.update(id, body, user), TraceId.getOrCreate());
     }
 
     @DeleteMapping("/legacy/{id}")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Void> deleteLegacy(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         legacyService.delete(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @PostMapping("/legacy/{id}/stage")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> stageTransition(@PathVariable long id,
                                                             @RequestBody Map<String, Object> body,
                                                             @AuthenticationPrincipal AuthUser user) {
@@ -91,59 +91,39 @@ public class RequirementLegacyController {
     }
 
     @GetMapping("/legacy/{id}/stage-logs")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> stageLogs(@PathVariable long id,
                                                             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.stageLogs(id, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/legacy/{id}/changes")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:changelog:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> legacyChanges(@PathVariable long id,
                                                                 @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.changes(id, user), TraceId.getOrCreate());
     }
 
-    @GetMapping("/legacy/{id}/members")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
-    public ApiResponse<List<Map<String, Object>>> legacyMembers(@PathVariable long id,
-                                                                @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(legacyService.members(id, user), TraceId.getOrCreate());
-    }
-
-    @PostMapping("/legacy/{id}/members")
-    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:pmo')")
-    public ApiResponse<Map<String, Object>> addLegacyMember(@PathVariable long id,
-                                                            @RequestBody Map<String, Object> body,
-                                                            @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(legacyService.addMember(id, body, user), TraceId.getOrCreate());
-    }
-
-    @DeleteMapping("/legacy-members/{id}")
-    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:pmo')")
-    public ApiResponse<Void> removeLegacyMember(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
-        legacyService.removeMember(id, user);
-        return ApiResponse.success(null, TraceId.getOrCreate());
-    }
+    // 需求成员维护入口已下线：需求权限统一由项目管理的三个项目角色控制
 
     // ---------------- 存量增强：系统子表 / 流转 / 版本 / 交付件 / 协同事项 / 评审记录 ----------------
 
     @GetMapping("/legacy/{id}/system-items")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> systemItems(@PathVariable long id,
                                                               @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.systemItems(id, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/legacy/{id}/flow-logs")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> flowLogs(@PathVariable long id,
                                                            @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.flowLogs(id, user), TraceId.getOrCreate());
     }
 
     @PostMapping("/legacy/{id}/flow")
-    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:pmo')")
+    @PreAuthorize("hasAuthority('requirement:transfer')")
     public ApiResponse<Map<String, Object>> sendFlow(@PathVariable long id,
                                                      @RequestBody Map<String, Object> body,
                                                      @AuthenticationPrincipal AuthUser user) {
@@ -154,7 +134,7 @@ public class RequirementLegacyController {
     }
 
     @PostMapping("/legacy/{id}/flow/return")
-    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:pmo')")
+    @PreAuthorize("hasAuthority('requirement:transfer')")
     public ApiResponse<Map<String, Object>> returnFlow(@PathVariable long id,
                                                        @RequestBody(required = false) Map<String, Object> body,
                                                        @AuthenticationPrincipal AuthUser user) {
@@ -162,15 +142,25 @@ public class RequirementLegacyController {
         return ApiResponse.success(legacyService.returnFlow(id, comment, user), TraceId.getOrCreate());
     }
 
+    /** 提出人收回：把当前流转处理人改回提出人本人。 */
+    @PostMapping("/legacy/{id}/flow/withdraw")
+    @PreAuthorize("hasAuthority('requirement:withdraw')")
+    public ApiResponse<Map<String, Object>> withdrawFlow(@PathVariable long id,
+                                                         @RequestBody(required = false) Map<String, Object> body,
+                                                         @AuthenticationPrincipal AuthUser user) {
+        String comment = body == null || body.get("comment") == null ? null : String.valueOf(body.get("comment"));
+        return ApiResponse.success(legacyService.withdrawFlow(id, comment, user), TraceId.getOrCreate());
+    }
+
     @GetMapping("/legacy/{id}/versions")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> versions(@PathVariable long id,
                                                            @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(legacyService.versions(id, user), TraceId.getOrCreate());
     }
 
     @PostMapping("/legacy/{id}/change")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> saveChange(@PathVariable long id,
                                                        @RequestBody Map<String, Object> body,
                                                        @AuthenticationPrincipal AuthUser user) {
@@ -178,7 +168,7 @@ public class RequirementLegacyController {
     }
 
     @GetMapping("/legacy/{id}/deliverables")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> deliverables(@PathVariable long id,
                                                                @RequestParam String type,
                                                                @AuthenticationPrincipal AuthUser user) {
@@ -186,7 +176,7 @@ public class RequirementLegacyController {
     }
 
     @PostMapping("/legacy/{id}/deliverables")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> saveDeliverable(@PathVariable long id,
                                                             @RequestParam String type,
                                                             @RequestBody Map<String, Object> body,
@@ -195,7 +185,7 @@ public class RequirementLegacyController {
     }
 
     @DeleteMapping("/deliverables/{id}")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Void> deleteDeliverable(@PathVariable long id,
                                                @RequestParam String type,
                                                @AuthenticationPrincipal AuthUser user) {
@@ -204,7 +194,7 @@ public class RequirementLegacyController {
     }
 
     @PostMapping("/deliverables/{id}/submit-review")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:review')")
     public ApiResponse<Map<String, Object>> submitDeliverableReview(@PathVariable long id,
                                                                     @RequestParam String type,
                                                                     @RequestBody(required = false) Map<String, Object> body,
@@ -220,30 +210,20 @@ public class RequirementLegacyController {
                 }
             }
         }
-        String reportDocName = body == null ? null : (body.get("reportDocName") == null
-                ? null : String.valueOf(body.get("reportDocName")));
-        return ApiResponse.success(enhanceService.submitDeliverableReview(id, type, approverIds, reportDocName, user),
+        // 评审不再随提交上传文件：直接使用记录创建时上传的文档文件
+        return ApiResponse.success(enhanceService.submitDeliverableReview(id, type, approverIds, user),
                 TraceId.getOrCreate());
     }
 
-    @PostMapping("/deliverables/{id}/review")
-    @PreAuthorize("hasAnyAuthority('requirement:legacy:update','requirement:pmo')")
-    public ApiResponse<Map<String, Object>> reviewDeliverable(@PathVariable long id,
-                                                              @RequestParam String type,
-                                                              @RequestBody Map<String, Object> body,
-                                                              @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(enhanceService.reviewDeliverable(id, type, body, user), TraceId.getOrCreate());
-    }
-
     @GetMapping("/legacy/{id}/coordination")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> coordinationItems(@PathVariable long id,
                                                                     @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(enhanceService.coordinationItems(id, user), TraceId.getOrCreate());
     }
 
     @PostMapping("/legacy/{id}/coordination")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> saveCoordination(@PathVariable long id,
                                                              @RequestBody Map<String, Object> body,
                                                              @AuthenticationPrincipal AuthUser user) {
@@ -251,14 +231,14 @@ public class RequirementLegacyController {
     }
 
     @DeleteMapping("/coordination/{id}")
-    @PreAuthorize("hasAuthority('requirement:legacy:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Void> deleteCoordination(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         enhanceService.deleteCoordination(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @GetMapping("/review-records")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:legacy:read','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> reviewRecords(@RequestParam String bizType,
                                                                 @RequestParam long bizId,
                                                                 @AuthenticationPrincipal AuthUser user) {
@@ -266,29 +246,13 @@ public class RequirementLegacyController {
     }
 
     @GetMapping("/systems")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:system:read')")
-    public ApiResponse<List<Map<String, Object>>> systems(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(systemService.list(user), TraceId.getOrCreate());
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:access')")
+    public ApiResponse<List<Map<String, Object>>> systems(@RequestParam(required = false) Long projectId,
+                                                          @RequestParam(required = false) String keyword,
+                                                          @AuthenticationPrincipal AuthUser user) {
+        long scope = projectId == null ? 0L : projectId;
+        return ApiResponse.success(systemService.list(scope, keyword, user), TraceId.getOrCreate());
     }
 
-    @PostMapping("/systems")
-    @PreAuthorize("hasAuthority('requirement:system:create')")
-    public ApiResponse<Map<String, Object>> createSystem(@RequestBody Map<String, Object> body,
-                                                         @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(systemService.create(body, user), TraceId.getOrCreate());
-    }
-
-    @PutMapping("/systems/{id}")
-    @PreAuthorize("hasAuthority('requirement:system:update')")
-    public ApiResponse<Map<String, Object>> updateSystem(@PathVariable long id, @RequestBody Map<String, Object> body,
-                                                         @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(systemService.update(id, body, user), TraceId.getOrCreate());
-    }
-
-    @DeleteMapping("/systems/{id}")
-    @PreAuthorize("hasAuthority('requirement:system:update')")
-    public ApiResponse<Void> deleteSystem(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
-        systemService.delete(id, user);
-        return ApiResponse.success(null, TraceId.getOrCreate());
-    }
+    // 系统清单维护入口已下线：物理子系统主数据统一在架构管理维护，需求侧只读
 }

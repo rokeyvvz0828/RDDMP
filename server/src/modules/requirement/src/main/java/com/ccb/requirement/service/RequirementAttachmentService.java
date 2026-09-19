@@ -80,7 +80,8 @@ public class RequirementAttachmentService {
     private void requireAccess(String bizType, long bizId, AuthUser user) {
         if ("NEW_PROJECT_DIFF".equals(bizType)) {
             List<Map<String, Object>> rows = jdbc.queryForList(
-                    "SELECT project_id FROM req_difference WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                    "SELECT project_id FROM req_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0"
+                            + " AND requirement_kind = 'NEW_PROJECT_DIFF'",
                     user.tenantId(), bizId);
             if (rows.isEmpty()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "差异不存在");
@@ -88,12 +89,15 @@ public class RequirementAttachmentService {
             security.requireProjectAccess(user, ((Number) rows.get(0).get("project_id")).longValue());
         } else if ("LEGACY_REQUIREMENT".equals(bizType)) {
             List<Map<String, Object>> rows = jdbc.queryForList(
-                    "SELECT business_group FROM req_legacy_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                    "SELECT id, created_by, current_handler_user_id AS current_flow_user_id"
+                            + " FROM req_requirement WHERE tenant_id = ? AND id = ? AND deleted = 0"
+                            + " AND requirement_kind = 'LEGACY'",
                     user.tenantId(), bizId);
             if (rows.isEmpty()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "存量需求不存在");
             }
-            security.requireLegacyAccess(user, String.valueOf(rows.get(0).get("business_group")));
+            // 业务组口径已下线：数据范围改由需求角色（提出人/分析员/统筹）决定
+            security.requireLegacyVisible(user, rows.get(0));
         } else {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "附件业务类型不受支持：" + bizType);
         }

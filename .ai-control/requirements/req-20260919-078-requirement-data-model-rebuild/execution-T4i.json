@@ -1,0 +1,23 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "审批弹窗两块 el-descriptions 合并为一张（行列对齐）；评审报告文件行在未上传时也显示并提示'未上传评审报告文件'"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过"}
+  ],
+  "local_checks": [
+    {"check": "描述表对齐", "result": "pass", "evidence": "框架上下文与业务信息合并进同一张 el-descriptions（:column=1 border），标签列宽统一", "limitations": ["未做浏览器视觉验收"]},
+    {"check": "未上传时可见性", "result": "pass", "evidence": "评审报告文件行改为按评审对象存在即渲染，无附件时显示'未上传评审报告文件'", "limitations": []}
+  ],
+  "diff_summary": ["审批弹窗描述表合并 + 未上传提示"],
+  "invariants_checked": [
+    {"invariant": "不改审批动作", "result": "pass", "evidence": "仅展示层调整"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["审批人不在需求数据范围时仍看不到需求信息/文件（按 077 数据范围口径），是否放宽待 Owner 决定"],
+  "recommended_next": "observe"
+}

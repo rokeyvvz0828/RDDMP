@@ -1,0 +1,25 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "移除临时 mock；删除'本期未开放/后续版本支持'占位按钮与提示；新增交付件必传文档上传（含预览/移除）；交付件提交评审改为预览已有文档；工作量表/软需列表操作列以上传占位改为按文件预览；审批弹窗标签改为'评审文档'"},
+    {"path_or_resource": "web/src/api/requirements.ts", "purpose": "submitDeliverableReview 去掉附件参数"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "PASS"}
+  ],
+  "local_checks": [
+    {"check": "占位提示清理", "result": "pass", "evidence": "uploadPlaceholder 及其提示文案、4 处占位按钮全部移除（检索'本期未开放/后续版本支持/占位'无相关残留）", "limitations": []},
+    {"check": "新增记录带文件", "result": "pass", "evidence": "交付件弹窗新增上传控件（开关开启时必填），上传后回填文档名称并可直接预览", "limitations": ["未做浏览器验收；MinIO 未启动时上传会失败"]}
+  ],
+  "diff_summary": ["前端交件上传/预览链路调整 + 占位清理 + mock 移除（含本地数据）"],
+  "invariants_checked": [
+    {"invariant": "复用平台附件与预览组件", "result": "pass", "evidence": "继续使用 uploadAttachment / UiFilePreview / 附件预览回退下载"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["浏览器端验收未执行（需 MinIO 才能真实上传）"],
+  "recommended_next": "observe"
+}

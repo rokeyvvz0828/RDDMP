@@ -527,8 +527,10 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
                 "SELECT t.id, t.instance_id, t.task_key, t.node_id, t.task_type, t.status AS task_status, t.assignee_id,"
                         + " i.definition_id, i.version_no, i.business_key, i.business_type, i.business_title, i.business_round,"
                         + " i.project_id, i.project_ref, i.project_name, i.action_path, i.status AS instance_status,"
+                        + " su.display_name AS starter_name,"
                         + " CAST(v.definition_json AS CHAR) AS definition_json"
                         + " FROM wf_task t JOIN wf_instance i ON i.id = t.instance_id AND i.tenant_id = t.tenant_id"
+                        + " LEFT JOIN sys_user su ON su.id = i.starter_id AND su.tenant_id = i.tenant_id"
                         + " JOIN wf_version v ON v.definition_id = i.definition_id AND v.version_no = i.version_no AND v.tenant_id = i.tenant_id"
                         + " WHERE t.id = ? AND t.tenant_id = ? AND i.deleted = 0",
                 taskId, user.tenantId());
@@ -552,7 +554,8 @@ public class WorkflowService implements WorkflowPendingTaskQuery, WorkflowDefini
         result.put("task_id", row.get("id"));
         result.put("instance_id", row.get("instance_id"));
         copy(row, result, "business_key", "business_type", "business_title", "business_round", "project_ref", "project_name",
-                "action_path", "task_key", "node_id", "node_name", "task_type", "task_status", "instance_status");
+                "action_path", "task_key", "node_id", "node_name", "task_type", "task_status", "instance_status",
+                "starter_name");
         result.put("allowed_actions", actions);
         result.put("signature_required", signatureService != null && signatureService.required(taskId, user.tenantId()));
         result.put("actionable", actionable && !actions.isEmpty());

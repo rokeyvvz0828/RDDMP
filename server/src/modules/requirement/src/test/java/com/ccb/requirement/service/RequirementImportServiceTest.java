@@ -27,9 +27,9 @@ class RequirementImportServiceTest {
         StubJdbcTemplate jdbc = adminJdbc();
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+        RequirementSystemService systemService = new RequirementSystemService() {
             @Override
-            public long resolveSystemId(String systemCode, AuthUser user) {
+            public long resolveSystemId(String systemCode, long projectId, AuthUser user) {
                 return "W01812".equals(systemCode) ? 10L : 0L;
             }
         };
@@ -51,9 +51,9 @@ class RequirementImportServiceTest {
         StubJdbcTemplate jdbc = adminJdbc();
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+        RequirementSystemService systemService = new RequirementSystemService() {
             @Override
-            public long resolveSystemId(String systemCode, AuthUser user) {
+            public long resolveSystemId(String systemCode, long projectId, AuthUser user) {
                 return "W01812".equals(systemCode) ? 10L : 0L;
             }
         };
@@ -65,7 +65,9 @@ class RequirementImportServiceTest {
         Map<String, Object> result = service.confirm("DIFF", 1L, "diff.xlsx", List.of(row), ADMIN);
 
         assertEquals(1, result.get("successRows"));
-        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_difference`")));
+        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_requirement`")));
+        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_difference_detail`")));
+        assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_requirement_system")));
         assertTrue(jdbc.updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_import_batch`")));
     }
 
@@ -81,9 +83,9 @@ class RequirementImportServiceTest {
         StubJdbcTemplate jdbc = adminJdbc();
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog) {
+        RequirementSystemService systemService = new RequirementSystemService() {
             @Override
-            public long resolveSystemId(String systemCode, AuthUser user) {
+            public long resolveSystemId(String systemCode, long projectId, AuthUser user) {
                 return "W01812".equals(systemCode) ? 10L : 0L;
             }
         };
@@ -136,7 +138,8 @@ class RequirementImportServiceTest {
 
     private StubJdbcTemplate adminJdbc() {
         return new StubJdbcTemplate(
-                sql -> sql.contains("requirement:admin") || sql.contains("FROM req_project") ? 1L : 0L,
+                sql -> sql.contains("requirement:admin") || sql.contains("FROM pm_project")
+                        || sql.contains("FROM req_project") ? 1L : 0L,
                 List.of(),
                 Map.of());
     }

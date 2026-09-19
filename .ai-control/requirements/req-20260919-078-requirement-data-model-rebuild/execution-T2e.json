@@ -1,0 +1,37 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "governance/modules.yaml", "purpose": "requirement 允许依赖增加 platform/attachment"},
+    {"path_or_resource": "server/src/modules/requirement/pom.xml", "purpose": "增加 ccb-attachment 依赖"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919212000__requirement_review_report_attachment.sql", "purpose": "差异详情表与存量交付件表新增评审报告附件 ID 列"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementReviewReportService.java", "purpose": "评审报告附件必传校验与业务绑定"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementReviewAttachmentPolicy.java", "purpose": "REQUIREMENT_REVIEW 附件访问策略（复用需求数据范围）"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementSecurityService.java", "purpose": "新增按需求 ID 的可见性校验"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java", "purpose": "差异提交评审改为必传评审报告附件并落库"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java", "purpose": "交付件提交评审改为必传附件并落库；评审记录查询返回附件引用"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementWorkflowListener.java", "purpose": "评审完成时把附件 ID 写入评审记录 report_preview_id"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementController.java", "purpose": "接收 reportAttachmentId"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementLegacyController.java", "purpose": "接收 reportAttachmentId"}
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "commands": [
+    {"command": "node scripts/check-module-boundaries.mjs", "exit_code": 0, "salient_output": "Module boundary check passed for 15 Maven module(s)"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 0, "salient_output": "221 migration(s) 通过"}
+  ],
+  "local_checks": [
+    {"check": "必传校验", "result": "pass", "evidence": "未带附件 ID 时 requireBound 抛 400；附件由 AttachmentGateway.get 校验归属后 bind，避免临时附件被清理", "limitations": ["未编译、未跑测试"]},
+    {"check": "附件访问策略唯一性", "result": "pass", "evidence": "businessType=REQUIREMENT_REVIEW，全仓唯一；策略按需求 ID 复用数据范围判定", "limitations": ["未在运行期验证注册表加载"]}
+  ],
+  "diff_summary": ["新增 1 迁移 + 3 个类 + 6 处改造；契约用 reportAttachmentId 取代 reportDocName"],
+  "invariants_checked": [
+    {"invariant": "不直接写平台附件表", "result": "pass", "evidence": "仅通过 AttachmentGateway 的 get/bind 交互"},
+    {"invariant": "Flyway 只追加", "result": "pass", "evidence": "新增 V20260919212000，未改历史迁移"}
+  ],
+  "disturbances": [
+    {"event": "评审文件依赖 MinIO", "impact": "本地需启动 MinIO（scripts/dev.sh 已包含）；上传失败会在界面提示"}
+  ],
+  "assumptions_falsified": ["原设计把文件上传列为本期不实施，Owner 2026-09-19 要求补做"],
+  "unresolved_items": ["后端编译/测试未执行；批量上传、多附件与版本化未涉及"],
+  "recommended_next": "observe"
+}

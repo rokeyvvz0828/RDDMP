@@ -2,6 +2,10 @@ package com.ccb.requirement.service;
 
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
+import com.ccb.attachment.integration.AttachmentBindingCommand;
+import com.ccb.attachment.integration.AttachmentGateway;
+import com.ccb.attachment.integration.AttachmentItem;
+import com.ccb.requirement.support.StubProjectDirectory;
 import com.ccb.requirement.support.StubJdbcTemplate;
 import com.ccb.requirement.support.StubWorkflowService;
 import com.ccb.security.model.AuthUser;
@@ -24,17 +28,43 @@ class RequirementDifferenceServiceTest {
                 "id", 1L, "project_code", "P001", "project_name", "测试项目"));
         RequirementChangeLogService changeLog = new RequirementChangeLogService(jdbc);
         RequirementSecurityService security = new RequirementSecurityService(jdbc);
-        RequirementSystemService systemService = new RequirementSystemService(jdbc, changeLog);
+        RequirementSystemService systemService = new RequirementSystemService();
         StubWorkflowService workflow = new StubWorkflowService();
-        RequirementDifferenceService service = new RequirementDifferenceService(jdbc, changeLog, security, systemService, workflow);
+        RequirementDifferenceService service = new RequirementDifferenceService(jdbc, changeLog, security, systemService,
+                StubProjectDirectory.service(jdbc, List.of(2L, 3L, 9L)),
+                new RequirementReviewWorkflowSupport(jdbc), reviewReportService(), workflow);
         return new Fixture(jdbc, workflow, service);
+    }
+
+    /** 评审报告附件网关桩：附件存在即视为上传成功，并记录绑定动作。 */
+    private static RequirementReviewReportService reviewReportService() {
+        AttachmentGateway gateway = new AttachmentGateway() {
+            @Override
+            public void bind(AttachmentBindingCommand command, AuthUser operator) {
+                // 记录绑定即可，测试不校验平台附件表
+            }
+
+            @Override
+            public AttachmentItem get(long attachmentId, AuthUser operator) {
+                return new AttachmentItem(attachmentId, "评审报告.docx", "application/msword", 1024L, "docx",
+                        "TEMP", null, null, null, operator.id(), null);
+            }
+
+            @Override
+            public void deleteBound(long attachmentId, String businessType, String businessKey, AuthUser operator) {
+                // 测试不使用
+            }
+        };
+        return new RequirementReviewReportService(gateway);
     }
 
     @Test
     void submitReviewTransitionsPendingToReviewingAndRecordsChange() {
         Fixture fixture = fixture(count -> 1L, row("待评审"));
-        fixture.service().submitReview(1L, List.of(2L, 3L), null, ADMIN);
+        fixture.service().submitReview(1L, List.of(2L, 3L), 500L, ADMIN);
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("review_status = '评审中'")));
+        // 评审必须上传文件：评审报告附件 ID 与文件名称快照一并回写
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("review_report_attachment_id")));
         // changeLog.record 将 changeType 作为参数，断言 INSERT INTO req_change_log 被执行即可
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
         // 启动了 requirement.diff.review 审批流
@@ -42,10 +72,18 @@ class RequirementDifferenceServiceTest {
     }
 
     @Test
+    void submitReviewWithoutReportFileThrowsBadRequest() {
+        Fixture fixture = fixture(count -> 1L, row("待评审"));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> fixture.service().submitReview(1L, List.of(2L), null, ADMIN));
+        assertEquals(ErrorCode.BAD_REQUEST, exception.code());
+    }
+
+    @Test
     void submitReviewOnReviewedThrowsConflict() {
         Fixture fixture = fixture(count -> 1L, row("已评审"));
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> fixture.service().submitReview(1L, List.of(2L), null, ADMIN));
+                () -> fixture.service().submitReview(1L, List.of(2L), 500L, ADMIN));
         assertEquals(ErrorCode.CONFLICT, exception.code());
     }
 
@@ -53,7 +91,7 @@ class RequirementDifferenceServiceTest {
     void submitReviewWithoutApproversThrowsBadRequest() {
         Fixture fixture = fixture(count -> 1L, row("待评审"));
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> fixture.service().submitReview(1L, List.of(), null, ADMIN));
+                () -> fixture.service().submitReview(1L, List.of(), 500L, ADMIN));
         assertEquals(ErrorCode.BAD_REQUEST, exception.code());
     }
 
@@ -66,6 +104,16 @@ class RequirementDifferenceServiceTest {
     }
 
     @Test
+    void createWithoutPhysicalSubsystemThrowsBadRequest() {
+        Fixture fixture = fixture(count -> 1L, row("待评审"));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", "缺少物理子系统的差异");
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> fixture.service().create(1L, body, ADMIN));
+        assertEquals(ErrorCode.BAD_REQUEST, exception.code());
+    }
+
+    @Test
     void createValidatesEnumAndWritesCreateChangeLog() {
         Fixture fixture = fixture(count -> 1L, row("待评审"));
         Map<String, Object> body = new LinkedHashMap<>();
@@ -74,7 +122,9 @@ class RequirementDifferenceServiceTest {
         body.put("category", "功能");
         body.put("system_id", 10L);
         fixture.service().create(1L, body, ADMIN);
-        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_difference`")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_requirement`")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO `req_difference_detail`")));
+        assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_requirement_system")));
         assertTrue(fixture.jdbc().updates().stream().anyMatch(sql -> sql.contains("INSERT INTO req_change_log")));
     }
 

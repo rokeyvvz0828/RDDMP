@@ -73,7 +73,7 @@ class JdbcReleaseRequirementQueryTest {
 
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.contains("FROM req_project")) {
+            if (sql.contains("FROM pm_project")) {
                 assertArrayEquals(new Object[]{7L, "PROJECT-A"}, args);
                 return projects;
             }
