@@ -1,0 +1,26 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "审批弹窗评审报告行接入平台预览：PDF/图片/文本内嵌预览、Office 走 kkFileView、未部署回退下载；评审记录同样处理；引入 UiFilePreview"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过"},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "PASS"}
+  ],
+  "local_checks": [
+    {"check": "平台预览能力复用", "result": "pass", "evidence": "使用既有 UiFilePreview 组件 + 附件 preview/download 接口，未新增预览实现", "limitations": ["未做浏览器验收"]},
+    {"check": "未部署 kkFileView 时的可用性", "result": "pass", "evidence": "PDF/图片/文本直接内嵌渲染；其余格式回退下载并提示", "limitations": ["需 MinIO 运行"]}
+  ],
+  "diff_summary": ["审批弹窗与评审记录接入文件预览（含格式分档与回退）"],
+  "invariants_checked": [
+    {"invariant": "预览地址受控", "result": "pass", "evidence": "一律经平台接口换取短时效地址，前端不拼存储路径（presigned 1 小时）"}
+  ],
+  "disturbances": [
+    {"event": "dev 环境 kkFileView 未部署且 ccb.file-preview.enabled=false", "impact": "Office 文档只能下载后本地查看；PDF/图片仍可内嵌预览"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["浏览器端预览实测（需 MinIO 运行）未执行"],
+  "recommended_next": "observe"
+}

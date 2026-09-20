@@ -1,0 +1,18 @@
+{
+  "sample_label": "评审报告必传开关观测",
+  "task_ids": ["T2", "T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "S1", "result": "partial", "raw_evidence": "开关 ccb.requirement.review-report-required 默认 true、dev=false；经 /requirements/enums 下发；前端按开关控制必填与拦截；编译与三项静态检查通过", "limitation": ["未启动后端验证开关生效", "未做浏览器验收"]}
+  ],
+  "feedback": [
+    {"id": "F10", "severity": "P3", "statement": "本地未启用附件能力时评审被必传校验挡住，影响联调", "status": "closed", "evidence": "改为配置开关，dev 环境关闭；功能与上传入口保留"}
+  ],
+  "disturbances": [],
+  "coverage_gaps": [
+    "后端重启后需确认 /requirements/enums 返回 reviewReportRequired=false",
+    "浏览器端不带文件提交评审的验收未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 1},
+  "observation_status": "incomplete"
+}

@@ -1,0 +1,27 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/platform/infrastructure/src/main/java/com/ccb/infrastructure/mock/MockDataInitializer.java", "purpose": "允许清单删除 6 张旧表、加入需求主表/存量详情表/系统关联表"},
+    {"path_or_resource": "server/src/platform/infrastructure/src/test/java/com/ccb/infrastructure/mock/MockDataInitializerTest.java", "purpose": "内联数据集迁移到新表（来源需求主表 + 详情表 + 系统关联行）"},
+    {"path_or_resource": "mock/mock-data.json", "purpose": "按新模型补回开发管理来源演示数据（req_requirement / req_legacy_detail / req_requirement_system），来源引用不再悬空"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R6"],
+  "commands": [
+    {"command": "rg -n \"req_legacy_requirement|req_legacy_system_item|req_coordination_item|req_business_group_member|\\\"req_system\\\"|\\\"req_difference\\\"\" server/src --glob '*.java'", "exit_code": 0, "salient_output": "仅剩 MockDataInitializer 中说明旧表已下线的注释，无代码引用"},
+    {"command": "python3 -c 'json.load(mock/mock-data.json)'", "exit_code": 0, "salient_output": "55 张表，req_* 仅 req_requirement(2)/req_legacy_detail(2)/req_requirement_system(4)"}
+  ],
+  "local_checks": [
+    {"check": "mock 行字段全部在允许清单内", "result": "pass", "evidence": "逐列比对新增三表的 ALLOWED_COLUMNS 与 mock 行字段、keyColumns", "limitations": ["未运行 MockDataInitializerTest"]},
+    {"check": "开发管理来源语义保持", "result": "pass", "evidence": "沿用原来源编号与系统编码（MOCK-DEV-REQ-001/002、MOCK-DEV-PORTAL/OPS），角色改为主责→LEAD、测试→TEST", "limitations": ["未运行开发管理集成测试"]}
+  ],
+  "diff_summary": ["允许清单 6 出 3 入；内联数据集与 mock 数据集改写为新模型；dev_task 来源引用恢复可解析"],
+  "invariants_checked": [
+    {"invariant": "不改开发管理生产代码与表结构", "result": "pass", "evidence": "仅改 mock 集成组件与其单测，dev_* 表结构未动"},
+    {"invariant": "Flyway 只追加", "result": "pass", "evidence": "未修改历史迁移"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["编译、单元测试、集成测试、前端构建、迁移真实执行与浏览器验收仍未进行"],
+  "recommended_next": "observe"
+}

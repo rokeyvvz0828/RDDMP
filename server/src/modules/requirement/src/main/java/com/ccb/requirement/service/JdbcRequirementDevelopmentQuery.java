@@ -23,12 +23,27 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/**
+ * 开发来源只读实现（REQ-20260919-078）：数据来源切换到统一需求模型。
+ * <p>契约形状保持不变，本次仍只返回存量来源（requirement_kind = LEGACY），
+ * 避免触发开发侧 source_type='LEGACY' 约束；新建差异来源待开发管理侧放开后启用。
+ * <p>来源生效口径：存量需求已到"软需"阶段（软需进行中/已完成）且立项阶段已完成，
+ * 需求终止一律排除；projectId 为项目管理主键（pm_project.id）。
+ */
 @Service
 @Transactional(readOnly = true)
 public class JdbcRequirementDevelopmentQuery implements RequirementDevelopmentQuery {
-    private static final String COLUMNS = "SELECT r.id, r.project_id, r.requirement_no, r.requirement_name, r.content_summary";
-    private static final String ACTIVE = " FROM req_legacy_requirement r WHERE r.tenant_id = ? AND r.project_id = ?"
-            + " AND r.deleted = 0 AND COALESCE(r.requirement_status, '') <> '需求终止'";
+    private static final String COLUMNS =
+            "SELECT r.id, r.project_id, r.requirement_no, r.name AS requirement_name, r.summary AS content_summary";
+    private static final String ACTIVE = """
+             FROM req_requirement r
+             JOIN req_legacy_detail l ON l.requirement_id = r.id AND l.tenant_id = r.tenant_id
+             WHERE r.tenant_id = ? AND r.project_id = ? AND r.deleted = 0
+               AND r.requirement_kind = 'LEGACY'
+               AND COALESCE(l.requirement_status, '') <> '需求终止'
+               AND l.project_stage_status = '已完成'
+               AND l.soft_stage_status IN ('进行中', '已完成')
+            """;
     private static final ObjectMapper JSON = new ObjectMapper();
     private final JdbcTemplate jdbc;
 
@@ -47,26 +62,23 @@ public class JdbcRequirementDevelopmentQuery implements RequirementDevelopmentQu
         var codes = new TreeSet<>(query.systemCodes());
         String marks = placeholders(codes.size());
         StringBuilder where = new StringBuilder(ACTIVE).append("""
-                 AND (EXISTS (SELECT 1 FROM req_legacy_system_item s
+                AND EXISTS (SELECT 1 FROM req_requirement_system s
                      WHERE s.tenant_id = r.tenant_id AND s.requirement_id = r.id AND s.deleted = 0
-                     AND s.system_code IN (%s))
-                 OR EXISTS (SELECT 1 FROM req_coordination_item c
-                     WHERE c.tenant_id = r.tenant_id AND c.requirement_id = r.id AND c.deleted = 0
-                     AND c.system_code IN (%s)))
-                """.formatted(marks, marks));
+                     AND s.subsystem_code IN (%s))
+                """.formatted(marks));
         List<Object> args = new ArrayList<>(List.of(actor.tenantId(), projectId));
         args.addAll(codes);
-        args.addAll(codes);
         if (query.keyword() != null && !query.keyword().isBlank()) {
-            where.append(" AND (r.requirement_no LIKE ? OR r.requirement_name LIKE ?)");
+            where.append(" AND (r.requirement_no LIKE ? OR r.name LIKE ?)");
             String keyword = "%" + query.keyword().trim() + "%";
             args.add(keyword);
             args.add(keyword);
         }
-        Long total = jdbc.queryForObject("SELECT COUNT(*)" + where, Long.class, args.toArray());
+        Long total = jdbc.queryForObject("SELECT COUNT(*) " + where, Long.class, args.toArray());
         args.add(query.page().size());
         args.add(Math.multiplyExact(query.page().page() - 1, query.page().size()));
-        var rows = jdbc.queryForList(COLUMNS + where + " ORDER BY r.updated_at DESC, r.id DESC LIMIT ? OFFSET ?", args.toArray());
+        var rows = jdbc.queryForList(COLUMNS + " " + where + " ORDER BY r.updated_at DESC, r.id DESC LIMIT ? OFFSET ?",
+                args.toArray());
         return new PageResult<>(project(actor, rows), total == null ? 0 : total, query.page().page(), query.page().size());
     }
 
@@ -74,18 +86,19 @@ public class JdbcRequirementDevelopmentQuery implements RequirementDevelopmentQu
     public Optional<SourceRequirement> find(AuthUser actor, String projectRef, long requirementId) {
         requireActor(actor);
         long projectId = projectId(actor, projectRef);
-        var rows = jdbc.queryForList(COLUMNS + ACTIVE + " AND r.id = ?", actor.tenantId(), projectId, requirementId);
+        var rows = jdbc.queryForList(COLUMNS + " " + ACTIVE + " AND r.id = ?", actor.tenantId(), projectId, requirementId);
         return project(actor, rows).stream().findFirst();
     }
 
+    /** 项目编码 → 项目管理主键（pm_project.id）；未匹配或存在歧义时失败关闭。 */
     private long projectId(AuthUser actor, String projectRef) {
         if (projectRef == null || projectRef.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择项目");
         }
-        var projects = jdbc.queryForList("SELECT id FROM req_project WHERE tenant_id = ? AND project_code = ? AND deleted = 0",
+        var projects = jdbc.queryForList("SELECT id FROM pm_project WHERE tenant_id = ? AND project_code = ? AND deleted = 0",
                 actor.tenantId(), projectRef.trim());
         if (projects.size() != 1) {
-            throw new BusinessException(ErrorCode.CONFLICT, "需求项目编码未匹配或存在歧义，请维护项目关联");
+            throw new BusinessException(ErrorCode.CONFLICT, "项目编码未匹配或存在歧义，请维护项目关联");
         }
         return number(projects.get(0), "id");
     }
@@ -93,20 +106,15 @@ public class JdbcRequirementDevelopmentQuery implements RequirementDevelopmentQu
     private List<SourceRequirement> project(AuthUser actor, List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return List.of();
         List<Object> args = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            args.add(actor.tenantId());
-            rows.forEach(r -> args.add(number(r, "id")));
-        }
+        args.add(actor.tenantId());
+        rows.forEach(r -> args.add(number(r, "id")));
         String marks = placeholders(rows.size());
         var links = jdbc.queryForList("""
-                SELECT requirement_id, system_code,
-                    CASE system_role WHEN '主责' THEN 'LEAD' ELSE 'UNKNOWN' END AS role, owner_user_id
-                FROM req_legacy_system_item WHERE tenant_id = ? AND deleted = 0 AND requirement_id IN (%s)
-                UNION ALL
-                SELECT requirement_id, system_code,
-                    CASE item_type WHEN '改造' THEN 'CHANGE' WHEN '测试' THEN 'TEST' ELSE 'UNKNOWN' END AS role, owner_user_id
-                FROM req_coordination_item WHERE tenant_id = ? AND deleted = 0 AND requirement_id IN (%s)
-                """.formatted(marks, marks), args.toArray());
+                SELECT requirement_id, subsystem_code AS system_code, system_role AS role, owner_user_id
+                FROM req_requirement_system
+                WHERE tenant_id = ? AND deleted = 0 AND subsystem_code IS NOT NULL
+                  AND requirement_id IN (%s)
+                """.formatted(marks), args.toArray());
         Map<Long, Map<String, SystemRoles>> grouped = new TreeMap<>();
         for (var link : links) {
             String code = text(link, "system_code");

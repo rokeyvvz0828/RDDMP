@@ -167,9 +167,10 @@ public class RequirementImportService {
         if (rows == null || rows.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "没有可导入的数据");
         }
-        if (projectId != null) {
-            security.requireProjectAccess(user, projectId);
+        if (projectId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请先选择项目后再导入（需求数据统一归属项目管理主键）");
         }
+        security.requireProjectAccess(user, projectId);
         Set<String> seenNumbers = new HashSet<>();
         List<Map<String, Object>> errors = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
@@ -188,7 +189,7 @@ public class RequirementImportService {
         if ("DIFF".equals(bizType)) {
             success = importDifferences(projectId, rows, user);
         } else {
-            success = importLegacy(rows, user);
+            success = importLegacy(projectId, rows, user);
         }
         long batchId = RequirementIds.next();
         Map<String, Object> batch = new LinkedHashMap<>();
@@ -221,50 +222,101 @@ public class RequirementImportService {
 
     private int importDifferences(Long projectId, List<Map<String, Object>> rows, AuthUser user) {
         Integer projectCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM req_project WHERE tenant_id = ? AND id = ? AND deleted = 0",
+                "SELECT COUNT(*) FROM pm_project WHERE tenant_id = ? AND id = ? AND deleted = 0",
                 Integer.class, user.tenantId(), projectId);
         if (projectCount == null || projectCount == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "导入项目不存在");
         }
         Long maxSeq = jdbc.queryForObject(
-                "SELECT COALESCE(MAX(seq_no), 0) FROM req_difference WHERE tenant_id = ? AND project_id = ? AND deleted = 0",
+                "SELECT COALESCE(MAX(d.seq_no), 0) FROM req_requirement r"
+                        + " JOIN req_difference_detail d ON d.requirement_id = r.id"
+                        + " WHERE r.tenant_id = ? AND r.project_id = ? AND r.deleted = 0"
+                        + " AND r.requirement_kind = 'NEW_PROJECT_DIFF'",
                 Long.class, user.tenantId(), projectId);
         int seq = maxSeq == null ? 0 : maxSeq.intValue();
         for (Map<String, Object> values : rows) {
             seq++;
             long id = RequirementIds.next();
-            values.put("id", id);
-            values.put("tenant_id", user.tenantId());
-            values.put("project_id", projectId);
-            values.put("seq_no", values.get("seq_no") == null ? seq : RequirementValues.intOf(values.get("seq_no"), seq));
-            values.putIfAbsent("review_status", "待评审");
-            values.putIfAbsent("dev_status", "未开始");
-            values.putIfAbsent("test_status", "未开始");
-            values.put("source", "IMPORT");
-            values.put("created_by", user.id());
-            values.put("deleted", 0);
-            RequirementSql.insert(jdbc, "req_difference", values);
+            Map<String, Object> main = new LinkedHashMap<>();
+            main.put("id", id);
+            main.put("tenant_id", user.tenantId());
+            main.put("project_id", projectId);
+            main.put("requirement_kind", "NEW_PROJECT_DIFF");
+            main.put("requirement_no", RequirementValues.text(values, "requirement_no"));
+            main.put("name", RequirementValues.text(values, "name"));
+            main.put("summary", RequirementValues.text(values, "difference_desc"));
+            main.put("business_group", RequirementValues.text(values, "business_group"));
+            main.put("review_status", "待评审");
+            main.put("version_no", "1.0");
+            main.put("source", "IMPORT");
+            main.put("created_by", user.id());
+            main.put("current_handler_user_id", user.id());
+            main.put("current_handler_user_name", user.displayName());
+            main.put("deleted", 0);
+            RequirementSql.insert(jdbc, "req_requirement", main);
+
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("requirement_id", id);
+            detail.put("tenant_id", user.tenantId());
+            detail.put("seq_no", values.get("seq_no") == null
+                    ? seq : RequirementValues.intOf(values.get("seq_no"), seq));
+            detail.put("dev_status", "未开始");
+            detail.put("test_status", "未开始");
+            for (String field : RequirementEnums.DIFFERENCE_DETAIL_FIELDS) {
+                if (values.get(field) != null && !"dev_status".equals(field) && !"test_status".equals(field)) {
+                    detail.put(field, values.get(field));
+                }
+            }
+            RequirementSql.insert(jdbc, "req_difference_detail", detail);
+
+            // 新建差异恰好 1 行主责系统关联
+            long systemRowId = RequirementIds.next();
+            jdbc.update("""
+                    INSERT INTO req_requirement_system
+                    (id, tenant_id, requirement_id, physical_subsystem_id, subsystem_code, subsystem_name,
+                     system_role, status, created_by, deleted)
+                    VALUES (?, ?, ?, ?, ?, ?, 'LEAD', '未开始', ?, 0)
+                    """, systemRowId, user.tenantId(), id, values.get("system_id"),
+                    RequirementValues.text(values, "system_code"), null, user.id());
             changeLogImport("NEW_PROJECT_DIFF", id, values, user);
         }
         return rows.size();
     }
 
-    private int importLegacy(List<Map<String, Object>> rows, AuthUser user) {
+    private int importLegacy(Long projectId, List<Map<String, Object>> rows, AuthUser user) {
         for (Map<String, Object> values : rows) {
             long id = RequirementIds.next();
-            values.put("id", id);
-            values.put("tenant_id", user.tenantId());
-            values.putIfAbsent("current_stage", "PROPOSE");
-            values.putIfAbsent("propose_stage_status", "未开始");
-            values.putIfAbsent("docking_stage_status", "未开始");
-            values.putIfAbsent("workload_stage_status", "未开始");
-            values.putIfAbsent("project_stage_status", "未开始");
-            values.putIfAbsent("soft_stage_status", "未开始");
-            values.putIfAbsent("launch_stage_status", "未开始");
-            values.put("source", "IMPORT");
-            values.put("created_by", user.id());
-            values.put("deleted", 0);
-            RequirementSql.insert(jdbc, "req_legacy_requirement", values);
+            Map<String, Object> main = new LinkedHashMap<>();
+            main.put("id", id);
+            main.put("tenant_id", user.tenantId());
+            main.put("project_id", projectId);
+            main.put("requirement_kind", "LEGACY");
+            main.put("requirement_no", RequirementValues.text(values, "requirement_no"));
+            main.put("name", RequirementValues.text(values, "requirement_name"));
+            main.put("summary", RequirementValues.text(values, "content_summary"));
+            main.put("business_group", RequirementValues.text(values, "business_group"));
+            main.put("current_stage", "PROPOSE");
+            main.put("version_no", "1.0");
+            main.put("source", "IMPORT");
+            main.put("created_by", user.id());
+            main.put("current_handler_user_id", user.id());
+            main.put("current_handler_user_name", user.displayName());
+            main.put("deleted", 0);
+            RequirementSql.insert(jdbc, "req_requirement", main);
+
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("requirement_id", id);
+            detail.put("tenant_id", user.tenantId());
+            for (String field : RequirementEnums.LEGACY_DETAIL_FIELDS) {
+                if (values.get(field) != null) {
+                    detail.put(field, values.get(field));
+                }
+            }
+            detail.put("propose_stage_status", "未开始");
+            for (String statusField : RequirementEnums.LEGACY_STAGE_COLUMNS.values()) {
+                detail.putIfAbsent(statusField, "未开始");
+            }
+            RequirementSql.insert(jdbc, "req_legacy_detail", detail);
             changeLogImport("LEGACY_REQUIREMENT", id, values, user);
         }
         return rows.size();
@@ -287,17 +339,19 @@ public class RequirementImportService {
                                      AuthUser user, Set<String> seenNumbers, boolean checkDb) {
         List<String> messages = new ArrayList<>();
         if ("DIFF".equals(bizType)) {
-            validateDiffRow(values, user, messages);
+            validateDiffRow(values, projectId, user, messages);
         } else {
             validateLegacyRow(values, user, seenNumbers, checkDb, messages);
         }
         return messages;
     }
 
-    private void validateDiffRow(Map<String, Object> values, AuthUser user, List<String> messages) {
+    private void validateDiffRow(Map<String, Object> values, Long projectId, AuthUser user, List<String> messages) {
         requireImport(values, "name", "名称", messages);
         requireImport(values, "business_group", "业务组", messages);
         requireImport(values, "requirement_no", "需求编号", messages);
+        // 新建差异按物理子系统维度提出：导入同样必须且只能指定 1 个架构物理子系统
+        requireImport(values, "system_code", "涉及物理子系统编号", messages);
         requireImport(values, "category", "分类", messages);
         requireImport(values, "difference_type", "差异类型", messages);
         requireOption(values, "category", "categories", messages);
@@ -314,14 +368,13 @@ public class RequirementImportService {
         }
         String systemCode = RequirementValues.text(values, "system_code");
         if (systemCode != null) {
-            long systemId = systemService.resolveSystemId(systemCode, user);
+            long systemId = systemService.resolveSystemId(systemCode, projectId == null ? 0L : projectId, user);
             if (systemId == 0) {
-                messages.add("错误：涉及系统编号不存在：" + systemCode);
+                messages.add("错误：涉及物理子系统在架构管理中不存在或已停用：" + systemCode);
             } else {
                 values.put("system_id", systemId);
             }
         }
-        values.remove("system_code");
     }
 
     private void validateLegacyRow(Map<String, Object> values, AuthUser user, Set<String> seenNumbers,
@@ -335,7 +388,7 @@ public class RequirementImportService {
         }
         if (checkDb && requirementNo != null) {
             Integer count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM req_legacy_requirement WHERE tenant_id = ? AND requirement_no = ? AND deleted = 0",
+                    "SELECT COUNT(*) FROM req_requirement WHERE tenant_id = ? AND requirement_no = ? AND deleted = 0",
                     Integer.class, user.tenantId(), requirementNo);
             if (count != null && count > 0) {
                 messages.add("错误：需求编号已存在：" + requirementNo);
@@ -363,10 +416,7 @@ public class RequirementImportService {
                 }
             }
         }
-        String businessGroup = RequirementValues.text(values, "business_group");
-        if (businessGroup != null && !security.isAdmin(user) && !security.isBusinessGroupMember(user, businessGroup)) {
-            messages.add("错误：无业务组数据权限：" + businessGroup);
-        }
+        // 业务组口径已下线：导入数据的可见性由需求角色（提出人/分析员/统筹）决定
     }
 
     private void requireImport(Map<String, Object> values, String field, String label, List<String> messages) {
@@ -430,7 +480,7 @@ public class RequirementImportService {
             case "requirement_name" -> "示例存量需求（脱敏）";
             case "business_group" -> "零售一组";
             case "requirement_type" -> "业务";
-            case "requirement_status" -> "需求分析";
+            case "requirement_status" -> "需求提出";
             default -> "";
         };
     }

@@ -1,0 +1,82 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "created_at": "2026-09-19T09:13:03+00:00",
+  "updated_at": "2026-09-19T09:13:03+00:00",
+  "mode": "standard",
+  "phase": "baseline",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-19T09:13:03+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [],
+    "modeling": [],
+    "planning": [],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "需求管理两个页面的流转人与审批人只能来自项目管理项目组织架构的有效成员，存量交付件评审接入平台审批流，审批与流转接入站内消息通知，阶段推进保持不接审批",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "四个选人场景的候选只包含当前项目组织架构有效成员",
+      "priority": "must"
+    },
+    {
+      "id": "R2",
+      "statement": "伪造非项目成员提交流转或审批被服务端拒绝且无状态变更",
+      "priority": "must"
+    },
+    {
+      "id": "R3",
+      "statement": "存量交付件提交评审生成流程实例并由待办审批回写状态与评审记录",
+      "priority": "must"
+    },
+    {
+      "id": "R4",
+      "statement": "审批与流转通知在消息中心可见且可跳转需求页面",
+      "priority": "must"
+    },
+    {
+      "id": "R5",
+      "statement": "存量阶段推进仍为直接流转不产生审批任务",
+      "priority": "must"
+    }
+  ],
+  "invariants": [
+    "不修改历史 Flyway 迁移文件",
+    "不修改 platform 代码，只使用已登记公开契约"
+  ],
+  "constraints": [
+    "只修改 codex-task-scope.yaml 的 writable_paths",
+    "保持现有 Java 包名、Maven artifact 与前端路由"
+  ],
+  "non_goals": [
+    "阶段推进接入审批",
+    "按项目角色或组织树选人",
+    "短信、邮件、企业微信、浏览器推送"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "business/requirement + platform/system 公开契约 + platform/workflow + 前端需求页面",
+    "sensors": [
+      "Maven 测试与编译、前端构建、治理检查、浏览器验收（由用户执行）"
+    ],
+    "actuators": [
+      "需求模块服务、控制器、前端页面、Flyway 追加迁移"
+    ],
+    "disturbances": [],
+    "assumptions": [],
+    "measurements": []
+  },
+  "tasks": [],
+  "feedback": [],
+  "samples": []
+}

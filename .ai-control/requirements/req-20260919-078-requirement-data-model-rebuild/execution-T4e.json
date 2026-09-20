@@ -1,0 +1,23 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "深链审批优先：带 taskId 时不自动打开存量需求抽屉；openApproval 先收起抽屉；审批完成后按 legacyId 再展示需求详情"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "SFC/模板/脚本均编译通过"}
+  ],
+  "local_checks": [
+    {"check": "深链优先级", "result": "pass", "evidence": "approvalTaskFromQuery() 为真时 openLegacyFromQuery 直接返回；openApproval 首行收起 legacyFormVisible", "limitations": ["未做浏览器点击验收"]},
+    {"check": "审批后回到需求上下文", "result": "pass", "evidence": "submitApproval 成功后 await router.replace 去掉 taskId，再调用 openLegacyFromQuery 打开需求详情", "limitations": []}
+  ],
+  "diff_summary": ["RequirementsView 深链处理：审批弹窗与需求抽屉的呈现优先级 + 审批后回看"],
+  "invariants_checked": [
+    {"invariant": "审批 UI 仍由框架驱动", "result": "pass", "evidence": "未改动 getWorkflowTaskContext/decideWorkflowTask 调用与审批弹窗结构，仅调整打开顺序"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": ["原先假设深链只会带 legacyId，未考虑同时带 taskId 的待办链路"],
+  "unresolved_items": ["消息通知（actionPath=业务页）点击后仍先进业务页；是否改为直达待办窗口待 Owner 决定"],
+  "recommended_next": "observe"
+}

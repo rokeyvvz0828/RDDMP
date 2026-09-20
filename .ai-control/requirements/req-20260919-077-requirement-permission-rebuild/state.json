@@ -1,0 +1,92 @@
+{
+  "schema_version": 4,
+  "revision": 1,
+  "created_at": "2026-09-19T10:19:49+00:00",
+  "updated_at": "2026-09-19T10:19:49+00:00",
+  "mode": "standard",
+  "phase": "baseline",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "初始化需求基准阶段",
+      "recorded_at": "2026-09-19T10:19:49+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [],
+    "modeling": [],
+    "planning": [],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "需求管理权限重建为三个项目角色（提出人/分析员/统筹）与9个权限码，数据范围三档，提出人可无条件收回、分析员不可收回、统筹全量全权",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "旧29个requirement权限码与绑定全部删除，仅保留9个新码",
+      "priority": "must"
+    },
+    {
+      "id": "R2",
+      "statement": "三个项目角色可分配且权限可勾选",
+      "priority": "must"
+    },
+    {
+      "id": "R3",
+      "statement": "提出人可跨多手收回当前处理人给自己并留WITHDRAW日志",
+      "priority": "must"
+    },
+    {
+      "id": "R4",
+      "statement": "分析员调用收回接口返回403",
+      "priority": "must"
+    },
+    {
+      "id": "R5",
+      "statement": "分析员可见历史经手需求但不可越权操作",
+      "priority": "must"
+    },
+    {
+      "id": "R6",
+      "statement": "统筹可查看并操作本项目全部需求",
+      "priority": "must"
+    },
+    {
+      "id": "R7",
+      "statement": "无角色项目成员看不到菜单且接口403",
+      "priority": "must"
+    }
+  ],
+  "invariants": [
+    "Flyway只追加不改历史脚本",
+    "数据访问始终带tenant_id"
+  ],
+  "constraints": [
+    "不做存量权限绑定迁移与兼容",
+    "项目负责人/PM自动全权限为平台既有规则"
+  ],
+  "non_goals": [
+    "project_id改为pm_project.id",
+    "系统主数据改读架构物理子系统",
+    "过期业务表物理删除"
+  ],
+  "predevelopment": null,
+  "control_model": {
+    "plant": "business/requirement + platform/infrastructure权限与角色种子 + 前端需求页",
+    "sensors": [
+      "Maven模块测试、全量后端测试、前端构建、治理检查、用户浏览器验收"
+    ],
+    "actuators": [
+      "需求模块服务与控制器、权限目录与项目角色种子迁移、前端需求页"
+    ],
+    "disturbances": [],
+    "assumptions": [],
+    "measurements": []
+  },
+  "tasks": [],
+  "feedback": [],
+  "samples": []
+}

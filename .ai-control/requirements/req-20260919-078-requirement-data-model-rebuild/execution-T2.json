@@ -1,0 +1,40 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java", "purpose": "差异读写切到主表 + 差异详情表 + 关联行；创建必填物理子系统"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyService.java", "purpose": "存量读写切到主表 + 存量详情表 + 关联行；系统行去掉系统人员、LEAD 唯一"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java", "purpose": "交付件合并到 req_legacy_deliverable；协同事项落到 req_requirement_system"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementSystemService.java", "purpose": "系统主数据改为只读端口解析，删除对自建系统清单表的依赖"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementSecurityService.java", "purpose": "数据范围与流转可见性改读统一 req_flow_log 与主表处理人"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementBaselineService.java", "purpose": "基线纳入对象改为主表 + 差异详情表"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementAttachmentService.java", "purpose": "附件业务实体解析改读主表"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementImportService.java", "purpose": "导入落到新模型，差异导入要求物理子系统"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementWorkflowListener.java", "purpose": "审批终态回写改读主表与合并后的交付件表"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementProjectMemberService.java", "purpose": "项目编码解析统一走 pm_project"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementProjectService.java", "purpose": "项目统计改按主表 kind 统计"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementEnums.java", "purpose": "系统角色码/标签映射与主表-详情表字段拆分口径"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/support/RequirementSql.java", "purpose": "新增按 business key 列更新的 updateBy"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/integration/RequirementSystemDirectory.java", "purpose": "只读端口新增 findByCode"},
+    {"path_or_resource": "server/src/platform/boot/src/main/java/com/ccb/boot/requirement/RequirementSystemDirectoryAdapter.java", "purpose": "适配器实现 findByCode"}
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R5", "R7"],
+  "commands": [
+    {"command": "grep -rn \"req_difference\\b|req_legacy_requirement|req_legacy_system_item|req_coordination_item|req_workload|req_soft_doc|req_system\\b|req_business_group_member\" server/src/modules/requirement/src/main/java/", "exit_code": 1, "salient_output": "无匹配：需求模块主源码已无旧表引用"}
+  ],
+  "local_checks": [
+    {"check": "旧表引用清零", "result": "pass", "evidence": "需求模块 main 源码检索旧表名无匹配", "limitations": ["未编译验证类型正确性"]},
+    {"check": "主表/详情表字段映射", "result": "pass", "evidence": "LEGACY_MAIN_FIELDS/LEGACY_DETAIL_FIELDS/DIFFERENCE_DETAIL_FIELDS 集中在 RequirementEnums 并被服务与导入复用", "limitations": ["未运行模块测试"]}
+  ],
+  "diff_summary": ["需求模块 15 个文件改写，新增 2 个支撑方法，删除对 7 张旧表的读写"],
+  "invariants_checked": [
+    {"invariant": "HTTP 字段与错误语义保持", "result": "pass", "evidence": "SELECT 别名保持 requirement_name/content_summary/current_flow_user_* 等既有字段名"},
+    {"invariant": "不改包名与模块依赖", "result": "pass", "evidence": "仅新增 requirement→boot 的只读端口，未引入跨业务模块依赖"}
+  ],
+  "disturbances": [
+    {"event": "req_requirement_system 无系统人员字段", "impact": "前端旧 system_items.members 字段仅作为无用载荷被忽略，不再落库"}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["需求模块单元测试已按新模型调整但未执行"],
+  "recommended_next": "observe"
+}

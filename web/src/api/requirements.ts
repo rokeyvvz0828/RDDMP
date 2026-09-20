@@ -16,7 +16,6 @@ import type {
   LegacyFlowLog,
   RequirementVersionRow,
   LegacyDeliverable,
-  LegacyMember,
   CoordinationItem,
   ReviewRecord,
   BaselineItem,
@@ -92,24 +91,27 @@ export function transferDifference(id: number, data: { userId: number; comment?:
   return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/transfer`, data)
 }
 
+/** 提出人收回：把当前处理人改回提出人本人（无视对方是否已处理、已流转几手）。 */
+export function withdrawDifference(id: number, comment?: string) {
+  return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/withdraw`, comment ? { comment } : {})
+}
+
 export interface RequirementReviewer {
   id: number
   username: string
   display_name: string
 }
 
-export function listReviewers() {
-  return http.get<ApiResponse<RequirementReviewer[]>>('/requirements/reviewers')
+/** 流转处理人与审批人候选：唯一来源为项目管理中当前项目的组织架构有效成员。 */
+export function listRequirementProjectMembers(projectRef: string, keyword?: string) {
+  return http.get<ApiResponse<RequirementReviewer[]>>('/requirements/project-members', { params: { projectRef, keyword } })
 }
 
-export function listRequirementUserOptions(keyword?: string) {
-  return http.get<ApiResponse<Array<{ id: number; username: string; display_name?: string }>>>('/requirements/users', { params: { keyword } })
-}
-
-export function submitReview(id: number, approverIds: number[], reportDocName?: string) {
+/** 提交差异评审：评审报告文件必传（先走 /attachments 上传，这里传附件 ID）。 */
+export function submitReview(id: number, approverIds: number[], reportAttachmentId?: number) {
   return http.post<ApiResponse<RequirementDifference>>(`/requirements/differences/${id}/submit-review`, {
     approverIds,
-    reportDocName: reportDocName || undefined
+    reportAttachmentId
   })
 }
 
@@ -227,17 +229,7 @@ export function legacyFlowLogs(id: number) {
   return http.get<ApiResponse<LegacyFlowLog[]>>(`/requirements/legacy/${id}/flow-logs`)
 }
 
-export function listLegacyMembers(id: number) {
-  return http.get<ApiResponse<LegacyMember[]>>(`/requirements/legacy/${id}/members`)
-}
-
-export function addLegacyMember(id: number, data: { userId: number; memberRole?: string }) {
-  return http.post<ApiResponse<LegacyMember>>(`/requirements/legacy/${id}/members`, data)
-}
-
-export function removeLegacyMember(id: number) {
-  return http.delete<ApiResponse<void>>(`/requirements/legacy-members/${id}`)
-}
+// 需求成员维护已下线：权限统一由项目管理里的三个项目角色控制
 
 export function sendLegacyFlow(id: number, data: { toUserId: number; comment?: string }) {
   return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/flow`, data)
@@ -245,6 +237,11 @@ export function sendLegacyFlow(id: number, data: { toUserId: number; comment?: s
 
 export function returnLegacyFlow(id: number, comment?: string) {
   return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/flow/return`, comment ? { comment } : {})
+}
+
+/** 提出人收回存量需求的当前流转处理人。 */
+export function withdrawLegacyFlow(id: number, comment?: string) {
+  return http.post<ApiResponse<LegacyRequirement>>(`/requirements/legacy/${id}/flow/withdraw`, comment ? { comment } : {})
 }
 
 export function legacyVersions(id: number) {
@@ -267,15 +264,11 @@ export function deleteDeliverable(id: number, type: 'WORKLOAD' | 'SOFT') {
   return http.delete<ApiResponse<void>>(`/requirements/deliverables/${id}`, { params: { type } })
 }
 
-export function submitDeliverableReview(id: number, type: 'WORKLOAD' | 'SOFT', approverIds: number[], reportDocName?: string) {
+/** 提交工作量表/软需文档评审：直接使用记录创建时上传的文档文件，不再随提交上传。 */
+export function submitDeliverableReview(id: number, type: 'WORKLOAD' | 'SOFT', approverIds: number[]) {
   return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/submit-review`, {
-    approverIds,
-    reportDocName: reportDocName || undefined
+    approverIds
   }, { params: { type } })
-}
-
-export function reviewDeliverable(id: number, type: 'WORKLOAD' | 'SOFT', data: { conclusion: string; comment?: string; remark?: string; reportDocName?: string }) {
-  return http.post<ApiResponse<LegacyDeliverable>>(`/requirements/deliverables/${id}/review`, data, { params: { type } })
 }
 
 export function listCoordination(id: number) {
@@ -298,8 +291,9 @@ export function legacyChanges(id: number) {
   return http.get<ApiResponse<ChangeLogRow[]>>(`/requirements/legacy/${id}/changes`)
 }
 
-export function listSystems() {
-  return http.get<ApiResponse<RequirementSystem[]>>('/requirements/systems')
+/** 涉及系统来自架构管理的物理子系统，按当前项目读取。 */
+export function listSystems(projectId?: number, keyword?: string) {
+  return http.get<ApiResponse<RequirementSystem[]>>('/requirements/systems', { params: { projectId, keyword } })
 }
 
 export function createSystem(data: Record<string, unknown>) {

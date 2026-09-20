@@ -1,0 +1,101 @@
+{
+  "baseline_revision": 1,
+  "model_revision": 1,
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "建立统一需求模型迁移：主表/关联表/详情表/交付件表 + 清空重建演示数据 + 安全删除无外部引用的过期表",
+      "requirement_ids": ["R1", "R2", "R7"],
+      "prerequisites": ["需求基准 ready", "V20260919230000 project_id 归一已存在"],
+      "input_facts": ["V67/V123/V126 建表脚本", "V130 演示数据脚本", "pm_project 与 arch_physical_subsystem 现有结构"],
+      "write_scope": ["server/src/platform/infrastructure/src/main/resources/db/migration/V20260919210000__requirement_data_model_rebuild.sql"],
+      "invariants": ["Flyway 只追加", "不写其他模块负责的表", "迁移幂等"],
+      "interface_contracts": ["表结构作为服务与开发来源的共享契约"],
+      "non_goals": ["数据回填与旧表结构兼容"],
+      "action_bounds": ["仅新增一条迁移脚本", "不修改历史迁移"],
+      "acceptance_checks": ["新建 5 张表 + req_flow_log 扩展", "演示数据满足 1 行/1..N 行与 LEAD 唯一", "仅删除无外部引用的过期表"],
+      "evidence_required": ["迁移文件 diff", "表与列清单", "删除表的外部引用排查结果"],
+      "rollback": "回退迁移文件并在测试库重建演示数据",
+      "stop_conditions": ["发现需写 business/architecture 表", "发现迁移与既有脚本冲突"],
+      "escalation_conditions": ["删除旧表需同时修改写入范围之外的只读文件"]
+    },
+    {
+      "id": "T2",
+      "goal": "需求服务切换到新模型：主表 + 详情表 + 关联行 + 统一流转日志 + 交付件合并 + 系统目录只读端口",
+      "requirement_ids": ["R1", "R2", "R3", "R5", "R7"],
+      "prerequisites": ["T1"],
+      "input_facts": ["RequirementDifferenceService/RequirementLegacyService 现有实现", "RequirementSystemDirectory 端口"],
+      "write_scope": ["server/src/modules/requirement/src/main/java/com/ccb/requirement/**", "server/src/platform/boot/src/main/java/com/ccb/boot/requirement/RequirementSystemDirectoryAdapter.java"],
+      "invariants": ["HTTP 字段与错误语义保持", "写操作执行数据范围与实体授权", "不改包名"],
+      "interface_contracts": ["RequirementSystemDirectory（含 findByCode）", "需求 HTTP 契约"],
+      "non_goals": ["新增需求管理业务能力"],
+      "action_bounds": ["仅替换持久化实现与字段拆分", "不引入新依赖"],
+      "acceptance_checks": ["差异创建必填物理子系统", "存量系统行无系统人员且 LEAD 唯一", "流转写入统一 req_flow_log"],
+      "evidence_required": ["服务 diff", "SQL 引用排查结果（无旧表残留）"],
+      "rollback": "回退服务改动并保留迁移",
+      "stop_conditions": ["需要修改写入范围之外的生产者或消费者"],
+      "escalation_conditions": ["发现契约形状必须变更"]
+    },
+    {
+      "id": "T3",
+      "goal": "开发来源契约实现切换：数据源改读新表并保持 record 形状与存量语义",
+      "requirement_ids": ["R4", "R6", "R7"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["RequirementDevelopmentQuery 契约", "JdbcRequirementDevelopmentQuery 原实现", "JdbcReleaseRequirementQuery"],
+      "write_scope": ["server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java", "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcReleaseRequirementQuery.java"],
+      "invariants": ["契约 record 形状不变", "仅返回存量来源", "项目解析按 pm_project.project_code"],
+      "interface_contracts": ["RequirementDevelopmentQuery.Search/Find 输出语义"],
+      "non_goals": ["开放新建差异来源", "修改 business/development"],
+      "action_bounds": ["只替换实现的数据来源与项目解析"],
+      "acceptance_checks": ["active 规则命中/排除正确", "系统编码语义为物理子系统编码", "摘要仍只由内容与关联决定"],
+      "evidence_required": ["实现 diff", "契约字段对照"],
+      "rollback": "回退实现到旧表读取",
+      "stop_conditions": ["契约需要增删字段"],
+      "escalation_conditions": ["开发侧要求放开 source_type"]
+    },
+    {
+      "id": "T4",
+      "goal": "前端对齐：新建差异涉及物理子系统必填单选、存量系统行仅负责人、页签与注释口径同步",
+      "requirement_ids": ["R2", "R3", "R5"],
+      "prerequisites": ["T2"],
+      "input_facts": ["RequirementsView.vue 现有表单与页签", "design-h5.md"],
+      "write_scope": ["web/src/views/RequirementsView.vue", "web/src/api/requirements.ts"],
+      "invariants": ["复用交付示范中心设计与 components/ui", "移动视口不溢出"],
+      "interface_contracts": ["/api/requirements/systems 返回物理子系统候选"],
+      "non_goals": ["新增前端页面"],
+      "action_bounds": ["仅调整差异表单必填单选与相关文案注释"],
+      "acceptance_checks": ["未选物理子系统时前端拦截并提示", "系统行无系统人员控件"],
+      "evidence_required": ["前端 diff", "构建结果（本轮按用户指令未执行）"],
+      "rollback": "回退前端改动",
+      "stop_conditions": ["需要绕过 components/ui 才能实现"],
+      "escalation_conditions": ["设计要求与交付示范中心冲突"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2"},
+    {"from": "T2", "to": "T3"},
+    {"from": "T2", "to": "T4"}
+  ],
+  "parallel_groups": [["T3", "T4"]],
+  "integration_points": [
+    {"name": "表结构与服务实现集成", "tasks": ["T1", "T2"]},
+    {"name": "服务与开发来源契约集成", "tasks": ["T2", "T3"]}
+  ],
+  "sampling_plan": [
+    {"sample": "S1", "when": "实施后静态核对迁移与 SQL 引用", "sensor": "S1"},
+    {"sample": "S2", "when": "用户允许后执行需求模块测试", "sensor": "S2"},
+    {"sample": "S3", "when": "用户允许后执行契约测试与全量后端编译", "sensor": "S3"},
+    {"sample": "S4", "when": "用户允许后执行前端构建", "sensor": "S4"},
+    {"sample": "S5", "when": "用户执行浏览器验收", "sensor": "S5"}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T2"]},
+    {"requirement_id": "R2", "task_ids": ["T1", "T2", "T4"]},
+    {"requirement_id": "R3", "task_ids": ["T2", "T4"]},
+    {"requirement_id": "R4", "task_ids": ["T3"]},
+    {"requirement_id": "R5", "task_ids": ["T2", "T4"]},
+    {"requirement_id": "R6", "task_ids": ["T3"]},
+    {"requirement_id": "R7", "task_ids": ["T1", "T2", "T3"]}
+  ],
+  "plan_status": "ready"
+}

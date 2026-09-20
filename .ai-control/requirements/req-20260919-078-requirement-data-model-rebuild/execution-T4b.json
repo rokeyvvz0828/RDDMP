@@ -1,0 +1,28 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "把「需求对接/工作量评估/软需」三块内容从平级页签内嵌到「阶段信息」对应阶段；抽屉页签收敛为 阶段信息/流转记录/版本历史；创建时预置 PROPOSE 阶段以便维护系统行"}
+  ],
+  "requirements_addressed": ["R2", "R3", "R5"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate\"", "exit_code": 0, "salient_output": "SFC parse errors: none；template compile errors: none"}
+  ],
+  "local_checks": [
+    {"check": "阶段归属落位", "result": "pass", "evidence": "DOCKING→系统与协同事项、WORKLOAD→工作量表、SOFT→软需文档 三块均按 legacyViewStage 条件渲染，模板编译通过", "limitations": ["未做浏览器视觉验收"]},
+    {"check": "页签收敛", "result": "pass", "evidence": "抽屉内 el-tab-pane 仅剩 stage/flow/versions 三个（原平级需求对接/工作量评估/软需已移除）", "limitations": []},
+    {"check": "能力不回退", "result": "pass", "evidence": "三块内部控件标记与处理函数保持不变；创建表单预置 current_stage=PROPOSE 使阶段条渲染、系统行可在保存前维护", "limitations": ["需浏览器确认"]}
+  ],
+  "diff_summary": ["RequirementsView.vue 抽屉：三块业务内容内嵌进阶段信息，平级页签删除，创建表单预置阶段；需求状态及备注移到阶段内容最下方"],
+  "invariants_checked": [
+    {"invariant": "复用既有组件与语义样式", "result": "pass", "evidence": "沿用 req-section-title / req-flow-actions / UiStatusTag 等既有类与组件，未新增样式"},
+    {"invariant": "不改后端契约", "result": "pass", "evidence": "仅前端模板与创建表单初值"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": ["原先按需求文档字面把三块理解为平级页签改名；实际要求是内嵌到对应阶段"],
+  "unresolved_items": [
+    "软需阶段遗留文本字段 owner_system/coord_system 等仍不参与渲染（系统改由需求对接阶段的系统行维护），是否彻底下线待确认",
+    "浏览器视觉与移动视口验收未执行"
+  ],
+  "recommended_next": "observe"
+}

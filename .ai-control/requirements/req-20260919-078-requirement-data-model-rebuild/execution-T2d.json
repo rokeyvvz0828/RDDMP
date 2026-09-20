@@ -1,0 +1,25 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyService.java", "purpose": "requireDockingSystemItems 去掉'至少 1 个协同系统'硬拦截，只校验主责≥1"},
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "需求对接区块提示与标签同步为'主责必填、协同可选'"}
+  ],
+  "requirements_addressed": ["R2"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均无错误"}
+  ],
+  "local_checks": [
+    {"check": "校验口径一致", "result": "pass", "evidence": "后端仅保留 lead<1 拦截；主责唯一仍由 saveSystemItems 的 leadCount>1 拦截；前端提示同步", "limitations": ["未跑后端编译与测试"]},
+    {"check": "规则来源", "result": "pass", "evidence": "Owner 2026-09-19 明确'离开需求对接前必须维护 1 个主责系统'，不要求协同", "limitations": []}
+  ],
+  "diff_summary": ["移除协同系统硬拦截（1 处后端方法 + 2 处前端文案），主责唯一校验保留"],
+  "invariants_checked": [
+    {"invariant": "主责唯一", "result": "pass", "evidence": "保存时 lead>1 抛错逻辑未改动"},
+    {"invariant": "不改表结构与契约", "result": "pass", "evidence": "仅校验条件与文案调整"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": ["requirement.md 验收标准曾写'缺主责或协同都拒绝'，与 Owner 最新口径不一致"],
+  "unresolved_items": ["requirement.md 验收标准第 2 条仍为旧表述，是否回写需求文档待确认"],
+  "recommended_next": "observe"
+}

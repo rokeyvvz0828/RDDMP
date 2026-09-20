@@ -1,0 +1,21 @@
+{
+  "sample_label": "评审文件上传能力观测",
+  "task_ids": ["T2", "T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R2", "sensor": "S1", "result": "partial", "raw_evidence": "后端 requireBound 强制评审报告附件并绑定 REQUIREMENT_REVIEW；前端弹窗必传校验；模块边界与迁移检查通过", "limitation": ["未编译、未跑测试、未做浏览器验收"]},
+    {"requirement_id": "R4", "sensor": "S1", "result": "partial", "raw_evidence": "评审完成回写 report_preview_id（附件 ID），评审记录可按 ID 生成预览链接", "limitation": ["未验证实际审批链路"]}
+  ],
+  "feedback": [
+    {"id": "F8", "severity": "P2", "statement": "原方案把评审文件上传列为不实施，导致评审可以不带文件提交", "status": "closed", "evidence": "已按 Owner 要求实现必传上传：前端上传控件 + 后端附件校验绑定 + 迁移保存附件引用"}
+  ],
+  "disturbances": [
+    {"source": "新增跨模块只读依赖 platform/attachment", "effect": "需 Owner 确认（已在 scope.owner_approval 记录）；模块边界检查已通过"}
+  ],
+  "coverage_gaps": [
+    "后端编译/单测、前端构建、浏览器端上传与审批全流程验收未执行",
+    "存量交付件自身文档（非评审报告）的上传仍为占位"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "incomplete"
+}

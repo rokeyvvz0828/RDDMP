@@ -23,10 +23,16 @@ public final class RequirementSql {
     }
 
     public static void update(JdbcTemplate jdbc, String table, long id, long tenantId, Map<String, Object> values) {
+        updateBy(jdbc, table, "id", id, tenantId, values);
+    }
+
+    /** 按任意业务主键列更新（详情表等以 requirement_id 为主键的表使用）。 */
+    public static void updateBy(JdbcTemplate jdbc, String table, String keyColumn, Object keyValue,
+                                long tenantId, Map<String, Object> values) {
         List<String> setClauses = new ArrayList<>();
         List<Object> params = new ArrayList<>();
         for (Map.Entry<String, Object> entry : values.entrySet()) {
-            if ("id".equals(entry.getKey()) || "tenant_id".equals(entry.getKey())) {
+            if (keyColumn.equals(entry.getKey()) || "tenant_id".equals(entry.getKey())) {
                 continue;
             }
             setClauses.add(quote(entry.getKey()) + " = ?");
@@ -36,9 +42,9 @@ public final class RequirementSql {
             return;
         }
         params.add(tenantId);
-        params.add(id);
+        params.add(keyValue);
         jdbc.update("UPDATE " + quote(table) + " SET " + String.join(", ", setClauses)
-                + " WHERE tenant_id = ? AND id = ?", params.toArray());
+                + " WHERE tenant_id = ? AND " + quote(keyColumn) + " = ?", params.toArray());
     }
 
     public static String quote(String identifier) {

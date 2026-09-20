@@ -1,0 +1,23 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "需求状态候选值由'当前阶段'改为'当前查看阶段'；历史阶段该字段只读并提示回到当前阶段；补齐只读标签与提示文案"}
+  ],
+  "requirements_addressed": ["R2"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate\"", "exit_code": 0, "salient_output": "SFC parse errors: none；template compile errors: none"}
+  ],
+  "local_checks": [
+    {"check": "候选值按阶段收敛", "result": "pass", "evidence": "legacyStageStatusOptions(legacyViewStage)：PROPOSE=需求提出/需求终止；DOCKING=需求分析/需规编制/需规评审/需求终止；WORKLOAD=工作量评估/需求终止；PROJECT=立项/需求终止；SOFT=软需编写/软需评审/需求终止；LAUNCH=已投产/需求终止", "limitations": ["未做浏览器点击验收"]},
+    {"check": "与后端口径一致", "result": "pass", "evidence": "前端常量与 RequirementEnums.LEGACY_STAGE_REQUIREMENT_STATUSES 及 /requirements/enums 下发口径一致", "limitations": []}
+  ],
+  "diff_summary": ["需求状态下拉的取值来源从 legacyCurrentStage 改为 legacyViewStage，并加历史阶段只读约束"],
+  "invariants_checked": [
+    {"invariant": "不改后端契约", "result": "pass", "evidence": "仅前端模板取值来源调整"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": ["原先让状态候选跟随 requirement.current_stage，未跟随用户在阶段条的查看阶段"],
+  "unresolved_items": ["浏览器端逐阶段点击验收未执行"],
+  "recommended_next": "observe"
+}

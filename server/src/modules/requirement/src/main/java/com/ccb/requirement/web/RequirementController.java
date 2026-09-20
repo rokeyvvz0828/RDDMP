@@ -10,6 +10,7 @@ import com.ccb.requirement.service.RequirementBaselineService;
 import com.ccb.requirement.service.RequirementDifferenceService;
 import com.ccb.requirement.service.RequirementImportService;
 import com.ccb.requirement.service.RequirementProjectService;
+import com.ccb.requirement.service.RequirementReviewReportService;
 import com.ccb.requirement.support.RequirementEnums;
 import com.ccb.security.model.AuthUser;
 import org.springframework.http.HttpHeaders;
@@ -41,17 +42,20 @@ public class RequirementController {
     private final RequirementBaselineService baselineService;
     private final RequirementImportService importService;
     private final RequirementAttachmentService attachmentService;
+    private final RequirementReviewReportService reviewReportService;
 
     public RequirementController(RequirementProjectService projectService,
                                  RequirementDifferenceService differenceService,
                                  RequirementBaselineService baselineService,
                                  RequirementImportService importService,
-                                 RequirementAttachmentService attachmentService) {
+                                 RequirementAttachmentService attachmentService,
+                                 RequirementReviewReportService reviewReportService) {
         this.projectService = projectService;
         this.differenceService = differenceService;
         this.baselineService = baselineService;
         this.importService = importService;
         this.attachmentService = attachmentService;
+        this.reviewReportService = reviewReportService;
     }
 
     @GetMapping("/enums")
@@ -60,65 +64,67 @@ public class RequirementController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("options", RequirementEnums.OPTIONS);
         result.put("fieldLabels", RequirementEnums.FIELD_LABELS);
+        // 评审报告是否必传（本地/联调未启用平台附件能力时可关闭）
+        result.put("reviewReportRequired", reviewReportService.required());
         return ApiResponse.success(result, TraceId.getOrCreate());
     }
 
     @GetMapping("/projects")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> projects(@RequestParam(required = false) String keyword,
                                                            @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(projectService.list(keyword, user), TraceId.getOrCreate());
     }
 
     @PostMapping("/projects")
-    @PreAuthorize("hasAuthority('requirement:project:create')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<Map<String, Object>> createProject(@RequestBody Map<String, Object> body,
                                                           @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(projectService.create(body, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/projects/{id}")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<Map<String, Object>> project(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(projectService.get(id, user), TraceId.getOrCreate());
     }
 
     @PutMapping("/projects/{id}")
-    @PreAuthorize("hasAuthority('requirement:project:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> updateProject(@PathVariable long id, @RequestBody Map<String, Object> body,
                                                           @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(projectService.update(id, body, user), TraceId.getOrCreate());
     }
 
     @DeleteMapping("/projects/{id}")
-    @PreAuthorize("hasAuthority('requirement:project:delete')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<Void> deleteProject(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         projectService.delete(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @GetMapping("/projects/{id}/members")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> members(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(projectService.members(id, user), TraceId.getOrCreate());
     }
 
     @PostMapping("/projects/{id}/members")
-    @PreAuthorize("hasAuthority('requirement:project:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> addMember(@PathVariable long id, @RequestBody Map<String, Object> body,
                                                       @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(projectService.addMember(id, body, user), TraceId.getOrCreate());
     }
 
     @DeleteMapping("/project-members/{id}")
-    @PreAuthorize("hasAuthority('requirement:project:update')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Void> removeMember(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         projectService.removeMember(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @GetMapping("/differences")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<Object> differences(@RequestParam long projectId,
                                            @RequestParam(required = false) String reviewStatus,
                                            @RequestParam(required = false) String devStatus,
@@ -131,7 +137,7 @@ public class RequirementController {
     }
 
     @PostMapping("/differences")
-    @PreAuthorize("hasAuthority('requirement:project:create')")
+    @PreAuthorize("hasAuthority('requirement:propose')")
     public ApiResponse<Map<String, Object>> createDifference(@RequestParam long projectId,
                                                              @RequestBody Map<String, Object> body,
                                                              @AuthenticationPrincipal AuthUser user) {
@@ -139,27 +145,27 @@ public class RequirementController {
     }
 
     @GetMapping("/differences/{id}")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<Map<String, Object>> difference(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.get(id, user), TraceId.getOrCreate());
     }
 
     @PutMapping("/differences/{id}")
-    @PreAuthorize("hasAuthority('requirement:access')")
+    @PreAuthorize("hasAuthority('requirement:edit')")
     public ApiResponse<Map<String, Object>> updateDifference(@PathVariable long id, @RequestBody Map<String, Object> body,
                                                              @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.update(id, body, user), TraceId.getOrCreate());
     }
 
     @DeleteMapping("/differences/{id}")
-    @PreAuthorize("hasAuthority('requirement:access')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<Void> deleteDifference(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         differenceService.delete(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());
     }
 
     @PostMapping("/differences/{id}/submit-review")
-    @PreAuthorize("hasAuthority('requirement:access')")
+    @PreAuthorize("hasAuthority('requirement:review')")
     public ApiResponse<Map<String, Object>> submitReview(@PathVariable long id,
                                                          @RequestBody Map<String, Object> body,
                                                          @AuthenticationPrincipal AuthUser user) {
@@ -167,13 +173,17 @@ public class RequirementController {
         List<Number> raw = (List<Number>) body.get("approverIds");
         List<Long> approverIds = raw == null ? List.of()
                 : raw.stream().map(Number::longValue).toList();
-        String reportDocName = body.get("reportDocName") == null ? null : String.valueOf(body.get("reportDocName"));
-        return ApiResponse.success(differenceService.submitReview(id, approverIds, reportDocName, user),
+        // 评审必须上传文件：请求携带平台附件 ID（reportAttachmentId）
+        Object attachment = body.get("reportAttachmentId");
+        Long reportAttachmentId = attachment instanceof Number number ? number.longValue()
+                : (attachment == null || String.valueOf(attachment).isBlank()
+                ? null : Long.parseLong(String.valueOf(attachment)));
+        return ApiResponse.success(differenceService.submitReview(id, approverIds, reportAttachmentId, user),
                 TraceId.getOrCreate());
     }
 
     @PostMapping("/differences/{id}/cancel-review")
-    @PreAuthorize("hasAuthority('requirement:access')")
+    @PreAuthorize("hasAuthority('requirement:review')")
     public ApiResponse<Map<String, Object>> cancelReview(@PathVariable long id,
                                                          @RequestBody(required = false) Map<String, Object> body,
                                                          @AuthenticationPrincipal AuthUser user) {
@@ -182,7 +192,7 @@ public class RequirementController {
     }
 
     @PostMapping("/differences/{id}/transfer")
-    @PreAuthorize("hasAuthority('requirement:access')")
+    @PreAuthorize("hasAuthority('requirement:transfer')")
     public ApiResponse<Map<String, Object>> transferDifference(@PathVariable long id,
                                                                @RequestBody Map<String, Object> body,
                                                                @AuthenticationPrincipal AuthUser user) {
@@ -192,42 +202,48 @@ public class RequirementController {
         return ApiResponse.success(differenceService.transfer(id, userId, comment, user), TraceId.getOrCreate());
     }
 
-    @GetMapping("/reviewers")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:update')")
-    public ApiResponse<List<Map<String, Object>>> reviewers(@AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(differenceService.reviewers(user), TraceId.getOrCreate());
+    /** 流转接收人与审批人候选：唯一来源为当前项目组织架构的有效成员。 */
+    /** 提出人收回：把当前处理人改回提出人本人（无视对方是否已处理、已流转几手）。 */
+    @PostMapping("/differences/{id}/withdraw")
+    @PreAuthorize("hasAuthority('requirement:withdraw')")
+    public ApiResponse<Map<String, Object>> withdrawDifference(@PathVariable long id,
+                                                               @RequestBody(required = false) Map<String, Object> body,
+                                                               @AuthenticationPrincipal AuthUser user) {
+        String comment = body == null || body.get("comment") == null ? null : String.valueOf(body.get("comment"));
+        return ApiResponse.success(differenceService.withdraw(id, comment, user), TraceId.getOrCreate());
     }
 
-    @GetMapping("/users")
+    @GetMapping("/project-members")
     @PreAuthorize("hasAuthority('requirement:access')")
-    public ApiResponse<List<Map<String, Object>>> users(@RequestParam(required = false) String keyword,
+    public ApiResponse<List<Map<String, Object>>> projectMembers(@RequestParam String projectRef,
+                                                                @RequestParam(required = false) String keyword,
                                                         @AuthenticationPrincipal AuthUser user) {
-        return ApiResponse.success(differenceService.userOptions(keyword, user), TraceId.getOrCreate());
+        return ApiResponse.success(differenceService.projectMembers(projectRef, keyword, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/differences/{id}/changes")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:changelog:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> differenceChanges(@PathVariable long id,
                                                                     @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.changes(id, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/differences/{id}/approval-logs")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> approvalLogs(@PathVariable long id,
                                                               @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(differenceService.approvalLogs(id, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/baselines")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> baselines(@RequestParam long projectId,
                                                             @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(baselineService.list(projectId, user), TraceId.getOrCreate());
     }
 
     @PostMapping("/projects/{id}/baseline")
-    @PreAuthorize("hasAuthority('requirement:baseline:create')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<Map<String, Object>> createBaseline(@PathVariable long id,
                                                            @RequestBody(required = false) Map<String, String> body,
                                                            @AuthenticationPrincipal AuthUser user) {
@@ -236,20 +252,20 @@ public class RequirementController {
     }
 
     @GetMapping("/baselines/{id}/items")
-    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:project:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:access','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> baselineItems(@PathVariable long id,
                                                                 @AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(baselineService.items(id, user), TraceId.getOrCreate());
     }
 
     @GetMapping("/imports")
-    @PreAuthorize("hasAuthority('requirement:import:create')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<List<Map<String, Object>>> importBatches(@AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(importService.listBatches(user), TraceId.getOrCreate());
     }
 
     @PostMapping("/imports/preview")
-    @PreAuthorize("hasAuthority('requirement:import:create')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<Map<String, Object>> previewImport(@RequestParam String bizType,
                                                           @RequestParam(required = false) Long projectId,
                                                           @RequestParam("file") MultipartFile file,
@@ -258,7 +274,7 @@ public class RequirementController {
     }
 
     @PostMapping("/imports/confirm")
-    @PreAuthorize("hasAuthority('requirement:import:create')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ApiResponse<Map<String, Object>> confirmImport(@RequestBody Map<String, Object> body,
                                                           @AuthenticationPrincipal AuthUser user) {
         @SuppressWarnings("unchecked")
@@ -271,7 +287,7 @@ public class RequirementController {
     }
 
     @GetMapping("/imports/templates/{bizType}")
-    @PreAuthorize("hasAuthority('requirement:import:create')")
+    @PreAuthorize("hasAuthority('requirement:manage')")
     public ResponseEntity<byte[]> template(@PathVariable String bizType) {
         if (!"DIFF".equals(bizType) && !"LEGACY".equals(bizType)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "模板类型必须为 DIFF 或 LEGACY");
@@ -286,7 +302,7 @@ public class RequirementController {
     }
 
     @GetMapping("/attachments")
-    @PreAuthorize("hasAnyAuthority('requirement:project:read','requirement:legacy:read')")
+    @PreAuthorize("hasAnyAuthority('requirement:read-own','requirement:read-own')")
     public ApiResponse<List<Map<String, Object>>> attachments(@RequestParam String bizType,
                                                               @RequestParam long bizId,
                                                               @AuthenticationPrincipal AuthUser user) {
@@ -294,7 +310,7 @@ public class RequirementController {
     }
 
     @PostMapping("/attachments")
-    @PreAuthorize("hasAnyAuthority('requirement:project:update','requirement:legacy:update')")
+    @PreAuthorize("hasAnyAuthority('requirement:edit','requirement:edit')")
     public ApiResponse<Map<String, Object>> createAttachment(@RequestParam String bizType,
                                                              @RequestParam long bizId,
                                                              @RequestBody Map<String, Object> body,
@@ -303,7 +319,7 @@ public class RequirementController {
     }
 
     @DeleteMapping("/attachments/{id}")
-    @PreAuthorize("hasAnyAuthority('requirement:project:update','requirement:legacy:update')")
+    @PreAuthorize("hasAnyAuthority('requirement:edit','requirement:edit')")
     public ApiResponse<Void> deleteAttachment(@PathVariable long id, @AuthenticationPrincipal AuthUser user) {
         attachmentService.delete(id, user);
         return ApiResponse.success(null, TraceId.getOrCreate());

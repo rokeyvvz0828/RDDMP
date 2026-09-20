@@ -1,0 +1,24 @@
+{
+  "sample_label": "静态观测：旧表清理与边界核对",
+  "task_ids": ["T1", "T2", "T3", "T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1", "result": "partial", "raw_evidence": "新模型 5 张表建立、需求主表按 kind 过滤、10 张旧表在同批迁移删除", "limitation": ["未在 MySQL 执行迁移"]},
+    {"requirement_id": "R2", "sensor": "S1", "result": "partial", "raw_evidence": "差异创建必填 1 个物理子系统；存量保存拒绝 2 行 LEAD；需求对接完成前校验主责+协同", "limitation": ["单元测试未执行"]},
+    {"requirement_id": "R3", "sensor": "S1", "result": "pass", "raw_evidence": "需求模块源码与 mock 演示数据均无自建系统清单引用，候选统一经 RequirementSystemDirectory", "limitation": ["未验证架构侧实际返回"]},
+    {"requirement_id": "R4", "sensor": "S1", "result": "partial", "raw_evidence": "开发来源按 kind/阶段状态过滤，测试夹具已按新表补齐阶段状态", "limitation": ["契约测试与集成测试未执行"]},
+    {"requirement_id": "R5", "sensor": "S4", "result": "not-run", "raw_evidence": "系统行与前端均无系统人员", "limitation": ["前端构建未执行"]},
+    {"requirement_id": "R6", "sensor": "S3", "result": "partial", "raw_evidence": "契约 record 未改动，仅实现切换", "limitation": ["未编译验证"]},
+    {"requirement_id": "R7", "sensor": "S1", "result": "partial", "raw_evidence": "需求数据 project_id 统一为 pm_project.id，项目解析与夹具已对齐", "limitation": ["未在真实库验证切换项目取数"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"source": "用户指令「不要测试和编译」", "effect": "S2/S3/S4/S5 仍不可用，收敛判定缺独立运行证据"}
+  ],
+  "coverage_gaps": [
+    "需求模块单元测试、全量后端编译、前端构建、迁移真实执行、浏览器验收均未执行",
+    "MockDataInitializer 白名单与内联测试数据仍保留旧表名（无运行影响）"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 1},
+  "observation_status": "incomplete"
+}

@@ -111,7 +111,7 @@ class DevelopmentJourneyIntegrationTest extends DevelopmentIntegrationSupport {
         var pure = create("owner", linked(91007130001L, SYSTEM_B));
         request(token("owner"), put(taskUrl(pure) + "/stages")
                 .content(json(stage().put("notApplicableDesign", true).put("notApplicableImplementation", true))), 200);
-        jdbc.update("INSERT INTO req_legacy_system_item(id,tenant_id,requirement_id,system_role,system_code,system_name,created_by,deleted) VALUES(91007140003,1,91007130001,'主责','DEV071-SOURCE-1','虚构角色变更',1,0)");
+        jdbc.update("INSERT INTO req_requirement_system(id,tenant_id,requirement_id,system_role,subsystem_code,subsystem_name,status,created_by,deleted) VALUES(91007140003,1,91007130001,'LEAD','DEV071-SOURCE-1','虚构角色变更','未开始',1,0)");
         pure = request(token("owner"), get(taskUrl(pure)), 200);
         request(token("owner"), post(taskUrl(pure) + "/actions").content(action(pure, "COMPLETE")), 409);
         var corrected = request(token("owner"), put(taskUrl(pure) + "/stages").content(json(stage().put("rowVersion", 1))), 200);

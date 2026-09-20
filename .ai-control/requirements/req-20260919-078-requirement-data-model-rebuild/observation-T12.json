@@ -1,0 +1,19 @@
+{
+  "sample_label": "审批深链优先级观测",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "S1", "result": "partial", "raw_evidence": "深链同时带 taskId+legacyId 时改为审批弹窗优先，需求抽屉不再抢屏；审批完成后回到需求详情。前端编译检查通过", "limitation": ["未做浏览器端待办/通知两条链路的实测"]}
+  ],
+  "feedback": [
+    {"id": "F9", "severity": "P2", "statement": "存量交付件评审的待办深链被需求编辑抽屉覆盖，用户只看到需求编辑页，无法在业务页完成审批", "status": "closed", "evidence": "改为审批优先：带 taskId 不打开抽屉、openApproval 先收起抽屉、审批后按 legacyId 回看"}
+  ],
+  "disturbances": [
+    {"source": "框架约定：通知 actionPath 为业务路径，待办中心另有审批入口", "effect": "两处入口体验不同，已通过业务页内审批弹窗对齐"}
+  ],
+  "coverage_gaps": [
+    "浏览器端（待办中心入口、站内消息入口）验收未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "incomplete"
+}

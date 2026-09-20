@@ -1,0 +1,32 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyService.java", "purpose": "存量列表/计数/单条查询在 SELECT 与 FROM 之间补分隔空格"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java", "purpose": "差异计数的 SELECT COUNT 与 FROM 之间补分隔空格"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java", "purpose": "开发来源 search/find/count 的列清单与 FROM 之间补分隔空格"}
+  ],
+  "requirements_addressed": ["R1", "R6", "R7"],
+  "commands": [
+    {"command": "mysql ... < /tmp/req_sql_check.sql（4 条动态查询 PREPARE）", "exit_code": 0, "salient_output": "存量列表/计数、差异计数与列表全部解析通过"},
+    {"command": "mysql ... < /tmp/req_sql_check3.sql（5 条动态查询 PREPARE）", "exit_code": 0, "salient_output": "发布查询、系统行、差异列表（带筛选）、交付件、开发来源计数解析通过"},
+    {"command": "mysql ... < /tmp/req_sql_all3.sql（121 条模块内完整 SQL PREPARE）", "exit_code": 0, "salient_output": "无 ERROR，语法与表/字段全部解析通过"},
+    {"command": "mysql ... < /tmp/req_sql_check2.sql", "exit_code": 1, "salient_output": "语句 5 的 ESCAPE '\\\\' 在验证脚本里转义失败（脚本问题，非应用代码）"}
+  ],
+  "local_checks": [
+    {"check": "运行时 SQL 可解析性", "result": "pass", "evidence": "模块内 121 条完整 SQL + 12 条动态拼接查询在真实 MySQL 8 上 PREPARE 成功", "limitations": ["未做浏览器端回归"]},
+    {"check": "Flyway 状态与旧表清理", "result": "pass", "evidence": "flyway_schema_history：20260919210000=1884520140、20260919211000=-1022296021，均 success；req_* 只剩新模型 16 张表，10 张旧表计数 0", "limitations": []},
+    {"check": "演示数据构成", "result": "pass", "evidence": "演示项目 123(CONTINUATION)/P2026-001~003(NEW) 各有 3 条存量需求，新建差异 3~4 条；存量 12 + 新建 13", "limitations": ["P2026-001 多 1 条差异为本地手工创建"]}
+  ],
+  "diff_summary": ["3 个服务文件补齐 SQL 分隔空格；其余 SQL 未改动"],
+  "invariants_checked": [
+    {"invariant": "HTTP 字段与错误语义不变", "result": "pass", "evidence": "只补空格，未改列清单与表名"},
+    {"invariant": "本地环境 profile=dev 时不依赖 mock 数据", "result": "pass", "evidence": "启动日志显示 profile dev，mock 初始化不执行，需求演示数据全部来自迁移"}
+  ],
+  "disturbances": [
+    {"event": "本地运行环境为 dev profile", "impact": "mock 数据集改动只影响 local profile；dev 下需求数据完全由 Flyway 迁移提供"}
+  ],
+  "assumptions_falsified": ["原先假设文本块常量拼接处自带空白分隔（实际取决于文本块缩进，不一定有）"],
+  "unresolved_items": ["前端构建与浏览器验收未执行"],
+  "recommended_next": "observe"
+}

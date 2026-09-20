@@ -1,0 +1,21 @@
+{
+  "sample_label": "审批弹窗信息与入口对齐观测",
+  "task_ids": ["T2", "T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "S1", "result": "partial", "raw_evidence": "审批弹窗现展示需求/评审对象/评审报告文件，业务类型与单号做友好映射，去掉允许操作行；框架 taskContext 补 starter_name", "limitation": ["未做浏览器验收"]},
+    {"requirement_id": "R6", "sensor": "S1", "result": "partial", "raw_evidence": "站内消息深链经 /workflows/tasks/current-context 命中待办时直接打开审批弹窗，与待办入口一致", "limitation": ["未实测两条入口"]}
+  ],
+  "feedback": [
+    {"id": "F12", "severity": "P2", "statement": "审批弹窗业务类型/单号显示原始码、发起人为空、含无用的允许操作行、看不到评审文档与需求信息；消息入口与待办入口不一致", "status": "closed", "evidence": "已做友好映射、补 starter_name、删除允许操作行、新增业务信息块（含评审报告可打开）、消息入口按待办任务直达审批"}
+  ],
+  "disturbances": [
+    {"source": "审批人可能不在需求数据范围内", "effect": "业务信息回查可能失败，已降级为提示行且不阻断审批"}
+  ],
+  "coverage_gaps": [
+    "浏览器端两种入口与不同角色验收未执行",
+    "后端未重启验证 starter_name 生效"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "incomplete"
+}
