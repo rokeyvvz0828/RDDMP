@@ -45,6 +45,33 @@ public class ProjectController {
     @GetMapping("/{projectId}")
     public ApiResponse<Map<String, Object>> detail(@PathVariable long projectId, @AuthenticationPrincipal AuthUser user) { return ok(service.detail(projectId, user)); }
 
+    @GetMapping("/{projectId}/release-calendar")
+    public ApiResponse<List<Map<String, Object>>> releaseCalendar(@PathVariable long projectId, @RequestParam String month, @AuthenticationPrincipal AuthUser user) { return ok(service.releaseCalendar(projectId, month, user)); }
+
+    @PostMapping("/{projectId}/release-calendar")
+    public ApiResponse<Map<String, Object>> createReleaseCalendar(@PathVariable long projectId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.createReleaseCalendar(projectId, input, user)); }
+
+    @PutMapping("/{projectId}/release-calendar/{calendarId}")
+    public ApiResponse<Map<String, Object>> updateReleaseCalendar(@PathVariable long projectId, @PathVariable long calendarId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.updateReleaseCalendar(projectId, calendarId, input, user)); }
+
+    @DeleteMapping("/{projectId}/release-calendar/{calendarId}")
+    public ApiResponse<Void> deleteReleaseCalendar(@PathVariable long projectId, @PathVariable long calendarId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser user) { service.deleteReleaseCalendar(projectId, calendarId, rowVersion, user); return ok(null); }
+
+    @GetMapping("/{projectId}/announcements")
+    public ApiResponse<List<Map<String, Object>>> announcements(@PathVariable long projectId, @RequestParam(required = false) String stageCode, @AuthenticationPrincipal AuthUser user) { return ok(service.announcements(projectId, stageCode, user)); }
+
+    @GetMapping("/{projectId}/announcements/current")
+    public ApiResponse<List<Map<String, Object>>> currentAnnouncements(@PathVariable long projectId, @AuthenticationPrincipal AuthUser user) { return ok(service.currentAnnouncements(projectId, user)); }
+
+    @PostMapping("/{projectId}/announcements")
+    public ApiResponse<Map<String, Object>> createAnnouncement(@PathVariable long projectId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.createAnnouncement(projectId, input, user)); }
+
+    @PutMapping("/{projectId}/announcements/{announcementId}")
+    public ApiResponse<Map<String, Object>> updateAnnouncement(@PathVariable long projectId, @PathVariable long announcementId, @RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.updateAnnouncement(projectId, announcementId, input, user)); }
+
+    @DeleteMapping("/{projectId}/announcements/{announcementId}")
+    public ApiResponse<Void> deleteAnnouncement(@PathVariable long projectId, @PathVariable long announcementId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser user) { service.deleteAnnouncement(projectId, announcementId, rowVersion, user); return ok(null); }
+
     @PostMapping
     public ApiResponse<Map<String, Object>> create(@RequestBody Map<String, Object> input, @AuthenticationPrincipal AuthUser user) { return ok(service.create(input, user)); }
 

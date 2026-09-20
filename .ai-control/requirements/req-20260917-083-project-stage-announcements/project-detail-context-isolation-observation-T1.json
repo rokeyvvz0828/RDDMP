@@ -1,0 +1,35 @@
+{
+  "sample_label": "P1 project API independent observation",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_id": "R7",
+      "sensor": "S2 static project API enumeration",
+      "result": "pass",
+      "raw_evidence": "Independent line enumeration found 42 /project/${id} path calls in project.ts and every one includes withProjectContext(id).",
+      "limitation": ["The enumeration is source-level and does not inspect an emitted browser request header."]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S3 frontend production build",
+      "result": "pass",
+      "raw_evidence": "npm --prefix web run build ran vue-tsc --noEmit and vite build without reported error.",
+      "limitation": ["Build cannot demonstrate global selector persistence or server path validation at runtime."]
+    },
+    {
+      "requirement_id": "R7",
+      "sensor": "S1 source contract inspection",
+      "result": "pass",
+      "raw_evidence": "http.ts selects explicit projectContext before the stored project ID; JwtAuthenticationFilter rejects a missing or mismatched header for /api/project/{id}.",
+      "limitation": ["This confirms the contract, not a live request."]
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Initial independent Node regex command had an escaping syntax error", "impact": "Sensor command was rerun using literal line enumeration; no product behavior or source was changed."}
+  ],
+  "coverage_gaps": ["Runtime A/B selector-versus-detail request observation is deferred to T3.", "Attachment routes are outside T1 and deferred to T2."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

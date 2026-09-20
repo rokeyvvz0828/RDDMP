@@ -1,0 +1,31 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/attachments.ts", "purpose": "Bind project attachment and category API calls to withProjectContext(projectId)."}
+  ],
+  "requirements_addressed": ["R7"],
+  "commands": [
+    {"command": "node -e '... enumerate /project/${projectId} paths and assert context plus upload options ...'", "exit_code": 0, "salient_output": "verified 8 project attachment path calls and upload options"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit and vite build completed without a TypeScript or Vite failure"},
+    {"command": "git diff --check -- web/src/api/attachments.ts", "exit_code": 0, "salient_output": "No whitespace errors; Git emitted only CRLF conversion warnings."}
+  ],
+  "local_checks": [
+    {"check": "Attachment path and upload option enumeration", "result": "pass", "evidence": "All 8 project attachment/category paths bind explicit context; upload still contains multipart/form-data and timeout 60_000.", "limitations": ["Static check does not inspect runtime headers."]},
+    {"check": "Frontend production build", "result": "pass", "evidence": "npm --prefix web run build exited 0.", "limitations": ["A/B browser behavior remains outside T2."]}
+  ],
+  "diff_summary": [
+    "Imported withProjectContext from the existing HTTP client module.",
+    "Bound project attachment list, category, upload, category-update, preview, download, and delete calls to projectId.",
+    "Merged context with query params and retained multipart header and 60-second upload timeout."
+  ],
+  "invariants_checked": [
+    {"invariant": "Non-project temporary attachment calls remain unchanged", "result": "pass", "evidence": "Only /project/${projectId} calls were changed."},
+    {"invariant": "Upload configuration remains compatible", "result": "pass", "evidence": "Static check confirms multipart header and timeout 60_000 remain in uploadProjectAttachment."},
+    {"invariant": "Global selector and backend validation remain unchanged", "result": "pass", "evidence": "Only attachments.ts changed."}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Runtime A/B request-header and selector-state observation remains required."],
+  "recommended_next": "observe"
+}

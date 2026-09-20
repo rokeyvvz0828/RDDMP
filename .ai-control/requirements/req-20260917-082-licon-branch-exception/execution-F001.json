@@ -1,0 +1,22 @@
+{
+  "task_id": "F-001-correction",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": ".ai-control/requirements/req-20260917-082-licon-branch-exception/design.json", "purpose": "Align top-level topic with the current prefix directory."},
+    {"path_or_resource": ".ai-control/requirements/req-20260917-082-licon-branch-exception/handoff.json", "purpose": "Align handoff and embedded design topic with the current prefix directory."}
+  ],
+  "requirements_addressed": ["R1"],
+  "commands": [
+    {"command": "node scripts/check-ai-control-layout.mjs", "exit_code": 1, "salient_output": "No REQ-082 topic mismatch is present; remaining failures are historical task artifacts outside scope."},
+    {"command": "Node JSON parse over current REQ-082 ledger", "exit_code": 0, "salient_output": "current ledger JSON passed."}
+  ],
+  "local_checks": [
+    {"check": "Current-prefix layout error removal", "result": "pass", "evidence": "The post-correction checker output no longer contains req-20260917-082-licon-branch-exception.", "limitations": ["Repository-wide command remains nonzero for external historical artifacts."]}
+  ],
+  "diff_summary": ["Three current-prefix topic values now equal req-20260917-082-licon-branch-exception."],
+  "invariants_checked": [{"invariant": "No product or policy requirement is changed by ledger correction", "result": "pass", "evidence": "Only current task metadata topic strings changed."}],
+  "disturbances": [{"event": "External historical layout violations remain", "impact": "Global layout exit code remains 1 outside this task's authority."}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["F-002 remains deferred outside scope."],
+  "recommended_next": "observe"
+}

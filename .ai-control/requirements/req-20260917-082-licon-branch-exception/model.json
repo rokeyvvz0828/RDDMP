@@ -1,0 +1,58 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["docs/governance/GITHUB-RULES.md policy", "AGENTS.md and CODEX-DEVELOPMENT-GUIDE.md summaries", "scripts/check-codex-scope.mjs branch gate", "Node branch regression test"],
+    "environment": ["Git current-branch state", "ready task scope JSON", "Node runtime", "GitHub branch-protection configuration"]
+  },
+  "state_variables": [
+    {"name": "assignment_branch", "owner": "codex-task-scope.yaml", "valid_values": ["compliant requirement branch", "licon", "invalid"]},
+    {"name": "branch_gate_result", "owner": "check-codex-scope.mjs", "valid_values": ["accepted", "rejected"]},
+    {"name": "admission_result", "owner": "check-codex-scope.mjs", "valid_values": ["passed", "failed"]}
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "Governance policy edit", "transitions": ["Formal source is updated", "Summary documents repeat the exact boundary"], "outputs": ["Readable synchronized policy"]},
+    {"requirement_id": "R2", "input": "assignment.branch is licon", "transitions": ["Branch predicate returns true", "Existing validator continues"], "outputs": ["Valid current scope passes"]},
+    {"requirement_id": "R3", "input": "assignment.branch is main, empty, Licon, or custom-branch", "transitions": ["Branch predicate returns false", "Validator reports branch-format error"], "outputs": ["Invalid input is rejected"]},
+    {"requirement_id": "R4", "input": "Branch predicate accepts a branch", "transitions": ["Ready, owner, completion, and writable-path checks execute unchanged"], "outputs": ["Admission is not bypassed"]}
+  ],
+  "interfaces": [
+    {"name": "assignment.branch", "producers": ["codex-task-scope.yaml"], "consumers": ["check-codex-scope.mjs"], "invariant": "Accepted only when it is a compliant requirement branch or exact lowercase licon."},
+    {"name": "scope-validator exit status", "producers": ["check-codex-scope.mjs"], "consumers": ["local developer and CI governance jobs"], "invariant": "Success is emitted only after all existing validation stages complete."}
+  ],
+  "sensors": [
+    {"id": "S1", "target": "R1 synchronized written policy", "method": "Targeted text inspection across the formal rule and summaries", "blind_spots": ["Remote GitHub ruleset configuration"], "independence": "Reads rendered source text separately from validator execution"},
+    {"id": "S2", "target": "R2 current licon scope", "method": "Direct Node CLI validation with --working-tree", "blind_spots": ["A divergent remote CI environment"], "independence": "Executes the actual CLI path"},
+    {"id": "S3", "target": "R3 exact predicate boundary", "method": "Node built-in unit tests for accepted and rejected values", "blind_spots": ["Future external callers that avoid the predicate"], "independence": "Tests pure function output independently of document wording"},
+    {"id": "S4", "target": "R4 unchanged admission gates", "method": "Governance check and current-scope CLI", "blind_spots": ["GitHub-hosted branch protection"], "independence": "Runs the repository's existing validation entry points"}
+  ],
+  "actuators": [
+    {"id": "A1", "target": "Formal and summary policy", "action": "Add exact licon exception wording while retaining all existing restrictions", "authority": "REQ-082 writable governance documents", "impact_radius": "Local governance documentation", "rollback": "Revert the three scoped document changes together"},
+    {"id": "A2", "target": "Branch decision", "action": "Use one exported exact-match predicate in the existing CLI", "authority": "REQ-082 writable validation script", "impact_radius": "Task scope branch admission", "rollback": "Revert predicate and test file together"},
+    {"id": "A3", "target": "Regression boundary", "action": "Add Node built-in tests for compliant and rejected inputs", "authority": "REQ-082 writable test file", "impact_radius": "Local test coverage", "rollback": "Remove the task test with the script change"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1"], "observable": "yes"},
+    {"requirement_id": "R2", "sensor_ids": ["S2", "S3"], "observable": "yes"},
+    {"requirement_id": "R3", "sensor_ids": ["S3"], "observable": "yes"},
+    {"requirement_id": "R4", "sensor_ids": ["S2", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Git executable sandbox restriction", "effect": "The Node CLI cannot spawn git unless it receives execution approval", "detectable": true, "controllable": false},
+    {"source": "Case and whitespace input variation", "effect": "Could accidentally broaden an imprecise branch matcher", "detectable": true, "controllable": true},
+    {"source": "Concurrent user edits", "effect": "Could change scope diff before validation", "detectable": true, "controllable": false}
+  ],
+  "delays": [
+    {"source": "Git diff and working-tree discovery", "consequence": "Scope CLI result depends on current uncommitted files", "sampling_rule": "Run scope validation after all scoped edits and record git status."}
+  ],
+  "assumptions": [
+    {"text": "The existing validator's later gates are reached when the branch gate succeeds.", "evidence": "The current script has sequential checks after its branch regex.", "falsifier": "Refactoring or test execution demonstrates an early success path."}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R1", "observable": "yes", "controllable": "yes", "action": "Plan document synchronization task"},
+    {"requirement_id": "R2", "observable": "yes", "controllable": "yes", "action": "Plan exact predicate task"},
+    {"requirement_id": "R3", "observable": "yes", "controllable": "yes", "action": "Plan negative regression cases"},
+    {"requirement_id": "R4", "observable": "yes", "controllable": "yes", "action": "Plan CLI and governance regression checks"}
+  ],
+  "model_status": "ready",
+  "recorded_at": "2026-09-17T11:21:10.3053489+08:00"
+}

@@ -1,0 +1,122 @@
+{
+  "baseline_revision": "baseline-2",
+  "plant_boundary": {
+    "inside": [
+      "web/src/api/project.ts project-scoped request configurations",
+      "web/src/api/attachments.ts project attachment request configurations",
+      "web/src/api/http.ts explicit-versus-stored project context precedence",
+      "JwtAuthenticationFilter project path/header validation"
+    ],
+    "environment": [
+      "Vue route /projects/:projectId",
+      "Persisted global selector local-storage keys",
+      "Authenticated local browser session",
+      "Existing dirty worktree changes outside this task"
+    ]
+  },
+  "state_variables": [
+    {"name": "route_project_id", "owner": "Vue Router", "valid_values": ["positive project ID", "absent on workbench"]},
+    {"name": "stored_global_project_id", "owner": "project-context store", "valid_values": ["positive accessible project ID", "absent"]},
+    {"name": "request_project_context", "owner": "Axios request configuration", "valid_values": ["explicit route project ID", "undefined fallback"]},
+    {"name": "request_header_project_id", "owner": "HTTP request interceptor", "valid_values": ["positive project ID", "absent"]}
+  ],
+  "causal_paths": [
+    {
+      "requirement_id": "R7",
+      "input": "User opens route project B while the persisted global selector is project A, then invokes a project detail action.",
+      "transitions": [
+        "A project API method currently omits projectContext for many project paths.",
+        "http.ts falls back from undefined projectContext to stored project A and emits X-Project-Id A.",
+        "JwtAuthenticationFilter compares path project B with header A and rejects the request.",
+        "Passing withProjectContext(B) makes the interceptor emit B without altering stored selector A.",
+        "The filter accepts the matching path/header pair and existing permission evaluation uses B."
+      ],
+      "outputs": [
+        "Project B request completes without path/context mismatch.",
+        "Global selector remains A."
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "withProjectContext(projectId)",
+      "producers": ["web/src/api/http.ts"],
+      "consumers": ["web/src/api/project.ts", "web/src/api/attachments.ts"],
+      "invariant": "A positive explicit project ID takes precedence over the persisted global selector."
+    },
+    {
+      "name": "X-Project-Id",
+      "producers": ["Axios request interceptor"],
+      "consumers": ["JwtAuthenticationFilter", "AuthService permission resolution"],
+      "invariant": "For /api/project/{projectId}, the header is present and equal to the path ID."
+    }
+  ],
+  "sensors": [
+    {
+      "id": "S1",
+      "target": "Explicit context precedence and path guard contract",
+      "method": "Read-only source inspection of http.ts and JwtAuthenticationFilter",
+      "blind_spots": ["A future Axios call may omit the explicit configuration."],
+      "independence": "Examines client context injection and server validation independently from the Vue page."
+    },
+    {
+      "id": "S2",
+      "target": "All project API call sites use the explicit context",
+      "method": "Static enumeration of project.ts and attachments.ts request configurations",
+      "blind_spots": ["Does not prove browser header transmission."],
+      "independence": "Directly checks the changed API client surface."
+    },
+    {
+      "id": "S3",
+      "target": "Client type integration",
+      "method": "npm --prefix web run build",
+      "blind_spots": ["Does not prove authenticated A/B behavior."],
+      "independence": "Vite and TypeScript compilation is independent from request inspection."
+    },
+    {
+      "id": "S4",
+      "target": "A/B route request header and selector persistence",
+      "method": "Local browser network and local-storage observation",
+      "blind_spots": ["Requires two accessible local projects and a valid session."],
+      "independence": "Observes runtime behavior after HTTP interception and server response."
+    }
+  ],
+  "actuators": [
+    {
+      "id": "A1",
+      "target": "Project detail API methods without explicit context",
+      "action": "Add withProjectContext(id), merging it with existing request params when applicable.",
+      "authority": "REQ-083 writable web/src/api/project.ts",
+      "impact_radius": "Project detail requests only",
+      "rollback": "Revert the scoped project.ts request configuration diff."
+    },
+    {
+      "id": "A2",
+      "target": "Project attachment and category API methods without explicit context",
+      "action": "Merge withProjectContext(projectId) with existing params, headers, and timeout.",
+      "authority": "REQ-083 writable web/src/api/attachments.ts",
+      "impact_radius": "Project attachment requests only",
+      "rollback": "Revert the scoped attachments.ts request configuration diff."
+    }
+  ],
+  "measurements": [
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S2", "S3", "S4"], "observable": "yes"}
+  ],
+  "disturbances": [
+    {"source": "Existing dirty worktree", "effect": "Repository-wide scope and diff checks may report unrelated files", "detectable": true, "controllable": false},
+    {"source": "Local project access data", "effect": "May prevent the A/B runtime scenario", "detectable": true, "controllable": false},
+    {"source": "Expired local authentication", "effect": "Browser requests can redirect before exercising path validation", "detectable": true, "controllable": true}
+  ],
+  "delays": [
+    {"source": "Vite production compilation", "consequence": "Type errors are observable only after build completion", "sampling_rule": "Run after each API client task and again at integration."},
+    {"source": "HTTP request lifecycle", "consequence": "Header and response must be sampled after request completion", "sampling_rule": "Inspect each selected browser request after its completion."}
+  ],
+  "assumptions": [
+    {"text": "Explicit projectContext overrides stored global context.", "evidence": "http.ts uses request.projectContext === undefined ? storedProjectId : request.projectContext.", "falsifier": "A request given withProjectContext(B) emits X-Project-Id A."},
+    {"text": "ProjectView does not synchronize route project B into the global selector for existing project edits.", "evidence": "Source inspection finds projectContext.select only in the creation branch; route watcher calls syncProjectFromRoute.", "falsifier": "Opening an existing B detail changes ccb.current_project_id or ccb.current_project_ref."}
+  ],
+  "control_assessment": [
+    {"requirement_id": "R7", "observable": "yes", "controllable": "yes", "action": "Plan bounded API-client configuration edits, then sample static, build, and browser sensors."}
+  ],
+  "model_status": "ready"
+}

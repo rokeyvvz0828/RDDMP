@@ -1,0 +1,30 @@
+{
+  "task_id": "T3",
+  "status": "partial",
+  "changed_surfaces": [],
+  "requirements_addressed": ["R7"],
+  "commands": [
+    {"command": "Invoke-WebRequest http://127.0.0.1:5173", "exit_code": 1, "salient_output": "Connection actively refused."},
+    {"command": "Invoke-WebRequest http://127.0.0.1:8080/actuator/health", "exit_code": 1, "salient_output": "Connection actively refused."},
+    {"command": "git diff --check -- web/src/api/project.ts web/src/api/attachments.ts", "exit_code": 0, "salient_output": "No whitespace errors; only CRLF conversion warnings."},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-083-project-stage-announcements/codex-task-scope.yaml --working-tree", "exit_code": 1, "salient_output": "Reports pre-existing unrelated dirty files from REQ-081, REQ-082, and REQ-084 plus release/architecture work; scoped API files are authorized."}
+  ],
+  "local_checks": [
+    {"check": "Local frontend and backend reachability", "result": "blocked", "evidence": "Both local endpoints actively refused connections.", "limitations": ["No live A/B request or selector observation can be made."]},
+    {"check": "Browser automation availability", "result": "blocked", "evidence": "CUA surface discovery failed with unsupported Codex auth method: apikey.", "limitations": ["No browser network/local-storage sample can be captured."]},
+    {"check": "Scoped code quality", "result": "pass", "evidence": "Targeted diff check passed.", "limitations": ["Repository-wide scope check is noisy due to unrelated existing changes."]}
+  ],
+  "diff_summary": ["No product code changed during T3."],
+  "invariants_checked": [
+    {"invariant": "No product code is modified while observing", "result": "pass", "evidence": "T3 made evidence-only changes."},
+    {"invariant": "Unrelated dirty worktree changes are preserved", "result": "pass", "evidence": "Scope output was recorded without reverting or modifying reported files."}
+  ],
+  "disturbances": [
+    {"event": "Local frontend and backend are stopped", "impact": "A/B runtime verification is unavailable."},
+    {"event": "Browser automation authentication incompatibility", "impact": "Cannot inspect live request headers or local storage through automation."},
+    {"event": "Existing multi-task dirty worktree", "impact": "Repository-wide scope check fails outside this task's modified API files."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Start authorized local services and verify global selector A with detail route B for basic information, plan, and attachment requests."],
+  "recommended_next": "observe"
+}

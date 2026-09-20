@@ -1,0 +1,20 @@
+{
+  "sample_label": "T3-integration-sampling",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1 policy text and AI-control layout check", "result": "partial", "raw_evidence": "Policy wording is synchronized, but the layout checker reports REQ-082 design.json and handoff.json topic mismatches.", "limitation": ["Global checker also includes unrelated historical errors."]},
+    {"requirement_id": "R2", "sensor": "S2 scope CLI and S3 Node tests", "result": "pass", "raw_evidence": "Current licon scope passed structural validation and the predicate test passed.", "limitation": ["Working-tree path success is blocked by unrelated files."]},
+    {"requirement_id": "R3", "sensor": "S3 Node tests", "result": "pass", "raw_evidence": "main, empty, Licon, custom-branch, and licon/extra are rejected.", "limitation": []},
+    {"requirement_id": "R4", "sensor": "S2 scope CLI", "result": "pass", "raw_evidence": "The licon scope passed all structural checks; the working-tree invocation reached existing path enforcement.", "limitation": ["Unrelated worktree files prevent a clean full-diff pass."]}
+  ],
+  "feedback": [
+    {"id": "F-001", "requirement_id": "R1", "expected": "Current REQ-082 ledger metadata conforms to the repository layout rule.", "observed": "design.json and handoff.json use licon-branch-exception instead of their req-20260917-082-licon-branch-exception directory name in top-level topic fields.", "reproduction": "Run node scripts/check-all-governance.mjs", "evidence": "AI control layout check reports two current-prefix topic mismatch lines.", "severity": "P2", "confidence": "high", "sensor_limit": "Global check includes unrelated failures.", "causal_hypothesis": "Development artifacts were created with a display topic rather than the required prefix topic.", "correction_check": "Rerun AI-control layout check and confirm no REQ-082 topic mismatch.", "classification": "deviation"},
+    {"id": "F-002", "requirement_id": "R1", "expected": "Repository-wide AI-control layout check exits successfully.", "observed": "Historical task ledger errors outside REQ-082 continue to fail the global check.", "reproduction": "Run node scripts/check-all-governance.mjs", "evidence": "The command lists many pre-existing requirements/* layout errors beyond REQ-082.", "severity": "P2", "confidence": "high", "sensor_limit": "Cannot establish exact creation time of every historical error from this run.", "causal_hypothesis": "Existing historical artifacts do not conform to the current layout checker.", "correction_check": "Separate owner-scoped governance remediation.", "classification": "deviation"}
+  ],
+  "disturbances": [{"event": "Unrelated historical ledger defects and uncommitted worktree files", "impact": "Global full-governance and working-tree scope checks cannot be green for this isolated task."}],
+  "coverage_gaps": ["Clean-worktree scope validation and repository-wide layout success require separate handling of other tasks."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 2, "P3": 0},
+  "observation_status": "complete",
+  "independence": "non-independent: separate measurement step in the same constrained primary-agent session"
+}
