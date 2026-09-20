@@ -1,0 +1,18 @@
+{
+  "sample_label": "P3 runtime integration observation",
+  "task_ids": ["T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {"requirement_id": "R7", "sensor": "S4 browser A/B route, request-header, and local-storage observation", "result": "unobservable", "raw_evidence": "Both http://127.0.0.1:5173 and http://127.0.0.1:8080/actuator/health actively refused connections; browser automation surface discovery failed with unsupported Codex auth method: apikey.", "limitation": ["No authenticated local browser session or running services are available."]},
+    {"requirement_id": "R7", "sensor": "S2/S3 scoped static and build evidence", "result": "pass", "raw_evidence": "42 project.ts and 8 attachment path calls explicitly bind route context; frontend production build passed.", "limitation": ["Cannot substitute for A/B runtime header and selector persistence evidence."]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"event": "Stopped local services", "impact": "Runtime sensor S4 cannot sample the required A/B behavior."},
+    {"event": "Browser automation auth incompatibility", "impact": "No alternate UI sensor is available in this session."},
+    {"event": "Unrelated dirty worktree", "impact": "Repository-wide scope checker produces unrelated violations; targeted diff check passes."}
+  ],
+  "coverage_gaps": ["Selector A/detail B request headers and selector persistence are not runtime-verified.", "Attachment runtime request path is not browser-verified."],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "observation_status": "incomplete"
+}

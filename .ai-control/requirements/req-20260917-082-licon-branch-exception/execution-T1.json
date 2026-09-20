@@ -1,0 +1,27 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "docs/governance/GITHUB-RULES.md", "purpose": "Add the formal exact lowercase licon exception."},
+    {"path_or_resource": "AGENTS.md", "purpose": "Synchronize the repository-level task-branch summary."},
+    {"path_or_resource": "CODEX-DEVELOPMENT-GUIDE.md", "purpose": "Synchronize the development workflow branch guidance."}
+  ],
+  "requirements_addressed": ["R1"],
+  "commands": [
+    {"command": "rg -n 'feat\\|fix\\|hotfix\\|docs\\|chore/REQ-YYYYMMDD-NNN-short-name|精确小写 `licon`|main|Required Checks' docs/governance/GITHUB-RULES.md AGENTS.md CODEX-DEVELOPMENT-GUIDE.md", "exit_code": 0, "salient_output": "All three scoped documents contain the default policy and exact licon exception; formal policy retains main and Required Checks restrictions."},
+    {"command": "git diff --check", "exit_code": 0, "salient_output": "No whitespace errors; Git printed only existing LF-to-CRLF warnings."}
+  ],
+  "local_checks": [
+    {"check": "Policy-text consistency", "result": "pass", "evidence": "Targeted search output identifies compatible wording in all three documents.", "limitations": ["Does not execute the validator; that is T2/T3."]},
+    {"check": "Diff whitespace", "result": "pass", "evidence": "git diff --check exit code 0.", "limitations": ["Git reported line-ending conversion warnings only."]}
+  ],
+  "diff_summary": ["Formal governance now specifies exact lowercase licon as its only existing-branch exception.", "Repository summaries preserve the default branch rule and all main/PR/check protections."],
+  "invariants_checked": [
+    {"invariant": "Default requirement-branch policy remains explicit", "result": "pass", "evidence": "All three documents state the original format."},
+    {"invariant": "main and PR/approval/Required Checks rules are unchanged", "result": "pass", "evidence": "Formal rules retain their existing protection bullet; summaries explicitly defer to it."}
+  ],
+  "disturbances": [{"event": "Git reported LF-to-CRLF warnings", "impact": "No diff-check failure and no content change outside scoped lines."}],
+  "assumptions_falsified": [],
+  "unresolved_items": ["Validator implementation and behavioral tests remain for T2."],
+  "recommended_next": "observe"
+}

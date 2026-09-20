@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-082-licon-branch-exception",
+  "design_revision": 1,
+  "design_status": "approved",
+  "human_document": "docs/engineering-control/designs/2026-09-17-licon-branch-exception-design.md",
+  "objective": "Allow the exact licon branch in scope validation without weakening default requirement-branch governance.",
+  "users": ["Developers running task-scope validation on the existing licon collaboration branch."],
+  "requirements": [
+    {"id": "R1", "statement": "Formal governance documents licon as the only existing-branch exception.", "acceptance": ["Default and exception rules are explicit."], "priority": "must", "source": "User-confirmed design", "counterexample": ["Undocumented script-only exception."]},
+    {"id": "R2", "statement": "Scope validation accepts the exact value licon.", "acceptance": ["A valid licon scope passes."], "priority": "must", "source": "User-confirmed design", "counterexample": ["Rejecting licon." ]},
+    {"id": "R3", "statement": "Scope validation rejects main, empty, and arbitrary custom branches.", "acceptance": ["Negative branch fixtures fail."], "priority": "must", "source": "Governance invariant", "counterexample": ["Accepting any non-main branch."]},
+    {"id": "R4", "statement": "All non-branch task-admission checks remain intact.", "acceptance": ["Regression tests preserve ready, owner and scope validation."], "priority": "must", "source": "Repository governance", "counterexample": ["Skipping unrelated validation after branch match."]}
+  ],
+  "invariants": ["licon is an exact, single exception.", "Default branch naming remains required.", "No bypass of PR, approval, checks or main protection."],
+  "constraints": ["GITHUB-RULES.md remains the formal source.", "Summary documents and code must stay synchronized.", "No business-code or database changes."],
+  "non_goals": ["Arbitrary branch allowance", "Main-branch tasks", "PR/check policy changes"],
+  "selected_approach": {"name": "Formal exact licon exception", "reason": "Meets the request with minimum governance expansion.", "alternatives": [{"name": "Script-only exception", "rejected_because": "Leaves formal rules inconsistent."}, {"name": "Any non-main branch", "rejected_because": "Broadens bypass surface."}]},
+  "architecture": {"boundary": {"inside": ["Formal branch rules", "Summary guidance", "Scope script and its tests"], "outside": ["Business modules", "Database", "PR protection"]}, "components": [{"name": "GITHUB-RULES", "responsibility": "Formal policy", "depends_on": []}, {"name": "Scope validator", "responsibility": "Exact policy enforcement", "depends_on": ["scope assignment.branch"]}, {"name": "Node tests", "responsibility": "Accept/reject regression fixtures", "depends_on": ["scope validator"]}], "interfaces": [{"name": "assignment.branch", "producer": "codex-task-scope.yaml", "consumers": ["check-codex-scope.mjs"], "contract": "Requirement-pattern branch or exact licon."}], "data_flows": [{"input": "Task scope branch", "transitions": ["Exact or regex branch check", "Existing validation sequence"], "output": "Pass or explicit validation failure."}]},
+  "error_handling": [{"condition": "Invalid branch", "behavior": "Fail with allowed branch formats", "recovery": "Use a compliant branch or exact licon."}],
+  "quality_attributes": {"security": ["No bypass expansion beyond licon"], "performance": ["Constant-time branch comparison"], "compatibility": ["Existing compliant branches remain valid"], "operations": ["Same Node validator behavior locally and in CI"]},
+  "verification_strategy": [{"requirement_ids": ["R1", "R2", "R3", "R4"], "signal": "Expected branch acceptance/rejection and unchanged admission validation", "method": "Node tests plus governance and scope checks."}],
+  "assumptions": [],
+  "unknowns": [],
+  "decisions": [{"id": "D1", "decision": "Permit exact licon only.", "reason": "User confirmation", "source": "Conversation"}],
+  "risks": [{"risk": "Future widening of the exception", "impact": "Governance erosion", "mitigation": "Exact test fixtures and synchronized formal rule."}],
+  "approval": {"status": "approved", "evidence": "User confirmed the written governance design revision in this conversation.", "confirmed_at": "2026-09-17T10:38:38.9045868+08:00"}
+}

@@ -26,6 +26,11 @@ export interface ProjectRisk {
   planned_resolution_date?: string | null; actual_resolution_date?: string | null; resolution_solution?: string | null; created_at?: string; updated_at?: string;
 }
 export interface ProjectRiskComment { id: number; project_id: number; risk_id: number; user_id: number; display_name?: string | null; username?: string | null; avatar_url?: string | null; org_name?: string | null; comment_text: string; created_at?: string; updated_at?: string }
+export type ProjectReleaseCalendarToneKey = 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5'
+export type ProjectReleaseCalendarLegacyThemeKey = 'system' | 'ocean' | 'emerald' | 'sunset' | 'graphite' | 'tech-blue' | 'violet' | 'amber' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
+export type ProjectReleaseCalendarStoredThemeKey = ProjectReleaseCalendarToneKey | ProjectReleaseCalendarLegacyThemeKey
+export interface ProjectReleaseCalendar { id: number; project_id: number; title: string; release_date: string; remark?: string | null; theme_key?: ProjectReleaseCalendarStoredThemeKey; row_version: number; created_at?: string; updated_at?: string }
+export interface ProjectAnnouncement { id: number; project_id: number; stage_code: string; stage_name?: string | null; title: string; content_html: string; pinned: boolean; row_version: number; creator_name?: string | null; created_at?: string; updated_at?: string }
 
 export interface ProjectRoleMember { id: number; user_id: number; username: string; display_name: string; avatar_url?: string | null }
 export interface ProjectRole { id: number; project_id: number; role_code: string; role_name: string; description?: string | null; member_count?: number; permission_count?: number; members?: ProjectRoleMember[] }

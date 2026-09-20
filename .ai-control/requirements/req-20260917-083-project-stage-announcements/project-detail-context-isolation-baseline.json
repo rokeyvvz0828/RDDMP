@@ -1,0 +1,76 @@
+{
+  "objective": "A user can edit the project opened in a detail route even when the global project selector points to a different accessible project, without changing that selector.",
+  "requirements": [
+    {
+      "id": "R7",
+      "statement": "For every project-detail request addressed as /api/project/{projectId}, the client must send the same projectId as request context; opening or editing that detail must not change the persisted global project selection.",
+      "acceptance": [
+        "With global selector project A and detail route project B, basic information, plan, and attachment requests use URL project B and X-Project-Id B.",
+        "Those requests no longer return the path/context mismatch error.",
+        "The global selector remains project A until the user explicitly switches it."
+      ],
+      "priority": "must",
+      "source": "User-confirmed design and implementation plan on 2026-09-18",
+      "counterexample": [
+        "A request to /api/project/B sends X-Project-Id A.",
+        "Opening or saving B changes the persisted global selector to B.",
+        "The server accepts a missing or mismatched project context."
+      ]
+    }
+  ],
+  "invariants": [
+    "The global selector changes only through an explicit selector action.",
+    "The server continues enforcing matching project path and X-Project-Id plus existing authorization, tenant, entity, audit, and lock behavior.",
+    "Existing API paths, HTTP methods, request bodies, response types, database data, and routes remain compatible."
+  ],
+  "constraints": [
+    "Modify only web/src/api/project.ts, web/src/api/attachments.ts, and the current task's authorized evidence files.",
+    "Do not modify http.ts, project-context store, server security, services, database, or .env files.",
+    "Use local services and synthetic local test data only."
+  ],
+  "non_goals": [
+    "Relaxing the server project-context check.",
+    "Changing global project-switch confirmation or persistence behavior.",
+    "Adding an HTTP interceptor inference rule.",
+    "Changing API payloads, migrations, permissions, or audit behavior."
+  ],
+  "assumptions": [
+    {
+      "text": "The existing withProjectContext(id) request configuration overrides the stored global project context.",
+      "basis": "http.ts request interceptor selects explicit projectContext before local storage.",
+      "falsifier": "A browser request for detail project B sends X-Project-Id A after the scoped client update."
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "The local account may expose fewer than two projects, preventing a full A/B browser scenario.",
+      "impact": "Browser evidence may be limited to static and single-project request checks.",
+      "owner": "observing",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "question": "Which project identity controls a project-detail request?",
+      "options": ["Global selector", "Route project ID"],
+      "selected": "Route project ID",
+      "blocking": false,
+      "source": "User confirmation"
+    },
+    {
+      "question": "Should server project path/context validation be changed?",
+      "options": ["Preserve validation", "Relax validation"],
+      "selected": "Preserve validation",
+      "blocking": false,
+      "source": "Approved design"
+    }
+  ],
+  "measurement_intents": [
+    {
+      "requirement_id": "R7",
+      "observable": "Source request configuration binds each project route ID explicitly and a route B request carries header B while stored selection remains A.",
+      "candidate_sensor": "Static API audit, Vite build, browser network headers, browser local-storage state"
+    }
+  ],
+  "baseline_status": "ready"
+}

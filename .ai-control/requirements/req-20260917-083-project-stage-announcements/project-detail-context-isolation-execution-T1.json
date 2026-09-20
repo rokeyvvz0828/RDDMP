@@ -1,0 +1,33 @@
+{
+  "task_id": "T1",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/project.ts", "purpose": "Bind all path-scoped project detail API calls to withProjectContext(id)."}
+  ],
+  "requirements_addressed": ["R7"],
+  "commands": [
+    {"command": "node -e \"... enumerate lines containing `/project/${id}` and require withProjectContext(id) ...\"", "exit_code": 0, "salient_output": "all project path calls bind explicit context"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "salient_output": "vue-tsc --noEmit and vite build completed without a TypeScript or Vite failure"},
+    {"command": "git diff --check -- web/src/api/project.ts", "exit_code": 0, "salient_output": "No whitespace errors; Git emitted only CRLF conversion warnings."}
+  ],
+  "local_checks": [
+    {"check": "Project path call enumeration", "result": "pass", "evidence": "Every project.ts line containing `/project/${id}` includes withProjectContext(id).", "limitations": ["Static check does not inspect runtime headers."]},
+    {"check": "Frontend production build", "result": "pass", "evidence": "npm --prefix web run build exited 0.", "limitations": ["Attachment API and A/B browser behavior remain outside T1."]}
+  ],
+  "diff_summary": [
+    "Added explicit context to basic project update and settings requests.",
+    "Added explicit context to stages, plans, plan groups, risks, comments, members, organizations, roles, permissions, and project deletion.",
+    "Preserved endpoint paths, payloads, response types, and existing release-calendar/announcement context bindings."
+  ],
+  "invariants_checked": [
+    {"invariant": "Existing API paths, methods, payloads, and response types remain compatible", "result": "pass", "evidence": "The scoped diff adds only Axios request configuration arguments."},
+    {"invariant": "Global selector state is not mutated", "result": "pass", "evidence": "Only web/src/api/project.ts changed; it has no project-context store or local-storage write."},
+    {"invariant": "Server project path/header validation remains unchanged", "result": "pass", "evidence": "No server file was changed."}
+  ],
+  "disturbances": [
+    {"event": "Git reported CRLF conversion warnings", "impact": "No diff-check failure; line-ending conversion remains a repository setting observation."}
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": ["T2 must bind project attachment calls while preserving multipart options.", "Runtime A/B request-header observation remains required."],
+  "recommended_next": "observe"
+}

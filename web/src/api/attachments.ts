@@ -1,4 +1,4 @@
-import http from './http'
+import http, { withProjectContext } from './http'
 import type { ApiResponse } from '../types/auth'
 import type {
   AttachmentLink,
@@ -55,20 +55,22 @@ export function getProjectAttachments(
 ) {
   return http.get<ApiResponse<ProjectAttachmentPage>>(
     `/project/${projectId}/attachments`,
-    { params }
+    { ...withProjectContext(projectId), params }
   )
 }
 
 export function getProjectAttachmentCategories(projectId: number) {
   return http.get<ApiResponse<AttachmentCategory[]>>(
-    `/project/${projectId}/attachment-categories`
+    `/project/${projectId}/attachment-categories`,
+    withProjectContext(projectId)
   )
 }
 
 export function createProjectAttachmentCategory(projectId: number, name: string) {
   return http.post<ApiResponse<AttachmentCategory>>(
     `/project/${projectId}/attachment-categories`,
-    { name }
+    { name },
+    withProjectContext(projectId)
   )
 }
 
@@ -80,6 +82,7 @@ export function uploadProjectAttachment(projectId: number, file: File, categoryI
     `/project/${projectId}/attachments`,
     data,
     {
+      ...withProjectContext(projectId),
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 60_000
     }
@@ -93,7 +96,8 @@ export function updateProjectAttachmentCategory(
 ) {
   return http.put<ApiResponse<ProjectAttachment>>(
     `/project/${projectId}/attachments/${attachmentId}/category`,
-    { categoryId }
+    { categoryId },
+    withProjectContext(projectId)
   )
 }
 
@@ -102,7 +106,8 @@ export function getProjectAttachmentPreview(
   attachmentId: number
 ) {
   return http.get<ApiResponse<AttachmentLink>>(
-    `/project/${projectId}/attachments/${attachmentId}/preview`
+    `/project/${projectId}/attachments/${attachmentId}/preview`,
+    withProjectContext(projectId)
   )
 }
 
@@ -111,7 +116,8 @@ export function getProjectAttachmentDownload(
   attachmentId: number
 ) {
   return http.get<ApiResponse<AttachmentLink>>(
-    `/project/${projectId}/attachments/${attachmentId}/download`
+    `/project/${projectId}/attachments/${attachmentId}/download`,
+    withProjectContext(projectId)
   )
 }
 
@@ -120,6 +126,7 @@ export function deleteProjectAttachment(
   attachmentId: number
 ) {
   return http.delete<ApiResponse<void>>(
-    `/project/${projectId}/attachments/${attachmentId}`
+    `/project/${projectId}/attachments/${attachmentId}`,
+    withProjectContext(projectId)
   )
 }

@@ -1,0 +1,79 @@
+{
+  "baseline_revision": "baseline-1",
+  "model_revision": "model-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Synchronize the formal branch policy and repository summaries around the exact licon exception.",
+      "requirement_ids": ["R1"],
+      "prerequisites": [],
+      "input_facts": ["GITHUB-RULES.md is the formal source", "The default branch format is currently documented", "User approved exact lowercase licon only"],
+      "write_scope": ["docs/governance/GITHUB-RULES.md", "AGENTS.md", "CODEX-DEVELOPMENT-GUIDE.md"],
+      "invariants": ["Default requirement-branch policy remains explicit", "main and PR/approval/Required Checks policies remain unchanged"],
+      "interface_contracts": ["Policy wording must match the validator's exact branch contract"],
+      "non_goals": ["Changing branch protection or CI rules", "Adding any branch exception other than licon"],
+      "action_bounds": ["Add minimal policy wording only to the three scoped documents", "Do not reformat or revise unrelated governance text"],
+      "acceptance_checks": ["Targeted policy search states default format and exact licon exception", "Document text retains main and PR protection restrictions"],
+      "evidence_required": ["Actual changed-file list", "Targeted text-check output", "git diff --check result"],
+      "rollback": "Revert the three T1 document edits as one consistency unit",
+      "stop_conditions": ["Wording permits a branch other than exact lowercase licon", "The formal source and summary disagree"],
+      "escalation_conditions": ["A requested change affects PR, approvals, Required Checks, or branch protection"]
+    },
+    {
+      "id": "T2",
+      "goal": "Make the scope validator use one exact branch predicate and lock its accepted and rejected inputs with Node tests.",
+      "requirement_ids": ["R2", "R3", "R4"],
+      "prerequisites": ["T1"],
+      "input_facts": ["The current script has a strict branch regex", "The plan requires an exported pure predicate", "Later admission checks must remain sequential"],
+      "write_scope": ["scripts/check-codex-scope.mjs", "scripts/check-codex-scope.test.mjs"],
+      "invariants": ["licon matches only by exact case-sensitive equality", "Compliant requirement branches continue to match", "All later validation checks still run"],
+      "interface_contracts": ["isAllowedAssignmentBranch(branch) returns true only for the default regex or exact licon", "CLI behavior remains unchanged except for accepting licon"],
+      "non_goals": ["Changing owner, ready-requirement, or path-validation semantics", "Adding dependencies"],
+      "action_bounds": ["Refactor only enough to export and test the predicate", "Use Node built-in test runner"],
+      "acceptance_checks": ["Unit tests pass for licon and compliant branch positives", "Unit tests reject main, empty, Licon, and custom-branch"],
+      "evidence_required": ["Actual diff", "node --test output and exit code", "Static inspection confirming no early CLI success"],
+      "rollback": "Revert the script predicate and its task-owned test file together",
+      "stop_conditions": ["A negative branch is accepted", "Refactor skips later admission checks or changes their errors"],
+      "escalation_conditions": ["Safe module import requires an unplanned shared helper or changes other validator contracts"]
+    },
+    {
+      "id": "T3",
+      "goal": "Verify the exact exception through real scope validation, negative cases, and governance checks.",
+      "requirement_ids": ["R1", "R2", "R3", "R4"],
+      "prerequisites": ["T1", "T2"],
+      "input_facts": ["Scoped policy, validator, and tests are complete", "Current task scope explicitly assigns licon"],
+      "write_scope": [".ai-control/requirements/req-20260917-082-licon-branch-exception/*.json"],
+      "invariants": ["No production or external access", "No scope expansion beyond REQ-082"],
+      "interface_contracts": ["The current task scope must still satisfy all existing non-branch admission gates"],
+      "non_goals": ["Altering production configuration", "Changing unrelated repository files to make checks pass"],
+      "action_bounds": ["Run required Node, governance, scope, and diff checks", "Create temporary negative fixtures only outside the repository or in approved temporary paths"],
+      "acceptance_checks": ["Current licon scope passes", "main and custom-branch fixtures fail", "Node tests, governance check, and diff check pass"],
+      "evidence_required": ["Commands, exit codes, key failure messages", "Final changed-file and JSON-parse checks"],
+      "rollback": "Use the documented scoped reversion of T1 and T2 if any policy boundary fails",
+      "stop_conditions": ["main or arbitrary branch is accepted", "Governance and validator rules diverge"],
+      "escalation_conditions": ["Local and CI Node behavior diverges", "A non-branch gate fails for an unrelated repository defect"]
+    }
+  ],
+  "dependency_edges": [
+    {"from": "T1", "to": "T2", "reason": "The formal policy must define the exact predicate before code implements it."},
+    {"from": "T2", "to": "T3", "reason": "End-to-end verification consumes the stable validator and regression tests."}
+  ],
+  "parallel_groups": [["T1"], ["T2"], ["T3"]],
+  "integration_points": [
+    {"after_tasks": ["T1", "T2"], "checks": ["Policy text consistency", "Node branch tests"]},
+    {"after_tasks": ["T3"], "checks": ["Scope CLI", "Governance check", "Diff check"]}
+  ],
+  "sampling_plan": [
+    {"label": "T1 policy sampling", "trigger": "T1 execution evidence", "observer": "Independent policy-text check", "sensors": ["S1"], "requirement_ids": ["R1"]},
+    {"label": "T2 predicate sampling", "trigger": "T2 execution evidence", "observer": "Node test runner", "sensors": ["S3"], "requirement_ids": ["R2", "R3", "R4"]},
+    {"label": "T3 integration sampling", "trigger": "All implementation tasks complete", "observer": "Governance and scope CLI", "sensors": ["S2", "S4"], "requirement_ids": ["R1", "R2", "R3", "R4"]}
+  ],
+  "coverage": [
+    {"requirement_id": "R1", "task_ids": ["T1", "T3"], "sensor_ids": ["S1", "S4"]},
+    {"requirement_id": "R2", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S3"]},
+    {"requirement_id": "R3", "task_ids": ["T2", "T3"], "sensor_ids": ["S3"]},
+    {"requirement_id": "R4", "task_ids": ["T2", "T3"], "sensor_ids": ["S2", "S4"]}
+  ],
+  "plan_status": "ready",
+  "recorded_at": "2026-09-17T11:21:10.3053489+08:00"
+}

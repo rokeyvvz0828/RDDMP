@@ -272,6 +272,8 @@ git fetch origin
 git switch -c feat/REQ-20260806-001-short-name origin/main
 ```
 
+默认任务分支格式为 `feat|fix|hotfix|docs|chore/REQ-YYYYMMDD-NNN-short-name`。仅在任务范围的 `assignment.branch` 显式为精确小写 `licon` 时，允许使用该既有协作分支例外；不得扩展为其他名称、大小写变体或对 `main` 的例外。PR、审批、Required Checks 和分支保护仍以 `docs/governance/GITHUB-RULES.md` 为准。
+
 多人或多个 Codex 任务并行时，使用独立 Git worktree，并确保各任务的 `writable_paths` 尽量不重叠。不要直接在 `main` 开发。
 
 ### 第 5 步：启动 Codex 并执行编码前预检

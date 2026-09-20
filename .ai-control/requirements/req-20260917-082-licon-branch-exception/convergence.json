@@ -1,0 +1,41 @@
+{
+  "baseline_revision": "baseline-1",
+  "requirement_results": [
+    {"id": "R1", "result": "pass", "task_ids": ["T1", "F-001-correction"], "evidence": ["Formal policy and summaries state default format plus exact licon.", "Post-correction layout output contains no REQ-082 mismatch."], "limitations": ["Repository-wide layout command still reports external historic artifacts."]},
+    {"id": "R2", "result": "pass", "task_ids": ["T2", "T3"], "evidence": ["Node positive branch test passed.", "Current licon scope passed the actual structural validator with --base HEAD --head HEAD."], "limitations": ["Clean changed-path validation is blocked by unrelated worktree state."]},
+    {"id": "R3", "result": "pass", "task_ids": ["T2", "T3"], "evidence": ["Node tests reject main, empty, Licon, custom-branch, and licon/extra."], "limitations": []},
+    {"id": "R4", "result": "pass", "task_ids": ["T2", "T3"], "evidence": ["Working-tree run reached unchanged path enforcement after accepting licon.", "Structural scope run passed all other admission gates."], "limitations": ["The current shared worktree includes unrelated task files."]}
+  ],
+  "task_results": [
+    {"id": "T1", "status": "verified", "evidence": ["execution-T1.json", "observation-T1.json"]},
+    {"id": "T2", "status": "verified", "evidence": ["execution-T2.json", "observation-T2.json"]},
+    {"id": "T3", "status": "verified-with-external-gate-blocker", "evidence": ["execution-T3.json", "observation-T3.json"]},
+    {"id": "F-001-correction", "status": "verified", "evidence": ["execution-F001.json", "observation-F001.json"]}
+  ],
+  "feedback_summary": {"total": 2, "accepted_open": 0, "escalated": 0, "deferred_by_severity": {"P2": 1, "P3": 0}},
+  "sample_trend": [
+    {"sample_id": "T1-policy-sampling", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "T2-predicate-sampling", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0},
+    {"sample_id": "T3-integration-sampling", "P0": 0, "P1": 0, "P2": 2, "P3": 0, "score": 2},
+    {"sample_id": "F-001-correction-resample", "P0": 0, "P1": 0, "P2": 0, "P3": 0, "score": 0}
+  ],
+  "regression_checks": [
+    {"check": "node --test scripts/check-codex-scope.test.mjs", "result": "pass", "evidence": "2 passed, 0 failed."},
+    {"check": "node scripts/check-codex-scope.mjs --scope ... --base HEAD --head HEAD", "result": "pass", "evidence": "Codex scope check passed for REQ-20260917-082; 0 changed file(s)."},
+    {"check": "git diff --check", "result": "pass", "evidence": "Exit code 0; only LF-to-CRLF warnings."},
+    {"check": "node scripts/check-all-governance.mjs", "result": "blocked", "evidence": "Module governance, repository Skill, and development entry passed; AI-control layout failed for external historical artifacts."}
+  ],
+  "invariant_results": [
+    {"invariant": "Exact lowercase licon only", "result": "pass", "evidence": "Negative cases and case-variant tests passed."},
+    {"invariant": "Default requirement format remains accepted", "result": "pass", "evidence": "Positive compliant feat/docs cases passed."},
+    {"invariant": "PR and protection policies unchanged", "result": "pass", "evidence": "Formal policy preserves original main/PR/approval/Required Checks text."}
+  ],
+  "scope_audit": {"within_scope": true, "unexpected_changes": [], "limitations": ["The shared worktree contains unrelated prior or parallel task files, so --working-tree validation correctly reports them outside REQ-082."]},
+  "disturbance_resilience": [
+    {"disturbance": "Sandbox child-process restriction", "result": "controlled", "evidence": "Tests and CLI were rerun with user-authorized local execution."},
+    {"disturbance": "Historical AI-control layout violations", "result": "deferred-outside-scope", "evidence": "F-002 is documented without changing external task artifacts."}
+  ],
+  "residual_risks": ["Full repository governance remains red until historical AI-control layout errors are remediated by their owners.", "A clean shared worktree is needed to demonstrate changed-path scope success for REQ-082's actual diff.", "Observations were non-independent because this environment disallowed delegation."],
+  "gate_result": "blocked",
+  "route_reason": "All REQ-082 behavior evidence passes, but required repository-wide governance and working-tree scope gates are blocked by out-of-scope existing artifacts; do not transition to converged."
+}
