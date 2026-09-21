@@ -66,15 +66,19 @@ public class RequirementBaselineService {
                 "SELECT id, project_code, project_name FROM req_project WHERE tenant_id = ? AND id = ? AND deleted = 0",
                 user.tenantId(), projectId);
         Long pending = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM req_difference
-                WHERE tenant_id = ? AND project_id = ? AND deleted = 0 AND review_status <> '已评审'
+                SELECT COUNT(*) FROM req_requirement
+                WHERE tenant_id = ? AND project_id = ? AND deleted = 0
+                  AND requirement_kind = 'NEW_PROJECT_DIFF' AND review_status <> '已评审'
                 """, Long.class, user.tenantId(), projectId);
         if (pending != null && pending > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "存在未完成评审的差异，不能形成基线");
         }
         List<Map<String, Object>> differences = jdbc.queryForList("""
-                SELECT * FROM req_difference WHERE tenant_id = ? AND project_id = ? AND deleted = 0 AND review_status = '已评审'
-                ORDER BY seq_no, id
+                SELECT r.*, d.seq_no FROM req_requirement r
+                JOIN req_difference_detail d ON d.requirement_id = r.id AND d.tenant_id = r.tenant_id
+                WHERE r.tenant_id = ? AND r.project_id = ? AND r.deleted = 0
+                  AND r.requirement_kind = 'NEW_PROJECT_DIFF' AND r.review_status = '已评审'
+                ORDER BY d.seq_no, r.id
                 """, user.tenantId(), projectId);
         if (differences.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "项目下没有可纳入基线的已评审差异");
@@ -115,7 +119,7 @@ public class RequirementBaselineService {
             item.put("snapshot_json", toJson(snapshot));
             item.put("deleted", 0);
             RequirementSql.insert(jdbc, "req_baseline_item", item);
-            jdbc.update("UPDATE req_difference SET baseline_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
+            jdbc.update("UPDATE req_requirement SET baseline_id = ?, updated_by = ? WHERE tenant_id = ? AND id = ?",
                     baselineId, user.id(), user.tenantId(), differenceId);
             changeLog.record("NEW_PROJECT_DIFF", differenceId, "BASELINE", "baseline_id", null,
                     String.valueOf(baselineId), user, "ONLINE");

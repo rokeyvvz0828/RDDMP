@@ -1,0 +1,18 @@
+{
+  "sample_label": "审批弹窗回归修复观测",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "S1", "result": "partial", "raw_evidence": "定位到 setup 阶段 TDZ 异常；已将 openApproval 的抽屉收起动作移到 await 之后，静态编译检查通过", "limitation": ["未做浏览器实测"]}
+  ],
+  "feedback": [
+    {"id": "F11", "severity": "P1", "statement": "从待办进评审时不再弹出审批弹窗，只打开需求列表（用户实测反馈）", "status": "closed", "evidence": "根因＝immediate watcher 在 setup 阶段调用 openApproval，同步访问后置声明的 legacyFormVisible 抛 TDZ；已改为 await 之后赋值，并在设计文档写明约束"}
+  ],
+  "disturbances": [],
+  "coverage_gaps": [
+    "浏览器端从「我的待办」与「站内消息」两条入口的实测未执行",
+    "前端构建（vue-tsc/vite）未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 0, "P3": 0},
+  "observation_status": "incomplete"
+}

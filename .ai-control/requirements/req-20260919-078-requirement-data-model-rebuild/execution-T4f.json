@@ -1,0 +1,25 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "修复 openApproval 在 setup 阶段访问后置状态导致的 TDZ 回归：把收起需求抽屉的赋值移到首个 await 之后并注明约束"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过（静态检查不覆盖运行时 TDZ）"}
+  ],
+  "local_checks": [
+    {"check": "审批弹窗恢复", "result": "pass", "evidence": "openApproval 同步段只访问文件前部已初始化的 approval* 状态；legacyFormVisible 赋值改到 await 之后（setup 同步阶段已结束）", "limitations": ["未做浏览器点击验收"]},
+    {"check": "同类风险排查", "result": "pass", "evidence": "另外两个 immediate watcher（section / current_stage）只访问其之前声明的状态；已把约束写进设计文档备注", "limitations": []}
+  ],
+  "diff_summary": ["1 处顺序调整 + 注释约束；无接口与后端改动"],
+  "invariants_checked": [
+    {"invariant": "不改审批 UI 与框架调用", "result": "pass", "evidence": "仅调整 drawer 收起的时序"}
+  ],
+  "disturbances": [
+    {"event": "静态检查（compiler-sfc）无法发现 setup 阶段的变量初始化顺序问题", "impact": "此类回归只能靠运行期/浏览器验收发现"}
+  ],
+  "assumptions_falsified": ["上一版误判 openApproval 只会在 setup 完成后执行"],
+  "unresolved_items": ["浏览器端从待办/消息两条链路实测未执行"],
+  "recommended_next": "observe"
+}

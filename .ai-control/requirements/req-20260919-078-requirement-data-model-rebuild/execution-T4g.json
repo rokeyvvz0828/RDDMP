@@ -1,0 +1,28 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "审批弹窗：去掉允许操作行、业务类型/单号友好映射、发起人空值隐藏、新增业务信息（需求/评审对象/评审报告文件）；站内消息深链命中待办时直达审批弹窗"},
+    {"path_or_resource": "server/src/platform/workflow/src/main/java/com/ccb/workflow/service/WorkflowService.java", "purpose": "taskContext 返回 starter_name（补 sys_user 关联）"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java", "purpose": "差异查询返回 review_report_attachment_id"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java", "purpose": "交付件查询返回 review_report_attachment_id"}
+  ],
+  "requirements_addressed": ["R4", "R6"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过"},
+    {"command": "node scripts/check-module-boundaries.mjs / git diff --check", "exit_code": 0, "salient_output": "通过"}
+  ],
+  "local_checks": [
+    {"check": "信息可见性", "result": "pass", "evidence": "审批弹窗按 business_key 回查需求/评审对象/评审报告附件，附件可点开预览；失败降级为提示行", "limitations": ["未做浏览器验收；审批人数据范围不足时会降级为提示"]},
+    {"check": "入口一致性", "result": "pass", "evidence": "legacyId 深链先经 /workflows/tasks/current-context 判定待办，命中即开审批弹窗", "limitations": ["需后端运行验证"]}
+  ],
+  "diff_summary": ["审批弹窗展示与入口对齐：3 处后端字段/查询补充 + 前端弹窗重构"],
+  "invariants_checked": [
+    {"invariant": "审批动作仍由框架 allowed_actions 决定", "result": "pass", "evidence": "仅移除只读展示行，底部按钮逻辑未改"},
+    {"invariant": "不新增平台写操作", "result": "pass", "evidence": "platform/workflow 仅补充只读投影字段"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["浏览器端从待办/消息两条入口及不同角色（审批人无需求数据权限）的验收未执行"],
+  "recommended_next": "observe"
+}

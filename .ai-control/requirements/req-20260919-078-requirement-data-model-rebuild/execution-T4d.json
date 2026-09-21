@@ -1,0 +1,24 @@
+{
+  "task_id": "T4",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "web/src/api/requirements.ts", "purpose": "submitReview/submitDeliverableReview 改传 reportAttachmentId"},
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "两个提交评审弹窗改为真实上传（平台附件接口），必传校验；评审记录支持点击打开评审报告文件"}
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "SFC/模板/脚本均编译通过"}
+  ],
+  "local_checks": [
+    {"check": "必传与反馈", "result": "pass", "evidence": "未上传时提交被前端拦截并提示；上传成功显示文件名，可移除重传；上传中按钮 loading", "limitations": ["未做浏览器点击验收"]},
+    {"check": "文件可回看", "result": "pass", "evidence": "评审记录弹窗按 report_preview_id 调 getAttachmentPreview 打开文件", "limitations": ["需后端策略生效"]}
+  ],
+  "diff_summary": ["两个弹窗由文本框改为上传控件；api 参数改为附件 ID"],
+  "invariants_checked": [
+    {"invariant": "复用平台附件接口与既有 UI 组件", "result": "pass", "evidence": "使用 web/src/api/attachments.ts 的 uploadAttachment/getAttachmentPreview 与 el-upload"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["浏览器端上传/评审/回看全流程验收未执行"],
+  "recommended_next": "observe"
+}

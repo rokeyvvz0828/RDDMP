@@ -21,12 +21,54 @@ public final class RequirementEnums {
     public static final List<String> STAGE_STATUSES = List.of("未开始", "进行中", "已完成");
     public static final List<String> REQUIREMENT_TYPES = List.of("监管", "业务", "技术");
     public static final List<String> REGULATION_CATEGORIES = List.of("国家级", "地方级", "处罚整改");
+    /**
+     * 需求状态受控取值（按 6 个阶段收敛后的统一口径）。
+     * 取值默认为空；进入某阶段时取该阶段候选的第一个（见 LEGACY_STAGE_REQUIREMENT_STATUSES）。
+     */
     public static final List<String> REQUIREMENT_STATUSES = List.of(
-            "需求分析", "业需修订", "业需评审通过", "立项中", "软需编制", "软需评审通过", "已投产", "需求终止");
+            "需求提出", "需求分析", "需规编制", "需规评审", "工作量评估", "立项", "软需编写", "软需评审", "待投产", "已投产", "需求终止");
     public static final List<String> LAUNCH_MODES = List.of("常规版本", "紧急版本");
     public static final List<String> CHANGE_REVIEW_CONCLUSIONS = List.of("评审通过", "评审不通过");
     public static final List<String> CHANGE_CONCLUSION_STATUSES = List.of("审核通过", "评估工作量", "同业立项完成");
     public static final List<String> SYSTEM_ROLES = List.of("主责", "协同");
+
+    /**
+     * 需求-物理子系统关联行的角色（REQ-20260919-078）。
+     * 页面沿用「主责/改造/测试」，库内落 LEAD/CHANGE/TEST，避免展示口径与存储口径耦合。
+     */
+    public static final List<String> SYSTEM_ROLE_CODES = List.of("LEAD", "CHANGE", "TEST");
+    public static final List<String> REQUIREMENT_ITEM_ROLES = List.of("主责", "改造", "测试");
+    public static final String SYSTEM_ROLE_LEAD = "LEAD";
+    public static final String SYSTEM_ROLE_CHANGE = "CHANGE";
+    public static final String SYSTEM_ROLE_TEST = "TEST";
+    public static final List<String> REQUIREMENT_KINDS = List.of("NEW_PROJECT_DIFF", "LEGACY");
+
+    /** 页面角色标签 → 库内角色码；非受控取值返回 null。 */
+    public static String systemRoleCode(String label) {
+        if (label == null) {
+            return null;
+        }
+        return switch (label.trim()) {
+            case "主责", "LEAD" -> SYSTEM_ROLE_LEAD;
+            case "改造", "协同", "CHANGE" -> SYSTEM_ROLE_CHANGE;
+            case "测试", "TEST" -> SYSTEM_ROLE_TEST;
+            default -> null;
+        };
+    }
+
+    /** 库内角色码 → 页面角色标签。 */
+    public static String systemRoleLabel(String code) {
+        if (code == null) {
+            return null;
+        }
+        return switch (code.trim()) {
+            case SYSTEM_ROLE_LEAD, "主责" -> "主责";
+            case SYSTEM_ROLE_CHANGE, "改造", "协同" -> "改造";
+            case SYSTEM_ROLE_TEST, "测试" -> "测试";
+            default -> null;
+        };
+    }
+
     public static final List<String> FLOW_ACTIONS = List.of("SEND", "RETURN", "COMPLETE");
     public static final List<String> REVIEW_CONCLUSIONS = List.of("通过", "退回");
     public static final List<String> DELIVERABLE_TYPES = List.of("WORKLOAD", "SOFT");
@@ -43,39 +85,62 @@ public final class RequirementEnums {
             "SOFT", "soft_stage_status", "LAUNCH", "launch_stage_status");
 
     /**
-     * 存量项目"当前阶段"到"需求状态"的粗粒度联动映射（保留兼容引用，已被二维映射覆盖语义）。
-     * 阶段推进审批通过时按此覆盖 requirement_status；REJECTED 不联动。
-     * PROPOSE 阶段还细分"业需修订/业需评审通过"、SOFT 还细分"软需评审通过"，
-     * 此处只给阶段起始口径，细分状态由业务表单或后续细化任务维护。
+     * 存量项目"需求状态及备注"按当前阶段展示的受控取值（与前端 LEGACY_STAGE_REQUIREMENT_STATUSES 对齐）。
+     * 1 需求提出：需求提出、需求终止；2 需求对接：需求分析、需规编制、需规评审、需求终止；
+     * 3 工作量评估：工作量评估、需求终止；4 立项：立项、需求终止；
+     * 5 软需：软需编写、软需评审、需求终止；6 投产：待投产、已投产、需求终止。
      */
-    public static final Map<String, String> LEGACY_STAGE_TO_REQUIREMENT_STATUS = Map.of(
-            "PROPOSE", "需求分析", "DOCKING", "业需评审通过", "WORKLOAD", "业需评审通过",
-            "PROJECT", "立项中", "SOFT", "软需编制", "LAUNCH", "已投产");
+    public static final Map<String, List<String>> LEGACY_STAGE_REQUIREMENT_STATUSES = Map.of(
+            "PROPOSE", List.of("需求提出", "需求终止"),
+            "DOCKING", List.of("需求分析", "需规编制", "需规评审", "需求终止"),
+            "WORKLOAD", List.of("工作量评估", "需求终止"),
+            "PROJECT", List.of("立项", "需求终止"),
+            "SOFT", List.of("软需编写", "软需评审", "需求终止"),
+            "LAUNCH", List.of("待投产", "已投产", "需求终止"));
 
     /**
-     * 存量项目"阶段 + 动作"二维联动映射：阶段推进审批 APPROVED + START/COMPLETE 时按此联动 requirement_status。
-     * BACK 是手工回退，亦按此映射回退到上一阶段起始口径（仅 APPROVED 才生效，REJECTED 保持原状不联动）。
+     * 阶段默认需求状态：取该阶段候选的第一个；未配置阶段返回 null（保持原值，不写入默认值）。
+     */
+    public static String defaultRequirementStatus(String stage) {
+        List<String> options = LEGACY_STAGE_REQUIREMENT_STATUSES.get(stage);
+        return options == null || options.isEmpty() ? null : options.get(0);
+    }
+
+    /**
+     * 存量项目"当前阶段"到"需求状态"的默认联动映射（各阶段候选的第一个）。
+     */
+    public static final Map<String, String> LEGACY_STAGE_TO_REQUIREMENT_STATUS = stageDefaultStatuses();
+
+    /**
+     * 存量项目"阶段 + 动作"联动映射：START/COMPLETE/BACK 均取该阶段候选的第一个状态。
      * key 格式 = stage + ":" + action（START/COMPLETE/BACK）。
      */
-    public static final Map<String, String> LEGACY_STAGE_ACTION_TO_REQ_STATUS = Map.ofEntries(
-            Map.entry("PROPOSE:START", "需求分析"),
-            Map.entry("PROPOSE:COMPLETE", "业需修订"),
-            Map.entry("DOCKING:START", "业需修订"),
-            Map.entry("DOCKING:COMPLETE", "业需评审通过"),
-            Map.entry("WORKLOAD:START", "业需评审通过"),
-            Map.entry("WORKLOAD:COMPLETE", "业需评审通过"),
-            Map.entry("PROJECT:START", "立项中"),
-            Map.entry("PROJECT:COMPLETE", "软需编制"),
-            Map.entry("SOFT:START", "软需编制"),
-            Map.entry("SOFT:COMPLETE", "软需评审通过"),
-            Map.entry("LAUNCH:START", "软需评审通过"),
-            Map.entry("LAUNCH:COMPLETE", "已投产"),
-            Map.entry("DOCKING:BACK", "需求分析"),
-            Map.entry("WORKLOAD:BACK", "业需修订"),
-            Map.entry("PROJECT:BACK", "业需评审通过"),
-            Map.entry("SOFT:BACK", "立项中"),
-            Map.entry("LAUNCH:BACK", "软需编制")
-    );
+    public static final Map<String, String> LEGACY_STAGE_ACTION_TO_REQ_STATUS = stageActionStatuses();
+
+    private static Map<String, String> stageDefaultStatuses() {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (String stage : LEGACY_STAGES) {
+            String status = defaultRequirementStatus(stage);
+            if (status != null) {
+                map.put(stage, status);
+            }
+        }
+        return Map.copyOf(map);
+    }
+
+    private static Map<String, String> stageActionStatuses() {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (String stage : LEGACY_STAGES) {
+            String status = defaultRequirementStatus(stage);
+            if (status == null) {
+                continue;
+            }
+            for (String action : List.of("START", "COMPLETE", "BACK")) {
+                map.put(stage + ":" + action, status);
+            }
+        }
+        return Map.copyOf(map);
+    }
 
     /**
      * 存量需求核心标识字段：保存与阶段推进时的强校验字段。
@@ -83,6 +148,38 @@ public final class RequirementEnums {
      */
     public static final List<String> LEGACY_CORE_REQUIRED_FIELDS = List.of(
             "requirement_no", "requirement_name");
+
+    /** 新建差异专有字段（落在 req_difference_detail）。 */
+    public static final List<String> DIFFERENCE_DETAIL_FIELDS = List.of(
+            "business_conglomerate", "business_section", "category", "jinke_practice",
+            "difference_type", "monshang_practice", "difference_desc", "monshang_dept",
+            "monshang_analyst", "jinke_analyst", "adapt_mode", "handle_status", "coord_group",
+            "solution", "is_special", "decision_level", "decision_conclusion",
+            "monshang_confirm_dept", "jinke_confirmer", "dev_status", "test_status");
+
+    /** 存量需求主表承载的共用字段（其余专有字段落在 req_legacy_detail）。 */
+    public static final List<String> LEGACY_MAIN_FIELDS = List.of(
+            "requirement_no", "requirement_name", "content_summary", "business_group");
+
+    /** 存量需求专有字段（落在 req_legacy_detail）。 */
+    public static final List<String> LEGACY_DETAIL_FIELDS = List.of(
+            "legacy_doc_name", "propose_dept", "proposer", "monshang_ba", "monshang_architect",
+            "expected_launch_date", "regulator", "regulation_doc_no", "regulation_desc",
+            "regulation_launch_date", "requirement_received_date", "requirement_type",
+            "regulation_category", "sub_group", "jinke_contact", "need_jinke_arch_decision",
+            "jinke_architect", "unified_managed", "ba_review_date", "workload_date",
+            "finance_project_date", "soft_doc_name", "owner_conglomerate", "owner_system",
+            "owner_contact", "involve_cooperation", "coord_conglomerate", "coord_system",
+            "soft_submit_date", "soft_review_date", "planned_launch_date", "actual_launch_date",
+            "launch_mode", "requirement_status", "remark", "change_involved", "change_info",
+            "change_review_conclusion", "change_conclusion_status", "change_remark",
+            "not_project_developed", "workload_change", "workload_person_months");
+
+    /** 存量需求日期字段：保存前统一格式化为 yyyy-MM-dd。 */
+    public static final List<String> LEGACY_DATE_FIELDS = List.of(
+            "expected_launch_date", "regulation_launch_date", "requirement_received_date",
+            "ba_review_date", "workload_date", "finance_project_date", "soft_submit_date",
+            "soft_review_date", "planned_launch_date", "actual_launch_date");
 
     /**
      * 存量项目阶段 → 业务字段映射（与前端阶段表单一致）。
@@ -133,10 +230,14 @@ public final class RequirementEnums {
         OPTIONS.put("requirementTypes", REQUIREMENT_TYPES);
         OPTIONS.put("regulationCategories", REGULATION_CATEGORIES);
         OPTIONS.put("requirementStatuses", REQUIREMENT_STATUSES);
+        OPTIONS.put("legacyStageRequirementStatuses", LEGACY_STAGE_REQUIREMENT_STATUSES);
         OPTIONS.put("launchModes", LAUNCH_MODES);
         OPTIONS.put("changeReviewConclusions", CHANGE_REVIEW_CONCLUSIONS);
         OPTIONS.put("changeConclusionStatuses", CHANGE_CONCLUSION_STATUSES);
         OPTIONS.put("systemRoles", SYSTEM_ROLES);
+        OPTIONS.put("systemRoleCodes", SYSTEM_ROLE_CODES);
+        OPTIONS.put("requirementItemRoles", REQUIREMENT_ITEM_ROLES);
+        OPTIONS.put("requirementKinds", REQUIREMENT_KINDS);
         OPTIONS.put("flowActions", FLOW_ACTIONS);
         OPTIONS.put("reviewConclusions", REVIEW_CONCLUSIONS);
         OPTIONS.put("deliverableTypes", DELIVERABLE_TYPES);
@@ -242,6 +343,13 @@ public final class RequirementEnums {
         labels.put("reviewed_by", "评审人");
         labels.put("workflow_instance_id", "审批流程实例");
         labels.put("current_stage", "当前阶段");
+        labels.put("requirement_kind", "需求类型");
+        labels.put("physical_subsystem_id", "涉及物理子系统");
+        labels.put("subsystem_code", "物理子系统编码");
+        labels.put("subsystem_name", "物理子系统名称");
+        labels.put("system_role", "系统角色");
+        labels.put("owner_user_name", "系统负责人");
+        labels.put("project_stage_done", "立项阶段已完成");
         labels.put("propose_stage_status", "需求提出阶段状态");
         labels.put("docking_stage_status", "需求对接阶段状态");
         labels.put("workload_stage_status", "工作量评估阶段状态");

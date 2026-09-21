@@ -1,0 +1,26 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java", "purpose": "新增交付件时必须绑定已上传的文档附件（开关控制是否强制）；提交评审改为校验并使用已有文档，不再接收上传"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementReviewReportService.java", "purpose": "requireBound 支持自定义缺失提示（文档 vs 评审报告）"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementLegacyController.java", "purpose": "交付件提交评审去掉 reportAttachmentId 入参"}
+  ],
+  "requirements_addressed": ["R4"],
+  "commands": [
+    {"command": "node scripts/check-module-boundaries.mjs", "exit_code": 0, "salient_output": "通过"}
+  ],
+  "local_checks": [
+    {"check": "文件归属", "result": "pass", "evidence": "文档附件在新增记录时经 AttachmentGateway 绑定（REQUIREMENT_REVIEW + 需求 ID），落 req_legacy_deliverable.review_report_attachment_id/name", "limitations": ["未编译、未跑测试"]},
+    {"check": "评审不再上传", "result": "pass", "evidence": "submitDeliverableReview 只校验已有文档（开关开启时缺失即 400），不再接收附件参数", "limitations": []}
+  ],
+  "diff_summary": ["交付件文件来源从'提交评审时上传'改为'新增记录时上传'；服务与控制器签名调整"],
+  "invariants_checked": [
+    {"invariant": "不直接写平台附件表", "result": "pass", "evidence": "仍只经 AttachmentGateway"},
+    {"invariant": "开关语义一致", "result": "pass", "evidence": "ccb.requirement.review-report-required 同时约束差异评审报告与交付件文档是否必传"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["后端编译/测试未执行"],
+  "recommended_next": "observe"
+}

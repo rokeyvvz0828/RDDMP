@@ -1,0 +1,20 @@
+{
+  "sample_label": "运行反馈观测：Flyway 校验和冲突与纠正",
+  "task_ids": ["T1"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1", "result": "pass", "raw_evidence": "用户本地启动日志报 Migration checksum mismatch（applied 1884520140 / local -81127719）；用 flyway-core 复算确认，还原后可执行迁移校验和与库内记录一致", "limitation": ["未实际重启验证启动成功"]},
+    {"requirement_id": "R7", "sensor": "S1", "result": "partial", "raw_evidence": "本地库已成功执行 V20260919210000 的建表与演示数据重建（应用启动到 Flyway 校验阶段才失败）", "limitation": ["未验证页面取数"]}
+  ],
+  "feedback": [
+    {"id": "F1", "severity": "P1", "statement": "已执行过的迁移被再次修改，导致 Flyway 校验和冲突、应用无法启动", "status": "closed", "evidence": "V20260919210000 还原为已执行内容（校验和 1884520140），删表改由 V20260919211000 承接"}
+  ],
+  "disturbances": [
+    {"source": "缺陷来源：先创建迁移、后在同一文件追加语句，期间该迁移已在本地库执行", "effect": "启动失败；纠正后无需手工改动数据库"}
+  ],
+  "coverage_gaps": [
+    "重启验证、模块测试、前端构建、浏览器验收仍未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 1, "P2": 1, "P3": 0},
+  "observation_status": "complete"
+}

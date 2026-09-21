@@ -37,7 +37,7 @@ class RequirementWorkflowListenerTest {
         listener.consume(event(WorkflowLifecycleEventType.APPROVED));
 
         assertTrue(jdbc.updates.stream().anyMatch(update ->
-                update.sql().contains("UPDATE req_difference SET review_status")
+                update.sql().contains("UPDATE req_requirement SET review_status")
                         && update.args().contains("已评审")
                         && update.args().contains(9L)));
         assertTrue(jdbc.updates.stream().anyMatch(update ->
@@ -58,7 +58,7 @@ class RequirementWorkflowListenerTest {
             listener.consume(event(type));
 
             assertTrue(jdbc.updates.stream().anyMatch(update ->
-                    update.sql().contains("UPDATE req_difference SET review_status")
+                    update.sql().contains("UPDATE req_requirement SET review_status")
                             && update.args().contains("已退回")));
             assertTrue(jdbc.updates.stream().anyMatch(update ->
                     update.sql().contains("INSERT INTO req_review_record")
@@ -100,7 +100,7 @@ class RequirementWorkflowListenerTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queryCount++;
-            if (sql.contains("FROM req_difference")) {
+            if (sql.contains("FROM req_requirement r")) {
                 return List.of(Map.of("review_status", "评审中", "review_report_name", "评审报告.docx"));
             }
             if (sql.contains("FROM wf_task_action")) {

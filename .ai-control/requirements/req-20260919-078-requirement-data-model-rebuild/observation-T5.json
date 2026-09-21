@@ -1,0 +1,21 @@
+{
+  "sample_label": "运行反馈观测：SQL 拼接缺陷修复与全量语法体检",
+  "task_ids": ["T2", "T3"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1", "result": "pass", "raw_evidence": "用户本地启动后存量列表报 BadSqlGrammar（r.updated_atFROM …）；补空格后该查询与模块内 121 条 SQL 全部 PREPARE 通过", "limitation": ["未做页面回归"]},
+    {"requirement_id": "R6", "sensor": "S1", "result": "pass", "raw_evidence": "开发来源 search/find/count 三条 SQL 在真实库解析通过，契约形状未改", "limitation": ["未跑开发管理集成测试"]},
+    {"requirement_id": "R7", "sensor": "S1", "result": "pass", "raw_evidence": "演示数据按 pm_project 归属统计正确（CONTINUATION 项目只有存量、NEW 项目只有新建）", "limitation": []}
+  ],
+  "feedback": [
+    {"id": "F2", "severity": "P1", "statement": "SQL 字符串拼接缺少分隔空白，导致存量需求列表接口 500（BadSqlGrammarException）", "status": "closed", "evidence": "补空格后经真实 MySQL PREPARE 校验：121 条完整 SQL + 12 条动态查询全部通过"}
+  ],
+  "disturbances": [
+    {"source": "Java 文本块是否带前导/尾随空白取决于缩进", "effect": "跨常量拼接时出现漏空格；已系统性排查并改为显式分隔"}
+  ],
+  "coverage_gaps": [
+    "前端构建与浏览器端回归（列表/详情/流转/评审）仍未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 2, "P2": 0, "P3": 0},
+  "observation_status": "complete"
+}

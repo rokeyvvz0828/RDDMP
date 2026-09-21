@@ -56,6 +56,7 @@ export interface RequirementDifference {
   jinke_confirmer?: string
   review_status: string
   review_comment?: string | null
+  review_report_name?: string | null
   reviewed_by?: number | null
   reviewed_at?: string | null
   workflow_instance_id?: string | number | null

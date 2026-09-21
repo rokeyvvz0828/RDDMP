@@ -1,0 +1,71 @@
+{
+  "baseline_revision": 1,
+  "plant_boundary": {
+    "inside": [
+      "server/src/modules/requirement（服务、控制器、integration 契约、support）",
+      "server/src/platform/boot/.../requirement 适配器",
+      "platform/infrastructure 需求数据模型迁移",
+      "web/src/views/RequirementsView.vue 与 web/src/api/requirements.ts"
+    ],
+    "environment": [
+      "MySQL 8 + Flyway",
+      "business/development 与 business/architecture（只读消费者）",
+      "mock/mock-data.json 与 platform/boot 开发管理集成测试（写入范围之外）"
+    ]
+  },
+  "state_variables": [
+    "req_requirement.requirement_kind 与 review_status/current_stage",
+    "req_requirement_system.system_role（LEAD/CHANGE/TEST）行集合",
+    "req_legacy_detail 阶段状态组合（决定开发来源 active）",
+    "req_flow_log 流转链（决定数据范围与收回）"
+  ],
+  "causal_paths": [
+    {"requirement_id": "R1", "input": "页面按 kind 请求", "transitions": ["筛选需求主表", "关联详情表"], "outputs": ["仅本页数据"]},
+    {"requirement_id": "R2", "input": "创建/保存系统行", "transitions": ["解析物理子系统", "校验 LEAD 数量", "写关联行"], "outputs": ["恰好 1 行或拒绝"]},
+    {"requirement_id": "R3", "input": "项目 id", "transitions": ["RequirementSystemDirectory", "boot 适配器只读物理子系统"], "outputs": ["候选系统列表"]},
+    {"requirement_id": "R4", "input": "项目编码 + 授权系统编码", "transitions": ["过滤 kind=LEGACY", "过滤阶段状态", "按关联行匹配系统"], "outputs": ["来源投影"]},
+    {"requirement_id": "R6", "input": "开发管理调用", "transitions": ["契约 record 不变", "实现改读新表", "规范化摘要"], "outputs": ["SourceRequirement"]},
+    {"requirement_id": "R7", "input": "需求主键 project_id", "transitions": ["pm_project 编码解析", "需求主表过滤"], "outputs": ["项目内数据"]}
+  ],
+  "interfaces": [
+    "RequirementDevelopmentQuery（形状不变，实现切换）",
+    "RequirementSystemDirectory + RequirementSystemDirectoryAdapter（新增只读端口）",
+    "需求 HTTP 接口 /api/requirements/**（字段与错误语义保持）"
+  ],
+  "sensors": [
+    {"id": "S1", "kind": "static", "description": "治理检查与迁移/表引用静态核对"},
+    {"id": "S2", "kind": "test", "description": "需求模块单元测试（约束、错误分支）"},
+    {"id": "S3", "kind": "test", "description": "开发来源契约测试"},
+    {"id": "S4", "kind": "build", "description": "前端生产构建"},
+    {"id": "S5", "kind": "browser", "description": "真实浏览器按项目切换验收"}
+  ],
+  "actuators": [
+    {"id": "A1", "description": "代码与 Flyway 迁移改动提交到工作区"}
+  ],
+  "measurements": [
+    {"requirement_id": "R1", "sensor_ids": ["S1", "S5"]},
+    {"requirement_id": "R2", "sensor_ids": ["S2"]},
+    {"requirement_id": "R3", "sensor_ids": ["S1"]},
+    {"requirement_id": "R4", "sensor_ids": ["S3"]},
+    {"requirement_id": "R5", "sensor_ids": ["S4", "S5"]},
+    {"requirement_id": "R6", "sensor_ids": ["S3", "S1"]},
+    {"requirement_id": "R7", "sensor_ids": ["S1", "S2", "S5"]}
+  ],
+  "disturbances": [
+    {"source": "只读文件依赖", "effect": "mock/mock-data.json、MockDataInitializer 允许清单与 2 个 boot 开发集成测试仍引用被替换的旧表，直接删表会破坏本地启动与开发侧测试"},
+    {"source": "架构主数据缺口", "effect": "演示项目若无有效 arch_physical_subsystem，新建差异下拉为空，演示只能走快照数据"}
+  ],
+  "delays": [
+    "Flyway 迁移在本地库执行后才会体现表结构与演示数据",
+    "前端构建与浏览器验收滞后于后端模型切换"
+  ],
+  "assumptions": [
+    "MySQL 8 支持窗口函数（迁移用 ROW_NUMBER 生成演示序号）",
+    "需求详情表以 requirement_id 为主键，更新须按该列定位"
+  ],
+  "control_assessment": [
+    "R1/R2/R3/R6/R7 可由静态与模块测试观测；R4 由契约测试观测；R5 需前端构建与浏览器验收",
+    "本次用户明确要求不执行测试与编译，S2/S3/S4/S5 在本轮不可用，系统停留在可观测但未验证状态"
+  ],
+  "model_status": "ready"
+}

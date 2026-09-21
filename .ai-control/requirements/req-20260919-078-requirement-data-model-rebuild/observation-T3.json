@@ -1,0 +1,20 @@
+{
+  "sample_label": "静态观测：旧表引用全面清零",
+  "task_ids": ["T1", "T2"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R1", "sensor": "S1", "result": "pass", "raw_evidence": "迁移建 5 张新表并删除 10 张旧表；Java 主源码、mock 数据、mock 允许清单、boot 开发测试均无旧表读写", "limitation": ["迁移未在 MySQL 执行"]},
+    {"requirement_id": "R2", "sensor": "S1", "result": "partial", "raw_evidence": "新建差异必填 1 个物理子系统、存量 LEAD 唯一与需求对接前置校验已实现", "limitation": ["单元测试未执行"]},
+    {"requirement_id": "R3", "sensor": "S1", "result": "pass", "raw_evidence": "需求侧系统主数据只经 RequirementSystemDirectory，旧自建系统清单表已删除", "limitation": ["未验证架构侧真实返回"]},
+    {"requirement_id": "R6", "sensor": "S1", "result": "partial", "raw_evidence": "契约 record 未改动；开发管理测试夹具与 mock 来源数据已迁移到新表", "limitation": ["未编译、未跑集成测试"]}
+  ],
+  "feedback": [],
+  "disturbances": [
+    {"source": "用户指令「不要测试和编译」", "effect": "S2/S3/S4/S5 传感器仍不可用"}
+  ],
+  "coverage_gaps": [
+    "需求模块单元测试、MockDataInitializerTest、开发管理集成测试、全量编译、前端构建、迁移真实执行与浏览器验收均未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "incomplete"
+}

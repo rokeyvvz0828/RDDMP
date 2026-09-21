@@ -1,0 +1,19 @@
+{
+  "sample_label": "评审文件预览观测",
+  "task_ids": ["T4"],
+  "baseline_revision": "baseline-1",
+  "measurements": [
+    {"requirement_id": "R4", "sensor": "S1", "result": "partial", "raw_evidence": "审批弹窗与评审记录均可预览/下载评审报告：PDF 与图片用预签名地址内嵌渲染，Office 走 kkFileView，未部署时回退下载；前端编译与 diff 检查通过", "limitation": ["未做浏览器验收（需 MinIO 运行）"]}
+  ],
+  "feedback": [
+    {"id": "F13", "severity": "P2", "statement": "审批人看不到评审文件内容，无法\"看文件再评审\"", "status": "closed", "evidence": "接入平台预览能力（UiFilePreview + 附件 preview/download），按格式分档并回退下载"}
+  ],
+  "disturbances": [
+    {"source": "kkFileView 未部署", "effect": "docx/xlsx 无法在页内翻页预览，仅能下载；PDF/图片不受影响"}
+  ],
+  "coverage_gaps": [
+    "浏览器端 PDF / 图片 / Office 三类文件的预览与下载实测未执行"
+  ],
+  "error_counts": {"P0": 0, "P1": 0, "P2": 1, "P3": 0},
+  "observation_status": "incomplete"
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "T3",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcRequirementDevelopmentQuery.java", "purpose": "开发来源实现改读 req_requirement + req_requirement_system，contract record 形状不变"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/JdbcReleaseRequirementQuery.java", "purpose": "发布需求查询改读新模型并按 pm_project 解析项目"}
+  ],
+  "requirements_addressed": ["R4", "R6", "R7"],
+  "commands": [
+    {"command": "rg -n \"RequirementDevelopmentQuery|RequirementSystemDirectory\" --type java", "exit_code": 0, "salient_output": "确认契约消费方为 boot 的 DevelopmentSourceDirectoryAdapter，record 形状未变"}
+  ],
+  "local_checks": [
+    {"check": "契约形状不变", "result": "pass", "evidence": "RequirementDevelopmentQuery 未修改，仅替换实现；SourceSystem.systemCode 语义为物理子系统编码", "limitations": ["未编译 business/development"]},
+    {"check": "active 规则", "result": "pass", "evidence": "kind=LEGACY + project_stage_status 已完成 + soft_stage_status 进行中/已完成 + 排除需求终止", "limitations": ["未运行契约测试"]}
+  ],
+  "diff_summary": ["开发来源实现由 req_legacy_requirement/req_legacy_system_item/req_coordination_item 切换为统一主表与关联行"],
+  "invariants_checked": [
+    {"invariant": "不改 business/development", "result": "pass", "evidence": "仅改需求模块实现，未触碰开发模块文件"},
+    {"invariant": "项目解析失败关闭", "result": "pass", "evidence": "pm_project 编码未匹配或多行时抛 CONFLICT，不跨项目回退"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["本次仍只返回存量来源，新建差异来源待开发管理侧放开 source_type"],
+  "recommended_next": "observe"
+}

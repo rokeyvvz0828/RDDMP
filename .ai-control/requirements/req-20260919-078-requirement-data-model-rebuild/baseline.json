@@ -1,0 +1,123 @@
+{
+  "objective": "需求管理数据模型重构：新建项目差异与存量需求统一为一条主表 + 需求-物理子系统关联行，系统主数据统一取架构物理子系统，并按开发管理所需口径提供只读来源",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "两页共用 req_requirement 并按 requirement_kind 区分",
+      "acceptance": [
+        "新建差异与存量需求同表不同 kind，页面按 kind 过滤",
+        "req_difference_detail / req_legacy_detail 承载各自专有字段",
+        "迁移可重复执行且不清空非需求数据"
+      ],
+      "priority": "must",
+      "source": "docs/requirements/REQ-20260919-078-requirement-data-model-rebuild/requirement.md 范围一节",
+      "counterexample": ["新建与存量仍各有一张主表"]
+    },
+    {
+      "id": "R2",
+      "statement": "新建差异系统行恰好 1 行，存量 1..N 且 LEAD 唯一",
+      "acceptance": [
+        "新建差异未选物理子系统时 400 并提示按物理子系统维度提出",
+        "存量创建不校验系统，离开需求对接阶段前缺主责或协同则拒绝",
+        "同一需求出现 2 行主责时保存失败"
+      ],
+      "priority": "must",
+      "source": "requirement.md 业务规则 2/3",
+      "counterexample": ["新建差异挂 2 个物理子系统仍可保存"]
+    },
+    {
+      "id": "R3",
+      "statement": "系统下拉数据来自架构管理物理子系统，需求管理不再维护系统清单",
+      "acceptance": [
+        "需求侧系统候选经 com.ccb.requirement.integration 只读端口 + platform/boot 适配器取得",
+        "需求模块不再读写自建系统清单表"
+      ],
+      "priority": "must",
+      "source": "requirement.md 验收标准 3",
+      "counterexample": ["仍由 req_system 驱动涉及系统下拉"]
+    },
+    {
+      "id": "R4",
+      "statement": "开发来源时点：新建=项目内无待评审/评审中差异且该差异已纳入基线；存量=已到软需阶段且立项已完成",
+      "acceptance": [
+        "存量来源口径 = project_stage_status 已完成 且 soft_stage_status 进行中/已完成",
+        "需求终止一律排除"
+      ],
+      "priority": "must",
+      "source": "requirement.md 业务规则 4",
+      "counterexample": ["存量立项未完成即作为可开发来源"]
+    },
+    {
+      "id": "R5",
+      "statement": "系统人员下线，系统行仅保留系统负责人",
+      "acceptance": [
+        "系统关联行无系统人员字段",
+        "前端需求对接页签不出现系统人员控件"
+      ],
+      "priority": "must",
+      "source": "requirement.md 业务规则 5",
+      "counterexample": ["系统行仍维护系统人员列表"]
+    },
+    {
+      "id": "R6",
+      "statement": "RequirementDevelopmentQuery 契约形状不变，存量读取语义与改造前一致",
+      "acceptance": [
+        "SourceRequirement / SourceSystem record 形状不变，开发模块无需改动即可编译",
+        "source 版本摘要仍只依据需求内容与系统关联规范化计算"
+      ],
+      "priority": "must",
+      "source": "requirement.md 验收标准 4",
+      "counterexample": ["契约增删字段导致 business/development 编译失败"]
+    },
+    {
+      "id": "R7",
+      "statement": "需求数据 project_id 为 pm_project.id，切换项目即切数据",
+      "acceptance": [
+        "req_requirement.project_id 指向 pm_project.id",
+        "项目解析按 pm_project.project_code，缺失或歧义时失败关闭"
+      ],
+      "priority": "must",
+      "source": "requirement.md 验收标准 5",
+      "counterexample": ["需求数据仍存 req_project.id 导致切换项目看不到数据"]
+    }
+  ],
+  "invariants": [
+    "不改 business/development 与 business/architecture 代码",
+    "Flyway 只追加，不修改已发布脚本",
+    "所有需求查询带 tenant_id 且软删除过滤"
+  ],
+  "constraints": [
+    "只修改 codex-task-scope.yaml 的 writable_paths",
+    "不做数据回填，清空需求业务数据并按新结构重建演示数据",
+    "不改包名、模块依赖与 dev_task 来源类型约束"
+  ],
+  "non_goals": [
+    "开发任务生成与 dev_task 来源类型放开",
+    "需求管理权限数据重建（REQ-20260919-077）",
+    "交付件与文档上传能力"
+  ],
+  "assumptions": [
+    "架构物理子系统编码在租户内唯一（uk_arch_physical_code），可用于跨模块关联",
+    "架构物理子系统按 project_id 归属项目，需求项目下拉与架构数据同源"
+  ],
+  "unknowns": [
+    "本地演示项目的架构物理子系统主数据是否齐备（决定新建差异可否端到端演示）",
+    "开发侧放开 source_type 的时间点"
+  ],
+  "decisions": [
+    "D1 新建差异恰好 1 个物理子系统",
+    "D2 系统人员下线",
+    "D3 开发来源时点按 R4",
+    "D4 不做数据回填，重建演示数据"
+  ],
+  "measurement_intents": [
+    {"requirement_id": "R1", "observable": "表结构、kind 过滤 SQL 与迁移幂等结构", "candidate_sensor": "治理检查 + 迁移静态核对"},
+    {"requirement_id": "R2", "observable": "约束拒绝与放行分支", "candidate_sensor": "需求模块单元测试"},
+    {"requirement_id": "R3", "observable": "系统候选来源与需求侧表引用", "candidate_sensor": "integration 契约 + boot 适配器静态核对"},
+    {"requirement_id": "R4", "observable": "active 规则命中的来源集合", "candidate_sensor": "开发来源契约测试"},
+    {"requirement_id": "R5", "observable": "前端系统行字段与控制台结果", "candidate_sensor": "前端构建 + 浏览器验收"},
+    {"requirement_id": "R6", "observable": "record 字段集合与摘要稳定性", "candidate_sensor": "契约测试 + 全量后端编译"},
+    {"requirement_id": "R7", "observable": "project_id 口径与项目解析分支", "candidate_sensor": "迁移核对 + 模块测试"}
+  ],
+  "baseline_status": "ready"
+}

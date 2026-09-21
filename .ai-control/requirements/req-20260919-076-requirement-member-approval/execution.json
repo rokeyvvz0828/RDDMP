@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260919-076-requirement-member-approval",
+  "control_prefix": "req-20260919-076-requirement-member-approval",
+  "phase": "executing",
+  "executed_at": "2026-09-19",
+  "executor": "Codex",
+  "user_instruction": "用户要求只开发代码，测试与浏览器验收由用户执行；因此未执行 Maven 测试、前端构建与浏览器验收。",
+  "changed_files": [
+    "governance/modules.yaml",
+    "server/src/modules/requirement/pom.xml",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementProjectMemberService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementReviewWorkflowSupport.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementDifferenceService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementLegacyEnhanceService.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementWorkflowListener.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementController.java",
+    "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementLegacyController.java",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/support/StubProjectDirectory.java",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementDifferenceServiceTest.java",
+    "server/src/modules/requirement/src/test/java/com/ccb/requirement/service/RequirementLegacyServiceTest.java",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V20260919180000__requirement_member_approval_and_flow_notification.sql",
+    "web/src/api/requirements.ts",
+    "web/src/views/RequirementsView.vue"
+  ],
+  "behavior_changes": [
+    "新增 GET /api/requirements/project-members?projectRef= 作为流转人与审批人的唯一候选来源",
+    "差异流转、差异提交评审、存量需求流转、交付件提交评审增加项目组织架构成员强校验",
+    "交付件提交评审改为启动 requirement.legacy.deliverable.review 流程并写入 workflow_instance_id",
+    "删除 POST /api/requirements/deliverables/{id}/review 与前端交付件评审弹窗，审批改由工作流待办处理",
+    "RequirementWorkflowListener 支持 req-deliverable:{type}:{id} 回写评审状态与评审记录",
+    "存量需求流转/回传发布站内通知，actionPath 带 legacyId 支持深链打开",
+    "前端选人来源统一切到项目组织架构成员，并支持 ?legacyId= 深链打开存量需求",
+    "迁移内补齐需求演示项目（pm_project.id 3001/3002/3003）的 pm_project_member 演示成员与 admin，避免本地验收时人员下拉为空"
+  ],
+  "commands": [
+    {
+      "command": "mvn -q -pl :ccb-requirement -am test-compile -DskipTests",
+      "result": "exit 0（编译检查通过；未执行测试用例）",
+      "note": "离线模式因缺少 testcontainers-bom 无法解析依赖，改为联网解析依赖后执行"
+    },
+    {
+      "command": "web/node_modules/.bin/vue-tsc --noEmit",
+      "result": "首次运行时发现 1 处既有类型错误：legacyStageStatusOptions 的 fromApi 类型断言错误（来自工作区已有未提交改动）；经用户确认后修正断言为 {@code { legacyStageRequirementStatuses?: Record<string, string[]> }}，运行时行为不变"
+    },
+    {
+      "command": "npm --prefix web run build",
+      "result": "通过（vue-tsc --noEmit 与 vite build 均成功，仅剩既有 chunk 体积警告）"
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "result": "通过（213 个迁移 + 1 个回调 + 1 个历史迁移）"
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "result": "模块边界与技能检查通过；AI 控制账本检查仍报告其他历史任务缺失证据等既有问题，本次新增文件不在违规清单中"
+    }
+  ],
+  "not_executed": [
+    "mvn -pl :ccb-requirement -am test",
+    "mvn test",
+    "浏览器验收"
+  ],
+  "fixes_after_user_feedback": [
+    {
+      "reported": "RequirementsView.vue 运行时报 Cannot access 'projectContext' before initialization",
+      "cause": "新增的项目切换 watcher 与 immediate 深链 watcher 放在 projectContext、userOptions 等声明之前，Vue 在 setup 阶段立即执行 watcher getter/callback，触发 const 声明前的 TDZ",
+      "fix": "两个 watcher 移到 projectContext/userOptions/loadUserOptions 声明之后；深链改为 onMounted 首次执行 + route.query 变化时执行，不再 immediate"
+    }
+  ],
+  "known_issues": [
+    "交付件评审提交后由审批人在我的待办处理，需求页面不再提供直接审批入口",
+    "存量处于评审中但没有流程实例的历史数据只能查看评审记录，无法再次审批",
+    "流转范围收窄后，原可流转给非项目成员的用法会被拒绝"
+  ],
+  "rollback": "回退本次 Java/TS/Vue、pom 与 modules.yaml 变更；数据库保留新增列与流程定义",
+  "handoff": "用户自行执行测试与浏览器验收，Codex 不声明测试、构建与浏览器验收证据"
+}

@@ -1,0 +1,29 @@
+{
+  "task_id": "T2",
+  "status": "implemented",
+  "changed_surfaces": [
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/service/RequirementReviewReportService.java", "purpose": "新增 ccb.requirement.review-report-required 开关（默认 true），关闭时允许无附件提交并返回空引用"},
+    {"path_or_resource": "server/src/modules/requirement/src/main/java/com/ccb/requirement/web/RequirementController.java", "purpose": "/requirements/enums 下发 reviewReportRequired 供前端对齐"},
+    {"path_or_resource": "server/src/platform/boot/src/main/resources/application-dev.yml", "purpose": "dev 环境 review-report-required=false"},
+    {"path_or_resource": "web/src/views/RequirementsView.vue", "purpose": "按开关决定必填标记与提交拦截，未开启时提示可选"},
+    {"path_or_resource": "web/src/api/requirements.ts", "purpose": "submitReview/submitDeliverableReview 的 reportAttachmentId 改为可选"}
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "commands": [
+    {"command": "node -e \"@vue/compiler-sfc parse + compileTemplate + compileScript\"", "exit_code": 0, "salient_output": "均通过"},
+    {"command": "node scripts/check-module-boundaries.mjs / check-flyway-migrations.mjs / git diff --check", "exit_code": 0, "salient_output": "全部通过"}
+  ],
+  "local_checks": [
+    {"check": "开关两端一致", "result": "pass", "evidence": "后端 required() 经 /enums 下发；前端 reviewReportRequired 控制必填与拦截；缺省仍为必传", "limitations": ["未运行后端验证开关生效"]},
+    {"check": "上传能力保留", "result": "pass", "evidence": "开关关闭时仍可上传（校验+绑定逻辑不变），只是不强制", "limitations": []}
+  ],
+  "diff_summary": ["新增配置开关并贯通前后端；dev 环境关闭必传，其它环境保持必传"],
+  "invariants_checked": [
+    {"invariant": "生产/默认口径不被削弱", "result": "pass", "evidence": "默认值 true，仅 application-dev.yml 显式关闭"},
+    {"invariant": "不改表结构与契约形状", "result": "pass", "evidence": "仅参数可空与配置读取"}
+  ],
+  "disturbances": [],
+  "assumptions_falsified": [],
+  "unresolved_items": ["平台附件/MinIO 就绪后应把 application-dev.yml 的开关改回 true"],
+  "recommended_next": "observe"
+}
