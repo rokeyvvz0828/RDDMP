@@ -18,6 +18,7 @@ import {
   confirmImport,
   createBaseline,
   createDifference,
+  getDifference,
   createLegacy,
   deleteCoordination,
   deleteDeliverable,
