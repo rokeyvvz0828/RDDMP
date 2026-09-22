@@ -222,7 +222,7 @@ public class EnvironmentResourceService {
         requireActor(actor);
         store.lockEnvironment(actor.tenantId(), project.id(), id).orElseThrow(() -> notFound("具体环境不存在"));
         if (!store.deleteEnvironment(actor.tenantId(), project.id(), id, rowVersion)) {
-            throw conflict("具体环境已被资源申请引用或已被其他人修改，不能删除");
+            throw conflict("具体环境已被资源申请或投产演练引用，或已被其他人修改，不能删除");
         }
     }
 

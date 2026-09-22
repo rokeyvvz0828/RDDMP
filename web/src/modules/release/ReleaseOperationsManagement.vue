@@ -5,7 +5,6 @@ import { apiErrorMessage } from '../../api/error'
 import { getProjectWorkbench } from '../../api/project'
 import { useProjectContextStore } from '../../stores/project-context'
 import ReleaseDrillPlanView from './components/ReleaseDrillPlanView.vue'
-import ReleaseDrillEnvironmentView from './components/ReleaseDrillEnvironmentView.vue'
 import ReleaseDrillExecutionView from './components/ReleaseDrillExecutionView.vue'
 import ReleaseIssueTrackingView from './components/ReleaseIssueTrackingView.vue'
 import ReleaseOperationsOrganizationView from './components/ReleaseOperationsOrganizationView.vue'
@@ -18,7 +17,7 @@ const loading = ref(false)
 const error = ref('')
 const currentProjectId = ref<number>()
 let lookupGeneration = 0
-const routeMap = { '/release-operations/drill-plans': 'plans', '/release-operations/environments': 'environments', '/release-operations/drills': 'drills', '/release-operations/issues': 'issues', '/release-operations/organization': 'organization' } as const
+const routeMap = { '/release-operations/drill-plans': 'plans', '/release-operations/drills': 'drills', '/release-operations/issues': 'issues', '/release-operations/organization': 'organization' } as const
 
 async function resolveProject() {
   const generation = ++lookupGeneration
@@ -45,7 +44,6 @@ watch(() => projectStore.currentRef, () => { if (projectStore.currentRef) void r
     <section v-else-if="!projectStore.current || !currentProjectId" class="release-operations-state"><el-result icon="info" :title="projectStore.current ? '正在切换项目' : '暂无当前项目'" :sub-title="projectStore.current ? '正在加载当前项目数据，请稍候。' : '请先在页面顶部选择一个可用项目。'" /></section>
     <section v-else v-loading="loading" class="release-operations-content">
       <ReleaseDrillPlanView v-if="routeMap[route.path as keyof typeof routeMap] === 'plans'" :key="`plans-${projectStore.currentRef}`" :project-id="currentProjectId" />
-      <ReleaseDrillEnvironmentView v-else-if="routeMap[route.path as keyof typeof routeMap] === 'environments'" :key="`environments-${projectStore.currentRef}`" :project-id="currentProjectId" />
       <ReleaseDrillExecutionView v-else-if="routeMap[route.path as keyof typeof routeMap] === 'drills'" :key="`drills-${projectStore.currentRef}`" :project-id="currentProjectId" />
       <ReleaseIssueTrackingView v-else-if="routeMap[route.path as keyof typeof routeMap] === 'issues'" :key="`issues-${projectStore.currentRef}`" :project-id="currentProjectId" />
       <ReleaseOperationsOrganizationView v-else-if="routeMap[route.path as keyof typeof routeMap] === 'organization'" :key="`organization-${projectStore.currentRef}`" :project-id="currentProjectId" />

@@ -448,6 +448,13 @@ public class EnvironmentResourceStore {
                         AND request.project_id = arch_environment.project_id
                         AND request.environment_id = arch_environment.id
                   )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM rel_release_drill_round drill
+                      WHERE drill.tenant_id = arch_environment.tenant_id
+                        AND drill.project_id = arch_environment.project_id
+                        AND drill.environment_id = arch_environment.id
+                        AND drill.deleted = 0
+                  )
                 """, tenantId, projectId, id, expectedRowVersion) == 1;
     }
 

@@ -44,6 +44,14 @@ public class ProjectService {
     private static final Set<String> PLAN_STATUSES = Set.of("NOT_STARTED", "IN_PROGRESS", "COMPLETED", "BLOCKED");
     private static final Set<String> PLAN_PARTY_TYPES = Set.of("LEAD", "COOPERATING");
     private static final Set<String> PLAN_GROUP_COLOR_TOKENS = Set.of("brand", "accent", "success", "warning", "danger", "muted");
+    private static final Map<String, String> ANNOUNCEMENT_CATEGORIES = Map.of(
+            "PROJECT", "项目公告",
+            "REQUIREMENT", "需求公告",
+            "DEVELOPMENT", "开发公告",
+            "TEST", "测试公告",
+            "PRODUCTION", "投产公告",
+            "DATA_MIGRATION", "数据迁移公告");
+    private static final List<String> ANNOUNCEMENT_CATEGORY_CODES = List.of("PROJECT", "REQUIREMENT", "DEVELOPMENT", "TEST", "PRODUCTION", "DATA_MIGRATION");
     private static final String DEFAULT_PLAN_GROUP_COLOR_TOKEN = "brand";
     private static final Set<String> RELEASE_CALENDAR_THEME_KEYS = Set.of("tone-1", "tone-2", "tone-3", "tone-4", "tone-5", "system", "ocean", "emerald", "sunset", "graphite", "tech-blue", "violet", "amber", "primary", "success", "warning", "danger", "info");
     private static final String DEFAULT_PLAN_NUMBER_RULE = "{PROJECT_CODE}-P{SEQ:3}";
@@ -1095,8 +1103,8 @@ public class ProjectService {
     public List<Map<String, Object>> releaseCalendar(long projectId, String month, AuthUser user) {
         requireProjectAccess(projectId, user, false);
         YearMonth targetMonth = releaseCalendarMonth(month);
-        return jdbc.queryForList("SELECT id, project_id, title, release_date, remark, theme_key, row_version, created_by, updated_by, created_at, updated_at FROM pm_project_release_calendar WHERE project_id = ? AND tenant_id = ? AND release_date >= ? AND release_date < ? AND deleted = 0 ORDER BY release_date, id",
-                projectId, user.tenantId(), Date.valueOf(targetMonth.atDay(1)), Date.valueOf(targetMonth.plusMonths(1).atDay(1)));
+        return jdbc.queryForList("SELECT id, project_id, title, release_start_date, release_end_date, remark, theme_key, row_version, created_by, updated_by, created_at, updated_at FROM pm_project_release_calendar WHERE project_id = ? AND tenant_id = ? AND release_start_date < ? AND release_end_date >= ? AND deleted = 0 ORDER BY release_start_date, release_end_date, id",
+                projectId, user.tenantId(), Date.valueOf(targetMonth.plusMonths(1).atDay(1)), Date.valueOf(targetMonth.atDay(1)));
     }
 
     @Transactional
@@ -1104,12 +1112,15 @@ public class ProjectService {
         requireProjectAccess(projectId, user, false);
         Map<String, Object> payload = input == null ? Map.of() : input;
         String title = required(payload, "title", "投产标题", 128);
-        Date releaseDate = requiredReleaseDate(payload.get("release_date"));
+        Date releaseStartDate = requiredReleaseDate(payload.get("release_start_date"), "投产开始日期");
+        Date releaseEndDate = requiredReleaseDate(payload.get("release_end_date"), "投产结束日期");
+        ensureReleaseDateRange(releaseStartDate, releaseEndDate);
+        ensureReleaseCalendarRangeAvailable(projectId, user.tenantId(), releaseStartDate, releaseEndDate, null);
         String remark = optional(payload, "remark", null);
         String themeKey = releaseCalendarThemeKey(payload.get("theme_key"));
         if (remark != null && remark.length() > 1000) throw badRequest("备注不能超过1000个字符");
         long id = nextId();
-        jdbc.update("INSERT INTO pm_project_release_calendar (id, tenant_id, project_id, title, release_date, remark, theme_key, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, title, releaseDate, remark, themeKey, user.id(), user.id());
+        jdbc.update("INSERT INTO pm_project_release_calendar (id, tenant_id, project_id, title, release_start_date, release_end_date, release_date, remark, theme_key, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id, user.tenantId(), projectId, title, releaseStartDate, releaseEndDate, releaseStartDate, remark, themeKey, user.id(), user.id());
         audit(user, "project:release-calendar:create", id);
         return releaseCalendarEntry(projectId, id, user.tenantId());
     }
@@ -1121,11 +1132,14 @@ public class ProjectService {
         long rowVersion = longValue(payload.get("row_version"), 0);
         if (rowVersion <= 0) throw badRequest("日历版本号无效");
         String title = required(payload, "title", "投产标题", 128);
-        Date releaseDate = requiredReleaseDate(payload.get("release_date"));
+        Date releaseStartDate = requiredReleaseDate(payload.get("release_start_date"), "投产开始日期");
+        Date releaseEndDate = requiredReleaseDate(payload.get("release_end_date"), "投产结束日期");
+        ensureReleaseDateRange(releaseStartDate, releaseEndDate);
+        ensureReleaseCalendarRangeAvailable(projectId, user.tenantId(), releaseStartDate, releaseEndDate, calendarId);
         String remark = optional(payload, "remark", null);
         String themeKey = releaseCalendarThemeKey(payload.get("theme_key"));
         if (remark != null && remark.length() > 1000) throw badRequest("备注不能超过1000个字符");
-        int updated = jdbc.update("UPDATE pm_project_release_calendar SET title = ?, release_date = ?, remark = ?, theme_key = ?, updated_by = ?, row_version = row_version + 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND row_version = ? AND deleted = 0", title, releaseDate, remark, themeKey, user.id(), calendarId, projectId, user.tenantId(), rowVersion);
+        int updated = jdbc.update("UPDATE pm_project_release_calendar SET title = ?, release_start_date = ?, release_end_date = ?, release_date = ?, remark = ?, theme_key = ?, updated_by = ?, row_version = row_version + 1 WHERE id = ? AND project_id = ? AND tenant_id = ? AND row_version = ? AND deleted = 0", title, releaseStartDate, releaseEndDate, releaseStartDate, remark, themeKey, user.id(), calendarId, projectId, user.tenantId(), rowVersion);
         if (updated == 0) throw new BusinessException(ErrorCode.CONFLICT, "投产日历已被更新或不存在，请刷新后重试");
         audit(user, "project:release-calendar:update", calendarId);
         return releaseCalendarEntry(projectId, calendarId, user.tenantId());
@@ -1142,25 +1156,35 @@ public class ProjectService {
 
     public List<Map<String, Object>> announcements(long projectId, String stageCode, AuthUser user) {
         requireProjectAccess(projectId, user, false);
-        if (stageCode != null && !stageCode.isBlank()) validateProjectStage(projectId, stageCode, user.tenantId(), true);
-        String stageClause = stageCode == null || stageCode.isBlank() ? "" : " AND a.stage_code = ?";
+        String stageClause = stageCode == null || stageCode.isBlank()
+                ? " AND a.stage_code IN (" + announcementCategoryPlaceholders() + ")"
+                : " AND a.stage_code = ?";
         List<Object> args = new ArrayList<>(List.of(projectId, user.tenantId()));
-        if (!stageClause.isEmpty()) args.add(stageCode);
-        return jdbc.queryForList("SELECT a.id, a.project_id, a.stage_code, s.stage_name, a.title, a.content_html, a.pinned, a.row_version, a.created_by, u.display_name AS creator_name, a.created_at, a.updated_at FROM pm_project_announcement a LEFT JOIN pm_project_stage s ON s.project_id = a.project_id AND s.tenant_id = a.tenant_id AND s.stage_code = a.stage_code LEFT JOIN sys_user u ON u.id = a.created_by AND u.tenant_id = a.tenant_id WHERE a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0" + stageClause + " ORDER BY a.pinned DESC, s.sort_no, a.created_at DESC, a.id DESC", args.toArray());
+        if (stageCode == null || stageCode.isBlank()) args.addAll(ANNOUNCEMENT_CATEGORY_CODES);
+        else args.add(validateAnnouncementCategory(stageCode));
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT a.id, a.project_id, a.stage_code, a.title, a.content_html, a.pinned, a.row_version, a.created_by, u.display_name AS creator_name, a.created_at, a.updated_at FROM pm_project_announcement a LEFT JOIN sys_user u ON u.id = a.created_by AND u.tenant_id = a.tenant_id WHERE a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0" + stageClause + " ORDER BY a.pinned DESC, a.created_at DESC, a.id DESC", args.toArray());
+        return withAnnouncementCategoryNames(rows);
     }
 
     public List<Map<String, Object>> currentAnnouncements(long projectId, AuthUser user) {
         requireProjectAccess(projectId, user, false);
-        Date today = Date.valueOf(LocalDate.now());
-        return jdbc.queryForList("SELECT a.id, a.project_id, a.stage_code, s.stage_name, s.sort_no, a.title, a.content_html, a.pinned, a.row_version, a.created_by, u.display_name AS creator_name, a.created_at, a.updated_at FROM pm_project_announcement a JOIN (SELECT DISTINCT phase FROM pm_project_plan WHERE project_id = ? AND tenant_id = ? AND parent_id = 0 AND deleted = 0 AND planned_start_date <= ? AND planned_end_date >= ? AND phase IS NOT NULL) active ON active.phase = a.stage_code LEFT JOIN pm_project_stage s ON s.project_id = a.project_id AND s.tenant_id = a.tenant_id AND s.stage_code = a.stage_code LEFT JOIN sys_user u ON u.id = a.created_by AND u.tenant_id = a.tenant_id WHERE a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0 ORDER BY a.pinned DESC, s.sort_no, a.created_at DESC, a.id DESC", projectId, user.tenantId(), today, today, projectId, user.tenantId());
+        String categoryClause = " AND a.stage_code IN (" + announcementCategoryPlaceholders() + ")";
+        String select = "SELECT a.id, a.project_id, a.stage_code, a.title, a.content_html, a.pinned, a.row_version, a.created_by, u.display_name AS creator_name, a.created_at, a.updated_at FROM pm_project_announcement a LEFT JOIN sys_user u ON u.id = a.created_by AND u.tenant_id = a.tenant_id WHERE a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0" + categoryClause;
+        List<Object> baseArgs = new ArrayList<>(List.of(projectId, user.tenantId()));
+        baseArgs.addAll(ANNOUNCEMENT_CATEGORY_CODES);
+        List<Map<String, Object>> pinned = jdbc.queryForList(select + " AND a.pinned = 1 ORDER BY a.created_at DESC, a.id DESC", baseArgs.toArray());
+        List<Map<String, Object>> latest = jdbc.queryForList(select + " AND a.pinned = 0 ORDER BY a.created_at DESC, a.id DESC LIMIT 3", baseArgs.toArray());
+        List<Map<String, Object>> result = new ArrayList<>(pinned.size() + latest.size());
+        result.addAll(pinned);
+        result.addAll(latest);
+        return withAnnouncementCategoryNames(result);
     }
 
     @Transactional
     public Map<String, Object> createAnnouncement(long projectId, Map<String, Object> input, AuthUser user) {
         requireProjectAccess(projectId, user, false);
         Map<String, Object> payload = input == null ? Map.of() : input;
-        String stageCode = required(payload, "stage_code", "项目阶段", 64);
-        validateProjectStage(projectId, stageCode, user.tenantId(), true);
+        String stageCode = validateAnnouncementCategory(required(payload, "stage_code", "公告栏位", 64));
         String title = required(payload, "title", "公告标题", 128);
         String content = requiredAnnouncementHtml(payload.get("content_html"));
         boolean pinned = Boolean.TRUE.equals(payload.get("pinned"));
@@ -1176,8 +1200,7 @@ public class ProjectService {
         Map<String, Object> payload = input == null ? Map.of() : input;
         long rowVersion = longValue(payload.get("row_version"), 0);
         if (rowVersion <= 0) throw badRequest("公告版本号无效");
-        String stageCode = required(payload, "stage_code", "项目阶段", 64);
-        validateProjectStage(projectId, stageCode, user.tenantId(), true);
+        String stageCode = validateAnnouncementCategory(required(payload, "stage_code", "公告栏位", 64));
         String title = required(payload, "title", "公告标题", 128);
         String content = requiredAnnouncementHtml(payload.get("content_html"));
         boolean pinned = Boolean.TRUE.equals(payload.get("pinned"));
@@ -1205,8 +1228,25 @@ public class ProjectService {
     }
 
     private Map<String, Object> announcementEntry(long projectId, long announcementId, long tenantId) {
-        try { return jdbc.queryForMap("SELECT a.id, a.project_id, a.stage_code, s.stage_name, a.title, a.content_html, a.pinned, a.row_version, a.created_by, a.created_at, a.updated_at FROM pm_project_announcement a LEFT JOIN pm_project_stage s ON s.project_id = a.project_id AND s.tenant_id = a.tenant_id AND s.stage_code = a.stage_code WHERE a.id = ? AND a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0", announcementId, projectId, tenantId); }
+        try {
+            Map<String, Object> row = jdbc.queryForMap("SELECT a.id, a.project_id, a.stage_code, a.title, a.content_html, a.pinned, a.row_version, a.created_by, a.created_at, a.updated_at FROM pm_project_announcement a WHERE a.id = ? AND a.project_id = ? AND a.tenant_id = ? AND a.deleted = 0", announcementId, projectId, tenantId);
+            return withAnnouncementCategoryNames(List.of(row)).get(0);
+        }
         catch (EmptyResultDataAccessException exception) { throw badRequest("公告不存在"); }
+    }
+
+    private String announcementCategoryPlaceholders() {
+        return String.join(", ", ANNOUNCEMENT_CATEGORY_CODES.stream().map(value -> "?").toList());
+    }
+
+    private String validateAnnouncementCategory(String value) {
+        if (value == null || !ANNOUNCEMENT_CATEGORIES.containsKey(value)) throw badRequest("公告栏位无效");
+        return value;
+    }
+
+    private List<Map<String, Object>> withAnnouncementCategoryNames(List<Map<String, Object>> rows) {
+        rows.forEach(row -> row.put("stage_name", ANNOUNCEMENT_CATEGORIES.get(String.valueOf(row.get("stage_code")))));
+        return rows;
     }
 
     private YearMonth releaseCalendarMonth(String month) {
@@ -1214,15 +1254,26 @@ public class ProjectService {
         catch (RuntimeException exception) { throw badRequest("月份必须为YYYY-MM格式"); }
     }
 
-    private Date requiredReleaseDate(Object value) {
+    private Date requiredReleaseDate(Object value, String label) {
         Date result = date(value);
-        if (result == null) throw badRequest("投产日期不能为空");
+        if (result == null) throw badRequest(label + "不能为空");
         return result;
+    }
+    private void ensureReleaseDateRange(Date start, Date end) { if (start.after(end)) throw badRequest("投产开始日期不能晚于结束日期"); }
+    private void ensureReleaseCalendarRangeAvailable(long projectId, long tenantId, Date start, Date end, Long excludedCalendarId) {
+        String exclusion = excludedCalendarId == null ? "" : " AND id <> ?";
+        List<Object> args = new ArrayList<>(List.of(projectId, tenantId, end, start));
+        if (excludedCalendarId != null) args.add(excludedCalendarId);
+        Integer overlapping = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pm_project_release_calendar WHERE project_id = ? AND tenant_id = ? AND deleted = 0" +
+                        " AND release_start_date <= ? AND release_end_date >= ?" + exclusion,
+                Integer.class, args.toArray());
+        if (overlapping != null && overlapping > 0) throw badRequest("投产日期范围与已有安排重叠，同一日期只能维护一条投产安排");
     }
     private String releaseCalendarThemeKey(Object value) { String key = value == null || String.valueOf(value).isBlank() ? "tone-1" : String.valueOf(value).trim(); if (!RELEASE_CALENDAR_THEME_KEYS.contains(key)) throw badRequest("投产日历主题色系无效"); return key; }
 
     private Map<String, Object> releaseCalendarEntry(long projectId, long calendarId, long tenantId) {
-        try { return jdbc.queryForMap("SELECT id, project_id, title, release_date, remark, theme_key, row_version, created_by, updated_by, created_at, updated_at FROM pm_project_release_calendar WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", calendarId, projectId, tenantId); }
+        try { return jdbc.queryForMap("SELECT id, project_id, title, release_start_date, release_end_date, remark, theme_key, row_version, created_by, updated_by, created_at, updated_at FROM pm_project_release_calendar WHERE id = ? AND project_id = ? AND tenant_id = ? AND deleted = 0", calendarId, projectId, tenantId); }
         catch (EmptyResultDataAccessException exception) { throw badRequest("投产日历条目不存在"); }
     }
 

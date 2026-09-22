@@ -1,0 +1,16 @@
+{
+  "sample_label":"T2 frontend range independent observation",
+  "task_ids":["T2"],
+  "baseline_revision":"baseline-2",
+  "measurements":[
+    {"requirement_id":"R1","sensor":"S4 frontend production build","result":"pass","raw_evidence":"vue-tsc passed and Vite built 2626 modules successfully.","limitation":["Does not prove interactive browser navigation."]},
+    {"requirement_id":"R2","sensor":"S4 stale-consumer search","result":"pass","raw_evidence":"ProjectView, project.ts and project types use release_start_date/release_end_date; no stale release_date frontend consumer remains.","limitation":["Does not prove API persistence."]},
+    {"requirement_id":"R4","sensor":"S5 browser viewport","result":"sensor-fault","raw_evidence":"cua browser initialization failed with OS error: failed to write kernel assets; local 8080 and 5173 endpoints also refused connections.","limitation":["No visual, interaction or scrollWidth measurement was available."]},
+    {"requirement_id":"R5","sensor":"S4 build and diff","result":"pass","raw_evidence":"Production build passed and git diff --check returned zero.","limitation":["Theme readability not visually observed."]}
+  ],
+  "feedback":[{"requirement_id":"R4","expected":"Desktop and required mobile range rendering is observable without page overflow.","observed":"Browser sensor could not initialize and local runtime ports were unavailable.","reproduction":"Call cua.getState(); request http://127.0.0.1:8080/actuator/health and http://127.0.0.1:5173/.","evidence":"cua returned OS error 3; both HTTP requests were actively refused.","severity":"P2","confidence":"high","sensor_limit":"This is an environment/sensor failure, not a product rendering assertion.","causal_hypothesis":"Browser kernel asset path and local services are unavailable in this session.","correction_check":"Restart local frontend/backend and rerun browser viewport checks when a supported browser surface is available.","classification":"sensor-fault"}],
+  "disturbances":[{"source":"local services not running","effect":"runtime/API/browser checks unavailable","detectable":true,"controllable":true}],
+  "coverage_gaps":["No real browser desktop/mobile observation","No live API range CRUD or Flyway application observation"],
+  "error_counts":{"P0":0,"P1":0,"P2":1,"P3":0},
+  "observation_status":"complete"
+}

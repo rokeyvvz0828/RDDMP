@@ -1,0 +1,14 @@
+{
+  "task_id":"T2",
+  "status":"implemented",
+  "changed_surfaces":[{"path_or_resource":"web/src/types/project.ts","purpose":"Expose release_start_date/release_end_date in calendar DTO."},{"path_or_resource":"web/src/api/project.ts","purpose":"Send date-range create/update payloads."},{"path_or_resource":"web/src/views/ProjectView.vue","purpose":"Use daterange form, inclusive daily matching, cross-month mobile groups and range tooltip text."}],
+  "requirements_addressed":["R1","R2","R4","R5"],
+  "commands":[{"command":"npm --prefix web run build","exit_code":0,"salient_output":"vue-tsc passed; Vite transformed 2626 modules and built production assets successfully."},{"command":"git diff --check","exit_code":0,"salient_output":"No whitespace errors reported."}],
+  "local_checks":[{"check":"range consumer search","result":"passed","evidence":"No stale release_date consumer remains in ProjectView/types/API; backend legacy column is only synchronized on write.","limitations":["No browser interaction yet"]}],
+  "diff_summary":["ProjectReleaseCalendar DTO/API now use start/end fields","Form uses Element Plus daterange picker","Desktop and overview cells match inclusive range","Mobile groups expand each covered day","Range boundaries and remarks are visible in tooltips/list entries"],
+  "invariants_checked":[{"invariant":"Existing tab query and theme controls remain in ProjectView","result":"passed","evidence":"Only release calendar state/template paths changed and build passed"},{"invariant":"No new public component or dependency","result":"passed","evidence":"Existing Element Plus date picker reused"}],
+  "disturbances":[],
+  "assumptions_falsified":[],
+  "unresolved_items":["Browser viewport, live API and migration integration remain for T3."],
+  "recommended_next":"observe"
+}

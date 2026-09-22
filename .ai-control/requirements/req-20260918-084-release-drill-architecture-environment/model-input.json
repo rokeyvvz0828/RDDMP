@@ -1,0 +1,61 @@
+{
+  "baseline_revision": "baseline-1",
+  "plant_boundary": {
+    "inside": ["architecture ReleaseMasterDataQuery", "release ReleaseArchitectureDirectory", "boot adapter", "release drill service/store/UI", "architecture environment delete store", "V217 migration"],
+    "environment": ["MySQL schema and data", "authenticated project members", "dynamic system menus and permissions"]
+  },
+  "state_variables": [
+    {"name":"architecture_environment","owner":"architecture","valid_values":["same tenant/project and ACTIVE", "missing", "inactive", "other project"]},
+    {"name":"release_drill_environment_id","owner":"release","valid_values":["valid arch_environment id", "rejected"]},
+    {"name":"legacy_drill_data","owner":"V217","valid_values":["present before migration", "removed after migration"]},
+    {"name":"environment_delete","owner":"architecture","valid_values":["allowed", "blocked by resource request", "blocked by release drill"]}
+  ],
+  "causal_paths": [
+    {"requirement_id":"R1","input":"release operations navigation or API request","transitions":["router/controller removal", "V217 menu and grant cleanup"],"outputs":["no private drill environment entry or endpoint"]},
+    {"requirement_id":"R2","input":"release drill environmentId","transitions":["release directory resolves public architecture projection", "tenant/project/ACTIVE query filters", "release persists resolved id"],"outputs":["only active current-project environment accepted and displayed"]},
+    {"requirement_id":"R3","input":"Flyway V217","transitions":["delete issue references", "delete steps and rounds", "drop legacy table", "retire menu grants"],"outputs":["no legacy drill environment data or table"]},
+    {"requirement_id":"R4","input":"architecture environment delete","transitions":["lock environment", "store checks release drill references", "delete only when no reference exists"],"outputs":["referenced environment deletion is rejected"]},
+    {"requirement_id":"R5","input":"release drill read/write","transitions":["release-owned port", "boot adapter", "architecture public query", "existing release authorization"],"outputs":["no direct release access to architecture persistence"]}
+  ],
+  "interfaces": [
+    {"name":"ReleaseMasterDataQuery environment projection","producers":["architecture"],"consumers":["boot adapter"],"invariant":"tenant, project, deleted and ACTIVE filters are applied"},
+    {"name":"ReleaseArchitectureDirectory environment projection","producers":["boot adapter"],"consumers":["release operations service"],"invariant":"release does not access architecture tables or private classes"}
+  ],
+  "sensors": [
+    {"id":"S1","target":"R1/R2/R4/R5 Java behavior","method":"focused architecture and release unit/service tests plus source-boundary search","blind_spots":["actual Flyway execution"],"independence":"test execution and static source search"},
+    {"id":"S2","target":"R3 database cleanup","method":"Flyway migration integration test and migration checker","blind_spots":["production backup availability"],"independence":"database migration execution"},
+    {"id":"S3","target":"R1/R2 frontend route and interaction","method":"Vite production build and browser path at desktop/mobile","blind_spots":["production authorization configuration"],"independence":"compiled frontend and browser observation"}
+  ],
+  "actuators": [
+    {"id":"A1","target":"architecture public projection and deletion guard","action":"extend scoped public contract, adapter and store guard","authority":"REQ-084 writable paths","impact_radius":"architecture/release/boot integration","rollback":"revert scoped source changes before V217"},
+    {"id":"A2","target":"release private environment removal","action":"replace release service/store/API/router/UI environment handling","authority":"REQ-084 writable paths","impact_radius":"release module and frontend","rollback":"revert scoped application changes before V217"},
+    {"id":"A3","target":"legacy data and menu cleanup","action":"append V217 only","authority":"REQ-084 migration path","impact_radius":"release drill data and system menu grants","rollback":"restore verified pre-migration database backup"}
+  ],
+  "measurements": [
+    {"requirement_id":"R1","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R2","sensor_ids":["S1","S3"],"observable":"yes"},
+    {"requirement_id":"R3","sensor_ids":["S2"],"observable":"yes"},
+    {"requirement_id":"R4","sensor_ids":["S1"],"observable":"yes"},
+    {"requirement_id":"R5","sensor_ids":["S1","S3"],"observable":"yes"}
+  ],
+  "disturbances": [
+    {"source":"legacy foreign keys or menu grants","effect":"V217 may fail or omit dependent rows","detectable":true,"controllable":true},
+    {"source":"existing dirty task documentation","effect":"diff and scope checks contain pre-code task artifacts","detectable":true,"controllable":true},
+    {"source":"local browser or services unavailable","effect":"browser evidence may be limited","detectable":true,"controllable":false}
+  ],
+  "delays": [
+    {"source":"Flyway migration and Maven reactor","consequence":"schema failures appear after build/test startup","sampling_rule":"run focused tests before full regression"},
+    {"source":"frontend build and browser rendering","consequence":"route removal errors may only appear after bundle build","sampling_rule":"build before browser observation"}
+  ],
+  "assumptions": [
+    {"text":"arch_environment supports tenant/project/ACTIVE filtering and release drill can preserve environmentId semantics","evidence":"JdbcReleaseMasterDataQuery and ReleaseOperationsStore currently use these fields","falsifier":"schema inspection or focused test shows a required column/relationship is absent"}
+  ],
+  "control_assessment": [
+    {"requirement_id":"R1","observable":"yes","controllable":"yes","action":"T2 and T3"},
+    {"requirement_id":"R2","observable":"yes","controllable":"yes","action":"T1 then T2"},
+    {"requirement_id":"R3","observable":"yes","controllable":"yes","action":"T3"},
+    {"requirement_id":"R4","observable":"yes","controllable":"yes","action":"T1"},
+    {"requirement_id":"R5","observable":"yes","controllable":"yes","action":"T1 and T2"}
+  ],
+  "model_status": "ready"
+}

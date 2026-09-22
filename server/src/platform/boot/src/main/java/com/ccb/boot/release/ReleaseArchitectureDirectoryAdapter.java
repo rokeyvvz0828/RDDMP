@@ -42,6 +42,18 @@ public class ReleaseArchitectureDirectoryAdapter implements ReleaseArchitectureD
                         value.deliveryUnits().stream().map(ReleaseArchitectureDirectoryAdapter::delivery).toList()));
     }
 
+    @Override
+    public java.util.List<Environment> listActiveEnvironments(AuthUser actor, long projectId) {
+        return query.listActiveEnvironments(actor, projectId).stream()
+                .map(value -> new Environment(value.id(), value.code(), value.name(), value.typeName())).toList();
+    }
+
+    @Override
+    public Optional<Environment> resolveActiveEnvironment(AuthUser actor, long projectId, long environmentId) {
+        return query.resolveActiveEnvironment(actor, projectId, environmentId)
+                .map(value -> new Environment(value.id(), value.code(), value.name(), value.typeName()));
+    }
+
     private static PhysicalSubsystem physical(ReleaseMasterDataQuery.PhysicalSubsystemRef value) {
         return new PhysicalSubsystem(value.id(), value.code(), value.name());
     }

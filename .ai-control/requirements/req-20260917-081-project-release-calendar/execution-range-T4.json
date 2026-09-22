@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-081-project-release-calendar",
+  "task_id": "T4",
+  "status": "implemented",
+  "recorded_at": "2026-09-21T17:40:00+08:00",
+  "trigger": "User clarified that uniqueness applies per date, not to the whole project.",
+  "changed_surfaces": [
+    "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+    "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+    "web/src/views/ProjectView.vue",
+    "docs/requirements/REQ-20260917-081-project-release-calendar/requirement.md",
+    "docs/engineering-control/designs/2026-09-17-project-release-calendar-design.md",
+    "docs/engineering-control/plans/2026-09-17-project-release-calendar-implementation-plan.md",
+    ".ai-control/requirements/req-20260917-081-project-release-calendar/baseline.json",
+    ".ai-control/requirements/req-20260917-081-project-release-calendar/control-plan.json",
+    ".ai-control/requirements/req-20260917-081-project-release-calendar/design.json",
+    ".ai-control/requirements/req-20260917-081-project-release-calendar/handoff.json"
+  ],
+  "requirements_addressed": ["R2", "R4"],
+  "implementation": [
+    "Replaced project-wide single-entry rejection with inclusive date-range overlap validation, excluding the entry being edited.",
+    "Allowed multiple non-overlapping arrangements for one project; overlapping ranges, including same-day ranges, remain rejected.",
+    "Restored the toolbar create action and added a desktop empty-date create action with the selected date prefilled."
+  ],
+  "commands": [
+    {
+      "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am -Dtest=ProjectServiceTest,ProjectReleaseCalendarMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exit_code": 0,
+      "result": "73 tests passed."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "No whitespace errors; existing line-ending warnings only."
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": null,
+      "result": "vue-tsc remained running without output under the shared local process load and was stopped; no successful full-build claim."
+    },
+    {
+      "command": "npm exec vite build (web)",
+      "exit_code": null,
+      "result": "Vite transformed modules and emitted existing dependency annotation warnings, then remained running under the shared local process load and was stopped."
+    }
+  ],
+  "unresolved_items": [
+    "Full frontend type-check/production build and real-browser viewport acceptance remain pending because the local build/browser sensors are unavailable or stalled.",
+    "Unrelated REQ-083/REQ-084 worktree changes remain preserved."
+  ],
+  "recommended_next": "observe"
+}

@@ -2,12 +2,24 @@ package com.ccb.release.operations.web;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReleaseOperationsControllerSecurityTest {
+    @Test
+    void supportsTheEstablishedDrillEnvironmentRouteAndItsPluralAlias() throws NoSuchMethodException {
+        GetMapping mapping = ReleaseOperationsController.class
+                .getDeclaredMethod("drillEnvironments", long.class, com.ccb.security.model.AuthUser.class)
+                .getAnnotation(GetMapping.class);
+
+        assertTrue(Arrays.asList(mapping.value()).contains("/drill-environment"));
+        assertTrue(Arrays.asList(mapping.value()).contains("/drill-environments"));
+    }
+
     @Test
     void protectsAllOperationsByPageViewOrManagePermission() {
         PreAuthorize root = ReleaseOperationsController.class.getAnnotation(PreAuthorize.class);
@@ -21,8 +33,7 @@ class ReleaseOperationsControllerSecurityTest {
                 Map.entry("createPlanItem", "release-operations:plan:manage"),
                 Map.entry("updatePlanItem", "release-operations:plan:manage"),
                 Map.entry("deletePlanItem", "release-operations:plan:manage"),
-                Map.entry("drillEnvironments", "release-operations:environment:view"),
-                Map.entry("createDrillEnvironment", "release-operations:environment:manage"),
+                Map.entry("drillEnvironments", "release-operations:drill:view"),
                 Map.entry("releaseDrills", "release-operations:drill:view"),
                 Map.entry("createReleaseDrill", "release-operations:drill:manage"),
                 Map.entry("createDrillStep", "release-operations:drill:manage"),

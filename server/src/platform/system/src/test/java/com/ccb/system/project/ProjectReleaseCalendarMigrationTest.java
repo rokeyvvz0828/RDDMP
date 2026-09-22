@@ -12,10 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProjectReleaseCalendarMigrationTest {
     private static final String MIGRATION = "db/migration/V214__project_release_calendar.sql";
+    private static final String RANGE_MIGRATION = "db/migration/V218__project_release_calendar_date_range.sql";
 
     @Test
     void createsAnIndependentProjectCalendarWithMonthLookupAndAuditFields() throws IOException {
-        String sql = migrationSql();
+        String sql = migrationSql(MIGRATION);
 
         assertTrue(sql.contains("CREATE TABLE pm_project_release_calendar"));
         assertTrue(sql.contains("tenant_id BIGINT NOT NULL"));
@@ -28,11 +29,25 @@ class ProjectReleaseCalendarMigrationTest {
         assertFalse(sql.contains("DELETE FROM pm_project"));
     }
 
-    private String migrationSql() throws IOException {
+    @Test
+    void addsAndBackfillsInclusiveReleaseDateRange() throws IOException {
+        String sql = migrationSql(RANGE_MIGRATION);
+
+        assertTrue(sql.contains("ADD COLUMN release_start_date DATE NULL"));
+        assertTrue(sql.contains("ADD COLUMN release_end_date DATE NULL"));
+        assertTrue(sql.contains("release_start_date = release_date"));
+        assertTrue(sql.contains("release_end_date = release_date"));
+        assertTrue(sql.contains("MODIFY COLUMN release_start_date DATE NOT NULL"));
+        assertTrue(sql.contains("MODIFY COLUMN release_end_date DATE NOT NULL"));
+        assertTrue(sql.contains("idx_pm_project_release_calendar_range (tenant_id, project_id, release_start_date, release_end_date, deleted)"));
+        assertFalse(sql.contains("DROP TABLE"));
+    }
+
+    private String migrationSql(String migrationName) throws IOException {
         Path moduleDirectory = Path.of(System.getProperty("user.dir"));
-        Path migration = moduleDirectory.resolveSibling("infrastructure").resolve("src/main/resources").resolve(MIGRATION);
-        if (!Files.isRegularFile(migration)) migration = Path.of("server/src/platform/infrastructure/src/main/resources").resolve(MIGRATION);
-        if (!Files.isRegularFile(migration)) throw new IOException("Migration resource not found: " + MIGRATION);
+        Path migration = moduleDirectory.resolveSibling("infrastructure").resolve("src/main/resources").resolve(migrationName);
+        if (!Files.isRegularFile(migration)) migration = Path.of("server/src/platform/infrastructure/src/main/resources").resolve(migrationName);
+        if (!Files.isRegularFile(migration)) throw new IOException("Migration resource not found: " + migrationName);
         return Files.readString(migration, StandardCharsets.UTF_8);
     }
 }

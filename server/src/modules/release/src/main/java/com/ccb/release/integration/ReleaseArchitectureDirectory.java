@@ -19,9 +19,15 @@ public interface ReleaseArchitectureDirectory {
     Optional<Selection> resolveActiveSelection(AuthUser actor, long projectId, long physicalSubsystemId,
                                                 Collection<Long> deliveryUnitIds);
 
+    List<Environment> listActiveEnvironments(AuthUser actor, long projectId);
+
+    Optional<Environment> resolveActiveEnvironment(AuthUser actor, long projectId, long environmentId);
+
     record PhysicalSubsystem(long id, String code, String name) {}
 
     record DeliveryUnit(long id, long physicalSubsystemId, String code, String name, String artifactTypeCode) {}
 
     record Selection(PhysicalSubsystem physicalSubsystem, List<DeliveryUnit> deliveryUnits) {}
+
+    record Environment(long id, String code, String name, String typeName) {}
 }

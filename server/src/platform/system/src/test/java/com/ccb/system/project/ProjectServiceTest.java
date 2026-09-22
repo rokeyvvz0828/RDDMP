@@ -642,34 +642,78 @@ class ProjectServiceTest {
     @Test
     void letsAnActiveProjectMemberCreateReleaseCalendarEntries() {
         ProjectService service = new ProjectService(jdbc, storage);
-        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 0);
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_release_calendar"), any(Object[].class)))
-                .thenReturn(new HashMap<>(Map.of("id", 9701L, "project_id", 9001L, "title", "一期上线", "release_date", "2026-09-25", "row_version", 1L)));
+                .thenReturn(new HashMap<>(Map.of("id", 9701L, "project_id", 9001L, "title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "row_version", 1L)));
 
         Map<String, Object> result = service.createReleaseCalendar(9001L,
-                Map.of("title", "一期上线", "release_date", "2026-09-25", "remark", "夜间窗口"), member);
+                Map.of("title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "remark", "夜间窗口"), member);
 
         assertEquals("一期上线", result.get("title"));
+        verify(jdbc).queryForObject(org.mockito.ArgumentMatchers.contains("release_start_date <= ? AND release_end_date >= ?"),
+                eq(Integer.class), eq(9001L), eq(member.tenantId()), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")));
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_release_calendar"),
-                any(), eq(member.tenantId()), eq(9001L), eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")),
+                any(), eq(member.tenantId()), eq(9001L), eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")),
                 eq("夜间窗口"), eq("tone-1"), eq(member.id()), eq(member.id()));
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("sys_operation_log"), any(), eq(member.tenantId()),
                 eq(member.id()), eq("project:release-calendar:create"), any());
+    }
+
+    @Test
+    void rejectsReleaseCalendarRangeWhenStartIsAfterEnd() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 0);
+
+        assertThrows(BusinessException.class, () -> service.createReleaseCalendar(9001L,
+                Map.of("title", "一期上线", "release_start_date", "2026-09-26", "release_end_date", "2026-09-25"), member));
+
+        verify(jdbc, never()).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_release_calendar"), any(Object[].class));
+    }
+
+    @Test
+    void allowsASecondReleaseCalendarEntryWhenItsRangeDoesNotOverlap() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 0);
+        when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_release_calendar"), any(Object[].class)))
+                .thenReturn(new HashMap<>(Map.of("id", 9702L, "project_id", 9001L, "title", "二期上线", "release_start_date", "2026-10-10", "release_end_date", "2026-10-12", "row_version", 1L)));
+
+        Map<String, Object> result = service.createReleaseCalendar(9001L,
+                Map.of("title", "二期上线", "release_start_date", "2026-10-10", "release_end_date", "2026-10-12"), member);
+
+        assertEquals("二期上线", result.get("title"));
+        verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_release_calendar"),
+                any(), eq(member.tenantId()), eq(9001L), eq("二期上线"), eq(java.sql.Date.valueOf("2026-10-10")), eq(java.sql.Date.valueOf("2026-10-12")), eq(java.sql.Date.valueOf("2026-10-10")),
+                org.mockito.ArgumentMatchers.isNull(), eq("tone-1"), eq(member.id()), eq(member.id()));
+        verify(jdbc).queryForObject(org.mockito.ArgumentMatchers.contains("FROM pm_project_release_calendar"),
+                eq(Integer.class), eq(9001L), eq(member.tenantId()), eq(java.sql.Date.valueOf("2026-10-12")), eq(java.sql.Date.valueOf("2026-10-10")));
+    }
+
+    @Test
+    void rejectsOverlappingReleaseCalendarRange() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 1);
+
+        assertThrows(BusinessException.class, () -> service.createReleaseCalendar(9001L,
+                Map.of("title", "重叠安排", "release_start_date", "2026-09-25", "release_end_date", "2026-09-27"), member));
+
+        verify(jdbc, never()).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_release_calendar"), any(Object[].class));
+        verify(jdbc).queryForObject(org.mockito.ArgumentMatchers.contains("FROM pm_project_release_calendar"),
+                eq(Integer.class), eq(9001L), eq(member.tenantId()), eq(java.sql.Date.valueOf("2026-09-27")), eq(java.sql.Date.valueOf("2026-09-25")));
     }
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"tone-1", "tone-2", "tone-3", "tone-4", "tone-5"})
     void persistsThemeInternalColorFamiliesForReleaseCalendarEntries(String themeKey) {
         ProjectService service = new ProjectService(jdbc, storage);
-        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 0);
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_release_calendar"), any(Object[].class)))
-                .thenReturn(new HashMap<>(Map.of("id", 9701L, "project_id", 9001L, "title", "一期上线", "release_date", "2026-09-25", "theme_key", themeKey, "row_version", 1L)));
+                .thenReturn(new HashMap<>(Map.of("id", 9701L, "project_id", 9001L, "title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "theme_key", themeKey, "row_version", 1L)));
 
         service.createReleaseCalendar(9001L,
-                Map.of("title", "一期上线", "release_date", "2026-09-25", "theme_key", themeKey), member);
+                Map.of("title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "theme_key", themeKey), member);
 
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_release_calendar"),
-                any(), eq(member.tenantId()), eq(9001L), eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")),
+                any(), eq(member.tenantId()), eq(9001L), eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")),
                 org.mockito.ArgumentMatchers.isNull(), eq(themeKey), eq(member.id()), eq(member.id()));
     }
 
@@ -677,15 +721,15 @@ class ProjectServiceTest {
     @org.junit.jupiter.params.provider.ValueSource(strings = {"system", "ocean", "tech-blue", "primary", "success", "warning", "danger", "info"})
     void keepsLegacyReleaseCalendarThemeKeysReadable(String themeKey) {
         ProjectService service = new ProjectService(jdbc, storage);
-        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 0);
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_release_calendar"), any(Object[].class)))
-                .thenReturn(new HashMap<>(Map.of("id", 9701L, "project_id", 9001L, "title", "一期上线", "release_date", "2026-09-25", "theme_key", themeKey, "row_version", 1L)));
+                .thenReturn(new HashMap<>(Map.of("id", 9701L, "project_id", 9001L, "title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "theme_key", themeKey, "row_version", 1L)));
 
         service.createReleaseCalendar(9001L,
-                Map.of("title", "一期上线", "release_date", "2026-09-25", "theme_key", themeKey), member);
+                Map.of("title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "theme_key", themeKey), member);
 
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_release_calendar"),
-                any(), eq(member.tenantId()), eq(9001L), eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")),
+                any(), eq(member.tenantId()), eq(9001L), eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")),
                 org.mockito.ArgumentMatchers.isNull(), eq(themeKey), eq(member.id()), eq(member.id()));
     }
 
@@ -708,21 +752,21 @@ class ProjectServiceTest {
 
         assertEquals(List.of(), service.releaseCalendar(9001L, "2026-09", member));
 
-        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("release_date >= ? AND release_date < ?"),
-                eq(9001L), eq(member.tenantId()), eq(java.sql.Date.valueOf("2026-09-01")), eq(java.sql.Date.valueOf("2026-10-01")));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("release_start_date < ? AND release_end_date >= ?"),
+                eq(9001L), eq(member.tenantId()), eq(java.sql.Date.valueOf("2026-10-01")), eq(java.sql.Date.valueOf("2026-09-01")));
     }
 
     @Test
     void rejectsStaleOrCrossProjectReleaseCalendarUpdates() {
         ProjectService service = new ProjectService(jdbc, storage);
-        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 1, 0);
         when(jdbc.update(org.mockito.ArgumentMatchers.contains("UPDATE pm_project_release_calendar"), any(Object[].class))).thenReturn(0);
 
         assertThrows(BusinessException.class, () -> service.updateReleaseCalendar(9001L, 9701L,
-                Map.of("title", "一期上线", "release_date", "2026-09-25", "row_version", 1), admin));
+                Map.of("title", "一期上线", "release_start_date", "2026-09-25", "release_end_date", "2026-09-25", "row_version", 1), admin));
 
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("id = ? AND project_id = ? AND tenant_id = ? AND row_version = ?"),
-                eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")), org.mockito.ArgumentMatchers.isNull(), eq("tone-1"),
+                eq("一期上线"), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")), eq(java.sql.Date.valueOf("2026-09-25")), org.mockito.ArgumentMatchers.isNull(), eq("tone-1"),
                 eq(admin.id()), eq(9701L), eq(9001L), eq(admin.tenantId()), eq(1L));
     }
 
@@ -741,21 +785,32 @@ class ProjectServiceTest {
     }
 
     @Test
-    void letsAnActiveProjectMemberCreateStageAnnouncement() {
+    void letsAnActiveProjectMemberCreateFixedCategoryAnnouncement() {
         ProjectService service = new ProjectService(jdbc, storage);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 1);
         when(jdbc.queryForMap(org.mockito.ArgumentMatchers.contains("FROM pm_project_announcement"), any(Object[].class)))
-                .thenReturn(new HashMap<>(Map.of("id", 9801L, "project_id", 9001L, "stage_code", "PLAN_REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>", "pinned", 1, "row_version", 1L)));
+                .thenReturn(new HashMap<>(Map.of("id", 9801L, "project_id", 9001L, "stage_code", "REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>", "pinned", 1, "row_version", 1L)));
 
         Map<String, Object> result = service.createAnnouncement(9001L,
-                Map.of("stage_code", "PLAN_REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>", "pinned", true), member);
+                Map.of("stage_code", "REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>", "pinned", true), member);
 
         assertEquals("需求评审", result.get("title"));
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_announcement"),
-                any(), eq(member.tenantId()), eq(9001L), eq("PLAN_REQUIREMENT"), eq("需求评审"),
+                any(), eq(member.tenantId()), eq(9001L), eq("REQUIREMENT"), eq("需求评审"),
                 eq("<p>请按时参加</p>"), eq(1), eq(member.id()), eq(member.id()));
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("sys_operation_log"), any(), eq(member.tenantId()),
                 eq(member.id()), eq("project:announcement:create"), any());
+    }
+
+    @Test
+    void rejectsAnnouncementCategoryOutsideFixedSet() {
+        ProjectService service = new ProjectService(jdbc, storage);
+        when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1);
+
+        assertThrows(BusinessException.class, () -> service.createAnnouncement(9001L,
+                Map.of("stage_code", "PLAN_REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>"), member));
+
+        verify(jdbc, never()).update(org.mockito.ArgumentMatchers.contains("INSERT INTO pm_project_announcement"), any(Object[].class));
     }
 
     @Test
@@ -774,22 +829,22 @@ class ProjectServiceTest {
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1, 1);
 
         assertThrows(BusinessException.class, () -> service.createAnnouncement(9001L,
-                Map.of("stage_code", "PLAN_REQUIREMENT", "title", "需求评审", "content_html", "<script>alert(1)</script>"), member));
+                Map.of("stage_code", "REQUIREMENT", "title", "需求评审", "content_html", "<script>alert(1)</script>"), member));
 
         verify(jdbc, never()).update(org.mockito.ArgumentMatchers.contains("pm_project_announcement"), any(Object[].class));
     }
 
     @Test
-    void currentAnnouncementsUseTopLevelPlansAndRequiredOrdering() {
+    void currentAnnouncementsReturnPinnedAndLatestAnnouncementsAcrossCategories() {
         ProjectService service = new ProjectService(jdbc, storage);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(1, 0, 1);
         when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM pm_project_announcement"), any(Object[].class))).thenReturn(List.of());
 
         assertEquals(List.of(), service.currentAnnouncements(9001L, member));
 
-        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("parent_id = 0 AND deleted = 0 AND planned_start_date <= ? AND planned_end_date >= ?"),
-                eq(9001L), eq(member.tenantId()), any(), any(), eq(9001L), eq(member.tenantId()));
-        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("ORDER BY a.pinned DESC, s.sort_no, a.created_at DESC, a.id DESC"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.times(2)).queryForList(org.mockito.ArgumentMatchers.contains("FROM pm_project_announcement"), any(Object[].class));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("a.pinned = 1 ORDER BY a.created_at DESC, a.id DESC"), any(Object[].class));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("a.pinned = 0 ORDER BY a.created_at DESC, a.id DESC LIMIT 3"), any(Object[].class));
     }
 
     @Test
@@ -799,10 +854,10 @@ class ProjectServiceTest {
         when(jdbc.update(org.mockito.ArgumentMatchers.contains("UPDATE pm_project_announcement"), any(Object[].class))).thenReturn(0);
 
         assertThrows(BusinessException.class, () -> service.updateAnnouncement(9001L, 9801L,
-                Map.of("stage_code", "PLAN_REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>", "row_version", 1), admin));
+                Map.of("stage_code", "REQUIREMENT", "title", "需求评审", "content_html", "<p>请按时参加</p>", "row_version", 1), admin));
 
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("id = ? AND project_id = ? AND tenant_id = ? AND row_version = ?"),
-                eq("PLAN_REQUIREMENT"), eq("需求评审"), eq("<p>请按时参加</p>"), eq(0), eq(admin.id()),
+                eq("REQUIREMENT"), eq("需求评审"), eq("<p>请按时参加</p>"), eq(0), eq(admin.id()),
                 eq(9801L), eq(9001L), eq(admin.tenantId()), eq(1L));
     }
 }

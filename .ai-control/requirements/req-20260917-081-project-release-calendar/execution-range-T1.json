@@ -1,0 +1,14 @@
+{
+  "task_id":"T1",
+  "status":"implemented",
+  "changed_surfaces":[{"path_or_resource":"server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql","purpose":"Add and backfill inclusive range columns and overlap index."},{"path_or_resource":"server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java","purpose":"Validate range bounds, persist start/end, return range DTO and query month overlap."},{"path_or_resource":"server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java","purpose":"Update API contract tests and add reversed-range rejection."},{"path_or_resource":"server/src/platform/system/src/test/java/com/ccb/system/project/ProjectReleaseCalendarMigrationTest.java","purpose":"Verify V218 additive backfill contract."}],
+  "requirements_addressed":["R2","R3"],
+  "commands":[{"command":"mvn \"-Dnet.bytebuddy.experimental=true\" \"-pl\" \":ccb-system\" \"-am\" \"-Dtest=ProjectServiceTest,ProjectReleaseCalendarMigrationTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" \"test\"","exit_code":0,"salient_output":"ProjectServiceTest 69 and ProjectReleaseCalendarMigrationTest 2 passed; reactor BUILD SUCCESS."}],
+  "local_checks":[{"check":"focused service/migration tests","result":"passed","evidence":"71 tests passed","limitations":["No live MySQL migration/API runtime in this sample"]},{"check":"scope path review","result":"passed","evidence":"Only T1 scoped files changed among task surfaces","limitations":["Unrelated pre-existing worktree files remain"]}],
+  "diff_summary":["V218 adds range columns, same-day backfill and range index","ProjectService uses inclusive month overlap and validates start <= end","Tests cover same-day, overlap SQL, reverse range and stale version"],
+  "invariants_checked":[{"invariant":"V214 remains unchanged","result":"passed","evidence":"Only V218 was added"},{"invariant":"Membership, tenant, entity, optimistic-lock and audit behavior remains","result":"passed","evidence":"Existing tests and unchanged guards passed"},{"invariant":"No release-window data is read or written","result":"passed","evidence":"SQL remains pm_project_release_calendar only"}],
+  "disturbances":[],
+  "assumptions_falsified":[],
+  "unresolved_items":["Live Flyway/API integration and browser range behavior still require independent observation."],
+  "recommended_next":"observe"
+}

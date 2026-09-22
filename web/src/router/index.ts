@@ -267,12 +267,6 @@ const router = createRouter({
           meta: { title: '投产方案', permission: 'release-operations:plan:view', menuPath: '/release-operations/drill-plans' }
         },
         {
-          path: 'release-operations/environments',
-          name: 'release-operations-environments',
-          component: ReleaseOperationsManagement,
-          meta: { title: '投产演练环境', permission: 'release-operations:environment:view', menuPath: '/release-operations/environments' }
-        },
-        {
           path: 'release-operations/drills',
           name: 'release-operations-drills',
           component: ReleaseOperationsManagement,

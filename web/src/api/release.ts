@@ -299,15 +299,7 @@ export interface ReleasePlanWrite { planName: string; planCode: string; descript
 export interface ReleasePlanTimelineWrite { seqNo?: number; timelineName: string; description?: string; rowVersion: number }
 export interface ReleasePlanItemWrite { seqNo?: number; itemName: string; plannedStart: string; plannedEnd: string; ownerId?: number; status?: string; description?: string; rowVersion: number }
 
-export interface ReleaseDrillEnvironmentDto {
-  id: number; tenantId: number; projectId: number; environmentName: string; description?: string
-  carryDataLineEnvironment?: string; infrastructureDeployment?: string; hardwareCheck?: string; networkOpening?: string
-  middlewareCheck?: string; componentCheck?: string; databaseCheck?: string; rowVersion: number; updatedAt?: string
-}
-export interface ReleaseDrillEnvironmentWrite {
-  environmentName: string; description?: string; carryDataLineEnvironment?: string; infrastructureDeployment?: string
-  hardwareCheck?: string; networkOpening?: string; middlewareCheck?: string; componentCheck?: string; databaseCheck?: string; rowVersion: number
-}
+export interface ReleaseDrillEnvironmentDto { id: number; environmentCode: string; environmentName: string; environmentType: string }
 export interface ReleaseDrillStepDto { id: number; projectId: number; drillRoundId: number; seqNo: number; stepName: string; ownerId?: number; ownerName?: string; plannedStart?: string; plannedEnd?: string; status: string; resultContent?: string; description?: string; rowVersion: number; updatedAt?: string }
 export interface ReleaseDrillStepWrite { seqNo?: number; stepName: string; ownerId?: number; plannedStart?: string; plannedEnd?: string; status?: string; resultContent?: string; description?: string; rowVersion: number }
 export interface ReleaseDrillExecutionDto { id: number; projectId: number; roundNo: number; roundName: string; plannedAt?: string; status: ReleaseDrillStatus; resultContent?: string; releasePlanId: number; releasePlanName: string; environmentId: number; environmentName: string; rowVersion: number; updatedAt?: string; steps: ReleaseDrillStepDto[] }
@@ -517,10 +509,7 @@ export function deleteReleasePlanTimeline(projectId: number, planId: number, typ
 export function createReleasePlanItem(projectId: number, planId: number, type: ReleasePlanItemType, timelineId: number, data: ReleasePlanItemWrite) { return http.post<ApiResponse<ReleasePlanItemDto>>(`/release/operations/release-plans/${planId}/timelines/${type}/${timelineId}/items`, data, { params: { projectId } }) }
 export function updateReleasePlanItem(projectId: number, planId: number, type: ReleasePlanItemType, timelineId: number, id: number, data: ReleasePlanItemWrite) { return http.put<ApiResponse<ReleasePlanItemDto>>(`/release/operations/release-plans/${planId}/timelines/${type}/${timelineId}/items/${id}`, data, { params: { projectId } }) }
 export function deleteReleasePlanItem(projectId: number, planId: number, type: ReleasePlanItemType, timelineId: number, id: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/release/operations/release-plans/${planId}/timelines/${type}/${timelineId}/items/${id}`, { params: { projectId, rowVersion } }) }
-export function listReleaseDrillEnvironments(projectId: number) { return http.get<ApiResponse<ReleaseDrillEnvironmentDto[]>>('/release/operations/environments', { params: { projectId } }) }
-export function createReleaseDrillEnvironment(projectId: number, data: ReleaseDrillEnvironmentWrite) { return http.post<ApiResponse<ReleaseDrillEnvironmentDto>>('/release/operations/environments', data, { params: { projectId } }) }
-export function updateReleaseDrillEnvironment(projectId: number, id: number, data: ReleaseDrillEnvironmentWrite) { return http.put<ApiResponse<ReleaseDrillEnvironmentDto>>(`/release/operations/environments/${id}`, data, { params: { projectId } }) }
-export function deleteReleaseDrillEnvironment(projectId: number, id: number, rowVersion: number) { return http.delete<ApiResponse<void>>(`/release/operations/environments/${id}`, { params: { projectId, rowVersion } }) }
+export function listReleaseDrillEnvironments(projectId: number) { return http.get<ApiResponse<ReleaseDrillEnvironmentDto[]>>('/release/operations/drill-environment', { params: { projectId } }) }
 export function listReleaseDrills(projectId: number) { return http.get<ApiResponse<ReleaseDrillExecutionDto[]>>('/release/operations/drills', { params: { projectId } }) }
 export function createReleaseDrill(projectId: number, data: ReleaseDrillExecutionWrite) { return http.post<ApiResponse<ReleaseDrillExecutionDto>>('/release/operations/drills', data, { params: { projectId } }) }
 export function updateReleaseDrill(projectId: number, id: number, data: ReleaseDrillExecutionWrite) { return http.put<ApiResponse<ReleaseDrillExecutionDto>>(`/release/operations/drills/${id}`, data, { params: { projectId } }) }

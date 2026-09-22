@@ -30,6 +30,9 @@ public class JdbcReleaseMasterDataQuery implements ReleaseMasterDataQuery {
             + "AND physical.id = unit.physical_subsystem_id AND physical.deleted = 0 AND physical.status = 'ACTIVE' "
             + "WHERE unit.tenant_id = ? AND unit.project_id = ? AND unit.physical_subsystem_id = ? "
             + "AND unit.deleted = 0 AND unit.status = 'ACTIVE'";
+    private static final String ACTIVE_ENVIRONMENT_FROM = " FROM arch_environment environment "
+            + "WHERE environment.tenant_id = ? AND environment.project_id = ? "
+            + "AND environment.status = 'ACTIVE'";
 
     private final JdbcTemplate jdbc;
 
@@ -107,6 +110,25 @@ public class JdbcReleaseMasterDataQuery implements ReleaseMasterDataQuery {
                 : Optional.empty();
     }
 
+    @Override
+    public List<EnvironmentRef> listActiveEnvironments(AuthUser actor, long projectId) {
+        requireActor(actor);
+        requireProject(projectId);
+        return jdbc.queryForList("SELECT id, code, name, type_code" + ACTIVE_ENVIRONMENT_FROM + " ORDER BY code, id",
+                        actor.tenantId(), projectId).stream()
+                .map(JdbcReleaseMasterDataQuery::environment).toList();
+    }
+
+    @Override
+    public Optional<EnvironmentRef> resolveActiveEnvironment(AuthUser actor, long projectId, long environmentId) {
+        requireActor(actor);
+        requireProject(projectId);
+        if (environmentId <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "环境标识无效");
+        return jdbc.queryForList("SELECT id, code, name, type_code" + ACTIVE_ENVIRONMENT_FROM + " AND id = ?",
+                        actor.tenantId(), projectId, environmentId).stream()
+                .findFirst().map(JdbcReleaseMasterDataQuery::environment);
+    }
+
     private static Set<Long> normalizeIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Set.of();
@@ -144,6 +166,11 @@ public class JdbcReleaseMasterDataQuery implements ReleaseMasterDataQuery {
     private static DeliveryUnitRef delivery(Map<String, Object> row) {
         return new DeliveryUnitRef(number(row, "id"), number(row, "physical_subsystem_id"),
                 (String) row.get("code"), (String) row.get("name"), (String) row.get("artifact_type_code"));
+    }
+
+    private static EnvironmentRef environment(Map<String, Object> row) {
+        return new EnvironmentRef(number(row, "id"), (String) row.get("code"), (String) row.get("name"),
+                (String) row.get("type_code"));
     }
 
     private static long number(Map<String, Object> row, String key) {

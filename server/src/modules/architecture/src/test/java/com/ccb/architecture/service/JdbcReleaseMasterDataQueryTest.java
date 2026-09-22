@@ -55,6 +55,22 @@ class JdbcReleaseMasterDataQueryTest {
     }
 
     @Test
+    void listsAndResolvesActiveProjectEnvironmentsWithoutAssumingADeletedColumn() {
+        Fixture jdbc = new Fixture();
+        JdbcReleaseMasterDataQuery query = new JdbcReleaseMasterDataQuery(jdbc);
+
+        assertThat(query.listActiveEnvironments(ACTOR, 31))
+                .containsExactly(new com.ccb.architecture.integration.ReleaseMasterDataQuery
+                        .EnvironmentRef(201L, "UAT", "集成测试环境", "architecture.environment-type.uat"));
+        assertThat(query.resolveActiveEnvironment(ACTOR, 31, 201L)).contains(
+                new com.ccb.architecture.integration.ReleaseMasterDataQuery
+                        .EnvironmentRef(201L, "UAT", "集成测试环境", "architecture.environment-type.uat"));
+        assertThat(jdbc.queries.stream().filter(sql -> sql.contains("arch_environment")))
+                .allMatch(sql -> sql.contains("tenant_id = ?") && sql.contains("project_id = ?")
+                        && sql.contains("status = 'ACTIVE'") && !sql.contains("deleted = 0"));
+    }
+
+    @Test
     void rejectsDisabledActorsAndInvalidIdentifiersBeforeQuerying() {
         Fixture jdbc = new Fixture();
         AuthUser disabled = new AuthUser(9, 7, "fixture", "", "申请人", 1, false);
@@ -80,6 +96,10 @@ class JdbcReleaseMasterDataQueryTest {
                 return omitDelivery ? List.of() : List.of(Map.of(
                         "id", 101L, "physical_subsystem_id", 42L, "code", "DUW0042A001",
                         "name", "认证服务", "artifact_type_code", "IMAGE"));
+            }
+            if (sql.contains("arch_environment")) {
+                return List.of(Map.of("id", 201L, "code", "UAT", "name", "集成测试环境",
+                        "type_code", "architecture.environment-type.uat"));
             }
             return List.of(Map.of("id", 42L, "code", "W0042A", "name", "认证系统"));
         }

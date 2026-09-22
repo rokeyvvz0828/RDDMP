@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-081-project-release-calendar",
+  "sample_label": "T3-integrated-range-runtime",
+  "task_ids": ["T1", "T2", "T3"],
+  "baseline_revision": "baseline-2",
+  "measurements": [
+    {
+      "requirement_ids": ["R2", "R3"],
+      "sensor": "Focused Maven system tests",
+      "result": "passed",
+      "evidence": "153 tests passed; ProjectServiceTest and migration contract tests passed, including range validation, overlap, membership and optimistic-lock paths."
+    },
+    {
+      "requirement_ids": ["R2", "R3"],
+      "sensor": "Authenticated local API",
+      "result": "passed",
+      "evidence": "Login code 0; temporary 2026-09-28..2026-10-03 entry created with HTTP 200, returned in both intersecting month queries, then deleted with HTTP 200."
+    },
+    {
+      "requirement_ids": ["R1", "R4", "R5"],
+      "sensor": "Frontend production build",
+      "result": "passed",
+      "evidence": "vue-tsc and Vite build completed successfully."
+    },
+    {
+      "requirement_ids": ["R2"],
+      "sensor": "Flyway checker",
+      "result": "passed",
+      "evidence": "216 migration files passed static migration checks and V218 was applied in the local runtime."
+    },
+    {
+      "requirement_ids": ["R1", "R4", "R5"],
+      "sensor": "Browser automation",
+      "result": "unavailable",
+      "evidence": "cua.getState() failed with OS error 3 while writing kernel assets."
+    }
+  ],
+  "feedback": [],
+  "disturbances": [
+    {
+      "source": "Shared worktree",
+      "effect": "Scope checker reports unrelated REQ-083/REQ-084 paths and read-only-path modifications.",
+      "observed": true
+    },
+    {
+      "source": "Repository historical ledger set",
+      "effect": "Governance checker reports pre-existing topic mismatches, invalid legacy files and missing acceptance evidence.",
+      "observed": true
+    }
+  ],
+  "coverage_gaps": [
+    "No real-browser desktop inspection at 1280x800.",
+    "No real-browser mobile inspection at 375x812, 390x844 or 430x932.",
+    "No browser scrollWidth, console, tab-click or tooltip screenshot evidence.",
+    "Repository-wide scope and governance gates cannot be isolated from unrelated pending work in the shared worktree."
+  ],
+  "error_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 1,
+    "P3": 0
+  },
+  "observation_status": "complete"
+}

@@ -1,0 +1,1895 @@
+{
+  "schema_version": 4,
+  "revision": 7,
+  "created_at": "2026-09-18T03:23:13+00:00",
+  "updated_at": "2026-09-18T03:26:39+00:00",
+  "mode": "high-assurance",
+  "phase": "executing",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the design and stated that prior data should be cleared without compatibility.；计划确认=User confirmed the approved REQ-20260918-084 implementation plan and authorized implementation.",
+      "recorded_at": "2026-09-18T03:23:13+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Imported approved baseline R1-R5 reviewed against requirement, scope, existing module contracts and user approval.",
+      "recorded_at": "2026-09-18T03:26:09+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "All must requirements have causal paths, scoped actuators and S1-S3 measurements.",
+      "recorded_at": "2026-09-18T03:26:11+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Every must requirement has a complete controlled task and all tasks are serially ordered.",
+      "recorded_at": "2026-09-18T03:26:11+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=1, plan_revision=1；设计确认=User confirmed the design and stated that prior data should be cleared without compatibility.；计划确认=User confirmed the approved REQ-20260918-084 implementation plan and authorized implementation.",
+        "recorded_at": "2026-09-18T03:23:13+00:00",
+        "data": {
+          "objective": "Remove private release-drill environments and make release drills select project-owned architecture environments.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Remove the private release-drill environment capability.",
+              "acceptance": [
+                "Menu, route, UI, API, permission, model and table are removed."
+              ],
+              "priority": "must",
+              "source": "User confirmation",
+              "counterexample": [
+                "The old environment route remains accessible."
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Use active project architecture environments for release-drill selection.",
+              "acceptance": [
+                "The service rejects cross-project, missing or inactive environments."
+              ],
+              "priority": "must",
+              "source": "User confirmation",
+              "counterexample": [
+                "The release module reads arch_environment directly."
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Destructively remove legacy private environment data and dependent drill data.",
+              "acceptance": [
+                "V217 deletes legacy environments, rounds, steps and related issues before dropping the table."
+              ],
+              "priority": "must",
+              "source": "User confirmation",
+              "counterexample": [
+                "Legacy drill records remain with dangling environment IDs."
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Prevent deletion of an architecture environment referenced by a release drill.",
+              "acceptance": [
+                "Deletion fails with a conflict when an active drill round references the environment."
+              ],
+              "priority": "must",
+              "source": "Design decision",
+              "counterexample": [
+                "Deleting the environment leaves a dangling drill reference."
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Preserve cross-module ownership and server-side authorization boundaries.",
+              "acceptance": [
+                "Release consumes architecture environments only through the public integration contract while existing tenant, project-member, RBAC, optimistic-lock and audit checks remain enforced."
+              ],
+              "priority": "must",
+              "source": "Project governance and approved requirement constraints",
+              "counterexample": [
+                "Release queries architecture tables or private services directly."
+              ]
+            }
+          ],
+          "invariants": [
+            "Release consumes architecture only through public interfaces.",
+            "Tenant, project, RBAC, optimistic-lock and audit checks remain server-side.",
+            "No historical Flyway script is modified."
+          ],
+          "constraints": [
+            "Only REQ-084 writable paths may change.",
+            "Legacy data deletion is irreversible by application rollback.",
+            "No production access or secret reads."
+          ],
+          "non_goals": [
+            "Legacy data migration",
+            "Architecture environment workflow changes",
+            "External environment deployment"
+          ],
+          "assumptions": [
+            {
+              "text": "Architecture environments are project-owned and active-state validated by the existing service.",
+              "basis": "EnvironmentResourceService and existing integration contract.",
+              "falsifier": "The public query cannot distinguish project or active state."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "Delete legacy environment and dependent drill data without migration.",
+              "reason": "User explicitly rejected compatibility.",
+              "source": "User confirmation"
+            },
+            {
+              "id": "D2",
+              "decision": "Reuse architecture through a public read contract.",
+              "reason": "Preserves module ownership.",
+              "source": "Project governance"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4"
+              ],
+              "signal": "Menu/API removal and validated architecture references",
+              "method": "Focused release and architecture tests plus browser flow."
+            },
+            {
+              "requirement_ids": [
+                "R3"
+              ],
+              "signal": "Legacy data and table absent after V217",
+              "method": "Focused MySQL migration integration test."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Model rebuilt from inspected architecture query, release store/port, boot adapter, environment delete transaction and approved V217 scope.",
+        "recorded_at": "2026-09-18T03:26:10+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "plant_boundary": {
+            "inside": [
+              "architecture ReleaseMasterDataQuery",
+              "release ReleaseArchitectureDirectory",
+              "boot adapter",
+              "release drill service/store/UI",
+              "architecture environment delete store",
+              "V217 migration"
+            ],
+            "environment": [
+              "MySQL schema and data",
+              "authenticated project members",
+              "dynamic system menus and permissions"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "architecture_environment",
+              "owner": "architecture",
+              "valid_values": [
+                "same tenant/project and ACTIVE",
+                "missing",
+                "inactive",
+                "other project"
+              ]
+            },
+            {
+              "name": "release_drill_environment_id",
+              "owner": "release",
+              "valid_values": [
+                "valid arch_environment id",
+                "rejected"
+              ]
+            },
+            {
+              "name": "legacy_drill_data",
+              "owner": "V217",
+              "valid_values": [
+                "present before migration",
+                "removed after migration"
+              ]
+            },
+            {
+              "name": "environment_delete",
+              "owner": "architecture",
+              "valid_values": [
+                "allowed",
+                "blocked by resource request",
+                "blocked by release drill"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "release operations navigation or API request",
+              "transitions": [
+                "router/controller removal",
+                "V217 menu and grant cleanup"
+              ],
+              "outputs": [
+                "no private drill environment entry or endpoint"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "release drill environmentId",
+              "transitions": [
+                "release directory resolves public architecture projection",
+                "tenant/project/ACTIVE query filters",
+                "release persists resolved id"
+              ],
+              "outputs": [
+                "only active current-project environment accepted and displayed"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "Flyway V217",
+              "transitions": [
+                "delete issue references",
+                "delete steps and rounds",
+                "drop legacy table",
+                "retire menu grants"
+              ],
+              "outputs": [
+                "no legacy drill environment data or table"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "architecture environment delete",
+              "transitions": [
+                "lock environment",
+                "store checks release drill references",
+                "delete only when no reference exists"
+              ],
+              "outputs": [
+                "referenced environment deletion is rejected"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "release drill read/write",
+              "transitions": [
+                "release-owned port",
+                "boot adapter",
+                "architecture public query",
+                "existing release authorization"
+              ],
+              "outputs": [
+                "no direct release access to architecture persistence"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "ReleaseMasterDataQuery environment projection",
+              "producers": [
+                "architecture"
+              ],
+              "consumers": [
+                "boot adapter"
+              ],
+              "invariant": "tenant, project, deleted and ACTIVE filters are applied"
+            },
+            {
+              "name": "ReleaseArchitectureDirectory environment projection",
+              "producers": [
+                "boot adapter"
+              ],
+              "consumers": [
+                "release operations service"
+              ],
+              "invariant": "release does not access architecture tables or private classes"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R1/R2/R4/R5 Java behavior",
+              "method": "focused architecture and release unit/service tests plus source-boundary search",
+              "blind_spots": [
+                "actual Flyway execution"
+              ],
+              "independence": "test execution and static source search"
+            },
+            {
+              "id": "S2",
+              "target": "R3 database cleanup",
+              "method": "Flyway migration integration test and migration checker",
+              "blind_spots": [
+                "production backup availability"
+              ],
+              "independence": "database migration execution"
+            },
+            {
+              "id": "S3",
+              "target": "R1/R2 frontend route and interaction",
+              "method": "Vite production build and browser path at desktop/mobile",
+              "blind_spots": [
+                "production authorization configuration"
+              ],
+              "independence": "compiled frontend and browser observation"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "architecture public projection and deletion guard",
+              "action": "extend scoped public contract, adapter and store guard",
+              "authority": "REQ-084 writable paths",
+              "impact_radius": "architecture/release/boot integration",
+              "rollback": "revert scoped source changes before V217"
+            },
+            {
+              "id": "A2",
+              "target": "release private environment removal",
+              "action": "replace release service/store/API/router/UI environment handling",
+              "authority": "REQ-084 writable paths",
+              "impact_radius": "release module and frontend",
+              "rollback": "revert scoped application changes before V217"
+            },
+            {
+              "id": "A3",
+              "target": "legacy data and menu cleanup",
+              "action": "append V217 only",
+              "authority": "REQ-084 migration path",
+              "impact_radius": "release drill data and system menu grants",
+              "rollback": "restore verified pre-migration database backup"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S2"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S1"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "legacy foreign keys or menu grants",
+              "effect": "V217 may fail or omit dependent rows",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "existing dirty task documentation",
+              "effect": "diff and scope checks contain pre-code task artifacts",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "local browser or services unavailable",
+              "effect": "browser evidence may be limited",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flyway migration and Maven reactor",
+              "consequence": "schema failures appear after build/test startup",
+              "sampling_rule": "run focused tests before full regression"
+            },
+            {
+              "source": "frontend build and browser rendering",
+              "consequence": "route removal errors may only appear after bundle build",
+              "sampling_rule": "build before browser observation"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "arch_environment supports tenant/project/ACTIVE filtering and release drill can preserve environmentId semantics",
+              "evidence": "JdbcReleaseMasterDataQuery and ReleaseOperationsStore currently use these fields",
+              "falsifier": "schema inspection or focused test shows a required column/relationship is absent"
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2 and T3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1 then T2"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1 and T2"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "Serialized approved T1-T4 plan with exact writable scope, sequencing, rollback and sampling checks.",
+        "recorded_at": "2026-09-18T03:26:11+00:00",
+        "data": {
+          "baseline_revision": "baseline-1",
+          "model_revision": "model-1",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Expose current-project active architecture environments through the public release contract and block deleting referenced environments.",
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "Architecture owns arch_environment.",
+                "Boot already adapts ReleaseMasterDataQuery to ReleaseArchitectureDirectory."
+              ],
+              "write_scope": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcReleaseMasterDataQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java",
+                "governance/modules.yaml",
+                "docs/integration/architecture-module-contract.md"
+              ],
+              "invariants": [
+                "No release access to arch_ tables.",
+                "Tenant/project/status checks remain server-side."
+              ],
+              "interface_contracts": [
+                "Active environment projections include id, code, name and type."
+              ],
+              "non_goals": [
+                "Changing architecture environment CRUD behavior other than delete-reference protection."
+              ],
+              "action_bounds": [
+                "Extend only existing public contracts and scoped deletion path."
+              ],
+              "acceptance_checks": [
+                "Current project active environments resolve.",
+                "Cross-project/inactive values do not resolve.",
+                "Referenced environment delete fails."
+              ],
+              "evidence_required": [
+                "Scoped diff",
+                "focused architecture tests"
+              ],
+              "rollback": "Revert scoped source and contract changes.",
+              "stop_conditions": [
+                "A direct architecture-to-release module dependency is required."
+              ],
+              "escalation_conditions": [
+                "Existing delete transaction cannot perform the reference guard."
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Remove private release drill environment APIs and UI, and make drills validate and display architecture environment projections.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "Release drill round already persists environment_id.",
+                "T1 provides a release-owned environment directory."
+              ],
+              "write_scope": [
+                "server/src/modules/release/src/main/java/com/ccb/release/operations/**",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+                "web/src/api/release.ts",
+                "web/src/router/index.ts",
+                "web/src/modules/release/ReleaseOperationsManagement.vue",
+                "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+                "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue"
+              ],
+              "invariants": [
+                "Existing release project-member authorization remains active.",
+                "environmentId continues to be the HTTP field."
+              ],
+              "interface_contracts": [
+                "Release resolves environment IDs through ReleaseArchitectureDirectory."
+              ],
+              "non_goals": [
+                "Frontend direct use of architecture API."
+              ],
+              "action_bounds": [
+                "Remove only private environment route/API/component and replace the drill selection source."
+              ],
+              "acceptance_checks": [
+                "Private endpoint and route are absent.",
+                "Invalid architecture environment is rejected on save.",
+                "Empty environment selection disables new drill creation."
+              ],
+              "evidence_required": [
+                "Scoped diff",
+                "release tests",
+                "frontend build"
+              ],
+              "rollback": "Revert scoped application changes before V217.",
+              "stop_conditions": [
+                "Reading options requires an architecture private frontend API."
+              ],
+              "escalation_conditions": [
+                "Existing roles cannot read directory options without role-model changes."
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Destructively remove legacy release drill data, table, menu and grants in V217.",
+              "requirement_ids": [
+                "R1",
+                "R3"
+              ],
+              "prerequisites": [
+                "T2"
+              ],
+              "input_facts": [
+                "User explicitly approved data removal without compatibility."
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V217__release_drill_use_architecture_environment.sql",
+                "server/src/modules/release/src/test/java/com/ccb/release/operations/**"
+              ],
+              "invariants": [
+                "No historical migration changes.",
+                "Only approved legacy environment, drill, step, issue and menu/grant data are removed."
+              ],
+              "interface_contracts": [
+                "release drill environment_id semantic changes only after cleanup migration."
+              ],
+              "non_goals": [
+                "Restoring data or migrating legacy environment values."
+              ],
+              "action_bounds": [
+                "Append one migration after inspecting published schema."
+              ],
+              "acceptance_checks": [
+                "Legacy dependent rows are deleted before the old table is dropped.",
+                "Menu 1006 and related grants are retired."
+              ],
+              "evidence_required": [
+                "Migration source",
+                "migration validation"
+              ],
+              "rollback": "Data recovery requires a pre-V217 backup.",
+              "stop_conditions": [
+                "An unapproved dependent table is found."
+              ],
+              "escalation_conditions": [
+                "Cleanup would remove data beyond the approved scope."
+              ]
+            },
+            {
+              "id": "T4",
+              "goal": "Run regression, migration, scope and browser observations for the complete replacement.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T3"
+              ],
+              "input_facts": [
+                "T1-T3 changes are implemented."
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260918-084-release-drill-architecture-environment/*.json"
+              ],
+              "invariants": [
+                "No scope expansion."
+              ],
+              "interface_contracts": [
+                "All prior task contracts."
+              ],
+              "non_goals": [
+                "Unrelated refactoring."
+              ],
+              "action_bounds": [
+                "Verification and evidence only."
+              ],
+              "acceptance_checks": [
+                "Focused/full module tests, frontend build, governance, scope and browser path."
+              ],
+              "evidence_required": [
+                "Command exits",
+                "browser observation or tool limitation"
+              ],
+              "rollback": "No product changes.",
+              "stop_conditions": [
+                "Cross-project or inactive environment is accepted."
+              ],
+              "escalation_conditions": [
+                "Verification requires an out-of-scope shared change."
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Release consumes the public projection."
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Replacement path precedes destructive cleanup."
+            },
+            {
+              "from": "T3",
+              "to": "T4",
+              "reason": "Final checks observe the migrated state."
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ],
+            [
+              "T4"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "checks": [
+                "mvn -pl :ccb-release -am test",
+                "mvn -pl :ccb-architecture -am test",
+                "npm --prefix web run build",
+                "node scripts/check-all-governance.mjs",
+                "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260918-084-release-drill-architecture-environment/codex-task-scope.yaml --working-tree",
+                "git diff --check"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 contract sample",
+              "trigger": "T1 execution",
+              "observer": "independent test/source inspection",
+              "sensors": [
+                "S1"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "T2 replacement sample",
+              "trigger": "T2 execution",
+              "observer": "independent build/test inspection",
+              "sensors": [
+                "S1",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R5"
+              ]
+            },
+            {
+              "label": "T3/T4 integration sample",
+              "trigger": "T3 and T4 execution",
+              "observer": "migration, regression and browser checks",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T3",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S2"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T1",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T4"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [],
+    "observing": [],
+    "correcting": [],
+    "verifying": []
+  },
+  "objective": "Remove private release-drill environments and make release drills select project-owned architecture environments.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Remove the private release-drill environment capability.",
+      "acceptance": [
+        "Menu, route, UI, API, permission, model and table are removed."
+      ],
+      "priority": "must",
+      "source": "User confirmation",
+      "counterexample": [
+        "The old environment route remains accessible."
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Use active project architecture environments for release-drill selection.",
+      "acceptance": [
+        "The service rejects cross-project, missing or inactive environments."
+      ],
+      "priority": "must",
+      "source": "User confirmation",
+      "counterexample": [
+        "The release module reads arch_environment directly."
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Destructively remove legacy private environment data and dependent drill data.",
+      "acceptance": [
+        "V217 deletes legacy environments, rounds, steps and related issues before dropping the table."
+      ],
+      "priority": "must",
+      "source": "User confirmation",
+      "counterexample": [
+        "Legacy drill records remain with dangling environment IDs."
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Prevent deletion of an architecture environment referenced by a release drill.",
+      "acceptance": [
+        "Deletion fails with a conflict when an active drill round references the environment."
+      ],
+      "priority": "must",
+      "source": "Design decision",
+      "counterexample": [
+        "Deleting the environment leaves a dangling drill reference."
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Preserve cross-module ownership and server-side authorization boundaries.",
+      "acceptance": [
+        "Release consumes architecture environments only through the public integration contract while existing tenant, project-member, RBAC, optimistic-lock and audit checks remain enforced."
+      ],
+      "priority": "must",
+      "source": "Project governance and approved requirement constraints",
+      "counterexample": [
+        "Release queries architecture tables or private services directly."
+      ]
+    }
+  ],
+  "invariants": [
+    "Release consumes architecture only through public interfaces.",
+    "Tenant, project, RBAC, optimistic-lock and audit checks remain server-side.",
+    "No historical Flyway script is modified."
+  ],
+  "constraints": [
+    "Only REQ-084 writable paths may change.",
+    "Legacy data deletion is irreversible by application rollback.",
+    "No production access or secret reads."
+  ],
+  "non_goals": [
+    "Legacy data migration",
+    "Architecture environment workflow changes",
+    "External environment deployment"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260918-084-release-drill-architecture-environment\\handoff.json",
+    "imported_at": "2026-09-18T03:23:13+00:00",
+    "topic": "release-drill-architecture-environment",
+    "design_revision": 1,
+    "plan_revision": 1,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "release-drill-architecture-environment",
+      "handoff_status": "approved",
+      "created_at": "2026-09-18T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "release-drill-architecture-environment",
+        "design_revision": 1,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-18-release-drill-architecture-environment-design.md",
+        "objective": "Remove private release-drill environments and make release drills select project-owned architecture environments.",
+        "users": [
+          "Project members creating and maintaining release drill rounds."
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Remove the private release-drill environment capability.",
+            "acceptance": [
+              "Menu, route, UI, API, permission, model and table are removed."
+            ],
+            "priority": "must",
+            "source": "User confirmation",
+            "counterexample": [
+              "The old environment route remains accessible."
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Use active project architecture environments for release-drill selection.",
+            "acceptance": [
+              "The service rejects cross-project, missing or inactive environments."
+            ],
+            "priority": "must",
+            "source": "User confirmation",
+            "counterexample": [
+              "The release module reads arch_environment directly."
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Destructively remove legacy private environment data and dependent drill data.",
+            "acceptance": [
+              "V217 deletes legacy environments, rounds, steps and related issues before dropping the table."
+            ],
+            "priority": "must",
+            "source": "User confirmation",
+            "counterexample": [
+              "Legacy drill records remain with dangling environment IDs."
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Prevent deletion of an architecture environment referenced by a release drill.",
+            "acceptance": [
+              "Deletion fails with a conflict when an active drill round references the environment."
+            ],
+            "priority": "must",
+            "source": "Design decision",
+            "counterexample": [
+              "Deleting the environment leaves a dangling drill reference."
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Preserve cross-module ownership and server-side authorization boundaries.",
+            "acceptance": [
+              "Release consumes architecture environments only through the public integration contract while existing tenant, project-member, RBAC, optimistic-lock and audit checks remain enforced."
+            ],
+            "priority": "must",
+            "source": "Project governance and approved requirement constraints",
+            "counterexample": [
+              "Release queries architecture tables or private services directly."
+            ]
+          }
+        ],
+        "invariants": [
+          "Release consumes architecture only through public interfaces.",
+          "Tenant, project, RBAC, optimistic-lock and audit checks remain server-side.",
+          "No historical Flyway script is modified."
+        ],
+        "constraints": [
+          "Only REQ-084 writable paths may change.",
+          "Legacy data deletion is irreversible by application rollback.",
+          "No production access or secret reads."
+        ],
+        "non_goals": [
+          "Legacy data migration",
+          "Architecture environment workflow changes",
+          "External environment deployment"
+        ],
+        "selected_approach": {
+          "name": "Destructive replacement with architecture environment references",
+          "reason": "The user explicitly chose data clearing with no compatibility support.",
+          "alternatives": [
+            {
+              "name": "Name-based migration",
+              "rejected_because": "It is ambiguous and retains redundant data."
+            },
+            {
+              "name": "Hide-only legacy menu",
+              "rejected_because": "It leaves duplicate data ownership."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Release drill UI and service",
+              "Architecture public query",
+              "Boot adapter",
+              "V217 cleanup migration"
+            ],
+            "outside": [
+              "Architecture environment CRUD workflow",
+              "External infrastructure provisioning"
+            ]
+          },
+          "components": [
+            {
+              "name": "ReleaseMasterDataQuery",
+              "responsibility": "Expose active project environment projections",
+              "depends_on": [
+                "arch_environment"
+              ]
+            },
+            {
+              "name": "ReleaseArchitectureDirectory",
+              "responsibility": "Provide release-owned adapter boundary",
+              "depends_on": [
+                "ReleaseMasterDataQuery"
+              ]
+            },
+            {
+              "name": "ReleaseOperationsService",
+              "responsibility": "Validate and persist architecture environment references",
+              "depends_on": [
+                "ReleaseArchitectureDirectory"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Architecture environment projection",
+              "producer": "architecture",
+              "consumers": [
+                "release",
+                "boot adapter"
+              ],
+              "contract": "Active project environment id, code, name and type."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "release drill environmentId",
+              "transitions": [
+                "release service resolves it through the public directory",
+                "architecture validates tenant, project and ACTIVE status",
+                "release stores arch_environment id"
+              ],
+              "output": "drill round with architecture environment projection"
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "No active architecture environments",
+            "behavior": "Disable new drill creation with explicit warning",
+            "recovery": "Maintain an environment in architecture management."
+          },
+          {
+            "condition": "Invalid architecture environment",
+            "behavior": "Reject on server",
+            "recovery": "Refresh and choose an active environment."
+          },
+          {
+            "condition": "Referenced environment deletion",
+            "behavior": "Return conflict",
+            "recovery": "Remove or reassign the drill first."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Server-side tenant/project/status validation",
+            "Existing release authorization and audit"
+          ],
+          "performance": [
+            "Project-scoped active environment projection"
+          ],
+          "compatibility": [
+            "No legacy environment endpoint or data compatibility by user decision"
+          ],
+          "operations": [
+            "Pre-migration backup required due to irreversible cleanup"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4"
+            ],
+            "signal": "Menu/API removal and validated architecture references",
+            "method": "Focused release and architecture tests plus browser flow."
+          },
+          {
+            "requirement_ids": [
+              "R3"
+            ],
+            "signal": "Legacy data and table absent after V217",
+            "method": "Focused MySQL migration integration test."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Architecture environments are project-owned and active-state validated by the existing service.",
+            "basis": "EnvironmentResourceService and existing integration contract.",
+            "falsifier": "The public query cannot distinguish project or active state."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "Delete legacy environment and dependent drill data without migration.",
+            "reason": "User explicitly rejected compatibility.",
+            "source": "User confirmation"
+          },
+          {
+            "id": "D2",
+            "decision": "Reuse architecture through a public read contract.",
+            "reason": "Preserves module ownership.",
+            "source": "Project governance"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Irreversible migration cleanup",
+            "impact": "Legacy drill records cannot be restored by rollback",
+            "mitigation": "Require backup and migration integration evidence before release."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the design and stated that prior data should be cleared without compatibility.",
+          "confirmed_at": "2026-09-18T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 1,
+        "human_document": "docs/engineering-control/plans/2026-09-18-release-drill-architecture-environment-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "No direct release access to architecture tables.",
+          "V217 is additive and destructive only by user approval.",
+          "Do not access secrets or production."
+        ],
+        "file_map": [
+          {
+            "path": "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java",
+            "status": "existing",
+            "responsibility": "Architecture public environment projection",
+            "evidence": "Current public query interface."
+          },
+          {
+            "path": "server/src/modules/release/src/main/java/com/ccb/release/operations/ReleaseOperationsService.java",
+            "status": "existing",
+            "responsibility": "Release drill environment validation",
+            "evidence": "Current private environment validation."
+          },
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V217__release_drill_use_architecture_environment.sql",
+            "status": "candidate-new",
+            "responsibility": "Legacy cleanup and menu retirement",
+            "evidence": "V217 is unused."
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Expose active architecture environments to release and guard referenced environment deletion.",
+            "requirement_ids": [
+              "R2",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "ReleaseMasterDataQuery is public.",
+              "arch_environment is project scoped and status managed."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcReleaseMasterDataQuery.java",
+                "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+                "server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java",
+                "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+                "governance/modules.yaml",
+                "docs/integration/architecture-module-contract.md"
+              ],
+              "test": [
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/service/JdbcReleaseMasterDataQueryTest.java",
+                "server/src/modules/architecture/src/test/java/com/ccb/architecture/environment/**",
+                "server/src/platform/boot/src/test/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapterTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "arch_environment"
+              ],
+              "produces": [
+                "EnvironmentRef list and exact active resolution"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add active/cross-project/inactive and reference-delete tests.",
+                "command": "mvn -pl :ccb-architecture -am -Dtest=JdbcReleaseMasterDataQueryTest,EnvironmentResourceServiceTest test",
+                "expected": "New tests fail before implementation.",
+                "evidence": "Surefire output."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Implement environment projection and deletion guard through public interfaces.",
+                "command": null,
+                "expected": "All queries include tenant, project, deleted and ACTIVE checks.",
+                "evidence": "Scoped diff."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Run architecture regression.",
+                "command": "mvn -pl :ccb-architecture -am -Dtest=JdbcReleaseMasterDataQueryTest,EnvironmentResourceServiceTest test",
+                "expected": "0 failures.",
+                "evidence": "Surefire output."
+              }
+            ],
+            "acceptance_checks": [
+              "Only active current-project environments are resolved.",
+              "Referenced architecture environment deletion is rejected."
+            ],
+            "risks": [
+              "Cross-module cyclic dependency"
+            ],
+            "rollback": "Revert source/contract changes before V217.",
+            "stop_conditions": [
+              "Guard needs a direct architecture-to-release Maven dependency."
+            ],
+            "escalation_conditions": [
+              "Existing environment deletion cannot be transactionally guarded."
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Replace private release environments with architecture projections across service, API and UI.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "Release drill currently joins rel_drill_environment.",
+              "T1 provides ReleaseArchitectureDirectory environment projection."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "server/src/modules/release/src/main/java/com/ccb/release/operations/**",
+                "web/src/api/release.ts",
+                "web/src/router/index.ts",
+                "web/src/modules/release/ReleaseOperationsManagement.vue",
+                "web/src/modules/release/components/ReleaseDrillExecutionView.vue"
+              ],
+              "test": [
+                "server/src/modules/release/src/test/java/com/ccb/release/operations/**"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 environment projection"
+              ],
+              "produces": [
+                "Release drill API with arch environment semantics"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Add service/controller tests for invalid and valid architecture environments.",
+                "command": "mvn -pl :ccb-release -am -Dtest=ReleaseOperationsServiceTest,ReleaseOperationsControllerSecurityTest test",
+                "expected": "Tests fail before private model removal.",
+                "evidence": "Surefire output."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Remove private environment CRUD and change drill joins/saves to architecture environment projections.",
+                "command": null,
+                "expected": "No release service/store model references DrillEnvironment.",
+                "evidence": "Source search."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Remove route/component/API and render architecture environment options with empty-state handling.",
+                "command": "npm --prefix web run build",
+                "expected": "Production build succeeds.",
+                "evidence": "Build exit code."
+              }
+            ],
+            "acceptance_checks": [
+              "Old route and APIs are absent.",
+              "New drill save revalidates the architecture environment."
+            ],
+            "risks": [
+              "Frontend data loading permission mismatch"
+            ],
+            "rollback": "Revert application changes before V217.",
+            "stop_conditions": [
+              "Frontend must import architecture private API."
+            ],
+            "escalation_conditions": [
+              "Role model changes are required to read environment options."
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Apply approved destructive cleanup in V217.",
+            "requirement_ids": [
+              "R1",
+              "R3"
+            ],
+            "prerequisites": [
+              "T2"
+            ],
+            "input_facts": [
+              "V153 created rel_drill_environment and linked existing rounds.",
+              "User rejected data compatibility."
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V217__release_drill_use_architecture_environment.sql"
+              ],
+              "modify": [],
+              "test": [
+                "server/src/modules/release/src/test/java/com/ccb/release/operations/**"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T2 arch_environment id semantics"
+              ],
+              "produces": [
+                "No legacy environment table/data/menu permission"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Create focused migration fixture with legacy environment, round, step, issue and menu grants.",
+                "command": "mvn -pl :ccb-release -am -Dtest=ReleaseDrillArchitectureEnvironmentMigrationTest test",
+                "expected": "Fails before V217 exists.",
+                "evidence": "Test failure."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Append V217 cleanup SQL in dependency-safe order.",
+                "command": null,
+                "expected": "Legacy dependent records are deleted before table drop.",
+                "evidence": "Migration diff."
+              },
+              {
+                "id": "T3-S3",
+                "action": "Run migration test.",
+                "command": "mvn -pl :ccb-release -am -Dtest=ReleaseDrillArchitectureEnvironmentMigrationTest test",
+                "expected": "0 failures and no legacy table.",
+                "evidence": "Migration test output."
+              }
+            ],
+            "acceptance_checks": [
+              "All user-confirmed legacy data is removed.",
+              "Menu 1006 and related grants are inactive."
+            ],
+            "risks": [
+              "Unknown legacy foreign key"
+            ],
+            "rollback": "Only database backup restores data.",
+            "stop_conditions": [
+              "Cleanup discovers an unapproved dependent table."
+            ],
+            "escalation_conditions": [
+              "Migration removes data beyond the approved scope."
+            ]
+          },
+          {
+            "id": "T4",
+            "goal": "Observe cross-module behavior and complete scoped verification.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T3"
+            ],
+            "input_facts": [
+              "T1-T3 have completed local checks."
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                ".ai-control/requirements/req-20260918-084-release-drill-architecture-environment/*.json"
+              ],
+              "test": [
+                "release, architecture, migration and frontend checks"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1-T3 outputs"
+              ],
+              "produces": [
+                "Verification evidence and feedback"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T4-S1",
+                "action": "Run release, architecture, frontend, governance and diff checks.",
+                "command": "mvn -pl :ccb-release -am test; mvn -pl :ccb-architecture -am test; npm --prefix web run build; node scripts/check-all-governance.mjs; git diff --check",
+                "expected": "All pass.",
+                "evidence": "Exit codes."
+              },
+              {
+                "id": "T4-S2",
+                "action": "Run desktop/mobile path for architecture environment to release drill and deletion guard.",
+                "command": "Browser at desktop, 375x812, 390x844, 430x932",
+                "expected": "No route/menu residue or page-level overflow.",
+                "evidence": "Browser observation or tool limitation."
+              }
+            ],
+            "acceptance_checks": [
+              "No authorization or cleanup-scope regression.",
+              "Theme and responsive views remain usable."
+            ],
+            "risks": [
+              "Browser automation unavailable"
+            ],
+            "rollback": "No extra product changes.",
+            "stop_conditions": [
+              "Any cross-project/disabled environment is accepted."
+            ],
+            "escalation_conditions": [
+              "Verification requires a shared UI or permission change outside scope."
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Release depends on environment public contract."
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Migration only follows functioning replacement path."
+          },
+          {
+            "from": "T3",
+            "to": "T4",
+            "reason": "Verification must observe post-cleanup state."
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ],
+          [
+            "T4"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ],
+            "command": "mvn -pl :ccb-release -am test; mvn -pl :ccb-architecture -am test; npm --prefix web run build; node scripts/check-all-governance.mjs; git diff --check",
+            "expected": "All commands pass."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T1",
+              "T4"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T4"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the approved REQ-20260918-084 implementation plan and authorized implementation.",
+          "confirmed_at": "2026-09-18T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Architecture environment projection",
+          "Release drill validation",
+          "Environment deletion guard",
+          "V217 cleanup"
+        ],
+        "state_variable_candidates": [
+          "Environment status",
+          "Drill environment_id",
+          "Legacy row counts",
+          "Menu permission status"
+        ],
+        "interface_candidates": [
+          "ReleaseMasterDataQuery environment projection",
+          "ReleaseArchitectureDirectory"
+        ],
+        "sensor_candidates": [
+          "Focused Java tests",
+          "Migration integration",
+          "Frontend build",
+          "Browser path"
+        ],
+        "actuator_candidates": [
+          "Scoped Java/TS/Vue edits",
+          "V217 migration",
+          "Contract update"
+        ],
+        "disturbance_candidates": [
+          "Legacy data dependencies",
+          "Dirty worktree",
+          "Browser availability"
+        ],
+        "delay_candidates": [
+          "Flyway migration",
+          "Maven tests",
+          "Vite build"
+        ],
+        "assumptions": [
+          {
+            "text": "Architecture public query can safely provide active project environment data.",
+            "basis": "Existing project-scoped environment service.",
+            "falsifier": "Contract cannot enforce tenant/project/status."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL schema and data\", \"authenticated project members\", \"dynamic system menus and permissions\"], \"inside\": [\"architecture ReleaseMasterDataQuery\", \"release ReleaseArchitectureDirectory\", \"boot adapter\", \"release drill service/store/UI\", \"architecture environment delete store\", \"V217 migration\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"actual Flyway execution\"], \"id\": \"S1\", \"independence\": \"test execution and static source search\", \"method\": \"focused architecture and release unit/service tests plus source-boundary search\", \"target\": \"R1/R2/R4/R5 Java behavior\"}",
+      "{\"blind_spots\": [\"production backup availability\"], \"id\": \"S2\", \"independence\": \"database migration execution\", \"method\": \"Flyway migration integration test and migration checker\", \"target\": \"R3 database cleanup\"}",
+      "{\"blind_spots\": [\"production authorization configuration\"], \"id\": \"S3\", \"independence\": \"compiled frontend and browser observation\", \"method\": \"Vite production build and browser path at desktop/mobile\", \"target\": \"R1/R2 frontend route and interaction\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"extend scoped public contract, adapter and store guard\", \"authority\": \"REQ-084 writable paths\", \"id\": \"A1\", \"impact_radius\": \"architecture/release/boot integration\", \"rollback\": \"revert scoped source changes before V217\", \"target\": \"architecture public projection and deletion guard\"}",
+      "{\"action\": \"replace release service/store/API/router/UI environment handling\", \"authority\": \"REQ-084 writable paths\", \"id\": \"A2\", \"impact_radius\": \"release module and frontend\", \"rollback\": \"revert scoped application changes before V217\", \"target\": \"release private environment removal\"}",
+      "{\"action\": \"append V217 only\", \"authority\": \"REQ-084 migration path\", \"id\": \"A3\", \"impact_radius\": \"release drill data and system menu grants\", \"rollback\": \"restore verified pre-migration database backup\", \"target\": \"legacy data and menu cleanup\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"V217 may fail or omit dependent rows\", \"source\": \"legacy foreign keys or menu grants\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"diff and scope checks contain pre-code task artifacts\", \"source\": \"existing dirty task documentation\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"browser evidence may be limited\", \"source\": \"local browser or services unavailable\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"JdbcReleaseMasterDataQuery and ReleaseOperationsStore currently use these fields\", \"falsifier\": \"schema inspection or focused test shows a required column/relationship is absent\", \"text\": \"arch_environment supports tenant/project/ACTIVE filtering and release drill can preserve environmentId semantics\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S2\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S1\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S1\", \"S3\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Expose current-project active architecture environments through the public release contract and block deleting referenced environments.",
+      "requirements": [
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "Architecture owns arch_environment.",
+        "Boot already adapts ReleaseMasterDataQuery to ReleaseArchitectureDirectory."
+      ],
+      "write_scope": [
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/integration/ReleaseMasterDataQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/service/JdbcReleaseMasterDataQuery.java",
+        "server/src/modules/architecture/src/main/java/com/ccb/architecture/environment/**",
+        "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+        "server/src/platform/boot/src/main/java/com/ccb/boot/release/ReleaseArchitectureDirectoryAdapter.java",
+        "governance/modules.yaml",
+        "docs/integration/architecture-module-contract.md"
+      ],
+      "invariants": [
+        "No release access to arch_ tables.",
+        "Tenant/project/status checks remain server-side."
+      ],
+      "interface_contracts": [
+        "Active environment projections include id, code, name and type."
+      ],
+      "non_goals": [
+        "Changing architecture environment CRUD behavior other than delete-reference protection."
+      ],
+      "action_bounds": [
+        "Extend only existing public contracts and scoped deletion path."
+      ],
+      "acceptance": [
+        "Current project active environments resolve.",
+        "Cross-project/inactive values do not resolve.",
+        "Referenced environment delete fails."
+      ],
+      "evidence_required": [
+        "Scoped diff",
+        "focused architecture tests"
+      ],
+      "rollback": "Revert scoped source and contract changes.",
+      "stop_conditions": [
+        "A direct architecture-to-release module dependency is required."
+      ],
+      "escalation_conditions": [
+        "Existing delete transaction cannot perform the reference guard."
+      ],
+      "status": "active",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-18T03:26:39+00:00",
+          "text": "T1 preflight completed: public query, release directory, boot adapter and environment delete path inspected; no out-of-scope dependency required."
+        }
+      ],
+      "updated_at": "2026-09-18T03:26:39+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Remove private release drill environment APIs and UI, and make drills validate and display architecture environment projections.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "Release drill round already persists environment_id.",
+        "T1 provides a release-owned environment directory."
+      ],
+      "write_scope": [
+        "server/src/modules/release/src/main/java/com/ccb/release/operations/**",
+        "server/src/modules/release/src/main/java/com/ccb/release/integration/ReleaseArchitectureDirectory.java",
+        "web/src/api/release.ts",
+        "web/src/router/index.ts",
+        "web/src/modules/release/ReleaseOperationsManagement.vue",
+        "web/src/modules/release/components/ReleaseDrillExecutionView.vue",
+        "web/src/modules/release/components/ReleaseDrillEnvironmentView.vue"
+      ],
+      "invariants": [
+        "Existing release project-member authorization remains active.",
+        "environmentId continues to be the HTTP field."
+      ],
+      "interface_contracts": [
+        "Release resolves environment IDs through ReleaseArchitectureDirectory."
+      ],
+      "non_goals": [
+        "Frontend direct use of architecture API."
+      ],
+      "action_bounds": [
+        "Remove only private environment route/API/component and replace the drill selection source."
+      ],
+      "acceptance": [
+        "Private endpoint and route are absent.",
+        "Invalid architecture environment is rejected on save.",
+        "Empty environment selection disables new drill creation."
+      ],
+      "evidence_required": [
+        "Scoped diff",
+        "release tests",
+        "frontend build"
+      ],
+      "rollback": "Revert scoped application changes before V217.",
+      "stop_conditions": [
+        "Reading options requires an architecture private frontend API."
+      ],
+      "escalation_conditions": [
+        "Existing roles cannot read directory options without role-model changes."
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-18T03:26:11+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Destructively remove legacy release drill data, table, menu and grants in V217.",
+      "requirements": [
+        "R1",
+        "R3"
+      ],
+      "prerequisites": [
+        "T2"
+      ],
+      "input_facts": [
+        "User explicitly approved data removal without compatibility."
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V217__release_drill_use_architecture_environment.sql",
+        "server/src/modules/release/src/test/java/com/ccb/release/operations/**"
+      ],
+      "invariants": [
+        "No historical migration changes.",
+        "Only approved legacy environment, drill, step, issue and menu/grant data are removed."
+      ],
+      "interface_contracts": [
+        "release drill environment_id semantic changes only after cleanup migration."
+      ],
+      "non_goals": [
+        "Restoring data or migrating legacy environment values."
+      ],
+      "action_bounds": [
+        "Append one migration after inspecting published schema."
+      ],
+      "acceptance": [
+        "Legacy dependent rows are deleted before the old table is dropped.",
+        "Menu 1006 and related grants are retired."
+      ],
+      "evidence_required": [
+        "Migration source",
+        "migration validation"
+      ],
+      "rollback": "Data recovery requires a pre-V217 backup.",
+      "stop_conditions": [
+        "An unapproved dependent table is found."
+      ],
+      "escalation_conditions": [
+        "Cleanup would remove data beyond the approved scope."
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-18T03:26:11+00:00"
+    },
+    {
+      "id": "T4",
+      "goal": "Run regression, migration, scope and browser observations for the complete replacement.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T3"
+      ],
+      "input_facts": [
+        "T1-T3 changes are implemented."
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260918-084-release-drill-architecture-environment/*.json"
+      ],
+      "invariants": [
+        "No scope expansion."
+      ],
+      "interface_contracts": [
+        "All prior task contracts."
+      ],
+      "non_goals": [
+        "Unrelated refactoring."
+      ],
+      "action_bounds": [
+        "Verification and evidence only."
+      ],
+      "acceptance": [
+        "Focused/full module tests, frontend build, governance, scope and browser path."
+      ],
+      "evidence_required": [
+        "Command exits",
+        "browser observation or tool limitation"
+      ],
+      "rollback": "No product changes.",
+      "stop_conditions": [
+        "Cross-project or inactive environment is accepted."
+      ],
+      "escalation_conditions": [
+        "Verification requires an out-of-scope shared change."
+      ],
+      "status": "planned",
+      "evidence": [],
+      "updated_at": "2026-09-18T03:26:11+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": []
+}

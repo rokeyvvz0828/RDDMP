@@ -51,18 +51,7 @@ public final class ReleaseOperationsModels {
     public record PlanTimelineRequest(Integer seqNo, String timelineName, String description, long rowVersion) {
     }
 
-    public record DrillEnvironment(long id, long tenantId, long projectId, String environmentName,
-                                   String description, String carryDataLineEnvironment,
-                                   String infrastructureDeployment, String hardwareCheck, String networkOpening,
-                                   String middlewareCheck, String componentCheck, String databaseCheck,
-                                   long rowVersion, LocalDateTime updatedAt) {
-    }
-
-    public record DrillEnvironmentRequest(String environmentName, String description,
-                                          String carryDataLineEnvironment, String infrastructureDeployment,
-                                          String hardwareCheck, String networkOpening, String middlewareCheck,
-                                          String componentCheck, String databaseCheck, long rowVersion) {
-    }
+    public record DrillEnvironmentOption(long id, String environmentCode, String environmentName, String environmentType) {}
 
     public record DrillStep(long id, long projectId, long drillRoundId, int seqNo, String stepName,
                             Long ownerId, String ownerName, LocalDateTime plannedStart, LocalDateTime plannedEnd,
@@ -78,7 +67,7 @@ public final class ReleaseOperationsModels {
     public record ReleaseDrillRound(long id, long projectId, int roundNo, String roundName,
                                     LocalDateTime plannedAt, DrillStatus status, String resultContent,
                                     long releasePlanId, String releasePlanName, long environmentId,
-                                    String environmentName, long rowVersion, LocalDateTime updatedAt,
+                                    String environmentName, String environmentCode, String environmentType, long rowVersion, LocalDateTime updatedAt,
                                     List<DrillStep> steps) {
     }
 
