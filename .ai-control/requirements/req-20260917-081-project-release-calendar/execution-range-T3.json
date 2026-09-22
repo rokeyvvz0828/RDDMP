@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "topic": "req-20260917-081-project-release-calendar",
+  "task_id": "T3",
+  "status": "implemented",
+  "recorded_at": "2026-09-20T10:38:00+08:00",
+  "changed_surfaces": [
+    {
+      "resource": ".ai-control/requirements/req-20260917-081-project-release-calendar",
+      "purpose": "Record integrated execution and independent observation evidence for the date-range implementation."
+    }
+  ],
+  "requirements_addressed": ["R1", "R2", "R3", "R4", "R5"],
+  "commands": [
+    {
+      "command": "node scripts/check-development-entry.mjs --require-plugin",
+      "exit_code": 0,
+      "result": "Development entry check passed."
+    },
+    {
+      "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am test",
+      "exit_code": 0,
+      "result": "Reactor build success; 153 tests passed, including 69 ProjectServiceTest cases and 2 migration contract cases."
+    },
+    {
+      "command": "npm --prefix web run build",
+      "exit_code": 0,
+      "result": "vue-tsc and Vite production build passed. Existing chunk-size and dynamic-import warnings remain non-fatal."
+    },
+    {
+      "command": "node scripts/check-flyway-migrations.mjs",
+      "exit_code": 0,
+      "result": "Flyway migration check passed for 216 migrations."
+    },
+    {
+      "command": "node scripts/check-all-governance.mjs",
+      "exit_code": 1,
+      "result": "Repository-wide AI control layout check failed on pre-existing historical ledger issues; module, skill and development-entry checks passed."
+    },
+    {
+      "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-081-project-release-calendar/codex-task-scope.yaml --working-tree",
+      "exit_code": 1,
+      "result": "Scope check reported unrelated REQ-084/REQ-083 changes and read-only-path modifications already present in the shared worktree."
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "No whitespace errors; Git emitted only line-ending conversion warnings."
+    },
+    {
+      "command": "Authenticated local API flow against http://127.0.0.1:8080",
+      "exit_code": 0,
+      "result": "admin login code 0; create 2026-09-28..2026-10-03 returned 200; September and October queries both contained the range; delete returned 200 and removed the temporary entry."
+    },
+    {
+      "command": "Browser automation via cua.getState()",
+      "exit_code": 3,
+      "result": "Sensor unavailable: failed to write kernel assets because the system could not find the specified path."
+    }
+  ],
+  "local_checks": [
+    "Backend health endpoint returned HTTP 200 after the local process recovered.",
+    "Frontend root returned HTTP 200 on port 5173.",
+    "V218 was applied in the local Flyway runtime before the API flow."
+  ],
+  "diff_summary": [
+    "Scoped implementation files: server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql; server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java; focused system tests; web/src/types/project.ts; web/src/api/project.ts; web/src/views/ProjectView.vue.",
+    "Unrelated worktree changes were preserved and not reverted."
+  ],
+  "invariants_checked": [
+    {
+      "invariant": "V214 remains unchanged and V218 is additive.",
+      "result": "passed"
+    },
+    {
+      "invariant": "Range API uses inclusive start/end dates and project member authorization.",
+      "result": "passed by focused tests and authenticated API flow"
+    },
+    {
+      "invariant": "No unrelated worktree changes are reverted.",
+      "result": "passed"
+    }
+  ],
+  "disturbances": [
+    {
+      "source": "PowerShell argument parsing",
+      "effect": "Initial Maven command exited before test execution",
+      "mitigation": "Re-ran with the system-property argument quoted; test suite passed."
+    },
+    {
+      "source": "Shared worktree contains REQ-083/REQ-084 changes",
+      "effect": "Scope and repository governance gates cannot be clean in this worktree",
+      "mitigation": "Preserved changes and recorded the baseline limitation."
+    },
+    {
+      "source": "Browser automation kernel path unavailable",
+      "effect": "Desktop/mobile visual and scrollWidth measurements unavailable",
+      "mitigation": "Recorded sensor fault; no browser acceptance claim made."
+    }
+  ],
+  "assumptions_falsified": [],
+  "unresolved_items": [
+    "Real-browser acceptance at 1280x800, 375x812, 390x844 and 430x932 is still unavailable.",
+    "Repository-wide governance and working-tree scope checks require a clean, isolated worktree and remediation of historical ledger defects."
+  ],
+  "recommended_next": "observe"
+}

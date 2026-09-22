@@ -1,0 +1,2814 @@
+{
+  "schema_version": 4,
+  "revision": 32,
+  "created_at": "2026-09-20T02:02:57+00:00",
+  "updated_at": "2026-09-20T02:43:09+00:00",
+  "mode": "standard",
+  "phase": "verifying",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=2；设计确认=User confirmed one record with start/end dates and daily marking for the range.；计划确认=User confirmed the date-range implementation plan revision 2.",
+      "recorded_at": "2026-09-20T02:02:57+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "Baseline ready: all must requirements have measurable sensors and no blocking unknowns",
+      "recorded_at": "2026-09-20T02:06:15+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "Engineering system model is ready and all range behavior is observable and controllable",
+      "recorded_at": "2026-09-20T02:08:26+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "Control plan ready and covers all must requirements",
+      "recorded_at": "2026-09-20T02:09:17+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T1 execution report has scoped diff, tests and unresolved runtime/browser coverage gaps",
+      "recorded_at": "2026-09-20T02:13:26+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T1 verified; proceeding to T2 frontend range implementation",
+      "recorded_at": "2026-09-20T02:14:27+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T2 execution report has build/diff evidence and browser/API coverage gaps",
+      "recorded_at": "2026-09-20T02:20:18+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "T2 verified with explicit browser sensor gap; proceeding to T3 runtime/integration observation",
+      "recorded_at": "2026-09-20T02:25:46+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3 execution report has integrated test, build, API and sensor-gap evidence.",
+      "recorded_at": "2026-09-20T02:38:59+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "executing",
+      "evidence": "Correcting T3 ledger schema validation before recording integrated execution evidence.",
+      "recorded_at": "2026-09-20T02:39:51+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "observing",
+      "evidence": "T3-integrated-evidence-recorded",
+      "recorded_at": "2026-09-20T02:40:47+00:00"
+    },
+    {
+      "from": "observing",
+      "to": "verifying",
+      "evidence": "T1-T3-observation-recorded",
+      "recorded_at": "2026-09-20T02:41:59+00:00"
+    }
+  ],
+  "stage_artifacts": {
+    "baseline": [
+      {
+        "revision": 1,
+        "evidence": "导入已批准开发前交接：design_revision=2, plan_revision=2；设计确认=User confirmed one record with start/end dates and daily marking for the range.；计划确认=User confirmed the date-range implementation plan revision 2.",
+        "recorded_at": "2026-09-20T02:02:57+00:00",
+        "data": {
+          "objective": "Provide a project-scoped, independently maintained release calendar with member-authorized CRUD, date-range selection and responsive month presentation.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Keep the release-calendar project tab and existing tab routes usable.",
+              "acceptance": [
+                "Direct and interactive tab navigation load the calendar."
+              ],
+              "priority": "must",
+              "source": "Existing approved REQ-081 design",
+              "counterexample": [
+                "Changing existing tabs' route behavior."
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Persist independent entries with title, inclusive release start date, release end date and remark; equal dates represent one day.",
+              "acceptance": [
+                "CRUD survives refresh",
+                "A cross-month entry is returned from every intersecting month",
+                "Every date in the range is marked"
+              ],
+              "priority": "must",
+              "source": "User-confirmed date-range design",
+              "counterexample": [
+                "Only the start date is displayed for a range."
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Authorize project members on the server for calendar reads and writes.",
+              "acceptance": [
+                "Non-members and cross-tenant callers are denied."
+              ],
+              "priority": "must",
+              "source": "Existing approved REQ-081 design",
+              "counterexample": [
+                "Frontend-only authorization."
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Use a desktop month calendar and mobile date-grouped list with inclusive range expansion.",
+              "acceptance": [
+                "Desktop and required mobile viewports have no page-level horizontal overflow",
+                "Cross-month ranges appear in every intersecting month"
+              ],
+              "priority": "must",
+              "source": "design-h5.md and user confirmation",
+              "counterexample": [
+                "A range disappears from its end month."
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Preserve release-window-inspired project tab styling and theme readability.",
+              "acceptance": [
+                "Existing tabs remain usable and theme-readable."
+              ],
+              "priority": "must",
+              "source": "Existing approved REQ-081 design",
+              "counterexample": [
+                "Replacing navigation with unrelated styling."
+              ]
+            }
+          ],
+          "invariants": [
+            "Release-window data remains independent.",
+            "Server-side tenant, membership, entity, optimistic-lock and audit controls apply.",
+            "Flyway changes are additive only.",
+            "release_start_date <= release_end_date and both endpoints are inclusive."
+          ],
+          "constraints": [
+            "Vue 3 and existing Element Plus/UI patterns.",
+            "Project system module owns the API and data.",
+            "No production data or secrets.",
+            "Do not modify published V214."
+          ],
+          "non_goals": [
+            "Time-of-day values",
+            "statuses",
+            "recurrence",
+            "reminders",
+            "attachments",
+            "approval",
+            "cross-project aggregation",
+            "external calendar synchronization"
+          ],
+          "assumptions": [
+            {
+              "text": "Project membership continues to grant calendar maintenance authority.",
+              "basis": "Existing approved REQ-081 design and user confirmation.",
+              "falsifier": "Owner specifies an additional role boundary."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "id": "D1",
+              "decision": "One record stores inclusive release_start_date and release_end_date; equal dates represent a single day.",
+              "reason": "User confirmation",
+              "source": "Conversation"
+            },
+            {
+              "id": "D2",
+              "decision": "Every day within the range is marked and the record appears in each intersecting month.",
+              "reason": "User confirmation",
+              "source": "Conversation"
+            },
+            {
+              "id": "D3",
+              "decision": "Existing release_date rows are backfilled as same-day ranges by V218.",
+              "reason": "Preserve existing data while changing the contract",
+              "source": "Approved implementation design"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "signal": "Persisted range CRUD, overlap filtering and denied unauthorized access",
+              "method": "Focused service, migration and authenticated API tests."
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R4",
+                "R5"
+              ],
+              "signal": "Tab navigation, daily range rendering and no overflow",
+              "method": "Frontend build and browser checks at desktop and three mobile viewports."
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "REQ-081 revision 2 confirmed: inclusive start/end date range with daily marking and same-day legacy backfill",
+        "recorded_at": "2026-09-20T02:06:15+00:00",
+        "data": {
+          "objective": "Allow project members to maintain one project release-calendar entry over an inclusive start/end date range and see it on every covered calendar day.",
+          "requirements": [
+            {
+              "id": "R1",
+              "statement": "Keep the release-calendar project tab and existing tab routes usable.",
+              "acceptance": [
+                "Direct and interactive tab navigation load the calendar."
+              ],
+              "priority": "must",
+              "source": "Approved REQ-081 design revision 2",
+              "counterexample": [
+                "Existing project tabs stop loading."
+              ]
+            },
+            {
+              "id": "R2",
+              "statement": "Persist independent entries with title, inclusive release_start_date, release_end_date and remark; equal dates represent one day.",
+              "acceptance": [
+                "CRUD survives refresh",
+                "A cross-month entry is returned by every intersecting month",
+                "Every covered date is marked"
+              ],
+              "priority": "must",
+              "source": "User confirmation",
+              "counterexample": [
+                "Only the start date is rendered for a range."
+              ]
+            },
+            {
+              "id": "R3",
+              "statement": "Authorize project members on the server for calendar reads and writes.",
+              "acceptance": [
+                "Non-members and cross-tenant callers are denied"
+              ],
+              "priority": "must",
+              "source": "Approved REQ-081 design",
+              "counterexample": [
+                "Frontend-only permission enforcement."
+              ]
+            },
+            {
+              "id": "R4",
+              "statement": "Use desktop month and mobile date-grouped presentations with inclusive range expansion.",
+              "acceptance": [
+                "Required desktop/mobile viewports have no page-level horizontal overflow",
+                "Cross-month ranges appear in all intersecting months"
+              ],
+              "priority": "must",
+              "source": "design-h5.md and user confirmation",
+              "counterexample": [
+                "End-month range is missing."
+              ]
+            },
+            {
+              "id": "R5",
+              "statement": "Preserve release-window-inspired project tab styling and theme readability.",
+              "acceptance": [
+                "Existing tabs remain usable and theme-readable"
+              ],
+              "priority": "must",
+              "source": "Approved REQ-081 design",
+              "counterexample": [
+                "Navigation becomes inaccessible in a theme."
+              ]
+            }
+          ],
+          "invariants": [
+            "Release-window data remains independent",
+            "Server-side tenant, membership, entity, optimistic-lock and audit controls apply",
+            "Flyway changes are additive only",
+            "release_start_date is not after release_end_date and endpoints are inclusive"
+          ],
+          "constraints": [
+            "Only REQ-081 writable paths may change",
+            "Do not modify V214 or unrelated REQ-084 changes",
+            "No production data or secrets"
+          ],
+          "non_goals": [
+            "Time-of-day values",
+            "statuses",
+            "recurrence",
+            "reminders",
+            "attachments",
+            "approval",
+            "cross-project aggregation",
+            "external calendar synchronization"
+          ],
+          "assumptions": [
+            {
+              "text": "Existing project membership guard remains the authority for calendar editing.",
+              "basis": "Approved REQ-081 design and user confirmation.",
+              "falsifier": "Owner changes project permission semantics."
+            }
+          ],
+          "unknowns": [],
+          "decisions": [
+            {
+              "question": "How should a range be represented?",
+              "options": [
+                "One record with inclusive start/end dates",
+                "One record per day"
+              ],
+              "selected": "One record with inclusive start/end dates",
+              "blocking": false,
+              "source": "User confirmation"
+            }
+          ],
+          "measurement_intents": [
+            {
+              "requirement_id": "R1",
+              "observable": "Project tab route and content load",
+              "candidate_sensor": "Browser route check"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "Range CRUD and month-overlap results",
+              "candidate_sensor": "Focused service/API and migration tests"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "Denied non-member/cross-tenant requests",
+              "candidate_sensor": "Permission tests/API responses"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "Daily markers and page width at required viewports",
+              "candidate_sensor": "Browser screenshots and scrollWidth probe"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "Tab styling and theme readability",
+              "candidate_sensor": "Browser theme inspection"
+            }
+          ],
+          "baseline_status": "ready"
+        }
+      }
+    ],
+    "modeling": [
+      {
+        "revision": 1,
+        "evidence": "Model ready: each must requirement maps to independent sensors and scoped actuators; cross-month, migration and browser gaps are explicit",
+        "recorded_at": "2026-09-20T02:08:25+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "plant_boundary": {
+            "inside": [
+              "pm_project_release_calendar range columns and legacy release_date",
+              "ProjectService/ProjectController calendar contract",
+              "project.ts types/API",
+              "ProjectView calendar tab/form/rendering",
+              "focused tests and browser flow"
+            ],
+            "environment": [
+              "MySQL/Flyway runtime",
+              "authenticated project API caller",
+              "browser viewport",
+              "unrelated REQ-084 worktree changes"
+            ]
+          },
+          "state_variables": [
+            {
+              "name": "range_bounds",
+              "owner": "ProjectService/database",
+              "valid_values": [
+                "start <= end"
+              ]
+            },
+            {
+              "name": "current_month",
+              "owner": "ProjectView",
+              "valid_values": [
+                "YYYY-MM within current year"
+              ]
+            },
+            {
+              "name": "entry_version",
+              "owner": "database/API",
+              "valid_values": [
+                "positive row_version"
+              ]
+            },
+            {
+              "name": "membership_authorization",
+              "owner": "ProjectService",
+              "valid_values": [
+                "member",
+                "denied"
+              ]
+            },
+            {
+              "name": "daily_render_set",
+              "owner": "ProjectView",
+              "valid_values": [
+                "dates contained in inclusive range"
+              ]
+            }
+          ],
+          "causal_paths": [
+            {
+              "requirement_id": "R1",
+              "input": "tab query",
+              "transitions": [
+                "activeTab synchronization",
+                "calendar load"
+              ],
+              "outputs": [
+                "release-calendar content"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "input": "daterange payload",
+              "transitions": [
+                "validate start/end",
+                "persist range",
+                "query month overlap",
+                "expand inclusive dates"
+              ],
+              "outputs": [
+                "range DTO and daily markers"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "input": "project/user request",
+              "transitions": [
+                "membership/tenant/entity guard",
+                "authorized result or forbidden"
+              ],
+              "outputs": [
+                "200 or 403"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "input": "month and viewport",
+              "transitions": [
+                "overlap response",
+                "daily expansion",
+                "responsive layout"
+              ],
+              "outputs": [
+                "desktop cells/mobile groups without page overflow"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "input": "theme/tab navigation",
+              "transitions": [
+                "semantic styles render with range controls"
+              ],
+              "outputs": [
+                "readable tabs and controls"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Calendar REST",
+              "producers": [
+                "ProjectController",
+                "ProjectService"
+              ],
+              "consumers": [
+                "web/src/api/project.ts"
+              ],
+              "invariant": "POST/PUT use release_start_date/release_end_date and GET returns intersecting month ranges"
+            },
+            {
+              "name": "Calendar DTO",
+              "producers": [
+                "ProjectService"
+              ],
+              "consumers": [
+                "ProjectView"
+              ],
+              "invariant": "Both range endpoints and row_version are present"
+            }
+          ],
+          "sensors": [
+            {
+              "id": "S1",
+              "target": "R2/R3 service contract",
+              "method": "Focused ProjectServiceTest",
+              "blind_spots": [
+                "live browser rendering"
+              ],
+              "independence": "Automated test runner"
+            },
+            {
+              "id": "S2",
+              "target": "R2 migration",
+              "method": "ProjectReleaseCalendarMigrationTest and Flyway checker",
+              "blind_spots": [
+                "production database state"
+              ],
+              "independence": "SQL/file assertions"
+            },
+            {
+              "id": "S3",
+              "target": "R2/R3 API runtime",
+              "method": "Authenticated local HTTP requests",
+              "blind_spots": [
+                "non-local tenants"
+              ],
+              "independence": "Running backend response"
+            },
+            {
+              "id": "S4",
+              "target": "R1/R4/R5 frontend",
+              "method": "Vite production build and scope/diff checks",
+              "blind_spots": [
+                "visual layout"
+              ],
+              "independence": "Build/check processes"
+            },
+            {
+              "id": "S5",
+              "target": "R1/R4/R5 browser behavior",
+              "method": "Desktop/mobile viewport interaction and scrollWidth probe",
+              "blind_spots": [
+                "unavailable automation surface"
+              ],
+              "independence": "Browser runtime output"
+            }
+          ],
+          "actuators": [
+            {
+              "id": "A1",
+              "target": "range persistence",
+              "action": "Append V218 and update ProjectService range SQL/validation",
+              "authority": "REQ-081 writable_paths",
+              "impact_radius": "project calendar table/service",
+              "rollback": "Revert service changes and retain additive migration"
+            },
+            {
+              "id": "A2",
+              "target": "range UI",
+              "action": "Update project types/API/View daterange and daily expansion",
+              "authority": "REQ-081 writable_paths",
+              "impact_radius": "ProjectView release calendar",
+              "rollback": "Revert three frontend files"
+            }
+          ],
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R2",
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R3",
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R4",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            },
+            {
+              "requirement_id": "R5",
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ],
+              "observable": "yes"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "cross-month boundary",
+              "effect": "missing or extra daily marker",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "legacy rows",
+              "effect": "null range columns after migration",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "unrelated worktree changes",
+              "effect": "scope checker noise or accidental overwrite",
+              "detectable": true,
+              "controllable": true
+            },
+            {
+              "source": "browser automation unavailable",
+              "effect": "responsive behavior unobservable",
+              "detectable": true,
+              "controllable": false
+            }
+          ],
+          "delays": [
+            {
+              "source": "Flyway startup",
+              "consequence": "API can read stale schema before migration",
+              "sampling_rule": "Check migration history before API sampling"
+            },
+            {
+              "source": "async month request/Vue rendering",
+              "consequence": "old response or stale cells",
+              "sampling_rule": "Wait for loading completion and recheck current month"
+            }
+          ],
+          "assumptions": [
+            {
+              "text": "Element Plus daterange picker is already available through project plan forms.",
+              "evidence": "ProjectView already uses type=daterange.",
+              "falsifier": "Build or runtime lacks the component."
+            }
+          ],
+          "control_assessment": [
+            {
+              "requirement_id": "R1",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2/T3"
+            },
+            {
+              "requirement_id": "R2",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1/T2/T3"
+            },
+            {
+              "requirement_id": "R3",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T1/T3"
+            },
+            {
+              "requirement_id": "R4",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2/T3"
+            },
+            {
+              "requirement_id": "R5",
+              "observable": "yes",
+              "controllable": "yes",
+              "action": "T2/T3"
+            }
+          ],
+          "model_status": "ready"
+        }
+      }
+    ],
+    "planning": [
+      {
+        "revision": 1,
+        "evidence": "T1/T2/T3 plan ready with serial dependencies, scoped writes, rollback and range-specific sensors",
+        "recorded_at": "2026-09-20T02:09:16+00:00",
+        "data": {
+          "baseline_revision": "baseline-2",
+          "model_revision": "model-2",
+          "tasks": [
+            {
+              "id": "T1",
+              "goal": "Deliver additive range storage and member-authorized API CRUD.",
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "prerequisites": [],
+              "input_facts": [
+                "V214 stores release_date",
+                "ProjectService owns current calendar auth/audit/version semantics"
+              ],
+              "write_scope": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql",
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectReleaseCalendarMigrationTest.java",
+                ".ai-control/requirements/req-20260917-081-project-release-calendar/*"
+              ],
+              "invariants": [
+                "Do not modify V214",
+                "start <= end",
+                "membership/tenant/entity/version/audit checks remain"
+              ],
+              "interface_contracts": [
+                "POST/PUT accept release_start_date/release_end_date",
+                "GET returns month-overlap records",
+                "same-day legacy rows are backfilled"
+              ],
+              "non_goals": [
+                "Release-window integration",
+                "dropping release_date",
+                "new permission model"
+              ],
+              "action_bounds": [
+                "Only project calendar service, migration and focused tests",
+                "Append V218 only"
+              ],
+              "acceptance_checks": [
+                "same-day and cross-month ranges persist",
+                "outside-month ranges are excluded",
+                "reversed range is rejected",
+                "non-member/cross-tenant/stale version paths remain denied"
+              ],
+              "evidence_required": [
+                "actual diff",
+                "migration checker",
+                "focused Maven test output",
+                "scope path list"
+              ],
+              "rollback": "Revert service/tests and retain V218 additive history",
+              "stop_conditions": [
+                "V218 needs V214 modification",
+                "range authorization cannot be tested"
+              ],
+              "escalation_conditions": [
+                "Owner requests dropping legacy column or changing membership rules"
+              ]
+            },
+            {
+              "id": "T2",
+              "goal": "Deliver range selection and inclusive daily rendering without tab/theme regression.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1"
+              ],
+              "input_facts": [
+                "ProjectView owns calendar state/tabs",
+                "Element Plus daterange is already used in project plan form"
+              ],
+              "write_scope": [
+                "web/src/types/project.ts",
+                "web/src/api/project.ts",
+                "web/src/views/ProjectView.vue",
+                ".ai-control/requirements/req-20260917-081-project-release-calendar/*"
+              ],
+              "invariants": [
+                "Existing tab query behavior remains",
+                "range endpoints are inclusive",
+                "loading/error/empty/delete/theme states remain"
+              ],
+              "interface_contracts": [
+                "DTO/API use release_start_date/release_end_date",
+                "calendarEntriesFor matches date between boundaries"
+              ],
+              "non_goals": [
+                "New shared components",
+                "change to release-window UI",
+                "cross-project calendar"
+              ],
+              "action_bounds": [
+                "Only three scoped frontend files",
+                "Use existing Element Plus and semantic theme variables"
+              ],
+              "acceptance_checks": [
+                "single-day and cross-month ranges create/edit and refresh",
+                "every range day is marked",
+                "tooltips show boundaries and remark",
+                "mobile groups expand range without page overflow"
+              ],
+              "evidence_required": [
+                "frontend build output",
+                "git diff check",
+                "browser viewport/console/scrollWidth evidence"
+              ],
+              "rollback": "Revert the three frontend files and retain server range data",
+              "stop_conditions": [
+                "page-level horizontal overflow",
+                "tab query regression",
+                "new public UI dependency required"
+              ],
+              "escalation_conditions": [
+                "User requests different range visualization"
+              ]
+            },
+            {
+              "id": "T3",
+              "goal": "Produce independent integrated evidence and convergence inputs.",
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ],
+              "prerequisites": [
+                "T1",
+                "T2"
+              ],
+              "input_facts": [
+                "T1 and T2 provide range API/UI",
+                "Required governance and browser sensors are listed in scope"
+              ],
+              "write_scope": [
+                ".ai-control/requirements/req-20260917-081-project-release-calendar/*"
+              ],
+              "invariants": [
+                "No unrelated changes are reverted",
+                "P0/P1 authorization/migration/navigation defects are zero before convergence"
+              ],
+              "interface_contracts": [
+                "Runtime API and UI use the same range contract"
+              ],
+              "non_goals": [
+                "Repair existing REQ-084 worktree changes"
+              ],
+              "action_bounds": [
+                "Run scoped tests/checks and record evidence",
+                "Only fix defects in T1/T2 files"
+              ],
+              "acceptance_checks": [
+                "backend/migration/API checks pass",
+                "frontend/governance/scope/diff checks pass or baseline gaps are isolated",
+                "desktop and three mobile flows are observed"
+              ],
+              "evidence_required": [
+                "commands and exit codes",
+                "API responses",
+                "browser viewports and console",
+                "coverage gaps and residual risks"
+              ],
+              "rollback": "Retain V218; revert only T1/T2 application changes if needed",
+              "stop_conditions": [
+                "migration failure",
+                "cross-project leakage",
+                "permission bypass",
+                "page overflow"
+              ],
+              "escalation_conditions": [
+                "browser sensor remains unavailable after runtime checks"
+              ]
+            }
+          ],
+          "dependency_edges": [
+            {
+              "from": "T1",
+              "to": "T2",
+              "reason": "Frontend consumes range API"
+            },
+            {
+              "from": "T1",
+              "to": "T3",
+              "reason": "Integration needs storage/auth"
+            },
+            {
+              "from": "T2",
+              "to": "T3",
+              "reason": "Integration needs range UI"
+            }
+          ],
+          "parallel_groups": [
+            [
+              "T1"
+            ],
+            [
+              "T2"
+            ],
+            [
+              "T3"
+            ]
+          ],
+          "integration_points": [
+            {
+              "after_tasks": [
+                "T1"
+              ],
+              "checks": [
+                "focused backend/migration tests",
+                "flyway checker"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T2"
+              ],
+              "checks": [
+                "frontend production build",
+                "git diff --check"
+              ]
+            },
+            {
+              "after_tasks": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "checks": [
+                "backend module test",
+                "frontend build",
+                "governance",
+                "scope",
+                "browser range flow"
+              ]
+            }
+          ],
+          "sampling_plan": [
+            {
+              "label": "T1 completion",
+              "trigger": "T1 execution report",
+              "observer": "independent test run",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3"
+              ],
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ]
+            },
+            {
+              "label": "T2 completion",
+              "trigger": "T2 execution report",
+              "observer": "independent build/browser run",
+              "sensors": [
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R4",
+                "R5"
+              ]
+            },
+            {
+              "label": "final integration",
+              "trigger": "T3 execution report",
+              "observer": "independent convergence review",
+              "sensors": [
+                "S1",
+                "S2",
+                "S3",
+                "S4",
+                "S5"
+              ],
+              "requirement_ids": [
+                "R1",
+                "R2",
+                "R3",
+                "R4",
+                "R5"
+              ]
+            }
+          ],
+          "coverage": [
+            {
+              "requirement_id": "R1",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "task_ids": [
+                "T1",
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S2",
+                "S3",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "task_ids": [
+                "T1",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S1",
+                "S3"
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "task_ids": [
+                "T2",
+                "T3"
+              ],
+              "sensor_ids": [
+                "S4",
+                "S5"
+              ]
+            }
+          ],
+          "plan_status": "ready"
+        }
+      }
+    ],
+    "executing": [
+      {
+        "revision": 1,
+        "evidence": "T1 implemented and focused service/migration tests passed: 71 tests",
+        "recorded_at": "2026-09-20T02:13:26+00:00",
+        "data": {
+          "task_id": "T1",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql",
+              "purpose": "Add and backfill inclusive range columns and overlap index."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+              "purpose": "Validate range bounds, persist start/end, return range DTO and query month overlap."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+              "purpose": "Update API contract tests and add reversed-range rejection."
+            },
+            {
+              "path_or_resource": "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectReleaseCalendarMigrationTest.java",
+              "purpose": "Verify V218 additive backfill contract."
+            }
+          ],
+          "requirements_addressed": [
+            "R2",
+            "R3"
+          ],
+          "commands": [
+            {
+              "command": "mvn \"-Dnet.bytebuddy.experimental=true\" \"-pl\" \":ccb-system\" \"-am\" \"-Dtest=ProjectServiceTest,ProjectReleaseCalendarMigrationTest\" \"-Dsurefire.failIfNoSpecifiedTests=false\" \"test\"",
+              "exit_code": 0,
+              "salient_output": "ProjectServiceTest 69 and ProjectReleaseCalendarMigrationTest 2 passed; reactor BUILD SUCCESS."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "focused service/migration tests",
+              "result": "passed",
+              "evidence": "71 tests passed",
+              "limitations": [
+                "No live MySQL migration/API runtime in this sample"
+              ]
+            },
+            {
+              "check": "scope path review",
+              "result": "passed",
+              "evidence": "Only T1 scoped files changed among task surfaces",
+              "limitations": [
+                "Unrelated pre-existing worktree files remain"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "V218 adds range columns, same-day backfill and range index",
+            "ProjectService uses inclusive month overlap and validates start <= end",
+            "Tests cover same-day, overlap SQL, reverse range and stale version"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "V214 remains unchanged",
+              "result": "passed",
+              "evidence": "Only V218 was added"
+            },
+            {
+              "invariant": "Membership, tenant, entity, optimistic-lock and audit behavior remains",
+              "result": "passed",
+              "evidence": "Existing tests and unchanged guards passed"
+            },
+            {
+              "invariant": "No release-window data is read or written",
+              "result": "passed",
+              "evidence": "SQL remains pm_project_release_calendar only"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Live Flyway/API integration and browser range behavior still require independent observation."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 implemented: frontend production build passed with range DTO, daterange form and inclusive daily rendering",
+        "recorded_at": "2026-09-20T02:20:18+00:00",
+        "data": {
+          "task_id": "T2",
+          "status": "implemented",
+          "changed_surfaces": [
+            {
+              "path_or_resource": "web/src/types/project.ts",
+              "purpose": "Expose release_start_date/release_end_date in calendar DTO."
+            },
+            {
+              "path_or_resource": "web/src/api/project.ts",
+              "purpose": "Send date-range create/update payloads."
+            },
+            {
+              "path_or_resource": "web/src/views/ProjectView.vue",
+              "purpose": "Use daterange form, inclusive daily matching, cross-month mobile groups and range tooltip text."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "salient_output": "vue-tsc passed; Vite transformed 2626 modules and built production assets successfully."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "salient_output": "No whitespace errors reported."
+            }
+          ],
+          "local_checks": [
+            {
+              "check": "range consumer search",
+              "result": "passed",
+              "evidence": "No stale release_date consumer remains in ProjectView/types/API; backend legacy column is only synchronized on write.",
+              "limitations": [
+                "No browser interaction yet"
+              ]
+            }
+          ],
+          "diff_summary": [
+            "ProjectReleaseCalendar DTO/API now use start/end fields",
+            "Form uses Element Plus daterange picker",
+            "Desktop and overview cells match inclusive range",
+            "Mobile groups expand each covered day",
+            "Range boundaries and remarks are visible in tooltips/list entries"
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "Existing tab query and theme controls remain in ProjectView",
+              "result": "passed",
+              "evidence": "Only release calendar state/template paths changed and build passed"
+            },
+            {
+              "invariant": "No new public component or dependency",
+              "result": "passed",
+              "evidence": "Existing Element Plus date picker reused"
+            }
+          ],
+          "disturbances": [],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Browser viewport, live API and migration integration remain for T3."
+          ],
+          "recommended_next": "observe"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3 integrated backend, frontend, migration and runtime evidence recorded; browser and scope/governance baseline gaps are explicit.",
+        "recorded_at": "2026-09-20T02:39:59+00:00",
+        "data": {
+          "schema_version": 1,
+          "topic": "req-20260917-081-project-release-calendar",
+          "task_id": "T3",
+          "status": "implemented",
+          "recorded_at": "2026-09-20T10:38:00+08:00",
+          "changed_surfaces": [
+            {
+              "resource": ".ai-control/requirements/req-20260917-081-project-release-calendar",
+              "purpose": "Record integrated execution and independent observation evidence for the date-range implementation."
+            }
+          ],
+          "requirements_addressed": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ],
+          "commands": [
+            {
+              "command": "node scripts/check-development-entry.mjs --require-plugin",
+              "exit_code": 0,
+              "result": "Development entry check passed."
+            },
+            {
+              "command": "mvn '-Dnet.bytebuddy.experimental=true' -pl :ccb-system -am test",
+              "exit_code": 0,
+              "result": "Reactor build success; 153 tests passed, including 69 ProjectServiceTest cases and 2 migration contract cases."
+            },
+            {
+              "command": "npm --prefix web run build",
+              "exit_code": 0,
+              "result": "vue-tsc and Vite production build passed. Existing chunk-size and dynamic-import warnings remain non-fatal."
+            },
+            {
+              "command": "node scripts/check-flyway-migrations.mjs",
+              "exit_code": 0,
+              "result": "Flyway migration check passed for 216 migrations."
+            },
+            {
+              "command": "node scripts/check-all-governance.mjs",
+              "exit_code": 1,
+              "result": "Repository-wide AI control layout check failed on pre-existing historical ledger issues; module, skill and development-entry checks passed."
+            },
+            {
+              "command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-081-project-release-calendar/codex-task-scope.yaml --working-tree",
+              "exit_code": 1,
+              "result": "Scope check reported unrelated REQ-084/REQ-083 changes and read-only-path modifications already present in the shared worktree."
+            },
+            {
+              "command": "git diff --check",
+              "exit_code": 0,
+              "result": "No whitespace errors; Git emitted only line-ending conversion warnings."
+            },
+            {
+              "command": "Authenticated local API flow against http://127.0.0.1:8080",
+              "exit_code": 0,
+              "result": "admin login code 0; create 2026-09-28..2026-10-03 returned 200; September and October queries both contained the range; delete returned 200 and removed the temporary entry."
+            },
+            {
+              "command": "Browser automation via cua.getState()",
+              "exit_code": 3,
+              "result": "Sensor unavailable: failed to write kernel assets because the system could not find the specified path."
+            }
+          ],
+          "local_checks": [
+            "Backend health endpoint returned HTTP 200 after the local process recovered.",
+            "Frontend root returned HTTP 200 on port 5173.",
+            "V218 was applied in the local Flyway runtime before the API flow."
+          ],
+          "diff_summary": [
+            "Scoped implementation files: server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql; server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java; focused system tests; web/src/types/project.ts; web/src/api/project.ts; web/src/views/ProjectView.vue.",
+            "Unrelated worktree changes were preserved and not reverted."
+          ],
+          "invariants_checked": [
+            {
+              "invariant": "V214 remains unchanged and V218 is additive.",
+              "result": "passed"
+            },
+            {
+              "invariant": "Range API uses inclusive start/end dates and project member authorization.",
+              "result": "passed by focused tests and authenticated API flow"
+            },
+            {
+              "invariant": "No unrelated worktree changes are reverted.",
+              "result": "passed"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "PowerShell argument parsing",
+              "effect": "Initial Maven command exited before test execution",
+              "mitigation": "Re-ran with the system-property argument quoted; test suite passed."
+            },
+            {
+              "source": "Shared worktree contains REQ-083/REQ-084 changes",
+              "effect": "Scope and repository governance gates cannot be clean in this worktree",
+              "mitigation": "Preserved changes and recorded the baseline limitation."
+            },
+            {
+              "source": "Browser automation kernel path unavailable",
+              "effect": "Desktop/mobile visual and scrollWidth measurements unavailable",
+              "mitigation": "Recorded sensor fault; no browser acceptance claim made."
+            }
+          ],
+          "assumptions_falsified": [],
+          "unresolved_items": [
+            "Real-browser acceptance at 1280x800, 375x812, 390x844 and 430x932 is still unavailable.",
+            "Repository-wide governance and working-tree scope checks require a clean, isolated worktree and remediation of historical ledger defects."
+          ],
+          "recommended_next": "observe"
+        }
+      }
+    ],
+    "observing": [
+      {
+        "revision": 1,
+        "evidence": "Independent T1 observation passed focused tests and Flyway checks; live runtime/browser coverage remains scheduled",
+        "recorded_at": "2026-09-20T02:14:26+00:00",
+        "data": {
+          "sample_label": "T1 range backend independent observation",
+          "task_ids": [
+            "T1"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R2",
+              "sensor": "S1 focused ProjectServiceTest",
+              "result": "pass",
+              "raw_evidence": "69 ProjectServiceTest cases passed, including same-day create, overlap SQL parameters, reversed-range rejection and stale-version conflict.",
+              "limitation": [
+                "Mocked JDBC; no live database execution."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S2 migration contract/Flyway",
+              "result": "pass",
+              "raw_evidence": "ProjectReleaseCalendarMigrationTest 2 cases passed; Flyway checker accepted 216 migrations including V218; V218 has add/backfill/not-null/index clauses.",
+              "limitation": [
+                "Checker does not apply migration to a live database."
+              ]
+            },
+            {
+              "requirement_id": "R3",
+              "sensor": "S1 service authorization tests",
+              "result": "pass",
+              "raw_evidence": "Existing non-member and project/tenant guards remain covered and focused reactor test passed.",
+              "limitation": [
+                "No live non-member HTTP request in this sample."
+              ]
+            }
+          ],
+          "feedback": [],
+          "disturbances": [],
+          "coverage_gaps": [
+            "Live MySQL migration and authenticated API range CRUD remain for T3.",
+            "Frontend and browser range behavior remain for T2/T3."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 2,
+        "evidence": "T2 independent build passed; browser/runtime sensors unavailable and recorded as sensor-fault",
+        "recorded_at": "2026-09-20T02:25:35+00:00",
+        "data": {
+          "sample_label": "T2 frontend range independent observation",
+          "task_ids": [
+            "T2"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_id": "R1",
+              "sensor": "S4 frontend production build",
+              "result": "pass",
+              "raw_evidence": "vue-tsc passed and Vite built 2626 modules successfully.",
+              "limitation": [
+                "Does not prove interactive browser navigation."
+              ]
+            },
+            {
+              "requirement_id": "R2",
+              "sensor": "S4 stale-consumer search",
+              "result": "pass",
+              "raw_evidence": "ProjectView, project.ts and project types use release_start_date/release_end_date; no stale release_date frontend consumer remains.",
+              "limitation": [
+                "Does not prove API persistence."
+              ]
+            },
+            {
+              "requirement_id": "R4",
+              "sensor": "S5 browser viewport",
+              "result": "sensor-fault",
+              "raw_evidence": "cua browser initialization failed with OS error: failed to write kernel assets; local 8080 and 5173 endpoints also refused connections.",
+              "limitation": [
+                "No visual, interaction or scrollWidth measurement was available."
+              ]
+            },
+            {
+              "requirement_id": "R5",
+              "sensor": "S4 build and diff",
+              "result": "pass",
+              "raw_evidence": "Production build passed and git diff --check returned zero.",
+              "limitation": [
+                "Theme readability not visually observed."
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "requirement_id": "R4",
+              "expected": "Desktop and required mobile range rendering is observable without page overflow.",
+              "observed": "Browser sensor could not initialize and local runtime ports were unavailable.",
+              "reproduction": "Call cua.getState(); request http://127.0.0.1:8080/actuator/health and http://127.0.0.1:5173/.",
+              "evidence": "cua returned OS error 3; both HTTP requests were actively refused.",
+              "severity": "P2",
+              "confidence": "high",
+              "sensor_limit": "This is an environment/sensor failure, not a product rendering assertion.",
+              "causal_hypothesis": "Browser kernel asset path and local services are unavailable in this session.",
+              "correction_check": "Restart local frontend/backend and rerun browser viewport checks when a supported browser surface is available.",
+              "classification": "sensor-fault"
+            }
+          ],
+          "disturbances": [
+            {
+              "source": "local services not running",
+              "effect": "runtime/API/browser checks unavailable",
+              "detectable": true,
+              "controllable": true
+            }
+          ],
+          "coverage_gaps": [
+            "No real browser desktop/mobile observation",
+            "No live API range CRUD or Flyway application observation"
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 1,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      },
+      {
+        "revision": 3,
+        "evidence": "T3-independent-observation-recorded",
+        "recorded_at": "2026-09-20T02:41:29+00:00",
+        "data": {
+          "schema_version": 1,
+          "topic": "req-20260917-081-project-release-calendar",
+          "sample_label": "T3-integrated-range-runtime",
+          "task_ids": [
+            "T1",
+            "T2",
+            "T3"
+          ],
+          "baseline_revision": "baseline-2",
+          "measurements": [
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "sensor": "Focused Maven system tests",
+              "result": "passed",
+              "evidence": "153 tests passed; ProjectServiceTest and migration contract tests passed, including range validation, overlap, membership and optimistic-lock paths."
+            },
+            {
+              "requirement_ids": [
+                "R2",
+                "R3"
+              ],
+              "sensor": "Authenticated local API",
+              "result": "passed",
+              "evidence": "Login code 0; temporary 2026-09-28..2026-10-03 entry created with HTTP 200, returned in both intersecting month queries, then deleted with HTTP 200."
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R4",
+                "R5"
+              ],
+              "sensor": "Frontend production build",
+              "result": "passed",
+              "evidence": "vue-tsc and Vite build completed successfully."
+            },
+            {
+              "requirement_ids": [
+                "R2"
+              ],
+              "sensor": "Flyway checker",
+              "result": "passed",
+              "evidence": "216 migration files passed static migration checks and V218 was applied in the local runtime."
+            },
+            {
+              "requirement_ids": [
+                "R1",
+                "R4",
+                "R5"
+              ],
+              "sensor": "Browser automation",
+              "result": "unavailable",
+              "evidence": "cua.getState() failed with OS error 3 while writing kernel assets."
+            }
+          ],
+          "feedback": [],
+          "disturbances": [
+            {
+              "source": "Shared worktree",
+              "effect": "Scope checker reports unrelated REQ-083/REQ-084 paths and read-only-path modifications.",
+              "observed": true
+            },
+            {
+              "source": "Repository historical ledger set",
+              "effect": "Governance checker reports pre-existing topic mismatches, invalid legacy files and missing acceptance evidence.",
+              "observed": true
+            }
+          ],
+          "coverage_gaps": [
+            "No real-browser desktop inspection at 1280x800.",
+            "No real-browser mobile inspection at 375x812, 390x844 or 430x932.",
+            "No browser scrollWidth, console, tab-click or tooltip screenshot evidence.",
+            "Repository-wide scope and governance gates cannot be isolated from unrelated pending work in the shared worktree."
+          ],
+          "error_counts": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 1,
+            "P3": 0
+          },
+          "observation_status": "complete"
+        }
+      }
+    ],
+    "correcting": [],
+    "verifying": [
+      {
+        "revision": 1,
+        "evidence": "T3-verification-recorded-with-explicit-browser-and-worktree-gaps",
+        "recorded_at": "2026-09-20T02:43:09+00:00",
+        "data": {
+          "schema_version": 1,
+          "topic": "req-20260917-081-project-release-calendar",
+          "baseline_revision": "baseline-2",
+          "requirement_results": [
+            {
+              "requirement_id": "R1",
+              "result": "blocked",
+              "evidence": "Frontend build passed, but direct tab navigation and interaction could not be inspected without browser automation."
+            },
+            {
+              "requirement_id": "R2",
+              "result": "pass",
+              "evidence": "153 focused Maven tests, Flyway checks and authenticated create/list/delete API flow passed for same-day and cross-month range behavior."
+            },
+            {
+              "requirement_id": "R3",
+              "result": "pass",
+              "evidence": "ProjectService focused tests cover membership, tenant, entity and optimistic-lock authorization; authenticated runtime flow succeeded."
+            },
+            {
+              "requirement_id": "R4",
+              "result": "blocked",
+              "evidence": "Range expansion is covered by code/tests and build, but required desktop/mobile viewport and page overflow measurements are unavailable."
+            },
+            {
+              "requirement_id": "R5",
+              "result": "blocked",
+              "evidence": "Frontend build passed, but theme readability and release-window-inspired tab styling cannot be visually inspected without a browser sensor."
+            }
+          ],
+          "task_results": [
+            {
+              "task_id": "T1",
+              "result": "verified",
+              "evidence": "Range migration/service focused tests and Flyway observation passed."
+            },
+            {
+              "task_id": "T2",
+              "result": "verified-with-sensor-gap",
+              "evidence": "Frontend build and diff checks passed; browser sensor unavailable."
+            },
+            {
+              "task_id": "T3",
+              "result": "verified-with-coverage-gap",
+              "evidence": "Integrated tests, runtime API and build passed; browser and clean-scope sensors unavailable."
+            }
+          ],
+          "feedback_summary": [],
+          "sample_trend": [
+            {
+              "label": "T1 range observation",
+              "score": 0,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 0,
+                "P3": 0
+              }
+            },
+            {
+              "label": "T2 frontend observation",
+              "score": 5,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 1,
+                "P3": 0
+              }
+            },
+            {
+              "label": "T3 integrated observation",
+              "score": 5,
+              "errors": {
+                "P0": 0,
+                "P1": 0,
+                "P2": 1,
+                "P3": 0
+              }
+            }
+          ],
+          "regression_checks": [
+            {
+              "check": "development-entry",
+              "result": "pass"
+            },
+            {
+              "check": "system-project-tests",
+              "result": "pass",
+              "evidence": "153 tests passed"
+            },
+            {
+              "check": "frontend-build",
+              "result": "pass"
+            },
+            {
+              "check": "flyway-check",
+              "result": "pass"
+            },
+            {
+              "check": "git-diff-check",
+              "result": "pass"
+            },
+            {
+              "check": "governance",
+              "result": "blocked-by-baseline",
+              "evidence": "Historical ledger defects outside REQ-081"
+            },
+            {
+              "check": "scope",
+              "result": "blocked-by-shared-worktree",
+              "evidence": "REQ-083/REQ-084 and read-only-path changes outside REQ-081"
+            },
+            {
+              "check": "browser",
+              "result": "sensor-unavailable",
+              "evidence": "cua.getState() OS error 3"
+            }
+          ],
+          "invariant_results": [
+            {
+              "invariant": "V214 remains unchanged; V218 is additive",
+              "result": "pass"
+            },
+            {
+              "invariant": "Server-side project authorization and range ordering remain enforced",
+              "result": "pass"
+            },
+            {
+              "invariant": "Unrelated worktree changes are not reverted",
+              "result": "pass"
+            }
+          ],
+          "scope_audit": [
+            {
+              "scope": "REQ-081 writable paths",
+              "result": "pass",
+              "evidence": "Scoped implementation files are within the approved backend, migration, frontend and ledger paths."
+            },
+            {
+              "scope": "Shared worktree isolation",
+              "result": "blocked-by-baseline",
+              "evidence": "Unrelated REQ-083/REQ-084 modifications are present and were preserved."
+            }
+          ],
+          "disturbance_resilience": [
+            {
+              "disturbance": "Cross-month boundary",
+              "result": "pass",
+              "evidence": "API returned the temporary range in both intersecting months."
+            },
+            {
+              "disturbance": "PowerShell system-property parsing",
+              "result": "mitigated",
+              "evidence": "Quoted Maven argument produced a successful run."
+            },
+            {
+              "disturbance": "Browser kernel path failure",
+              "result": "unresolved",
+              "evidence": "No supported browser sensor available."
+            }
+          ],
+          "residual_risks": [
+            "Required browser visual/viewport acceptance is outstanding.",
+            "Repository-wide governance and scope checks require an isolated clean worktree and historical ledger remediation."
+          ],
+          "gate_result": "blocked",
+          "route_reason": "Keep the implementation evidence and return to browser/runtime observation when a supported browser sensor and isolated worktree are available."
+        }
+      }
+    ]
+  },
+  "objective": "Allow project members to maintain one project release-calendar entry over an inclusive start/end date range and see it on every covered calendar day.",
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "Keep the release-calendar project tab and existing tab routes usable.",
+      "acceptance": [
+        "Direct and interactive tab navigation load the calendar."
+      ],
+      "priority": "must",
+      "source": "Approved REQ-081 design revision 2",
+      "counterexample": [
+        "Existing project tabs stop loading."
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "Persist independent entries with title, inclusive release_start_date, release_end_date and remark; equal dates represent one day.",
+      "acceptance": [
+        "CRUD survives refresh",
+        "A cross-month entry is returned by every intersecting month",
+        "Every covered date is marked"
+      ],
+      "priority": "must",
+      "source": "User confirmation",
+      "counterexample": [
+        "Only the start date is rendered for a range."
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "Authorize project members on the server for calendar reads and writes.",
+      "acceptance": [
+        "Non-members and cross-tenant callers are denied"
+      ],
+      "priority": "must",
+      "source": "Approved REQ-081 design",
+      "counterexample": [
+        "Frontend-only permission enforcement."
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "Use desktop month and mobile date-grouped presentations with inclusive range expansion.",
+      "acceptance": [
+        "Required desktop/mobile viewports have no page-level horizontal overflow",
+        "Cross-month ranges appear in all intersecting months"
+      ],
+      "priority": "must",
+      "source": "design-h5.md and user confirmation",
+      "counterexample": [
+        "End-month range is missing."
+      ]
+    },
+    {
+      "id": "R5",
+      "statement": "Preserve release-window-inspired project tab styling and theme readability.",
+      "acceptance": [
+        "Existing tabs remain usable and theme-readable"
+      ],
+      "priority": "must",
+      "source": "Approved REQ-081 design",
+      "counterexample": [
+        "Navigation becomes inaccessible in a theme."
+      ]
+    }
+  ],
+  "invariants": [
+    "Release-window data remains independent",
+    "Server-side tenant, membership, entity, optimistic-lock and audit controls apply",
+    "Flyway changes are additive only",
+    "release_start_date is not after release_end_date and endpoints are inclusive"
+  ],
+  "constraints": [
+    "Only REQ-081 writable paths may change",
+    "Do not modify V214 or unrelated REQ-084 changes",
+    "No production data or secrets"
+  ],
+  "non_goals": [
+    "Time-of-day values",
+    "statuses",
+    "recurrence",
+    "reminders",
+    "attachments",
+    "approval",
+    "cross-project aggregation",
+    "external calendar synchronization"
+  ],
+  "predevelopment": {
+    "source": ".ai-control\\requirements\\req-20260917-081-project-release-calendar\\handoff.json",
+    "imported_at": "2026-09-20T02:02:57+00:00",
+    "topic": "req-20260917-081-project-release-calendar",
+    "design_revision": 2,
+    "plan_revision": 2,
+    "handoff": {
+      "schema_version": 1,
+      "topic": "req-20260917-081-project-release-calendar",
+      "handoff_status": "approved",
+      "created_at": "2026-09-20T00:00:00+08:00",
+      "design": {
+        "schema_version": 1,
+        "topic": "req-20260917-081-project-release-calendar",
+        "design_revision": 2,
+        "design_status": "approved",
+        "human_document": "docs/engineering-control/designs/2026-09-17-project-release-calendar-design.md",
+        "objective": "Provide a project-scoped, independently maintained release calendar with member-authorized CRUD, date-range selection and responsive month presentation.",
+        "users": [
+          "Project members viewing and maintaining their project's release arrangements."
+        ],
+        "requirements": [
+          {
+            "id": "R1",
+            "statement": "Keep the release-calendar project tab and existing tab routes usable.",
+            "acceptance": [
+              "Direct and interactive tab navigation load the calendar."
+            ],
+            "priority": "must",
+            "source": "Existing approved REQ-081 design",
+            "counterexample": [
+              "Changing existing tabs' route behavior."
+            ]
+          },
+          {
+            "id": "R2",
+            "statement": "Persist independent entries with title, inclusive release start date, release end date and remark; equal dates represent one day.",
+            "acceptance": [
+              "CRUD survives refresh",
+              "A cross-month entry is returned from every intersecting month",
+              "Every date in the range is marked"
+            ],
+            "priority": "must",
+            "source": "User-confirmed date-range design",
+            "counterexample": [
+              "Only the start date is displayed for a range."
+            ]
+          },
+          {
+            "id": "R3",
+            "statement": "Authorize project members on the server for calendar reads and writes.",
+            "acceptance": [
+              "Non-members and cross-tenant callers are denied."
+            ],
+            "priority": "must",
+            "source": "Existing approved REQ-081 design",
+            "counterexample": [
+              "Frontend-only authorization."
+            ]
+          },
+          {
+            "id": "R4",
+            "statement": "Use a desktop month calendar and mobile date-grouped list with inclusive range expansion.",
+            "acceptance": [
+              "Desktop and required mobile viewports have no page-level horizontal overflow",
+              "Cross-month ranges appear in every intersecting month"
+            ],
+            "priority": "must",
+            "source": "design-h5.md and user confirmation",
+            "counterexample": [
+              "A range disappears from its end month."
+            ]
+          },
+          {
+            "id": "R5",
+            "statement": "Preserve release-window-inspired project tab styling and theme readability.",
+            "acceptance": [
+              "Existing tabs remain usable and theme-readable."
+            ],
+            "priority": "must",
+            "source": "Existing approved REQ-081 design",
+            "counterexample": [
+              "Replacing navigation with unrelated styling."
+            ]
+          }
+        ],
+        "invariants": [
+          "Release-window data remains independent.",
+          "Server-side tenant, membership, entity, optimistic-lock and audit controls apply.",
+          "Flyway changes are additive only.",
+          "release_start_date <= release_end_date and both endpoints are inclusive."
+        ],
+        "constraints": [
+          "Vue 3 and existing Element Plus/UI patterns.",
+          "Project system module owns the API and data.",
+          "No production data or secrets.",
+          "Do not modify published V214."
+        ],
+        "non_goals": [
+          "Time-of-day values",
+          "statuses",
+          "recurrence",
+          "reminders",
+          "attachments",
+          "approval",
+          "cross-project aggregation",
+          "external calendar synchronization"
+        ],
+        "selected_approach": {
+          "name": "Extend the existing project calendar with inclusive date ranges",
+          "reason": "Keeps the existing project context and authorization while allowing one maintained record to cover multiple calendar days.",
+          "alternatives": [
+            {
+              "name": "Create one record per day",
+              "rejected_because": "Duplicates title/remark/theme data and makes editing a range error-prone."
+            },
+            {
+              "name": "Keep only the start date and render a client-side span",
+              "rejected_because": "Cannot persist or query the end boundary reliably across months."
+            }
+          ]
+        },
+        "architecture": {
+          "boundary": {
+            "inside": [
+              "Project tab UI",
+              "Project calendar API/service",
+              "V218 additive range migration"
+            ],
+            "outside": [
+              "Release management windows",
+              "Project plans",
+              "Workflow and notifications"
+            ]
+          },
+          "components": [
+            {
+              "name": "ProjectView",
+              "responsibility": "Range form, tab routing, daily expansion and responsive rendering",
+              "depends_on": [
+                "project API",
+                "UI components"
+              ]
+            },
+            {
+              "name": "ProjectService",
+              "responsibility": "Range validation, overlap query, project authorization and audit",
+              "depends_on": [
+                "project persistence"
+              ]
+            },
+            {
+              "name": "Flyway migration",
+              "responsibility": "Backfill legacy dates and add range columns/index",
+              "depends_on": [
+                "pm_project_release_calendar"
+              ]
+            }
+          ],
+          "interfaces": [
+            {
+              "name": "Project release calendar REST API",
+              "producer": "ProjectController",
+              "consumers": [
+                "ProjectView"
+              ],
+              "contract": "Month-overlap listing and optimistic-lock CRUD using release_start_date/release_end_date."
+            }
+          ],
+          "data_flows": [
+            {
+              "input": "Member submits an inclusive date range or selects a month",
+              "transitions": [
+                "Validate membership, tenant and start <= end",
+                "Query ranges intersecting the month",
+                "Expand each returned range across visible dates"
+              ],
+              "output": "Authorized entries rendered on every date in the range."
+            }
+          ]
+        },
+        "error_handling": [
+          {
+            "condition": "Invalid or reversed range",
+            "behavior": "Reject request and keep form open",
+            "recovery": "Select a valid inclusive range."
+          },
+          {
+            "condition": "Initial/list request failure",
+            "behavior": "Show retryable failure state",
+            "recovery": "Retry current month."
+          },
+          {
+            "condition": "Forbidden or cross-project access",
+            "behavior": "Deny on server",
+            "recovery": "Return to authorized project context."
+          },
+          {
+            "condition": "Optimistic-lock conflict",
+            "behavior": "Return conflict without overwrite",
+            "recovery": "Reload entry and retry."
+          }
+        ],
+        "quality_attributes": {
+          "security": [
+            "Server-side membership, tenant and entity checks",
+            "Audit all writes"
+          ],
+          "performance": [
+            "Index range overlap query",
+            "Load one month at a time"
+          ],
+          "compatibility": [
+            "Preserve tabs and release-window behavior",
+            "Backfill existing single-date rows as same-day ranges"
+          ],
+          "operations": [
+            "Additive migration and retained records on rollback"
+          ]
+        },
+        "verification_strategy": [
+          {
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "signal": "Persisted range CRUD, overlap filtering and denied unauthorized access",
+            "method": "Focused service, migration and authenticated API tests."
+          },
+          {
+            "requirement_ids": [
+              "R1",
+              "R4",
+              "R5"
+            ],
+            "signal": "Tab navigation, daily range rendering and no overflow",
+            "method": "Frontend build and browser checks at desktop and three mobile viewports."
+          }
+        ],
+        "assumptions": [
+          {
+            "text": "Project membership continues to grant calendar maintenance authority.",
+            "basis": "Existing approved REQ-081 design and user confirmation.",
+            "falsifier": "Owner specifies an additional role boundary."
+          }
+        ],
+        "unknowns": [],
+        "decisions": [
+          {
+            "id": "D1",
+            "decision": "One record stores inclusive release_start_date and release_end_date; equal dates represent a single day.",
+            "reason": "User confirmation",
+            "source": "Conversation"
+          },
+          {
+            "id": "D2",
+            "decision": "Every day within the range is marked and the record appears in each intersecting month.",
+            "reason": "User confirmation",
+            "source": "Conversation"
+          },
+          {
+            "id": "D3",
+            "decision": "Existing release_date rows are backfilled as same-day ranges by V218.",
+            "reason": "Preserve existing data while changing the contract",
+            "source": "Approved implementation design"
+          }
+        ],
+        "risks": [
+          {
+            "risk": "Cross-month boundary defect",
+            "impact": "Missing or extra daily markers",
+            "mitigation": "Overlap SQL tests and browser checks for both boundary months."
+          },
+          {
+            "risk": "Published schema compatibility",
+            "impact": "Migration failure or stale legacy values",
+            "mitigation": "Add columns, backfill, retain old column and run Flyway checks."
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed one record with start/end dates and daily marking for the range.",
+          "confirmed_at": "2026-09-20T00:00:00+08:00"
+        }
+      },
+      "implementation_plan": {
+        "plan_revision": 2,
+        "human_document": "docs/engineering-control/plans/2026-09-17-project-release-calendar-implementation-plan.md",
+        "plan_status": "ready",
+        "global_constraints": [
+          "Write only REQ-081 scoped paths",
+          "Do not modify V214",
+          "Keep project-member authorization, audit and optimistic locking",
+          "Do not touch unrelated REQ-084 changes"
+        ],
+        "file_map": [
+          {
+            "path": "server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql",
+            "status": "candidate-new",
+            "responsibility": "Date range columns, backfill and overlap index",
+            "evidence": "Approved design revision 2 and updated task scope."
+          },
+          {
+            "path": "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+            "status": "existing",
+            "responsibility": "Range validation and overlap CRUD",
+            "evidence": "Current release calendar service methods."
+          },
+          {
+            "path": "web/src/views/ProjectView.vue",
+            "status": "existing",
+            "responsibility": "Range form and daily rendering",
+            "evidence": "Current ProjectView owns release calendar state and UI."
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "goal": "Deliver additive range storage and member-authorized API CRUD.",
+            "requirement_ids": [
+              "R2",
+              "R3"
+            ],
+            "prerequisites": [],
+            "input_facts": [
+              "V214 has release_date",
+              "ProjectService owns calendar authorization and audit"
+            ],
+            "files": {
+              "create": [
+                "server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql"
+              ],
+              "modify": [
+                "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java"
+              ],
+              "test": [
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+                "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectReleaseCalendarMigrationTest.java"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "Existing project member guard",
+                "Legacy release_date column"
+              ],
+              "produces": [
+                "release_start_date/release_end_date API fields",
+                "Month-overlap listing"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T1-S1",
+                "action": "Add reversed-range, same-day, overlap and stale-version tests.",
+                "command": "mvn -pl :ccb-system -am -Dtest=ProjectServiceTest,ProjectReleaseCalendarMigrationTest -Dsurefire.failIfNoSpecifiedTests=false test",
+                "expected": "Baseline identifies missing range contract.",
+                "evidence": "Exit code and failing assertions."
+              },
+              {
+                "id": "T1-S2",
+                "action": "Add V218 and backfill release_date to both range columns.",
+                "command": "node scripts/check-flyway-migrations.mjs",
+                "expected": "Migration naming and SQL contract pass.",
+                "evidence": "Checker output and migration test."
+              },
+              {
+                "id": "T1-S3",
+                "action": "Update service list/create/update and returned map for ranges.",
+                "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am -Dtest=ProjectServiceTest,ProjectReleaseCalendarMigrationTest test",
+                "expected": "Focused range, authorization and optimistic-lock tests pass.",
+                "evidence": "Maven summary."
+              }
+            ],
+            "acceptance_checks": [
+              "Same-day and cross-month ranges persist",
+              "Only intersecting months return entries",
+              "Reversed ranges are rejected",
+              "Non-members and stale versions remain rejected"
+            ],
+            "risks": [
+              "Migration backfill and old column synchronization"
+            ],
+            "rollback": "Revert service/tests and retain V218 as additive history.",
+            "stop_conditions": [
+              "V218 requires modification of V214",
+              "Range overlap cannot be tested or authorized"
+            ],
+            "escalation_conditions": [
+              "Owner requires dropping legacy release_date or changing membership rules"
+            ]
+          },
+          {
+            "id": "T2",
+            "goal": "Deliver range selection and inclusive daily rendering without tab or theme regression.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1"
+            ],
+            "input_facts": [
+              "ProjectView owns calendar state and tabs",
+              "Element Plus date range picker is already used by project plans"
+            ],
+            "files": {
+              "create": [],
+              "modify": [
+                "web/src/types/project.ts",
+                "web/src/api/project.ts",
+                "web/src/views/ProjectView.vue"
+              ],
+              "test": []
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 range API"
+              ],
+              "produces": [
+                "Date range form",
+                "Daily desktop/mobile rendering"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T2-S1",
+                "action": "Replace single-date DTO, API payload and form state with start/end fields.",
+                "command": "npm --prefix web run build",
+                "expected": "Type checking identifies all stale single-date consumers.",
+                "evidence": "Build output."
+              },
+              {
+                "id": "T2-S2",
+                "action": "Match dates inclusively and update tooltip/mobile expansion.",
+                "command": "npm --prefix web run build",
+                "expected": "Production build passes.",
+                "evidence": "Build summary."
+              },
+              {
+                "id": "T2-S3",
+                "action": "Use daterange picker and preserve tab/theme/loading/error/delete states.",
+                "command": "git diff --check",
+                "expected": "No whitespace errors or unrelated changes.",
+                "evidence": "Exit code and changed-file list."
+              }
+            ],
+            "acceptance_checks": [
+              "Single-day and cross-month ranges can be created and edited",
+              "Every range day is marked",
+              "Required viewports have no page overflow",
+              "Existing tabs remain query-compatible"
+            ],
+            "risks": [
+              "Daily expansion and long ranges can increase rendered entries"
+            ],
+            "rollback": "Revert the three frontend files; retain server range data.",
+            "stop_conditions": [
+              "Page-level horizontal overflow",
+              "Need for a new shared component outside scope"
+            ],
+            "escalation_conditions": [
+              "User requests a different range visualization"
+            ]
+          },
+          {
+            "id": "T3",
+            "goal": "Produce independent integrated evidence for range persistence, permissions and responsive rendering.",
+            "requirement_ids": [
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
+            "prerequisites": [
+              "T1",
+              "T2"
+            ],
+            "input_facts": [
+              "Updated requirement and scope list backend, frontend, migration and browser sensors"
+            ],
+            "files": {
+              "create": [],
+              "modify": [],
+              "test": [
+                "Current REQ-081 .ai-control JSON evidence"
+              ]
+            },
+            "interfaces": {
+              "consumes": [
+                "T1 API",
+                "T2 UI"
+              ],
+              "produces": [
+                "Execution, observation and convergence evidence"
+              ]
+            },
+            "steps": [
+              {
+                "id": "T3-S1",
+                "action": "Run backend, migration and authenticated API tests for same-day, cross-month, outside-month, authorization and optimistic-lock paths.",
+                "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test",
+                "expected": "Project module passes with range tests.",
+                "evidence": "Maven report and API responses."
+              },
+              {
+                "id": "T3-S2",
+                "action": "Run frontend, governance, scope and diff checks.",
+                "command": "npm --prefix web run build; node scripts/check-all-governance.mjs; node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260917-081-project-release-calendar/codex-task-scope.yaml --working-tree; git diff --check",
+                "expected": "Checks pass or baseline failures are isolated and reported.",
+                "evidence": "Exit codes and outputs."
+              },
+              {
+                "id": "T3-S3",
+                "action": "Exercise desktop and mobile browser flows.",
+                "command": "Browser project detail?tab=release-calendar at 1280x800, 375x812, 390x844 and 430x932",
+                "expected": "Range CRUD, markers, tooltips, tabs and no overflow are observable.",
+                "evidence": "Viewport, console, API and screenshot records."
+              }
+            ],
+            "acceptance_checks": [
+              "All must requirements have evidence",
+              "No P0/P1 defects",
+              "Scope audit excludes unrelated user changes"
+            ],
+            "risks": [
+              "Browser automation may remain unavailable"
+            ],
+            "rollback": "Retain V218 and revert only application/frontend changes if needed.",
+            "stop_conditions": [
+              "Any cross-project leakage, migration failure, permission bypass or page overflow"
+            ],
+            "escalation_conditions": [
+              "Required browser sensor unavailable after runtime checks"
+            ]
+          }
+        ],
+        "dependency_edges": [
+          {
+            "from": "T1",
+            "to": "T2",
+            "reason": "Frontend consumes range API"
+          },
+          {
+            "from": "T1",
+            "to": "T3",
+            "reason": "Integration needs storage and authorization"
+          },
+          {
+            "from": "T2",
+            "to": "T3",
+            "reason": "Integration needs range UI"
+          }
+        ],
+        "parallel_groups": [
+          [
+            "T1"
+          ],
+          [
+            "T2"
+          ],
+          [
+            "T3"
+          ]
+        ],
+        "integration_checks": [
+          {
+            "after_tasks": [
+              "T1",
+              "T2",
+              "T3"
+            ],
+            "command": "mvn -Dnet.bytebuddy.experimental=true -pl :ccb-system -am test; npm --prefix web run build; node scripts/check-flyway-migrations.mjs; node scripts/check-all-governance.mjs; git diff --check",
+            "expected": "All available checks pass and browser evidence covers desktop/mobile range behavior."
+          }
+        ],
+        "coverage": [
+          {
+            "requirement_id": "R1",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R2",
+            "task_ids": [
+              "T1",
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R3",
+            "task_ids": [
+              "T1",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R4",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          },
+          {
+            "requirement_id": "R5",
+            "task_ids": [
+              "T2",
+              "T3"
+            ]
+          }
+        ],
+        "approval": {
+          "status": "approved",
+          "evidence": "User confirmed the date-range implementation plan revision 2.",
+          "confirmed_at": "2026-09-20T00:00:00+08:00"
+        }
+      },
+      "control_seed": {
+        "seed_status": "hypotheses-only",
+        "plant_boundary_candidates": [
+          "Project calendar table",
+          "Project service/API",
+          "Project detail tab and browser flow"
+        ],
+        "state_variable_candidates": [
+          "Current project",
+          "Current month",
+          "Range boundaries",
+          "Calendar entry version",
+          "Membership authorization",
+          "Tab query",
+          "Mobile layout mode"
+        ],
+        "interface_candidates": [
+          "Range CRUD REST API",
+          "Project member validation",
+          "Frontend project API wrappers"
+        ],
+        "sensor_candidates": [
+          "Focused service tests",
+          "Flyway/migration checks",
+          "Authenticated API",
+          "Frontend build",
+          "Governance/scope checks",
+          "Browser viewport and console checks"
+        ],
+        "actuator_candidates": [
+          "V218 migration",
+          "ProjectService changes",
+          "ProjectView/API/type changes",
+          "Focused tests"
+        ],
+        "disturbance_candidates": [
+          "Cross-month boundaries",
+          "Concurrent edits",
+          "Membership changes",
+          "Stale responses",
+          "Long text",
+          "Viewport changes"
+        ],
+        "delay_candidates": [
+          "Flyway startup",
+          "Async HTTP",
+          "Vue rendering",
+          "Month switching"
+        ],
+        "assumptions": [
+          {
+            "text": "Existing project member guard remains the authority for calendar editing.",
+            "basis": "Approved REQ-081 design",
+            "falsifier": "Owner changes project permission semantics."
+          }
+        ]
+      }
+    }
+  },
+  "control_model": {
+    "plant": "{\"environment\": [\"MySQL/Flyway runtime\", \"authenticated project API caller\", \"browser viewport\", \"unrelated REQ-084 worktree changes\"], \"inside\": [\"pm_project_release_calendar range columns and legacy release_date\", \"ProjectService/ProjectController calendar contract\", \"project.ts types/API\", \"ProjectView calendar tab/form/rendering\", \"focused tests and browser flow\"]}",
+    "sensors": [
+      "{\"blind_spots\": [\"live browser rendering\"], \"id\": \"S1\", \"independence\": \"Automated test runner\", \"method\": \"Focused ProjectServiceTest\", \"target\": \"R2/R3 service contract\"}",
+      "{\"blind_spots\": [\"production database state\"], \"id\": \"S2\", \"independence\": \"SQL/file assertions\", \"method\": \"ProjectReleaseCalendarMigrationTest and Flyway checker\", \"target\": \"R2 migration\"}",
+      "{\"blind_spots\": [\"non-local tenants\"], \"id\": \"S3\", \"independence\": \"Running backend response\", \"method\": \"Authenticated local HTTP requests\", \"target\": \"R2/R3 API runtime\"}",
+      "{\"blind_spots\": [\"visual layout\"], \"id\": \"S4\", \"independence\": \"Build/check processes\", \"method\": \"Vite production build and scope/diff checks\", \"target\": \"R1/R4/R5 frontend\"}",
+      "{\"blind_spots\": [\"unavailable automation surface\"], \"id\": \"S5\", \"independence\": \"Browser runtime output\", \"method\": \"Desktop/mobile viewport interaction and scrollWidth probe\", \"target\": \"R1/R4/R5 browser behavior\"}"
+    ],
+    "actuators": [
+      "{\"action\": \"Append V218 and update ProjectService range SQL/validation\", \"authority\": \"REQ-081 writable_paths\", \"id\": \"A1\", \"impact_radius\": \"project calendar table/service\", \"rollback\": \"Revert service changes and retain additive migration\", \"target\": \"range persistence\"}",
+      "{\"action\": \"Update project types/API/View daterange and daily expansion\", \"authority\": \"REQ-081 writable_paths\", \"id\": \"A2\", \"impact_radius\": \"ProjectView release calendar\", \"rollback\": \"Revert three frontend files\", \"target\": \"range UI\"}"
+    ],
+    "disturbances": [
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"missing or extra daily marker\", \"source\": \"cross-month boundary\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"null range columns after migration\", \"source\": \"legacy rows\"}",
+      "{\"controllable\": true, \"detectable\": true, \"effect\": \"scope checker noise or accidental overwrite\", \"source\": \"unrelated worktree changes\"}",
+      "{\"controllable\": false, \"detectable\": true, \"effect\": \"responsive behavior unobservable\", \"source\": \"browser automation unavailable\"}"
+    ],
+    "assumptions": [
+      "{\"evidence\": \"ProjectView already uses type=daterange.\", \"falsifier\": \"Build or runtime lacks the component.\", \"text\": \"Element Plus daterange picker is already available through project plan forms.\"}"
+    ],
+    "measurements": [
+      {
+        "requirement": "R1",
+        "sensor": "[\"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R2",
+        "sensor": "[\"S1\", \"S2\", \"S3\", \"S5\"]"
+      },
+      {
+        "requirement": "R3",
+        "sensor": "[\"S1\", \"S3\"]"
+      },
+      {
+        "requirement": "R4",
+        "sensor": "[\"S4\", \"S5\"]"
+      },
+      {
+        "requirement": "R5",
+        "sensor": "[\"S4\", \"S5\"]"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "goal": "Deliver additive range storage and member-authorized API CRUD.",
+      "requirements": [
+        "R2",
+        "R3"
+      ],
+      "prerequisites": [],
+      "input_facts": [
+        "V214 stores release_date",
+        "ProjectService owns current calendar auth/audit/version semantics"
+      ],
+      "write_scope": [
+        "server/src/platform/infrastructure/src/main/resources/db/migration/V218__project_release_calendar_date_range.sql",
+        "server/src/platform/system/src/main/java/com/ccb/system/project/ProjectService.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectServiceTest.java",
+        "server/src/platform/system/src/test/java/com/ccb/system/project/ProjectReleaseCalendarMigrationTest.java",
+        ".ai-control/requirements/req-20260917-081-project-release-calendar/*"
+      ],
+      "invariants": [
+        "Do not modify V214",
+        "start <= end",
+        "membership/tenant/entity/version/audit checks remain"
+      ],
+      "interface_contracts": [
+        "POST/PUT accept release_start_date/release_end_date",
+        "GET returns month-overlap records",
+        "same-day legacy rows are backfilled"
+      ],
+      "non_goals": [
+        "Release-window integration",
+        "dropping release_date",
+        "new permission model"
+      ],
+      "action_bounds": [
+        "Only project calendar service, migration and focused tests",
+        "Append V218 only"
+      ],
+      "acceptance": [
+        "same-day and cross-month ranges persist",
+        "outside-month ranges are excluded",
+        "reversed range is rejected",
+        "non-member/cross-tenant/stale version paths remain denied"
+      ],
+      "evidence_required": [
+        "actual diff",
+        "migration checker",
+        "focused Maven test output",
+        "scope path list"
+      ],
+      "rollback": "Revert service/tests and retain V218 additive history",
+      "stop_conditions": [
+        "V218 needs V214 modification",
+        "range authorization cannot be tested"
+      ],
+      "escalation_conditions": [
+        "Owner requests dropping legacy column or changing membership rules"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-20T02:09:17+00:00",
+          "text": "Starting T1 range migration and service contract"
+        },
+        {
+          "recorded_at": "2026-09-20T02:14:27+00:00",
+          "text": "T1 focused tests and migration observation passed"
+        }
+      ],
+      "updated_at": "2026-09-20T02:14:27+00:00"
+    },
+    {
+      "id": "T2",
+      "goal": "Deliver range selection and inclusive daily rendering without tab/theme regression.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1"
+      ],
+      "input_facts": [
+        "ProjectView owns calendar state/tabs",
+        "Element Plus daterange is already used in project plan form"
+      ],
+      "write_scope": [
+        "web/src/types/project.ts",
+        "web/src/api/project.ts",
+        "web/src/views/ProjectView.vue",
+        ".ai-control/requirements/req-20260917-081-project-release-calendar/*"
+      ],
+      "invariants": [
+        "Existing tab query behavior remains",
+        "range endpoints are inclusive",
+        "loading/error/empty/delete/theme states remain"
+      ],
+      "interface_contracts": [
+        "DTO/API use release_start_date/release_end_date",
+        "calendarEntriesFor matches date between boundaries"
+      ],
+      "non_goals": [
+        "New shared components",
+        "change to release-window UI",
+        "cross-project calendar"
+      ],
+      "action_bounds": [
+        "Only three scoped frontend files",
+        "Use existing Element Plus and semantic theme variables"
+      ],
+      "acceptance": [
+        "single-day and cross-month ranges create/edit and refresh",
+        "every range day is marked",
+        "tooltips show boundaries and remark",
+        "mobile groups expand range without page overflow"
+      ],
+      "evidence_required": [
+        "frontend build output",
+        "git diff check",
+        "browser viewport/console/scrollWidth evidence"
+      ],
+      "rollback": "Revert the three frontend files and retain server range data",
+      "stop_conditions": [
+        "page-level horizontal overflow",
+        "tab query regression",
+        "new public UI dependency required"
+      ],
+      "escalation_conditions": [
+        "User requests different range visualization"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-20T02:14:27+00:00",
+          "text": "Starting frontend date-range contract and daily rendering"
+        },
+        {
+          "recorded_at": "2026-09-20T02:25:35+00:00",
+          "text": "Frontend build/diff passed; browser gap is isolated as sensor-fault"
+        }
+      ],
+      "updated_at": "2026-09-20T02:25:35+00:00"
+    },
+    {
+      "id": "T3",
+      "goal": "Produce independent integrated evidence and convergence inputs.",
+      "requirements": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ],
+      "prerequisites": [
+        "T1",
+        "T2"
+      ],
+      "input_facts": [
+        "T1 and T2 provide range API/UI",
+        "Required governance and browser sensors are listed in scope"
+      ],
+      "write_scope": [
+        ".ai-control/requirements/req-20260917-081-project-release-calendar/*"
+      ],
+      "invariants": [
+        "No unrelated changes are reverted",
+        "P0/P1 authorization/migration/navigation defects are zero before convergence"
+      ],
+      "interface_contracts": [
+        "Runtime API and UI use the same range contract"
+      ],
+      "non_goals": [
+        "Repair existing REQ-084 worktree changes"
+      ],
+      "action_bounds": [
+        "Run scoped tests/checks and record evidence",
+        "Only fix defects in T1/T2 files"
+      ],
+      "acceptance": [
+        "backend/migration/API checks pass",
+        "frontend/governance/scope/diff checks pass or baseline gaps are isolated",
+        "desktop and three mobile flows are observed"
+      ],
+      "evidence_required": [
+        "commands and exit codes",
+        "API responses",
+        "browser viewports and console",
+        "coverage gaps and residual risks"
+      ],
+      "rollback": "Retain V218; revert only T1/T2 application changes if needed",
+      "stop_conditions": [
+        "migration failure",
+        "cross-project leakage",
+        "permission bypass",
+        "page overflow"
+      ],
+      "escalation_conditions": [
+        "browser sensor remains unavailable after runtime checks"
+      ],
+      "status": "verified",
+      "evidence": [
+        {
+          "recorded_at": "2026-09-20T02:25:35+00:00",
+          "text": "Starting integrated migration/API/governance/browser observation"
+        },
+        {
+          "recorded_at": "2026-09-20T02:38:59+00:00",
+          "text": "T3 execution evidence recorded; independent observation required."
+        },
+        {
+          "recorded_at": "2026-09-20T02:41:49+00:00",
+          "text": "T3-observed-with-browser-gap"
+        }
+      ],
+      "updated_at": "2026-09-20T02:41:49+00:00"
+    }
+  ],
+  "feedback": [],
+  "samples": [
+    {
+      "id": "S-0001",
+      "label": "T1 range independent observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0,
+        "P3": 0
+      },
+      "score": 0,
+      "evidence": "71 focused tests, Flyway checker 216 migrations, V218 clauses verified",
+      "recorded_at": "2026-09-20T02:14:52+00:00"
+    },
+    {
+      "id": "S-0002",
+      "label": "T2 frontend independent observation",
+      "errors": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 1,
+        "P3": 0
+      },
+      "score": 5,
+      "evidence": "Frontend build passed; browser CUA and local runtime unavailable",
+      "recorded_at": "2026-09-20T02:25:35+00:00"
+    }
+  ]
+}

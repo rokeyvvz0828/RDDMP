@@ -51,12 +51,13 @@ async function load() {
   error.value = ''
   forbidden.value = false
   try {
-    const [r, p, e, m] = await Promise.all([listReleaseDrills(projectId), listReleasePlans(projectId), listReleaseDrillEnvironments(projectId), listReleaseOperationMemberOptions(projectId)])
+    const [r, p, e] = await Promise.all([listReleaseDrills(projectId), listReleasePlans(projectId), listReleaseDrillEnvironments(projectId)])
+    const m = canManage() ? await listReleaseOperationMemberOptions(projectId).catch(() => null) : null
     if (!isCurrent()) return
     rounds.value = r.data.data
     plans.value = p.data.data
     environments.value = e.data.data
-    members.value = m.data.data
+    members.value = m?.data.data || []
     if (!rounds.value.some(item => item.id === selectedId.value)) selectedId.value = rounds.value[0]?.id
   } catch (cause) {
     if (!isCurrent()) return
@@ -245,7 +246,7 @@ onBeforeUnmount(() => { disposed = true; loadGeneration++ })
         <div class="drill-form-grid">
           <el-form-item label="轮次名称" required class="is-wide"><el-input v-model="roundForm.roundName" maxlength="128" /></el-form-item>
           <el-form-item label="投产方案" required><el-select v-model="roundForm.releasePlanId"><el-option v-for="plan in plans" :key="plan.id" :label="`${plan.planName}（${plan.planCode}）`" :value="plan.id" /></el-select></el-form-item>
-          <el-form-item label="投产环境" required><el-select v-model="roundForm.environmentId"><el-option v-for="environment in environments" :key="environment.id" :label="environment.environmentName" :value="environment.id" /></el-select></el-form-item>
+          <el-form-item label="投产环境" required><el-select v-model="roundForm.environmentId"><el-option v-for="environment in environments" :key="environment.id" :label="`${environment.environmentName}（${environment.environmentCode}）`" :value="environment.id" /></el-select></el-form-item>
           <el-form-item label="计划时间"><el-date-picker v-model="roundForm.plannedAt" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" /></el-form-item>
           <el-form-item label="状态"><el-select v-model="roundForm.status"><el-option label="待演练" value="PLANNED" /><el-option label="演练中" value="RUNNING" /><el-option label="已完成" value="COMPLETED" /></el-select></el-form-item>
         </div>

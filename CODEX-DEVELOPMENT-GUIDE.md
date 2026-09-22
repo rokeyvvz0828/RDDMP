@@ -258,7 +258,7 @@ cp docs/requirements/codex-task-scope.template.yaml "docs/requirements/$REQ/code
 - `assignment`：开发者、模块、Owner、分支和独立工作区。
 - `writable_paths`：本次确实允许修改的最小路径。
 - `read_only_paths`：可用于理解但不能修改的代码和文档。
-- `forbidden_paths`：密钥、生产配置、无关模块等禁止范围。
+- `forbidden_paths`：密钥、生产配置、无关模块等禁止范围,允许读取.env文件。
 - `public_capability_change`：涉及 platform、shared、公开契约或公共前端时，填写已批准需求编号、审批、兼容和回归测试。
 - `database`、`external_access`、`required_tests` 和 `risk`：如实填写影响与验证要求。
 - `completion`：选择 `full` 或 `minimal`，完整模式填写唯一 `control_prefix` 和预期证据，最小模式填写免建账本理由。

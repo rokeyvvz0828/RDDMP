@@ -19,9 +19,15 @@ public interface ReleaseMasterDataQuery {
     Optional<Selection> resolveActiveSelection(AuthUser actor, long projectId, long physicalSubsystemId,
                                                 Collection<Long> deliveryUnitIds);
 
+    List<EnvironmentRef> listActiveEnvironments(AuthUser actor, long projectId);
+
+    Optional<EnvironmentRef> resolveActiveEnvironment(AuthUser actor, long projectId, long environmentId);
+
     record PhysicalSubsystemRef(long id, String code, String name) {}
 
     record DeliveryUnitRef(long id, long physicalSubsystemId, String code, String name, String artifactTypeCode) {}
 
     record Selection(PhysicalSubsystemRef physicalSubsystem, List<DeliveryUnitRef> deliveryUnits) {}
+
+    record EnvironmentRef(long id, String code, String name, String typeName) {}
 }

@@ -8,8 +8,8 @@ import com.ccb.release.operations.model.ReleaseOperationsModels.DrillPlan;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillPlanRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillRound;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillRoundRequest;
-import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironment;
-import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironmentRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironmentOption;
+import com.ccb.release.integration.ReleaseArchitectureDirectory;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStep;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStepRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStatus;
@@ -53,10 +53,13 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ReleaseOperationsService {
     private final ReleaseOperationsStore store;
     private final ProjectMemberReferenceQuery projectMembers;
+    private final ReleaseArchitectureDirectory architectureDirectory;
 
-    public ReleaseOperationsService(ReleaseOperationsStore store, ProjectMemberReferenceQuery projectMembers) {
+    public ReleaseOperationsService(ReleaseOperationsStore store, ProjectMemberReferenceQuery projectMembers,
+                                    ReleaseArchitectureDirectory architectureDirectory) {
         this.store = store;
         this.projectMembers = projectMembers;
+        this.architectureDirectory = architectureDirectory;
     }
 
     public List<ReleasePlan> releasePlans(long projectId, AuthUser actor) {
@@ -146,25 +149,10 @@ public class ReleaseOperationsService {
         if (!store.deletePlanItem(itemId, actor.tenantId(), projectId, planId, type, timelineId, rowVersion, actor.id())) throw conflict("方案指令已被其他人修改或不存在");
     }
 
-    public List<DrillEnvironment> drillEnvironments(long projectId, AuthUser actor) { requireProjectMember(projectId, actor); return store.findDrillEnvironments(actor.tenantId(), projectId); }
-
-    @Transactional
-    public DrillEnvironment saveDrillEnvironment(long projectId, Long environmentId, DrillEnvironmentRequest request, AuthUser actor) {
+    public List<DrillEnvironmentOption> drillEnvironments(long projectId, AuthUser actor) {
         requireProjectMember(projectId, actor);
-        if (request == null) throw badRequest("投产演练环境不能为空");
-        String name = required(request.environmentName(), "环境名称", 128);
-        DrillEnvironment current = environmentId == null ? null : store.findDrillEnvironment(environmentId, actor.tenantId(), projectId).orElseThrow(() -> badRequest("投产演练环境不存在"));
-        DrillEnvironment value = new DrillEnvironment(current == null ? nextId() : current.id(), actor.tenantId(), projectId, name, optional(request.description(), 1000), optional(request.carryDataLineEnvironment(), 2000), optional(request.infrastructureDeployment(), 2000), optional(request.hardwareCheck(), 2000), optional(request.networkOpening(), 2000), optional(request.middlewareCheck(), 2000), optional(request.componentCheck(), 2000), optional(request.databaseCheck(), 2000), current == null ? 0 : current.rowVersion(), null);
-        if (current == null) { if (request.rowVersion() != 0) throw conflict("演练环境已发生变化，请刷新后重试"); store.insertDrillEnvironment(value, actor.id()); }
-        else if (!store.updateDrillEnvironment(value, actor.tenantId(), request.rowVersion(), actor.id())) throw conflict("演练环境已被其他人修改，请刷新后重试");
-        return store.findDrillEnvironment(value.id(), actor.tenantId(), projectId).orElseThrow();
-    }
-
-    @Transactional
-    public void deleteDrillEnvironment(long projectId, long environmentId, long rowVersion, AuthUser actor) {
-        requireProjectMember(projectId, actor);
-        if (store.findReleaseDrillRounds(actor.tenantId(), projectId).stream().anyMatch(round -> round.environmentId() == environmentId)) throw conflict("该演练环境已被演练轮次引用，不能删除");
-        if (!store.deleteDrillEnvironment(environmentId, actor.tenantId(), projectId, rowVersion, actor.id())) throw conflict("演练环境已被其他人修改或不存在");
+        return architectureDirectory.listActiveEnvironments(actor, projectId).stream()
+                .map(value -> new DrillEnvironmentOption(value.id(), value.code(), value.name(), value.typeName())).toList();
     }
 
     public List<ReleaseDrillRound> releaseDrills(long projectId, AuthUser actor) {
@@ -177,11 +165,13 @@ public class ReleaseOperationsService {
         requireProjectMember(projectId, actor);
         if (request == null) throw badRequest("投产演练不能为空");
         ReleasePlan plan = store.findReleasePlan(request.releasePlanId(), actor.tenantId(), projectId).orElseThrow(() -> badRequest("投产方案不存在或不属于当前项目"));
-        DrillEnvironment environment = store.findDrillEnvironment(request.environmentId(), actor.tenantId(), projectId).orElseThrow(() -> badRequest("投产演练环境不存在或不属于当前项目"));
+        ReleaseArchitectureDirectory.Environment environment = architectureDirectory
+                .resolveActiveEnvironment(actor, projectId, request.environmentId())
+                .orElseThrow(() -> badRequest("架构环境不存在、未启用或不属于当前项目"));
         String name = required(request.roundName(), "轮次名称", 128);
         DrillStatus status = enumValue(request.status(), DrillStatus.class, "演练状态");
         ReleaseDrillRound current = roundId == null ? null : store.findReleaseDrillRound(roundId, actor.tenantId(), projectId).orElseThrow(() -> badRequest("演练轮次不存在"));
-        ReleaseDrillRound value = new ReleaseDrillRound(current == null ? nextId() : current.id(), projectId, current == null ? store.nextReleaseRoundNo(actor.tenantId(), projectId) : current.roundNo(), name, request.plannedAt(), status, optional(request.resultContent(), 2000), plan.id(), plan.planName(), environment.id(), environment.environmentName(), current == null ? 0 : current.rowVersion(), null, List.of());
+        ReleaseDrillRound value = new ReleaseDrillRound(current == null ? nextId() : current.id(), projectId, current == null ? store.nextReleaseRoundNo(actor.tenantId(), projectId) : current.roundNo(), name, request.plannedAt(), status, optional(request.resultContent(), 2000), plan.id(), plan.planName(), environment.id(), environment.name(), environment.code(), environment.typeName(), current == null ? 0 : current.rowVersion(), null, List.of());
         if (current == null) { if (request.rowVersion() != 0) throw conflict("演练轮次已发生变化，请刷新后重试"); store.insertReleaseDrillRound(value, actor.tenantId(), actor.id()); }
         else if (!store.updateReleaseDrillRound(value, actor.tenantId(), request.rowVersion(), actor.id())) throw conflict("演练轮次已被其他人修改，请刷新后重试");
         return store.findReleaseDrillRound(value.id(), actor.tenantId(), projectId).map(item -> withDrillSteps(item, actor)).orElseThrow();
@@ -399,7 +389,14 @@ public class ReleaseOperationsService {
     private PlanTimeline withPlanTimeline(PlanTimeline value, AuthUser actor) {
         return new PlanTimeline(value.id(), value.projectId(), value.planId(), value.itemType(), value.seqNo(), value.timelineName(), value.description(), value.rowVersion(), value.updatedAt(), store.findPlanItems(actor.tenantId(), value.projectId(), value.planId(), value.itemType(), value.id()));
     }
-    private ReleaseDrillRound withDrillSteps(ReleaseDrillRound round, AuthUser actor) { return new ReleaseDrillRound(round.id(), round.projectId(), round.roundNo(), round.roundName(), round.plannedAt(), round.status(), round.resultContent(), round.releasePlanId(), round.releasePlanName(), round.environmentId(), round.environmentName(), round.rowVersion(), round.updatedAt(), store.findDrillSteps(actor.tenantId(), round.projectId(), round.id())); }
+    private ReleaseDrillRound withDrillSteps(ReleaseDrillRound round, AuthUser actor) {
+        var environment = architectureDirectory.resolveActiveEnvironment(actor, round.projectId(), round.environmentId()).orElse(null);
+        return new ReleaseDrillRound(round.id(), round.projectId(), round.roundNo(), round.roundName(), round.plannedAt(),
+                round.status(), round.resultContent(), round.releasePlanId(), round.releasePlanName(), round.environmentId(),
+                environment == null ? null : environment.name(), environment == null ? null : environment.code(),
+                environment == null ? null : environment.typeName(), round.rowVersion(), round.updatedAt(),
+                store.findDrillSteps(actor.tenantId(), round.projectId(), round.id()));
+    }
     private DrillPlan withRounds(DrillPlan plan, AuthUser actor) { return new DrillPlan(plan.id(), plan.tenantId(), plan.projectId(), plan.scenarioContent(), plan.environmentContent(), plan.rowVersion(), plan.updatedAt(), store.findDrillRounds(actor.tenantId(), plan.projectId())); }
     private Timeline withItems(Timeline value, AuthUser actor) { return new Timeline(value.id(), value.projectId(), value.timelineType(), value.timelineName(), value.description(), value.rowVersion(), value.updatedAt(), store.findTimelineItems(actor.tenantId(), value.projectId(), value.id())); }
     private Group withMembers(Group value, AuthUser actor) { return new Group(value.id(), value.projectId(), value.groupName(), value.description(), value.rowVersion(), value.updatedAt(), store.findGroupMembers(actor.tenantId(), value.projectId(), value.id())); }

@@ -1,12 +1,73 @@
 {
+  "schema_version": 1,
   "topic": "req-20260917-081-project-release-calendar",
-  "phase": "verification-blocked",
-  "converged": false,
-  "reason": "The local development runtime is now reachable: the backend health endpoint and frontend root both return HTTP 200, and the project release-calendar API has an authenticated success observation. The project Tabs visual adjustment has passed the production frontend build and whitespace check. Required browser viewport acceptance remains unavailable because the browser automation surface cannot initialize with the current Codex authentication method.",
-  "required_follow_up": [
-    "Run desktop and 375x812, 390x844 and 430x932 browser checks when a supported browser automation surface is available, including tab switches and a page-width overflow check.",
-    "Run the required scope and governance checks from a worktree without unrelated pending changes and historical ledger failures.",
-    "Run the normal full Maven suite on a supported JDK or after the repository upgrades Byte Buddy."
+  "baseline_revision": "baseline-2",
+  "requirement_results": [
+    {
+      "requirement_id": "R1",
+      "result": "blocked",
+      "evidence": "Frontend build passed, but direct tab navigation and interaction could not be inspected without browser automation."
+    },
+    {
+      "requirement_id": "R2",
+      "result": "pass",
+      "evidence": "153 focused Maven tests, Flyway checks and authenticated create/list/delete API flow passed for same-day and cross-month range behavior."
+    },
+    {
+      "requirement_id": "R3",
+      "result": "pass",
+      "evidence": "ProjectService focused tests cover membership, tenant, entity and optimistic-lock authorization; authenticated runtime flow succeeded."
+    },
+    {
+      "requirement_id": "R4",
+      "result": "blocked",
+      "evidence": "Range expansion is covered by code/tests and build, but required desktop/mobile viewport and page overflow measurements are unavailable."
+    },
+    {
+      "requirement_id": "R5",
+      "result": "blocked",
+      "evidence": "Frontend build passed, but theme readability and release-window-inspired tab styling cannot be visually inspected without a browser sensor."
+    }
   ],
-  "rollback": "Revert the scoped controller, service, test and frontend changes. Retain V214 and existing calendar records; remediate with a new additive migration if required."
+  "task_results": [
+    {"task_id": "T1", "result": "verified", "evidence": "Range migration/service focused tests and Flyway observation passed."},
+    {"task_id": "T2", "result": "verified-with-sensor-gap", "evidence": "Frontend build and diff checks passed; browser sensor unavailable."},
+    {"task_id": "T3", "result": "verified-with-coverage-gap", "evidence": "Integrated tests, runtime API and build passed; browser and clean-scope sensors unavailable."}
+  ],
+  "feedback_summary": [],
+  "sample_trend": [
+    {"label": "T1 range observation", "score": 0, "errors": {"P0": 0, "P1": 0, "P2": 0, "P3": 0}},
+    {"label": "T2 frontend observation", "score": 5, "errors": {"P0": 0, "P1": 0, "P2": 1, "P3": 0}},
+    {"label": "T3 integrated observation", "score": 5, "errors": {"P0": 0, "P1": 0, "P2": 1, "P3": 0}}
+  ],
+  "regression_checks": [
+    {"check": "development-entry", "result": "pass"},
+    {"check": "system-project-tests", "result": "pass", "evidence": "153 tests passed"},
+    {"check": "frontend-build", "result": "pass"},
+    {"check": "flyway-check", "result": "pass"},
+    {"check": "git-diff-check", "result": "pass"},
+    {"check": "governance", "result": "blocked-by-baseline", "evidence": "Historical ledger defects outside REQ-081"},
+    {"check": "scope", "result": "blocked-by-shared-worktree", "evidence": "REQ-083/REQ-084 and read-only-path changes outside REQ-081"},
+    {"check": "browser", "result": "sensor-unavailable", "evidence": "cua.getState() OS error 3"}
+  ],
+  "invariant_results": [
+    {"invariant": "V214 remains unchanged; V218 is additive", "result": "pass"},
+    {"invariant": "Server-side project authorization and range ordering remain enforced", "result": "pass"},
+    {"invariant": "Unrelated worktree changes are not reverted", "result": "pass"}
+  ],
+  "scope_audit": [
+    {"scope": "REQ-081 writable paths", "result": "pass", "evidence": "Scoped implementation files are within the approved backend, migration, frontend and ledger paths."},
+    {"scope": "Shared worktree isolation", "result": "blocked-by-baseline", "evidence": "Unrelated REQ-083/REQ-084 modifications are present and were preserved."}
+  ],
+  "disturbance_resilience": [
+    {"disturbance": "Cross-month boundary", "result": "pass", "evidence": "API returned the temporary range in both intersecting months."},
+    {"disturbance": "PowerShell system-property parsing", "result": "mitigated", "evidence": "Quoted Maven argument produced a successful run."},
+    {"disturbance": "Browser kernel path failure", "result": "unresolved", "evidence": "No supported browser sensor available."}
+  ],
+  "residual_risks": [
+    "Required browser visual/viewport acceptance is outstanding.",
+    "Repository-wide governance and scope checks require an isolated clean worktree and historical ledger remediation."
+  ],
+  "gate_result": "blocked",
+  "route_reason": "Keep the implementation evidence and return to browser/runtime observation when a supported browser sensor and isolated worktree are available."
 }

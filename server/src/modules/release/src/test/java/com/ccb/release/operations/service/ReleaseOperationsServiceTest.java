@@ -18,6 +18,7 @@ import com.ccb.release.operations.model.ReleaseOperationsModels.TimelineType;
 import com.ccb.release.operations.model.ReleaseOperationsModels.ReleasePlan;
 import com.ccb.release.operations.model.ReleaseOperationsModels.ReleasePlanRequest;
 import com.ccb.release.operations.persistence.ReleaseOperationsStore;
+import com.ccb.release.integration.ReleaseArchitectureDirectory;
 import com.ccb.security.model.AuthUser;
 import com.ccb.system.capability.ProjectMemberReference;
 import com.ccb.system.capability.ProjectMemberReferenceQuery;
@@ -42,13 +43,15 @@ class ReleaseOperationsServiceTest {
     private final AuthUser actor = new AuthUser(7L, 1L, "operator", "", "操作员", 1L, true);
     private ReleaseOperationsStore store;
     private ProjectMemberReferenceQuery members;
+    private ReleaseArchitectureDirectory architectureDirectory;
     private ReleaseOperationsService service;
 
     @BeforeEach
     void setUp() {
         store = mock(ReleaseOperationsStore.class);
         members = mock(ProjectMemberReferenceQuery.class);
-        service = new ReleaseOperationsService(store, members);
+        architectureDirectory = mock(ReleaseArchitectureDirectory.class);
+        service = new ReleaseOperationsService(store, members, architectureDirectory);
     }
 
     @Test
@@ -130,7 +133,7 @@ class ReleaseOperationsServiceTest {
     void rejectsDeletingPlanReferencedByDrillRound() {
         allowActor();
         when(store.findReleaseDrillRounds(1L, 9001L)).thenReturn(List.of(new ReleaseDrillRound(3001L, 9001L, 1,
-                "第一轮", null, DrillStatus.PLANNED, null, 1001L, "方案", 2001L, "环境", 0, null, List.of())));
+                "第一轮", null, DrillStatus.PLANNED, null, 1001L, "方案", 2001L, "环境", "ENV", "TEST", 0, null, List.of())));
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> service.deleteReleasePlan(9001L, 1001L, 0, actor));

@@ -7,6 +7,10 @@
 - 资源根为 `/api/architecture`，必须认证并执行方法上的固定 `architecture:*` 权限。
 - 租户只从服务端 `AuthUser.tenantId` 取得。请求、查询和响应均没有 `tenantId`/`tenant_id`。
 - 响应统一为 `ApiResponse<T>{code,message,data,traceId,timestamp}`。
+
+## 投产主数据只读投影（REQ-20260918-084）
+
+`com.ccb.architecture.integration.ReleaseMasterDataQuery` 是投产模块消费架构主数据的唯一 Java 契约。它提供当前租户、当前项目且 `ACTIVE` 的具体环境投影 `EnvironmentRef(id, code, name, typeName)`，并支持按环境 ID 的精确解析。投产模块必须通过自身 `ReleaseArchitectureDirectory` 和 Boot 适配器消费该投影，不得访问 `arch_` 表或架构私有服务。架构环境删除会检查未删除投产演练轮次的同租户、同项目引用并拒绝删除。
 - 分页数据为 `PageResult<T>{records,total,page,size}`；`page` 从 1 开始，`size` 默认 20、最大 100。
 - JSON 字段使用 camelCase。未在本契约列出的客户端字段不参与持久化。
 - 400 表示格式或引用无效，401 表示未认证，403 表示缺少动作权限，404/code `40400` 表示当前租户资源不存在或选项上下文不支持，409 表示唯一、引用或并发冲突。

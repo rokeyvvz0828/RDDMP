@@ -7,8 +7,7 @@ import com.ccb.release.operations.model.ReleaseOperationsModels.DrillPlan;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillPlanRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillRound;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillRoundRequest;
-import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironment;
-import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironmentRequest;
+import com.ccb.release.operations.model.ReleaseOperationsModels.DrillEnvironmentOption;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStep;
 import com.ccb.release.operations.model.ReleaseOperationsModels.DrillStepRequest;
 import com.ccb.release.operations.model.ReleaseOperationsModels.Group;
@@ -97,21 +96,9 @@ public class ReleaseOperationsController {
     @PreAuthorize("hasAnyAuthority('release-operations:plan:manage','system:admin')")
     public ApiResponse<Void> deletePlanItem(@RequestParam long projectId, @PathVariable long planId, @PathVariable String itemType, @PathVariable long timelineId, @PathVariable long itemId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deletePlanItem(projectId, planId, planItemType(itemType), timelineId, itemId, rowVersion, actor); return ok(null); }
 
-    @GetMapping("/environments")
-    @PreAuthorize("hasAnyAuthority('release-operations:environment:view','system:admin')")
-    public ApiResponse<List<DrillEnvironment>> drillEnvironments(@RequestParam long projectId, @AuthenticationPrincipal AuthUser actor) { return ok(service.drillEnvironments(projectId, actor)); }
-
-    @PostMapping("/environments")
-    @PreAuthorize("hasAnyAuthority('release-operations:environment:manage','system:admin')")
-    public ApiResponse<DrillEnvironment> createDrillEnvironment(@RequestParam long projectId, @RequestBody DrillEnvironmentRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveDrillEnvironment(projectId, null, request, actor)); }
-
-    @PutMapping("/environments/{environmentId}")
-    @PreAuthorize("hasAnyAuthority('release-operations:environment:manage','system:admin')")
-    public ApiResponse<DrillEnvironment> updateDrillEnvironment(@RequestParam long projectId, @PathVariable long environmentId, @RequestBody DrillEnvironmentRequest request, @AuthenticationPrincipal AuthUser actor) { return ok(service.saveDrillEnvironment(projectId, environmentId, request, actor)); }
-
-    @DeleteMapping("/environments/{environmentId}")
-    @PreAuthorize("hasAnyAuthority('release-operations:environment:manage','system:admin')")
-    public ApiResponse<Void> deleteDrillEnvironment(@RequestParam long projectId, @PathVariable long environmentId, @RequestParam long rowVersion, @AuthenticationPrincipal AuthUser actor) { service.deleteDrillEnvironment(projectId, environmentId, rowVersion, actor); return ok(null); }
+    @GetMapping({"/drill-environment", "/drill-environments"})
+    @PreAuthorize("hasAnyAuthority('release-operations:drill:view','system:admin')")
+    public ApiResponse<List<DrillEnvironmentOption>> drillEnvironments(@RequestParam long projectId, @AuthenticationPrincipal AuthUser actor) { return ok(service.drillEnvironments(projectId, actor)); }
 
     @GetMapping("/drills")
     @PreAuthorize("hasAnyAuthority('release-operations:drill:view','system:admin')")
