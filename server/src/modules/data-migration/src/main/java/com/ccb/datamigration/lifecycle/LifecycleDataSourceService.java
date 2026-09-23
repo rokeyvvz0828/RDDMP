@@ -10,6 +10,7 @@ import com.ccb.system.capability.SystemReferenceQuery;
 import com.ccb.system.capability.SystemUserReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -71,5 +72,11 @@ public class LifecycleDataSourceService {
     public List<LifecycleRoleOption> roleOptions(AuthUser actor) {
         return jdbc.query("SELECT id, tenant_id, role_code, role_name FROM v_data_migration_lifecycle_role_option "
                 + "WHERE tenant_id = ? ORDER BY id", ROLE_MAPPER, actor.tenantId());
+    }
+
+    /** 生命周期阶段下拉：仅启用阶段（lifecycle_stage.status=1 AND deleted=0）。 */
+    public List<Map<String, Object>> stageOptions(AuthUser actor) {
+        return jdbc.queryForList("SELECT id, stage_code, stage_name, sort_no FROM lifecycle_stage "
+                + "WHERE tenant_id = ? AND status = 1 AND deleted = 0 ORDER BY sort_no, id", actor.tenantId());
     }
 }

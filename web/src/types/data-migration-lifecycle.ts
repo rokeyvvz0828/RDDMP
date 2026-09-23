@@ -96,6 +96,32 @@ export const LifecycleErrorCodes = {
   ACTIVITY_OBSOLETE_READONLY: 45101,
   EXPORT_INSTANCE_DATA_LEAK: 45102,
   OWNER_INACTIVE: 45103,
+  ACTIVITY_NOT_FOUND: 45110,
+  ACTIVITY_NAME_DUPLICATE: 45111,
+  GRANULARITY_IMMUTABLE: 45112,
+  COMPONENT_BINDING_MISMATCH: 45113,
+  ACTIVITY_INACTIVE_NO_PROCESS: 45114,
+  ACTIVITY_INACTIVE_NO_DISPATCH: 45115,
+  LIFE_STAGE_REQUIRED_FOR_NORMAL: 45116,
+  ACTIVITY_CODE_CONFLICT: 45117,
+  PROCESS_NOT_FOUND: 45120,
+  PROCESS_NAME_DUPLICATE: 45121,
+  PROCESS_SEQ_INVALID: 45122,
+  PROCESS_MIN_ONE: 45123,
+  EXIT_TRIAD_INCOMPLETE: 45124,
+  TOPOLOGY_SELF_LOOP: 45130,
+  TOPOLOGY_DUPLICATE_EDGE: 45131,
+  TOPOLOGY_CYCLE: 45132,
+  TOPOLOGY_MISSING_NODE: 45133,
+  TOPOLOGY_LIMIT_EXCEEDED: 45134,
+  TOPOLOGY_NOPRE_CONFLICT: 45135,
+  SNAPSHOT_VERSION_MISMATCH: 45136,
+  TEMPLATE_INVALID_JSON: 45140,
+  TEMPLATE_FIELD_INCOMPLETE: 45141,
+  TEMPLATE_GRANULARITY_MISMATCH: 45142,
+  TEMPLATE_DEPENDENCY_INVALID: 45143,
+  TEMPLATE_EXPORT_FORBIDDEN: 45144,
+  TOPIC_GRANULARITY_MISMATCH: 45150,
 } as const
 
 export type LifecycleErrorCodeName = keyof typeof LifecycleErrorCodes
@@ -109,6 +135,32 @@ export const LifecycleErrorMessages: Record<LifecycleErrorCodeName, string> = {
   ACTIVITY_OBSOLETE_READONLY: '已作废活动只读，禁止任何写操作',
   EXPORT_INSTANCE_DATA_LEAK: '导出模板包不得携带项目/组件/人员实例数据',
   OWNER_INACTIVE: '负责人必须为已激活成员且仅可绑定 1 名',
+  ACTIVITY_NOT_FOUND: '活动不存在',
+  ACTIVITY_NAME_DUPLICATE: '活动名称冲突，请确认是否覆盖',
+  GRANULARITY_IMMUTABLE: '活动颗粒度创建后不可变更',
+  COMPONENT_BINDING_MISMATCH: '组件级活动必须绑定组件、项目级活动禁止绑定组件',
+  ACTIVITY_INACTIVE_NO_PROCESS: '停用活动不允许新增工序',
+  ACTIVITY_INACTIVE_NO_DISPATCH: '停用/作废活动不允许下发新任务或聚合引用',
+  LIFE_STAGE_REQUIRED_FOR_NORMAL: '普通基础活动必须归属生命周期阶段',
+  ACTIVITY_CODE_CONFLICT: '活动编码冲突，请重试',
+  PROCESS_NOT_FOUND: '工序不存在',
+  PROCESS_NAME_DUPLICATE: '工序名称在同活动内必须唯一',
+  PROCESS_SEQ_INVALID: '工序序号必须连续 1..n 且不重复',
+  PROCESS_MIN_ONE: '活动至少保留 1 道工序',
+  EXIT_TRIAD_INCOMPLETE: '准出三要素（准出内容/准出交付物清单/合格判定规则）齐备方可发布',
+  TOPOLOGY_SELF_LOOP: '禁止自连依赖',
+  TOPOLOGY_DUPLICATE_EDGE: '禁止重复依赖连线',
+  TOPOLOGY_CYCLE: '禁止成环依赖',
+  TOPOLOGY_MISSING_NODE: '禁止引用缺失节点',
+  TOPOLOGY_LIMIT_EXCEEDED: '单活动工序数不得超过 30 节点',
+  TOPOLOGY_NOPRE_CONFLICT: '有入边仍标记无前置任务冲突',
+  SNAPSHOT_VERSION_MISMATCH: '快照版本号与外层记录版本号必须恒等',
+  TEMPLATE_INVALID_JSON: '模板包 JSON 格式错误',
+  TEMPLATE_FIELD_INCOMPLETE: '模板字段完整性校验失败',
+  TEMPLATE_GRANULARITY_MISMATCH: '模板颗粒度一致性校验失败',
+  TEMPLATE_DEPENDENCY_INVALID: '模板工序依赖合法性校验失败',
+  TEMPLATE_EXPORT_FORBIDDEN: '模板导入导出仅数据迁移管理员拥有',
+  TOPIC_GRANULARITY_MISMATCH: '专题聚合活动仅可聚合同颗粒度普通活动',
 }
 
 /** 固化载荷自描述契约（铁律 #15）：版本号 + 归属主体标识 + 生成时间，版本与外层记录 1:1 恒等。 */
@@ -117,4 +169,121 @@ export interface LifecycleSnapshotEnvelope {
   entityType: string
   entityId: number
   frozenAt: string
+}
+
+/** ===== 基线文档第 9 章活动域契约（T3） ===== */
+
+export type LifecycleActivityType = 'NORMAL' | 'TOPIC'
+export type LifecycleGranularity = 'PROJECT' | 'COMPONENT'
+
+export interface LifecycleStageOption {
+  id: number
+  stageCode: string
+  stageName: string
+  sortNo: number
+}
+
+export interface LifecycleActivityView {
+  id: number
+  tenantId: number
+  activityCode: string
+  activityName: string
+  activityType: LifecycleActivityType
+  lifecycleStageId: number | null
+  stageCode: string | null
+  stageName: string | null
+  granularity: LifecycleGranularity
+  activityStatus: ActivityStatus
+  scene: string | null
+  goal: string | null
+  overallEntryCond: string | null
+  overallExitDesc: string | null
+  overallDeliverables: string | null
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+  processTotal: number
+  processReady: number
+}
+
+export interface LifecycleProcessInput {
+  id: number | null
+  seq: number
+  processName: string
+  ownerRoleId: number | null
+  isRequired: boolean
+  entryConfig: string | null
+  execConfig: string | null
+  exitContent: string
+  exitDeliverableList: string | null
+  qualifiedRule: string
+  mustAudit: boolean
+  mustSubmitDeliverable: boolean
+  deliverableTemplateId: number | null
+}
+
+export interface LifecycleProcessView {
+  id: number
+  activityId: number
+  seq: number
+  processName: string
+  ownerRoleId: number | null
+  isRequired: boolean
+  entryConfig: string | null
+  noPredecessor: boolean
+  execConfig: string | null
+  exitContent: string
+  exitDeliverableList: string | null
+  qualifiedRule: string
+  mustAudit: boolean
+  mustSubmitDeliverable: boolean
+  deliverableTemplateId: number | null
+  configStatus: ProcessConfigStatus
+  predecessorProcessIds: number[]
+}
+
+export interface LifecycleTopologyInput {
+  processes: LifecycleProcessInput[]
+  edges: Array<{ sourceProcessId: number; targetProcessId: number }>
+}
+
+export interface LifecycleTopologyView {
+  activityId: number
+  topologyVersion: string | null
+  processes: LifecycleProcessView[]
+  edges: Array<{ sourceProcessId: number; targetProcessId: number }>
+  warnings: string[]
+}
+
+export interface LifecycleTemplatePackage {
+  templateName: string
+  activityType: LifecycleActivityType
+  granularity: LifecycleGranularity
+  lifecycleStageId: number | null
+  lifecycleStageCode: string | null
+  scene: string | null
+  goal: string | null
+  overallEntryCond: string | null
+  overallExitDesc: string | null
+  overallDeliverables: string | null
+  processes: LifecycleProcessInput[]
+  edges: Array<{ sourceSeq: number; targetSeq: number }>
+}
+
+export interface LifecyclePublishStatus {
+  activityId: number
+  processTotal: number
+  processReady: number
+  missingExitProcesses: string[]
+  topologyOk: boolean
+  publishable: boolean
+}
+
+export interface LifecycleTopicCandidate {
+  id: number
+  activityCode: string
+  activityName: string
+  stageName: string | null
+  activityStatus: ActivityStatus
 }

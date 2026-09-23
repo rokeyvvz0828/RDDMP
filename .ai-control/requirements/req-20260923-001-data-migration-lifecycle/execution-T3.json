@@ -1,0 +1,69 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T3",
+  "title": "批次2·活动管理：活动/工序/拓扑/模板后端+前端（配置工作台、表格降级视图、模板导入导出）",
+  "status": "executed",
+  "executed_at": "2026-09-23T10:40:00Z",
+  "requirement_ids": ["R1"],
+  "scope_summary": "V157 迁移新增 9 张表（lifecycle_stage/activity/activity_component_rel/activity_process/activity_process_dep/activity_topology/activity_snapshot/activity_topic_rel/activity_template）+ 3 契约视图 + 菜单 746 挂 745 + 权限点 7461-7464 + 7 条阶段种子；后端新增活动域（ActivityService/ActivityTopologyService/ActivityTemplateService/TopologyValidator/ActivityCodeGenerator/model 6 个 record）、LifecycleActivityController（CRUD/状态/工序/拓扑/发布/专题聚合/模板导入导出/快照取数）、阶段下拉与专题成员接口、错误码扩展至 33 条 1:1；前端 types 扩展 33 错误码与活动域类型、API 扩充 18 个接口、活动列表页 + 配置工作台（basic/process/topology/topic/version 页签、?tab= 深链回退、表格化连线编辑降级视图）；测试新增 TopologyValidatorTest 10 项与 LifecycleActivitySelfCheckTest 8 项，铁律自检错误码断言升级至 33。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V157__data_migration_lifecycle_activity.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/ActivityService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/ActivityTopologyService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/ActivityTemplateService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/TopologyValidator.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/ActivityCodeGenerator.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/model/ActivityView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/model/ProcessInput.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/model/ProcessView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/model/TemplatePackage.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/model/TopologyInput.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/activity/model/TopologyView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/LifecycleActivityController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/LifecycleOptionsController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecycleDataSourceService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/LifecycleIronRuleSelfCheckTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/activity/TopologyValidatorTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/activity/LifecycleActivitySelfCheckTest.java",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    "web/src/modules/data-migration/lifecycle/activity/ActivityListPage.vue",
+    "web/src/modules/data-migration/lifecycle/activity/ActivityWorkbenchPage.vue",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T3.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T3.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "生命周期阶段值域：PLAN/DESIGN/DEVELOP/TEST/REHEARSAL/RELEASE/OPERATION 七阶段为本批次实现决策（基线文档 9.2.1 仅约束普通活动必填），已登记账本供后续批次复用",
+    "工作台页签：basic/process/topology/topic/version 为深链白名单，非法参数回退 basic（基线 9.2.4 深链规则）",
+    "图形画布：不引入 AntV X6 等新依赖（T3 stop_condition），拓扑依赖以表格化连线编辑承载，与画布共享同一保存出口；无 SVG 度量能力自动降级并回显原因+手动重试（铁律 #16）",
+    "导入生成停用草稿（INACTIVE）待人工复核启用；编码冲突自动重编（candidate() 递增），活动名称冲突以 nameDuplicateHint 提示人工确认（基线 9.2.6 冲突处理策略）",
+    "导出模板包不含项目/组件/人员实例数据：导出数据范围仅 activity 基础属性+工序配置+依赖边（9.7 脱敏口径：按实例数据比对而非字段名）"
+  ],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dtest='LifecycleIronRuleSelfCheckTest,TopologyValidatorTest,LifecycleActivitySelfCheckTest,LifecycleBaseModuleTest' -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "result": "IronRule 10/10、TopologyValidator 10/10、ActivitySelfCheck 8/8、BaseModule 9/9"},
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dsurefire.failIfNoSpecifiedTests=false（清理旧报告后重跑）", "exit_code": 0, "result": "ccb-data-migration 全模块 49/49 绿（0 failure 0 error）"},
+    {"command": "npm run build（web）", "exit_code": 0, "result": "vue-tsc 类型检查 0 错误 + vite build 成功（约 18s）"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260923-001-data-migration-lifecycle/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "result": "PASS；59 changed files 全部在 writable_paths"},
+    {"command": "git diff --check", "exit_code": 0, "result": "无空白错误"}
+  ],
+  "diff_summary": "新增 V157 迁移（9 表+3 视图+菜单权限+种子）、活动域后端 15 个类、测试 2 个新类 + 铁律升级、前端 types/api/路由/2 个页面；错误码 7→33 条 1:1。",
+  "disturbances": [
+    "ActivityService 引用 LifecycleErrorCode.ACTIVITY_CODE_CONFLICT 未定义，编译期暴露，补齐 45117 并与目录 1:1 注册",
+    "LifecycleIronRuleSelfCheckTest 错误码断言仍为旧值 7，编译期不报错，测试运行期暴露，升级为 33",
+    "新增测试初版路径层级错误（基于模块目录的相对路径），编译期验证时修正",
+    "前端组件选项类型 systemName 允许 null|undefined 与本地 ref 类型不一致，vue-tsc 暴露并放宽本地类型",
+    "前端 CSS 相对路径层级错误导致 vite 构建失败，修正后 type-check+build 通过",
+    "surefire 目录残留历史失败报告干扰统计，清理后重跑 49 绿（以干净重跑为准）"
+  ],
+  "residual_risks": [
+    "V157 迁移未在本环境真实 MySQL 执行（无数据库），已通过 DDL 静态断言与 SQL 人工审阅；需在开发环境 ./scripts/dev.sh 起库后由 Flyway 应用验证",
+    "前端 L2 渲染冒烟（verify_ui.mjs/playwright 真实浏览器）未执行：需本地 dev 栈 + admin/admin123，铁律 #13 双层验收仅完成 L1 数据层，L2 登记为人工验收项",
+    "图形化拓扑画布与 30 节点 50FPS 流畅度为真机人工验收项（基线 9.7），本期以表格化连线编辑承载",
+    "check-flyway-migrations / check-all-governance 全局故障为 main 既有问题（V84_1 命名等），只读不修，最终收敛按残余风险记录"
+  ],
+  "rollback": "删除 V157 迁移与 activity 域新增文件、前端页面/路由/类型/API 增量；不影响既有 data-migration 行为（仅追加表与菜单权限种子，应用回退保留追加表）"
+}

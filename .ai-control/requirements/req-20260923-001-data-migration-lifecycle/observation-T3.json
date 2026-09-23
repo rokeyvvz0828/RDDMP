@@ -1,0 +1,41 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T3",
+  "observed_at": "2026-09-23T10:41:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S1",
+      "requirement_ids": ["R1"],
+      "name": "活动域聚焦测试+快照契约（L1 数据层断言，对齐基线 9.7）",
+      "expectation": "活动状态 3 态/类型白名单；DDL 无状态布尔；错误码 1:1；编码自动生成与唯一；颗粒度不可变更与绑定互斥；停用禁增工序、作废三不准；准出三要素与双因子独立；至少 1 道工序且序号连续；拓扑判定器穷举与校验顺序固定；版本与快照 1:1、发布即冻结、非法拓扑整体回滚；专题聚合四道闸门；模板导出脱敏与留痕；模板导入四类校验；写操作权限",
+      "actual": [
+        "LifecycleIronRuleSelfCheckTest 10/10：8 类状态值/终态标记/辅助标记、错误码 33 条 1:1 且不与共享 ErrorCode 冲突、校验顺序 EXISTENCE→QUANTITY→STATE、快照载荷自描述、36 值登记可达性、生命周期迁移扫描无 is_* 状态布尔",
+        "TopologyValidatorTest 10/10 穷举：空工序必拒(PROCESS_MIN_ONE)、31 节点超限必拒、缺失节点/自连/重复/成环必拒、30 节点链合法放行、无前置派生双向断言（无入边 true/有入边 false/null 边 true）、校验顺序固定（超限先于缺失节点）",
+        "LifecycleActivitySelfCheckTest 8/8：V157 含 9 表/3 视图/菜单 746 与权限点 7461-7464/7 阶段种子/唯一键/快照列、编码前缀 ACT-PRJ/ACT-CMP/ACT-TPC、活动终态标记、25 个活动域错误码有文案、作废三不准同码 ACTIVITY_OBSOLETE_READONLY、模板四类校验常量与 INACTIVE 草稿与 nameDuplicateHint 出口、snapshotForTask 契约暴露、控制器端点齐全",
+        "模块全量 49/49 绿（含既有底座 9 项；reports 清理后复跑，无失败无错误）",
+        "前端 vue-tsc 类型检查 0 错误、vite build 成功（活动域类型/API/路由/2 页面编译通过）",
+        "check-codex-scope：59 changed files 全部在 writable_paths（PASS）；git diff --check 无空白错误"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "原计划错误码 28 条，实际注册 33 条（含补齐 ACTIVITY_CODE_CONFLICT=45117 与活动域既有 45101-45103），前后端 1:1 同步",
+        "快照取数契约按基线 9.5 命名为 snapshotForTask()（公开展示 activity_snapshot 最新自描述载荷）",
+        "专题成员列表原计划未显式列端点，补齐 GET /activities/{id}/topic-members 支撑工作台 topic 页签"
+      ],
+      "noise_or_external": [
+        "surefire 目录残留历史报告曾显示 249 项含失败/错误，确认为旧报告（MySQL 依赖测试未在本环境运行的 were-failures），以清理后干净重跑 49/49 为准",
+        "vite 构建存在既有 chunk>500kB 体积警告（index 3.3MB），非本批次引入"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次2集成点（T3 后）", "check": "活动域聚焦测试+快照契约（S1）", "result": "PASS：49/49 模块测试 + 活动域 18 项专项断言 + 前端构建通过；快照契约 snapshotForTask() 已暴露供批次3 T4 消费"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：49/49 绿（0 failure 0 error）",
+    "npm run build（web）：类型检查 0 错误 + 构建成功",
+    "check-codex-scope：PASS（59 changed files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["批次2已收敛（T3，S1 PASS）；下一批次3 = T4 任务发布（单发/批量下发、专题矩阵拆分、工单级快照固化），前置 T3 快照契约已就绪；无需用户决策"]
+}

@@ -28,6 +28,8 @@ import DataMigrationIssues from '../modules/data-migration/views/content/IssuesP
 import DataMigrationRecycleBin from '../modules/data-migration/views/content/RecycleBinPage.vue'
 import DataMigrationBaseComponents from '../modules/data-migration/views/base/ComponentsPage.vue'
 import DataMigrationTargetTables from '../modules/data-migration/views/base/TargetTablesPage.vue'
+import DataMigrationLifecycleActivity from '../modules/data-migration/lifecycle/activity/ActivityListPage.vue'
+import DataMigrationLifecycleActivityWorkbench from '../modules/data-migration/lifecycle/activity/ActivityWorkbenchPage.vue'
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
@@ -264,9 +266,21 @@ const router = createRouter({
           redirect: '/data-migration/dashboard/overall'
         },
         {
-          // 数据迁移生命周期任务管理平台（REQ-20260923-001）：T1 仅注册底座目录占位，页面随批次 2~4 落地
+          // 数据迁移生命周期任务管理平台（REQ-20260923-001）：批次2 注册活动管理（基线第 9 章）
           path: 'data-migration/lifecycle',
-          redirect: '/data-migration/dashboard/overall'
+          redirect: '/data-migration/lifecycle/activity'
+        },
+        {
+          path: 'data-migration/lifecycle/activity',
+          name: 'data-migration-lifecycle-activity',
+          component: DataMigrationLifecycleActivity,
+          meta: { title: '活动管理', permission: 'data-migration-lifecycle:activity', menuPath: '/data-migration/lifecycle/activity' }
+        },
+        {
+          path: 'data-migration/lifecycle/activity/:activityId',
+          name: 'data-migration-lifecycle-activity-workbench',
+          component: DataMigrationLifecycleActivityWorkbench,
+          meta: { title: '活动配置工作台', permission: 'data-migration-lifecycle:activity', menuPath: '/data-migration/lifecycle/activity' }
         },
         {
           path: 'data-migration/dashboard',

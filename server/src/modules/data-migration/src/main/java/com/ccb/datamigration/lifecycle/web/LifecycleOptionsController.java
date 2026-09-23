@@ -10,6 +10,7 @@ import com.ccb.datamigration.lifecycle.model.LifecycleMemberOption;
 import com.ccb.datamigration.lifecycle.model.LifecycleRoleOption;
 import com.ccb.security.model.AuthUser;
 import java.util.List;
+import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,5 +50,10 @@ public class LifecycleOptionsController {
     @GetMapping("/options/roles")
     public ApiResponse<List<LifecycleRoleOption>> roleOptions(@AuthenticationPrincipal AuthUser user) {
         return ApiResponse.success(dataSource.roleOptions(user), TraceId.getOrCreate());
+    }
+
+    @GetMapping("/options/stages")
+    public ApiResponse<List<Map<String, Object>>> stageOptions(@AuthenticationPrincipal AuthUser user) {
+        return ApiResponse.success(dataSource.stageOptions(user), TraceId.getOrCreate());
     }
 }

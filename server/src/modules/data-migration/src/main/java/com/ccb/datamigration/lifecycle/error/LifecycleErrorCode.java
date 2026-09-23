@@ -22,6 +22,58 @@ public final class LifecycleErrorCode {
     public static final int EXPORT_INSTANCE_DATA_LEAK = 45102;
     /** 负责人必须为已激活成员，且仅可绑定 1 名（铁律 #5 + #12 反例修正）。 */
     public static final int OWNER_INACTIVE = 45103;
+    /** 活动不存在（存在性校验，第一段）。 */
+    public static final int ACTIVITY_NOT_FOUND = 45110;
+    /** 活动名称冲突（导入时提示人工确认是否覆盖）。 */
+    public static final int ACTIVITY_NAME_DUPLICATE = 45111;
+    /** 活动颗粒度创建后不可变更。 */
+    public static final int GRANULARITY_IMMUTABLE = 45112;
+    /** 组件级活动必须绑定组件、项目级活动禁止绑定组件（颗粒度绑定互斥）。 */
+    public static final int COMPONENT_BINDING_MISMATCH = 45113;
+    /** 停用活动不允许新增工序。 */
+    public static final int ACTIVITY_INACTIVE_NO_PROCESS = 45114;
+    /** 停用/作废活动不允许下发新任务、不允许被专题聚合关联。 */
+    public static final int ACTIVITY_INACTIVE_NO_DISPATCH = 45115;
+    /** 普通基础活动必须归属生命周期阶段（专题活动非必填）。 */
+    public static final int LIFE_STAGE_REQUIRED_FOR_NORMAL = 45116;
+    /** 活动编码全局唯一冲突（并发候选重复，需重试）。 */
+    public static final int ACTIVITY_CODE_CONFLICT = 45117;
+    /** 工序不存在。 */
+    public static final int PROCESS_NOT_FOUND = 45120;
+    /** 工序名称同活动内唯一。 */
+    public static final int PROCESS_NAME_DUPLICATE = 45121;
+    /** 工序序号无效或不连续（删除后需重排 1..n）。 */
+    public static final int PROCESS_SEQ_INVALID = 45122;
+    /** 活动至少保留 1 道工序。 */
+    public static final int PROCESS_MIN_ONE = 45123;
+    /** 准出三要素（准出内容/准出交付物清单/合格判定规则）必填方可发布。 */
+    public static final int EXIT_TRIAD_INCOMPLETE = 45124;
+    /** 禁止自连依赖。 */
+    public static final int TOPOLOGY_SELF_LOOP = 45130;
+    /** 禁止重复依赖。 */
+    public static final int TOPOLOGY_DUPLICATE_EDGE = 45131;
+    /** 禁止成环依赖。 */
+    public static final int TOPOLOGY_CYCLE = 45132;
+    /** 禁止引用缺失节点。 */
+    public static final int TOPOLOGY_MISSING_NODE = 45133;
+    /** 单活动工序数不得超过 30 节点。 */
+    public static final int TOPOLOGY_LIMIT_EXCEEDED = 45134;
+    /** 有入边仍标记无前置任务冲突（is_no_predecessor 为依赖连线派生值）。 */
+    public static final int TOPOLOGY_NOPRE_CONFLICT = 45135;
+    /** 快照版本号与外层记录版本号必须 1:1 恒等（铁律 #15）。 */
+    public static final int SNAPSHOT_VERSION_MISMATCH = 45136;
+    /** 模板包 JSON 格式错误。 */
+    public static final int TEMPLATE_INVALID_JSON = 45140;
+    /** 模板字段完整性校验失败（四类校验之一）。 */
+    public static final int TEMPLATE_FIELD_INCOMPLETE = 45141;
+    /** 模板颗粒度一致性校验失败（四类校验之一）。 */
+    public static final int TEMPLATE_GRANULARITY_MISMATCH = 45142;
+    /** 模板工序依赖合法性校验失败（缺失节点引用/环路，四类校验之一）。 */
+    public static final int TEMPLATE_DEPENDENCY_INVALID = 45143;
+    /** 模板导入导出仅数据迁移管理员拥有。 */
+    public static final int TEMPLATE_EXPORT_FORBIDDEN = 45144;
+    /** 专题聚合活动仅可聚合同颗粒度普通活动（专题四道闸门：颗粒度）。 */
+    public static final int TOPIC_GRANULARITY_MISMATCH = 45150;
 
     private LifecycleErrorCode() {
     }

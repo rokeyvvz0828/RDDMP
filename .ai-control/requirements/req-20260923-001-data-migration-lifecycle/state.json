@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 5,
+  "revision": 6,
   "created_at": "2026-09-23T09:30:00+00:00",
-  "updated_at": "2026-09-23T10:18:00+00:00",
+  "updated_at": "2026-09-23T10:42:00+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "topic": "req-20260923-001-data-migration-lifecycle",
@@ -38,10 +38,17 @@
       "to": "executing",
       "evidence": "批次1完成：T1（复用接入底座）与 T2（枚举/错误码/快照单源+自检）均执行并采样通过（S9 PASS、S10 PASS，批次1集成点通过）；模块测试 31 绿、前端 build 成功、scope PASS（40 files）。execution-T1/T2.json 与 observation-T1/T2.json 已登记。",
       "recorded_at": "2026-09-23T10:18:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "批次2完成：T3（活动管理）执行并采样通过（S1 PASS）：V157 迁移 9 表+3 视图+菜单权限+阶段种子；活动/工序/拓扑/模板服务与控制器；前端活动列表+配置工作台（五页签深链+表格化连线编辑降级视图）；错误码 33 条前后端 1:1；专项测试 18 项+模块全量 49 绿、前端 build 成功、scope PASS（59 files）。execution-T3.json 与 observation-T3.json 已登记。",
+      "recorded_at": "2026-09-23T10:42:00+00:00"
     }
   ],
   "open_feedback": [
-    "批次1已收敛（T1+T2，S9/S10 PASS）；下一批次2 = T3 活动管理（活动/工序/拓扑/模板后端+前端），前置 T1/T2 均已就绪",
-    "check-flyway-migrations/check-all-governance 全局故障为 main 既有问题（V84_1 等），只读不修，最终收敛按残余风险记录"
+    "批次2已收敛（T3，S1 PASS）；下一批次3 = T4 任务发布（单发/批量下发、颗粒度联动、专题矩阵拆分、工单级快照固化），前置 T3 快照契约已就绪",
+    "检查 flyway 全局脚本在 main 既有问题（V84_1 命名等），只读不修，最终收敛按残余风险记录",
+    "V157 迁移未在本环境真实 MySQL 执行验证（无数据库），需 dev 环境 Flyway 应用验证；前端 L2 真实浏览器冒烟与 30 节点画布流畅度登记为人工验收项"
   ]
 }
