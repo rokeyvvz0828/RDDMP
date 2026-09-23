@@ -1,0 +1,40 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T1",
+  "title": "批次1采样（非独立采样，主 Agent observing）：T1 验收项逐条比对",
+  "observed_at": "2026-09-23T10:00:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S9",
+      "requirement_ids": ["R9"],
+      "name": "权限/数据范围服务端生效观测",
+      "expectation": "权限点与菜单种子迁移通过命名检查；成员下拉仅 ACTIVE、组件下拉 deleted=0；四档数据范围服务端过滤测试通过；无权限写操作返回 403",
+      "actual": [
+        "V156 文件名符合 V<number>__data_migration_lifecycle* 命名与迁移目录检查；check-flyway-migrations 全局被 origin/main 既有 V84_1 命名违规阻断（外部基线故障，非本任务产出）",
+        "成员选项经 SystemReferenceQuery.searchActiveUsers（SQL: sys_user WHERE deleted=0 AND status=1，源码断言覆盖）；组件选项契约视图 WHERE c.deleted=0（迁移源码断言覆盖）",
+        "LifecycleBaseModuleTest 9/9 通过：admin 覆盖全部数据范围、非管理员 REVIEWER/ADMIN 拒绝（40300）、组件负责人 OWNER 放行且 ADMIN 拒绝、执行人仅本人放行",
+        "requireAdmin/requireDataScope 在无权限时抛 BusinessException(FORBIDDEN=40300)，测试断言 code=40300"
+      ],
+      "verdict": "PASS",
+      "deltas": [],
+      "noise_or_external": ["check-flyway-migrations 全局失败为 main 既有问题（V84_1），与 T1 无关；专项已验证 V156 命名合规"]
+    },
+    {
+      "sensor_id": "S10",
+      "requirement_ids": ["R10"],
+      "name": "枚举/错误码/快照单源基线观测（批次1部分）",
+      "expectation": "T1 仅登记底座；枚举/错误码单源声明与 DDL 断言由 T2 完整交付，本批不重复断言",
+      "actual": "T1 未引入状态枚举/错误码声明（错误码沿用共享 ErrorCode.FORBIDDEN 等），无重复声明；LifecycleDataScope 四档枚举为数据范围维度，与状态枚举不冲突",
+      "verdict": "PASS（部分覆盖，T2 补全）",
+      "deltas": ["全量 DDL 断言脚本与 1:1 文案检查延至 T2"],
+      "noise_or_external": []
+    }
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：21 tests 全绿（含既有模块测试）",
+    "npm --prefix web run build：成功",
+    "node scripts/check-codex-scope.mjs --working-tree：PASS（21 files，全部在 writable_paths）",
+    "git diff --check：无空白错误"
+  ],
+  "blockers_for_next": ["T2 前无需用户决策；check-flyway-migrations 全局故障项保持只读不修"]
+}

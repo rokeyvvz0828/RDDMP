@@ -1,0 +1,32 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T2",
+  "title": "批次1采样·S10 枚举/错误码 DDL 断言与自检（含批次1集成点）",
+  "observed_at": "2026-09-23T10:16:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S10",
+      "requirement_ids": ["R10"],
+      "name": "枚举/错误码 1:1 与 DDL 断言",
+      "expectation": "DDL 断言脚本对现有迁移与新增迁移通过；枚举/错误码 1:1 文案检查通过；种子自检对铁律不变式遍历通过",
+      "actual": [
+        "LifecycleIronRuleSelfCheckTest 10/10：8 类 36 状态值与基线第 3 章逐项比对、类别内 code/文案 1:1、终态标记与辅助标记性质、错误码 7 条 1:1 且不与共享 ErrorCode 冲突、校验顺序 EXISTENCE→QUANTITY→STATE、快照载荷自描述三要素、36 值全部登记可达性原因、生命周期迁移扫描无 is_* 状态布尔",
+        "DDL 断言（V1*__data_migration_lifecycle*.sql）：当前 V156 无 is_closed/is_voided/is_rejected/is_passed/is_finished/is_completed/is_active/is_enabled/is_archived/is_disabled/is_obsolete 布尔字段",
+        "错误码 1:1：LifecycleErrorCatalog 注册时强校验（重复码/重复文案抛 IllegalStateException），message() 未注册抛 IllegalArgumentException"
+      ],
+      "verdict": "PASS",
+      "deltas": [],
+      "noise_or_external": []
+    }
+  ],
+  "integration_points": [
+    {"point": "批次1集成点（T1+T2 后）", "check": "枚举/错误码 DDL 断言脚本可运行（S10）", "result": "PASS：LifecycleIronRuleSelfCheckTest 可运行且全绿；前端 build + 类型联合通过"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：31 tests 全绿（模块 7 + 底座 9 + 自检 10 + 既有 5）",
+    "ccb-system 63 tests 全绿（pom 依赖补齐后连带回归）",
+    "npm --prefix web run build：成功",
+    "check-codex-scope --working-tree：PASS（40 files）"
+  ],
+  "blockers_for_next": ["批次1 完成，可进入批次2（T3 活动管理）；无需用户决策"]
+}

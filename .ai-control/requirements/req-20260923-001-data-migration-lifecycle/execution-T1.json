@@ -1,0 +1,48 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T1",
+  "title": "批次1·复用接入底座：菜单/权限点种子、成员/组件/角色数据源接入、四档数据范围、审计骨架、契约视图",
+  "status": "executed",
+  "executed_at": "2026-09-23T09:59:00Z",
+  "requirement_ids": ["R9", "R10"],
+  "scope_summary": "新增 V156 种子迁移（菜单 745 + 权限点 7451-7457 + 契约视图 2 个）；lifecycle 子域 9 个 Java 文件（枚举/选项 model/数据源/权限/审计/选项控制器 + 测试）；前端类型与 API 2 个文件、路由占位 1 处；模块 pom 补 ccb-system 依赖；修复 codex-task-scope.yaml 迁移通配符为 glob 兼容写法；补盘 model.json（前序 phase 记录缺失未落盘）。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V156__data_migration_lifecycle_base.sql",
+    "server/src/modules/data-migration/pom.xml",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecycleDataScope.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecycleDataScopeSet.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecycleDataSourceService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecyclePermissionService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecycleAuditService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/model/LifecycleMemberOption.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/model/LifecycleComponentOption.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/model/LifecycleRoleOption.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/LifecycleOptionsController.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/LifecycleBaseModuleTest.java",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    "docs/requirements/REQ-20260923-001-data-migration-lifecycle/codex-task-scope.yaml",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/model.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T1.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T1.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "decisions_applied": ["D1 并入 business/data-migration 子域", "D2 deleted=0 视为可用 + 台账侧补充参与人", "成员选项复用 platform/system SystemReferenceQuery（searchActiveUsers：deleted=0 AND status=1）", "组件/角色选项经契约视图（v_data_migration_lifecycle_component_option / v_data_migration_lifecycle_role_option）", "四档数据范围 ADMIN/REVIEWER/OWNER/EXECUTOR 服务端解析与 requireDataScope 强校验"],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dtest=LifecycleBaseModuleTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "result": "LifecycleBaseModuleTest Tests run: 9, Failures: 0, Errors: 0, Skipped: 0"},
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "result": "Reactor SUCCESS; ccb-data-migration Tests run: 21, Failures: 0, Errors: 0, Skipped: 0"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "result": "built in 17.34s（router/类型/API 编译通过）"},
+    {"command": "node scripts/check-codex-scope.mjs --scope docs/requirements/REQ-20260923-001-data-migration-lifecycle/codex-task-scope.yaml --base origin/main --head HEAD --working-tree", "exit_code": 0, "result": "Codex scope check passed for REQ-20260923-001; 21 changed file(s)"},
+    {"command": "git diff --check", "exit_code": 0, "result": "无空白错误"},
+    {"command": "node scripts/check-flyway-migrations.mjs", "exit_code": 1, "result": "被 main 既有 V84_1__seed_requirement_system_catalog.sql 命名违规阻断（origin/main 已存在，非本任务导致，禁止顺手修改）；V156 文件名符合 V<number>__data_migration_lifecycle* 命名与要求" }
+  ],
+  "diff_summary": "迁移：菜单 745 目录 + 权限点 7451-7457 + 角色 1/200/201 可见性与权限分配 + 2 个契约视图；后端：lifecycle 子域 9 个类，选项接口 /api/data-migration-lifecycle/options/{members,components,roles}；前端：2 个新文件 + 路由占位；pom：新增 ccb-system 依赖（治理 modules.yaml 已允许 platform/system，仅补齐声明）。",
+  "disturbances": [
+    "data-migration pom 缺 ccb-system 依赖：为复用 SystemReferenceQuery 补齐（root cause，非 workaround）",
+    "codex-task-scope.yaml 迁移通配符原先含正则字符类 [5-9][0-9]，与脚本 globToRegExp（转义为字面量）不兼容，导致范围检查对 V156 误报；改为纯 glob `V1*__data_migration_lifecycle*.sql`（既有迁移均无 data_migration_lifecycle 后缀，语义不变）",
+    "model.json 在 state/control-plan 声称为 ready 但未落盘，本次补盘 model-1 并记录"
+  ],
+  "violations_or_escalations": [],
+  "rollback": "删除 V156 迁移、lifecycle 包与测试、前端 2 文件与路由占位、pom ccb-system 依赖；不影响既有 data-migration 行为（纯新增）。"
+}

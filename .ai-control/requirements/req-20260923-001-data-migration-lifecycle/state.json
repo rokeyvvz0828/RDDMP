@@ -1,0 +1,47 @@
+{
+  "schema_version": 4,
+  "revision": 5,
+  "created_at": "2026-09-23T09:30:00+00:00",
+  "updated_at": "2026-09-23T10:18:00+00:00",
+  "mode": "high-assurance",
+  "phase": "executing",
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "REQ-20260923-001",
+  "objective": "在 RDDMP 技术栈（Spring Boot + Vue 3）上实现数据迁移生命周期任务管理平台，复用现有角色/成员/组件能力，按基线文档批次受控交付。",
+  "phase_history": [
+    {
+      "from": null,
+      "to": "baseline",
+      "evidence": "用户确认：① 按 RDDMP 技术栈落地实施，角色权限/组件/成员复用系统现有功能不重复开发；② 需求文档作为正式需求基线。已创建 docs/requirements/REQ-20260923-001-data-migration-lifecycle/（requirement.md、基线文档副本、codex-task-scope.yaml）与本账本 baseline.json（R1-R11、不变量、约束、非目标、决策 D1-D5）。",
+      "recorded_at": "2026-09-23T09:30:00+00:00"
+    },
+    {
+      "from": "baseline",
+      "to": "modeling",
+      "evidence": "用户指示按 D1~D5 推荐执行：D1 并入 business/data-migration；D2 deleted=0 视为可用 + 台账侧补充参与人；D3 按批次 1~4 推进；D4 分支已重命名为 feat/REQ-20260923-001-data-migration-lifecycle 并推送、删除远端 datamigration-ljy；D5 服务层状态机实现。baseline.json 已置 ready",
+      "recorded_at": "2026-09-23T10:05:00+00:00"
+    },
+    {
+      "from": "modeling",
+      "to": "planning",
+      "evidence": "model.json 门禁通过（R1~R11 均有因果链、独立传感器与受权执行器）；control-plan.json 规划门禁通过：11 个任务包覆盖 R1~R11、依赖图无环、并行组无写入冲突、采样计划与批次边界对齐。",
+      "recorded_at": "2026-09-23T10:40:00+00:00"
+    },
+    {
+      "from": "planning",
+      "to": "executing",
+      "evidence": "T1 执行并采样：V156 种子迁移+契约视图、lifecycle 底座 9 类、前端类型/API/路由占位、pom 补 ccb-system；mvn -pl :ccb-data-migration -am test 21 绿、npm run build 成功、check-codex-scope PASS；execution-T1.json 与 observation-T1.json 已登记（S9 PASS，S10 部分覆盖延 T2）；model.json 补盘 model-1（前序声明 ready 未落盘）。",
+      "recorded_at": "2026-09-23T10:02:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "批次1完成：T1（复用接入底座）与 T2（枚举/错误码/快照单源+自检）均执行并采样通过（S9 PASS、S10 PASS，批次1集成点通过）；模块测试 31 绿、前端 build 成功、scope PASS（40 files）。execution-T1/T2.json 与 observation-T1/T2.json 已登记。",
+      "recorded_at": "2026-09-23T10:18:00+00:00"
+    }
+  ],
+  "open_feedback": [
+    "批次1已收敛（T1+T2，S9/S10 PASS）；下一批次2 = T3 活动管理（活动/工序/拓扑/模板后端+前端），前置 T1/T2 均已就绪",
+    "check-flyway-migrations/check-all-governance 全局故障为 main 既有问题（V84_1 等），只读不修，最终收敛按残余风险记录"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "REQ-20260923-001",
+  "revision": "model-1",
+  "status": "ready",
+  "model_type": "minimal-control-model",
+  "boundary": "被控对象 = 数据迁移生命周期任务管理平台（活动/发布/流转/反馈/审核/问题/风险/看板 + 权限数据范围）；系统边界为 business/data-migration 模块 + 前端 web/src/modules/data-migration 与 web/src/router；外部只读能力：platform/system（成员/角色）、platform/attachment（附件）、dm_component（组件，deleted=0 视为可用）；不新建角色/成员/组件管理页面。",
+  "key_states": [
+    {"domain": "活动", "states": "ACTIVE/INACTIVE/OBSOLETE（三态，铁律 #1/#2）"},
+    {"domain": "工序", "states": "LOCKED/READY/IN_PROGRESS/COMPLETED（自制，配合工单重算）"},
+    {"domain": "工单", "states": "9 态（基线第 3 章唯一基准）：待执行/执行中/待审核/审核打回/已完成/已关闭/已归档/暂停/异常"},
+    {"domain": "问题", "states": "4 态"},
+    {"domain": "风险", "states": "6 态（已规避/已发生/已闭环互斥）"},
+    {"domain": "审核", "states": "4 态 + 10 分钟撤销窗口"},
+    {"domain": "时效", "states": "3 档（独立辅助标记，不改主状态）"},
+    {"domain": "工序配置", "states": "2 态"}
+  ],
+  "inputs": ["活动/工序/模板配置", "任务单发/批量下发与组件勾选", "进度/准出/交付物/日志反馈", "提审/审核/打回/撤销", "问题/风险上报与批量导入", "暂停/转交/超时/异常重启"],
+  "outputs": ["工单快照与自描述载荷", "工序解锁与工单主状态重算", "看板六大维度统计", "审核/问题/风险台账与知识/策略沉淀"],
+  "interfaces": [
+    {"contract": "/api/data-migration-lifecycle/options/{members,components,roles}", "flow": "输入", "status": "T1 已交付（复用接入底座）"},
+    {"contract": "v_data_migration_lifecycle_component_option / v_data_migration_lifecycle_role_option", "flow": "只读数据契约视图", "status": "T1 已交付"},
+    {"contract": "成员选项经 SystemReferenceQuery（platform/system 只读）", "flow": "只读", "status": "T1 已交付"},
+    {"contract": "dm_operation_log 审计写", "flow": "输出", "status": "T1 骨架已交付"}
+  ],
+  "data_flows": [
+    "组件+参与人（台账侧补充，D2）→ 活动/专题 → 下发快照（深拷贝固化）→ 工单流转（仅依快照）→ 执行反馈 → 审核闭环 → 问题/风险对账 → 看板聚合（先权限过滤后统计）"
+  ],
+  "sensors": [
+    {"id": "S1", "description": "活动域聚焦测试 + 快照契约完整性", "trigger": "T3 完成后集成点"},
+    {"id": "S2", "description": "下发拆分数量与快照隔离断言", "trigger": "T4 完成后"},
+    {"id": "S3", "description": "状态机测试 + 异常分支留痕 + 工单 9 态/工序 5 态可达性", "trigger": "T5 完成后"},
+    {"id": "S4", "description": "四段写闸门顺序 + 提审存在性", "trigger": "T6 完成后"},
+    {"id": "S5", "description": "审核闭环 + 批量打回 + 10 分钟撤销窗口", "trigger": "T7 完成后"},
+    {"id": "S6", "description": "问题对账幂等 + 知识沉淀 + Top5 推荐", "trigger": "T8 完成后"},
+    {"id": "S7", "description": "风险对账 + 策略一键复用", "trigger": "T9 完成后"},
+    {"id": "S8", "description": "看板对账（数值=台账条数）+ 下钻跳转", "trigger": "T10 完成后"},
+    {"id": "S9", "description": "数据源/权限点/四档数据范围 + 403 拒绝", "trigger": "T1/T2 执行报告", "status": "T1 已采样 PASS"},
+    {"id": "S10", "description": "枚举/错误码 DDL 断言 + 铁律自检（无 is_* 布尔）", "trigger": "T2 完成后集成点"},
+    {"id": "S11", "description": "全量回归：focused/full-backend、frontend、governance、scope、runtime、browser 四视口", "trigger": "T11 收敛验收"}
+  ],
+  "actuators": [
+    {"action": "受控任务包执行", "owner": "主 Agent + execute-controlled-task", "gain": "batch 1~4，批次内 T1~T11 顺序/并行组受控"},
+    {"action": "迁移追加", "owner": "T 任务（V156 起 __data_migration_lifecycle*）", "constraint": "只追加，不改已发布脚本"},
+    {"action": "状态机 Guard/Action", "owner": "T5 流转引擎", "constraint": "服务层实现，不引入 Spring StateMachine"},
+    {"action": "纠偏", "owner": "correct-engineering-deviation", "constraint": "不移动需求设定值"}
+  ],
+  "disturbances": ["既有 check-flyway-migrations/check-all-governance 全局故障（main 基线问题，只读不修）", "前端动态菜单依赖静态路由同步注册", "组件参与人需台账侧补充（D2）", "快照与后续批次活动/审核配置的时间耦合"],
+  "latency": ["任务下发→快照固化→工单生成须同一事务内完成", "工序级事件→工单主状态重算须同步生效", "问题/风险台账与上报单对账为异步同步但幂等"],
+  "assumptions": ["单租户（tenant_id 恒 1），但查询一律带 tenant 过滤以保留多租户契约", "成员启用状态 = sys_user.deleted=0 AND status=1", "组件可用 = dm_component.deleted=0（D2）", "审核人/执行人归属在后续批次以实体配置表落地，T1 以权限点+身份主键原语预留"],
+  "observability": ["每任务 execution/observation JSON 留档", "聚焦/全量 maven 测试、前端 build、scope/flyway 检查作为传感器输出", "运行时健康检查与浏览器验收在批次完成后实施（R11）"],
+  "controllability": ["任务包写入边界互斥（T1~T11 并行组无冲突）", "每任务 rollback 明确（删除新增迁移/文件）", "批次门禁：批次 1~4 完成才进入下一批"],
+  "open_questions": ["T3 起审核人/执行人归属表结构的精确字段需按基线第 9/11/15 章落地（建模已接，留各任务细化）"]
+}

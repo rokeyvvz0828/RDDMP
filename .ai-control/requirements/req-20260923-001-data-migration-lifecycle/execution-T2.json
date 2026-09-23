@@ -1,0 +1,52 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T2",
+  "title": "批次1·横切基线：状态枚举/错误码/载荷自描述单源声明与 DDL 断言、种子同源自检机制",
+  "status": "executed",
+  "executed_at": "2026-09-23T10:15:00Z",
+  "requirement_ids": ["R10"],
+  "scope_summary": "新增 enums 包 8 个状态枚举 + LifecycleStatus 契约 + 目录/可达性注册表 + 校验顺序枚举；error 包错误码单源 7 条（45001+/451xx）与 1:1 文案目录；snapshot 包快照自描述契约；测试类 LifecycleIronRuleSelfCheckTest 11 项断言；前端 types 追加状态联合类型、1:1 文案映射、错误码与快照类型。",
+  "changed_files": [
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/LifecycleStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/WorkOrderStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/ProcessNodeStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/ActivityStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/IssueStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/RiskStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/AuditStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/TimelinessMark.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/ProcessConfigStatus.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/LifecycleStatusCatalog.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/LifecycleReachabilityRegistry.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/LifecycleValidationPhase.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/snapshot/LifecycleSnapshotEnvelope.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/LifecycleIronRuleSelfCheckTest.java",
+    "web/src/types/data-migration-lifecycle.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T2.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T2.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "状态枚举：基线文档第 3 章唯一基准，8 类 36 值 code 与 displayName 1:1；类别内文案唯一，跨类别同文案（如 EXECUTING/REJECTED）按上下文展示，符合基线表格原文",
+    "错误码：45001 起区段制（45xxx 横切、451xx 活动域…458xx 看板域），本批登记 7 条（含基线文档点名 ACTIVITY_OBSOLETE_READONLY/EXPORT_INSTANCE_DATA_LEAK/OWNER_INACTIVE），后续批次按区段扩展并同步前端",
+    "快照载荷：LifecycleSnapshotEnvelope（schemaVersion/entityType/entityId/frozenAt + SCHEMA_VERSION=1）",
+    "可达性：LifecycleReachabilityRegistry 登记全部 36 值为 NOT_YET_AUTHORIZED（批次1无业务表，显式登记原因），批次 2~4 任务必须翻转并补证据"
+  ],
+  "commands": [
+    {"command": "mvn -q -pl :ccb-data-migration -am test -Dtest=LifecycleIronRuleSelfCheckTest,LifecycleBaseModuleTest -Dsurefire.failIfNoSpecifiedTests=false", "exit_code": 0, "result": "LifecycleIronRuleSelfCheckTest 10/10、LifecycleBaseModuleTest 9/9"},
+    {"command": "mvn -pl :ccb-data-migration -am test", "exit_code": 0, "result": "BUILD SUCCESS；ccb-data-migration Tests run: 31, Failures: 0（含 ccb-system 63 tests）"},
+    {"command": "npm --prefix web run build", "exit_code": 0, "result": "built in 17.50s（types 追加编译通过）"},
+    {"command": "node scripts/check-codex-scope.mjs --scope ... --base origin/main --head HEAD --working-tree", "exit_code": 0, "result": "PASS；40 changed files 全部在 writable_paths"},
+    {"command": "git diff --check", "exit_code": 0, "result": "无空白错误"}
+  ],
+  "diff_summary": "后端新增 16 个文件（enums 12 + error 2 + snapshot 1 + 测试 1），前端追加 1 个文件；无迁移变更（T2 不定义业务表结构，符合 non_goals）。",
+  "disturbances": [
+    "枚举初版漏实现接口 code()（name() 返回），编译期暴露并补齐",
+    "测试初版漏 entryCodes 辅助方法，编译期暴露并补齐",
+    "前端 LifecycleStatusText 用 code 作 key，跨类别同文案按上下文展示不冲突（已在代码注释说明）"
+  ],
+  "violations_or_escalations": [],
+  "rollback": "删除 enums/error/snapshot 包文件与自检测试，回退前端 types 追加段；不涉及迁移与既有行为。"
+}

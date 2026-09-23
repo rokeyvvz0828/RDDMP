@@ -264,6 +264,11 @@ const router = createRouter({
           redirect: '/data-migration/dashboard/overall'
         },
         {
+          // 数据迁移生命周期任务管理平台（REQ-20260923-001）：T1 仅注册底座目录占位，页面随批次 2~4 落地
+          path: 'data-migration/lifecycle',
+          redirect: '/data-migration/dashboard/overall'
+        },
+        {
           path: 'data-migration/dashboard',
           redirect: '/data-migration/dashboard/overall'
         },
