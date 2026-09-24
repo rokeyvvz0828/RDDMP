@@ -2,8 +2,11 @@ import http from './http'
 import type { ApiResponse } from '../types/auth'
 import type {
   LifecycleActivityView,
+  LifecycleAuditView,
   LifecycleComponentOption,
   LifecycleFeedbackView,
+  LifecycleIssueView,
+  LifecycleKnowledgeEntryView,
   LifecycleMemberOption,
   LifecycleOrderProcessView,
   LifecycleOrderView,
@@ -11,6 +14,8 @@ import type {
   LifecycleProcessInput,
   LifecycleProcessView,
   LifecyclePublishStatus,
+  LifecycleRiskStrategyLibView,
+  LifecycleRiskView,
   LifecycleRoleOption,
   LifecycleStageOption,
   LifecycleTaskView,
@@ -207,4 +212,138 @@ export function reportLifecycleRisk(orderId: number, processSeq: number, body: R
 
 export function addLifecycleWorkLog(orderId: number, processSeq: number, content: string) {
   return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}/work-log`, { content })
+}
+
+/** ===== 任务审核管理（基线第 15 章，T7） ===== */
+
+export function listLifecycleAudit(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecyclePage<LifecycleAuditView>>>('/data-migration-lifecycle/audit', { params })
+}
+
+export function getLifecycleAuditRecords(orderId: number, processSeq: number) {
+  return http.get<ApiResponse<LifecycleAuditView[]>>(`/data-migration-lifecycle/audit/${orderId}/records`, { params: { processSeq } })
+}
+
+export function getLifecycleAuditPackage(orderId: number) {
+  return http.get<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/audit/${orderId}/package`)
+}
+
+export function passLifecycleAudit(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/audit/pass', body)
+}
+
+export function rejectLifecycleAudit(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/audit/reject', body)
+}
+
+export function batchPassLifecycleAudit(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/audit/batch-pass', body)
+}
+
+export function batchRejectLifecycleAudit(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/audit/batch-reject', body)
+}
+
+export function revokeLifecycleAuditBatch(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/audit/batch-revoke', body)
+}
+
+/** ===== 问题管理 + 历史问题知识库（基线第 13 章，T8） ===== */
+
+export function listLifecycleIssues(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecyclePage<LifecycleIssueView>>>('/data-migration-lifecycle/issues', { params })
+}
+
+export function createLifecycleIssue(body: Record<string, unknown>) {
+  return http.post<ApiResponse<LifecycleIssueView>>('/data-migration-lifecycle/issues', body)
+}
+
+export function updateLifecycleIssue(issueId: number, body: Record<string, unknown>) {
+  return http.put<ApiResponse<LifecycleIssueView>>(`/data-migration-lifecycle/issues/${issueId}`, body)
+}
+
+export function importLifecycleIssues(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/issue/import', body)
+}
+
+export function reconcileLifecycleIssues() {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/issue/reconcile')
+}
+
+export function rectifyLifecycleIssue(issueId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<LifecycleIssueView>>(`/data-migration-lifecycle/issues/${issueId}/rectify`, body)
+}
+
+export function closeLifecycleIssue(issueId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/issues/${issueId}/close`, body)
+}
+
+export function cancelLifecycleIssue(issueId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<null>>(`/data-migration-lifecycle/issues/${issueId}/cancel`, body)
+}
+
+export function matchLifecycleIssueKnowledge(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecycleKnowledgeEntryView[]>>('/data-migration-lifecycle/issue/knowledge/match', { params })
+}
+
+export function listLifecycleKnowledge(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecycleKnowledgeEntryView[]>>('/data-migration-lifecycle/knowledge', { params })
+}
+
+export function referLifecycleKnowledge(knowledgeId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<LifecycleKnowledgeEntryView>>(`/data-migration-lifecycle/knowledge/${knowledgeId}/refer`, body)
+}
+
+export function invalidateLifecycleKnowledge(knowledgeId: number) {
+  return http.post<ApiResponse<LifecycleKnowledgeEntryView>>(`/data-migration-lifecycle/knowledge/${knowledgeId}/invalidate`)
+}
+
+/** ===== 风险管理 + 风险策略库（基线第 14 章，T9） ===== */
+
+export function listLifecycleRisks(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecyclePage<LifecycleRiskView>>>('/data-migration-lifecycle/risks', { params })
+}
+
+export function createLifecycleRisk(body: Record<string, unknown>) {
+  return http.post<ApiResponse<LifecycleRiskView>>('/data-migration-lifecycle/risks', body)
+}
+
+export function updateLifecycleRisk(riskId: number, body: Record<string, unknown>) {
+  return http.put<ApiResponse<LifecycleRiskView>>(`/data-migration-lifecycle/risks/${riskId}`, body)
+}
+
+export function reconcileLifecycleRisks() {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/risk/reconcile')
+}
+
+export function preventLifecycleRisk(riskId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<LifecycleRiskView>>(`/data-migration-lifecycle/risks/${riskId}/prevent`, body)
+}
+
+export function closeLifecycleRisk(riskId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/risks/${riskId}/close`, body)
+}
+
+export function cancelLifecycleRisk(riskId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<null>>(`/data-migration-lifecycle/risks/${riskId}/cancel`, body)
+}
+
+export function matchLifecycleRiskStrategy(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecycleRiskStrategyLibView[]>>('/data-migration-lifecycle/risk/strategy/match', { params })
+}
+
+export function listLifecycleRiskStrategies(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecycleRiskStrategyLibView[]>>('/data-migration-lifecycle/risk/strategies', { params })
+}
+
+export function createLifecycleRiskStrategy(body: Record<string, unknown>) {
+  return http.post<ApiResponse<LifecycleRiskStrategyLibView>>('/data-migration-lifecycle/risk/strategies', body)
+}
+
+export function reuseLifecycleRiskStrategy(strategyId: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/risk/strategies/${strategyId}/reuse`, body)
+}
+
+export function offlineLifecycleRiskStrategy(strategyId: number) {
+  return http.post<ApiResponse<LifecycleRiskStrategyLibView>>(`/data-migration-lifecycle/risk/strategies/${strategyId}/offline`)
 }

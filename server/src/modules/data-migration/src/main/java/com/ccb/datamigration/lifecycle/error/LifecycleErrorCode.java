@@ -154,6 +154,92 @@ public final class LifecycleErrorCode {
     /** 管理员不得代填执行反馈（作业权责主体只能是执行人/参与人）。 */
     public static final int FEEDBACK_ADMIN_FORBIDDEN = 45412;
 
+    /** ===== 455xx 审核管理域（基线第 15 章，T7） ===== */
+    /** 仅审核角色可执行审核；管理员可查看全量台账但不得代审。 */
+    public static final int AUDIT_PERMISSION_DENIED = 45501;
+    /** 审核意见必填（通过填合规验收结论；打回填问题定位与不合规点）。 */
+    public static final int AUDIT_OPINION_REQUIRED = 45502;
+    /** 打回整改要求为打回状态强制必填（整改内容/整改标准/补充资料/复审条件）。 */
+    public static final int AUDIT_RECTIFY_REQUIRED = 45503;
+    /** 工序不在审核中，无法写入审核结果。 */
+    public static final int AUDIT_PROCESS_NOT_REVIEWING = 45504;
+    /** 批量审核单批上限 50 条，超出需分批执行。 */
+    public static final int AUDIT_BATCH_LIMIT = 45505;
+    /** 批量打回必须填写统一打回原因与整改要求。 */
+    public static final int AUDIT_BATCH_REASON_REQUIRED = 45506;
+    /** 批量打回必须二次确认（工单数量与清单一致）。 */
+    public static final int AUDIT_BATCH_CONFIRM_REQUIRED = 45507;
+    /** 批量打回撤销窗口（提交后 10 分钟）已过，不可撤销。 */
+    public static final int AUDIT_REVOKE_WINDOW_EXPIRED = 45508;
+    /** 已重新提审的工单不可整批撤销。 */
+    public static final int AUDIT_REVOKE_SUBMITTED_AGAIN = 45509;
+    /** 审核记录不存在。 */
+    public static final int AUDIT_RECORD_NOT_FOUND = 45510;
+    /** 待审工单不存在。 */
+    public static final int AUDIT_ORDER_NOT_FOUND = 45511;
+    /** 工序已闭环，审核记录固化不可删改。 */
+    public static final int AUDIT_CLOSED_LOCKED = 45512;
+    /** ===== 456xx 问题管理 + 历史问题知识库域（基线第 13 章，T8） ===== */
+    /** 问题不存在。 */
+    public static final int ISSUE_NOT_FOUND = 45601;
+    /** 问题编码重复（新增/导入/同步）。 */
+    public static final int ISSUE_CODE_DUPLICATE = 45602;
+    /** 必填字段缺失（批量导入四类校验之一）。 */
+    public static final int ISSUE_FIELD_REQUIRED = 45603;
+    /** 问题状态非法（仅 4 态枚举）。 */
+    public static final int ISSUE_STATUS_INVALID = 45604;
+    /** 已闭环问题禁止修改、删除、作废。 */
+    public static final int ISSUE_CLOSED_READONLY = 45605;
+    /** 已作废问题禁止修改。 */
+    public static final int ISSUE_CANCELLED_READONLY = 45606;
+    /** 无整改权限：仅执行人/负责人提交整改进度。 */
+    public static final int ISSUE_RECTIFY_PERMISSION_DENIED = 45607;
+    /** 仅数据迁移管理员拥有台账维护/知识维护权限。 */
+    public static final int ISSUE_ADMIN_ONLY = 45608;
+    /** 批量导入校验失败，异常明细随响应返回。 */
+    public static final int ISSUE_IMPORT_INVALID = 45609;
+    /** 对账同步与上报单归属冲突，拒绝归集。 */
+    public static final int ISSUE_SYNC_CONFLICT = 45610;
+    /** 知识条目不存在。 */
+    public static final int KNOWLEDGE_NOT_FOUND = 45611;
+    /** 知识条目禁止物理删除，仅可标注失效（ACTIVE/INVALID）。 */
+    public static final int KNOWLEDGE_DELETE_FORBIDDEN = 45612;
+    /** 知识条目的编辑/合并/下线仅数据迁移管理员拥有。 */
+    public static final int KNOWLEDGE_ADMIN_ONLY = 45613;
+    /** 知识标签不存在。 */
+    public static final int KNOWLEDGE_TAG_NOT_FOUND = 45614;
+    /** 闭环前必须填写标准化解决方案（知识沉淀依据）。 */
+    public static final int ISSUE_CLOSE_SOLUTION_REQUIRED = 45615;
+    /** ===== 457xx 风险管理 + 风险策略库域（基线第 14 章，T9） ===== */
+    /** 风险不存在。 */
+    public static final int RISK_NOT_FOUND = 45701;
+    /** 风险编码重复（新增/同步）。 */
+    public static final int RISK_CODE_DUPLICATE = 45702;
+    /** 风险等级仅可配置单一值，禁止多选或组合表达。 */
+    public static final int RISK_LEVEL_SINGLE = 45703;
+    /** 发生概率仅可配置单一值，禁止多选或组合表达。 */
+    public static final int RISK_PROBABILITY_SINGLE = 45704;
+    /** 风险状态非法或 6 态互斥冲突（已规避/已发生/已闭环互斥）。 */
+    public static final int RISK_STATUS_INVALID = 45705;
+    /** 已闭环风险策略/记录/日志固化归档，禁止修改删除。 */
+    public static final int RISK_CLOSED_ARCHIVED = 45706;
+    /** 风险策略配置/维护仅数据迁移管理员/项目负责人拥有。 */
+    public static final int RISK_STRATEGY_PERMISSION_DENIED = 45707;
+    /** 无风险防控操作权限（仅执行人/防控责任人）。 */
+    public static final int RISK_PREVENT_PERMISSION_DENIED = 45708;
+    /** 普通用户不可作废风险。 */
+    public static final int RISK_CANCEL_FORBIDDEN = 45709;
+    /** 策略库条目不存在。 */
+    public static final int RISK_STRATEGY_NOT_FOUND = 45710;
+    /** 策略库条目禁止删除，仅可下线（ACTIVE/INVALID）。 */
+    public static final int RISK_STRATEGY_DELETE_FORBIDDEN = 45711;
+    /** 对账同步与上报单归属冲突，拒绝归集。 */
+    public static final int RISK_SYNC_CONFLICT = 45712;
+    /** 风险必填字段缺失。 */
+    public static final int RISK_FIELD_REQUIRED = 45713;
+    /** 批量归集数据校验失败，异常明细随响应返回。 */
+    public static final int RISK_IMPORT_INVALID = 45714;
+
     private LifecycleErrorCode() {
     }
 }

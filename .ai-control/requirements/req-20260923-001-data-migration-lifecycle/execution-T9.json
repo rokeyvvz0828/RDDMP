@@ -1,0 +1,45 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T9",
+  "title": "批次4·风险管理+风险策略库：双渠道归集、单值约束、策略沉淀与一键复用、6 态互斥管控",
+  "status": "executed",
+  "executed_at": "2026-09-24T03:10:00Z",
+  "requirement_ids": [
+    "R7"
+  ],
+  "scope_summary": "V163 迁移新增 5 张表（risk/risk_attachment/risk_strategy/risk_prevent_record/risk_strategy_lib）+ 表级 CHECK（ck_risk_granularity_component 颗粒度继承、ck_risk_sync_report 工单同步必须携带 synced_report_id、ck_rse_origin_source 来源白名单、ck_risk_level_single/ck_risk_probability_single 等级与概率单值）+ 菜单 752 + 权限点 7521-7524；后端 RiskService（台账角色差异化：管理员全量/执行人仅本人上报与防控；手动新增等级与概率单值强制校验；对账式 reconcile 幂等：process_risk_report 按 synced_risk_id 锚点归集为 ORDER_SYNC 风险并回填；防控推进追加式留痕；闭环固化（终点仅限已规避/已发生/已闭环三态互斥）并同步策略快照归档 risk_strategy；作废仅管理员；策略库新增/清单/下线（禁删仅 INVALID）；策略智能匹配（等级/概率+关键词打分）；一键复用回填目标风险并回写 use_count）+ RiskController；风险/策略错误码 45701-45714 共 14 条；前端风险台账页（新增/对账/防控/闭环三态选择/作废）与策略库页（新增/检索/一键复用/下线）+ 类型/API/路由注册。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V163__data_migration_lifecycle_risk.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/risk/RiskService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/risk/model/RiskView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/risk/model/RiskStrategyLibView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/RiskController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch4SelfCheckTest.java",
+    "web/src/modules/data-migration/lifecycle/risk/RiskListPage.vue",
+    "web/src/modules/data-migration/lifecycle/risk/StrategyPage.vue",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T9.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T9.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "与问题域共用 reconcile 协议：synced_risk_id 为幂等锚点（T6 预留列）；归属类字段权威在上报单、防控类字段权威在台账",
+    "等级/概率各一单一值：后端 requireSingleLevel/requireSingleProbability 强制 + 表级 CHECK 双保险；6 态互斥由枚举单值与闭环终点白名单（CLOSED/AVOIDED/OCCURRED）保证",
+    "闭环固化：risk_status 终态 + risk_strategy 策略快照归档（禁删改），risk_prevent_record 追加式留痕永久留存",
+    "策略智能匹配按「等级/概率命中优先 + 关键词打分」实现（协同过滤/向量服务后续可替换），普通用户只读不可维护/作废"
+  ],
+  "blocks_encountered": [
+    "前端 ApiResponse.success 单参编译错误由 TraceId 双参助手统一修复（与 T7 同源问题）",
+    "策略匹配关键词打分与风险标题模式检索在无样例数据时返回空，测试以结构断言覆盖（热度排序 SQL 可观测）"
+  ],
+  "residual_risks": [
+    "策略匹配算法效果无法用自动化判别（保留关键词实现，登记人工验收）",
+    "风险图形化预警（非目标 14.8）不在本期",
+    "dev 环境真实数据链路的策略一键复用回填效果待浏览器/接口冒烟复核"
+  ],
+  "rollback": "删除 V163 与 risk 域新增文件、前端增量；保留追加表（回退不删表）"
+}

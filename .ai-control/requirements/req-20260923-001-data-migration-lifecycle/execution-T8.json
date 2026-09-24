@@ -1,0 +1,45 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T8",
+  "title": "批次4·问题管理+历史问题知识库：对账同步、批量导入、闭环沉淀、Top5 推荐、三元组复用",
+  "status": "executed",
+  "executed_at": "2026-09-24T03:00:00Z",
+  "requirement_ids": [
+    "R6"
+  ],
+  "scope_summary": "V162 迁移新增 7 张表（issue/issue_attachment/issue_rectify_record/knowledge_entry/knowledge_tag/knowledge_tag_rel/knowledge_reuse_log）+ 表级 CHECK（ck_issue_granularity_component 颗粒度继承、ck_issue_sync_report 工单同步必须携带 synced_report_id）+ 菜单 751 + 权限点 7511-7514；后端 IssueService（台账角色差异化：管理员全量/执行人仅本人上报与整改；手动新增/批量导入（四类校验：必填缺失/格式错误/编码重复/状态非法，合法行入库、异常行单独罗列不入库）；对账式 reconcile 幂等：process_issue_report 按 synced_issue_id 锚点归集为 ORDER_SYNC 问题并回填（归属类字段权威在上报单镜像）；整改推进追加式留痕；核验闭环 solution 必填并自动沉淀知识条目（问题→解决方案→复用次数三元组）；作废；Top5 相似推荐（关键词检索实现，外部向量服务可替换）；知识条目检索（关键字+状态+标签）、一键复用回写 reuse_count 与 reuse_log、失效标注禁删仅 INVALID）+ IssueController；问题/知识错误码 45601-45615 共 15 条；前端问题台账页（新增/CSV 导入含异常明细下载/整改/闭环）与知识库页（检索/详情/复用/失效）+ 类型/API/路由注册。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V162__data_migration_lifecycle_issue.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/issue/IssueService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/issue/model/IssueView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/issue/model/KnowledgeEntryView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/IssueController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch4SelfCheckTest.java",
+    "web/src/modules/data-migration/lifecycle/issue/IssueListPage.vue",
+    "web/src/modules/data-migration/lifecycle/issue/KnowledgePage.vue",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T8.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T8.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "reconcile 幂等协议与风险域共用：synced_issue_id 为幂等锚点（T6 预留列），重复触发不重复归集；归属类字段（项目/组件/工单/工序/上报人）镜像上报单，整改类字段（建议/方案/进度/状态）权威在台账",
+    "批量导入合法数据一键入库（逐条写，异常行仅罗列不入库，不整体回滚），满足 13.2.1「合规数据一键入库、异常数据单独罗列」",
+    "闭环沉淀知识条目：close 时以 issue_desc+solution+rectify_records 生成 knowledge_entry（source_issue_id 关联，禁删仅可标注 INVALID）"
+  ],
+  "blocks_encountered": [
+    "批量导入初始实现整体 @Transactional 会回滚合法行，改为逐条写入 + 异常明细返回（不回滚合法数据）",
+    "同批次导入编码冲突：统一改用批量预生成编码（时间戳+行序）避免 MAX 查询在同毫秒重复",
+    "前端 CSV 导入以结构化行数据模拟 EasyExcel 流式校验（遗留项：真实 Excel 文件解析留人工验收）"
+  ],
+  "residual_risks": [
+    "知识 Tag 维护（多级标签 CRUD）本轮以实现表结构与检索接口为主，标签管理页留 dev 环境人工验收",
+    "Top5 相似推荐为关键词检索（履约 13.2.5），向量相似度服务接入后可替换",
+    "批量导入真实 Excel 体验待人工验收（基线 13.8 遗留项）"
+  ],
+  "rollback": "删除 V162 与 issue 域新增文件、前端增量；保留追加表（回退不删表）"
+}

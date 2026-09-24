@@ -33,6 +33,11 @@ import DataMigrationLifecycleActivityWorkbench from '../modules/data-migration/l
 import DataMigrationLifecycleTask from '../modules/data-migration/lifecycle/task/TaskListPage.vue'
 import DataMigrationLifecycleFlow from '../modules/data-migration/lifecycle/flow/FlowListPage.vue'
 import DataMigrationLifecycleFeedback from '../modules/data-migration/lifecycle/feedback/FeedbackPage.vue'
+import DataMigrationLifecycleAudit from '../modules/data-migration/lifecycle/audit/AuditListPage.vue'
+import DataMigrationLifecycleIssue from '../modules/data-migration/lifecycle/issue/IssueListPage.vue'
+import DataMigrationLifecycleKnowledge from '../modules/data-migration/lifecycle/issue/KnowledgePage.vue'
+import DataMigrationLifecycleRisk from '../modules/data-migration/lifecycle/risk/RiskListPage.vue'
+import DataMigrationLifecycleRiskStrategy from '../modules/data-migration/lifecycle/risk/StrategyPage.vue'
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
@@ -305,6 +310,36 @@ const router = createRouter({
           name: 'data-migration-lifecycle-feedback',
           component: DataMigrationLifecycleFeedback,
           meta: { title: '执行反馈', permission: 'data-migration-lifecycle:feedback', menuPath: '/data-migration/lifecycle/feedback' }
+        },
+        {
+          path: 'data-migration/lifecycle/audit',
+          name: 'data-migration-lifecycle-audit',
+          component: DataMigrationLifecycleAudit,
+          meta: { title: '任务审核', permission: 'data-migration-lifecycle:audit', menuPath: '/data-migration/lifecycle/audit' }
+        },
+        {
+          path: 'data-migration/lifecycle/issue',
+          name: 'data-migration-lifecycle-issue',
+          component: DataMigrationLifecycleIssue,
+          meta: { title: '问题台账', permission: 'data-migration-lifecycle:issue', menuPath: '/data-migration/lifecycle/issue' }
+        },
+        {
+          path: 'data-migration/lifecycle/issue/knowledge',
+          name: 'data-migration-lifecycle-issue-knowledge',
+          component: DataMigrationLifecycleKnowledge,
+          meta: { title: '历史问题知识库', permission: 'data-migration-lifecycle:issue', menuPath: '/data-migration/lifecycle/issue' }
+        },
+        {
+          path: 'data-migration/lifecycle/risk',
+          name: 'data-migration-lifecycle-risk',
+          component: DataMigrationLifecycleRisk,
+          meta: { title: '风险台账', permission: 'data-migration-lifecycle:risk', menuPath: '/data-migration/lifecycle/risk' }
+        },
+        {
+          path: 'data-migration/lifecycle/risk/strategy',
+          name: 'data-migration-lifecycle-risk-strategy',
+          component: DataMigrationLifecycleRiskStrategy,
+          meta: { title: '风险策略库', permission: 'data-migration-lifecycle:risk', menuPath: '/data-migration/lifecycle/risk' }
         },
         {
           path: 'data-migration/dashboard',

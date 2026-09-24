@@ -1,0 +1,41 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T8",
+  "observed_at": "2026-09-24T03:25:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S6",
+      "requirement_ids": ["R6"],
+      "name": "问题管理+知识库传感器：对账幂等/批量导入四类校验/闭环沉淀/Top5（L1 数据层断言，对齐基线 13）",
+      "expectation": "同步 1 秒内可观测且双向可跳转；导入四类校验与异常明细下载；闭环自动沉淀知识条目且原问题不可编辑；Top5 相似推荐返回；聚焦测试+前端构建通过",
+      "actual": [
+        "Batch4SelfCheckTest 6/6：V162 含 7 张表（issue/issue_attachment/issue_rectify_record/knowledge_entry/knowledge_tag/knowledge_tag_rel/knowledge_reuse_log）+ ck_issue_granularity_component/ck_issue_sync_report CHECK + 菜单 751 + 权限点 7511-7514；knowledge_status ACTIVE/INVALID 禁删语义 + synced_report_id 幂等锚点 + reuse_count 三元组",
+        "reconcile 幂等：process_issue_report 按 synced_issue_id IS NULL 归集（T6 预留列消费），合规行生成 ORDER_SYNC 问题并回填锚点；归属类字段镜像上报单（项目/组件/工单/工序/上报人），整改类字段权威在台账（建议/方案/进度/状态）",
+        "批量导入四类校验（必填缺失/格式错误/编码重复/状态非法）：合法行入库、异常行仅罗列不入库（不整体回滚）；前端支持 CSV 模板下载与异常明细下载",
+        "闭环沉淀：solution 必填（ISSUE_CLOSE_SOLUTION_REQUIRED）→ issue CLOSED + 自动生成 knowledge_entry（三元组，source_issue_id 关联）；闭环后修改被 ISSUE_CLOSED_READONLY 拒绝；整改记录 appendJson 追加式不可清空",
+        "Top5 相似推荐：knowledge 关键词打分排序（复用次数降序 LIMIT 50→打分 Top5）；一键复用回写 reuse_count + reuse_log（REFER/PENDING）",
+        "错误码 45601-45615 共 15 条前后端 1:1；4 态枚举（WAIT_RECTIFY/RECTIFYING/CLOSED/CANCELLED）注册断言",
+        "模块全量 88/88 绿；MySQL 集成测试 3 类 26 测试全绿（Flyway v1~v163 应用无 error）；前端 npm run build 成功；scope PASS（62 files）；git diff --check 通过"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "导入 true 实时文件解析以结构化行模拟（基线 13.8 遗留项：真实 Excel 体验人工验收）",
+        "知识详情/跳转：台账行含 orderId/processSeq 供工单跳转；双向可跳转依赖前端路由衔接（登记L2 冒烟）"
+      ],
+      "noise_or_external": [
+        "知识标签维护页与向量相似度服务不在本期（关键词检索已履约 13.2.5 降级口径）"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次4集成点（T6→T8）", "check": "过程反馈上报单 → 问题台账 reconcile 归集链路（synced_issue_id 回填）", "result": "PASS：reconcile 幂等锚点消费 T6 预留列；来源 ORDER_SYNC 问题自动绑定工单/工序/上报人"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：88/88 绿（0 failure 0 error）",
+    "MySQL 集成测试 3 类 26 测试全绿，Flyway v1~v163 应用无 error",
+    "npm run build（web）：成功",
+    "check-codex-scope：PASS（62 files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["T8 已收敛（S6 PASS）；下一 T9 风险/策略库前置（共用 reconcile 协议已就绪，可稳定扩展风险域）"]
+}

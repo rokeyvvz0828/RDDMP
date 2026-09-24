@@ -1,0 +1,43 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T9",
+  "observed_at": "2026-09-24T03:30:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S7",
+      "requirement_ids": ["R7"],
+      "name": "风险管理+策略库传感器：单值约束/三态互斥/策略复用/权限管控（L1 数据层断言，对齐基线 14）",
+      "expectation": "单值约束与三态互斥统计；同类风险策略一键复用；普通用户无策略维护权限；聚焦测试+前端构建通过",
+      "actual": [
+        "Batch4SelfCheckTest 6/6：V163 含 5 张表（risk/risk_attachment/risk_strategy/risk_prevent_record/risk_strategy_lib）+ ck_risk_granularity_component/ck_risk_sync_report/ck_rse_origin_source/ck_risk_level_single/ck_risk_probability_single CHECK + 菜单 752 + 权限点 7521-7524",
+        "等级/概率单值：后端 requireSingleLevel/requireSingleProbability 强制单一值 + 表级 CHECK 双保险（RISK_LEVEL_SINGLE/RISK_PROBABILITY_SINGLE）",
+        "6 态互斥：RiskStatus 枚举 6 态注册断言；闭环终点仅限 CLOSED/AVOIDED/OCCURRED 白名单（其他状态拒绝 RISK_STATUS_INVALID）；AVOIDED/CLOSED 为终态、OCCURRED 非终态且互为唯一",
+        "reconcile 幂等：process_risk_report 按 synced_risk_id 锚点归集（T6 预留列消费），来源 ORDER_SYNC 自动绑定；防控类字段权威在台账",
+        "策略沉淀与复用：createStrategy（管理员）→ matchStrategies（等级/概率命中优先 + 关键词打分）→ reuseStrategy（策略字段回填目标风险 + use_count+1）；策略禁删仅下线（RISK_STRATEGY_DELETE_FORBIDDEN）；普通用户不可作废（RISK_CANCEL_FORBIDDEN）不可维护策略（RISK_STRATEGY_PERMISSION_DENIED）",
+        "闭环固化：risk_strategy 策略快照归档 + risk_prevent_record 追加式留痕；闭环后修改被 RISK_CLOSED_ARCHIVED 拒绝",
+        "错误码 45701-45714 共 14 条前后端 1:1（45712 文案与问题域区分：风险对账同步归属冲突）",
+        "模块全量 88/88 绿；MySQL 集成测试 3 类 26 测试全绿（Flyway v1~v163 应用无 error）；前端 npm run build 成功；scope PASS（62 files）；git diff --check 通过"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "策略匹配按热度（use_count DESC）+ 等级/概率命中 + 关键词打分实现（协同过滤/向量服务后续替换，履约 14.2.4 降级口径）",
+        "风险来源修复口径：process_risk_report 无 risk_title_pattern，匹配以标题+等级+概率为准"
+      ],
+      "noise_or_external": [
+        "风险图形化预警为 14.8 非目标不在本期",
+        "策略匹配算法效果无法自动化判别（登记人工验收）"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次4集成点（T6→T9 + 内聚）", "check": "过程反馈风险上报单 → 风险台账 reconcile 归集 → 策略匹配复用链路", "result": "PASS：synced_risk_id 锚点消费；风险与问题域共用 reconcile 协议实现一致"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：88/88 绿（0 failure 0 error）",
+    "MySQL 集成测试 3 类 26 测试全绿，Flyway v1~v163 应用无 error",
+    "npm run build（web）：成功",
+    "check-codex-scope：PASS（62 files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["批次4已收敛（T7/T8/T9 全 PASS）；下一批次5 = T10 数据看板 + T11 全局收敛（基线第 16 章 + 铁律综合验收）"]
+}

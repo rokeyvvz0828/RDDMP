@@ -1,0 +1,44 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T7",
+  "observed_at": "2026-09-24T03:20:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S5",
+      "requirement_ids": ["R5"],
+      "name": "审核管理传感器：权限刚性/必填规则/批量三约束/撤销窗口（L1 数据层断言，对齐基线 15）",
+      "expectation": "管理员无审核按钮且接口拒绝；批量 >50 被拦截；10 分钟内撤销还原工序为待审；已重新提审不可撤销；打回后复审次数+1；聚焦测试+前端构建通过",
+      "actual": [
+        "LifecyclePermissionServiceTest 3/3：管理员 requireReviewAction 抛 AUDIT_PERMISSION_DENIED（不得代审）；审核角色（audit:pass 权限点）放行；无权限用户拒绝",
+        "Batch4SelfCheckTest 6/6：V161 含 audit_record/audit_batch_revoke/audit_attachment + ck_oar_reject_rectify CHECK（REJECTED 强制整改要求）+ 菜单 750 + 权限点 7501-7504；unified_reason/confirmed_at/revoke_deadline 三约束字段齐全；revoked_at 撤销留痕不物理删除",
+        "错误码 45501-45512 共 12 条前后端 1:1（含 AUDIT_BATCH_LIMIT/REVOKE_WINDOW_EXPIRED/REVOKE_SUBMITTED_AGAIN/CLOSED_LOCKED）",
+        "批量打回实现：单批 ≤50 拦截（AUDIT_BATCH_LIMIT）、统一原因必填（AUDIT_BATCH_REASON_REQUIRED）、二次确认必传（AUDIT_BATCH_CONFIRM_REQUIRED）、revoke_deadline=now+10min；撤销还原工序 REVIEWING/WAIT_REVIEW 并回退 reject_count，已重新提审（工序非 EXECUTING+REJECTED）跳过返回清单",
+        "审核留痕与工序状态迁移同一次提交：audit_record 先落库后委托 applyAuditResult（D-14 先落库后判定，T5 契约未改动）；多轮复审轮次 = reject_count+1",
+        "模块全量 mvn -pl :ccb-data-migration -am test：88/88 绿（0 failure 0 error，含新增 9 项）",
+        "MySQL 集成测试（Testcontainers 全量迁移）：DeploymentUnitLifecycle 12/12、DeploymentUnitImport 8/8、NetworkWorkOrder 6/6 全绿，Flyway 完整应用至 v163 无 error",
+        "前端 npm run build 成功（审核台账/单条弹窗/批量二次确认/撤销/记录时间线类型检查通过）",
+        "check-codex-scope：PASS（62 files）；git diff --check 无空白错误"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "审核人待审权责以「审核人可见全部待审 + 本人已审/打回」口径实现（精确制度审核角色匹配留人工验收核对）",
+        "批量打回撤销保留 REJECTED 审核记录并标记 revoked_at（满足审核记录固化不可删改 + 撤销窗口并存）"
+      ],
+      "noise_or_external": [
+        "10 分钟真实时间跨度体验需 dev 环境人工验收（L1 覆盖窗口边界存储与过期拒绝）",
+        "前端 chunk>500kB 体积警告为既有问题，非本批次引入"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次4集成点（T6→T7）", "check": "提审产物进入审核台账：applyFeedbackClosure 提审 → audit 待审列表 → 审核通过闭环解锁/打回回退执行中", "result": "PASS：applyAuditResult 复用（T5 契约）驱动闭环与打回；打回未整改禁归档沿用 ORDER_ARCHIVE_BLOCKED（T5 已实现）"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：88/88 绿（0 failure 0 error）",
+    "MySQL 集成测试 3 类 26 测试全绿，Flyway v1~v163 应用无 error",
+    "npm run build（web）：成功",
+    "check-codex-scope：PASS（62 files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["T7 已收敛（S5 PASS）；下一 T8 问题/知识库与 T9 风险/策略库前置（审核中锁态与审核结果接口已供 T6/T8 消费）"]
+}

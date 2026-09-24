@@ -1,0 +1,45 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T7",
+  "title": "批次4·任务审核管理：单条/批量审核、打回整改、10 分钟撤销窗口、多轮复审",
+  "status": "executed",
+  "executed_at": "2026-09-24T02:50:00Z",
+  "requirement_ids": [
+    "R5"
+  ],
+  "scope_summary": "V161 迁移新增 audit_record/audit_batch_revoke/audit_attachment 3 张表（REJECTED 强制整改要求 CHECK ck_oar_reject_rectify；批量打回批次含统一原因/二次确认时间/撤销截止时间）+ 菜单 750 + 权限点 7501-7504（read/audit/create/update 动作码避免唯一键冲突）；后端新增 AuditService（审核台账角色差异化：管理员全量查看不代审、审核人待审+本人已审/打回、执行人仅本人工单；单条通过/打回先固化 audit_record 再委托 applyAuditResult 同一次提交 D-14；审核意见通过/打回均必填、打回整改要求强制必填；批量通过≤50；批量打回三约束：统一原因/二次确认/≤50+10 分钟撤销窗口；撤销还原工序为待审并回退复审次数、已重新提审工单跳过；审核记录固化留痕含 revoked_at 撤销标记）+ LifecyclePermissionService.requireReviewAction/canAudit/canAuditBatch（管理员不得代审，仅审核角色可审）；AuditController 台账/记录/数据包/通过/打回/批量/撤销接口；审核错误码 45501-45512 共 12 条；前端审核页（台账+单条审核弹窗+批量通过/打回二次确认弹窗+撤销+审核记录时间线）+ 类型/API/路由注册；多轮复审由 reject_count+1 轮次驱动（打回后工序回 EXECUTING，重新提审再入 REVIEWING）。审核数据包复用 orderDetail/orderProcesses 组合（进度/工序面板/审核记录）。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V161__data_migration_lifecycle_audit.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/audit/AuditService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/audit/model/AuditView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/AuditController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/LifecyclePermissionService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch4SelfCheckTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/LifecyclePermissionServiceTest.java",
+    "web/src/modules/data-migration/lifecycle/audit/AuditListPage.vue",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T7.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T7.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "审核操作权限刚性：requireReviewAction = 非管理员 + 持有 data-migration-lifecycle:audit:pass 权限点；管理员可查看全量台账（isReviewer 数据范围）但不得代审（谁审核谁负责）",
+    "审核留痕与工序状态迁移同一次提交：audit_record INSERT 先落库（含 D-14 时序），再调 OrderStateMachineService.applyAuditResult（该 T5 契约未改动）",
+    "批量打回撤销语义：撤销仅还原工序为待审（REVIEWING/WAIT_REVIEW）并回退 reject_count；audit_record 保留 REJECTED 记录并标记 revoked_at（固化留痕不物理删除）；已重新提审（工序不再处于 EXECUTING+REJECTED）的工单跳过并返回清单"
+  ],
+  "blocks_encountered": [
+    "ApiResponse.success 需双参数（data, traceId）导致新控制器编译失败，统一补 ok() 助手（TraceId.getOrCreate()）",
+    "LifecycleErrorCode/LifecycleErrorCatalog 批量注入脚本两次破坏文件结构（static 块关闭符丢失），编译错误逐项修复后 88 绿",
+    "LifecyclePermissionServiceTest 对 JdbcTemplate varargs 的 Mockito 匹配 ClassCastException，改为从 invocation.getArguments() 取末位权限码"
+  ],
+  "residual_risks": [
+    "10 分钟撤销窗口在真实时间跨度下的体验待 dev 环境人工验收（L1 已覆盖窗口边界：revoke_deadline 存储与过期拒绝）",
+    "审核人待审权责依赖快照审核角色配置，本轮以「审核人可见全部待审+本人已审/打回」口径实现，精确制度审核角色匹配留待人工验收核对",
+    "审核佐证附件以 ID 占位，真实文件流后续接入 platform/attachment"
+  ],
+  "rollback": "删除 V161 与 audit 域新增文件、前端增量；保留追加表（回退不删表）"
+}

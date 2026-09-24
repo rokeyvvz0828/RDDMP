@@ -497,3 +497,180 @@ export interface LifecycleFeedbackView {
   risks: Array<Record<string, unknown>>
   rejectCount: number
 }
+
+/** ===== 基线第 15 章任务审核管理域契约（T7） ===== */
+
+export interface LifecycleAuditView {
+  id: number
+  orderCode: string
+  orderId: number
+  granularity: LifecycleGranularity
+  activityType: LifecycleActivityType
+  activityName: string
+  componentId: number | null
+  processSeq: number
+  processName: string
+  processStatus: ProcessNodeStatus
+  auditStatus: AuditStatus | null
+  rejectCount: number
+  auditRound: number
+  auditResult: 'PASSED' | 'REJECTED' | null
+  auditOpinion: string | null
+  rectifyRequirement: string | null
+  auditorId: number | null
+  auditedAt: string | null
+  rectifyDone: 'NONE' | 'DONE' | null
+  postUnlockStatus: 'LOCKED' | 'UNLOCKED' | null
+  snapshotVersion: string | null
+  batchId: number | null
+  revokedAt: string | null
+}
+
+/** ===== 基线第 13 章问题管理 + 知识库域契约（T8） ===== */
+
+export interface LifecycleIssueView {
+  id: number
+  issueCode: string
+  issueTitle: string
+  issueSource: 'MANUAL' | 'IMPORT' | 'ORDER_SYNC'
+  projectId: number | null
+  businessGroupId: number | null
+  componentId: number | null
+  orderId: number | null
+  processSeq: number | null
+  reporterId: number
+  rectifierId: number | null
+  firstReportedAt: string
+  rectifiedAt: string | null
+  updatedAt: string
+  issueDesc: string
+  scene: string | null
+  impactScope: string | null
+  blockDesc: string | null
+  attachmentIds: number[]
+  adminSuggestion: string | null
+  solution: string | null
+  rectifyProgress: string | null
+  rectifyRecords: Array<Record<string, unknown>>
+  rectifyAttachmentIds: number[]
+  issueStatus: IssueStatus
+  snapshotVersion: string | null
+  syncedReportId: number | null
+}
+
+export interface LifecycleKnowledgeEntryView {
+  id: number
+  knowledgeCode: string
+  sourceIssueId: number | null
+  problemDesc: string
+  solution: string
+  rectifyRecords: string[]
+  attachmentIds: number[]
+  tagIds: number[]
+  reuseCount: number
+  knowledgeStatus: 'ACTIVE' | 'INVALID'
+  createdAt: string
+  updatedAt: string
+}
+
+/** ===== 基线第 14 章风险管理 + 风险策略库域契约（T9） ===== */
+
+export interface LifecycleRiskView {
+  id: number
+  riskCode: string
+  riskTitle: string
+  riskSource: 'MANUAL' | 'ORDER_SYNC'
+  projectId: number | null
+  businessGroupId: number | null
+  componentId: number | null
+  orderId: number | null
+  processSeq: number | null
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW'
+  probability: 'HIGH' | 'MEDIUM' | 'LOW'
+  impactScope: string
+  riskDesc: string
+  potentialHarm: string | null
+  predictedScene: string | null
+  attachmentIds: number[]
+  reporterId: number
+  preventOwnerId: number
+  reportedAt: string
+  preventedAt: string | null
+  updatedAt: string
+  prePreventMeasure: string | null
+  responseStrategy: string | null
+  degradePlan: string | null
+  emergencyPlan: string | null
+  preventPriority: 'HIGH' | 'MEDIUM' | 'LOW' | null
+  disposeDeadline: string | null
+  preventProgress: string | null
+  preventRecords: Array<Record<string, unknown>>
+  preventAttachmentIds: number[]
+  riskStatus: RiskStatus
+  snapshotVersion: string | null
+  syncedReportId: number | null
+}
+
+export interface LifecycleRiskStrategyLibView {
+  id: number
+  strategyCode: string
+  strategyTitle: string
+  riskTitlePattern: string | null
+  matchKeywords: string[]
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' | null
+  probability: 'HIGH' | 'MEDIUM' | 'LOW' | null
+  prePreventMeasure: string
+  responseStrategy: string | null
+  degradePlan: string | null
+  emergencyPlan: string | null
+  useCount: number
+  status: 'ACTIVE' | 'INVALID'
+  createdAt: string
+  updatedAt: string
+}
+
+/** ===== 批次4 错误码文案（455xx 审核 / 456xx 问题知识库 / 457xx 风险策略库，前后端 1:1） ===== */
+
+export const LifecycleErrorText: Record<number, string> = {
+  45501: '仅审核角色可执行审核，管理员不得代审',
+  45502: '审核意见必填（通过=合规验收结论；打回=问题定位与不合规点）',
+  45503: '打回整改要求必填（整改内容/整改标准/补充资料/复审条件）',
+  45504: '工序不在审核中，无法写入审核结果',
+  45505: '批量审核单批上限 50 条，超出需分批执行',
+  45506: '批量打回必须填写统一打回原因与整改要求',
+  45507: '批量打回必须二次确认（工单数量与清单一致）',
+  45508: '批量打回撤销窗口（10 分钟）已过，不可撤销',
+  45509: '已重新提审的工单不可整批撤销',
+  45510: '审核记录不存在',
+  45511: '待审工单不存在',
+  45512: '工序已闭环，审核记录固化不可删改',
+  45601: '问题不存在',
+  45602: '问题编码重复',
+  45603: '必填字段缺失（批量导入/新增）',
+  45604: '问题状态非法，仅 4 态枚举',
+  45605: '已闭环问题禁止修改、删除',
+  45606: '已作废问题禁止修改',
+  45607: '无整改权限：仅执行人/负责人提交整改进度',
+  45608: '仅数据迁移管理员拥有台账/知识维护权限',
+  45609: '批量导入校验失败，异常明细见响应',
+  45610: '对账同步与上报单归属冲突，拒绝归集',
+  45611: '知识条目不存在',
+  45612: '知识条目禁止删除，仅可标注失效',
+  45613: '知识条目编辑/合并/下线仅数据迁移管理员',
+  45614: '知识标签不存在',
+  45615: '闭环前必须填写标准化解决方案',
+  45701: '风险不存在',
+  45702: '风险编码重复',
+  45703: '风险等级仅可配置单一值',
+  45704: '发生概率仅可配置单一值',
+  45705: '风险状态非法或三态互斥冲突',
+  45706: '已闭环风险固化归档，禁止修改删除',
+  45707: '风险策略维护仅管理员/项目负责人',
+  45708: '无风险防控操作权限',
+  45709: '普通用户不可作废风险',
+  45710: '策略库条目不存在',
+  45711: '策略库条目禁止删除，仅可下线',
+  45712: '风险对账同步与上报单归属冲突，拒绝归集',
+  45713: '风险必填字段缺失',
+  45714: '批量归集数据校验失败，异常明细见响应'
+}

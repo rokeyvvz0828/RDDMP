@@ -79,6 +79,47 @@ public final class LifecycleErrorCatalog {
         register(LifecycleErrorCode.FEEDBACK_ISSUE_FIELDS_REQUIRED, "问题上报必填三项：标题/描述/发生场景");
         register(LifecycleErrorCode.FEEDBACK_RISK_FIELDS_REQUIRED, "风险上报必填五项：标题/等级/描述/概率/影响范围");
         register(LifecycleErrorCode.FEEDBACK_ADMIN_FORBIDDEN, "管理员不得代填执行反馈，仅执行人/参与人可编辑");
+        register(LifecycleErrorCode.AUDIT_PERMISSION_DENIED, "仅审核角色可执行审核，管理员不得代审");
+        register(LifecycleErrorCode.AUDIT_OPINION_REQUIRED, "审核意见必填（通过=合规验收结论；打回=问题定位与不合规点）");
+        register(LifecycleErrorCode.AUDIT_RECTIFY_REQUIRED, "打回整改要求必填（整改内容/整改标准/补充资料/复审条件）");
+        register(LifecycleErrorCode.AUDIT_PROCESS_NOT_REVIEWING, "工序不在审核中，无法写入审核结果");
+        register(LifecycleErrorCode.AUDIT_BATCH_LIMIT, "批量审核单批上限 50 条，超出需分批执行");
+        register(LifecycleErrorCode.AUDIT_BATCH_REASON_REQUIRED, "批量打回必须填写统一打回原因与整改要求");
+        register(LifecycleErrorCode.AUDIT_BATCH_CONFIRM_REQUIRED, "批量打回必须二次确认（工单数量与清单一致）");
+        register(LifecycleErrorCode.AUDIT_REVOKE_WINDOW_EXPIRED, "批量打回撤销窗口（10 分钟）已过，不可撤销");
+        register(LifecycleErrorCode.AUDIT_REVOKE_SUBMITTED_AGAIN, "已重新提审的工单不可整批撤销");
+        register(LifecycleErrorCode.AUDIT_RECORD_NOT_FOUND, "审核记录不存在");
+        register(LifecycleErrorCode.AUDIT_ORDER_NOT_FOUND, "待审工单不存在");
+        register(LifecycleErrorCode.AUDIT_CLOSED_LOCKED, "工序已闭环，审核记录固化不可删改");
+        register(LifecycleErrorCode.ISSUE_NOT_FOUND, "问题不存在");
+        register(LifecycleErrorCode.ISSUE_CODE_DUPLICATE, "问题编码重复");
+        register(LifecycleErrorCode.ISSUE_FIELD_REQUIRED, "必填字段缺失（批量导入/新增）");
+        register(LifecycleErrorCode.ISSUE_STATUS_INVALID, "问题状态非法，仅 4 态枚举");
+        register(LifecycleErrorCode.ISSUE_CLOSED_READONLY, "已闭环问题禁止修改、删除");
+        register(LifecycleErrorCode.ISSUE_CANCELLED_READONLY, "已作废问题禁止修改");
+        register(LifecycleErrorCode.ISSUE_RECTIFY_PERMISSION_DENIED, "无整改权限：仅执行人/负责人提交整改进度");
+        register(LifecycleErrorCode.ISSUE_ADMIN_ONLY, "仅数据迁移管理员拥有台账/知识维护权限");
+        register(LifecycleErrorCode.ISSUE_IMPORT_INVALID, "批量导入校验失败，异常明细见响应");
+        register(LifecycleErrorCode.ISSUE_SYNC_CONFLICT, "对账同步与上报单归属冲突，拒绝归集");
+        register(LifecycleErrorCode.KNOWLEDGE_NOT_FOUND, "知识条目不存在");
+        register(LifecycleErrorCode.KNOWLEDGE_DELETE_FORBIDDEN, "知识条目禁止删除，仅可标注失效");
+        register(LifecycleErrorCode.KNOWLEDGE_ADMIN_ONLY, "知识条目编辑/合并/下线仅数据迁移管理员");
+        register(LifecycleErrorCode.KNOWLEDGE_TAG_NOT_FOUND, "知识标签不存在");
+        register(LifecycleErrorCode.ISSUE_CLOSE_SOLUTION_REQUIRED, "闭环前必须填写标准化解决方案");
+        register(LifecycleErrorCode.RISK_NOT_FOUND, "风险不存在");
+        register(LifecycleErrorCode.RISK_CODE_DUPLICATE, "风险编码重复");
+        register(LifecycleErrorCode.RISK_LEVEL_SINGLE, "风险等级仅可配置单一值");
+        register(LifecycleErrorCode.RISK_PROBABILITY_SINGLE, "发生概率仅可配置单一值");
+        register(LifecycleErrorCode.RISK_STATUS_INVALID, "风险状态非法或三态互斥冲突");
+        register(LifecycleErrorCode.RISK_CLOSED_ARCHIVED, "已闭环风险固化归档，禁止修改删除");
+        register(LifecycleErrorCode.RISK_STRATEGY_PERMISSION_DENIED, "风险策略维护仅管理员/项目负责人");
+        register(LifecycleErrorCode.RISK_PREVENT_PERMISSION_DENIED, "无风险防控操作权限");
+        register(LifecycleErrorCode.RISK_CANCEL_FORBIDDEN, "普通用户不可作废风险");
+        register(LifecycleErrorCode.RISK_STRATEGY_NOT_FOUND, "策略库条目不存在");
+        register(LifecycleErrorCode.RISK_STRATEGY_DELETE_FORBIDDEN, "策略库条目禁止删除，仅可下线");
+        register(LifecycleErrorCode.RISK_SYNC_CONFLICT, "风险对账同步与上报单归属冲突，拒绝归集");
+        register(LifecycleErrorCode.RISK_FIELD_REQUIRED, "风险必填字段缺失");
+        register(LifecycleErrorCode.RISK_IMPORT_INVALID, "批量归集数据校验失败，异常明细见响应");
     }
 
     private LifecycleErrorCatalog() {

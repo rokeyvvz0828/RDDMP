@@ -3,6 +3,7 @@ package com.ccb.datamigration.lifecycle;
 import com.ccb.common.exception.BusinessException;
 import com.ccb.common.exception.ErrorCode;
 import com.ccb.datamigration.service.DataMigrationPermissionService;
+import com.ccb.datamigration.lifecycle.error.LifecycleErrorCode;
 import com.ccb.security.model.AuthUser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Service;
 public class LifecyclePermissionService {
     private static final String LIFECYCLE_MANAGE_PERMISSION = "data-migration-lifecycle:manage";
     private static final String LIFECYCLE_REVIEW_PERMISSION = "data-migration-lifecycle:review";
+    private static final String LIFECYCLE_AUDIT_PASS_PERMISSION = "data-migration-lifecycle:audit:pass";
+    private static final String LIFECYCLE_AUDIT_BATCH_PERMISSION = "data-migration-lifecycle:audit:batch";
+    private static final String LIFECYCLE_AUDIT_REVOKE_PERMISSION = "data-migration-lifecycle:audit:revoke";
 
     private final JdbcTemplate jdbc;
     private final DataMigrationPermissionService dmPermissions;
@@ -62,6 +66,28 @@ public class LifecyclePermissionService {
         if (!isAdmin(user)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "需要数据迁移管理员权限");
         }
+    }
+
+    /** 审核操作刚性判定（基线 15.2.1）：仅配置为工序审核角色的用户可执行通过/打回；
+     *  数据迁移管理员可查看全量台账但不得代审（谁审核谁负责）。 */
+    public void requireReviewAction(AuthUser user) {
+        if (isAdmin(user)) {
+            throw new BusinessException(LifecycleErrorCode.AUDIT_PERMISSION_DENIED, "管理员不得代审，审核权责仅归审核角色");
+        }
+        if (!userHasPermission(user, LIFECYCLE_AUDIT_PASS_PERMISSION)) {
+            throw new BusinessException(LifecycleErrorCode.AUDIT_PERMISSION_DENIED, "仅配置为工序审核角色的用户可执行审核");
+        }
+    }
+
+    /** 审核/打回操作权限点（菜单 750 权限点 7502）。 */
+    public boolean canAudit(AuthUser user) {
+        return !isAdmin(user) && userHasPermission(user, LIFECYCLE_AUDIT_PASS_PERMISSION);
+    }
+
+    /** 批量打回/撤销操作权限点（菜单 750 权限点 7503/7504）。 */
+    public boolean canAuditBatch(AuthUser user) {
+        return canAudit(user) && userHasPermission(user, LIFECYCLE_AUDIT_BATCH_PERMISSION)
+                && userHasPermission(user, LIFECYCLE_AUDIT_REVOKE_PERMISSION);
     }
 
     /** 按四档数据范围要求授权，不满足时返回 40300（无权限写操作必拒）。 */
