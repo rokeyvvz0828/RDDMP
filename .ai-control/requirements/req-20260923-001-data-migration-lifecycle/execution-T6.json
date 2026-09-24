@@ -1,0 +1,41 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T6",
+  "title": "批次3·任务进度反馈：进度/准出/交付物/日志填报、问题与风险独立上报、提审入口",
+  "status": "executed",
+  "executed_at": "2026-09-24T02:00:00Z",
+  "requirement_ids": [
+    "R4"
+  ],
+  "scope_summary": "V160 迁移新增 5 张表（process_feedback/work_log/feedback_attachment/process_issue_report/process_risk_report）+ 菜单 749 + 权限点 7491-7494（synced_issue_id/synced_risk_id 预留）；后端新增 FeedbackService（四段门禁固定顺序：① 只读态 FEEDBACK_READONLY_STATE → ② 契约 FEEDBACK_NO_AUDIT_STAGE/FEEDBACK_DUPLICATE_SUBMIT → ③ 锁态 FEEDBACK_PROCESS_LOCKED/FEEDBACK_CLOSED_LOCKED → ④ 身份 FEEDBACK_ADMIN_FORBIDDEN/FEEDBACK_EXECUTOR_ONLY；问题三项必填 45410、风险五项必填 45411；管理员不可代填；提审走 applyFeedbackClosure 四象限闭环；A0 免审核保存齐备自动闭环）+ FeedbackController（查看/保存/提审/问题/风险/作业日志）+ FeedbackView；反馈域错误码 45401-45412 新增 12 条；前端执行反馈页（工单选择+工序执行面板+提审入口按 must_audit 显隐+问题/风险上报弹窗+作业日志追加）+ 类型/API/路由注册。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V160__data_migration_lifecycle_feedback.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/feedback/FeedbackService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/feedback/model/FeedbackView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/FeedbackController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch3SelfCheckTest.java",
+    "web/src/modules/data-migration/lifecycle/feedback/FeedbackPage.vue",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T6.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T6.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "问题/风险为两类独立台账（不共用状态机，铁律 #2），synced_issue_id/synced_risk_id 预留批次4 消费，本期 NULL",
+    "提审接口解耦审核入口存在性：must_audit=false 无提审入口（FEEDBACK_NO_AUDIT_STAGE），保存齐备由 A0 四象限自动闭环",
+    "作业日志双写：work_log 表追加式留痕 + process_feedback.work_log JSON 同步摘要（不可清空仅可补充）"
+  ],
+  "blocks_encountered": [
+    "order_process_instance 无 snapshot_version 列，反馈快照版本改由联查 work_order.snapshot_version 获取",
+    "门禁错误码与四段顺序对齐过程中将审核中锁定并入锁态闸门（FEEDBACK_PROCESS_LOCKED）"
+  ],
+  "residual_risks": [
+    "交付物/附件以 ID 占位留痕，真实文件流批次4 接入 platform/attachment 后替换（基线 12.2.5）",
+    "四段门禁回执需 dev 环境接口冒烟复核（L1 测试覆盖非法入参映射）"
+  ],
+  "rollback": "删除 V160 与 feedback 域新增文件、前端增量；保留追加表（回退不删表）"
+}

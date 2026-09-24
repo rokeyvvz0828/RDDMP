@@ -74,6 +74,85 @@ public final class LifecycleErrorCode {
     public static final int TEMPLATE_EXPORT_FORBIDDEN = 45144;
     /** 专题聚合活动仅可聚合同颗粒度普通活动（专题四道闸门：颗粒度）。 */
     public static final int TOPIC_GRANULARITY_MISMATCH = 45150;
+    /** ===== 452xx 任务发布域（基线第 10 章，T4） ===== */
+    /** 仅启用（ACTIVE）活动可下发；停用/作废模板禁止生成新任务。 */
+    public static final int TASK_ACTIVITY_NOT_ACTIVE = 45201;
+    /** 项目级活动/专题禁止携带组件（颗粒度强约束）。 */
+    public static final int TASK_PROJECT_COMPONENT_FORBIDDEN = 45202;
+    /** 组件级活动/专题必须勾选至少 1 个有效组件。 */
+    public static final int TASK_COMPONENT_REQUIRED = 45203;
+    /** 勾选组件须在活动/专题关联组件范围内（交集拆分前提）。 */
+    public static final int TASK_COMPONENT_NOT_IN_SCOPE = 45204;
+    /** 停用组件不参与下发（deleted=0 视为可用）。 */
+    public static final int TASK_COMPONENT_DISABLED = 45205;
+    /** 任务下发时计划完成时间必填。 */
+    public static final int TASK_PLAN_FINISH_TIME_REQUIRED = 45206;
+    /** 计划完成时间不得早于当前时间。 */
+    public static final int TASK_PLAN_FINISH_TIME_IN_PAST = 45207;
+    /** 活动未发布（无快照）禁止下发。 */
+    public static final int TASK_ACTIVITY_SNAPSHOT_MISSING = 45208;
+    /** 执行人仅可从已激活成员中选取。 */
+    public static final int TASK_EXECUTOR_INACTIVE = 45209;
+    /** 任务不存在。 */
+    public static final int TASK_NOT_FOUND = 45210;
+    /** 已完结/已归档任务禁止任何编辑操作。 */
+    public static final int TASK_TERMINAL_READONLY = 45211;
+    /** ===== 453xx 流转引擎域（基线第 11/18 章，T5） ===== */
+    /** 工单不存在。 */
+    public static final int ORDER_NOT_FOUND = 45301;
+    /** 工单状态禁止人工直改（唯一驱动因子=执行反馈+审核结果）。 */
+    public static final int ORDER_STATUS_IMMUTABLE = 45302;
+    /** 暂停/重启等干预仅限流转中工单（非终态、非已归档）。 */
+    public static final int ORDER_NO_ACTIVE_FLOW = 45303;
+    /** 暂停态必须携带 suspend_before_status 作为恢复回退依据。 */
+    public static final int ORDER_SUSPEND_BEFORE_MISSING = 45304;
+    /** 转交必须填写原因并写留痕。 */
+    public static final int ORDER_TRANSFER_REASON_REQUIRED = 45305;
+    /** 转交目标不能与当前执行人相同。 */
+    public static final int ORDER_TRANSFER_SAME_MEMBER = 45306;
+    /** 异常重启仅限管理员对锁死异常工单执行。 */
+    public static final int ORDER_RESTART_NOT_ALLOWED = 45307;
+    /** 时效调整/豁免必须填写原因并留痕。 */
+    public static final int ORDER_SLA_REASON_REQUIRED = 45308;
+    /** 存在未闭环/打回未整改工序时禁止归档。 */
+    public static final int ORDER_ARCHIVE_BLOCKED = 45309;
+    /** 三态只读（已暂停/已作废/已归档）：一切写操作拒绝。 */
+    public static final int ORDER_READONLY_STATE = 45310;
+    /** 工序实例不存在。 */
+    public static final int ORDER_PROCESS_NOT_FOUND = 45311;
+    /** 前置工序未闭环强制锁止后置工序。 */
+    public static final int ORDER_PRECONDITION_OPEN = 45312;
+    /** 交付物缺失锁止流转。 */
+    public static final int ORDER_DELIVERABLE_MISSING = 45313;
+    /** 审核未通过锁止后置工序。 */
+    public static final int ORDER_AUDIT_REJECTED = 45314;
+    /** 工序已在审核中，重复提审被拒。 */
+    public static final int ORDER_SUBMIT_ALREADY_REVIEWING = 45315;
+    /** ===== 454xx 进度反馈域（基线第 12 章，T6） ===== */
+    /** 只读态（CANCELLED/ARCHIVED/SUSPENDED）：任何反馈写操作一律拒绝。 */
+    public static final int FEEDBACK_READONLY_STATE = 45401;
+    /** 契约前置：must_audit=false 的工序无审核环节。 */
+    public static final int FEEDBACK_NO_AUDIT_STAGE = 45402;
+    /** 契约前置：工序已提审，重复提审被拒。 */
+    public static final int FEEDBACK_DUPLICATE_SUBMIT = 45403;
+    /** 工序锁态：未解锁禁止写反馈。 */
+    public static final int FEEDBACK_PROCESS_LOCKED = 45404;
+    /** 工序已闭环，内容锁定禁止再编辑。 */
+    public static final int FEEDBACK_CLOSED_LOCKED = 45405;
+    /** 身份权限：仅执行人/参与人可写反馈。 */
+    public static final int FEEDBACK_EXECUTOR_ONLY = 45406;
+    /** 基础进度必填，空白禁止保存/提审。 */
+    public static final int FEEDBACK_PROGRESS_REQUIRED = 45407;
+    /** 准出标准内容必填。 */
+    public static final int FEEDBACK_EXIT_REQUIRED = 45408;
+    /** 需提交交付件工序：必选交付物缺失禁止提交。 */
+    public static final int FEEDBACK_DELIVERABLE_REQUIRED = 45409;
+    /** 问题上报三项必填（标题/描述/发生场景）。 */
+    public static final int FEEDBACK_ISSUE_FIELDS_REQUIRED = 45410;
+    /** 风险上报五项必填（标题/等级/描述/概率/影响范围）。 */
+    public static final int FEEDBACK_RISK_FIELDS_REQUIRED = 45411;
+    /** 管理员不得代填执行反馈（作业权责主体只能是执行人/参与人）。 */
+    public static final int FEEDBACK_ADMIN_FORBIDDEN = 45412;
 
     private LifecycleErrorCode() {
     }

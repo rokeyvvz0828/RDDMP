@@ -1,0 +1,40 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T4",
+  "observed_at": "2026-09-24T02:10:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S2",
+      "requirement_ids": ["R2"],
+      "name": "任务发布传感器：矩阵拆分/快照固化/承接链路（L1 数据层断言，对齐基线 10.2）",
+      "expectation": "拆分数量断言（N 组件→N 工单；专题=交集数之和）；项目级携带 component 被拒；快照自描述与互不覆盖断言；聚焦测试+前端构建通过",
+      "actual": [
+        "TaskSplitEngineTest 9/9：N 组件→N 工单、专题按交集拆分（同一 (A,C) 仅 1 张工单）、项目级携带组件被拒（TASK_PROJECT_LEVEL_SCOPE_BOUND）、停用组件被拒、范围交集校验、快照自描述载荷与任务级/工单级快照互不覆盖（铁律 #15 字段分离）、单发/批量下发统一走拆分引擎",
+        "Batch3SelfCheckTest 6/6：V158 含 4 张表（task/task_snapshot/task_person_rel/topic_aggregate_edge）+ 菜单 747 + 权限点 7471-7474、错误码 45201-45211 有文案且前后端 1:1、v_task_order_progress 依赖 work_order 移入 V159 后全新库 Flyway 可应用、级联删除与唯一键断言",
+        "MySQL 集成测试（Testcontainers 全量迁移）：155 个 Flyway 脚本成功应用至 v160，0 error",
+        "模块全量 mvn -pl :ccb-data-migration -am test：79/79 绿（0 failure 0 error，含任务域专项 15 项）",
+        "前端 npm run build 成功（任务台账/下发抽屉/工单结果查看类型检查通过）",
+        "check-codex-scope：PASS（87 changed files 全部在 writable_paths）；git diff --check 无空白错误"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "v_task_order_progress 原计划随 V158 落地，因依赖 work_order 表改为随 V159 创建（全新库 Flyway 顺序修复，MySQL 集成测试暴露）",
+        "任务错误码 45201-45211 共 11 条（含任务不存在/重复下发/项目级携带组件/停用组件/范围交集/快照冲突等），前后端 1:1"
+      ],
+      "noise_or_external": [
+        "MySQL 集成测试 7421-7424 存在既有迁移警告（main 遗留问题，与本次改动无关）"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次3集成点（T4 内）", "check": "下发承接链路：活动快照→拆分引擎→OrderAcceptanceService 承接生成工单并固化工单级快照", "result": "PASS：TaskSplitEngineTest 拆分断言 + 承接链路单测通过；快照互不覆盖字段分离已断言"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：79/79 绿（0 failure 0 error）",
+    "3 个 MySQL 集成测试（DeploymentUnitImport/Lifecycle/NetworkWorkOrder）全绿，Flyway v1~v160 应用无 error",
+    "npm run build（web）：成功",
+    "check-codex-scope：PASS（87 files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["T4 已收敛（S2 PASS）；下一任务 T5 流转引擎前置（工单承接接口已暴露，快照仅依据流转）"]
+}

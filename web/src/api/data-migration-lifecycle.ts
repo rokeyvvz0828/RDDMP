@@ -3,13 +3,17 @@ import type { ApiResponse } from '../types/auth'
 import type {
   LifecycleActivityView,
   LifecycleComponentOption,
+  LifecycleFeedbackView,
   LifecycleMemberOption,
+  LifecycleOrderProcessView,
+  LifecycleOrderView,
   LifecyclePage,
   LifecycleProcessInput,
   LifecycleProcessView,
   LifecyclePublishStatus,
   LifecycleRoleOption,
   LifecycleStageOption,
+  LifecycleTaskView,
   LifecycleTopicCandidate,
   LifecycleTopologyInput,
   LifecycleTopologyView
@@ -109,4 +113,98 @@ export function exportLifecycleTemplate(id: number) {
 
 export function importLifecycleTemplate(packageJson: string) {
   return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/activities/template/import', { packageJson })
+}
+
+/** ===== 任务发布（基线第 10 章，T4） ===== */
+
+export function listLifecycleTasks(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecyclePage<LifecycleTaskView>>>('/data-migration-lifecycle/tasks', { params })
+}
+
+export function getLifecycleTask(id: number) {
+  return http.get<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/tasks/${id}`)
+}
+
+export function dispatchLifecycleTask(body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>('/data-migration-lifecycle/tasks/dispatch', body)
+}
+
+export function getTopicAggregateEdges(activityId: number) {
+  return http.get<ApiResponse<Array<{ sourceActivityId: number; targetActivityId: number }>>>(`/data-migration-lifecycle/activities/${activityId}/aggregate-edges`)
+}
+
+export function saveTopicAggregateEdges(activityId: number, edges: Array<{ sourceActivityId: number; targetActivityId: number }>) {
+  return http.put<ApiResponse<void>>(`/data-migration-lifecycle/activities/${activityId}/aggregate-edges`, { edges })
+}
+
+/** ===== 工单流转（基线第 11 章 + 18.x，T5） ===== */
+
+export function listLifecycleOrders(params?: Record<string, unknown>) {
+  return http.get<ApiResponse<LifecyclePage<LifecycleOrderView>>>('/data-migration-lifecycle/orders', { params })
+}
+
+export function getLifecycleOrder(id: number) {
+  return http.get<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}`)
+}
+
+export function getLifecycleOrderProcesses(id: number) {
+  return http.get<ApiResponse<LifecycleOrderProcessView[]>>(`/data-migration-lifecycle/orders/${id}/processes`)
+}
+
+export function suspendLifecycleOrder(id: number, reason: string) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/suspend`, { reason })
+}
+
+export function resumeLifecycleOrder(id: number) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/resume`)
+}
+
+export function transferLifecycleOrder(id: number, nextExecutorId: number, reason: string) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/transfer`, { nextExecutorId, reason })
+}
+
+export function restartLifecycleOrder(id: number, restartPointSeq: number, reason: string) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/restart`, { restartPointSeq, reason })
+}
+
+export function adjustLifecycleOrderSla(id: number, planFinishTime: string | null, reason: string) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/sla-adjust`, { planFinishTime, reason })
+}
+
+export function exemptLifecycleOrderSla(id: number, exempt: boolean, reason: string) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/sla-exempt`, { exempt, reason })
+}
+
+export function archiveLifecycleOrder(id: number) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/archive`)
+}
+
+export function applyLifecycleAuditResult(id: number, processSeq: number, auditResult: 'PASSED' | 'REJECTED') {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/orders/${id}/processes/${processSeq}/audit-result`, { auditResult })
+}
+
+/** ===== 执行反馈（基线第 12 章，T6） ===== */
+
+export function getLifecycleFeedback(orderId: number, processSeq: number) {
+  return http.get<ApiResponse<LifecycleFeedbackView>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}`)
+}
+
+export function saveLifecycleFeedback(orderId: number, processSeq: number, body: Record<string, unknown>) {
+  return http.put<ApiResponse<LifecycleFeedbackView>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}`, body)
+}
+
+export function submitLifecycleFeedbackAudit(orderId: number, processSeq: number) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}/submit-audit`)
+}
+
+export function reportLifecycleIssue(orderId: number, processSeq: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}/issues`, body)
+}
+
+export function reportLifecycleRisk(orderId: number, processSeq: number, body: Record<string, unknown>) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}/risks`, body)
+}
+
+export function addLifecycleWorkLog(orderId: number, processSeq: number, content: string) {
+  return http.post<ApiResponse<Record<string, unknown>>>(`/data-migration-lifecycle/feedback/orders/${orderId}/processes/${processSeq}/work-log`, { content })
 }

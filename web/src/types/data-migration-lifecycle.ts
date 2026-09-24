@@ -122,6 +122,44 @@ export const LifecycleErrorCodes = {
   TEMPLATE_DEPENDENCY_INVALID: 45143,
   TEMPLATE_EXPORT_FORBIDDEN: 45144,
   TOPIC_GRANULARITY_MISMATCH: 45150,
+  TASK_ACTIVITY_NOT_ACTIVE: 45201,
+  TASK_PROJECT_COMPONENT_FORBIDDEN: 45202,
+  TASK_COMPONENT_REQUIRED: 45203,
+  TASK_COMPONENT_NOT_IN_SCOPE: 45204,
+  TASK_COMPONENT_DISABLED: 45205,
+  TASK_PLAN_FINISH_TIME_REQUIRED: 45206,
+  TASK_PLAN_FINISH_TIME_IN_PAST: 45207,
+  TASK_ACTIVITY_SNAPSHOT_MISSING: 45208,
+  TASK_EXECUTOR_INACTIVE: 45209,
+  TASK_NOT_FOUND: 45210,
+  TASK_TERMINAL_READONLY: 45211,
+  ORDER_NOT_FOUND: 45301,
+  ORDER_STATUS_IMMUTABLE: 45302,
+  ORDER_NO_ACTIVE_FLOW: 45303,
+  ORDER_SUSPEND_BEFORE_MISSING: 45304,
+  ORDER_TRANSFER_REASON_REQUIRED: 45305,
+  ORDER_TRANSFER_SAME_MEMBER: 45306,
+  ORDER_RESTART_NOT_ALLOWED: 45307,
+  ORDER_SLA_REASON_REQUIRED: 45308,
+  ORDER_ARCHIVE_BLOCKED: 45309,
+  ORDER_READONLY_STATE: 45310,
+  ORDER_PROCESS_NOT_FOUND: 45311,
+  ORDER_PRECONDITION_OPEN: 45312,
+  ORDER_DELIVERABLE_MISSING: 45313,
+  ORDER_AUDIT_REJECTED: 45314,
+  ORDER_SUBMIT_ALREADY_REVIEWING: 45315,
+  FEEDBACK_READONLY_STATE: 45401,
+  FEEDBACK_NO_AUDIT_STAGE: 45402,
+  FEEDBACK_DUPLICATE_SUBMIT: 45403,
+  FEEDBACK_PROCESS_LOCKED: 45404,
+  FEEDBACK_CLOSED_LOCKED: 45405,
+  FEEDBACK_EXECUTOR_ONLY: 45406,
+  FEEDBACK_PROGRESS_REQUIRED: 45407,
+  FEEDBACK_EXIT_REQUIRED: 45408,
+  FEEDBACK_DELIVERABLE_REQUIRED: 45409,
+  FEEDBACK_ISSUE_FIELDS_REQUIRED: 45410,
+  FEEDBACK_RISK_FIELDS_REQUIRED: 45411,
+  FEEDBACK_ADMIN_FORBIDDEN: 45412,
 } as const
 
 export type LifecycleErrorCodeName = keyof typeof LifecycleErrorCodes
@@ -161,6 +199,44 @@ export const LifecycleErrorMessages: Record<LifecycleErrorCodeName, string> = {
   TEMPLATE_DEPENDENCY_INVALID: '模板工序依赖合法性校验失败',
   TEMPLATE_EXPORT_FORBIDDEN: '模板导入导出仅数据迁移管理员拥有',
   TOPIC_GRANULARITY_MISMATCH: '专题聚合活动仅可聚合同颗粒度普通活动',
+  TASK_ACTIVITY_NOT_ACTIVE: '仅启用活动可下发任务，停用/作废模板禁止生成新任务',
+  TASK_PROJECT_COMPONENT_FORBIDDEN: '项目级活动/专题禁止携带组件下发',
+  TASK_COMPONENT_REQUIRED: '组件级活动/专题必须勾选至少 1 个有效组件',
+  TASK_COMPONENT_NOT_IN_SCOPE: '勾选组件必须在活动/专题关联组件范围内',
+  TASK_COMPONENT_DISABLED: '停用组件不参与任务下发',
+  TASK_PLAN_FINISH_TIME_REQUIRED: '任务下发时必须填写计划完成时间',
+  TASK_PLAN_FINISH_TIME_IN_PAST: '计划完成时间不得早于当前时间',
+  TASK_ACTIVITY_SNAPSHOT_MISSING: '活动尚未发布快照，禁止下发任务',
+  TASK_EXECUTOR_INACTIVE: '执行人仅可从已激活成员中选取',
+  TASK_NOT_FOUND: '任务不存在',
+  TASK_TERMINAL_READONLY: '已闭环/已归档任务禁止编辑',
+  ORDER_NOT_FOUND: '工单不存在',
+  ORDER_STATUS_IMMUTABLE: '工单状态禁止人工直改（唯一驱动因子=执行反馈+审核结果）',
+  ORDER_NO_ACTIVE_FLOW: '仅流转中工单可执行暂停/重启等干预操作',
+  ORDER_SUSPEND_BEFORE_MISSING: '暂停态必须记录暂停前状态作为恢复回退依据',
+  ORDER_TRANSFER_REASON_REQUIRED: '转交必须填写原因并留痕',
+  ORDER_TRANSFER_SAME_MEMBER: '转交目标不能与当前执行人相同',
+  ORDER_RESTART_NOT_ALLOWED: '异常重启仅数据迁移管理员可对锁死异常工单执行',
+  ORDER_SLA_REASON_REQUIRED: '时效调整/豁免必须填写原因并留痕',
+  ORDER_ARCHIVE_BLOCKED: '存在未闭环或打回未整改工序，禁止归档',
+  ORDER_READONLY_STATE: '已暂停/已作废/已归档工单为只读态，禁止一切写操作',
+  ORDER_PROCESS_NOT_FOUND: '工单工序实例不存在',
+  ORDER_PRECONDITION_OPEN: '前置工序未闭环，后置工序强制锁止',
+  ORDER_DELIVERABLE_MISSING: '交付物缺失，工序流转被锁止',
+  ORDER_AUDIT_REJECTED: '审核未通过，后置工序锁止',
+  ORDER_SUBMIT_ALREADY_REVIEWING: '工序已在审核中，重复提审被拒',
+  FEEDBACK_READONLY_STATE: '工单处于只读态（已暂停/已作废/已归档），禁止反馈写操作',
+  FEEDBACK_NO_AUDIT_STAGE: '本工序配置为无需审核，无审核环节',
+  FEEDBACK_DUPLICATE_SUBMIT: '工序已提审，重复提审被拒',
+  FEEDBACK_PROCESS_LOCKED: '工序未解锁或不在执行态，禁止填写反馈',
+  FEEDBACK_CLOSED_LOCKED: '工序已闭环，执行内容锁定禁止再编辑',
+  FEEDBACK_EXECUTOR_ONLY: '仅工单执行人/参与人可编辑反馈内容',
+  FEEDBACK_PROGRESS_REQUIRED: '工序执行进度为必填项，空白禁止提交',
+  FEEDBACK_EXIT_REQUIRED: '准出标准内容为必填项',
+  FEEDBACK_DELIVERABLE_REQUIRED: '需提交交付件工序：必选交付物缺失禁止提交',
+  FEEDBACK_ISSUE_FIELDS_REQUIRED: '问题上报必填三项：标题/描述/发生场景',
+  FEEDBACK_RISK_FIELDS_REQUIRED: '风险上报必填五项：标题/等级/描述/概率/影响范围',
+  FEEDBACK_ADMIN_FORBIDDEN: '管理员不得代填执行反馈，仅执行人/参与人可编辑',
 }
 
 /** 固化载荷自描述契约（铁律 #15）：版本号 + 归属主体标识 + 生成时间，版本与外层记录 1:1 恒等。 */
@@ -286,4 +362,138 @@ export interface LifecycleTopicCandidate {
   activityName: string
   stageName: string | null
   activityStatus: ActivityStatus
+}
+
+/** ===== 基线文档第 10 章任务发布域契约（T4） ===== */
+
+export interface LifecycleTaskView {
+  id: number
+  tenantId: number
+  taskCode: string
+  taskName: string
+  granularity: LifecycleGranularity
+  activityType: LifecycleActivityType
+  activityId: number
+  activityName: string
+  topicActivityId: number | null
+  projectId: number
+  businessGroupId: number | null
+  componentId: number | null
+  defaultExecutorId: number
+  currentExecutorId: number
+  participantIds: number[]
+  planFinishTime: string
+  taskStatus: WorkOrderStatus
+  currentProcessSeq: number | null
+  finishedProcessCount: number
+  totalProcessCount: number
+  closeProgress: number
+  snapshotVersion: string
+  flowConstraintDesc: string | null
+  creatorId: number
+  createdAt: string
+  updatedAt: string
+  orderTotal: number
+  orderClosed: number
+}
+
+export interface LifecycleTaskOrderView {
+  id: number
+  orderCode: string
+  taskId: number
+  granularity: LifecycleGranularity
+  activityType: LifecycleActivityType
+  activityId: number
+  activityName: string
+  subActivityId: number | null
+  componentId: number | null
+  orderStatus: WorkOrderStatus
+  deadlineStatus: TimelinessMark
+  totalProcessCount: number
+  closedProcessCount: number
+  flowProgress: number
+  planFinishTime: string
+  flowStartAt: string | null
+  closedAt: string | null
+  currentExecutorId: number
+  blockReason: string
+  warnings: string[]
+}
+
+/** 工单级快照载荷（自描述，铁律 #15；字段与后端 OrderAcceptanceService 解析键对齐）。 */
+export interface LifecycleOrderSnapshot {
+  schemaVersion: number
+  entityType: string
+  entityId: number
+  frozenAt: string
+  topologyVersion: string
+  activityType: 'NORMAL' | 'TOPIC'
+  activityName?: string
+  processDefinitions: LifecycleProcessInput[]
+  edges: Array<{ sourceProcessId: number; targetProcessId: number }>
+  [key: string]: unknown
+}
+
+/** ===== 基线文档第 11 章工单流转域契约（T5） ===== */
+
+export interface LifecycleOrderView {
+  id: number
+  orderCode: string
+  taskId: number
+  granularity: LifecycleGranularity
+  activityType: LifecycleActivityType
+  activityId: number
+  activityName: string
+  subActivityId: number | null
+  componentId: number | null
+  orderStatus: WorkOrderStatus
+  deadlineStatus: TimelinessMark
+  totalProcessCount: number
+  closedProcessCount: number
+  flowProgress: number
+  planFinishTime: string
+  flowStartAt: string | null
+  closedAt: string | null
+  currentExecutorId: number
+  blockReason: string
+}
+
+export interface LifecycleOrderProcessView {
+  id: number
+  orderId: number
+  processSeq: number
+  processName: string
+  processStatus: ProcessNodeStatus
+  preDependStatus: 'NONE' | 'OPEN' | 'CLOSED'
+  exitFilled: boolean
+  deliverableSubmitted: boolean
+  auditStatus: AuditStatus
+  mustAudit: boolean
+  mustSubmitDeliverable: boolean
+  rejectCount: number
+  unlockedAt: string | null
+  closedAt: string | null
+  predecessorSeqList: number[]
+  blockReason: string
+}
+
+/** ===== 基线文档第 12 章执行反馈域契约（T6） ===== */
+
+export interface LifecycleFeedbackView {
+  id: number
+  orderId: number
+  processSeq: number
+  progressDesc: string | null
+  exitContentFilled: string | null
+  deliverableIds: number[]
+  workLog: Array<{ id: number; content: string; operatorId: number; createdAt: string }>
+  attachmentIds: number[]
+  extraRemark: string | null
+  filledBy: number
+  filledAt: string | null
+  locked: boolean
+  snapshotVersion: string
+  issues: Array<Record<string, unknown>>
+  risks: Array<Record<string, unknown>>
+  rejectCount: number
 }

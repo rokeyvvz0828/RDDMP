@@ -41,6 +41,44 @@ public final class LifecycleErrorCatalog {
         register(LifecycleErrorCode.TEMPLATE_DEPENDENCY_INVALID, "模板工序依赖合法性校验失败");
         register(LifecycleErrorCode.TEMPLATE_EXPORT_FORBIDDEN, "模板导入导出仅数据迁移管理员拥有");
         register(LifecycleErrorCode.TOPIC_GRANULARITY_MISMATCH, "专题聚合活动仅可聚合同颗粒度普通活动");
+        register(LifecycleErrorCode.TASK_ACTIVITY_NOT_ACTIVE, "仅启用活动可下发任务，停用/作废模板禁止生成新任务");
+        register(LifecycleErrorCode.TASK_PROJECT_COMPONENT_FORBIDDEN, "项目级活动/专题禁止携带组件下发");
+        register(LifecycleErrorCode.TASK_COMPONENT_REQUIRED, "组件级活动/专题必须勾选至少 1 个有效组件");
+        register(LifecycleErrorCode.TASK_COMPONENT_NOT_IN_SCOPE, "勾选组件必须在活动/专题关联组件范围内");
+        register(LifecycleErrorCode.TASK_COMPONENT_DISABLED, "停用组件不参与任务下发");
+        register(LifecycleErrorCode.TASK_PLAN_FINISH_TIME_REQUIRED, "任务下发时必须填写计划完成时间");
+        register(LifecycleErrorCode.TASK_PLAN_FINISH_TIME_IN_PAST, "计划完成时间不得早于当前时间");
+        register(LifecycleErrorCode.TASK_ACTIVITY_SNAPSHOT_MISSING, "活动尚未发布快照，禁止下发任务");
+        register(LifecycleErrorCode.TASK_EXECUTOR_INACTIVE, "执行人仅可从已激活成员中选取");
+        register(LifecycleErrorCode.TASK_NOT_FOUND, "任务不存在");
+        register(LifecycleErrorCode.TASK_TERMINAL_READONLY, "已闭环/已归档任务禁止编辑");
+        register(LifecycleErrorCode.ORDER_NOT_FOUND, "工单不存在");
+        register(LifecycleErrorCode.ORDER_STATUS_IMMUTABLE, "工单状态禁止人工直改（唯一驱动因子=执行反馈+审核结果）");
+        register(LifecycleErrorCode.ORDER_NO_ACTIVE_FLOW, "仅流转中工单可执行暂停/重启等干预操作");
+        register(LifecycleErrorCode.ORDER_SUSPEND_BEFORE_MISSING, "暂停态必须记录暂停前状态作为恢复回退依据");
+        register(LifecycleErrorCode.ORDER_TRANSFER_REASON_REQUIRED, "转交必须填写原因并留痕");
+        register(LifecycleErrorCode.ORDER_TRANSFER_SAME_MEMBER, "转交目标不能与当前执行人相同");
+        register(LifecycleErrorCode.ORDER_RESTART_NOT_ALLOWED, "异常重启仅数据迁移管理员可对锁死异常工单执行");
+        register(LifecycleErrorCode.ORDER_SLA_REASON_REQUIRED, "时效调整/豁免必须填写原因并留痕");
+        register(LifecycleErrorCode.ORDER_ARCHIVE_BLOCKED, "存在未闭环或打回未整改工序，禁止归档");
+        register(LifecycleErrorCode.ORDER_READONLY_STATE, "已暂停/已作废/已归档工单为只读态，禁止一切写操作");
+        register(LifecycleErrorCode.ORDER_PROCESS_NOT_FOUND, "工单工序实例不存在");
+        register(LifecycleErrorCode.ORDER_PRECONDITION_OPEN, "前置工序未闭环，后置工序强制锁止");
+        register(LifecycleErrorCode.ORDER_DELIVERABLE_MISSING, "交付物缺失，工序流转被锁止");
+        register(LifecycleErrorCode.ORDER_AUDIT_REJECTED, "审核未通过，后置工序锁止");
+        register(LifecycleErrorCode.ORDER_SUBMIT_ALREADY_REVIEWING, "工序已在审核中，重复提审被拒");
+        register(LifecycleErrorCode.FEEDBACK_READONLY_STATE, "工单处于只读态（已暂停/已作废/已归档），禁止反馈写操作");
+        register(LifecycleErrorCode.FEEDBACK_NO_AUDIT_STAGE, "本工序配置为无需审核，无审核环节");
+        register(LifecycleErrorCode.FEEDBACK_DUPLICATE_SUBMIT, "工序已提审，重复提审被拒");
+        register(LifecycleErrorCode.FEEDBACK_PROCESS_LOCKED, "工序未解锁，禁止填写反馈");
+        register(LifecycleErrorCode.FEEDBACK_CLOSED_LOCKED, "工序已闭环，执行内容锁定禁止再编辑");
+        register(LifecycleErrorCode.FEEDBACK_EXECUTOR_ONLY, "仅工单执行人/参与人可编辑反馈内容");
+        register(LifecycleErrorCode.FEEDBACK_PROGRESS_REQUIRED, "工序执行进度为必填项，空白禁止提交");
+        register(LifecycleErrorCode.FEEDBACK_EXIT_REQUIRED, "准出标准内容为必填项");
+        register(LifecycleErrorCode.FEEDBACK_DELIVERABLE_REQUIRED, "需提交交付件工序：必选交付物缺失禁止提交");
+        register(LifecycleErrorCode.FEEDBACK_ISSUE_FIELDS_REQUIRED, "问题上报必填三项：标题/描述/发生场景");
+        register(LifecycleErrorCode.FEEDBACK_RISK_FIELDS_REQUIRED, "风险上报必填五项：标题/等级/描述/概率/影响范围");
+        register(LifecycleErrorCode.FEEDBACK_ADMIN_FORBIDDEN, "管理员不得代填执行反馈，仅执行人/参与人可编辑");
     }
 
     private LifecycleErrorCatalog() {

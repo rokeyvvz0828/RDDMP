@@ -1,0 +1,43 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T6",
+  "observed_at": "2026-09-24T02:20:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S4",
+      "requirement_ids": ["R4"],
+      "name": "反馈门禁传感器：四段闸门/提审语义/只读拒写（L1 数据层断言，对齐基线 12.2）",
+      "expectation": "四段闸门顺序（只读态→契约→锁态→身份）每个非法入参返回唯一错误码；must_audit=false 无提审入口、重复提审被拒；只读态写操作全拒；聚焦测试+前端构建通过",
+      "actual": [
+        "四段门禁固定顺序断言（Batch3SelfCheckTest 6/6 含）：① 只读态 FEEDBACK_READONLY_STATE → ② 契约 FEEDBACK_NO_AUDIT_STAGE（must_audit=false 无提审入口）/FEEDBACK_DUPLICATE_SUBMIT（重复提审被拒）→ ③ 锁态 FEEDBACK_PROCESS_LOCKED（审核中锁定）/FEEDBACK_CLOSED_LOCKED（闭环后锁定）→ ④ 身份 FEEDBACK_ADMIN_FORBIDDEN（管理员不可代填）/FEEDBACK_EXECUTOR_ONLY；每个非法入参唯一错误码且前后端 1:1",
+        "问题三项必填 = ISSUE_REQUIRED_FIELDS（45410）、风险五项必填 = RISK_REQUIRED_FIELDS（45411）独立台账断言；上报记录不可清空仅可补充（work_log 追加式双写）",
+        "提审走 applyFeedbackClosure 四象限闭环：must_audit=true 提审进入审核中锁态、must_audit=false 保存齐备 A0 自动闭环；只读态写操作全拒",
+        "V160 含 5 张表（process_feedback/work_log/feedback_attachment/process_issue_report/process_risk_report）+ 菜单 749 + 权限点 7491-7494（synced_issue_id/synced_risk_id 预留）；反馈域错误码 45401-45412 共 12 条有文案",
+        "模块全量 mvn -pl :ccb-data-migration -am test：79/79 绿（0 failure 0 error）",
+        "MySQL 集成测试（Testcontainers 全量迁移）：155 个 Flyway 脚本成功应用至 v160，0 error",
+        "前端 npm run build 成功（执行反馈页：提审入口按 must_audit 显隐 + 问题/风险上报弹窗 + 作业日志追加类型检查通过）",
+        "check-codex-scope：PASS（87 changed files）；git diff --check 无空白错误"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "order_process_instance 无 snapshot_version 列，反馈快照版本改由联查 work_order.snapshot_version 获取（避免改 T5 契约）",
+        "审核中锁定并入锁态闸门（FEEDBACK_PROCESS_LOCKED），四段顺序与错误码映射对齐基线 12.2.1"
+      ],
+      "noise_or_external": [
+        "交付物/附件以 ID 占位留痕，真实文件流批次4 接入 platform/attachment 后替换（基线 12.2.5）",
+        "四段门禁回执 dev 环境接口冒烟复核登记为人工验收项（L1 测试覆盖非法入参映射）"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次3集成点（T5→T6）", "check": "提审入口解耦审核存在性：FeedbackService 调 applyFeedbackClosure 而非直接改状态", "result": "PASS：提审/自动闭环链路单测通过；T5 状态机契约未被改动"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：79/79 绿（0 failure 0 error）",
+    "3 个 MySQL 集成测试全绿，Flyway v1~v160 应用无 error",
+    "npm run build（web）：成功",
+    "check-codex-scope：PASS（87 files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["批次3已收敛（T4/T5/T6 全 PASS）；下一批次4 = T7 审核判定页（消费 must_audit 审核中锁态与审核结果接口）+ T8/T9 问题/风险台账页（消费 synced_issue_id/synced_risk_id 预留语义）"]
+}

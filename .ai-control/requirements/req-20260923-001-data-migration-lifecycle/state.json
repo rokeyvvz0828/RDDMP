@@ -1,8 +1,8 @@
 {
   "schema_version": 4,
-  "revision": 6,
+  "revision": 7,
   "created_at": "2026-09-23T09:30:00+00:00",
-  "updated_at": "2026-09-23T10:42:00+00:00",
+  "updated_at": "2026-09-24T02:30:00+00:00",
   "mode": "high-assurance",
   "phase": "executing",
   "topic": "req-20260923-001-data-migration-lifecycle",
@@ -44,11 +44,17 @@
       "to": "executing",
       "evidence": "批次2完成：T3（活动管理）执行并采样通过（S1 PASS）：V157 迁移 9 表+3 视图+菜单权限+阶段种子；活动/工序/拓扑/模板服务与控制器；前端活动列表+配置工作台（五页签深链+表格化连线编辑降级视图）；错误码 33 条前后端 1:1；专项测试 18 项+模块全量 49 绿、前端 build 成功、scope PASS（59 files）。execution-T3.json 与 observation-T3.json 已登记。",
       "recorded_at": "2026-09-23T10:42:00+00:00"
+    },
+    {
+      "from": "executing",
+      "to": "executing",
+      "evidence": "批次3完成：T4（任务发布）/T5（流转引擎）/T6（反馈门禁）执行并采样通过（S2 PASS、S3 PASS、S4 PASS，批次3集成点通过）：V158-V160 迁移 17 张表+2 契约视图+表级 CHECK+菜单 747-749+权限点 7471-7494；task/order/feedback 三域服务与控制器；错误码 38 条新增（45201-45211/45301-45315/45401-45412）前后端 1:1；前端任务台账/流转页/执行反馈页；模块测试 79 绿、MySQL 集成测试 3 个全绿（Flyway 155 脚本应用至 v160 无 error）、前端 build 成功、scope PASS（87 files）。execution-T4/T5/T6.json 与 observation-T4/T5/T6.json 已登记。",
+      "recorded_at": "2026-09-24T02:30:00+00:00"
     }
   ],
   "open_feedback": [
-    "批次2已收敛（T3，S1 PASS）；下一批次3 = T4 任务发布（单发/批量下发、颗粒度联动、专题矩阵拆分、工单级快照固化），前置 T3 快照契约已就绪",
+    "批次3已收敛（T4/T5/T6 全 PASS）；下一批次4 = T7 审核判定页 + T8/T9 问题/风险台账页，前置 must_audit 审核中锁态、审核结果接口与 synced_issue_id/synced_risk_id 预留语义已就绪",
     "检查 flyway 全局脚本在 main 既有问题（V84_1 命名等），只读不修，最终收敛按残余风险记录",
-    "V157 迁移未在本环境真实 MySQL 执行验证（无数据库），需 dev 环境 Flyway 应用验证；前端 L2 真实浏览器冒烟与 30 节点画布流畅度登记为人工验收项"
+    "前端 L2 真实浏览器冒烟未执行（需 dev 栈）：任务下发→承接→流转→反馈全链路、30 节点画布流畅度、四段门禁回执，登记为人工验收项；交付物/附件真实文件流批次4 接入 platform/attachment 后替换"
   ]
 }

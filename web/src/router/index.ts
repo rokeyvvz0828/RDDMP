@@ -30,6 +30,9 @@ import DataMigrationBaseComponents from '../modules/data-migration/views/base/Co
 import DataMigrationTargetTables from '../modules/data-migration/views/base/TargetTablesPage.vue'
 import DataMigrationLifecycleActivity from '../modules/data-migration/lifecycle/activity/ActivityListPage.vue'
 import DataMigrationLifecycleActivityWorkbench from '../modules/data-migration/lifecycle/activity/ActivityWorkbenchPage.vue'
+import DataMigrationLifecycleTask from '../modules/data-migration/lifecycle/task/TaskListPage.vue'
+import DataMigrationLifecycleFlow from '../modules/data-migration/lifecycle/flow/FlowListPage.vue'
+import DataMigrationLifecycleFeedback from '../modules/data-migration/lifecycle/feedback/FeedbackPage.vue'
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
@@ -281,6 +284,27 @@ const router = createRouter({
           name: 'data-migration-lifecycle-activity-workbench',
           component: DataMigrationLifecycleActivityWorkbench,
           meta: { title: '活动配置工作台', permission: 'data-migration-lifecycle:activity', menuPath: '/data-migration/lifecycle/activity' }
+        },
+        {
+          // 批次3：任务下发（基线第 10 章）
+          path: 'data-migration/lifecycle/task',
+          name: 'data-migration-lifecycle-task',
+          component: DataMigrationLifecycleTask,
+          meta: { title: '任务下发', permission: 'data-migration-lifecycle:task', menuPath: '/data-migration/lifecycle/task' }
+        },
+        {
+          // 批次3：工单流转（基线第 11 章）
+          path: 'data-migration/lifecycle/flow',
+          name: 'data-migration-lifecycle-flow',
+          component: DataMigrationLifecycleFlow,
+          meta: { title: '工单流转', permission: 'data-migration-lifecycle:order', menuPath: '/data-migration/lifecycle/flow' }
+        },
+        {
+          // 批次3：执行反馈（基线第 12 章）
+          path: 'data-migration/lifecycle/feedback',
+          name: 'data-migration-lifecycle-feedback',
+          component: DataMigrationLifecycleFeedback,
+          meta: { title: '执行反馈', permission: 'data-migration-lifecycle:feedback', menuPath: '/data-migration/lifecycle/feedback' }
         },
         {
           path: 'data-migration/dashboard',

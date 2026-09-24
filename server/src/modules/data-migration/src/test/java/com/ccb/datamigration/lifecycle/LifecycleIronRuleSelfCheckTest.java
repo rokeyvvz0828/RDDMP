@@ -88,7 +88,7 @@ class LifecycleIronRuleSelfCheckTest {
     @Test
     void errorCatalogIsOneToOneAndDocumented() {
         var messages = LifecycleErrorCatalog.all();
-        assertThat(messages).hasSize(33);
+        assertThat(messages).hasSize(71);
         Set<Integer> codes = new HashSet<>();
         Set<String> texts = new HashSet<>();
         messages.forEach((code, message) -> {

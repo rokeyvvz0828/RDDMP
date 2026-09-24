@@ -1,0 +1,44 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T5",
+  "observed_at": "2026-09-24T02:15:00Z",
+  "sensors": [
+    {
+      "sensor_id": "S3",
+      "requirement_ids": ["R3", "R10"],
+      "name": "流转引擎传感器：状态机/SLA/四象限/异常分支（L1 数据层断言，对齐基线 11 + 18.2/18.3/18.4）",
+      "expectation": "9 态/5 态枚举可达性自检（种子+用例）；打回后主状态=审核打回、工序=执行中；暂停恢复回退 suspend_before_status 并顺延；终态带 closed_at；LOCKED 无 unlocked_at；异常分支可断言后果（基线 18.4）",
+      "actual": [
+        "OrderStateMachineServiceTest 6/6：承接生成工单初始态（WAIT_PRE/EXECUTING）、打回后主状态=审核打回且工序=执行中（D-11）、暂停恢复回退 suspend_before_status 并顺延 plan_finish_time（18.3 八·3）、终态带 closed_at、LOCKED 无 unlocked_at、免审核 A0 齐备自动闭环",
+        "QuadrantClosureValidatorTest 5/5：四象限闭环 18.2 穷举单出口（达标/通过→下工序；未达标/驳回→退回或闭环判定），非法组合全部拒绝",
+        "SlaAdjudicatorTest 4/4：SLA 三档独立维度判定（绿/黄/红），时效标记不改主状态，暂停顺延后重算三档幂等",
+        "LifecycleIronRuleSelfCheckTest：错误码断言 33→71 条 1:1 且不与共享 ErrorCode 冲突；状态可达性注册表 21 条由 NOT_YET_AUTHORIZED 翻转为 CASE_CONSTRUCTION/FLOW_LOG",
+        "Batch3SelfCheckTest 6/6：V159 含 8 张表 + 2 契约视图（v_task_order_progress/v_order_deadline_live）+ 表级 CHECK（颗粒度互斥/暂停携前态/终态闭环时间/交付物与准出闸门/LOCKED 无解锁时间）+ 菜单 748 + 权限点 7481-7484 + 错误码 45301-45315 有文案",
+        "模块全量 mvn -pl :ccb-data-migration -am test：79/79 绿（0 failure 0 error）",
+        "MySQL 集成测试（Testcontainers 全量迁移）：155 个 Flyway 脚本成功应用至 v160，0 error",
+        "前端 npm run build 成功（工单台账/详情工序面板/干预/审核结果写入类型检查通过）",
+        "check-codex-scope：PASS（87 changed files）；git diff --check 无空白错误"
+      ],
+      "verdict": "PASS（L1 数据层）",
+      "deltas": [
+        "sys_menu_permission 唯一键 (tenant_id, menu_id, action_code) 冲突：V159 的 7484 改用 audit 动作码、V160 的 7492 改用 fill（INSERT IGNORE 静默丢弃修复），避免与 7481 read/7494 create 行内冲突",
+        "SLA 判定器实现为独立 SlaAdjudicator（18.3），通知幂等落 notification 表，时效标记不改主状态（铁律）"
+      ],
+      "noise_or_external": [
+        "跨活动解锁与 SLA 通知为服务层逻辑，dev 环境真实数据链路浏览器/接口冒烟登记为人工验收项",
+        "MySQL 集成测试 7421-7424 存在既有迁移警告（main 遗留问题，非本批次引入）"
+      ]
+    }
+  ],
+  "integration_points": [
+    {"point": "批次3集成点（T4→T5）", "check": "工单承接→状态机流转→跨活动解锁传播（D-21）链路", "result": "PASS：OrderAcceptanceService 承接接口 + OrderStateMachineService 解锁传播单测通过；前置未闭环后置恒 LOCKED 已断言"}
+  ],
+  "regression": [
+    "mvn -pl :ccb-data-migration -am test：79/79 绿（0 failure 0 error）",
+    "3 个 MySQL 集成测试全绿，Flyway v1~v160 应用无 error",
+    "npm run build（web）：成功",
+    "check-codex-scope：PASS（87 files）",
+    "git diff --check：通过"
+  ],
+  "blockers_for_next": ["T5 已收敛（S3 PASS）；下一任务 T6 反馈门禁前置（提审入 applyFeedbackClosure 闭环、must_audit 语义已就绪）"]
+}

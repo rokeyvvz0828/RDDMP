@@ -1,0 +1,45 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T4",
+  "title": "批次3·任务发布：单发/批量下发、颗粒度联动、专题矩阵拆分、工单级快照固化",
+  "status": "executed",
+  "executed_at": "2026-09-24T01:40:00Z",
+  "requirement_ids": [
+    "R2"
+  ],
+  "scope_summary": "V158 迁移新增 task/task_snapshot/task_person_rel/topic_aggregate_edge 4 张表（任务-工单聚合视图 v_task_order_progress 依赖 work_order，随 V159 落地）+ 菜单 747 挂 745 + 权限点 7471-7474；后端新增任务域 TaskDispatchService/TaskSplitEngine/TaskView/TaskOrderView 与 TaskDispatchController（任务台账/详情/下发/专题聚合边 CRUD）；矩阵拆分引擎按 10.2.3 判定式实现（N 组件→N 工单、专题交集、项目级携带组件必拒、停用组件拒、范围交集校验）；下发走 OrderAcceptanceService 承接生成工单并固化工单级快照（D-22：专题快照取自被展开普通活动 + topic_activity_ids/aggregate_edges/sub_activity_id）；任务错误码 45201-45211 新增 11 条；前端任务下发页（台账+下发抽屉+工单结果查看）+ 类型/API/路由注册。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V158__data_migration_lifecycle_task.sql",
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V159__data_migration_lifecycle_order.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/task/TaskDispatchService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/task/TaskSplitEngine.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/task/model/TaskView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/task/model/TaskOrderView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/TaskDispatchController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/task/TaskSplitEngineTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch3SelfCheckTest.java",
+    "web/src/modules/data-migration/lifecycle/task/TaskListPage.vue",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T4.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T4.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "任务级快照与工单级快照互不覆盖（铁律 #15）：task_snapshot 承载任务级聚合包（专题）或活动快照同源，工单级执行快照落 work_order.snapshot_json，两条路径字段分离",
+    "topic_aggregate_edge 独立表承载专题跨活动依赖（内容仅专题；任务下发时随工单快照固化，运行期解锁依据=工单快照）",
+    "v_task_order_progress 因依赖 work_order 延后至 V159 创建（迁移顺序修复：V158 不含 work_order 引用）"
+  ],
+  "blocks_encountered": [
+    "V158 视图引用 V159 才创建的 work_order 导致全新库 Flyway 失败（MySQL 集成测试暴露），已把 v_task_order_progress 移至 V159",
+    "TaskSplitEngine 初始实现与基线判定式口径核对后确认交集语义（同一 (A,C) 仅 1 张工单），已写入测试断言"
+  ],
+  "residual_risks": [
+    "V158/V159 真实 MySQL 执行已由 Testcontainers 全量迁移验证（155 个脚本成功应用至 v160）",
+    "任务下发完整链路（活动快照→拆分→承接→工单）需 dev 环境真实浏览器冒烟复核（本期 L1 数据层断言覆盖）"
+  ],
+  "rollback": "删除 V158/V159 与 task 域新增文件、前端增量；保留追加表（回退不删表）"
+}

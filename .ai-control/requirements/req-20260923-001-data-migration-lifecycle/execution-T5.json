@@ -1,0 +1,51 @@
+{
+  "topic": "req-20260923-001-data-migration-lifecycle",
+  "task_id": "T5",
+  "title": "批次3·任务流转引擎：工单承接、状态机自动流转、四象限闭环、SLA 三档、四类异常分支、跨活动解锁",
+  "status": "executed",
+  "executed_at": "2026-09-24T01:50:00Z",
+  "requirement_ids": [
+    "R3",
+    "R10"
+  ],
+  "scope_summary": "V159 迁移新增 8 张表（work_order/order_process_instance/order_status_log/order_transfer_log/order_suspend_log/order_sla_log/order_restart_log/notification）+ 2 契约视图（v_task_order_progress/v_order_deadline_live）+ 表级 CHECK（颗粒度互斥/暂停携前态/终态闭环时间/交付物与准出闸门/LOCKED 无解锁时间）+ 菜单 748 + 权限点 7481-7484；后端新增 OrderAcceptanceService（承接：快照解析、前置计数、无前置解锁、初始态 WAIT_PRE/EXECUTING）、OrderStateMachineService（9 态派生、四象限闭环 applyFeedbackClosure、审核结果 applyAuditResult 先落库后判定 D-14、暂停/恢复/转交/异常重启/时效调整/豁免/归档/作废联动、SLA 三档刷新与幂等通知、跨活动解锁传播 D-21、数据范围筛选）、QuadrantClosureValidator（18.2 穷举单出口）、SlaAdjudicator（18.3 三档独立维度）；OrderController 台账/详情/工序面板/干预/审核结果接口；状态可达性注册表 21 条由 NOT_YET_AUTHORIZED 翻转为 CASE_CONSTRUCTION/FLOW_LOG；流转域错误码 45301-45315 新增 15 条；前端工单流转页（台账+详情工序面板+干预+审核结果写入）+ 类型/API/路由注册。",
+  "changed_files": [
+    "server/src/platform/infrastructure/src/main/resources/db/migration/V159__data_migration_lifecycle_order.sql",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/OrderAcceptanceService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/OrderStateMachineService.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/QuadrantClosureValidator.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/SlaAdjudicator.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/model/OrderView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/model/OrderProcessView.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/OrderController.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/enums/LifecycleReachabilityRegistry.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+    "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/order/OrderStateMachineServiceTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/order/QuadrantClosureValidatorTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/order/SlaAdjudicatorTest.java",
+    "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch3SelfCheckTest.java",
+    "web/src/modules/data-migration/lifecycle/flow/FlowListPage.vue",
+    "web/src/types/data-migration-lifecycle.ts",
+    "web/src/api/data-migration-lifecycle.ts",
+    "web/src/router/index.ts",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T5.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T5.json",
+    ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+  ],
+  "single_source_decisions": [
+    "工单主状态为派生值（D-13）：工序级事件后 deriveOrderStatus 重算并持久化；打回取审核打回优先于执行中（D-11）",
+    "四象限闭环唯一出口=applyFeedbackClosure/applyAuditResult，先落库后判定（D-14）；免审核 A0 在反馈保存齐备时自动闭环",
+    "暂停恢复：先顺延 plan_finish_time 再重算三档（18.3 八·3）；pre_suspend_processes 为恢复唯一回退依据",
+    "sys_menu_permission 唯一键 (tenant_id, menu_id, action_code) 约束：7484 用 audit、7492 用 fill 动作码避免行内冲突（INSERT IGNORE 静默忽略修复）"
+  ],
+  "blocks_encountered": [
+    "编译错误批量修复：writeStatusLog 参数位（漏 processSeq）、slack=slack 脏 SQL、readSuspendSnapshot 泛型不匹配、getClosedCount 静态误用 jdbcHolder、parseDefinitions 入参 Object→String",
+    "MySQL 集成测试暴露 sys_menu_permission 同菜单同动作码唯一键冲突（7481/7484 read、7492/7494 create），已改用 audit/fill 动作码"
+  ],
+  "residual_risks": [
+    "跨活动解锁与 SLA 通知为服务层逻辑，dev 环境真实数据链路需浏览器/接口冒烟复核",
+    "异常重启恢复点校验仅限序号合法性，恢复点是否处于边界态由人工在详情页确认"
+  ],
+  "rollback": "删除 V159 与 order 域新增文件、前端增量；保留追加表（回退不删表）"
+}
