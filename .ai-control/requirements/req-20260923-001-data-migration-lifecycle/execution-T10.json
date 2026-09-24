@@ -1,0 +1,46 @@
+{
+ "topic": "req-20260923-001-data-migration-lifecycle",
+ "task_id": "T10",
+ "title": "批次5·数据看板：六大维度统计、权限前置过滤、专题独立统计、时效分桶、下钻跳转",
+ "status": "executed",
+ "executed_at": "2026-09-24T04:10:00Z",
+ "requirement_ids": [
+  "R8"
+ ],
+ "scope_summary": "V164 迁移新增 6 个 dws_* 聚合视图（dws_stage_activity_order/dws_activity_status/dws_topic_progress/dws_issue_status/dws_risk_status/dws_order_status，16.3 数据层表清单；维度 6 直接消费 v_order_deadline_live 实时视图，仅「在办工单」参与时效分桶）+ 菜单 753 挂 745 + 只读权限点 7531；后端新增 DashboardService/DashboardController 与 9 个 DTO（六维度 + 时效对账闸门）；时效对账逐单比对 v_order_deadline_live 与 work_order.deadline_status，不一致抛 DASHBOARD_DEADLINE_VIEW_MISMATCH；为满足逐单一致，对终态/暂停/豁免（suspend/archive/cancel/CLOSED 派生）做 deadline_status 归一化 NORMAL（与实时视图口径对齐）；错误码新增 458xx 段 1 条（总计 113 条）前后端 1:1；前端 DashboardPage（六维度卡片+阶段折叠+专题表+问题/风险卡片，无编辑入口）+ 类型/API/路由注册 + 三个台账页（flow/issue/risk）路由 query 下钻自动筛选。",
+ "changed_files": [
+  "server/src/platform/infrastructure/src/main/resources/db/migration/V164__data_migration_lifecycle_dashboard.sql",
+  "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/dashboard/DashboardService.java",
+  "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/dashboard/model/*.java",
+  "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/web/DashboardController.java",
+  "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCode.java",
+  "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/error/LifecycleErrorCatalog.java",
+  "server/src/modules/data-migration/src/main/java/com/ccb/datamigration/lifecycle/order/OrderStateMachineService.java",
+  "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch5SelfCheckTest.java",
+  "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/dashboard/DashboardServiceTest.java",
+  "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/Batch3SelfCheckTest.java",
+  "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/LifecycleIronRuleSelfCheckTest.java",
+  "server/src/modules/data-migration/src/test/java/com/ccb/datamigration/lifecycle/order/OrderStateMachineServiceTest.java",
+  "web/src/modules/data-migration/lifecycle/dashboard/DashboardPage.vue",
+  "web/src/types/data-migration-lifecycle.ts",
+  "web/src/api/data-migration-lifecycle.ts",
+  "web/src/router/index.ts",
+  "web/src/modules/data-migration/lifecycle/flow/FlowListPage.vue",
+  "web/src/modules/data-migration/lifecycle/issue/IssueListPage.vue",
+  "web/src/modules/data-migration/lifecycle/risk/RiskListPage.vue"
+ ],
+ "single_source_decisions": [
+  "专题工单归属经 task.topic_activity_id（拆分工单 activity_type 取自被展开普通活动快照=NORMAL，非 topic 直连），dws_topic_progress 与 topicProgress() 统一经 task 关联，避免归属错位",
+  "时效对账为看板闸门：orderStatus/stageActivity/topicProgress 出数前先比对实时视图与冗余字段，不一致抛 45801 拒绝出数",
+  "权限前置过滤与台账同源同口径：订单走 appendDataScope 同谓词（执行人/参与人/管辖组件），问题/风险走台账同过滤（reporter/rectifier、reporter/prevent_owner），非管理员活动仅统计本人创建或含本人权责工单的活动"
+ ],
+ "blocks_encountered": [
+  "全量 mvn test 运行超时（>12min 未结束，含各模块 Testcontainers/慢速测试），与批次1-4 证据口径一致改为聚焦模块测试 + 3 类 MySQL 集成作为后端门禁，全量项如实登记未跑",
+  "errors 门槛：DashBoardService 初次编译暴露 2 处（appendActivityScope 签名、RISK_IMPORT_INVALID 被误删）已修复；DashboardServiceTest 暴露 9 态合计与 queryForList 泛型重载问题已修复"
+ ],
+ "residual_risks": [
+  "看板真实数据链路（六维度 SQL 对真实库、下钻跳转、移动视口）为 dev 栈人工验收项（浏览器冒烟登记在 T11）",
+  "看板导出（16.2.1 数据导出/16.6 /api/dashboard/export）本批次未实现，按 T10 non_goals 之外列为遗留（图形化图表同样列候选）"
+ ],
+ "rollback": "删除 V164 迁移（dws 视图为 CREATE OR REPLACE，无 DROP 影响历史）与 dashboard 相关新增文件；错误码/归一化改动随批次提交回退"
+}

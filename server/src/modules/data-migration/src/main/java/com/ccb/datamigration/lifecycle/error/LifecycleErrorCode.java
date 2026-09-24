@@ -239,6 +239,9 @@ public final class LifecycleErrorCode {
     public static final int RISK_FIELD_REQUIRED = 45713;
     /** 批量归集数据校验失败，异常明细随响应返回。 */
     public static final int RISK_IMPORT_INVALID = 45714;
+    /** ===== 458xx 数据看板域（基线第 16 章，T10） ===== */
+    /** 看板实时时效视图（v_order_deadline_live）与工单冗余字段逐单不一致，拒绝出数（16.2.3.6/16.7 时效对账）。 */
+    public static final int DASHBOARD_DEADLINE_VIEW_MISMATCH = 45801;
 
     private LifecycleErrorCode() {
     }

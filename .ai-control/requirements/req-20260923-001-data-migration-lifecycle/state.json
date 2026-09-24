@@ -1,66 +1,72 @@
 {
-  "schema_version": 4,
-  "revision": 8,
-  "created_at": "2026-09-23T09:30:00+00:00",
-  "updated_at": "2026-09-24T11:40:00+08:00",
-  "mode": "high-assurance",
-  "phase": "executing",
-  "topic": "req-20260923-001-data-migration-lifecycle",
-  "task_id": "REQ-20260923-001",
-  "objective": "在 RDDMP 技术栈（Spring Boot + Vue 3）上实现数据迁移生命周期任务管理平台，复用现有角色/成员/组件能力，按基线文档批次受控交付。",
-  "phase_history": [
-    {
-      "from": null,
-      "to": "baseline",
-      "evidence": "用户确认：① 按 RDDMP 技术栈落地实施，角色权限/组件/成员复用系统现有功能不重复开发；② 需求文档作为正式需求基线。已创建 docs/requirements/REQ-20260923-001-data-migration-lifecycle/（requirement.md、基线文档副本、codex-task-scope.yaml）与本账本 baseline.json（R1-R11、不变量、约束、非目标、决策 D1-D5）。",
-      "recorded_at": "2026-09-23T09:30:00+00:00"
-    },
-    {
-      "from": "baseline",
-      "to": "modeling",
-      "evidence": "用户指示按 D1~D5 推荐执行：D1 并入 business/data-migration；D2 deleted=0 视为可用 + 台账侧补充参与人；D3 按批次 1~4 推进；D4 分支已重命名为 feat/REQ-20260923-001-data-migration-lifecycle 并推送、删除远端 datamigration-ljy；D5 服务层状态机实现。baseline.json 已置 ready",
-      "recorded_at": "2026-09-23T10:05:00+00:00"
-    },
-    {
-      "from": "modeling",
-      "to": "planning",
-      "evidence": "model.json 门禁通过（R1~R11 均有因果链、独立传感器与受权执行器）；control-plan.json 规划门禁通过：11 个任务包覆盖 R1~R11、依赖图无环、并行组无写入冲突、采样计划与批次边界对齐。",
-      "recorded_at": "2026-09-23T10:40:00+00:00"
-    },
-    {
-      "from": "planning",
-      "to": "executing",
-      "evidence": "T1 执行并采样：V156 种子迁移+契约视图、lifecycle 底座 9 类、前端类型/API/路由占位、pom 补 ccb-system；mvn -pl :ccb-data-migration -am test 21 绿、npm run build 成功、check-codex-scope PASS；execution-T1.json 与 observation-T1.json 已登记（S9 PASS，S10 部分覆盖延 T2）；model.json 补盘 model-1（前序声明 ready 未落盘）。",
-      "recorded_at": "2026-09-23T10:02:00+00:00"
-    },
-    {
-      "from": "executing",
-      "to": "executing",
-      "evidence": "批次1完成：T1（复用接入底座）与 T2（枚举/错误码/快照单源+自检）均执行并采样通过（S9 PASS、S10 PASS，批次1集成点通过）；模块测试 31 绿、前端 build 成功、scope PASS（40 files）。execution-T1/T2.json 与 observation-T1/T2.json 已登记。",
-      "recorded_at": "2026-09-23T10:18:00+00:00"
-    },
-    {
-      "from": "executing",
-      "to": "executing",
-      "evidence": "批次2完成：T3（活动管理）执行并采样通过（S1 PASS）：V157 迁移 9 表+3 视图+菜单权限+阶段种子；活动/工序/拓扑/模板服务与控制器；前端活动列表+配置工作台（五页签深链+表格化连线编辑降级视图）；错误码 33 条前后端 1:1；专项测试 18 项+模块全量 49 绿、前端 build 成功、scope PASS（59 files）。execution-T3.json 与 observation-T3.json 已登记。",
-      "recorded_at": "2026-09-23T10:42:00+00:00"
-    },
-    {
-      "from": "executing",
-      "to": "executing",
-      "evidence": "批次3完成：T4（任务发布）/T5（流转引擎）/T6（反馈门禁）执行并采样通过（S2 PASS、S3 PASS、S4 PASS，批次3集成点通过）：V158-V160 迁移 17 张表+2 契约视图+表级 CHECK+菜单 747-749+权限点 7471-7494；task/order/feedback 三域服务与控制器；错误码 38 条新增（45201-45211/45301-45315/45401-45412）前后端 1:1；前端任务台账/流转页/执行反馈页；模块测试 79 绿、MySQL 集成测试 3 个全绿（Flyway 155 脚本应用至 v160 无 error）、前端 build 成功、scope PASS（87 files）。execution-T4/T5/T6.json 与 observation-T4/T5/T6.json 已登记。",
-      "recorded_at": "2026-09-24T02:30:00+00:00"
-    },
-    {
-      "from": "executing",
-      "to": "executing",
-      "evidence": "批次4完成：T7（审核管理）/T8（问题+知识库）/T9（风险+策略库）执行并采样通过（S5 PASS、S6 PASS、S7 PASS，批次4集成点通过）：V161-V163 迁移 15 张表+表级 CHECK+菜单 750-752+权限点 7501-7524；audit/issue/risk 三域服务与控制器；错误码 41 条新增（45501-45512/45601-45615/45701-45714）前后端 1:1（总计 112 条）；前端 5 页（审核/问题/知识库/风险/策略库）；模块测试 88 绿、MySQL 集成测试 3 类 26 测试全绿（Flyway 完整应用至 v163 无 error）、前端 build 成功、scope PASS（62 files）。execution-T7/T8/T9.json 与 observation-T7/T8/T9.json 已登记。",
-      "recorded_at": "2026-09-24T03:40:00+00:00"
-    }
-  ],
-  "open_feedback": [
-    "批次4已收敛（T7/T8/T9 全 PASS）；下一批次5 = T10 数据看板 + T11 全局收敛（基线第 16 章 + 铁律综合验收）",
-    "检查 flyway 全局脚本在 main 既有问题（V84_1 命名等），只读不修，最终收敛按残余风险记录",
-    "人工验收项（dev 栈）：审核 10 分钟撤销窗口真实体验、审核人精确权责匹配、批量导入真实 Excel、策略匹配效果、前端 L2 浏览器冒烟全链路（下发→承接→流转→反馈→审核→问题/风险台账）"
-  ]
+ "schema_version": 4,
+ "revision": 9,
+ "created_at": "2026-09-23T09:30:00+00:00",
+ "updated_at": "2026-09-24T04:50:00+08:00",
+ "mode": "high-assurance",
+ "phase": "executing",
+ "topic": "req-20260923-001-data-migration-lifecycle",
+ "task_id": "REQ-20260923-001",
+ "objective": "在 RDDMP 技术栈（Spring Boot + Vue 3）上实现数据迁移生命周期任务管理平台，复用现有角色/成员/组件能力，按基线文档批次受控交付。",
+ "phase_history": [
+  {
+   "from": null,
+   "to": "baseline",
+   "evidence": "用户确认：① 按 RDDMP 技术栈落地实施，角色权限/组件/成员复用系统现有功能不重复开发；② 需求文档作为正式需求基线。已创建 docs/requirements/REQ-20260923-001-data-migration-lifecycle/（requirement.md、基线文档副本、codex-task-scope.yaml）与本账本 baseline.json（R1-R11、不变量、约束、非目标、决策 D1-D5）。",
+   "recorded_at": "2026-09-23T09:30:00+00:00"
+  },
+  {
+   "from": "baseline",
+   "to": "modeling",
+   "evidence": "用户指示按 D1~D5 推荐执行：D1 并入 business/data-migration；D2 deleted=0 视为可用 + 台账侧补充参与人；D3 按批次 1~4 推进；D4 分支已重命名为 feat/REQ-20260923-001-data-migration-lifecycle 并推送、删除远端 datamigration-ljy；D5 服务层状态机实现。baseline.json 已置 ready",
+   "recorded_at": "2026-09-23T10:05:00+00:00"
+  },
+  {
+   "from": "modeling",
+   "to": "planning",
+   "evidence": "model.json 门禁通过（R1~R11 均有因果链、独立传感器与受权执行器）；control-plan.json 规划门禁通过：11 个任务包覆盖 R1~R11、依赖图无环、并行组无写入冲突、采样计划与批次边界对齐。",
+   "recorded_at": "2026-09-23T10:40:00+00:00"
+  },
+  {
+   "from": "planning",
+   "to": "executing",
+   "evidence": "T1 执行并采样：V156 种子迁移+契约视图、lifecycle 底座 9 类、前端类型/API/路由占位、pom 补 ccb-system；mvn -pl :ccb-data-migration -am test 21 绿、npm run build 成功、check-codex-scope PASS；execution-T1.json 与 observation-T1.json 已登记（S9 PASS，S10 部分覆盖延 T2）；model.json 补盘 model-1（前序声明 ready 未落盘）。",
+   "recorded_at": "2026-09-23T10:02:00+00:00"
+  },
+  {
+   "from": "executing",
+   "to": "executing",
+   "evidence": "批次1完成：T1（复用接入底座）与 T2（枚举/错误码/快照单源+自检）均执行并采样通过（S9 PASS、S10 PASS，批次1集成点通过）；模块测试 31 绿、前端 build 成功、scope PASS（40 files）。execution-T1/T2.json 与 observation-T1/T2.json 已登记。",
+   "recorded_at": "2026-09-23T10:18:00+00:00"
+  },
+  {
+   "from": "executing",
+   "to": "executing",
+   "evidence": "批次2完成：T3（活动管理）执行并采样通过（S1 PASS）：V157 迁移 9 表+3 视图+菜单权限+阶段种子；活动/工序/拓扑/模板服务与控制器；前端活动列表+配置工作台（五页签深链+表格化连线编辑降级视图）；错误码 33 条前后端 1:1；专项测试 18 项+模块全量 49 绿、前端 build 成功、scope PASS（59 files）。execution-T3.json 与 observation-T3.json 已登记。",
+   "recorded_at": "2026-09-23T10:42:00+00:00"
+  },
+  {
+   "from": "executing",
+   "to": "executing",
+   "evidence": "批次3完成：T4（任务发布）/T5（流转引擎）/T6（反馈门禁）执行并采样通过（S2 PASS、S3 PASS、S4 PASS，批次3集成点通过）：V158-V160 迁移 17 张表+2 契约视图+表级 CHECK+菜单 747-749+权限点 7471-7494；task/order/feedback 三域服务与控制器；错误码 38 条新增（45201-45211/45301-45315/45401-45412）前后端 1:1；前端任务台账/流转页/执行反馈页；模块测试 79 绿、MySQL 集成测试 3 个全绿（Flyway 155 脚本应用至 v160 无 error）、前端 build 成功、scope PASS（87 files）。execution-T4/T5/T6.json 与 observation-T4/T5/T6.json 已登记。",
+   "recorded_at": "2026-09-24T02:30:00+00:00"
+  },
+  {
+   "from": "executing",
+   "to": "executing",
+   "evidence": "批次4完成：T7（审核管理）/T8（问题+知识库）/T9（风险+策略库）执行并采样通过（S5 PASS、S6 PASS、S7 PASS，批次4集成点通过）：V161-V163 迁移 15 张表+表级 CHECK+菜单 750-752+权限点 7501-7524；audit/issue/risk 三域服务与控制器；错误码 41 条新增（45501-45512/45601-45615/45701-45714）前后端 1:1（总计 112 条）；前端 5 页（审核/问题/知识库/风险/策略库）；模块测试 88 绿、MySQL 集成测试 3 类 26 测试全绿（Flyway 完整应用至 v163 无 error）、前端 build 成功、scope PASS（62 files）。execution-T7/T8/T9.json 与 observation-T7/T8/T9.json 已登记。",
+   "recorded_at": "2026-09-24T03:40:00+00:00"
+  },
+  {
+   "from": "executing",
+   "to": "executing",
+   "evidence": "批次5完成：T10（数据看板）执行并采样通过（S8 PASS），T11（全局收敛）证据与 convergence 落盘（S11 PASS）：V164 迁移 6 个 dws 聚合视图+菜单 753+权限点 7531；DashboardService/Controller 六维度（权限前置过滤+时效对账闸门 45801+9 态之和=总数）；终态/暂停 deadline_status 归一化 NORMAL 对齐实时视图；错误码新增 45801（总计 113 条）前后端 1:1；前端 DashboardPage+下钻联动（flow/issue/risk 台账 query 筛选）；模块测试 98 绿、MySQL 集成 3 类 26 测试全绿（Flyway 应用至 v164 无 error）、前端 build 成功、scope PASS（18 项）。execution/observation-T10/T11 与 convergence.json 已登记。",
+   "recorded_at": "2026-09-24T04:50:00+00:00"
+  }
+ ],
+ "open_feedback": [
+  "本需求收敛（R1~R11 全 PASS，L1 数据层 + 工程证据；L2 浏览器/运行态为 dev 栈人工验收项，convergence.json 已列明残余风险与回退）",
+  "按用户每批次要求，批次5 成果提交并推送至 origin/feat/REQ-20260923-001-data-migration-lifecycle",
+  "人工验收项（dev 栈）：浏览器冒烟（下钻/看板渲染/375/390/430 视口）、审核 10 分钟撤销窗口、批量导入 Excel、策略匹配、全链路冒烟；full-backend 全 reactor 与 runtime/browser 未在批次内跑通（环境限制）"
+ ]
 }

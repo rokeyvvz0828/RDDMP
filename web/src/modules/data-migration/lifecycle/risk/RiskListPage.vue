@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import '../../data-migration.css'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -136,7 +137,14 @@ async function reconcile() {
   } finally { loading.value = false }
 }
 
-onMounted(loadList)
+const route = useRoute()
+
+function applyDrilldown() {
+  if (typeof route.query.riskStatus === 'string') filters.riskStatus = route.query.riskStatus
+  if (typeof route.query.riskLevel === 'string') filters.riskLevel = route.query.riskLevel
+}
+
+onMounted(() => { applyDrilldown(); loadList() })
 </script>
 
 <template>

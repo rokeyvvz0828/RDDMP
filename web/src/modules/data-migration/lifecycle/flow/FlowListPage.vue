@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import '../../data-migration.css'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search, View } from '@element-plus/icons-vue'
 import UiDataTable from '../../../../components/ui/UiDataTable.vue'
@@ -168,7 +169,19 @@ async function runAction(action: () => Promise<unknown>, successText: string) {
 
 const PROCESS_STATUS_TAG: Record<string, string> = { LOCKED: 'info', EXECUTING: 'primary', REVIEWING: 'warning', REJECTED: 'danger', CLOSED: 'success' }
 
-onMounted(loadList)
+const route = useRoute()
+
+/** 下钻入口：看板点击统计卡片跳转本页时自动套用筛选条件（大盘统计 - 明细溯源闭环）。 */
+function applyDrilldown() {
+  const q = route.query
+  if (typeof q.orderStatus === 'string') filters.orderStatus = q.orderStatus
+  if (typeof q.deadlineStatus === 'string') filters.deadlineStatus = q.deadlineStatus
+  if (typeof q.granularity === 'string') filters.granularity = q.granularity
+  if (typeof q.activityType === 'string') filters.activityType = q.activityType
+  if (typeof q.componentId === 'string' && q.componentId) filters.componentId = Number(q.componentId)
+}
+
+onMounted(() => { applyDrilldown(); loadList() })
 </script>
 
 <template>

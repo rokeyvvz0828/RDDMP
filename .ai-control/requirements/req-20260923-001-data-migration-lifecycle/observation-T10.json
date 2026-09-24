@@ -1,0 +1,50 @@
+{
+ "topic": "req-20260923-001-data-migration-lifecycle",
+ "task_id": "T10",
+ "observed_at": "2026-09-24T04:20:00Z",
+ "sensors": [
+  {
+   "sensor_id": "S8",
+   "requirement_ids": [
+    "R8"
+   ],
+   "name": "数据看板传感器：六维度口径/权限前置过滤/时效对账/专题独立/下钻（L1 数据层断言，对齐基线 16）",
+   "expectation": "卡片数值=台账同条件条数；普通执行人只见权责数据；9 态分项之和=总数；专题不归属阶段；点击已超时下钻自动筛选；时效对账一致（不一致抛 DASHBOARD_DEADLINE_VIEW_MISMATCH）",
+   "actual": [
+    "DashboardServiceTest 6/6：管理员聚合 SQL 无执行人过滤、非管理员聚合 SQL 含 current_executor_id/participant 范围谓词（铁律 #8 前置过滤）、时效对账不一致抛 45801、9 态分项之和=总数不变量拒绝不一致行、stage-activity 仅统计普通活动（activity_type='NORMAL'）、专题经 task.topic_activity_id 归属",
+    "Batch5SelfCheckTest 4/4：V164 含 6 个 dws 视图 + 菜单 753 + 权限点 7531 + 消费 v_order_deadline_live + 仅「在办工单」参与时效；错误码 45801 注册且目录总计 113 条 1:1；前端类型/API/路由契约齐全；suspend/archive/cancel/CLOSED 派生 deadline_status 归一化 NORMAL 与实时视图口径一致",
+    "模块全量 mvn -pl :ccb-data-migration -am test：98/98 绿（0 failure 0 error，含新增 10 项）",
+    "MySQL 集成测试（DeploymentUnitImport/Lifecycle/NetworkWorkOrder）：26/26 绿，Flyway 159 脚本成功应用至 v164（含 V164 无 error）",
+    "npm run build（web）：成功（vue-tsc 类型检查 0 错误 + vite build）",
+    "check-codex-scope：PASS（本批次 18 项变更均在 writable_paths 内）",
+    "git diff --check：通过"
+   ],
+   "verdict": "PASS（L1 数据层）",
+   "deltas": [
+    "为满足「实时时效视图与冗余字段逐单一致」，对 suspend/archive/cancel/CLOSED 派生统一归一化 deadline_status=NORMAL（不改变 SLA 语义，实时视图为权威）；OrderStateMachineServiceTest 同步补齐该 SQL 分支的 stub",
+    "dws_stage_activity_order 的 GROUP BY 使用 COALESCE(o.tenant_id, a.tenant_id)，避免无工单阶段落入 NULL 租户分组"
+   ],
+   "noise_or_external": [
+    "看板真实数据链路（真实库六维度 SQL、浏览器下钻、375/390/430 视口）为 dev 栈人工验收项",
+    "check-ai-control-layout 在 origin/main 既有问题（REQ-20260904-061 的 codex-task-scope.yaml 非 JSON 兼容）上失败，与本批次无关（该文件本分支未修改）"
+   ]
+  }
+ ],
+ "integration_points": [
+  {
+   "point": "批次5集成点（T9→T10）",
+   "check": "看板对账+下钻（S8）：六维度口径与台账同源、时效对账闸门、下钻参数透传",
+   "result": "PASS：对账闸门单测覆盖不一致抛错；下钻参数（orderStatus/deadlineStatus/issueStatus/riskStatus）由看板页透传至 flow/issue/risk 台账页并自动筛选"
+  }
+ ],
+ "regression": [
+  "mvn -pl :ccb-data-migration -am test：98/98 绿",
+  "3 个 MySQL 集成测试 26/26 全绿，Flyway v1~v164 应用无 error",
+  "npm run build（web）：成功",
+  "check-codex-scope：PASS（18 项本批次变更）",
+  "git diff --check：通过"
+ ],
+ "blockers_for_next": [
+  "T10 已收敛（S8 PASS）；下一任务 T11 全局收敛（逐批验证登记 + 最终 convergence + 残余风险/回退）"
+ ]
+}

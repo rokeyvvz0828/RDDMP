@@ -1,0 +1,33 @@
+{
+ "topic": "req-20260923-001-data-migration-lifecycle",
+ "task_id": "T11",
+ "title": "全周期验收与收敛：逐批运行验证、范围审计、账本证据登记，最终收敛判定",
+ "status": "executed",
+ "executed_at": "2026-09-24T04:30:00Z",
+ "requirement_ids": [
+  "R11"
+ ],
+ "scope_summary": "登记 execution-T1~T11 与 observation-T1~T11（本批次新增 execution/observation-T10、execution/observation-T11 与 convergence.json）；逐批验证汇总：focused-backend（每批模块测试全绿，批次5=98 绿）、MySQL 集成（3 类 26 测试，Flyway 应用至 v164 无 error）、frontend build（每批成功，批次5 vue-tsc 0 错误）、governance（17 模块 + skill + dev entry PASS）、scope（每批 PASS，批次5 18 项变更）、git diff --check 通过；full-backend（mvn test）与 runtime/browser 因 dev 栈环境未在批次内跑通，按 R11 要求如实登记为人工验收项。",
+ "changed_files": [
+  ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T10.json",
+  ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T10.json",
+  ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/execution-T11.json",
+  ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/observation-T11.json",
+  ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/convergence.json",
+  ".ai-control/requirements/req-20260923-001-data-migration-lifecycle/state.json"
+ ],
+ "single_source_decisions": [
+  "T11 只写 .ai-control 本前缀账本；代码与迁移回退按各任务 rollback；不合并不发布",
+  "用户每批次明确要求提交并推送，批次5 完成后按用户指令 commit+push（账本证据随代码一并入库）"
+ ],
+ "blocks_encountered": [
+  "full-backend（mvn test 全 reactor）运行超过 12 分钟未完成（含各模块 Testcontainers/慢速测试），与批次1-4 证据口径一致：以后端聚焦模块测试 + 3 类 MySQL 集成作为后端门禁，全量项如实登记未跑",
+  "runtime/browser（启动本地 MySQL/MinIO/前后端 + 四视口真实浏览器）在 dev 栈未执行，按 R11 接受口径登记为人工验收项"
+ ],
+ "residual_risks": [
+  "dev 栈人工验收项：浏览器 L2 冒烟（下钻跳转/看板渲染/375/390/430 视口）、审核 10 分钟撤销窗口真实体验、批量导入真实 Excel、策略匹配效果、全链路冒烟（下发→承接→流转→反馈→审核→问题/风险台账→看板）",
+  "看板图表可视化与 /api/dashboard/export 导出为遗留候选（本批次非目标）",
+  "full-backend 全 reactor 测试与 runtime/browser 未在批次内跑通（环境限制）"
+ ],
+ "rollback": "代码按各任务 rollback 逐批回退（追加表/视图/种子保留，不修改历史迁移）；生产 DROP 需单独批准任务"
+}

@@ -672,5 +672,156 @@ export const LifecycleErrorText: Record<number, string> = {
   45711: '策略库条目禁止删除，仅可下线',
   45712: '风险对账同步与上报单归属冲突，拒绝归集',
   45713: '风险必填字段缺失',
-  45714: '批量归集数据校验失败，异常明细见响应'
+  45714: '批量归集数据校验失败，异常明细见响应',
+  45801: '看板实时时效视图与工单冗余字段不一致，拒绝出数'
 }
+
+/** ===== 批次5 数据看板（基线第 16 章，T10）六维度统计契约 ===== */
+
+export interface LifecycleActivityOrderView {
+  activityId: number
+  activityName: string
+  granularity: 'PROJECT' | 'COMPONENT'
+  orderTotal: number
+  waitPreCnt: number
+  waitAcceptCnt: number
+  executingCnt: number
+  suspendedCnt: number
+  reviewingCnt: number
+  reviewRejectedCnt: number
+  closedCnt: number
+  archivedCnt: number
+  cancelledCnt: number
+  closeRate: number
+}
+
+/** 维度 1：全生命周期阶段-活动-工单层级统计（仅普通活动归属阶段）。 */
+export interface LifecycleStageActivityOrderView {
+  stageId: number
+  stageCode: string
+  stageName: string
+  orderTotal: number
+  waitPreCnt: number
+  waitAcceptCnt: number
+  executingCnt: number
+  suspendedCnt: number
+  reviewingCnt: number
+  reviewRejectedCnt: number
+  closedCnt: number
+  archivedCnt: number
+  cancelledCnt: number
+  closeRate: number
+  activities: LifecycleActivityOrderView[]
+}
+
+/** 维度 2：活动进展状态（活动类型标签区分普通/专题）。 */
+export interface LifecycleActivityStatusView {
+  total: number
+  activeCnt: number
+  inactiveCnt: number
+  obsoleteCnt: number
+  linkedTopicCnt: number
+  unlinkedTopicCnt: number
+  byType: Record<string, number>
+  byGranularity: Record<string, number>
+}
+
+/** 维度 3 子项：单个专题聚合活动进度（独立于生命周期阶段）。 */
+export interface LifecycleTopicProgressView {
+  topicId: number
+  topicName: string
+  topicStatus: ActivityStatus
+  orderTotal: number
+  waitPreCnt: number
+  waitAcceptCnt: number
+  executingCnt: number
+  suspendedCnt: number
+  reviewingCnt: number
+  reviewRejectedCnt: number
+  closedCnt: number
+  archivedCnt: number
+  cancelledCnt: number
+  closeRate: number
+  doingRate: number
+  issueRate: number
+}
+
+/** 维度 3：专题进度总览（运行状态 + 派工状态汇总 + 逐专题明细）。 */
+export interface LifecycleTopicProgressOverview {
+  topicTotal: number
+  activeCnt: number
+  inactiveCnt: number
+  obsoleteCnt: number
+  taskedCnt: number
+  untaskedCnt: number
+  orderTotal: number
+  topics: LifecycleTopicProgressView[]
+}
+
+/** 维度 6 子项：单一颗粒度工单 9 态 + 时效分桶。 */
+export interface LifecycleGranularityOrderStatus {
+  granularity: 'PROJECT' | 'COMPONENT'
+  orderTotal: number
+  waitPreCnt: number
+  waitAcceptCnt: number
+  executingCnt: number
+  suspendedCnt: number
+  reviewingCnt: number
+  reviewRejectedCnt: number
+  closedCnt: number
+  archivedCnt: number
+  cancelledCnt: number
+  deadlineNormalCnt: number
+  deadlineNearCnt: number
+  deadlineOverdueCnt: number
+}
+
+/** 维度 6：工单进度状态 + 时效分桶（叠加维度，仅「在办工单」参与）。 */
+export interface LifecycleOrderStatusView {
+  orderTotal: number
+  waitPreCnt: number
+  waitAcceptCnt: number
+  executingCnt: number
+  suspendedCnt: number
+  reviewingCnt: number
+  reviewRejectedCnt: number
+  closedCnt: number
+  archivedCnt: number
+  cancelledCnt: number
+  closeRate: number
+  normalRate: number
+  rejectRate: number
+  archiveRate: number
+  deadlineNormalCnt: number
+  deadlineNearCnt: number
+  deadlineOverdueCnt: number
+  byGranularity: LifecycleGranularityOrderStatus[]
+}
+
+/** 维度 4：问题状态分项（4 态）。 */
+export interface LifecycleIssueStatusView {
+  total: number
+  waitRectifyCnt: number
+  rectifyingCnt: number
+  closedCnt: number
+  cancelledCnt: number
+}
+
+/** 维度 5：风险状态分项（6 态）+ 等级分层。 */
+export interface LifecycleRiskStatusView {
+  total: number
+  waitPreventCnt: number
+  preventingCnt: number
+  avoidedCnt: number
+  occurredCnt: number
+  closedCnt: number
+  cancelledCnt: number
+  levelHighCnt: number
+  levelMidCnt: number
+  levelLowCnt: number
+}
+
+/** ===== 批次5 错误码文案（458xx 看板域，前后端 1:1） ===== */
+
+/** 看板实时时效视图与工单冗余字段不一致，拒绝出数（16.2.3.6/16.7 时效对账）。 */
+export const DASHBOARD_DEADLINE_VIEW_MISMATCH = 45801

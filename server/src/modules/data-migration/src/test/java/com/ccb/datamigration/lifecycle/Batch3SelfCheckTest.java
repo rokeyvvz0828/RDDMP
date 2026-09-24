@@ -82,7 +82,7 @@ class Batch3SelfCheckTest {
 
     @Test
     void batch3ErrorCodesAreDocumentedOneToOneAtTotal71() {
-        assertThat(LifecycleErrorCatalog.all()).hasSize(112); // 批次3 71 + 批次4 41;
+        assertThat(LifecycleErrorCatalog.all()).hasSize(113); // 批次3 71 + 批次4 41 + 批次5 1;
         // 任务发布域 11 条（45201-45211）
         int[] taskCodes = {LifecycleErrorCode.TASK_ACTIVITY_NOT_ACTIVE, LifecycleErrorCode.TASK_PROJECT_COMPONENT_FORBIDDEN,
                 LifecycleErrorCode.TASK_COMPONENT_REQUIRED, LifecycleErrorCode.TASK_COMPONENT_NOT_IN_SCOPE,

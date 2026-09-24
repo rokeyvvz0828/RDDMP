@@ -120,6 +120,7 @@ public final class LifecycleErrorCatalog {
         register(LifecycleErrorCode.RISK_SYNC_CONFLICT, "风险对账同步与上报单归属冲突，拒绝归集");
         register(LifecycleErrorCode.RISK_FIELD_REQUIRED, "风险必填字段缺失");
         register(LifecycleErrorCode.RISK_IMPORT_INVALID, "批量归集数据校验失败，异常明细见响应");
+        register(LifecycleErrorCode.DASHBOARD_DEADLINE_VIEW_MISMATCH, "看板实时时效视图与工单冗余字段不一致，拒绝出数");
     }
 
     private LifecycleErrorCatalog() {

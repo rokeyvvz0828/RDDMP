@@ -281,6 +281,12 @@ class OrderStateMachineServiceTest {
                 events.add("resume-status-log");
                 return 1;
             }
+            if (sql.startsWith("UPDATE work_order SET order_status = ?, deadline_status = 'NORMAL'")) {
+                order.put("order_status", args[0]);
+                order.put("deadline_status", "NORMAL");
+                events.add("derive-status-log");
+                return 1;
+            }
             if (sql.startsWith("UPDATE work_order SET order_status = ?, updated_at")) {
                 order.put("order_status", args[0]);
                 events.add("derive-status-log");

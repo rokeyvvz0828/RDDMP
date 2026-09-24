@@ -1,0 +1,49 @@
+{
+ "topic": "req-20260923-001-data-migration-lifecycle",
+ "task_id": "T11",
+ "observed_at": "2026-09-24T04:40:00Z",
+ "sensors": [
+  {
+   "sensor_id": "S11",
+   "requirement_ids": [
+    "R11"
+   ],
+   "name": "最终收敛传感器：逐批验证证据 + 范围审计 + convergence（R11 验收体系）",
+   "expectation": "每批次命令退出码与关键输出留档；scope 审计无本任务外修改；convergence 列明残余风险与回退",
+   "actual": [
+    "逐批登记：execution/observation-T1~T9 已在前四批落盘；本批次补 execution/observation-T10、execution/observation-T11 与 convergence.json",
+    "后端聚焦测试逐批全绿：批次1 31 → 批次2 49 → 批次3 79 → 批次4 88 → 批次5 98（0 failure 0 error）",
+    "MySQL 集成（3 类 26 测试）逐批全绿，Flyway 完整应用至 v164 无 error",
+    "frontend build 逐批成功（批次5 vue-tsc 0 错误）",
+    "governance：17 模块 + repository skill + development entry PASS（check-ai-control-layout 的 REQ-20260904-061 问题为 origin/main 既有，非本任务引入）",
+    "scope：每批 check-codex-scope PASS（批次5 18 项变更均在 writable_paths 内）；git diff --check 通过",
+    "full-backend（mvn test）/runtime/browser 未在 dev 栈批次内跑通，按 R11 如实登记为人工验收项（无伪造通过）"
+   ],
+   "verdict": "PASS（L1 数据层 + 工程证据收敛；L2 浏览器项为人工验收）",
+   "deltas": [
+    "无 P0/P1 未关闭；未发现授权外修改",
+    "check-ai-control-layout 在 origin/main 的 REQ-20260904-061 文件上失败（该文件本分支未修改，只读不修）"
+   ],
+   "noise_or_external": [
+    "dev 栈缺少真实浏览器自动化与全 reactor 慢速测试环境，L2/运行态项转人工验收"
+   ]
+  }
+ ],
+ "integration_points": [
+  {
+   "point": "批次5集成点（T10→T11）",
+   "check": "看板对账+下钻（S8）→ 全量回归 + convergence（S11）",
+   "result": "PASS：S8 PASS；S11 逐批证据齐备，convergence.json 已落盘"
+  }
+ ],
+ "regression": [
+  "mvn -pl :ccb-data-migration -am test：98/98 绿（批次5）",
+  "3 个 MySQL 集成测试 26/26 全绿，Flyway v1~v164 无 error",
+  "npm run build（web）：成功",
+  "check-codex-scope：PASS（18 项）",
+  "git diff --check：通过"
+ ],
+ "blockers_for_next": [
+  "本任务收敛判定完成；按用户指令提交并推送批次5成果；dev 栈 L2 人工验收项在 convergence.json 中列明"
+ ]
+}

@@ -1,0 +1,93 @@
+{
+ "topic": "req-20260923-001-data-migration-lifecycle",
+ "task_id": "REQ-20260923-001",
+ "convergence": "CLOSED",
+ "converged_at": "2026-09-24T04:45:00Z",
+ "batches": [
+  {
+   "batch": 1,
+   "tasks": [
+    "T1",
+    "T2"
+   ],
+   "sensors": [
+    "S9",
+    "S10"
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "batch": 2,
+   "tasks": [
+    "T3"
+   ],
+   "sensors": [
+    "S1"
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "batch": 3,
+   "tasks": [
+    "T4",
+    "T5",
+    "T6"
+   ],
+   "sensors": [
+    "S2",
+    "S3",
+    "S4"
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "batch": 4,
+   "tasks": [
+    "T7",
+    "T8",
+    "T9"
+   ],
+   "sensors": [
+    "S5",
+    "S6",
+    "S7"
+   ],
+   "verdict": "PASS"
+  },
+  {
+   "batch": 5,
+   "tasks": [
+    "T10",
+    "T11"
+   ],
+   "sensors": [
+    "S8",
+    "S11"
+   ],
+   "verdict": "PASS"
+  }
+ ],
+ "requirements_coverage": {
+  "R1": "PASS（批次2 活动管理）",
+  "R2": "PASS（批次3 任务下发）",
+  "R3": "PASS（批次3 流转引擎）",
+  "R4": "PASS（批次3 反馈门禁）",
+  "R5": "PASS（批次4 审核管理）",
+  "R6": "PASS（批次4 问题知识库）",
+  "R7": "PASS（批次4 风险策略库）",
+  "R8": "PASS（批次5 数据看板）",
+  "R9": "PASS（批次1 复用底座）",
+  "R10": "PASS（批次1 枚举/快照单源）",
+  "R11": "PASS（本收敛记录，L2 项转人工验收）"
+ },
+ "residual_risks": [
+  "dev 栈人工验收项（L2）：浏览器冒烟（下钻跳转/看板渲染/375/390/430 视口）、审核 10 分钟撤销窗口真实体验、批量导入真实 Excel、策略匹配效果、全链路冒烟（下发→承接→流转→反馈→审核→问题/风险台账→看板）",
+  "full-backend（mvn test 全 reactor）与 runtime/browser 因 dev 栈环境未在批次内跑通（如实登记，未伪造通过）",
+  "看板图表可视化与 /api/dashboard/export 导出为遗留候选（非目标）"
+ ],
+ "rollback": "按批次回退本需求提交，保留追加表/视图与种子（不修改历史迁移）；生产 DROP 或数据补偿需单独批准任务",
+ "external_notes": [
+  "check-ai-control-layout 在 origin/main 既有问题（REQ-20260904-061 的 codex-task-scope.yaml 非 JSON 兼容 YAML）上失败，本分支未修改该文件，只读不修",
+  "MySQL 集成 7421-7424 存在 main 既有迁移警告（非本任务引入）"
+ ]
+}

@@ -3,8 +3,15 @@ import type { ApiResponse } from '../types/auth'
 import type {
   LifecycleActivityView,
   LifecycleAuditView,
+  LifecycleActivityStatusView,
   LifecycleComponentOption,
   LifecycleFeedbackView,
+  LifecycleGranularityOrderStatus,
+  LifecycleIssueStatusView,
+  LifecycleOrderStatusView,
+  LifecycleRiskStatusView,
+  LifecycleStageActivityOrderView,
+  LifecycleTopicProgressOverview,
   LifecycleIssueView,
   LifecycleKnowledgeEntryView,
   LifecycleMemberOption,
@@ -346,4 +353,30 @@ export function reuseLifecycleRiskStrategy(strategyId: number, body: Record<stri
 
 export function offlineLifecycleRiskStrategy(strategyId: number) {
   return http.post<ApiResponse<LifecycleRiskStrategyLibView>>(`/data-migration-lifecycle/risk/strategies/${strategyId}/offline`)
+}
+
+/** ===== 数据看板（基线第 16 章，T10）：六维度统计，全部只读 ===== */
+
+export function getDashboardStageActivity() {
+  return http.get<ApiResponse<LifecycleStageActivityOrderView[]>>('/data-migration-lifecycle/dashboard/stage-activity')
+}
+
+export function getDashboardActivityStatus() {
+  return http.get<ApiResponse<LifecycleActivityStatusView>>('/data-migration-lifecycle/dashboard/activity-status')
+}
+
+export function getDashboardTopicProgress() {
+  return http.get<ApiResponse<LifecycleTopicProgressOverview>>('/data-migration-lifecycle/dashboard/topic-progress')
+}
+
+export function getDashboardIssueStatus() {
+  return http.get<ApiResponse<LifecycleIssueStatusView>>('/data-migration-lifecycle/dashboard/issue-status')
+}
+
+export function getDashboardRiskStatus() {
+  return http.get<ApiResponse<LifecycleRiskStatusView>>('/data-migration-lifecycle/dashboard/risk-status')
+}
+
+export function getDashboardOrderStatus() {
+  return http.get<ApiResponse<LifecycleOrderStatusView>>('/data-migration-lifecycle/dashboard/order-status')
 }

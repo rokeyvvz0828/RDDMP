@@ -229,7 +229,8 @@ public class OrderStateMachineService {
             }
         }
         LocalDateTime now = LocalDateTime.now();
-        jdbc.update("UPDATE work_order SET order_status = 'SUSPENDED', suspend_before_status = ?, suspend_at = ?, "
+        jdbc.update("UPDATE work_order SET order_status = 'SUSPENDED', deadline_status = 'NORMAL', "
+                        + "suspend_before_status = ?, suspend_at = ?, "
                         + "updated_at = CURRENT_TIMESTAMP(6) WHERE id = ? AND tenant_id = ? AND deleted = 0",
                 current, now, orderId, user.tenantId());
         jdbc.update("INSERT INTO order_suspend_log (id, tenant_id, order_id, suspend_at, suspend_before_status, "
@@ -405,7 +406,8 @@ public class OrderStateMachineService {
         }
         LocalDateTime closedAt = order.get("closed_at") == null ? LocalDateTime.now()
                 : ((java.sql.Timestamp) order.get("closed_at")).toLocalDateTime();
-        jdbc.update("UPDATE work_order SET order_status = 'ARCHIVED', closed_at = ?, updated_at = CURRENT_TIMESTAMP(6) "
+        jdbc.update("UPDATE work_order SET order_status = 'ARCHIVED', deadline_status = 'NORMAL', "
+                + "closed_at = ?, updated_at = CURRENT_TIMESTAMP(6) "
                 + "WHERE id = ? AND tenant_id = ? AND deleted = 0", closedAt, orderId, user.tenantId());
         writeStatusLog(user, orderId, null, current, "ARCHIVED", "工单归档");
         updateTaskAggregate(user, orderId);
@@ -421,8 +423,9 @@ public class OrderStateMachineService {
         if (isTerminalOrArchived(current)) {
             return;
         }
-        jdbc.update("UPDATE work_order SET order_status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP(6) "
-                + "WHERE id = ? AND tenant_id = ? AND deleted = 0", orderId, user.tenantId());
+        jdbc.update("UPDATE work_order SET order_status = 'CANCELLED', deadline_status = 'NORMAL', "
+                + "updated_at = CURRENT_TIMESTAMP(6) WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                orderId, user.tenantId());
         writeStatusLog(user, orderId, null, current, "CANCELLED", reason == null || reason.isBlank() ? "任务作废联动" : reason);
         updateTaskAggregate(user, orderId);
     }
@@ -635,8 +638,10 @@ public class OrderStateMachineService {
         }
         String derived = deriveOrderStatus(order);
         if (!derived.equals(current)) {
-            jdbc.update("UPDATE work_order SET order_status = ?, updated_at = CURRENT_TIMESTAMP(6) "
-                    + "WHERE id = ? AND tenant_id = ? AND deleted = 0", derived, orderId, user.tenantId());
+            jdbc.update("UPDATE work_order SET order_status = ?, "
+                    + (derived.equals("CLOSED") ? "deadline_status = 'NORMAL', " : "")
+                    + "updated_at = CURRENT_TIMESTAMP(6) WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                    derived, orderId, user.tenantId());
             writeStatusLog(user, orderId, null, current, derived, "工单主状态派生重算");
         }
         int closedCount = getClosedCount(user.tenantId(), orderId);

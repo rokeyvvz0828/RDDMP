@@ -38,6 +38,7 @@ import DataMigrationLifecycleIssue from '../modules/data-migration/lifecycle/iss
 import DataMigrationLifecycleKnowledge from '../modules/data-migration/lifecycle/issue/KnowledgePage.vue'
 import DataMigrationLifecycleRisk from '../modules/data-migration/lifecycle/risk/RiskListPage.vue'
 import DataMigrationLifecycleRiskStrategy from '../modules/data-migration/lifecycle/risk/StrategyPage.vue'
+import DataMigrationLifecycleDashboard from '../modules/data-migration/lifecycle/dashboard/DashboardPage.vue'
 import ReleaseManagementPrototype from '../modules/release/ReleaseManagementPrototype.vue'
 import ReleaseApplicationDetailPage from '../modules/release/ReleaseApplicationDetailPage.vue'
 import ReleaseWorkflowReviewPage from '../modules/release/ReleaseWorkflowReviewPage.vue'
@@ -340,6 +341,13 @@ const router = createRouter({
           name: 'data-migration-lifecycle-risk-strategy',
           component: DataMigrationLifecycleRiskStrategy,
           meta: { title: '风险策略库', permission: 'data-migration-lifecycle:risk', menuPath: '/data-migration/lifecycle/risk' }
+        },
+        {
+          // 批次5：数据看板（基线第 16 章，T10）——只读六大维度统计
+          path: 'data-migration/lifecycle/dashboard',
+          name: 'data-migration-lifecycle-dashboard',
+          component: DataMigrationLifecycleDashboard,
+          meta: { title: '数据看板', permission: 'data-migration-lifecycle:dashboard', menuPath: '/data-migration/lifecycle/dashboard' }
         },
         {
           path: 'data-migration/dashboard',
